@@ -114,12 +114,12 @@ function draft(v,intent='booking_request',analysis=null){
  if(v.arrival&&v.departure)lines.push(`A megadott időszak: ${v.arrival} – ${v.departure}, ${v.guests||'?'} fő részére.`);
  const plan=accommodationPlan(v);
  if(plan&&!plan.specific){
-   lines.push('','Mivel konkrét faháztípust nem jelölt meg, a létszám alapján több megfelelő elhelyezési lehetőség is szóba jöhet:');
+   lines.push('','Mivel konkrét faháztípust nem jelölt meg, a létszám alapján több elhelyezési lehetőséget vizsgálunk:');
    for(const k of plan.compatible){
      if(k==='small'||k==='deluxe')continue;
-     lines.push(`• ${SARBERKI_KB[k].label} – teljes ár ${plan.guests} főre${v.nights?', '+v.nights+' éjszakára':''}: [KISZÁMÍTOTT VÉGÖSSZEG] Ft`);
+     lines.push(`• ${SARBERKI_KB[k].label} – a szabad kapacitást és az árat munkatársunk ellenőrzi.`);
    }
-   lines.push('','A fenti végösszegek az idegenforgalmi adót is tartalmazzák.');
+   lines.push('','Pontos ajánlatot a szabad kapacitás és az aktuális árak ellenőrzése után küldünk.');
    if(plan.compatible.includes('split'))lines.push('','Az osztott faház három különálló egységből áll: két alsó, egyenként 2 fős egységből, valamint egy felső, 4 fős egységből.');
  }
  const topics=analysis?.topics||{secondary_intents:[],unresolved_questions:[],requested_addons:[]};
