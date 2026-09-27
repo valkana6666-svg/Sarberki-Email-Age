@@ -21,8 +21,16 @@
   function plain(part) {
     if (part.mimeType === 'text/plain' && part.body?.data) return decoded(part.body.data);
     for (const child of part.parts || []) { const value = plain(child); if (value) return value; }
-    return '';
+    return '';  }
+  function cabinFromGuestText(message) {
+    const types = [];
+    if (/\bvip\b/iu.test(message)) types.push('VIP');
+    if (/\bcsaládi\b/iu.test(message)) types.push('Családi');
+    if (/\bdeluxe\b/iu.test(message)) types.push('Deluxe');
+    if (/\bosztott\b/iu.test(message)) types.push('Osztott');
+    return types.length === 1 ? types[0] : '? – emberi döntésre vár';
   }
+
   function transform(message) {
     const headers = Object.fromEntries((message.payload?.headers || []).map(h => [h.name.toLowerCase(), h.value]));
     const original = plain(message.payload).trim();
@@ -49,7 +57,7 @@
     if (inferredYear) inferred.push({label:'Év',value:`${inferredYear}, a feldolgozás napja alapján következtetve; emberi ellenőrzés szükséges`});
     if (count && childCount) inferred.push({label:'Felnőttek',value:`valószínűleg ${count-childCount}, ha a fennmaradó ${count-childCount} fő felnőtt`});
     const missing = [];
-    if (cabinFromGuestText(original).startsWith('?')) missing.push('Konkrét faház vagy háztípus: ? – emberi döntésre vár');
+    if (cabinFromGuestText(original).startsWith('?')) missing.push('Kívánt háztípus (VIP, Családi, Deluxe vagy Osztott) – pontosítandó');
     if (!dateText) missing.push('Pontos érkezési és távozási dátum');
     if (!count) missing.push('Vendégek száma');
     if (childCount && !/\d+\s*éves/iu.test(original)) missing.push('Gyermek életkora');
@@ -61,7 +69,7 @@
     const first = name?.split(' ')[1] || 'Vendégünk';
     const time = dateText ? `${dateText[1]} ${dateText[2]}–${dateText[3]}. között` : 'a jelzett időpontban';
     const summary = [count ? `összesen ${count} fővel${childCount ? `, köztük ${childCount} gyermekkel` : ''}` : null,hotTub?'dézsás faházat keresnek':null,dog?'kutyát is hoznának':null].filter(Boolean).join('; ');
-    const replyDraft = `Kedves ${first}!\n\nKöszönjük érdeklődését. Úgy értettük, hogy ${time} érkeznének${summary ? `; ${summary}` : ''}.\n\n${childCount ? 'Megírná a gyermek életkorát és ' : 'Megírná '}egy telefonszámot, amelyen elérhetjük? ${cabinFromGuestText(original).startsWith('?') ? 'Van konkrét faházra vagy háztípusra vonatkozó igényük?\n\n' : '\n\n'}${dog ? 'Kutyát térítés ellenében lehet hozni. ' : ''}A szabad kapacitást és az árat külön ellenőriznünk kell; ezekről egyelőre nem tudunk biztos tájékoztatást adni.\n\nÜdvözlettel:\nSárberki Horgásztó`;
+    const replyDraft = `Kedves ${first}!\n\nKöszönjük érdeklődését. Úgy értettük, hogy ${time} érkeznének${summary ? `; ${summary}` : ''}.\n\n${childCount ? 'Megírná a gyermek életkorát és ' : 'Megírná '}egy telefonszámot, amelyen elérhetjük? ${cabinFromGuestText(original).startsWith('?') ? 'Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?\n\n' : '\n\n'}${dog ? 'Kutyát térítés ellenében lehet hozni. ' : ''}A szabad kapacitást és az árat külön ellenőriznünk kell; ezekről egyelőre nem tudunk biztos tájékoztatást adni.\n\nÜdvözlettel:\nSárberki Horgásztó`;
     return {source:{provider:'gmail',message_id:message.id,thread_id:message.threadId,subject:headers.subject || '',received_at:received.toISOString()},original_message:original,extracted,inferred,missing,human_review:humanReview,reply_draft:replyDraft};
   }
   async function readWithToken(token) {
