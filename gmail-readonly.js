@@ -7,6 +7,8 @@
     'Érdeklődés a szallasrol',
     'Érdeklődés szállásról'
   ]);
+  const ALLOWED_SUBJECT_PATTERN = /^Érdeklődés szállásról [1-9]\d? fő részére (?:januárban|februárban|márciusban|áprilisban|májusban|júniusban|júliusban|augusztusban|szeptemberben|októberben|novemberben|decemberben)$/u;
+  const allowedSubject = subject => ALLOWED_SUBJECTS.has(subject.trim()) || ALLOWED_SUBJECT_PATTERN.test(subject.trim());
   const SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
   const button = document.getElementById('read_gmail');
   const status = document.getElementById('gmail_auth_status');
@@ -74,9 +76,20 @@
   }
   async function readWithToken(token) {
     const headers = {Authorization:`Bearer ${token}`};
-    const list = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(TEST_QUERY)}&maxResults=20`, {headers,cache:'no-store'});
-    if (!list.ok) throw Error(`Gmail-keresési hiba (${list.status}). Ellenőrizze a fiókot és a jogosultságot.`);
-    const candidates = (await list.json()).messages || [];
+    // Gmail's list response contains IDs only; inspect every page before comparing internalDate.
+    const candidates = [];
+    let pageToken;
+    do {
+      const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
+      url.searchParams.set('q', TEST_QUERY);
+      url.searchParams.set('maxResults', '100');
+      if (pageToken) url.searchParams.set('pageToken', pageToken);
+      const list = await fetch(url, {headers,cache:'no-store'});
+      if (!list.ok) throw Error(`Gmail-keresési hiba (${list.status}). Ellenőrizze a fiókot és a jogosultságot.`);
+      const page = await list.json();
+      candidates.push(...(page.messages || []));
+      pageToken = page.nextPageToken;
+    } while (pageToken);
     if (!candidates.length) throw Error('Nem található a tesztfeltételnek megfelelő beérkezett levél.');
     const messages = await Promise.all(candidates.map(async ({id}) => {
       const response = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(id)}?format=full`, {headers,cache:'no-store'});
@@ -85,12 +98,15 @@
     }));
     const matching = messages.filter(message => {
       const values = Object.fromEntries((message.payload?.headers || []).map(h => [h.name.toLowerCase(), h.value]));
-      return /(?:^|[<\s])valkana6666@gmail\.com(?:[>\s]|$)/i.test(values.from || '')
-        && ALLOWED_SUBJECTS.has((values.subject || '').trim())
-        && message.labelIds?.includes('INBOX');
+      const from = (values.from || '').match(/<([^<>]+)>\s*$/u)?.[1] || (values.from || '').trim();
+      return from.toLowerCase() === 'valkana6666@gmail.com'
+        && allowedSubject(values.subject || '')
+        && message.labelIds?.includes('INBOX')
+        && Number.isFinite(Number(message.internalDate))
+        && Number(message.internalDate) > 0;
     });
     if (!matching.length) throw Error('Nincs pontosan ellenőrzött beérkezett tesztlevél.');
-    matching.sort((a, b) => Number(b.internalDate) - Number(a.internalDate));
+    matching.sort((a, b) => Number(b.internalDate) - Number(a.internalDate) || b.id.localeCompare(a.id));
     return transform(matching[0]);
   }
   button.addEventListener('click', () => {
