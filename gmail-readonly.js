@@ -43,7 +43,10 @@
     const monthIndex = dateText ? months.indexOf(dateText[1].toLowerCase()) : -1;
     const localDay = new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/Budapest',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     const [currentYear,currentMonth,currentDay] = localDay.split('-').map(Number);
-    const inferredYear = monthIndex >= 0 ? currentYear + (monthIndex + 1 < currentMonth || (monthIndex + 1 === currentMonth && Number(dateText[3]) < currentDay) ? 1 : 0) : null;
+    const explicitYear = original.match(/\b20\d{2}\b/u)?.[0];
+    const nextYear = /\bjövőre\b|\bkövetkező évben\b/iu.test(original);
+    const inferredYear = monthIndex >= 0 && !explicitYear && !nextYear ? currentYear + (monthIndex + 1 < currentMonth || (monthIndex + 1 === currentMonth && Number(dateText[3]) < currentDay) ? 1 : 0) : null;
+    const requestedYear = explicitYear ? Number(explicitYear) : nextYear ? currentYear + 1 : inferredYear;
     const count = original.match(/\b(\d+)\s*fő\b/iu)?.[1] || ({ketten:2,hárman:3,négyen:4,öten:5,hatan:6}[original.match(/\b(ketten|hárman|négyen|öten|hatan)\b/iu)?.[1]?.toLowerCase()] || null);
     const child = original.match(/\b(\d+|egy|kettő|két)\s*gyerek\w*|\b(\d+|egy|kettő|két)\s*gyermek\w*/iu);
     const childCount = child ? ({egy:1,kettő:2,két:2}[child[1] || child[2]] || Number(child[1] || child[2])) : null;
@@ -51,7 +54,7 @@
     const hotTub = /dézs/iu.test(original), dog = /kuty/iu.test(original), availability = /szabad\s+hely/iu.test(original);
     const extracted = [];
     if (name) extracted.push({label:'Vendég neve',value:name,evidence:'aláírás'});
-    if (dateText) extracted.push({label:'Időszak, év nélkül',value:`${dateText[1]} ${dateText[2]}–${dateText[3]}.`,evidence:dateText[0]});
+    if (dateText) extracted.push({label:explicitYear || nextYear ? 'Időszak' : 'Időszak, év nélkül',value:`${requestedYear} ${dateText[1]} ${dateText[2]}–${dateText[3]}.`,evidence:dateText[0]});
     if (count) extracted.push({label:'Létszám',value:`${count} fő${childCount ? `, ebből ${childCount} gyermek` : ''}`,evidence:original.match(/[^\n.]*?(?:fő|négyen|hárman|ketten|öten|hatan)[^\n.]*/iu)?.[0]?.trim() || 'levélszöveg'});
     if (hotTub || dog) extracted.push({label:'Igények',value:[hotTub?'dézsás faház':null,dog?(/kisebb\s+kuty/iu.test(original)?'kisebb kutya':'kutya'):null].filter(Boolean).join(', '),evidence:'levélszöveg'});
     if (availability) extracted.push({label:'Kérdés',value:'szabad kapacitás',evidence:'levélszöveg'});
@@ -69,7 +72,7 @@
     if (cabinFromGuestText(original).startsWith('?')) humanReview.push('A vendég háztípust nem választott; létszámból nem szabad kiválasztani');
     humanReview.push('Szabad hely és ár nincs igazolva');
     const first = name?.split(' ')[1] || 'Vendégünk';
-    const time = dateText ? `${dateText[1]} ${dateText[2]}–${dateText[3]}. között` : 'a jelzett időpontban';
+    const time = dateText ? `${requestedYear} ${dateText[1]} ${dateText[2]}–${dateText[3]}. között` : 'a jelzett időpontban';
     const summary = [count ? `összesen ${count} fővel${childCount ? `, köztük ${childCount} gyermekkel` : ''}` : null,hotTub?'dézsás faházat keresnek':null,dog?'kutyát is hoznának':null].filter(Boolean).join('; ');
     const replyDraft = `Kedves ${first}!\n\nKöszönjük érdeklődését. Úgy értettük, hogy ${time} érkeznének${summary ? `; ${summary}` : ''}.\n\n${childCount ? 'Megírná a gyermek életkorát és ' : 'Megírná '}egy telefonszámot, amelyen elérhetjük? ${cabinFromGuestText(original).startsWith('?') ? 'Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?\n\n' : '\n\n'}${dog ? 'Kutyát térítés ellenében lehet hozni. ' : ''}A szabad kapacitást és az árat külön ellenőriznünk kell; ezekről egyelőre nem tudunk biztos tájékoztatást adni.\n\nÜdvözlettel:\nSárberki Horgásztó`;
     return {source:{provider:'gmail',message_id:message.id,thread_id:message.threadId,subject:headers.subject || '',received_at:received.toISOString()},original_message:original,extracted,inferred,missing,human_review:humanReview,reply_draft:replyDraft};
