@@ -12,3 +12,13 @@ test('Teszt Elek UI regression guards normalized transfer behavior',()=>{
  assert.match(source,/price_child_ages/u);
  assert.match(source,/v\.nights\|\|'\?'\} éjszaka/u);
 });
+
+
+test('guest-facing draft stays relevant and normalized',()=>{
+ assert.match(source,/replace\(\/\[\.,;:\]\+\$\/u,''\)/u);
+ assert.doesNotMatch(source,/intent==='booking_request'\)\)lines\.push\('','A foglaláshoz 50% előleg/u);
+ assert.doesNotMatch(source,/intent==='booking_request'\)\)lines\.push\('','A foglalás érkezés előtt 14 nappal/u);
+ assert.match(source,/topics\.secondary_intents\.includes\('electricity_question'\)\)lines\.push/u);
+ assert.doesNotMatch(source,/egy konkrét háztípus, több egység említése nélkül/u);
+ assert.match(source,/sarberki:analysis-ready/u);
+});
