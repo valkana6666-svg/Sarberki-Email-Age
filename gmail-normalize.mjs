@@ -31,7 +31,7 @@ export function dateRangeFromText(text='', now=new Date()){
   const iso=text.match(/\b(20\d{2})[-./](\d{1,2})[-./](\d{1,2})\s*(?:[-–]|to|bis|do)\s*(?:(20\d{2})[-./](\d{1,2})[-./])?(\d{1,2})\b/iu);
   if(iso) return {arrival:`${iso[1]}-${String(iso[2]).padStart(2,'0')}-${String(iso[3]).padStart(2,'0')}`,departure:`${iso[4]||iso[1]}-${String(iso[5]||iso[2]).padStart(2,'0')}-${String(iso[6]).padStart(2,'0')}`,inferredYear:false};
   const names=Object.keys(MONTHS).filter(x=>!x.endsWith('_si')).join('|');
-  const r=text.match(new RegExp(`\\b(${names})\\s+(\\d{1,2})\\s*(?:[-–]|to|bis|do|(?:-től|-tól))\\s*(\\d{1,2})(?:-ig)?\\b`,'iu'));
+  const r=text.match(new RegExp(`\\b(?:20\\d{2}\\s*[.\\/-]?\\s*)?(${names})\\s+(\\d{1,2})\\s*(?:[-–]|to|bis|do|(?:-től|-tól))\\s*(?:(?:${names})\\s+)?(\\d{1,2})(?:-ig)?\\b`,'iu'));
   if(!r) return null;
   const month=monthNumber(r[1]); if(!month) return null;
   const explicit=text.match(/\b20\d{2}\b/u)?.[0];
