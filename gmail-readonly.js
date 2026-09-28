@@ -1,7 +1,7 @@
 /* Browser-only Gmail bridge. Access token stays in memory and is never stored. */
 (async () => {
   'use strict';
-  const { cabinFromText, guestCountFromText, childCountFromText, dateRangeFromText, languageFromText, replyQuestions } = await import('./gmail-normalize.mjs');
+  const { cabinFromText, guestCountFromText, childCountFromText, dateRangeFromText, phoneFromText, childAgesFromText, languageFromText, replyQuestions } = await import('./gmail-normalize.mjs');
   const { isApprovedSubject } = await import('./gmail-subject.mjs');
   // V1 live-read mode: broad inbox read, then conservative local inquiry classification.
   // No sender restriction, no exact subject allowlist, no send/modify permission.
@@ -45,11 +45,15 @@
     const normalizedDate = dateRangeFromText(original);
     const count = guestCountFromText(original) || ({ketten:2,hárman:3,négyen:4,öten:5,hatan:6}[original.match(/\b(ketten|hárman|négyen|öten|hatan)\b/iu)?.[1]?.toLowerCase()] || null);
     const childCount = childCountFromText(original);
+    const childAges = childAgesFromText(original);
+    const phone = phoneFromText(original);
     const name = original.match(/(?:^|\n)\s*([A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+\s+[A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+)\s*$/mu)?.[1];
     const hotTub = /(?:dézs|hot\s*tub|whirlpool|badefass|vroč\w*\s*kad|masaž\w*\s*kad)/iu.test(original), dog = /(?:kuty|dog|hund|pes|psa)/iu.test(original), availability = /(?:szabad\s+hely|availab|verfügbar|prosto|razpolož)/iu.test(original);
     const extracted = [];
     if (name) extracted.push({label:'Vendég neve',value:name,evidence:'aláírás'});
     if (count) extracted.push({label:'Létszám',value:`${count} fő${childCount ? `, ebből ${childCount} gyermek` : ''}`,evidence:original.match(/[^\n.]*?(?:fő|négyen|hárman|ketten|öten|hatan)[^\n.]*/iu)?.[0]?.trim() || 'levélszöveg'});
+    if (childAges.length) extracted.push({label:'Gyermekkorok',value:childAges.join(', ')+' éves',evidence:'levélszöveg'});
+    if (phone) extracted.push({label:'Kapcsolat / telefon',value:phone,evidence:'levélszöveg'});
     if (hotTub || dog) extracted.push({label:'Igények',value:[hotTub?'dézsa / hot tub':null,dog?'kutya / dog':null].filter(Boolean).join(', '),evidence:'levélszöveg'});
     if (availability) extracted.push({label:'Kérdés',value:'szabad kapacitás',evidence:'levélszöveg'});
     const inferred = [];
@@ -61,7 +65,7 @@
     if (normalizedDate?.inferredYear && !inferred.some(x => x.label === 'Év')) inferred.push({label:'Év',value:`${normalizedDate.arrival.slice(0,4)}, a feldolgozás napja alapján következtetve; emberi ellenőrzés szükséges`});
     if (!count) missing.push('Vendégek száma');
     if (childCount && !/\d+\s*(?:éves|years? old|jahre alt|let)/iu.test(original)) missing.push('Gyermek életkora');
-    if (!/\+?\d[\d\s/-]{7,}/u.test(original)) missing.push('Telefonszám');
+    if (!phone) missing.push('Telefonszám');
     missing.push('Kapacitás és ár csak külön, hiteles ellenőrzéssel állapítható meg');
     const reviewYear = normalizedDate?.inferredYear ? Number(normalizedDate.arrival.slice(0,4)) : null;
     const humanReview = [reviewYear ? `A ${reviewYear}-os év következtetését hagyja jóvá a kezelő` : 'A dátumot ellenőrizni kell'];
@@ -71,14 +75,14 @@
     const first = name?.split(' ')[1] || null;
     const time = normalizedDate ? `${normalizedDate.arrival} és ${normalizedDate.departure} között` : 'a jelzett időpontban';
     const summary = [count ? `összesen ${count} fővel${childCount ? `, köztük ${childCount} gyermekkel` : ''}` : null,hotTub?'dézsás faházat keresnek':null,dog?'kutyát is hoznának':null].filter(Boolean).join('; ');
-    const questions = replyQuestions(language,{needPhone:!/\\+?\\d[\\d\\s/-]{7,}/u.test(original),needCabin:cabinFromGuestText(original).startsWith('?'),needChildAge:Boolean(childCount && !/\\d+\\s*(?:éves|years? old|jahre alt|let)/iu.test(original))});
+    const questions = replyQuestions(language,{needPhone:!phone,needCabin:cabinFromGuestText(original).startsWith('?'),needChildAge:Boolean(childCount && childAges.length<childCount)});
     const greetings={hu:first?`Kedves ${first}!`:'Kedves Vendégünk!',de:first?`Guten Tag ${first}!`:'Guten Tag!',en:first?`Dear ${first},`:'Dear Guest,',si:first?`Pozdravljeni ${first}!`:'Pozdravljeni!'};
     const intros={hu:'Köszönjük érdeklődését.',de:'Vielen Dank für Ihre Anfrage.',en:'Thank you for your inquiry.',si:'Hvala za vaše povpraševanje.'};
     const checks={hu:'A szabad kapacitást és az árat külön ellenőriznünk kell; ezekről egyelőre nem tudunk biztos tájékoztatást adni.',de:'Verfügbarkeit und Preis müssen wir separat prüfen; dazu können wir derzeit noch keine verbindliche Auskunft geben.',en:'We need to check availability and price separately; we cannot confirm either yet.',si:'Razpoložljivost in ceno moramo preveriti posebej; trenutno ju še ne moremo potrditi.'};
     const closings={hu:'Üdvözlettel:',de:'Mit freundlichen Grüßen',en:'Kind regards,',si:'Lep pozdrav,'};
     const lang = language==='unknown' ? 'hu' : language;
     const replyDraft = `${greetings[lang]}\n\n${intros[lang]}\n\n${questions.join(' ')}${questions.length?'\n\n':''}${checks[lang]}\n\n${closings[lang]}\nSárberki Horgásztó`;
-    return {source:{provider:'gmail',message_id:message.id,thread_id:message.threadId,subject:headers.subject || '',from:headers.from || '',from_email:emailAddress(headers.from || ''),to:headers.to || '',received_at:received.toISOString()},original_message:original,normalized:{language,cabin:cabinFromGuestText(original),dates:normalizedDate,guests:count,children:childCount,hot_tub:hotTub,dog},extracted,inferred,missing,human_review:humanReview,reply_draft:replyDraft};
+    return {source:{provider:'gmail',message_id:message.id,thread_id:message.threadId,subject:headers.subject || '',from:headers.from || '',from_email:emailAddress(headers.from || ''),to:headers.to || '',received_at:received.toISOString()},original_message:original,normalized:{language,cabin:cabinFromGuestText(original),dates:normalizedDate,guests:count,children:childCount,child_ages:childAges,phone,hot_tub:hotTub,dog,hot_tub_requested:hotTub,pet_requested:dog},extracted,inferred,missing,human_review:humanReview,reply_draft:replyDraft};
   }
   async function readWithToken(token) {
     const headers = {Authorization:`Bearer ${token}`};
