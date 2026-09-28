@@ -1,7 +1,7 @@
 /* Browser-only Gmail bridge. Access token stays in memory and is never stored. */
 (async () => {
   'use strict';
-  const { cabinFromText, guestCountFromText, childCountFromText, dateRangeFromText } = await import('./gmail-normalize.mjs');
+  const { cabinFromText, guestCountFromText, childCountFromText, dateRangeFromText, languageFromText, replyQuestions } = await import('./gmail-normalize.mjs');
   // V1 live-read mode: broad inbox read, then conservative local inquiry classification.
   // No sender restriction, no exact subject allowlist, no send/modify permission.
   const INBOX_QUERY = 'in:inbox newer_than:30d -category:promotions -category:social';
@@ -78,10 +78,17 @@
     const humanReview = [reviewYear ? `A ${reviewYear}-os év következtetését hagyja jóvá a kezelő` : 'A dátumot ellenőrizni kell'];
     if (cabinFromGuestText(original).startsWith('?')) humanReview.push('A vendég háztípust nem választott; létszámból nem szabad kiválasztani');
     humanReview.push('Szabad hely és ár nincs igazolva');
-    const first = name?.split(' ')[1] || 'Vendégünk';
+    const language = languageFromText(original);
+    const first = name?.split(' ')[1] || null;
     const time = dateText ? `${requestedYear} ${dateText[1]} ${dateText[2]}–${dateText[3]}. között` : normalizedDate ? `${normalizedDate.arrival} és ${normalizedDate.departure} között` : 'a jelzett időpontban';
     const summary = [count ? `összesen ${count} fővel${childCount ? `, köztük ${childCount} gyermekkel` : ''}` : null,hotTub?'dézsás faházat keresnek':null,dog?'kutyát is hoznának':null].filter(Boolean).join('; ');
-    const replyDraft = `Kedves ${first}!\n\nKöszönjük érdeklődését. Úgy értettük, hogy ${time} érkeznének${summary ? `; ${summary}` : ''}.\n\n${childCount ? 'Megírná a gyermek életkorát és ' : 'Megírná '}egy telefonszámot, amelyen elérhetjük? ${cabinFromGuestText(original).startsWith('?') ? 'Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?\n\n' : '\n\n'}${dog ? 'Kutyát térítés ellenében lehet hozni. ' : ''}A szabad kapacitást és az árat külön ellenőriznünk kell; ezekről egyelőre nem tudunk biztos tájékoztatást adni.\n\nÜdvözlettel:\nSárberki Horgásztó`;
+    const questions = replyQuestions(language,{needPhone:!/\\+?\\d[\\d\\s/-]{7,}/u.test(original),needCabin:cabinFromGuestText(original).startsWith('?'),needChildAge:Boolean(childCount && !/\\d+\\s*(?:éves|years? old|jahre alt|let)/iu.test(original))});
+    const greetings={hu:first?`Kedves ${first}!`:'Kedves Vendégünk!',de:first?`Guten Tag ${first}!`:'Guten Tag!',en:first?`Dear ${first},`:'Dear Guest,',si:first?`Pozdravljeni ${first}!`:'Pozdravljeni!'};
+    const intros={hu:'Köszönjük érdeklődését.',de:'Vielen Dank für Ihre Anfrage.',en:'Thank you for your inquiry.',si:'Hvala za vaše povpraševanje.'};
+    const checks={hu:'A szabad kapacitást és az árat külön ellenőriznünk kell; ezekről egyelőre nem tudunk biztos tájékoztatást adni.',de:'Verfügbarkeit und Preis müssen wir separat prüfen; dazu können wir derzeit noch keine verbindliche Auskunft geben.',en:'We need to check availability and price separately; we cannot confirm either yet.',si:'Razpoložljivost in ceno moramo preveriti posebej; trenutno ju še ne moremo potrditi.'};
+    const closings={hu:'Üdvözlettel:',de:'Mit freundlichen Grüßen',en:'Kind regards,',si:'Lep pozdrav,'};
+    const lang = language==='unknown' ? 'hu' : language;
+    const replyDraft = `${greetings[lang]}\n\n${intros[lang]}\n\n${questions.join(' ')}${questions.length?'\n\n':''}${checks[lang]}\n\n${closings[lang]}\nSárberki Horgásztó`;
     return {source:{provider:'gmail',message_id:message.id,thread_id:message.threadId,subject:headers.subject || '',from:headers.from || '',from_email:emailAddress(headers.from || ''),to:headers.to || '',received_at:received.toISOString()},original_message:original,extracted,inferred,missing,human_review:humanReview,reply_draft:replyDraft};
   }
   async function readWithToken(token) {
