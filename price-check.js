@@ -1,6 +1,14 @@
 (() => {
   const $ = id => document.getElementById(id);
   const cabins = {deluxe:'Deluxe',family:'Családi',vip:'VIP',small:'Különálló 2 fős'};
+  function explicitCabin(message='') {
+    const found=[];
+    if (/\bvip\b/iu.test(message)) found.push('vip');
+    if (/\b(?:családi|family|familien)\b/iu.test(message)) found.push('family');
+    if (/\bdeluxe\b/iu.test(message)) found.push('deluxe');
+    if (/\b(?:osztott|split|geteilte[rs]?|deljen[ai]?)\b/iu.test(message)) found.push('split');
+    return found.length===1 ? found[0] : '';
+  }
   function prepare(message) {
     const analysis = typeof extract === 'function' ? extract(message,'') : null;
     const fields = analysis?.fields || {};
@@ -9,7 +17,7 @@
     const children = Number(fields.children?.value || 0);
     $('price_adults').value = children ? '' : (fields.adults?.value || fields.guests?.value || '');
     const unit=(fields.unit?.value || '').toLowerCase();
-    const explicit = /\bvip\b/iu.test(message) ? 'vip' : /\bcsaládi\b/iu.test(message) ? 'family' : /\bdeluxe\b/iu.test(message) ? 'deluxe' : /\bosztott\b/iu.test(message) ? 'split' : '';
+    const explicit = explicitCabin(message);
     $('price_cabin').value = explicit || Object.keys(cabins).find(k => unit.includes(cabins[k].toLowerCase())) || '';
     $('price_result').textContent = '';
     $('price_status').textContent = children ? 'Gyermek is szerepel a levélben. A gyermekkor szerinti árlekérés még nem működik; kézi ellenőrzés szükséges.' : !explicit ? 'Faház: ? – emberi döntésre vár. Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?' : 'Ellenőrizd a kinyert adatokat. Az automatikus lekérés jelenleg csak felnőttekkel működik.';
