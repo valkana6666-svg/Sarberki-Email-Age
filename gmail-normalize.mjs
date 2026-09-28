@@ -20,7 +20,7 @@ export function cabinFromText(text=''){
   return found.length===1 ? found[0] : '? – emberi döntésre vár';
 }
 export function guestCountFromText(text=''){
-  const m=text.match(/(?:^|\\s)(\\d{1,2})\\s*(?:fő|személy|persons?|people|guests?|gäste|personen|oseb)(?=\\s|$|[,.!?])/iu);
+  const m=text.match(/(?:^|\s)(\d{1,2})\s*(?:fő|személy|persons?|people|guests?|gäste|personen|oseb)(?=\s|$|[,.!?])/iu);
   return m ? Number(m[1]) : null;
 }
 export function childCountFromText(text=''){
