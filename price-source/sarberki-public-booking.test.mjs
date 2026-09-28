@@ -1,0 +1,45 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {fetchPublicBookingQuote} from './sarberki-public-booking.mjs';
+
+const first='<form id="firstStep" action="https://booking.previo.cz/?hotId=753011&amp;currency=HUF&amp;lang=hu&amp;PHPSESSID=test-session"></form>';
+const categories=[{guaId:1,isDefault:true,isChild:false},{guaId:2,isChild:true,ageFrom:8,ageTo:17,isWithoutBed:false},{guaId:3,isChild:true,ageFrom:3,ageTo:7,isWithoutBed:false}];
+const kinds=[{obkId:10,hotelLangName:'DELUXE faház'},{obkId:11,hotelLangName:'Családi faház'}];
+function mock({free=2,price=122200,tax=2200,error=false,unknown=false}={}){
+ const calls=[];
+ const request=async(url,options={})=>{
+  const path=new URL(url).pathname, data=Object.fromEntries(new URLSearchParams(options.body||''));calls.push({path,data});
+  if(error&&path==='/index/get-occupancy-price/') throw Error('Previo nem elérhető');
+  let body;
+  if(path==='/') body=options.method==='POST'?`var PageParams = ${JSON.stringify({HOT_ID:753011,CUR_CODE:'HUF',RESERVATION_DETAILS:{from:data.arrival,to:data.departure},OBJECT_KINDS:kinds,GUEST_CATEGORIES:categories})} //--><div></div>`:first;
+  else if(path==='/index/get-object-kind-occupancy/') body=JSON.stringify({success:true,html:`<form data-numOfFreeRooms="${free}"></form>`});
+  else if(path==='/index/get-occupancy-price/') body=JSON.stringify({success:true,unknownPrice:unknown,totalPrice:price,totalTaxes:tax});
+  else throw Error('Váratlan kérés: '+path);
+  return {ok:true,url:path==='/'&&options.method==='POST'?'https://booking.previo.cz/index/step-2/?hotId=753011&PHPSESSID=test-session':'https://booking.previo.cz/index/step-1/?hotId=753011&PHPSESSID=test-session',text:async()=>body,json:async()=>JSON.parse(body)};
+ };
+ return {request,calls};
+}
+const base={arrival:'2027-10-16',departure:'2027-10-18',cabin:'deluxe',adults:2,children:[]};
+test('2 adults: source JSON is the sole price, and availability is checked',async()=>{
+ const m=mock();const quote=await fetchPublicBookingQuote(base,m.request);
+ assert.equal(quote.total,122200);assert.equal(quote.tourismTax,2200);assert.equal(quote.availableUnits,2);assert.equal(quote.source,'Sárberki hivatalos foglalási felület');
+ assert.deepEqual(JSON.parse(m.calls.at(-1).data.formData).rooms[0].guestCategories[0],{guaId:1,count:2});
+});
+test('2 adults and 7/11 year old children use separate Previo categories',async()=>{
+ const m=mock();await fetchPublicBookingQuote({...base,children:[7,11]},m.request);
+ const room=JSON.parse(m.calls.at(-1).data.formData).rooms[0];
+ assert.equal(room.numOfGuestsWithBed,4);assert.deepEqual(room.guestCategories.map(x=>x.count),[2,1,1]);
+});
+test('different cabin maps to its own Previo object kind',async()=>{
+ const m=mock();await fetchPublicBookingQuote({...base,cabin:'family'},m.request);
+ assert.equal(m.calls[2].data.obkId,'11');
+});
+test('no capacity never requests a price',async()=>{
+ const m=mock({free:0});const quote=await fetchPublicBookingQuote(base,m.request);
+ assert.equal(quote.status,'unavailable');assert.equal(quote.total,undefined);assert.equal(m.calls.length,3);
+});
+test('invalid input, unknown price and source error fail without a quote',async()=>{
+ const m=mock();await assert.rejects(fetchPublicBookingQuote({...base,adults:0},m.request));assert.equal(m.calls.length,0);
+ await assert.rejects(fetchPublicBookingQuote(base,mock({unknown:true}).request),/ellenőrzött teljes árat/);
+ await assert.rejects(fetchPublicBookingQuote(base,mock({error:true}).request),/nem elérhető/);
+});
