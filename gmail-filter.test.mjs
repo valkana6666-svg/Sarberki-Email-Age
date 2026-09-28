@@ -46,3 +46,13 @@ test('Gmail record consumes normalized multilingual dates', () => {
   assert.match(source, /normalizedDate\?\.inferredYear/u);
   assert.match(source, /Időszak, következtetett évvel/u);
 });
+
+
+test('Gmail draft uses multilingual language and missing-data helpers', () => {
+  assert.match(source, /languageFromText\(original\)/u);
+  assert.match(source, /replyQuestions\(language/u);
+  assert.match(source, /Vielen Dank für Ihre Anfrage/u);
+  assert.match(source, /Thank you for your inquiry/u);
+  assert.match(source, /Hvala za vaše povpraševanje/u);
+  assert.match(source, /language==='unknown' \? 'hu' : language/u);
+});
