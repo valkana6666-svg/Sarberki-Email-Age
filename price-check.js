@@ -27,7 +27,7 @@
       const response=await fetch('/api/price-quote',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input),cache:'no-store'});
       if (!response.headers.get('content-type')?.includes('application/json')) throw Error('Az árlekérő szerver nincs ehhez az oldalhoz csatlakoztatva.');
       const result=await response.json(); if(!response.ok || result.status!=='review_required')throw Error(result.error||'Nem sikerült az árlekérés.');
-      $('price_result').textContent=`Szállás: ${result.accommodation.toLocaleString('hu-HU')} Ft · IFA: ${result.tourismTax.toLocaleString('hu-HU')} Ft · Teljes ár: ${result.total.toLocaleString('hu-HU')} Ft · Forrás: ${result.source} · Lekérés: ${result.checkedAt} · Szezonfelár beépítése: nem igazolt`;
+      $('price_result').textContent=`${result.arrival}–${result.departure} · ${result.cabin} · ${result.adults} felnőtt · Szállás: ${result.accommodation.toLocaleString('hu-HU')} Ft · IFA: ${result.tourismTax.toLocaleString('hu-HU')} Ft · Teljes ár: ${result.total.toLocaleString('hu-HU')} Ft · Plusz fő díjkülönbsége és más bontás: nem igazolt · Forrás: ${result.source} · Lekérés: ${result.checkedAt} · Szezonfelár beépítése: nem igazolt · 20% törzsvendégkedvezmény: nincs alkalmazva`;
       status.textContent='A foglalási oldalon megjelenő ár ellenőrzésre vár. Nem került automatikusan a vendégválaszba, és foglalás nem történt.';
     } catch(e) {status.textContent=`Nincs igazolt ár: ${e.message} Nyisd meg a foglalási oldalt kézi ellenőrzésre.`;}
   };

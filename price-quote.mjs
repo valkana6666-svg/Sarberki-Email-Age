@@ -2,7 +2,7 @@ import { chromium } from 'playwright';
 
 const BOOKING_URL = 'https://sarberkito.hu/foglalas/';
 const TYPES = { deluxe: 'DELUXE faház', family: 'Családi faház', vip: 'VIP apartman', small: 'Különálló 2 fős faház' };
-const MAX_ADULTS = { deluxe: 5, family: 8, vip: 5, small: 2 };
+const MAX_ADULTS = { deluxe: 6, family: 8, vip: 7, small: 2 };
 
 export function validateQuote(input) {
   const { arrival, departure, cabin, adults, children = [] } = input || {};
@@ -61,7 +61,7 @@ export async function fetchQuote(request, launch = () => chromium.launch({headle
     const amount = parseHuf(await panel.locator('.finalPrice').innerText());
     const tourismTax = parseHuf(await panel.locator('.taxPrice').innerText());
     if (!amount || amount < tourismTax) throw Error('Érvénytelen árösszesítő.');
-    return {status:'review_required',source:BOOKING_URL,checkedAt:new Date().toISOString(),...input,accommodation:amount-tourismTax,tourismTax,total:amount,currency:'HUF',availability:'shown_for_selected_dates',seasonalSurchargeIncluded:'unverified',bookingCompleted:false};
+    return {status:'review_required',source:BOOKING_URL,checkedAt:new Date().toISOString(),...input,accommodation:amount-tourismTax,tourismTax,total:amount,currency:'HUF',availability:'shown_for_selected_dates',seasonalSurchargeIncluded:'unverified',returningDiscountApplied:false,returningGuestStatus:'ELLENŐRIZENDŐ – KORÁBBI FOGLALÁS ELLENŐRZÉSE SZÜKSÉGES',bookingCompleted:false};
   } finally { await browser.close(); }
 }
 

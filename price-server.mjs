@@ -6,7 +6,7 @@ import {fetchQuote,validateQuote} from './price-quote.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PRICE_PORT || 8765);
-const files = {'/':'index.html','/index.html':'index.html','/gmail-readonly.js':'gmail-readonly.js','/price-check.js':'price-check.js'};
+const files = {'/':'index.html','/index.html':'index.html','/gmail-readonly.js':'gmail-readonly.js','/price-check.js':'price-check.js','/fishing-rules.mjs':'fishing-rules.mjs'};
 http.createServer(async (req,res) => {
   const path = new URL(req.url,'http://localhost').pathname;
   if (req.method === 'GET' && files[path]) {
