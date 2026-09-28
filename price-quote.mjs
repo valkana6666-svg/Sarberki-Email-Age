@@ -44,7 +44,7 @@ export async function fetchQuote(request, launch = () => chromium.launch({headle
     page.setDefaultTimeout(12000);
     await page.goto(BOOKING_URL, {waitUntil:'domcontentloaded',timeout:30000});
     const frame = page.frameLocator('iframe[src*="booking.previo.cz"]');
-    await frame.locator('#book-term-from-input').waitFor();
+    await frame.locator('#book-term-from .term').waitFor({state:'visible',timeout:30000});
     await chooseDate(frame,'#book-term-from .term',input.arrival);
     await chooseDate(frame,'#book-term-to .term',input.departure);
     await frame.getByRole('button',{name:/Folytatás/}).click();
