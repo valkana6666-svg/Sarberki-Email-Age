@@ -54,12 +54,12 @@
     const count = guestCountFromText(original) || ({ketten:2,hárman:3,négyen:4,öten:5,hatan:6}[original.match(/\b(ketten|hárman|négyen|öten|hatan)\b/iu)?.[1]?.toLowerCase()] || null);
     const childCount = childCountFromText(original);
     const name = original.match(/(?:^|\n)\s*([A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+\s+[A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+)\s*$/mu)?.[1];
-    const hotTub = /dézs/iu.test(original), dog = /kuty/iu.test(original), availability = /szabad\s+hely/iu.test(original);
+    const hotTub = /(?:dézs|hot\s*tub|whirlpool|badefass|vroč\w*\s*kad|masaž\w*\s*kad)/iu.test(original), dog = /(?:kuty|dog|hund|pes|psa)/iu.test(original), availability = /(?:szabad\s+hely|availab|verfügbar|prosto|razpolož)/iu.test(original);
     const extracted = [];
     if (name) extracted.push({label:'Vendég neve',value:name,evidence:'aláírás'});
     if (dateText) extracted.push({label:explicitYear || nextYear ? 'Időszak' : 'Időszak, év nélkül',value:`${requestedYear} ${dateText[1]} ${dateText[2]}–${dateText[3]}.`,evidence:dateText[0]});
     if (count) extracted.push({label:'Létszám',value:`${count} fő${childCount ? `, ebből ${childCount} gyermek` : ''}`,evidence:original.match(/[^\n.]*?(?:fő|négyen|hárman|ketten|öten|hatan)[^\n.]*/iu)?.[0]?.trim() || 'levélszöveg'});
-    if (hotTub || dog) extracted.push({label:'Igények',value:[hotTub?'dézsás faház':null,dog?(/kisebb\s+kuty/iu.test(original)?'kisebb kutya':'kutya'):null].filter(Boolean).join(', '),evidence:'levélszöveg'});
+    if (hotTub || dog) extracted.push({label:'Igények',value:[hotTub?'dézsa / hot tub':null,dog?'kutya / dog':null].filter(Boolean).join(', '),evidence:'levélszöveg'});
     if (availability) extracted.push({label:'Kérdés',value:'szabad kapacitás',evidence:'levélszöveg'});
     const inferred = [];
     if (inferredYear) inferred.push({label:'Év',value:`${inferredYear}, a feldolgozás napja alapján következtetve; emberi ellenőrzés szükséges`});
@@ -71,7 +71,7 @@
     if (!dateText && !normalizedDate) missing.push('Pontos érkezési és távozási dátum');
     if (normalizedDate?.inferredYear && !inferred.some(x => x.label === 'Év')) inferred.push({label:'Év',value:`${normalizedDate.arrival.slice(0,4)}, a feldolgozás napja alapján következtetve; emberi ellenőrzés szükséges`});
     if (!count) missing.push('Vendégek száma');
-    if (childCount && !/\d+\s*éves/iu.test(original)) missing.push('Gyermek életkora');
+    if (childCount && !/\d+\s*(?:éves|years? old|jahre alt|let)/iu.test(original)) missing.push('Gyermek életkora');
     if (!/\+?\d[\d\s/-]{7,}/u.test(original)) missing.push('Telefonszám');
     missing.push('Kapacitás és ár csak külön, hiteles ellenőrzéssel állapítható meg');
     const reviewYear = inferredYear || (normalizedDate?.inferredYear ? Number(normalizedDate.arrival.slice(0,4)) : null);
