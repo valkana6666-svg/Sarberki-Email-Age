@@ -5,28 +5,30 @@ import {readFile} from 'node:fs/promises';
 
 const source = fs.readFileSync(new URL('./gmail-readonly.js', import.meta.url), 'utf8');
 
-function subjectsFromSource() {
-  const match = source.match(/const ALLOWED_SUBJECTS = new Set\(\[([^\]]+)\]\);/u);
-  assert.ok(match, 'approved subject allowlist must exist');
-  return [...match[1].matchAll(/'([^']+)'/gu)].map(x => x[1]);
-}
+import {APPROVED_SUBJECTS,isApprovedSubject} from './gmail-subject.mjs';
 
-test('Gmail reader requires the three approved inquiry subjects', () => {
-  assert.deepEqual(subjectsFromSource(), [
+test('exact approved subject variants work and other subjects are rejected', () => {
+  assert.deepEqual(APPROVED_SUBJECTS, [
     'érdeklődés a szállásról',
     'érdeklődés a szallasrol',
     'érdeklődés szállásról'
   ]);
-  assert.match(source, /ALLOWED_SUBJECTS\.has\(subject\)/u);
+  for (const subject of APPROVED_SUBJECTS) {
+    assert.equal(isApprovedSubject(subject), true);
+    assert.equal(isApprovedSubject('  ' + subject.toUpperCase() + '  '), true);
+  }
+  for (const subject of ['Számla', 'Foglalás', 'Érdeklődés szállásról 6 fő részére októberben', '', null]) {
+    assert.equal(isApprovedSubject(subject), false);
+  }
+});
+
+test('Gmail bridge enforces the predicate after inbox listing', () => {
+  assert.match(source, /import\('\.\/gmail-subject\.mjs'\)/u);
+  assert.match(source, /isApprovedSubject\(headers\.subject\)/u);
   assert.match(source, /newer_than:30d/u);
   assert.match(source, /gmail\.readonly/u);
   assert.equal(source.includes('gmail.send'), false);
   assert.equal(source.includes('gmail.modify'), false);
-});
-
-test('broad keyword matching cannot replace the approved subject check', () => {
-  assert.equal(source.includes('INQUIRY_HINT'), false);
-  assert.equal(subjectsFromSource().includes('Számla'), false);
 });
 
 test('Gmail bridge imports multilingual normalization helpers', () => {
