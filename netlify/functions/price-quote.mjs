@@ -16,4 +16,6 @@ export async function handlePriceQuote(request,source=fetchPublicBookingQuote) {
     return Response.json({status:'unverified',error:'HITELES ÁRLEKÉRÉS SZÜKSÉGES · '+error.message},{status:503,headers:{'cache-control':'no-store'}});
   }
 }
-export default handlePriceQuote;
+// Netlify passes its context as the second argument. Keep dependency injection
+// on the named testable handler, and pass only the Request from the runtime.
+export default (request) => handlePriceQuote(request);
