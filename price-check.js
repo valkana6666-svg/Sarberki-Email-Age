@@ -14,6 +14,25 @@
     $('price_result').textContent = '';
     $('price_status').textContent = children ? 'Gyermek is szerepel a levélben. A gyermekkor szerinti árlekérés még nem működik; kézi ellenőrzés szükséges.' : !explicit ? 'Faház: ? – emberi döntésre vár. Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?' : 'Ellenőrizd a kinyert adatokat. Az automatikus lekérés jelenleg csak felnőttekkel működik.';
   }
+  async function autoPrepareAndQuoteFromGmail() {
+    const message=$('gmail_original')?.textContent||'';
+    if(!message) return;
+    prepare(message);
+    const analysis=typeof extract==='function' ? extract(message,'') : null;
+    const childCount=Number(analysis?.fields?.children?.value||0);
+    const hasChildWord=/\b(?:gyerek|gyermek|gyerekek|gyermekek|children|child|kind(?:er)?|otroka)\b/iu.test(message);
+    const complete=Boolean($('price_arrival').value&&$('price_departure').value&&$('price_cabin').value&&Number($('price_adults').value)>0);
+    if(childCount>0||hasChildWord){
+      $('price_status').textContent='Gmailből előkészítve: gyermekes érdeklődés, ezért automatikus árlekérés nem indult.';
+      return;
+    }
+    if(!complete){
+      $('price_status').textContent='Gmailből előkészítve: az automatikus árlekéréshez még pontos dátum, explicit háztípus és felnőtt létszám szükséges.';
+      return;
+    }
+    $('price_status').textContent='Gmailből kinyert adatok teljesek; automatikus, csak olvasási jellegű árlekérés indul…';
+    await $('check_price').onclick();
+  }
   $('prepare_price').onclick = () => prepare($('gmail_record').classList.contains('hidden') ? $('message').value : $('gmail_original').textContent);
   $('check_price').onclick = async () => {
     const status=$('price_status'); status.textContent='Árlekérés folyamatban…';$('price_result').textContent='';
@@ -31,4 +50,5 @@
       status.textContent='A foglalási oldalon megjelenő ár ellenőrzésre vár. Nem került automatikusan a vendégválaszba, és foglalás nem történt.';
     } catch(e) {status.textContent=`Nincs igazolt ár: ${e.message} Nyisd meg a foglalási oldalt kézi ellenőrzésre.`;}
   };
+  document.addEventListener('sarberki:gmail-normalized',()=>{autoPrepareAndQuoteFromGmail().catch(e=>{$('price_status').textContent='Automatikus árlekérés nem igazolható: '+e.message;});});
 })();
