@@ -1,6 +1,9 @@
 (() => {
   const $ = id => document.getElementById(id);
   const cabins = {deluxe:'Deluxe',family:'Családi',vip:'VIP',small:'Különálló 2 fős'};
+  let approvedPrice = null;
+  let pendingQuote = null;
+
   function explicitCabin(message='') {
     const found=[];
     if (/\bvip\b/iu.test(message)) found.push('vip');
@@ -9,6 +12,7 @@
     if (/\b(?:osztott|split|geteilte[rs]?|deljen[ai]?)\b/iu.test(message)) found.push('split');
     return found.length===1 ? found[0] : '';
   }
+
   function gmailNormalizedDate() {
     try {
       const raw=document.getElementById('gmail_json')?.value;
@@ -20,6 +24,56 @@
       return {arrival,departure,inferred:/következtetett/u.test(item.label)};
     } catch { return null; }
   }
+
+  function currentMessage(){
+    return $('gmail_record') && !$('gmail_record').classList.contains('hidden') ? ($('gmail_original')?.textContent||'') : ($('message')?.value||'');
+  }
+
+  function quoteFingerprint(){
+    return [
+      $('price_arrival')?.value||'',
+      $('price_departure')?.value||'',
+      $('price_cabin')?.value||'',
+      $('price_adults')?.value||'',
+      $('price_children')?.value||'',
+      $('price_child_ages')?.value||''
+    ].join('|');
+  }
+
+  function formatFt(value){
+    return Number(value).toLocaleString('hu-HU')+' Ft';
+  }
+
+  function clearApprovedPrice(reason=''){
+    approvedPrice=null;
+    pendingQuote=null;
+    const button=$('approve_price');
+    if(button) button.disabled=true;
+    const input=$('approved_price_manual');
+    if(input) input.value='';
+    const status=$('price_approval_status');
+    if(status) status.textContent=reason||'Ár nincs jóváhagyva. A vendégválaszba csak emberi jóváhagyás után kerülhet összeg.';
+  }
+
+  function buildPriceApprovalUi(){
+    if($('price_approval_panel')) return;
+    const result=$('price_result');
+    if(!result) return;
+    const panel=document.createElement('div');
+    panel.id='price_approval_panel';
+    panel.className='warning';
+    panel.innerHTML='<strong>Ár jóváhagyása</strong><p class="muted">A lekért vagy kézzel ellenőrzött teljes árat először itt hagyd jóvá. A jóváhagyás csak a választervezetet egészíti ki; e-mailt nem küld.</p><label for="approved_price_manual">Ellenőrzött teljes ár (Ft)</label><input id="approved_price_manual" type="number" min="1" step="1" inputmode="numeric" placeholder="pl. 128000"><button id="approve_price" type="button" disabled>Ár jóváhagyása és beépítése a levélbe</button><p id="price_approval_status" class="muted" role="status">Ár nincs jóváhagyva.</p>';
+    result.insertAdjacentElement('afterend',panel);
+    $('approved_price_manual').addEventListener('input',()=>{
+      const n=Number($('approved_price_manual').value);
+      $('approve_price').disabled=!(Number.isFinite(n)&&n>0);
+      pendingQuote=Number.isFinite(n)&&n>0?{total:Math.round(n),source:'kézi ellenőrzés',fingerprint:quoteFingerprint()}:null;
+      approvedPrice=null;
+      $('price_approval_status').textContent=pendingQuote?`Ellenőrzött ár előkészítve: ${formatFt(pendingQuote.total)} · jóváhagyásra vár.`:'Adj meg egy ellenőrzött teljes árat.';
+    });
+    $('approve_price').addEventListener('click',approvePriceIntoDraft);
+  }
+
   function prepare(message) {
     const analysis = typeof extract === 'function' ? extract(message,'') : null;
     const fields = analysis?.fields || {};
@@ -34,8 +88,10 @@
     const explicit = explicitCabin(message);
     $('price_cabin').value = explicit || Object.keys(cabins).find(k => unit.includes(cabins[k].toLowerCase())) || '';
     $('price_result').textContent = '';
+    clearApprovedPrice('Az érdeklődés adatai frissültek; az árat újra ellenőrizni és jóváhagyni kell.');
     $('price_status').textContent = children ? 'Gyermekes foglalás adatai átvéve (felnőttek, gyermekek és gyermekkorok). Automatikus árbecslés nem indul; kézi/hiteles árlekérés szükséges.' : !explicit ? 'Faház: ? – emberi döntésre vár. Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?' : 'Ellenőrizd a kinyert adatokat. Az automatikus lekérés jelenleg csak felnőttekkel működik.';
   }
+
   function huAskedTopics(message='',analysis=null){
     const topics=analysis?.topics?.secondary_intents||[];
     return {
@@ -53,6 +109,7 @@
       arrivalTime:topics.includes('arrival_time_question')
     };
   }
+
   function focusedReply(message=''){
     const analysis=typeof extract==='function'?extract(message,''):null;
     if(!analysis||analysis.fields?.language?.value!=='HU') return '';
@@ -78,12 +135,19 @@
     else if(v.unit&&!/^(?:ház|faház|apartman|cabin)$/iu.test(v.unit)) lines.push(`A megadott szállástípus: ${v.unit}.`);
     else if(!v.unit) lines.push('A megfelelő háztípus pontosításához kérjük, írja meg, melyik típust szeretné.');
 
-    if(asked.availability&&asked.price) lines.push('','A megadott időszakra ellenőrizzük a kért szállás szabad kapacitását és a teljes szállásárat. Pontos árat és elérhetőséget csak hiteles ellenőrzés után igazolunk vissza.');
-    else if(asked.availability) lines.push('','A megadott időszakra ellenőrizzük a kért szállás szabad kapacitását, és az ellenőrzés után visszaigazoljuk az elérhetőséget.');
-    else if(asked.price) lines.push('','A megadott adatok alapján ellenőrizzük a teljes szállásárat. Pontos árat csak hiteles ellenőrzés után írunk meg.');
+    const priceApproved=asked.price&&approvedPrice&&approvedPrice.fingerprint===quoteFingerprint();
+    if(asked.availability&&asked.price){
+      if(priceApproved) lines.push('','A megadott időszakra a kért szállás szabad kapacitását ellenőrizzük. A jóváhagyott teljes szállásár: '+formatFt(approvedPrice.total)+'.');
+      else lines.push('','A megadott időszakra a kért szállás szabad kapacitását ellenőrizzük. A pontos árról az ellenőrzést követően tájékoztatást adunk.');
+    } else if(asked.availability) {
+      lines.push('','A megadott időszakra ellenőrizzük a kért szállás szabad kapacitását, és az ellenőrzés után visszaigazoljuk az elérhetőséget.');
+    } else if(asked.price) {
+      if(priceApproved) lines.push('','A megadott adatok alapján a jóváhagyott teljes szállásár: '+formatFt(approvedPrice.total)+'.');
+      else lines.push('','A pontos árról az ellenőrzést követően tájékoztatást adunk.');
+    }
 
-    if(asked.pet) lines.push('','A háziállatot is figyelembe vettük; háziállat térítés ellenében hozható. A pontos díjat csak akkor adjuk meg, ha arra külön rákérdeztek és hiteles díjadat áll rendelkezésre.');
-    if(asked.hotTub) lines.push('','A dézsafürdő iránti igényt is figyelembe vettük. A dézsa elérhetőségét külön ellenőrizzük, ezért azt csak az ellenőrzés után tudjuk visszaigazolni.');
+    if(asked.pet) lines.push('','Háziállat térítés ellenében hozható, díja 2 000 Ft/nap/állat.');
+    if(asked.hotTub) lines.push('','A dézsa iránti igényét figyelembe vettük.');
 
     if(asked.amenities) lines.push('','A felszereltséggel kapcsolatban a levélben feltett kérdésre külön, a kiválasztott háztípus biztos adatai alapján válaszolunk.');
     if(asked.deposit) lines.push('','Az előlegre vonatkozó kérdést a foglalási feltételek alapján külön ellenőrizzük és pontosan megválaszoljuk.');
@@ -103,11 +167,38 @@
     lines.push('','','Üdvözlettel:','Sárberki Horgásztó');
     return lines.join('\n');
   }
+
   function applyFocusedReply(message=''){
     const reply=focusedReply(message);
     const box=$('draft');
     if(reply&&box) box.value=reply;
+    const gmailBox=$('gmail_draft');
+    if(reply&&gmailBox&&$('gmail_record')&&!$('gmail_record').classList.contains('hidden')) gmailBox.value=reply;
   }
+
+  function approvePriceIntoDraft(){
+    const inputValue=Number($('approved_price_manual')?.value||pendingQuote?.total||0);
+    if(!Number.isFinite(inputValue)||inputValue<=0){
+      $('price_approval_status').textContent='Nincs jóváhagyható ár. Előbb kérd le vagy add meg a hitelesen ellenőrzött teljes árat.';
+      return;
+    }
+    const message=currentMessage();
+    const analysis=typeof extract==='function'?extract(message,''):null;
+    const asked=huAskedTopics(message,analysis);
+    approvedPrice={total:Math.round(inputValue),source:pendingQuote?.source||'kézi ellenőrzés',fingerprint:quoteFingerprint(),approvedAt:new Date().toISOString()};
+    if(!asked.price){
+      $('price_approval_status').textContent=`Az ár jóváhagyva (${formatFt(approvedPrice.total)}), de a vendég nem kérdezett árat, ezért nem került a válaszlevélbe.`;
+      return;
+    }
+    applyFocusedReply(message);
+    $('price_approval_status').textContent=`Jóváhagyva: ${formatFt(approvedPrice.total)}. Az összeg automatikusan bekerült a választervezetbe. E-mail nem lett elküldve.`;
+    const status=$('status');
+    if(status){
+      status.className='warning';
+      status.textContent='Állapot: az ár jóváhagyása után a választervezet frissült; a teljes levél továbbra is emberi jóváhagyásra vár. Innen nincs e-mail-küldés.';
+    }
+  }
+
   async function autoPrepareAndQuoteFromGmail() {
     const message=$('gmail_original')?.textContent||'';
     if(!message) return;
@@ -123,7 +214,7 @@
       return;
     }
     if(childCount>0||hasChildWord){
-      $('price_status').textContent='Gmailből előkészítve: gyermekes érdeklődés, ezért automatikus árlekérés nem indult.';
+      $('price_status').textContent='Gmailből előkészítve: gyermekes érdeklődés, ezért automatikus árlekérés nem indult. Hitelesen ellenőrzött teljes ár kézzel megadható, majd külön jóváhagyható.';
       return;
     }
     if(!complete){
@@ -133,13 +224,15 @@
     $('price_status').textContent='Gmailből kinyert adatok teljesek; automatikus, csak olvasási jellegű árlekérés indul…';
     await $('check_price').onclick();
   }
-  $('prepare_price').onclick = () => prepare($('gmail_record').classList.contains('hidden') ? $('message').value : $('gmail_original').textContent);
+
+  $('prepare_price').onclick = () => prepare(currentMessage());
   $('check_price').onclick = async () => {
     const status=$('price_status'); status.textContent='Árlekérés folyamatban…';$('price_result').textContent='';
-    const message=$('gmail_record').classList.contains('hidden') ? $('message').value : $('gmail_original').textContent;
+    clearApprovedPrice('Új árlekérés indult; az előző jóváhagyás törölve.');
+    const message=currentMessage();
     const analysis=typeof extract==='function' ? extract(message,'') : null;
     const childCount=Number(analysis?.fields?.children?.value||0);
-    if (childCount>0 || /\b(?:gyerek|gyermek|gyerekek|gyermekek|children|kind(?:er)?|otroka)\b/iu.test(message)) {status.textContent='Gyermekes érdeklődés: életkor és hiteles gyermekár nélkül kézi ellenőrzés szükséges.';return;}
+    if (childCount>0 || /\b(?:gyerek|gyermek|gyerekek|gyermekek|children|kind(?:er)?|otroka)\b/iu.test(message)) {status.textContent='Gyermekes érdeklődés: életkor és hiteles gyermekár nélkül kézi ellenőrzés szükséges. A kézzel ellenőrzött teljes ár az Ár jóváhagyása résznél megadható.';return;}
     const input={arrival:$('price_arrival').value,departure:$('price_departure').value,cabin:$('price_cabin').value,adults:Number($('price_adults').value),children:[]};
     if (!input.arrival || !input.departure || !input.cabin || !Number.isInteger(input.adults) || input.adults<1) {status.textContent='Pontos dátum, háztípus és létszám szükséges.';return;}
     try {
@@ -147,9 +240,19 @@
       if (!response.headers.get('content-type')?.includes('application/json')) throw Error('Az árlekérő szerver nincs ehhez az oldalhoz csatlakoztatva.');
       const result=await response.json(); if(!response.ok || result.status!=='review_required')throw Error(result.error||'Nem sikerült az árlekérés.');
       $('price_result').textContent=`${result.arrival}–${result.departure} · ${result.cabin} · ${result.adults} felnőtt · Szállás: ${result.accommodation.toLocaleString('hu-HU')} Ft · IFA: ${result.tourismTax.toLocaleString('hu-HU')} Ft · Teljes ár: ${result.total.toLocaleString('hu-HU')} Ft · Plusz fő díjkülönbsége és más bontás: nem igazolt · Forrás: ${result.source} · Lekérés: ${result.checkedAt} · Szezonfelár beépítése: nem igazolt · 20% törzsvendégkedvezmény: nincs alkalmazva`;
-      status.textContent='A foglalási oldalon megjelenő ár ellenőrzésre vár. Nem került automatikusan a vendégválaszba, és foglalás nem történt.';
+      pendingQuote={total:Number(result.total),source:result.source||'foglalási oldal',fingerprint:quoteFingerprint(),raw:result};
+      $('approved_price_manual').value=String(result.total);
+      $('approve_price').disabled=false;
+      $('price_approval_status').textContent=`Lekért teljes ár: ${formatFt(result.total)} · jóváhagyásra vár. Még nincs a vendégválaszban.`;
+      status.textContent='A foglalási oldalon megjelenő ár ellenőrzésre vár. Az „Ár jóváhagyása és beépítése a levélbe” gombig nem kerül a vendégválaszba, és foglalás nem történik.';
     } catch(e) {status.textContent=`Nincs igazolt ár: ${e.message} Nyisd meg a foglalási oldalt kézi ellenőrzésre.`;}
   };
+
+  ['price_arrival','price_departure','price_cabin','price_adults','price_children','price_child_ages'].forEach(id=>{
+    const el=$(id);
+    if(el) el.addEventListener('change',()=>clearApprovedPrice('Az ár alapadata megváltozott; az árat újra ellenőrizni és jóváhagyni kell.'));
+  });
+
   document.addEventListener('sarberki:analysis-ready',(event)=>{
     const message=event?.detail?.message||$('message')?.value||'';
     if(message){
@@ -168,4 +271,6 @@
       if(message) applyFocusedReply(message);
     };
   }
+
+  buildPriceApprovalUi();
 })();
