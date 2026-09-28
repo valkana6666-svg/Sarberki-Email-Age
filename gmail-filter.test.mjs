@@ -38,3 +38,11 @@ test('Gmail bridge imports multilingual normalization helpers', () => {
   assert.match(source, /childCountFromText\(original\)/u);
   assert.match(source, /dateRangeFromText\(original\)/u);
 });
+
+
+test('Gmail record consumes normalized multilingual dates', () => {
+  assert.match(source, /normalizedDate\.arrival/u);
+  assert.match(source, /normalizedDate\.departure/u);
+  assert.match(source, /normalizedDate\?\.inferredYear/u);
+  assert.match(source, /Időszak, következtetett évvel/u);
+});
