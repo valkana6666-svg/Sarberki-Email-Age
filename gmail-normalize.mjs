@@ -41,3 +41,24 @@ export function dateRangeFromText(text='', now=new Date()){
   if(!explicit&&!next&&(month<local[1]||(month===local[1]&&Number(r[2])<local[2]))) year++;
   return {arrival:`${year}-${String(month).padStart(2,'0')}-${String(r[2]).padStart(2,'0')}`,departure:`${year}-${String(month).padStart(2,'0')}-${String(r[3]).padStart(2,'0')}`,inferredYear:!explicit&&!next};
 }
+
+export function languageFromText(text=''){
+  const scores={
+    hu:(text.match(/\b(?:szeretn|érdekl|faház|szállás|gyermek|gyerek|fő|dézsa)\w*/giu)||[]).length,
+    de:(text.match(/\b(?:möchte|anfrage|unterkunft|buchung|gäste|personen|kinder|verfügbar)\w*/giu)||[]).length,
+    en:(text.match(/\b(?:would|booking|reservation|accommodation|guests|children|available|cabin)\w*/giu)||[]).length,
+    si:(text.match(/\b(?:nastanitev|rezervacij|oseb|otrok|prosto|koča|ribolov)\w*/giu)||[]).length
+  };
+  const best=Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+  return best[0][1]>0 && best[0][1]>best[1][1] ? best[0][0] : 'unknown';
+}
+export function replyQuestions(language='hu', {needPhone=false,needCabin=false,needChildAge=false}={}){
+  const q={
+    hu:{phone:'Megírna egy telefonszámot, amelyen elérhetjük?',cabin:'Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?',child:'Megírná a gyermek életkorát?'},
+    de:{phone:'Bitte teilen Sie uns eine Telefonnummer mit, unter der wir Sie erreichen können.',cabin:'Welchen Haustyp wünschen Sie: VIP, Családi (Familienhaus), Deluxe oder Osztott (geteiltes Haus)?',child:'Bitte teilen Sie uns das Alter des Kindes mit.'},
+    en:{phone:'Please send us a phone number where we can reach you.',cabin:'Which cabin type would you like: VIP, Családi (Family), Deluxe or Osztott (Split)?',child:'Please tell us the age of the child.'},
+    si:{phone:'Prosimo, sporočite telefonsko številko, na kateri ste dosegljivi.',cabin:'Kateri tip hiške želite: VIP, Családi (družinska), Deluxe ali Osztott (deljena)?',child:'Prosimo, sporočite starost otroka.'}
+  }[language]||null;
+  if(!q) return [];
+  return [needChildAge&&q.child,needPhone&&q.phone,needCabin&&q.cabin].filter(Boolean);
+}
