@@ -39,3 +39,19 @@ Ez a tároló a Sárberki Horgásztó e-mailes érdeklődéskezelőjének helyi,
 4. Ezután következhet a bejövő levelek csak olvasó feldolgozása, a kezelői jóváhagyás és a biztonságos eseménynapló.
 
 **Állapot:** demonstráció, emberi jóváhagyás szükséges. A telefon Fájlok alkalmazásába való mentés a megnyitott fájl letöltésével / megosztásával végezhető el; ez a tároló önmagában nem ír a telefon helyi tárhelyére.
+
+
+## Élő Gmail → tesztprogram ellenőrzési kapu (2026-09-28)
+
+A GitHub/CI oldali integráció zöld. A következő release-kapu kizárólag böngészőből igazolható a teszt Netlify oldalon:
+
+1. /api/health válasz: v0.3.8-test, readonly Gmail, unifiedPipeline=true.
+2. gmail-normalize.mjs és gmail-readonly.js a teszt deployban elérhető.
+3. sarberkiprojecttest@gmail.com OAuth belépés gmail.readonly scope-pal.
+4. Valódi bejövő érdeklődés beolvasása és a normalized rekord megjelenítése.
+5. HU/DE/EN/SI: dátum, létszám, gyermek, explicit háztípus és külön igények ellenőrzése.
+6. Következtetett évnél automatikus árlekérés blokkolva marad.
+7. Gyermekes érdeklődésnél automatikus árlekérés blokkolva marad.
+8. Felnőtt, explicit háztípusos, pontos dátumos esetben csak olvasási árlekérés indulhat; foglalás/e-mail küldés nem történhet.
+
+A tesztág CI sikere önmagában nem minősül élő deploy-igazolásnak. Main/production csak külön jóváhagyással módosítható.
