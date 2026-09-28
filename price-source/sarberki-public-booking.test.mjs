@@ -75,3 +75,15 @@ test('redirects containing an unexpected guest or tracking parameter are rejecte
  await assert.rejects(fetchPublicBookingQuote(base,request),/Nem engedélyezett Previo kérés/);
  assert.equal(count,2);
 });
+test('only the known 302 search redirect is followed as GET',async()=>{
+ const m=mock();let count=0;
+ const request=async(url,options={})=>{
+  count++;
+  if(count===2)return {status:302,headers:new Headers({location:'https://booking.previo.cz/index/step-2/?hotId=753011&PHPSESSID=test-session'})};
+  if(count===3){assert.equal(options.method,'GET');return {ok:true,url,text:async()=>`var PageParams = ${JSON.stringify({HOT_ID:753011,CUR_CODE:'HUF',RESERVATION_DETAILS:{from:base.arrival,to:base.departure},OBJECT_KINDS:kinds,GUEST_CATEGORIES:categories})} //--><div></div>`};}
+  return m.request(url,options);
+ };
+ const quote=await fetchPublicBookingQuote(base,request);
+ assert.equal(quote.total,122200);
+ assert.equal(count,5);
+});
