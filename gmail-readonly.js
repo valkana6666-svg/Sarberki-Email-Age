@@ -1,6 +1,7 @@
 /* Browser-only Gmail bridge. Access token stays in memory and is never stored. */
-(() => {
+(async () => {
   'use strict';
+  const { cabinFromText, guestCountFromText, childCountFromText, dateRangeFromText } = await import('./gmail-normalize.mjs');
   // V1 live-read mode: broad inbox read, then conservative local inquiry classification.
   // No sender restriction, no exact subject allowlist, no send/modify permission.
   const INBOX_QUERY = 'in:inbox newer_than:30d -category:promotions -category:social';
@@ -34,14 +35,7 @@
     if (part.mimeType === 'text/plain' && part.body?.data) return decoded(part.body.data);
     for (const child of part.parts || []) { const value = plain(child); if (value) return value; }
     return '';  }
-  function cabinFromGuestText(message) {
-    const types = [];
-    if (/\bvip\b/iu.test(message)) types.push('VIP');
-    if (/\bcsaládi\b/iu.test(message)) types.push('Családi');
-    if (/\bdeluxe\b/iu.test(message)) types.push('Deluxe');
-    if (/\bosztott\b/iu.test(message)) types.push('Osztott');
-    return types.length === 1 ? types[0] : '? – emberi döntésre vár';
-  }
+  const cabinFromGuestText = cabinFromText;
 
   function transform(message) {
     const headers = headerMap(message);
@@ -57,9 +51,8 @@
     const nextYear = /\bjövőre\b|\bkövetkező évben\b/iu.test(original);
     const inferredYear = monthIndex >= 0 && !explicitYear && !nextYear ? currentYear + (monthIndex + 1 < currentMonth || (monthIndex + 1 === currentMonth && Number(dateText[3]) < currentDay) ? 1 : 0) : null;
     const requestedYear = explicitYear ? Number(explicitYear) : nextYear ? currentYear + 1 : inferredYear;
-    const count = original.match(/\b(\d+)\s*fő\b/iu)?.[1] || ({ketten:2,hárman:3,négyen:4,öten:5,hatan:6}[original.match(/\b(ketten|hárman|négyen|öten|hatan)\b/iu)?.[1]?.toLowerCase()] || null);
-    const child = original.match(/\b(\d+|egy|kettő|két)\s*gyerek\w*|\b(\d+|egy|kettő|két)\s*gyermek\w*/iu);
-    const childCount = child ? ({egy:1,kettő:2,két:2}[child[1] || child[2]] || Number(child[1] || child[2])) : null;
+    const count = guestCountFromText(original) || ({ketten:2,hárman:3,négyen:4,öten:5,hatan:6}[original.match(/\b(ketten|hárman|négyen|öten|hatan)\b/iu)?.[1]?.toLowerCase()] || null);
+    const childCount = childCountFromText(original);
     const name = original.match(/(?:^|\n)\s*([A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+\s+[A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+)\s*$/mu)?.[1];
     const hotTub = /dézs/iu.test(original), dog = /kuty/iu.test(original), availability = /szabad\s+hely/iu.test(original);
     const extracted = [];
@@ -73,7 +66,8 @@
     if (count && childCount) inferred.push({label:'Felnőttek',value:`valószínűleg ${count-childCount}, ha a fennmaradó ${count-childCount} fő felnőtt`});
     const missing = [];
     if (cabinFromGuestText(original).startsWith('?')) missing.push('Kívánt háztípus (VIP, Családi, Deluxe vagy Osztott) – pontosítandó');
-    if (!dateText) missing.push('Pontos érkezési és távozási dátum');
+    const normalizedDate = dateRangeFromText(original);
+    if (!dateText && !normalizedDate) missing.push('Pontos érkezési és távozási dátum');
     if (!count) missing.push('Vendégek száma');
     if (childCount && !/\d+\s*éves/iu.test(original)) missing.push('Gyermek életkora');
     if (!/\+?\d[\d\s/-]{7,}/u.test(original)) missing.push('Telefonszám');
