@@ -1,0 +1,8 @@
+{
+  "provenance": "2026-09-28-i korábbi élő Previo és hivatalos UI összevetésből rögzített eredmények; a teljes nyers HTTP-válasz nem áll rendelkezésre. Kizárólag offline tesztadat, nem aktuális árforrás.",
+  "cases": [
+    {"arrival":"2026-10-16","departure":"2026-10-18","cabin":"deluxe","adults":2,"children":[],"availableUnits":4,"accommodation":120000,"tourismTax":2200,"total":122200},
+    {"arrival":"2026-10-16","departure":"2026-10-18","cabin":"deluxe","adults":2,"children":[7,11],"availableUnits":4,"accommodation":120000,"tourismTax":2200,"total":122200},
+    {"arrival":"2026-10-16","departure":"2026-10-18","cabin":"family","adults":2,"children":[],"availableUnits":3,"accommodation":104000,"tourismTax":2200,"total":106200}
+  ]
+}
