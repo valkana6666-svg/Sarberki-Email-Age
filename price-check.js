@@ -27,12 +27,14 @@
     $('price_arrival').value = fields.arrival?.value || gmailDate?.arrival || '';
     $('price_departure').value = fields.departure?.value || gmailDate?.departure || '';
     const children = Number(fields.children?.value || 0);
-    $('price_adults').value = children ? '' : (fields.adults?.value || fields.guests?.value || '');
+    $('price_adults').value = fields.adults?.value || (children ? '' : fields.guests?.value || '');
+    if ($('price_children')) $('price_children').value = String(children);
+    if ($('price_child_ages')) $('price_child_ages').value = fields.child_ages?.value || '';
     const unit=(fields.unit?.value || '').toLowerCase();
     const explicit = explicitCabin(message);
     $('price_cabin').value = explicit || Object.keys(cabins).find(k => unit.includes(cabins[k].toLowerCase())) || '';
     $('price_result').textContent = '';
-    $('price_status').textContent = children ? 'Gyermek is szerepel a levélben. A gyermekkor szerinti árlekérés még nem működik; kézi ellenőrzés szükséges.' : !explicit ? 'Faház: ? – emberi döntésre vár. Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?' : 'Ellenőrizd a kinyert adatokat. Az automatikus lekérés jelenleg csak felnőttekkel működik.';
+    $('price_status').textContent = children ? 'Gyermekes foglalás adatai átvéve (felnőttek, gyermekek és gyermekkorok). Automatikus árbecslés nem indul; kézi/hiteles árlekérés szükséges.' : !explicit ? 'Faház: ? – emberi döntésre vár. Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?' : 'Ellenőrizd a kinyert adatokat. Az automatikus lekérés jelenleg csak felnőttekkel működik.';
   }
   async function autoPrepareAndQuoteFromGmail() {
     const message=$('gmail_original')?.textContent||'';
