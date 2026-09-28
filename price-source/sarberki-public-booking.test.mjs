@@ -43,3 +43,25 @@ test('invalid input, unknown price and source error fail without a quote',async(
  await assert.rejects(fetchPublicBookingQuote(base,mock({unknown:true}).request),/ellenőrzött teljes árat/);
  await assert.rejects(fetchPublicBookingQuote(base,mock({error:true}).request),/nem elérhető/);
 });
+test('all outbound requests are restricted to anonymous search, occupancy and price',async()=>{
+ const m=mock();await fetchPublicBookingQuote(base,m.request);
+ assert.deepEqual(m.calls.map(x=>x.path),['/','/','/index/get-object-kind-occupancy/','/index/get-occupancy-price/']);
+ for(const call of m.calls) assert.equal(Object.keys(call.data).some(key=>/email|name|phone|payment|confirm|reservation/i.test(key)),false);
+});
+test('a changed first step form cannot route a POST to a reservation endpoint',async()=>{
+ let count=0;
+ const request=async()=>{count++;return {ok:true,url:'https://booking.previo.cz/?hotId=753011',text:async()=>'<form id="firstStep" action="https://booking.previo.cz/index/save-reservation/?hotId=753011"></form>'};};
+ await assert.rejects(fetchPublicBookingQuote(base,request),/dátuműrlapja megváltozott/);
+ assert.equal(count,1);
+});
+test('a search redirect to any booking submission route is rejected without following it',async()=>{
+ let count=0;
+ const request=async(url,options={})=>{
+  count++;
+  assert.equal(options.redirect,'manual');
+  if(count===1)return {ok:true,url,text:async()=>first};
+  return {status:302,headers:new Headers({location:'https://booking.previo.cz/index/save-reservation/?hotId=753011'})};
+ };
+ await assert.rejects(fetchPublicBookingQuote(base,request),/nem a keresési eredményre/);
+ assert.equal(count,2);
+});
