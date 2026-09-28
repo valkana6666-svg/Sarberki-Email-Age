@@ -17,6 +17,18 @@ test('personal and unrecognized fields are rejected before a Previo request',()=
  for(const extra of [{name:'Teszt Elek'},{email:'test@example.invalid'},{phone:'+36 30 555 1234'},{payment:'card'},{reservationId:'123'}])
   assert.throws(()=>validateQuote({arrival:'2027-10-01',departure:'2027-10-02',cabin:'deluxe',adults:2,children:[],...extra}),/személyes adat/u);
 });
+test('forbidden input fields make zero adapter calls even if live gate were enabled',async()=>{
+ let calls=0;
+ const source=async()=>{calls++;throw Error('should never run');};
+ for(const field of ['name','email','phone','payment','reservationId','unknown']) {
+  const body={arrival:'2027-10-01',departure:'2027-10-02',cabin:'deluxe',adults:2,children:[],[field]:'value'};
+  const request=new Request('https://example.test/api/price-quote',{method:'POST',body:JSON.stringify(body)});
+  const response=await handlePriceQuote(request,source,true);
+  assert.equal(response.status,503);
+  assert.equal((await response.json()).total,undefined);
+ }
+ assert.equal(calls,0);
+});
 
 test('price summary accepts only HUF and preserves the displayed total', () => {
   assert.equal(parseHuf('86\u00a0750 Ft'),86750);
