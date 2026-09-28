@@ -5,14 +5,20 @@ const HOTEL_ID='753011';
 const NAMES={deluxe:'DELUXE faház',family:'Családi faház',vip:'VIP apartman',small:'Különálló 2 fős faház'};
 const GET_PATHS=new Set(['/','/index/step-1/','/index/step-2/']);
 const POST_PATHS=new Set(['/','/index/get-object-kind-occupancy/','/index/get-occupancy-price/']);
+const QUERY_KEYS=new Set(['hotId','currency','lang','theme','redirectType','showTabs','PHPSESSID']);
 
 async function readOnlyRequest(request,url,options={}) {
   for(let redirects=0;redirects<3;redirects++) {
     const target=new URL(url), method=options.method||'GET';
-    if(target.origin!==ROOT||!(method==='GET'?GET_PATHS:method==='POST'?POST_PATHS:new Set()).has(target.pathname)||target.searchParams.get('hotId')!==HOTEL_ID) throw Error('Nem engedélyezett Previo kérés vagy átirányítás.');
+    if(target.origin!==ROOT||target.username||target.password||target.hash||!(method==='GET'?GET_PATHS:method==='POST'?POST_PATHS:new Set()).has(target.pathname)||target.searchParams.get('hotId')!==HOTEL_ID||[...target.searchParams.keys()].some(key=>!QUERY_KEYS.has(key))||target.searchParams.has('currency')&&target.searchParams.get('currency')!=='HUF') throw Error('Nem engedélyezett Previo kérés vagy átirányítás.');
     if(method==='POST'&&target.pathname==='/') {
       const body=new URLSearchParams(options.body);
       if([...body.keys()].sort().join(',')!=='arrival,departure,step'||body.get('step')!=='1') throw Error('A dátumkeresés űrlapja megváltozott.');
+    }
+    if(method==='POST'&&target.pathname!=='/') {
+      const keys=[...new URLSearchParams(options.body).keys()].sort().join(',');
+      const expected=target.pathname==='/index/get-object-kind-occupancy/'?'PHPSESSID,currency,hotId,lang,newDesign,obkId':'PHPSESSID,currency,formData,hotId,lang,obkId';
+      if(keys!==expected) throw Error('A Previo ár- vagy kapacitáskérésének mezői megváltoztak.');
     }
     const response=await request(target.href,{...options,redirect:'manual'});
     if(![301,302,303,307,308].includes(response.status)) return response;
