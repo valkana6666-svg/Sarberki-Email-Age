@@ -4,3 +4,11 @@ test('pricing flow recognizes explicit cabin words in HU DE EN SI',()=>{assert.m
 test('pricing flow keeps missing cabin blocked',()=>{assert.match(source,/found\.length===1 \? found\[0\] : ''/u);assert.match(source,/Faház: \? – emberi döntésre vár/u);});
 
 test('pricing consumes normalized Gmail ISO dates and blocks inferred year auto quote',()=>{assert.match(source,/gmailNormalizedDate/u);assert.match(source,/item\.value\.split\(' – '\)/u);assert.match(source,/gmailDate\?\.arrival/u);assert.match(source,/gmailDate\?\.inferred/u);assert.match(source,/emberi jóváhagyás nélkül automatikus árlekérés nem indul/u);});
+
+test('price checker transfers child counts and ages but keeps child-price safety block',()=>{
+ assert.match(source,/price_children/u);
+ assert.match(source,/price_child_ages/u);
+ assert.match(source,/fields\.adults\?\.value/u);
+ assert.match(source,/fields\.child_ages\?\.value/u);
+ assert.match(source,/Gyermekes érdeklődés: életkor és hiteles gyermekár nélkül kézi ellenőrzés szükséges/u);
+});
