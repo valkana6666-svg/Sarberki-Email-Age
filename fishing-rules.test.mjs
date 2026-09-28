@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fishing,fishingQuestion} from './fishing-rules.mjs';
-import {validateQuote,fetchQuote} from './price-quote.mjs';
+import {validateQuote,fetchQuote,returningGuestReview} from './price-quote.mjs';
 
 for (const [cabin,adults] of [['deluxe',4],['deluxe',5],['deluxe',6],['family',4],['family',5],['vip',2],['vip',7]]) {
   test(`${cabin} ${adults}: exact occupancy is passed to quote adapter`,()=>{
@@ -25,3 +25,9 @@ test('normal lake adult 24h, separate source and validity',()=>{
 });
 test('barbed hook is prohibited',()=>assert.match(fishingQuestion('Használhatok szakállas horgot?').answer,/nem használható/));
 test('unrelated accommodation inquiry does not activate fishing',()=>assert.equal(fishingQuestion('Deluxe faház 5 fő októberben'),null));
+test('returning discount remains un-applied without Previo history',()=>{
+  assert.equal(returningGuestReview.applied,false);
+  assert.equal(returningGuestReview.lookbackMonths,48);
+  assert.equal(returningGuestReview.possibleDiscountPercent,20);
+  assert.equal(returningGuestReview.publicSiteLookbackDays,730);
+});
