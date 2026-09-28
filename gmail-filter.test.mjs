@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {readFile} from 'node:fs/promises';
 
 const source = fs.readFileSync(new URL('./gmail-readonly.js', import.meta.url), 'utf8');
 
