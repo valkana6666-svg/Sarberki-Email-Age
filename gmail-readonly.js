@@ -24,7 +24,89 @@
   const button = document.getElementById('read_gmail');
   const status = document.getElementById('gmail_auth_status');
   const clientId = document.querySelector('meta[name="google-oauth-client-id"]')?.content?.trim();
+  const READ_STORAGE_KEY = 'sarberki.gmail.read-message-ids.v1';
+  let currentToken = null;
+  let currentMessages = [];
+
   const say = message => { status.textContent = message; };
+  function readIds() {
+    try { return new Set(JSON.parse(localStorage.getItem(READ_STORAGE_KEY) || '[]')); }
+    catch { return new Set(); }
+  }
+  function markRead(id) {
+    const ids = readIds();
+    ids.add(id);
+    localStorage.setItem(READ_STORAGE_KEY, JSON.stringify([...ids].slice(-500)));
+  }
+  function isLocallyRead(id) { return readIds().has(id); }
+  function messageLabel(message) {
+    const headers = headerMap(message);
+    const when = new Date(Number(message.internalDate));
+    const stamp = Number.isFinite(when.getTime()) ? when.toLocaleString('hu-HU') : '';
+    return `${isLocallyRead(message.id) ? '✓ OLVASOTT' : '● ÚJ'} — ${headers.subject || '(nincs tárgy)'}${stamp ? ` — ${stamp}` : ''}`;
+  }
+  function ensurePicker() {
+    let wrap = document.getElementById('gmail_message_picker_wrap');
+    if (wrap) return wrap;
+    wrap = document.createElement('div');
+    wrap.id = 'gmail_message_picker_wrap';
+    wrap.style.marginTop = '12px';
+    wrap.innerHTML = `
+      <label for="gmail_message_picker" style="display:block;font-weight:700;margin-bottom:6px">Beérkezett érdeklődések</label>
+      <select id="gmail_message_picker" style="width:100%;max-width:760px;padding:10px"></select>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <button type="button" id="gmail_open_selected">Kiválasztott megnyitása</button>
+        <button type="button" id="gmail_open_next_unread">Következő olvasatlan</button>
+      </div>`;
+    status.insertAdjacentElement('afterend', wrap);
+    wrap.querySelector('#gmail_open_selected').addEventListener('click', () => openSelected(false));
+    wrap.querySelector('#gmail_open_next_unread').addEventListener('click', () => openSelected(true));
+    return wrap;
+  }
+  function renderPicker(messages) {
+    const wrap = ensurePicker();
+    const select = wrap.querySelector('#gmail_message_picker');
+    const previous = select.value;
+    select.innerHTML = '';
+    messages.forEach(message => {
+      const option = document.createElement('option');
+      option.value = message.id;
+      option.textContent = messageLabel(message);
+      select.appendChild(option);
+    });
+    if (messages.some(m => m.id === previous)) select.value = previous;
+    else {
+      const nextUnread = messages.find(m => !isLocallyRead(m.id));
+      if (nextUnread) select.value = nextUnread.id;
+    }
+  }
+  function unreadCount(messages=currentMessages) {
+    return messages.filter(m => !isLocallyRead(m.id)).length;
+  }
+  function displayMessage(message) {
+    const record = transform(message);
+    displayGmailRecord(record);
+    markRead(message.id);
+    renderPicker(currentMessages);
+    const left = unreadCount();
+    say(left
+      ? `Beolvasva. Még ${left} olvasatlan érdeklődés van. Bármelyik korábban olvasott levél újra megnyitható a listából.`
+      : 'Beolvasva. Nincs több olvasatlan érdeklődés; a listából bármelyik korábbi levél újra megnyitható.');
+  }
+  function openSelected(nextUnreadOnly=false) {
+    if (!currentMessages.length) { say('Előbb töltse be a Gmail-leveleket.'); return; }
+    let message;
+    if (nextUnreadOnly) message = currentMessages.find(m => !isLocallyRead(m.id));
+    else {
+      const id = document.getElementById('gmail_message_picker')?.value;
+      message = currentMessages.find(m => m.id === id);
+    }
+    if (!message) {
+      say(nextUnreadOnly ? 'Nincs több olvasatlan érdeklődés.' : 'Nem található a kiválasztott levél.');
+      return;
+    }
+    displayMessage(message);
+  }
   function decoded(data) {
     if (!data) return '';
     const base64 = data.replace(/-/g, '+').replace(/_/g, '/');
@@ -86,7 +168,6 @@
   }
   async function readWithToken(token) {
     const headers = {Authorization:`Bearer ${token}`};
-    // Gmail's list response contains IDs only; inspect every page before comparing internalDate.
     const candidates = [];
     let pageToken;
     do {
@@ -109,7 +190,7 @@
     const matching = messages.filter(looksLikeInquiry);
     if (!matching.length) throw Error('Az elmúlt 30 nap beérkező levelei között nem találtunk egyértelmű szállás-/foglalási érdeklődést.');
     matching.sort((a, b) => Number(b.internalDate) - Number(a.internalDate) || b.id.localeCompare(a.id));
-    return transform(matching[0]);
+    return matching;
   }
   button.addEventListener('click', () => {
     if (!clientId) { say('A Google OAuth kliensazonosító még nincs beállítva ehhez a webhelyhez.'); return; }
@@ -119,10 +200,16 @@
     const client = google.accounts.oauth2.initTokenClient({client_id:clientId,scope:SCOPE,callback:async result => {
       try {
         if (!result.access_token) throw Error(result.error || 'A hozzáférés nem jött létre.');
-        say('A levél beolvasása és feldolgozása…');
-        const record = await readWithToken(result.access_token);
-        displayGmailRecord(record);
-        say('A legfrissebb felismert érdeklődés bekerült a kezelőfelületre; küldés vagy foglalásmódosítás nem történt.');
+        say('A levelek betöltése…');
+        currentToken = result.access_token;
+        currentMessages = await readWithToken(currentToken);
+        renderPicker(currentMessages);
+        const nextUnread = currentMessages.find(message => !isLocallyRead(message.id));
+        if (nextUnread) {
+          displayMessage(nextUnread);
+        } else {
+          say(`Összesen ${currentMessages.length} érdeklődés található, és mindegyik már be lett olvasva. A listából bármelyik újra megnyitható.`);
+        }
       } catch (error) { say(error.message); } finally { button.disabled = false; }
     },error_callback:error => { say(`A Google-belépés megszakadt: ${error.type || 'ismeretlen hiba'}`); button.disabled=false; }});
     client.requestAccessToken({prompt:'consent'});
