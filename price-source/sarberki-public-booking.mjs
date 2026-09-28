@@ -27,11 +27,13 @@ export async function requestPrevioReadOnly(url,options={},request=fetch) {
     const target=validatePrevioRequest(url,options), method=options.method||'GET';
     const response=await request(target.href,{...options,redirect:'manual'});
     if(![301,302,303,307,308].includes(response.status)) return response;
-    if(method!=='POST'||target.pathname!=='/'||![302,303].includes(response.status)) throw Error('Nem engedélyezett Previo átirányítás.');
+    const initialGet=method==='GET'&&target.pathname==='/'&&[301,302,303].includes(response.status);
+    const searchPost=method==='POST'&&target.pathname==='/'&&[302,303].includes(response.status);
+    if(!initialGet&&!searchPost) throw Error('Nem engedélyezett Previo átirányítás.');
     const location=response.headers?.get('location');
     if(!location) throw Error('A Previo átirányítás célja hiányzik.');
     url=new URL(location,target).href;
-    if(new URL(url).pathname!=='/index/step-2/') throw Error('A Previo nem a keresési eredményre irányított át.');
+    if(new URL(url).pathname!==(initialGet?'/index/step-1/':'/index/step-2/')) throw Error('A Previo nem az engedélyezett keresési oldalra irányított át.');
     options={method:'GET',signal:options.signal};
   }
   throw Error('Túl sok Previo átirányítás.');

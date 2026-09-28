@@ -62,7 +62,7 @@ test('a search redirect to any booking submission route is rejected without foll
   if(count===1)return {ok:true,url,text:async()=>first};
   return {status:302,headers:new Headers({location:'https://booking.previo.cz/index/save-reservation/?hotId=753011'})};
  };
- await assert.rejects(fetchPublicBookingQuote(base,request),/nem a keresési eredményre/);
+ await assert.rejects(fetchPublicBookingQuote(base,request),/nem az engedélyezett keresési oldalra/);
  assert.equal(count,2);
 });
 test('redirects containing an unexpected guest or tracking parameter are rejected',async()=>{
@@ -100,4 +100,14 @@ test('forbidden endpoint, origin, redirect method and body make zero outbound ca
  ];
  for(const [url,options] of cases) await assert.rejects(requestPrevioReadOnly(url,options,request));
  assert.equal(calls,0);
+});
+
+test('initial anonymous GET may redirect only to step-1',async()=>{
+ let calls=0;
+ const response=await requestPrevioReadOnly('https://booking.previo.cz/?hotId=753011',{},async(url,options)=>{
+  calls++;
+  if(calls===1)return {status:302,headers:new Headers({location:'https://booking.previo.cz/index/step-1/?hotId=753011&PHPSESSID=test-session'})};
+  assert.equal(new URL(url).pathname,'/index/step-1/');assert.equal(options.method,'GET');return {status:200,ok:true};
+ });
+ assert.equal(response.status,200);assert.equal(calls,2);
 });
