@@ -44,6 +44,15 @@
     return Number(value).toLocaleString('hu-HU')+' Ft';
   }
 
+  function approvedPriceText(quote){
+    if(!quote) return '';
+    const total='A jóváhagyott teljes szállásár: '+formatFt(quote.total)+'.';
+    if(Number.isFinite(quote.accommodation)&&Number.isFinite(quote.tourismTax)){
+      return total+' Ebből szállás: '+formatFt(quote.accommodation)+', IFA: '+formatFt(quote.tourismTax)+'.';
+    }
+    return total;
+  }
+
   function clearApprovedPrice(reason=''){
     approvedPrice=null;
     pendingQuote=null;
@@ -137,12 +146,12 @@
 
     const priceApproved=asked.price&&approvedPrice&&approvedPrice.fingerprint===quoteFingerprint();
     if(asked.availability&&asked.price){
-      if(priceApproved) lines.push('','A megadott időszakra a kért szállás szabad kapacitását ellenőrizzük. A jóváhagyott teljes szállásár: '+formatFt(approvedPrice.total)+'.');
+      if(priceApproved) lines.push('','A megadott időszakra a kért szállás szabad kapacitását ellenőrizzük. '+approvedPriceText(approvedPrice));
       else lines.push('','A megadott időszakra a kért szállás szabad kapacitását ellenőrizzük. A pontos árról az ellenőrzést követően tájékoztatást adunk.');
     } else if(asked.availability) {
       lines.push('','A megadott időszakra ellenőrizzük a kért szállás szabad kapacitását, és az ellenőrzés után visszaigazoljuk az elérhetőséget.');
     } else if(asked.price) {
-      if(priceApproved) lines.push('','A megadott adatok alapján a jóváhagyott teljes szállásár: '+formatFt(approvedPrice.total)+'.');
+      if(priceApproved) lines.push('','A megadott adatok alapján '+approvedPriceText(approvedPrice));
       else lines.push('','A pontos árról az ellenőrzést követően tájékoztatást adunk.');
     }
 
@@ -185,7 +194,14 @@
     const message=currentMessage();
     const analysis=typeof extract==='function'?extract(message,''):null;
     const asked=huAskedTopics(message,analysis);
-    approvedPrice={total:Math.round(inputValue),source:pendingQuote?.source||'kézi ellenőrzés',fingerprint:quoteFingerprint(),approvedAt:new Date().toISOString()};
+    approvedPrice={
+      total:Math.round(inputValue),
+      accommodation:Number.isFinite(Number(pendingQuote?.raw?.accommodation))?Number(pendingQuote.raw.accommodation):null,
+      tourismTax:Number.isFinite(Number(pendingQuote?.raw?.tourismTax))?Number(pendingQuote.raw.tourismTax):null,
+      source:pendingQuote?.source||'kézi ellenőrzés',
+      fingerprint:quoteFingerprint(),
+      approvedAt:new Date().toISOString()
+    };
     if(!asked.price){
       $('price_approval_status').textContent=`Az ár jóváhagyva (${formatFt(approvedPrice.total)}), de a vendég nem kérdezett árat, ezért nem került a válaszlevélbe.`;
       return;
