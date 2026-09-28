@@ -31,9 +31,7 @@ test('clearly unrelated generic mail is not classified from content hints alone'
   assert.equal(hint.test('Számla\nKöszönjük a befizetést.'), false);
 });
 
-
-test('Gmail bridge imports multilingual normalization helpers', async () => {
-  const source = await readFile(new URL('./gmail-readonly.js', import.meta.url), 'utf8');
+test('Gmail bridge imports multilingual normalization helpers', () => {
   assert.match(source, /import\('\.\/gmail-normalize\.mjs'\)/u);
   assert.match(source, /guestCountFromText\(original\)/u);
   assert.match(source, /childCountFromText\(original\)/u);
