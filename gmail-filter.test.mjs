@@ -56,3 +56,14 @@ test('Gmail draft uses multilingual language and missing-data helpers', () => {
   assert.match(source, /Hvala za vaše povpraševanje/u);
   assert.match(source, /language==='unknown' \? 'hu' : language/u);
 });
+
+
+test('Gmail bridge recognizes multilingual hot tub dog availability and child-age wording', () => {
+  assert.match(source, /hot\\s\*tub/u);
+  assert.match(source, /whirlpool/u);
+  assert.match(source, /badefass/u);
+  assert.match(source, /verfügbar/u);
+  assert.match(source, /razpolož/u);
+  assert.match(source, /years\? old/u);
+  assert.match(source, /jahre alt/u);
+});
