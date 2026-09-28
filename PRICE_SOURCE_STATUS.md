@@ -2,6 +2,8 @@
 
 ## Jelenlegi kapu és bizonyítási határ
 
+- **Offline láncteszt (2026-09-28):** a `price-source/fixtures/recorded-previo-quotes.json` három, korábban élő Previóval és UI-val összevetett eredményből rekonstruált tesztfixture-t tartalmaz. Nem őrzi a teljes nyers HTTP-választ és nem számít friss hiteles árnak. Az `email-price-chain.test.mjs` a meglévő `index.html` elemzőjét és `price-check.js` kezelői folyamatát futtatja mockolt `/api/price-quote` válasszal; ellenőrzi a névtelen inputot, a gyermekkorokat, eltérő háztípust, kapacitást, hibákat és hogy az ár csak külön emberi kattintással kerül a tervezetbe. Az offline teszt **nem oldja fel** a Previo élő kapuját.
+
 - **Nincs hivatalos Previo API-hozzáférésünk.** A vizsgált végpontok a nyilvános Reservation+ foglaló dokumentálatlan belső kérései, nem az előfizetéses Previo XML/REST API. A tesztági kód `SARBERKI_PREVIO_NO_HOLD_CONFIRMED=true` nélkül **a Previo meghívása előtt** összeg nélkül áll meg. A Netlify környezeti változóinak és az új deploy futásának közvetlen ellenőrzése még nincs meg; a kapcsolót nem szabad bekapcsolni.
 - A felhasználó a korábbi próbák után manuálisan ellenőrizte a PMS-t: **nem volt látható új foglalás**. Az átmeneti, esetleg lejárt kapacitászárolás hiánya **nem bizonyított**. További élő Previo-kérés nem indult a biztonsági audit során.
 - A kód- és Git-történetben az adaptert a `dcce2c34` commit vezette be, a `de4b6c5e`/`c8a19405` javította a Netlify-függvény hívását, az `ad87cd4a`–`2ec3cff4` sorozat zárta le alapértelmezetten a kaput és tiltotta le a régi böngészős kattintást. A későbbi validáció személyes és ismeretlen mezőket, útvonalakat és átirányításokat tilt. A repóban nincs foglalást véglegesítő endpoint hívás.
