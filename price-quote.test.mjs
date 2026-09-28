@@ -13,6 +13,10 @@ test('only exact future dates and explicit room and adult count are accepted', (
     {arrival:'2027-10-01',departure:'2027-10-02',cabin:'deluxe',adults:2,children:[-1]}
   ]) assert.throws(() => validateQuote(bad));
 });
+test('personal and unrecognized fields are rejected before a Previo request',()=>{
+ for(const extra of [{name:'Teszt Elek'},{email:'test@example.invalid'},{phone:'+36 30 555 1234'},{payment:'card'},{reservationId:'123'}])
+  assert.throws(()=>validateQuote({arrival:'2027-10-01',departure:'2027-10-02',cabin:'deluxe',adults:2,children:[],...extra}),/személyes adat/u);
+});
 
 test('price summary accepts only HUF and preserves the displayed total', () => {
   assert.equal(parseHuf('86\u00a0750 Ft'),86750);
