@@ -10,12 +10,12 @@ const recorded=JSON.parse(fs.readFileSync(new URL('./price-source/fixtures/recor
 const sample=(c,extra='')=>`Kedves Sárberki Horgásztó! 2026. október 16–18. között ${c.adults+c.children.length} fő részére, ${c.adults} felnőtt${c.children.length?` és ${c.children.length} gyermek, ${c.children.join(' és ')} évesek`:''} számára ${c.cabin==='family'?'Családi':'Deluxe'} házat szeretnénk. Van szabad hely, és mennyibe kerül összesen? ${extra} Üdvözlettel, Teszt Elek`;
 
 function harness(message,reply){
- const nodes=new Map();let calls=0;
+ const nodes=new Map(),listeners=new Map();let calls=0;
  const element=id=>{
   if(!nodes.has(id)) nodes.set(id,{id,value:'',textContent:'',disabled:false,onclick:null,classList:{contains:()=>false},addEventListener(type,fn){this['on'+type]=fn},insertAdjacentElement(){for(const name of ['price_approval_panel','approved_price_manual','approve_price','price_approval_status']) element(name)}});
   return nodes.get(id);
  };
- const document={getElementById:id=>id==='price_approval_panel'&&!nodes.has(id)?null:element(id),createElement:()=>({id:'',className:'',innerHTML:''}),addEventListener(){}};
+ const document={getElementById:id=>id==='price_approval_panel'&&!nodes.has(id)?null:element(id),createElement:()=>({id:'',className:'',innerHTML:''}),addEventListener:(type,fn)=>listeners.set(type,fn)};
  element('gmail_record').classList.contains=()=>true;
  const context=vm.createContext({document,window:{addEventListener(){}},console,Date,Intl,Number,JSON,setTimeout:fn=>fn(),fetch:async(_url,options)=>{
   calls++;
@@ -26,7 +26,7 @@ function harness(message,reply){
  vm.runInContext(html.slice(html.indexOf('const $='),html.indexOf('function addEvent(')),context);
  vm.runInContext(pricing,context);
  element('message').value=message;
- return {element,context,get calls(){return calls},async run(){element('prepare_price').onclick();await element('check_price').onclick();return {draft:element('draft').value,status:element('price_status').textContent,result:element('price_result').textContent}}};
+ return {element,context,listeners,get calls(){return calls},async run(){element('prepare_price').onclick();await element('check_price').onclick();return {draft:element('draft').value,status:element('price_status').textContent,result:element('price_result').textContent}}};
 }
 function json(result,code=200){return {ok:code<400,headers:{get:()=> 'application/json'},json:async()=>result,status:code};}
 function quote(input,record){return {...input,status:'review_required',availability:'available',source:'Sárberki hivatalos foglalási felület',checkedAt:'2026-09-28T17:00:00.000Z',currency:'HUF',...Object.fromEntries(['availableUnits','accommodation','tourismTax','total'].map(k=>[k,record[k]]))};}
@@ -56,4 +56,17 @@ test('forbidden input is rejected before any mock source call',()=>{
  let calls=0;const source=input=>{calls++;return input};
  for(const extra of [{name:'Teszt Elek'},{email:'test@example.invalid'},{phone:'+36 30 555 1234'},{payment:'card'},{reservationId:'123'},{unexpected:true}])assert.throws(()=>source(validateQuote({...recorded[0],...extra})),/személyes adat/u);
  assert.equal(calls,0);
+});
+test('loaded Gmail record uses normalized dates and carries its draft through mock quote',async()=>{
+ const record=recorded[1],message=sample(record);const h=harness('',input=>json(quote(input,record)));
+ h.element('gmail_record').classList.contains=()=>false;
+ h.element('gmail_original').textContent=message;
+ h.element('gmail_json').value=JSON.stringify({extracted:[{label:'Időszak',value:'2026-10-16 – 2026-10-18'}]});
+ h.listeners.get('sarberki:record-loaded')();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(h.calls,1);
+ assert.equal(h.element('price_child_ages').value,'7, 11');
+ assert.match(h.element('gmail_draft').value,/7, 11 éves/u);
+ assert.doesNotMatch(h.element('gmail_draft').value,/122.200|122 200/u);
+ assert.match(h.element('price_result').textContent,/Teljes ár:/u);
 });
