@@ -1,14 +1,24 @@
 /* Browser-only Gmail bridge. Access token stays in memory and is never stored. */
 (() => {
   'use strict';
-  const TEST_QUERY = 'in:inbox from:valkana6666@gmail.com after:2026/09/25';
-  const ALLOWED_SUBJECTS = new Set([
-    'Érdeklődés a szállásról',
-    'Érdeklődés a szallasrol',
-    'Érdeklődés szállásról'
-  ]);
-  const ALLOWED_SUBJECT_PATTERN = /^Érdeklődés szállásról [1-9]\d? fő részére (?:januárban|februárban|márciusban|áprilisban|májusban|júniusban|júliusban|augusztusban|szeptemberben|októberben|novemberben|decemberben)$/u;
-  const allowedSubject = subject => ALLOWED_SUBJECTS.has(subject.trim()) || ALLOWED_SUBJECT_PATTERN.test(subject.trim());
+  // V1 live-read mode: broad inbox read, then conservative local inquiry classification.
+  // No sender restriction, no exact subject allowlist, no send/modify permission.
+  const INBOX_QUERY = 'in:inbox newer_than:30d -category:promotions -category:social';
+  const INQUIRY_HINT = /(?:érdekl|foglal|szállás|faház|apartman|dézsa|horgász|booking|reservation|accommodation|cabin|bungalow|availability|available|preis|preise|zimmer|unterkunft|reservier|buchung|verfügbar|anfrage|nastanitev|rezervacij|prosto|koča|ribolov)/iu;
+  function headerMap(message) {
+    return Object.fromEntries((message.payload?.headers || []).map(h => [h.name.toLowerCase(), h.value]));
+  }
+  function emailAddress(value='') {
+    return value.match(/<([^<>]+)>\s*$/u)?.[1] || value.trim();
+  }
+  function looksLikeInquiry(message) {
+    const headers = headerMap(message);
+    const text = [headers.subject || '', plain(message.payload) || ''].join('\n');
+    return message.labelIds?.includes('INBOX')
+      && Number.isFinite(Number(message.internalDate))
+      && Number(message.internalDate) > 0
+      && INQUIRY_HINT.test(text);
+  }
   const SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
   const button = document.getElementById('read_gmail');
   const status = document.getElementById('gmail_auth_status');
@@ -34,7 +44,7 @@
   }
 
   function transform(message) {
-    const headers = Object.fromEntries((message.payload?.headers || []).map(h => [h.name.toLowerCase(), h.value]));
+    const headers = headerMap(message);
     const original = plain(message.payload).trim();
     if (!original) throw Error('A levélnek nincs olvasható szöveges része; emberi ellenőrzés szükséges.');
     const received = new Date(Number(message.internalDate));
@@ -75,7 +85,7 @@
     const time = dateText ? `${requestedYear} ${dateText[1]} ${dateText[2]}–${dateText[3]}. között` : 'a jelzett időpontban';
     const summary = [count ? `összesen ${count} fővel${childCount ? `, köztük ${childCount} gyermekkel` : ''}` : null,hotTub?'dézsás faházat keresnek':null,dog?'kutyát is hoznának':null].filter(Boolean).join('; ');
     const replyDraft = `Kedves ${first}!\n\nKöszönjük érdeklődését. Úgy értettük, hogy ${time} érkeznének${summary ? `; ${summary}` : ''}.\n\n${childCount ? 'Megírná a gyermek életkorát és ' : 'Megírná '}egy telefonszámot, amelyen elérhetjük? ${cabinFromGuestText(original).startsWith('?') ? 'Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?\n\n' : '\n\n'}${dog ? 'Kutyát térítés ellenében lehet hozni. ' : ''}A szabad kapacitást és az árat külön ellenőriznünk kell; ezekről egyelőre nem tudunk biztos tájékoztatást adni.\n\nÜdvözlettel:\nSárberki Horgásztó`;
-    return {source:{provider:'gmail',message_id:message.id,thread_id:message.threadId,subject:headers.subject || '',received_at:received.toISOString()},original_message:original,extracted,inferred,missing,human_review:humanReview,reply_draft:replyDraft};
+    return {source:{provider:'gmail',message_id:message.id,thread_id:message.threadId,subject:headers.subject || '',from:headers.from || '',from_email:emailAddress(headers.from || ''),to:headers.to || '',received_at:received.toISOString()},original_message:original,extracted,inferred,missing,human_review:humanReview,reply_draft:replyDraft};
   }
   async function readWithToken(token) {
     const headers = {Authorization:`Bearer ${token}`};
@@ -84,7 +94,7 @@
     let pageToken;
     do {
       const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
-      url.searchParams.set('q', TEST_QUERY);
+      url.searchParams.set('q', INBOX_QUERY);
       url.searchParams.set('maxResults', '100');
       if (pageToken) url.searchParams.set('pageToken', pageToken);
       const list = await fetch(url, {headers,cache:'no-store'});
@@ -99,16 +109,8 @@
       if (!response.ok) throw Error(`Gmail-olvasási hiba (${response.status}).`);
       return response.json();
     }));
-    const matching = messages.filter(message => {
-      const values = Object.fromEntries((message.payload?.headers || []).map(h => [h.name.toLowerCase(), h.value]));
-      const from = (values.from || '').match(/<([^<>]+)>\s*$/u)?.[1] || (values.from || '').trim();
-      return from.toLowerCase() === 'valkana6666@gmail.com'
-        && allowedSubject(values.subject || '')
-        && message.labelIds?.includes('INBOX')
-        && Number.isFinite(Number(message.internalDate))
-        && Number(message.internalDate) > 0;
-    });
-    if (!matching.length) throw Error('Nincs pontosan ellenőrzött beérkezett tesztlevél.');
+    const matching = messages.filter(looksLikeInquiry);
+    if (!matching.length) throw Error('Az elmúlt 30 nap beérkező levelei között nem találtunk egyértelmű szállás-/foglalási érdeklődést.');
     matching.sort((a, b) => Number(b.internalDate) - Number(a.internalDate) || b.id.localeCompare(a.id));
     return transform(matching[0]);
   }
@@ -123,7 +125,7 @@
         say('A levél beolvasása és feldolgozása…');
         const record = await readWithToken(result.access_token);
         displayGmailRecord(record);
-        say('A Gmail-levélből előállított rekord megjelent, kézi JSON-beillesztés nélkül.');
+        say('A legfrissebb felismert érdeklődés bekerült a kezelőfelületre; küldés vagy foglalásmódosítás nem történt.');
       } catch (error) { say(error.message); } finally { button.disabled = false; }
     },error_callback:error => { say(`A Google-belépés megszakadt: ${error.type || 'ismeretlen hiba'}`); button.disabled=false; }});
     client.requestAccessToken({prompt:'consent'});
