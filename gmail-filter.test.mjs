@@ -67,3 +67,11 @@ test('Gmail bridge recognizes multilingual hot tub dog availability and child-ag
   assert.match(source, /years\? old/u);
   assert.match(source, /jahre alt/u);
 });
+
+
+test('Gmail bridge has one canonical date parser', () => {
+  assert.match(source, /const normalizedDate = dateRangeFromText\(original\)/u);
+  assert.doesNotMatch(source, /const dateText = original\.match/u);
+  assert.doesNotMatch(source, /const inferredYear =/u);
+  assert.doesNotMatch(source, /const requestedYear =/u);
+});
