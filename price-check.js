@@ -36,10 +36,83 @@
     $('price_result').textContent = '';
     $('price_status').textContent = children ? 'Gyermekes foglalás adatai átvéve (felnőttek, gyermekek és gyermekkorok). Automatikus árbecslés nem indul; kézi/hiteles árlekérés szükséges.' : !explicit ? 'Faház: ? – emberi döntésre vár. Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?' : 'Ellenőrizd a kinyert adatokat. Az automatikus lekérés jelenleg csak felnőttekkel működik.';
   }
+  function huAskedTopics(message='',analysis=null){
+    const topics=analysis?.topics?.secondary_intents||[];
+    return {
+      price:/(?:mennyi|mennyibe|ár(?:a|ak|at)?|teljes\s+ár|díj)/iu.test(message),
+      availability:/(?:szabad|elérhető|foglalható|van[- ]?e\s+(?:hely|szabad)|kapacitás)/iu.test(message),
+      pet:topics.includes('pet_question')||/\b(?:kuty|háziállat|kisállat)\w*/iu.test(message),
+      hotTub:analysis?.topics?.requested_addons?.includes('hot_tub')||/dézs[áa]|dézsafürdő|jacuzzi/iu.test(message),
+      amenities:topics.includes('amenities_question'),
+      deposit:topics.includes('deposit_question')||/előleg/iu.test(message),
+      cancellation:topics.includes('cancellation_terms_question')||/lemondási|lemondani.*feltét/iu.test(message),
+      electricity:topics.includes('electricity_question'),
+      firewood:topics.includes('firewood_question'),
+      pier:topics.includes('pier_question'),
+      parking:topics.includes('parking_question'),
+      arrivalTime:topics.includes('arrival_time_question')
+    };
+  }
+  function focusedReply(message=''){
+    const analysis=typeof extract==='function'?extract(message,''):null;
+    if(!analysis||analysis.fields?.language?.value!=='HU') return '';
+    if(['cancellation_request','modification_request'].includes(analysis.intent)) return '';
+    const f=analysis.fields||{};
+    const v=Object.fromEntries(Object.entries(f).map(([k,x])=>[k,x?.value||'']));
+    const asked=huAskedTopics(message,analysis);
+    const lines=[`Kedves ${v.name||'Érdeklődő'}!`,'','Köszönjük érdeklődését a Sárberki Horgásztó iránt.'];
+
+    const bookingBits=[];
+    if(v.arrival&&v.departure) bookingBits.push(`${v.arrival} – ${v.departure}`);
+    if(v.nights) bookingBits.push(`${v.nights} éjszakára`);
+    if(v.guests) bookingBits.push(`${v.guests} fő részére`);
+    if(bookingBits.length) lines.push('',`A megadott foglalási adatok: ${bookingBits.join(', ')}.`);
+
+    const party=[];
+    if(v.adults) party.push(`${v.adults} felnőtt`);
+    if(v.children) party.push(`${v.children} gyermek${v.child_ages?` (${v.child_ages} éves)`:''}`);
+    if(party.length) lines.push(`A vendégek összetétele: ${party.join(', ')}.`);
+
+    const plan=typeof accommodationPlan==='function'?accommodationPlan(v):null;
+    if(plan?.specific&&v.unit) lines.push(`A kért háztípus: ${v.unit}.`);
+    else if(v.unit&&!/^(?:ház|faház|apartman|cabin)$/iu.test(v.unit)) lines.push(`A megadott szállástípus: ${v.unit}.`);
+    else if(!v.unit) lines.push('A megfelelő háztípus pontosításához kérjük, írja meg, melyik típust szeretné.');
+
+    if(asked.availability&&asked.price) lines.push('','A megadott időszakra ellenőrizzük a kért szállás szabad kapacitását és a teljes szállásárat. Pontos árat és elérhetőséget csak hiteles ellenőrzés után igazolunk vissza.');
+    else if(asked.availability) lines.push('','A megadott időszakra ellenőrizzük a kért szállás szabad kapacitását, és az ellenőrzés után visszaigazoljuk az elérhetőséget.');
+    else if(asked.price) lines.push('','A megadott adatok alapján ellenőrizzük a teljes szállásárat. Pontos árat csak hiteles ellenőrzés után írunk meg.');
+
+    if(asked.pet) lines.push('','A háziállatot is figyelembe vettük; háziállat térítés ellenében hozható. A pontos díjat csak akkor adjuk meg, ha arra külön rákérdeztek és hiteles díjadat áll rendelkezésre.');
+    if(asked.hotTub) lines.push('','A dézsafürdő iránti igényt is figyelembe vettük. A dézsa elérhetőségét külön ellenőrizzük, ezért azt csak az ellenőrzés után tudjuk visszaigazolni.');
+
+    if(asked.amenities) lines.push('','A felszereltséggel kapcsolatban a levélben feltett kérdésre külön, a kiválasztott háztípus biztos adatai alapján válaszolunk.');
+    if(asked.deposit) lines.push('','Az előlegre vonatkozó kérdést a foglalási feltételek alapján külön ellenőrizzük és pontosan megválaszoljuk.');
+    if(asked.cancellation) lines.push('','A lemondási feltételekre vonatkozó kérdést a foglalás létszáma és időpontja alapján külön megválaszoljuk.');
+    if(asked.electricity) lines.push('','Az áramfogyasztással kapcsolatos kérdést a mérőállásos elszámolási szabály alapján külön megválaszoljuk.');
+    if(asked.firewood) lines.push('','A tűzifával kapcsolatos kérdést külön megválaszoljuk; pontos díjat csak hitelesített adat alapján írunk.');
+    if(asked.pier) lines.push('','A stéghasználatot a kiválasztott háztípus alapján pontosítjuk.');
+    if(asked.parking) lines.push('','A parkolási lehetőséget a megadott autószám és háztípus alapján pontosítjuk.');
+    if(asked.arrivalTime) lines.push('','A megadott érkezési időpontot is figyelembe vettük, és visszaigazoljuk, hogy az adott érkezési idő megfelelő-e.');
+
+    const missing=[];
+    if(!v.arrival||!v.departure) missing.push('pontos érkezési és távozási dátum');
+    if(!v.guests) missing.push('vendéglétszám');
+    if(v.children&&Number(v.children)>0&&analysis.warning_codes?.includes('missing_child_ages')) missing.push('gyermek(ek) életkora');
+    if(missing.length) lines.push('',`A pontos válaszhoz még szükségünk van erre: ${missing.join(', ')}.`);
+
+    lines.push('','','Üdvözlettel:','Sárberki Horgásztó');
+    return lines.join('\n');
+  }
+  function applyFocusedReply(message=''){
+    const reply=focusedReply(message);
+    const box=$('draft');
+    if(reply&&box) box.value=reply;
+  }
   async function autoPrepareAndQuoteFromGmail() {
     const message=$('gmail_original')?.textContent||'';
     if(!message) return;
     prepare(message);
+    applyFocusedReply(message);
     const analysis=typeof extract==='function' ? extract(message,'') : null;
     const childCount=Number(analysis?.fields?.children?.value||0);
     const hasChildWord=/\b(?:gyerek|gyermek|gyerekek|gyermekek|children|child|kind(?:er)?|otroka)\b/iu.test(message);
@@ -79,8 +152,20 @@
   };
   document.addEventListener('sarberki:analysis-ready',(event)=>{
     const message=event?.detail?.message||$('message')?.value||'';
-    if(message) prepare(message);
+    if(message){
+      prepare(message);
+      setTimeout(()=>applyFocusedReply(message),0);
+    }
   });
   document.addEventListener('sarberki:record-loaded',()=>{autoPrepareAndQuoteFromGmail().catch(e=>{$('price_status').textContent='Automatikus adatátadás nem sikerült: '+e.message;});});
   document.addEventListener('sarberki:gmail-normalized',()=>{autoPrepareAndQuoteFromGmail().catch(e=>{$('price_status').textContent='Automatikus árlekérés nem igazolható: '+e.message;});});
+  const refresh=$('refresh');
+  if(refresh){
+    const previous=refresh.onclick;
+    refresh.onclick=(event)=>{
+      if(typeof previous==='function') previous.call(refresh,event);
+      const message=$('message')?.value||$('gmail_original')?.textContent||'';
+      if(message) applyFocusedReply(message);
+    };
+  }
 })();
