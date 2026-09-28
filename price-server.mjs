@@ -6,12 +6,12 @@ import {fetchQuote,validateQuote} from './price-quote.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PRICE_PORT || 8765);
-const files = {'/':'index.html','/index.html':'index.html','/gmail-readonly.js':'gmail-readonly.js','/price-check.js':'price-check.js','/fishing-rules.mjs':'fishing-rules.mjs'};
+const files = {'/':'index.html','/index.html':'index.html','/gmail-readonly.js':'gmail-readonly.js','/gmail-normalize.mjs':'gmail-normalize.mjs','/price-check.js':'price-check.js','/fishing-rules.mjs':'fishing-rules.mjs'};
 http.createServer(async (req,res) => {
   const path = new URL(req.url,'http://localhost').pathname;
   if (req.method === 'GET' && files[path]) {
     const data = await readFile(join(root,files[path]));
-    res.writeHead(200,{'content-type':path.endsWith('.js')?'text/javascript; charset=utf-8':'text/html; charset=utf-8','cache-control':'no-store'});res.end(data);return;
+    res.writeHead(200,{'content-type':/\.m?js$/u.test(path)?'text/javascript; charset=utf-8':'text/html; charset=utf-8','cache-control':'no-store'});res.end(data);return;
   }
   if (req.method !== 'POST' || path !== '/api/price-quote') {res.writeHead(404);res.end();return;}
   try {
