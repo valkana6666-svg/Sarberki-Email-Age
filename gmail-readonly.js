@@ -78,7 +78,7 @@
     const closings={hu:'Üdvözlettel:',de:'Mit freundlichen Grüßen',en:'Kind regards,',si:'Lep pozdrav,'};
     const lang = language==='unknown' ? 'hu' : language;
     const replyDraft = `${greetings[lang]}\n\n${intros[lang]}\n\n${questions.join(' ')}${questions.length?'\n\n':''}${checks[lang]}\n\n${closings[lang]}\nSárberki Horgásztó`;
-    return {source:{provider:'gmail',message_id:message.id,thread_id:message.threadId,subject:headers.subject || '',from:headers.from || '',from_email:emailAddress(headers.from || ''),to:headers.to || '',received_at:received.toISOString()},original_message:original,extracted,inferred,missing,human_review:humanReview,reply_draft:replyDraft};
+    return {source:{provider:'gmail',message_id:message.id,thread_id:message.threadId,subject:headers.subject || '',from:headers.from || '',from_email:emailAddress(headers.from || ''),to:headers.to || '',received_at:received.toISOString()},original_message:original,normalized:{language,cabin:cabinFromGuestText(original),dates:normalizedDate,guests:count,children:childCount,hot_tub:hotTub,dog},extracted,inferred,missing,human_review:humanReview,reply_draft:replyDraft};
   }
   async function readWithToken(token) {
     const headers = {Authorization:`Bearer ${token}`};
