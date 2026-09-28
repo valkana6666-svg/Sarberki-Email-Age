@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {validateQuote,parseHuf,fetchQuote} from './price-quote.mjs';
-import netlifyQuote from './netlify/functions/price-quote.mjs';
+import netlifyQuote,{handlePriceQuote} from './netlify/functions/price-quote.mjs';
 
 test('only exact future dates and explicit room and adult count are accepted', () => {
   assert.deepEqual(validateQuote({arrival:'2027-10-01',departure:'2027-10-02',cabin:'deluxe',adults:5}),{arrival:'2027-10-01',departure:'2027-10-02',cabin:'deluxe',adults:5,children:[]});
@@ -31,7 +31,7 @@ test('deployed quote fails closed with JSON when live source fails', async () =>
     method:'POST',headers:{'content-type':'application/json'},
     body:JSON.stringify({arrival:'2027-10-01',departure:'2027-10-02',cabin:'vip',adults:2,children:[]})
   });
-  const response = await netlifyQuote(request,async()=>{throw Error('Previo elérhetetlen');});
+  const response = await handlePriceQuote(request,async()=>{throw Error('Previo elérhetetlen');});
   assert.equal(response.status,503);
   assert.match(response.headers.get('content-type'),/application\/json/u);
   const body = await response.json();
@@ -41,10 +41,17 @@ test('deployed quote fails closed with JSON when live source fails', async () =>
 
 test('Netlify endpoint returns only checked adapter data and omits price when unavailable',async()=>{
  const make=()=>new Request('https://example.test/api/price-quote',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({arrival:'2027-10-01',departure:'2027-10-02',cabin:'deluxe',adults:2,children:[]})});
- const good=await netlifyQuote(make(),async()=>({status:'review_required',total:122200,source:'Sárberki hivatalos foglalási felület'}));
+ const good=await handlePriceQuote(make(),async()=>({status:'review_required',total:122200,source:'Sárberki hivatalos foglalási felület'}));
  assert.equal(good.status,200);assert.equal((await good.json()).total,122200);
- const empty=await netlifyQuote(make(),async()=>({status:'unavailable',availability:'unavailable'}));
+ const empty=await handlePriceQuote(make(),async()=>({status:'unavailable',availability:'unavailable'}));
  assert.equal(empty.status,200);assert.equal((await empty.json()).total,undefined);
- const invalid=await netlifyQuote(make(),async()=>({status:'review_required',total:0}));
+ const invalid=await handlePriceQuote(make(),async()=>({status:'review_required',total:0}));
  assert.equal(invalid.status,503);
+});
+
+test('Netlify runtime context is not mistaken for the price adapter',async()=>{
+ const request=new Request('https://example.test/api/price-quote',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});
+ const response=await netlifyQuote(request,{site:{id:'netlify-context'}});
+ assert.equal(response.status,503);
+ assert.doesNotMatch((await response.json()).error,/source is not a function/u);
 });
