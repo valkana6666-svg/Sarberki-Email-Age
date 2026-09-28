@@ -22,3 +22,12 @@ test('guest-facing draft stays relevant and normalized',()=>{
  assert.doesNotMatch(source,/egy konkrét háztípus, több egység említése nélkül/u);
  assert.match(source,/sarberki:analysis-ready/u);
 });
+
+
+test('guest reply contains useful booking summary and explicit pending checks',()=>{
+ assert.match(source,/A kért háztípus:/u);
+ assert.match(source,/A vendégek összetétele:/u);
+ assert.match(source,/a teljes szállásárat/u);
+ assert.match(source,/Pontos árat és elérhetőséget csak hiteles ellenőrzés után írunk meg/u);
+ assert.match(source,/A dézsafürdő elérhetőségét is ellenőrizzük/u);
+});
