@@ -6,13 +6,18 @@ test('pricing flow keeps missing cabin blocked',()=>{assert.match(source,/found\
 
 test('pricing consumes normalized Gmail ISO dates and blocks inferred year auto quote',()=>{assert.match(source,/gmailNormalizedDate/u);assert.match(source,/item\.value\.split\(' – '\)/u);assert.match(source,/gmailDate\?\.arrival/u);assert.match(source,/gmailDate\?\.inferred/u);assert.match(source,/emberi jóváhagyás nélkül automatikus árlekérés nem indul/u);});
 
-test('price checker transfers child counts and ages but keeps child-price safety block',()=>{
+test('price checker transfers child counts and ages and requires exact ages for live quote',()=>{
  assert.match(source,/price_children/u);
  assert.match(source,/price_child_ages/u);
  assert.match(source,/fields\.adults\?\.value/u);
  assert.match(source,/fields\.child_ages\?\.value/u);
- assert.match(source,/Gyermekes érdeklődés: életkor és hiteles gyermekár nélkül kézi ellenőrzés szükséges/u);
- assert.match(source,/kézzel ellenőrzött teljes ár/u);
+ assert.match(source,/children:ages/u);
+ assert.match(source,/result\.children\)!==JSON\.stringify\(input\.children\)/u);
+ const fn=source.slice(source.indexOf('  function childAgesForQuote('),source.indexOf("  $('check_price').onclick"));
+ const context={};vm.createContext(context);vm.runInContext(fn+';globalThis.parse=childAgesForQuote;',context);
+ assert.deepEqual(Array.from(context.parse(2,'7, 11')),[7,11]);
+ for(const [count,ages] of [[2,'7'],[2,'7, 18'],[2,'7, nope'],[2,'7, 11, 12'],[1,''],[-1,'7']]) assert.equal(context.parse(count,ages),null);
+ assert.deepEqual(Array.from(context.parse(0,'')),[]);
 });
 
 test('price checker auto-fills after manual analysis and loaded records',()=>{
