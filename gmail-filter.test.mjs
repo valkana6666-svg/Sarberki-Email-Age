@@ -5,31 +5,28 @@ import {readFile} from 'node:fs/promises';
 
 const source = fs.readFileSync(new URL('./gmail-readonly.js', import.meta.url), 'utf8');
 
-function inquiryRegexFromSource() {
-  const m = source.match(/const INQUIRY_HINT = \/(.+)\/iu;/u);
-  assert.ok(m, 'INQUIRY_HINT regex must exist in gmail-readonly.js');
-  return new RegExp(m[1], 'iu');
+function subjectsFromSource() {
+  const match = source.match(/const ALLOWED_SUBJECTS = new Set\(\[([^\]]+)\]\);/u);
+  assert.ok(match, 'approved subject allowlist must exist');
+  return [...match[1].matchAll(/'([^']+)'/gu)].map(x => x[1]);
 }
 
-test('live Gmail reader has no old sender/subject allowlist restriction', () => {
-  assert.equal(source.includes('ALLOWED_SUBJECTS'), false);
-  assert.equal(source.includes("from.toLowerCase() === 'valkana6666@gmail.com'"), false);
+test('Gmail reader requires the three approved inquiry subjects', () => {
+  assert.deepEqual(subjectsFromSource(), [
+    'érdeklődés a szállásról',
+    'érdeklődés a szallasrol',
+    'érdeklődés szállásról'
+  ]);
+  assert.match(source, /ALLOWED_SUBJECTS\.has\(subject\)/u);
   assert.match(source, /newer_than:30d/u);
   assert.match(source, /gmail\.readonly/u);
   assert.equal(source.includes('gmail.send'), false);
   assert.equal(source.includes('gmail.modify'), false);
 });
 
-test('representative Sárberki inquiry is recognized', () => {
-  const hint = inquiryRegexFromSource();
-  const subject = 'Sárberki élő teszt – 5 fő, Deluxe, október';
-  const body = '2026. október 16-tól október 19-ig szeretnénk szállást foglalni 5 fő részére. Deluxe faház érdekelne, dézsafürdővel.';
-  assert.equal(hint.test(subject + '\n' + body), true);
-});
-
-test('clearly unrelated generic mail is not classified from content hints alone', () => {
-  const hint = inquiryRegexFromSource();
-  assert.equal(hint.test('Számla\nKöszönjük a befizetést.'), false);
+test('broad keyword matching cannot replace the approved subject check', () => {
+  assert.equal(source.includes('INQUIRY_HINT'), false);
+  assert.equal(subjectsFromSource().includes('Számla'), false);
 });
 
 test('Gmail bridge imports multilingual normalization helpers', () => {
