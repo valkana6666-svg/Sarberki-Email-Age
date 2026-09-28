@@ -65,3 +65,13 @@ test('a search redirect to any booking submission route is rejected without foll
  await assert.rejects(fetchPublicBookingQuote(base,request),/nem a keresési eredményre/);
  assert.equal(count,2);
 });
+test('redirects containing an unexpected guest or tracking parameter are rejected',async()=>{
+ let count=0;
+ const request=async(url)=>{
+  count++;
+  if(count===1)return {ok:true,url,text:async()=>first};
+  return {status:302,headers:new Headers({location:'https://booking.previo.cz/index/step-2/?hotId=753011&guestEmail=test%40example.invalid'})};
+ };
+ await assert.rejects(fetchPublicBookingQuote(base,request),/Nem engedélyezett Previo kérés/);
+ assert.equal(count,2);
+});
