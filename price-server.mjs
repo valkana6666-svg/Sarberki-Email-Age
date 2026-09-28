@@ -2,7 +2,8 @@ import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {dirname,join} from 'node:path';
-import {fetchQuote,validateQuote} from './price-quote.mjs';
+import {validateQuote} from './price-quote.mjs';
+import {fetchPublicBookingQuote} from './price-source/sarberki-public-booking.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PRICE_PORT || 8765);
@@ -18,7 +19,8 @@ http.createServer(async (req,res) => {
     const chunks=[];let size=0;
     for await (const chunk of req) {size+=chunk.length;if(size>8192)throw Error('Túl nagy kérés.');chunks.push(chunk);}
     const input=validateQuote(JSON.parse(Buffer.concat(chunks).toString('utf8')));
-    const result=await fetchQuote(input);
+    if(process.env.SARBERKI_PREVIO_NO_HOLD_CONFIRMED!=='true') throw Error('HITELES ÁRLEKÉRÉS SZÜKSÉGES · A Previo dátumkeresésének foglalásmentessége nincs igazolva.');
+    const result=await fetchPublicBookingQuote(input);
     res.writeHead(200,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(result));
   } catch(error) {
     res.writeHead(422,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify({status:'unverified',error:error.message}));
