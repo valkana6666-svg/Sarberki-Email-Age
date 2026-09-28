@@ -9,11 +9,23 @@
     if (/\b(?:osztott|split|geteilte[rs]?|deljen[ai]?)\b/iu.test(message)) found.push('split');
     return found.length===1 ? found[0] : '';
   }
+  function gmailNormalizedDate() {
+    try {
+      const raw=document.getElementById('gmail_json')?.value;
+      if(!raw) return null;
+      const record=JSON.parse(raw);
+      const item=(record.extracted||[]).find(x=>x && typeof x==='object' && /^Időszak/u.test(x.label||'') && /^20\d{2}-\d{2}-\d{2} – 20\d{2}-\d{2}-\d{2}$/u.test(x.value||''));
+      if(!item) return null;
+      const [arrival,departure]=item.value.split(' – ');
+      return {arrival,departure,inferred:/következtetett/u.test(item.label)};
+    } catch { return null; }
+  }
   function prepare(message) {
     const analysis = typeof extract === 'function' ? extract(message,'') : null;
     const fields = analysis?.fields || {};
-    $('price_arrival').value = fields.arrival?.value || '';
-    $('price_departure').value = fields.departure?.value || '';
+    const gmailDate=gmailNormalizedDate();
+    $('price_arrival').value = fields.arrival?.value || gmailDate?.arrival || '';
+    $('price_departure').value = fields.departure?.value || gmailDate?.departure || '';
     const children = Number(fields.children?.value || 0);
     $('price_adults').value = children ? '' : (fields.adults?.value || fields.guests?.value || '');
     const unit=(fields.unit?.value || '').toLowerCase();
@@ -29,7 +41,12 @@
     const analysis=typeof extract==='function' ? extract(message,'') : null;
     const childCount=Number(analysis?.fields?.children?.value||0);
     const hasChildWord=/\b(?:gyerek|gyermek|gyerekek|gyermekek|children|child|kind(?:er)?|otroka)\b/iu.test(message);
+    const gmailDate=gmailNormalizedDate();
     const complete=Boolean($('price_arrival').value&&$('price_departure').value&&$('price_cabin').value&&Number($('price_adults').value)>0);
+    if(gmailDate?.inferred){
+      $('price_status').textContent='Gmailből előkészítve: az év következtetett, ezért emberi jóváhagyás nélkül automatikus árlekérés nem indul.';
+      return;
+    }
     if(childCount>0||hasChildWord){
       $('price_status').textContent='Gmailből előkészítve: gyermekes érdeklődés, ezért automatikus árlekérés nem indult.';
       return;
