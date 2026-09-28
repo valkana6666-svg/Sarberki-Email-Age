@@ -13,6 +13,8 @@ export default async () => Response.json({
   priceQuoteMode: 'manual-review-only',
   serverlessChromium: false,
   livePriceVerified: false,
+  deployedCommit: process.env.COMMIT_REF || null,
+  liveQuoteHost: 'leafy-chimera-2403e5.netlify.app',
   autoSend: false,
   autoBookingModification: false
 }, {headers:{'cache-control':'no-store'}});

@@ -8,7 +8,6 @@ const LIVE_TEST_HOSTS=new Set([
 ]);
 
 export function isLivePrevioEnabled(request,env=process.env) {
-  if (env.SARBERKI_PREVIO_NO_HOLD_CONFIRMED==='true') return true;
   try {
     return LIVE_TEST_HOSTS.has(new URL(request.url).hostname);
   } catch {

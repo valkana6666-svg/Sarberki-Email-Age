@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {handlePriceQuote,isLivePrevioEnabled} from './price-quote.mjs';
+import {handlePriceQuote,isLivePrevioEnabled} from '../netlify/functions/price-quote.mjs';
 
 test('live Previo is enabled on the isolated test host',()=>{
   assert.equal(isLivePrevioEnabled(new Request('https://leafy-chimera-2403e5.netlify.app/api/price-quote'),{}),true);
@@ -10,8 +10,10 @@ test('live Previo stays disabled on production host by default',()=>{
   assert.equal(isLivePrevioEnabled(new Request('https://moonlit-torrone-88b39d.netlify.app/api/price-quote'),{}),false);
 });
 
-test('explicit confirmed env flag can enable another host',()=>{
-  assert.equal(isLivePrevioEnabled(new Request('https://example.com/api/price-quote'),{SARBERKI_PREVIO_NO_HOLD_CONFIRMED:'true'}),true);
+test('env flag cannot enable another host or production',()=>{
+  const env={SARBERKI_PREVIO_NO_HOLD_CONFIRMED:'true'};
+  assert.equal(isLivePrevioEnabled(new Request('https://example.com/api/price-quote'),env),false);
+  assert.equal(isLivePrevioEnabled(new Request('https://moonlit-torrone-88b39d.netlify.app/api/price-quote'),env),false);
 });
 
 test('disabled handler does not call the source',async()=>{
