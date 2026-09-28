@@ -1,5 +1,21 @@
 # Sárberki nyilvános árforrás – technikai állapot (2026-09-28)
 
+## Jelenlegi kapu és bizonyítási határ
+
+- **Nincs hivatalos Previo API-hozzáférésünk.** A vizsgált végpontok a nyilvános Reservation+ foglaló dokumentálatlan belső kérései, nem az előfizetéses Previo XML/REST API. A tesztági kód `SARBERKI_PREVIO_NO_HOLD_CONFIRMED=true` nélkül **a Previo meghívása előtt** összeg nélkül áll meg. A Netlify környezeti változóinak és az új deploy futásának közvetlen ellenőrzése még nincs meg; a kapcsolót nem szabad bekapcsolni.
+- A felhasználó a korábbi próbák után manuálisan ellenőrizte a PMS-t: **nem volt látható új foglalás**. Az átmeneti, esetleg lejárt kapacitászárolás hiánya **nem bizonyított**. További élő Previo-kérés nem indult a biztonsági audit során.
+- A kód- és Git-történetben az adaptert a `dcce2c34` commit vezette be, a `de4b6c5e`/`c8a19405` javította a Netlify-függvény hívását, az `ad87cd4a`–`2ec3cff4` sorozat zárta le alapértelmezetten a kaput és tiltotta le a régi böngészős kattintást. A későbbi validáció személyes és ismeretlen mezőket, útvonalakat és átirányításokat tilt. A repóban nincs foglalást véglegesítő endpoint hívás.
+
+| Kérés/lépés | Kódból és korábbi megfigyelésből igazolt cél | Foglalási mellékhatás státusza |
+|---|---|---|
+| `GET /?hotId=753011...` | Anonim `PHPSESSID` és első dátuműrlap | Nincs bizonyított foglalás; szerveroldali session-nyom lehet |
+| `POST /` törzs `step=1`, `arrival`, `departure` | Dátumkeresés; 302/303 után `GET /index/step-2/`, válaszban `PageParams` | **Átmeneti hold/lock hiánya nem igazolt** |
+| `POST /index/get-object-kind-occupancy/` | Kiválasztott `obkId` szabad egységei, JSON-válaszba ágyazott HTML | **Átmeneti mellékhatás hiánya nem igazolt** |
+| `POST /index/get-occupancy-price/` | Vendégkategóriákra számított `totalPrice`, `totalTaxes`, `unknownPrice` JSON | **Átmeneti mellékhatás hiánya nem igazolt** |
+| UI „Foglalás” választó, későbbi lépések | A korábbi böngészős útvonal ilyen feliratú választót nyitott; most letiltott. Az adapter nem küld ilyen műveletet, vendégadatot, lépés 3–5 kérést vagy megerősítést. | A tényleges mentő endpoint neve és az esetleges előzetes zárolás kezdete nyilvános dokumentációból nem azonosítható |
+
+A Previo nyilvános leírása különíti el a dátum/szoba választását a későbbi lépésektől, és a teljes foglalási folyamat befejezése után említi a visszaigazolást és a naptárba mentést. A leírás **nem ad endpointonkénti mellékhatás-garanciát**. Források: https://help.previo.app/en/doc/booking-of-services/ és https://help.previo.app/en/doc/basic-settings-new-r/ . A hivatalos API hozzáférése külön szolgáltatás: https://help.previo.app/en/doc/api-access/ . A célzott kérdések a `PREVIO_SUPPORT_QUESTIONS.md` fájlban vannak.
+
 ## Foglalásmentességi biztonsági audit – 2026-09-28
 
 **NOT YET VERIFIED (Previo/PMS oldali hatás):** A nyilvános belső végpontokhoz nincs olyan Previo-dokumentáció vagy PMS naplóhozzáférés, amely kizárná az első dátumos `POST /?step=1&arrival=...&departure=...` művelethez kapcsolódó átmeneti foglalási vagy kapacitászároló rekordot. A válasz a második, keresési lépés HTML-je, benne dátummal, háztípusokkal és vendégkategóriákkal; az eddig megfigyelt válaszban nem volt foglalási azonosító vagy véglegesítési visszaigazolás. Ez a kliensoldali megfigyelés **nem bizonyítja** a szerveroldali mellékhatások hiányát.
