@@ -1,4 +1,3 @@
-import { chromium } from 'playwright';
 
 const BOOKING_URL = 'https://sarberkito.hu/foglalas/';
 const TYPES = { deluxe: 'DELUXE faház', family: 'Családi faház', vip: 'VIP apartman', small: 'Különálló 2 fős faház' };
@@ -17,73 +16,13 @@ export function validateQuote(input) {
   return {arrival,departure,cabin,adults,children};
 }
 
-async function chooseDate(frame, field, iso) {
-  const [year, month, day] = iso.split('-').map(Number);
-  await frame.locator(field).click();
-  const calendar = frame.locator('.ui-datepicker');
-  for (let i = 0; i < 25; i++) {
-    const months = await calendar.locator('.ui-datepicker-group').evaluateAll(groups => groups.map(g => ({year: Number(g.querySelector('.ui-datepicker-year')?.textContent), month: [...'január február március április május június július augusztus szeptember október november december'.split(' ')].indexOf(g.querySelector('.ui-datepicker-month')?.textContent?.toLowerCase()) + 1})).filter(m => m.year && m.month));
-    if (months.some(m => m.year === year && m.month === month)) {
-      const monthName = 'január február március április május június július augusztus szeptember október november december'.split(' ')[month-1];
-      const group = calendar.locator('.ui-datepicker-group').filter({hasText: new RegExp(`${year}\\s+${monthName}`, 'i')});
-      // The month headings identify one of the two visible calendar tables.
-      await group.locator(`td[data-year="${year}"][data-month="${month-1}"] a.ui-state-default`, {}).getByText(String(day), {exact:true}).click();
-      return;
-    }
-    await calendar.locator('.ui-datepicker-next').click();
-  }
-  throw Error('A kért dátum nem található a foglalási naptárban.');
-}
-
-export async function fetchQuote(request, launch = () => chromium.launch({headless:true})) {
-  const input = validateQuote(request);
-  if (input.children.length) throw Error('A gyermekkor szerinti árazás még nincs automatizálva; kézi ellenőrzés szükséges.');
-  console.info('price-quote: browser launch');
-  const browser = await launch();
-  console.info('price-quote: browser ready');
-  try {
-    const page = await browser.newPage({locale:'hu-HU'});
-    page.setDefaultTimeout(12000);
-    await page.goto(BOOKING_URL, {waitUntil:'domcontentloaded',timeout:30000});
-    console.info('price-quote: booking page loaded');
-    const frame = page.frameLocator('iframe[src*="booking.previo.cz"]');
-    try {
-      await frame.locator('#book-term-from .term').waitFor({state:'visible',timeout:12000});
-    } catch (error) {
-      console.info('price-quote: frame URLs',page.frames().map(f => {
-        try { const url = new URL(f.url()); return url.origin + url.pathname; }
-        catch { return 'unknown'; }
-      }));
-      console.info('price-quote: iframe count',await page.locator('iframe').count());
-      throw error;
-    }
-    console.info('price-quote: booking frame ready');
-    await chooseDate(frame,'#book-term-from .term',input.arrival);
-    console.info('price-quote: arrival selected');
-    await chooseDate(frame,'#book-term-to .term',input.departure);
-    console.info('price-quote: departure selected');
-    await frame.getByRole('button',{name:/Folytatás/}).click();
-    console.info('price-quote: room step');
-    const room = frame.getByRole('link',{name: TYPES[input.cabin],exact:true});
-    await room.waitFor();
-    console.info('price-quote: room found');
-    const card = room.locator('xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " room ")][1]');
-    await card.getByRole('link',{name:/Árak megjelenítése/}).click();
-    console.info('price-quote: rates opened');
-    const rate = card.locator(`select[data-num-of-persons="${input.adults}"]`);
-    if (await rate.count() !== 1) throw Error('A pontos létszámhoz tartozó ár nem található egyértelműen.');
-    await rate.locator('xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " options ")][1]').getByRole('link',{name:'Foglalás',exact:true}).click();
-    console.info('price-quote: summary opened');
-    const panel = frame.locator('.res-occupancy:visible');
-    await panel.locator('.finalPrice').waitFor();
-    console.info('price-quote: final price visible');
-    const actualAdults = Number(await panel.locator('input.guestCategories[data-default-category="1"]').first().inputValue());
-    if (actualAdults !== input.adults || await panel.locator('.rooms > .room').count() !== 1) throw Error('Az összesítő létszáma eltér a kért adatoktól.');
-    const amount = parseHuf(await panel.locator('.finalPrice').innerText());
-    const tourismTax = parseHuf(await panel.locator('.taxPrice').innerText());
-    if (!amount || amount < tourismTax) throw Error('Érvénytelen árösszesítő.');
-    return {status:'review_required',source:BOOKING_URL,checkedAt:new Date().toISOString(),...input,accommodation:amount-tourismTax,tourismTax,total:amount,currency:'HUF',availability:'shown_for_selected_dates',seasonalSurchargeIncluded:'unverified',returningDiscountApplied:returningGuestReview.applied,returningGuestStatus:returningGuestReview.status,bookingCompleted:false};
-  } finally { await browser.close(); }
+// Legacy browser path is deliberately disabled: it clicked a booking-labelled UI action.
+// The only live quote route is the guarded public-booking adapter, gated until
+// Previo/PMS confirms that anonymous date search creates no reservation or hold.
+export async function fetchQuote(request) {
+  const input=validateQuote(request);
+  if(input.children.length) throw Error('A gyermekkor szerinti régi böngészős árlekérés le van tiltva.');
+  throw Error('A régi böngészős árlekérés le van tiltva; csak igazoltan foglalásmentes forrás engedélyezhető.');
 }
 
 export function parseHuf(text) {
