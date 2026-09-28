@@ -1,57 +1,52 @@
-# Sárberki érdeklődéskezelő – demó
+# Sárberki érdeklődéskezelő – tesztág
 
-## Kísérleti árlekérő a tesztágon
+A `gmail-test-subject-allowlist` ág külön Netlify tesztprojektje:
+https://leafy-chimera-2403e5.netlify.app/ — felületi verzió: v0.3.8 TEST.
+A `main` és a külön éles Netlify projekt nem része ennek a tesztnek.
 
-A `price-check.js` árlekérő felület az érdeklődésből előkészíti a dátumot,
-háztípust és felnőtt létszámot. A külön futtatott `price-server.mjs` a
-`price-quote.mjs` böngészős adapterrel a foglalási modul végösszegét olvassa.
-Az eredmény csak kezelői ellenőrzésre szolgál; nem kerül a vendégválaszba.
-Gyermekár, több ház, hiányzó típus vagy bizonytalan dátum esetén kézi ellenőrzés
-szükséges. A szerver csak a helyi 127.0.0.1 címen figyel.
+## Gmail, csak olvasás
 
-Helyi indítás: `npm install`, `npx playwright install chromium`,
-`npm run price-server`; ezután `http://127.0.0.1:8765`.
-Az élő Netlify tesztoldal statikus telepítése még nem futtatja ezt a szervert,
-ezért azon automatikus árlekérés jelenleg nincs. A foglalási felület változásai
-miatt az adaptert élő teszttel kell igazolni minden telepítés előtt.
+A böngészős OAuth kizárólag `gmail.readonly` scope-ot kér. A fiók a
+Google-ablakban választott `users/me` fiók; a tesztkapuhoz kijelölt fiók
+`sarberkiprojecttest@gmail.com`. A query:
+`in:inbox newer_than:30d -category:promotions -category:social`.
+A queryben nincs tárgyfeltétel. A beolvasott teljes levelek közül a helyi
+`gmail-subject.mjs` csak az alábbi pontos tárgyakat engedi át
+(kis-/nagybetű és szélső szóköz eltérés megengedett):
 
-Ez a tároló a Sárberki Horgásztó e-mailes érdeklődéskezelőjének helyi, szabályalapú prototípusát tartalmazza. A Netlify a `main` ág gyökerében lévő `index.html` fájlt teszi közzé.
+- Érdeklődés a szállásról
+- Érdeklődés a szallasrol
+- Érdeklődés szállásról
 
-## Jelenlegi működés
+A találatok közül a legújabb `internalDate` alapján készül a kezelői rekord.
+A rekordban eredeti szöveg, forrás, normalizált mezők, bizonytalanságok,
+hiányok és szerkeszthető választervezet jelenik meg. A kézi JSON-betöltés
+opcionális tartalék út. A válasz emberi ellenőrzést igényel; automatikus
+e-mail-küldés és foglalásmódosítás nincs. Az aktuális kiadás valós Gmail
+OAuth → rekord → felület végigfutása még nincs újra élőben igazolva.
 
-- A kezelő kézzel illeszt be egy vendégüzenetet; a böngésző felismerhető adatokat, hiányokat és választervezetet jelenít meg.
-- A jóváhagyás belső jelölés. A program nem küld e-mailt, nem olvas Gmailt vagy Previót, nem foglal szállást és nem ellenőriz valós szabad kapacitást.
-- Az exportált TXT/JSON fájlok vendégadatot tartalmazhatnak; ezeket csak a megfelelő kezelői környezetben használjuk.
-- A megjelenő árhelyőrző vagy ellenőrizetlen üzleti adat nem vendégnek szánt ajánlat. Minden válaszhoz emberi ellenőrzés szükséges.
+## Ár és kapacitás
 
-## Közzététel és ellenőrzés
+A nyilvános foglalási oldal Previo-keretet használ. A szerveroldali
+Chromium-próbán a `sarberkito.hu/foglalas/` Cloudflare-ellenőrző keretet
+szolgáltatott, a Previo iframe nem jelent meg. Emiatt a Netlify
+`/api/price-quote` validált input után 503-as JSON
+`status: unverified` választ ad. A felület kézi ellenőrzést kér,
+nem jelenít meg becsült összeget, és a vendégtervezetbe nem kerül ár.
+Ez az útvonal nem igazol szabad kapacitást, dátum-, létszám-, háztípus-
+vagy egységszintű élő árat. A `price-quote.mjs` kísérleti böngészős
+adaptere megmaradt helyi fejlesztésre, de a Netlify-funkció nem futtatja.
+Gyermekár és több egység automatikus árazása nincs kész.
 
-1. A tényleges weboldalt az `index.html` módosítása és a `main` ágra végzett commit frissíti.
-2. A Netlify telepítési állapotát ellenőrizni kell; a sikeres build önmagában nem igazolja az üzleti helyességet.
-3. A mintalevéllel ellenőrizzük a betöltést, feldolgozást, hiányjelzéseket és a vendégnek nem küldött választervezetet.
-4. Éles vendégadat és automatikus küldés csak külön adatkezelési, jogosultsági, PMS- és üzleti szabályellenőrzés után vezethető be.
+## Ellenőrzés
 
-## Következő fejlesztési lépések
+`npm install && npm test` fut a GitHub Actions tesztági workflow-ban.
+A tesztek a tárgyszűrő tényleges elfogadó/elutasító eseteit, a dátum
+és háztípus normalizálását, a fő árinput-korlátokat és a 503-as,
+nem igazolt ár JSON-választ is ellenőrzik. A CI sikere nem bizonyít
+valós Gmail-beolvasást vagy Previo-árat.
 
-1. Válasszuk szét a felületet, a szabályokat és a teszteket; legyen reprodukálható tesztkészlet magyar, német és szlovén példákkal.
-2. Szüntessük meg a választervezetben az ellenőrizetlen árat és kapacitást sugalló mondatokat; a hiányzó adatok blokkolják a vendégnek használható ajánlatot.
-3. Készítsünk PMS-független, 23 egységes adattörzset ellenőrzött Previo-azonosítókkal és egy csak olvasó integrációt, ha az API-hozzáférés rendelkezésre áll.
-4. Ezután következhet a bejövő levelek csak olvasó feldolgozása, a kezelői jóváhagyás és a biztonságos eseménynapló.
-
-**Állapot:** demonstráció, emberi jóváhagyás szükséges. A telefon Fájlok alkalmazásába való mentés a megnyitott fájl letöltésével / megosztásával végezhető el; ez a tároló önmagában nem ír a telefon helyi tárhelyére.
-
-
-## Élő Gmail → tesztprogram ellenőrzési kapu (2026-09-28)
-
-A GitHub/CI oldali integráció zöld. A következő release-kapu kizárólag böngészőből igazolható a teszt Netlify oldalon:
-
-1. /api/health válasz: v0.3.8-test, readonly Gmail, unifiedPipeline=true.
-2. gmail-normalize.mjs és gmail-readonly.js a teszt deployban elérhető.
-3. sarberkiprojecttest@gmail.com OAuth belépés gmail.readonly scope-pal.
-4. Valódi bejövő érdeklődés beolvasása és a normalized rekord megjelenítése.
-5. HU/DE/EN/SI: dátum, létszám, gyermek, explicit háztípus és külön igények ellenőrzése.
-6. Következtetett évnél automatikus árlekérés blokkolva marad.
-7. Gyermekes érdeklődésnél automatikus árlekérés blokkolva marad.
-8. Felnőtt, explicit háztípusos, pontos dátumos esetben csak olvasási árlekérés indulhat; foglalás/e-mail küldés nem történhet.
-
-A tesztág CI sikere önmagában nem minősül élő deploy-igazolásnak. Main/production csak külön jóváhagyással módosítható.
+Élő kiadási kapu: kijelölt fiók OAuth-ja; jóváhagyott tárgyú tesztlevél
+automatikus beolvasása; egységes rekord és választervezet megjelenése;
+emberi jóváhagyási határ ellenőrzése. Élő árhoz külön, engedélyezett,
+csak olvasási adatforrás és valós ár-összehasonlító teszt szükséges.
