@@ -36,6 +36,14 @@ test('reply uses approved total only when the guest asked for price',()=>{
  assert.match(source,/a vendég nem kérdezett árat, ezért nem került a válaszlevélbe/u);
 });
 
+test('approved online quote keeps accommodation and IFA breakdown',()=>{
+ assert.match(source,/approvedPriceText/u);
+ assert.match(source,/Ebből szállás:/u);
+ assert.match(source,/IFA:/u);
+ assert.match(source,/pendingQuote\?\.raw\?\.accommodation/u);
+ assert.match(source,/pendingQuote\?\.raw\?\.tourismTax/u);
+});
+
 test('pet and hot-tub wording follows current guest-response rules',()=>{
  assert.match(source,/Háziállat térítés ellenében hozható, díja 2 000 Ft\/nap\/állat\./u);
  assert.match(source,/A dézsa iránti igényét figyelembe vettük\./u);
