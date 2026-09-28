@@ -70,3 +70,22 @@ test('loaded Gmail record uses normalized dates and carries its draft through mo
  assert.doesNotMatch(h.element('gmail_draft').value,/122.200|122 200/u);
  assert.match(h.element('price_result').textContent,/Teljes ár:/u);
 });
+test('contradictory Gmail booking facts never trigger a quote request',async()=>{
+ const messages=[
+  sample(recorded[1]).replace('4 fő részére','5 fő részére'),
+  sample(recorded[0]).replace('2 fő részére','3 éjszakára, 2 fő részére'),
+  sample(recorded[0]).replace('Deluxe házat','két Deluxe házat'),
+  sample(recorded[0]).replace('házat szeretnénk','házat szeretnénk az előző foglalás helyett')
+ ];
+ for(const message of messages){
+  const h=harness('',()=>{throw Error('unexpected fetch')});
+  h.element('gmail_record').classList.contains=()=>false;
+  h.element('gmail_original').textContent=message;
+  h.element('gmail_json').value=JSON.stringify({extracted:[{label:'Időszak',value:'2026-10-16 – 2026-10-18'}]});
+  h.listeners.get('sarberki:record-loaded')();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(h.calls,0,message);
+  assert.match(h.element('price_status').textContent,/kezelői ellenőrzés/u);
+  assert.equal(h.element('price_result').textContent,'');
+ }
+});
