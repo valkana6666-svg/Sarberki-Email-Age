@@ -225,6 +225,12 @@
     const hasChildWord=/\b(?:gyerek|gyermek|gyerekek|gyermekek|children|child|kind(?:er)?|otroka)\b/iu.test(message);
     const gmailDate=gmailNormalizedDate();
     const complete=Boolean($('price_arrival').value&&$('price_departure').value&&$('price_cabin').value&&Number($('price_adults').value)>0);
+    const blockingWarnings=['guest_conflict','nights_conflict','date_conflict','invalid_date','uncertain_date','multiple_units'];
+    const guests=Number(analysis?.fields?.guests?.value);
+    if(['modification_request','cancellation_request'].includes(analysis?.intent)||blockingWarnings.some(code=>analysis?.warning_codes?.includes(code))||!Number.isInteger(guests)||guests<1||guests!==Number($('price_adults').value)+childCount){
+      $('price_status').textContent='Gmailből előkészítve: ellentmondó vagy módosítást érintő foglalási adat miatt automatikus árlekérés nem indul; kezelői ellenőrzés szükséges.';
+      return;
+    }
     if(gmailDate?.inferred){
       $('price_status').textContent='Gmailből előkészítve: az év következtetett, ezért emberi jóváhagyás nélkül automatikus árlekérés nem indul.';
       return;
