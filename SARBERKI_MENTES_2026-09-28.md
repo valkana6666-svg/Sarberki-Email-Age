@@ -67,3 +67,43 @@ Megerősített elemek:
 4. A már meglévő árlekérő és szabálymotor bekötése ugyanebbe a feldolgozási folyamba.
 5. Tesztek futtatása; main és production érintetlen marad.
 6. Csak akkor adjuk át Work módnak, ha böngészős/Netlify/Gmail felületi végrehajtás ténylegesen szükséges.
+
+
+## FRISSÍTÉS – 2026-09-28 / Gmail élő teszt és CI
+
+### Gmail
+- A tesztág Gmail-olvasása már nem egyetlen feladóra és pontos tárgy-allowlistre van korlátozva.
+- Új keresés: bejövő levelek az elmúlt 30 napból, promóciós/social kategóriák kizárásával.
+- Helyi érdeklődés-felismerés működik HU/DE/EN/SI kulcsszavas jelzésekkel.
+- Továbbra is kizárólag gmail.readonly a webes tesztoldalon; nincs automatikus küldés vagy Gmail-módosítás.
+- A Gmailből jövő rekord most automatikusan bekerül a fő kezelői elemzőbe is.
+- A fő elemző után ugyanaz a rekord használható a szabálymotorokhoz és árlekérőhöz.
+- Ha pontos dátum + explicit háztípus + csak felnőttek + egyértelmű létszám áll rendelkezésre, automatikus, csak olvasási jellegű árlekérés indulhat.
+- Gyermekes vagy bizonytalan adatú érdeklődésnél az automatikus árlekérés blokkolva marad.
+
+### Élő teszt
+- A jelenleg csatlakoztatott Gmail-fiók: sarberkiprojecttest@gmail.com.
+- Ebből a fiókból egy élő Sárberki tesztlevél sikeresen elküldésre és beérkezésre került.
+- A tesztlevél az új érdeklődés-szűrő szerint felismerhető.
+- A valkana6666@gmail.com külön Gmail-kapcsolatként még nincs csatlakoztatva; ez szükséges a valódi kétfiókos teszthez.
+
+### GitHub / CI
+- Új gmail-filter.test.mjs regressziós teszt.
+- package.json: test:gmail és egységes npm test.
+- GitHub Actions workflow: .github/workflows/sarberki-test.yml.
+- Az első workflow-hibát (npm cache lockfile nélkül) javítottuk.
+- Legutóbbi CI-futás: SUCCESS; checkout, Node, npm install és npm test sikeres.
+- Tesztág továbbra is: gmail-test-subject-allowlist.
+- main és production nem módosult.
+
+### Netlify tesztkörnyezet
+- /api/health végpont hozzáadva.
+- A health válasz v0.3.8-test állapotot, readonly Gmail módot és unifiedPipeline=true értéket ad.
+- A publikus Netlify tesztoldal friss deployját ebből a chatből még nem sikerült közvetlenül igazolni; ezt csak böngészős/Work ellenőrzéssel kell lezárni, ha más módon nem válik ellenőrizhetővé.
+
+### Jelenlegi következő lépések
+1. valkana6666@gmail.com második Gmail-kapcsolat csatlakoztatása.
+2. Valódi keresztfiókos teszt: valkana6666 -> sarberkiprojecttest.
+3. Netlify tesztoldal /api/health és Gmail UI élő ellenőrzés.
+4. Élő Gmail -> rekord -> fő elemző -> automatikus árlekérés teszt.
+5. Csak sikeres teszt után lehet dönteni további élesítésről.
