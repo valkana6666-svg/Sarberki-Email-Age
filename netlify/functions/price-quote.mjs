@@ -18,7 +18,7 @@ export function isLivePrevioEnabled(request,env=process.env) {
 
 export async function handlePriceQuote(request,source=fetchPublicBookingQuote,enabled=false) {
   if (request.method !== 'POST') return Response.json({error:'POST szükséges.'},{status:405});
-  if (!enabled) return Response.json({status:'unverified',error:'HITELES ÁRLEKÉRÉS SZÜKSÉGES · Élő Previo-lekérés csak a külön Sárberki tesztoldalon engedélyezett.'},{status:503,headers:{'cache-control':'no-store'}});
+  if (!enabled) return Response.json({status:'unverified',error:'HITELES ÁRLEKÉRÉS SZÜKSÉGES · Élő Previo-lekérés csak a külön Sárberki tesztoldalon engedélyezett; a Previo dátumkeresésének foglalásmentessége más környezetben nincs igazolva.'},{status:503,headers:{'cache-control':'no-store'}});
   try {
     if (Number(request.headers.get('content-length')||0)>8192) throw Error('Túl nagy kérés.');
     const raw=await request.text();
