@@ -1,6 +1,13 @@
 {
   "private": true,
   "type": "module",
-  "scripts": {"price-server": "node price-server.mjs", "test:price": "node --test price-quote.test.mjs"},
-  "dependencies": {"playwright": "^1.55.0"}
+  "scripts": {
+    "price-server": "node price-server.mjs",
+    "test:price": "node --test price-quote.test.mjs",
+    "test:gmail": "node --test gmail-filter.test.mjs",
+    "test": "node --test gmail-filter.test.mjs price-quote.test.mjs fishing-rules.test.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.55.0"
+  }
 }
