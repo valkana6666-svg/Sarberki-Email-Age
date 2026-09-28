@@ -5,6 +5,7 @@ const MAX_ADULTS = { deluxe: 6, family: 8, vip: 7, small: 2 };
 export const returningGuestReview = Object.freeze({status:'ELLENŐRIZENDŐ – KORÁBBI FOGLALÁS ELLENŐRZÉSE SZÜKSÉGES',lookbackMonths:48,possibleDiscountPercent:20,applied:false,publicSiteLookbackDays:730,source:'https://sarberkito.hu/foglalasrol/'});
 
 export function validateQuote(input) {
+  if(!input || typeof input!=='object' || Array.isArray(input) || Object.keys(input).some(key=>!['arrival','departure','cabin','adults','children'].includes(key))) throw Error('Csak dátum, háztípus és névtelen létszámadat adható meg; személyes adat nem továbbítható.');
   const { arrival, departure, cabin, adults, children = [] } = input || {};
   if (!/^\d{4}-\d{2}-\d{2}$/.test(arrival || '') || !/^\d{4}-\d{2}-\d{2}$/.test(departure || '')) throw Error('Pontos érkezési és távozási dátum szükséges.');
   const start = new Date(arrival + 'T00:00:00Z'), end = new Date(departure + 'T00:00:00Z');
