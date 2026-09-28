@@ -2,10 +2,11 @@
 (async () => {
   'use strict';
   const { cabinFromText, guestCountFromText, childCountFromText, dateRangeFromText, languageFromText, replyQuestions } = await import('./gmail-normalize.mjs');
+  const { isApprovedSubject } = await import('./gmail-subject.mjs');
   // V1 live-read mode: broad inbox read, then conservative local inquiry classification.
   // No sender restriction, no exact subject allowlist, no send/modify permission.
   const INBOX_QUERY = 'in:inbox newer_than:30d -category:promotions -category:social';
-  const ALLOWED_SUBJECTS = new Set(['érdeklődés a szállásról', 'érdeklődés a szallasrol', 'érdeklődés szállásról']);
+
   function headerMap(message) {
     return Object.fromEntries((message.payload?.headers || []).map(h => [h.name.toLowerCase(), h.value]));
   }
@@ -14,11 +15,10 @@
   }
   function looksLikeInquiry(message) {
     const headers = headerMap(message);
-    const subject = (headers.subject || '').trim().toLocaleLowerCase('hu-HU');
     return message.labelIds?.includes('INBOX')
       && Number.isFinite(Number(message.internalDate))
       && Number(message.internalDate) > 0
-      && ALLOWED_SUBJECTS.has(subject);
+      && isApprovedSubject(headers.subject);
   }
   const SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
   const button = document.getElementById('read_gmail');
