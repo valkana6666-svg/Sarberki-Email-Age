@@ -47,7 +47,16 @@ export async function fetchQuote(request, launch = () => chromium.launch({headle
     await page.goto(BOOKING_URL, {waitUntil:'domcontentloaded',timeout:30000});
     console.info('price-quote: booking page loaded');
     const frame = page.frameLocator('iframe[src*="booking.previo.cz"]');
-    await frame.locator('#book-term-from .term').waitFor({state:'visible',timeout:30000});
+    try {
+      await frame.locator('#book-term-from .term').waitFor({state:'visible',timeout:12000});
+    } catch (error) {
+      console.info('price-quote: frame URLs',page.frames().map(f => {
+        try { const url = new URL(f.url()); return url.origin + url.pathname; }
+        catch { return 'unknown'; }
+      }));
+      console.info('price-quote: iframe count',await page.locator('iframe').count());
+      throw error;
+    }
     console.info('price-quote: booking frame ready');
     await chooseDate(frame,'#book-term-from .term',input.arrival);
     console.info('price-quote: arrival selected');
