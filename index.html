@@ -129,7 +129,12 @@ function draft(v,intent='booking_request',analysis=null){
  let lines=[`Kedves ${v.name||'Érdeklődő'}!`,'','Köszönjük érdeklődését a Sárberki Horgásztó iránt.'];
  if(v.arrival&&v.departure)lines.push(`A megadott időszak: ${v.arrival} – ${v.departure}, ${v.guests||'?'} fő részére.`);
  const plan=accommodationPlan(v);
- if(plan&&!plan.specific)lines.push('','Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?');
+ if(plan?.specific){
+   let party=[];
+   if(v.adults)party.push(`${v.adults} felnőtt`);
+   if(v.children)party.push(`${v.children} gyermek${v.child_ages?' ('+v.child_ages+' éves)':''}`);
+   lines.push('',`A kért háztípus: ${v.unit}.${party.length?' A vendégek összetétele: '+party.join(', ')+'.':''}`);
+ } else if(plan) lines.push('','Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?');
 
  const topics=analysis?.topics||{secondary_intents:[],unresolved_questions:[],requested_addons:[]};
  if(topics.secondary_intents.includes('amenities_question'))lines.push('','A faházakban saját fürdőszoba, légkondicionáló, hűtő, mikrohullámú sütő és főzési lehetőség rendelkezésre áll.');
@@ -144,11 +149,17 @@ function draft(v,intent='booking_request',analysis=null){
    else lines.push('','Parkolási lehetőség biztosított.');
  }
  let missing=[];if(!v.arrival||!v.departure)missing.push('a pontos érkezési és távozási dátumot');if(!v.guests)missing.push('a vendégek létszámát');if(v.children&&Number(v.children)>0&&analysis?.warning_codes?.includes('missing_child_ages'))missing.push('a gyermek(ek) életkorát');if(!v.email&&!/\b(?:\+?\d[\d\s()/-]{7,}\d)\b/u.test(record?.original||''))missing.push('egy telefonszámot vagy e-mail-címet');if(missing.length)lines.push('',`Hiányzó adatok: ${missing.join(', ')}. Kérjük, írja meg ezeket.`);
- const needsCapacityCheck=topics.secondary_intents.includes('alternative_unit_question')||topics.unresolved_questions?.some(x=>x.topic==='alternative_availability');
+ const asksAvailability=/(?:szabad|elérhető|van[- ]?e .*szállás|available|frei|prosto)/iu.test(record?.original||'');
+ const asksPrice=/(?:mennyi|mennyibe|ár|ára|price|cost|kosten|preis|cena)/iu.test(record?.original||'');
+ const needsCapacityCheck=asksAvailability||topics.secondary_intents.includes('alternative_unit_question')||topics.unresolved_questions?.some(x=>x.topic==='alternative_availability');
  const needsHotTubCheck=topics.requested_addons?.includes('hot_tub');
- if(needsHotTubCheck&&needsCapacityCheck)lines.push('','A dézsafürdő elérhetőségét, valamint a kért időszak szabad kapacitását még ellenőriznünk kell. Ezekkel kapcsolatban munkatársunk visszajelez.');
- else if(needsHotTubCheck)lines.push('','A dézsafürdő elérhetőségét még ellenőriznünk kell. Ezzel kapcsolatban munkatársunk visszajelez.');
- else if(needsCapacityCheck)lines.push('','A kért időszak szabad kapacitását még ellenőriznünk kell. Ezzel kapcsolatban munkatársunk visszajelez.');
+ if(needsCapacityCheck||asksPrice){
+   let checks=[];
+   if(needsCapacityCheck)checks.push('a szabad kapacitást');
+   if(asksPrice)checks.push('a teljes szállásárat');
+   lines.push('',`${checks.join(' és ')} ellenőrizzük a megadott időszakra. Pontos árat és elérhetőséget csak hiteles ellenőrzés után írunk meg.`);
+ }
+ if(needsHotTubCheck)lines.push('','A dézsafürdő elérhetőségét is ellenőrizzük; szabad dézsát csak az ellenőrzés után tudunk visszaigazolni.');
  if(v.guests&&Number(v.guests)<15&&topics.secondary_intents.includes('deposit_question'))lines.push('','A foglaláshoz 50% előleg befizetése szükséges, amelyet a foglalástól számított 10 napon belül kell átutalni.');
  if(v.guests&&Number(v.guests)<15&&topics.secondary_intents.includes('cancellation_terms_question'))lines.push('','A foglalás érkezés előtt 14 nappal mondható le a vonatkozó lemondási feltételek szerint.');
  if(topics.secondary_intents.includes('arrival_time_question'))lines.push('','A 18:30 körüli érkezés lehetséges, mivel 24 órás portaszolgálat működik. A távozás napján a szállást 10:00 óráig kell elhagyni.');
