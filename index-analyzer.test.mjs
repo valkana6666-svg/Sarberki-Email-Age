@@ -31,3 +31,18 @@ test('guest reply contains useful booking summary and explicit pending checks',(
  assert.match(source,/Pontos árat és elérhetőséget csak hiteles ellenőrzés után írunk meg/u);
  assert.match(source,/A dézsafürdő elérhetőségét is ellenőrizzük/u);
 });
+
+
+test('reply engine answers only actual guest questions while confirming core booking facts',()=>{
+ assert.match(source,/const asks=\{/u);
+ assert.match(source,/availability:/u);
+ assert.match(source,/price:/u);
+ assert.match(source,/pet:/u);
+ assert.match(source,/hotTub:/u);
+ assert.match(source,/amenities:/u);
+ assert.match(source,/if\(asks\.pet\)/u);
+ assert.match(source,/if\(asks\.hotTub\)/u);
+ assert.match(source,/if\(asks\.amenities\)/u);
+ assert.match(source,/A kért háztípus:/u);
+ assert.match(source,/A vendégek összetétele:/u);
+});
