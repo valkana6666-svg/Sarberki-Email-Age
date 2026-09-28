@@ -1,4 +1,6 @@
 import {fetchQuote,validateQuote} from '../../price-quote.mjs';
+import {chromium as playwright} from 'playwright';
+import chromium from '@sparticuz/chromium';
 
 export default async (request) => {
   if (request.method !== 'POST') return Response.json({error:'POST szükséges.'},{status:405});
@@ -7,7 +9,11 @@ export default async (request) => {
     const raw=await request.text();
     if (raw.length>8192) throw Error('Túl nagy kérés.');
     const input=validateQuote(JSON.parse(raw));
-    const result=await fetchQuote(input);
+    const result=await fetchQuote(input, async () => playwright.launch({
+      args:chromium.args,
+      executablePath:await chromium.executablePath(),
+      headless:true
+    }));
     return Response.json(result,{headers:{'cache-control':'no-store'}});
   } catch(error) {
     return Response.json({status:'unverified',error:error.message},{status:422,headers:{'cache-control':'no-store'}});
