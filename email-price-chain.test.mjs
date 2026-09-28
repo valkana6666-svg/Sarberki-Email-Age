@@ -1,0 +1,59 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import {validateQuote} from './price-quote.mjs';
+
+const html=fs.readFileSync(new URL('./index.html',import.meta.url),'utf8');
+const pricing=fs.readFileSync(new URL('./price-check.js',import.meta.url),'utf8');
+const recorded=JSON.parse(fs.readFileSync(new URL('./price-source/fixtures/recorded-previo-quotes.json',import.meta.url),'utf8')).cases;
+const sample=(c,extra='')=>`Kedves Sárberki Horgásztó! 2026. október 16–18. között ${c.adults+c.children.length} fő részére, ${c.adults} felnőtt${c.children.length?` és ${c.children.length} gyermek, ${c.children.join(' és ')} évesek`:''} számára ${c.cabin==='family'?'Családi':'Deluxe'} házat szeretnénk. Van szabad hely, és mennyibe kerül összesen? ${extra} Üdvözlettel, Teszt Elek`;
+
+function harness(message,reply){
+ const nodes=new Map();let calls=0;
+ const element=id=>{
+  if(!nodes.has(id)) nodes.set(id,{id,value:'',textContent:'',disabled:false,onclick:null,classList:{contains:()=>false},addEventListener(type,fn){this['on'+type]=fn},insertAdjacentElement(){for(const name of ['price_approval_panel','approved_price_manual','approve_price','price_approval_status']) element(name)}});
+  return nodes.get(id);
+ };
+ const document={getElementById:id=>id==='price_approval_panel'&&!nodes.has(id)?null:element(id),createElement:()=>({id:'',className:'',innerHTML:''}),addEventListener(){}};
+ element('gmail_record').classList.contains=()=>true;
+ const context=vm.createContext({document,window:{addEventListener(){}},console,Date,Intl,Number,JSON,setTimeout:fn=>fn(),fetch:async(_url,options)=>{
+  calls++;
+  assert.equal(options.method,'POST');
+  const input=validateQuote(JSON.parse(options.body));
+  return reply(input);
+ }});
+ vm.runInContext(html.slice(html.indexOf('const $='),html.indexOf('function addEvent(')),context);
+ vm.runInContext(pricing,context);
+ element('message').value=message;
+ return {element,context,get calls(){return calls},async run(){element('prepare_price').onclick();await element('check_price').onclick();return {draft:element('draft').value,status:element('price_status').textContent,result:element('price_result').textContent}}};
+}
+function json(result,code=200){return {ok:code<400,headers:{get:()=> 'application/json'},json:async()=>result,status:code};}
+function quote(input,record){return {...input,status:'review_required',availability:'available',source:'Sárberki hivatalos foglalási felület',checkedAt:'2026-09-28T17:00:00.000Z',currency:'HUF',...Object.fromEntries(['availableUnits','accommodation','tourismTax','total'].map(k=>[k,record[k]]))};}
+
+test('email extraction → exact anonymous quote input → recorded adult result → human approval → draft',async()=>{
+ const record=recorded[0];const h=harness(sample(record),input=>{assert.deepEqual(input,structuredClone(Object.fromEntries(['arrival','departure','cabin','adults','children'].map(k=>[k,record[k]]))));return json(quote(input,record))});
+ const r=await h.run();assert.equal(h.calls,1,JSON.stringify({r,arrival:h.element('price_arrival').value,departure:h.element('price_departure').value,cabin:h.element('price_cabin').value,adults:h.element('price_adults').value}));assert.match(r.result,/122.200|122 200/u);assert.doesNotMatch(r.draft,/122.200|122 200/u);
+ assert.match(r.status,/jóváhagyás/u);h.element('approve_price').onclick();assert.match(h.element('draft').value,/122.200|122 200/u);assert.match(h.element('status').textContent,/emberi jóváhagyás/u);
+});
+test('children ages and family cabin survive real extraction and quote boundary',async()=>{
+ for(const record of recorded.slice(1)){
+  const h=harness(sample(record),input=>{assert.deepEqual(input,structuredClone(Object.fromEntries(['arrival','departure','cabin','adults','children'].map(k=>[k,record[k]]))));return json(quote(input,record))});
+  const r=await h.run();assert.equal(h.calls,1);assert.match(r.result,/Teljes ár:/u);assert.match(r.result,/Ft/u);assert.doesNotMatch(r.draft,new RegExp(String(record.total)));
+ }
+});
+test('zero capacity, malformed reply and unavailable service never enter a draft',async()=>{
+ for(const response of [json({status:'unavailable',availableUnits:0}),json({status:'review_required',total:122200}),json({status:'unverified',error:'timeout'},503),{headers:{get:()=> 'application/json'},json:async()=>{throw Error('invalid JSON')}}]){
+  const h=harness(sample(recorded[0]),async()=>response);const r=await h.run();assert.equal(h.calls,1);assert.equal(r.result,'');assert.match(r.draft,/^$/u);assert.match(r.status,/ellenőrzés|SZÜKSÉGES/u);assert.equal(h.element('approve_price').disabled,true);
+ }
+ const h=harness(sample(recorded[0]),async()=>{throw Error('network timeout')});const r=await h.run();assert.match(r.status,/network timeout/u);assert.equal(r.result,'');
+});
+test('unknown cabin, missing guest data and missing child age stop before fetch',async()=>{
+ const cases=[sample(recorded[0]).replace('Deluxe','ismeretlen'),sample(recorded[0]).replace(/2 fő részére, 2 felnőtt/u,'ismeretlen létszámú vendég'),sample(recorded[1]).replace('7 és 11 évesek','életkor nélkül')];
+ for(const message of cases){const h=harness(message,()=>{throw Error('unexpected fetch')});h.element('prepare_price').onclick();const status=h.element('price_status');assert.ok(status.textContent);if(h.element('price_arrival').value)await h.element('check_price').onclick();assert.equal(h.calls,0);}
+});
+test('forbidden input is rejected before any mock source call',()=>{
+ let calls=0;const source=input=>{calls++;return input};
+ for(const extra of [{name:'Teszt Elek'},{email:'test@example.invalid'},{phone:'+36 30 555 1234'},{payment:'card'},{reservationId:'123'},{unexpected:true}])assert.throws(()=>source(validateQuote({...recorded[0],...extra})),/személyes adat/u);
+ assert.equal(calls,0);
+});
