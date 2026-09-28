@@ -6,3 +6,8 @@
   from = "/api/price-quote"
   to = "/.netlify/functions/price-quote"
   status = 200
+
+[[redirects]]
+  from = "/api/health"
+  to = "/.netlify/functions/health"
+  status = 200
