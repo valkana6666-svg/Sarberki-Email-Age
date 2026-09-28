@@ -9,6 +9,9 @@ export default async (request) => {
     const raw=await request.text();
     if (raw.length>8192) throw Error('Túl nagy kérés.');
     const input=validateQuote(JSON.parse(raw));
+    // The public booking page currently serves an interactive challenge to this serverless browser.
+    // Do not retry or infer a price until an authorized read-only integration is available.
+    if (input) return Response.json({status:'unverified',error:'A foglalási oldal szerveroldali ellenőrzést kér. Élő ár jelenleg nem igazolható; kézi ellenőrzés szükséges.'},{status:503,headers:{'cache-control':'no-store'}});
     const result=await fetchQuote(input, async () => playwright.launch({
       args:chromium.args,
       executablePath:await chromium.executablePath(),
