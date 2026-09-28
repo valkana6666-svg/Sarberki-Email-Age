@@ -107,3 +107,25 @@ Megerősített elemek:
 3. Netlify tesztoldal /api/health és Gmail UI élő ellenőrzés.
 4. Élő Gmail -> rekord -> fő elemző -> automatikus árlekérés teszt.
 5. Csak sikeres teszt után lehet dönteni további élesítésről.
+
+
+## 2026-09-28 11:59 – TESZT ELEK REGRESSZIÓ JAVÍTVA
+
+A valós kezelőfelületi Teszt Elek levél alapján javítva a tesztágon:
+- HU rövidített dátumtartomány: 2026. október 16–18. -> 2026-10-16 / 2026-10-18 / 2 éjszaka.
+- Telefonszám felismerés: +36 30 555 1234.
+- Explicit háztípus normalizálás: Deluxe -> confirmed, normalizált „Deluxe”.
+- Gyermekkorok strukturált felismerése: 7, 11.
+- Dézsa és háziállat külön strukturált igényként jelölve.
+- Belső összefoglaló kibővítve dátum, éjszaka, felnőtt/gyermek, gyermekkor, háztípus, dézsa és háziállat adatokkal.
+- Árlekérő adatátadás kibővítve: érkezés, távozás, háztípus, felnőttek, gyermekek, gyermekkorok.
+- Gyermekes foglalásnál az automatikus ár továbbra is blokkolt; becslés nincs.
+- Konkrét Teszt Elek regressziós teszt és további UI/árátadási regressziós őrök bekerültek.
+- Teljes GitHub Actions tesztcsomag PASS a 70c9550b23a2a0dd219162e308ce19f870f18f04 commiton.
+- Main/production nem módosult.
+
+Következő technikai pont – élő ár:
+- A helyi Playwright árlekérő logika megvan.
+- A Netlify price-quote funkció jelenleg szándékosan fail-closed, mert a nyilvános foglalási oldal szerveroldali Chromium számára interaktív ellenőrzést kér.
+- Hiteles gyermekár és hiteles szerveroldali élő árforrás nélkül nincs automatikus árbecslés.
+- Következő irány: Previo API / hiteles read-only árforrás bekötése, vagy bizonyítottan működő publikus foglalási endpoint azonosítása.
