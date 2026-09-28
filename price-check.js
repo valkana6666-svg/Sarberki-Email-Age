@@ -229,8 +229,8 @@
       $('price_status').textContent='Gmailből előkészítve: az év következtetett, ezért emberi jóváhagyás nélkül automatikus árlekérés nem indul.';
       return;
     }
-    if(childCount>0||hasChildWord){
-      $('price_status').textContent='Gmailből előkészítve: gyermekes érdeklődés, ezért automatikus árlekérés nem indult. Hitelesen ellenőrzött teljes ár kézzel megadható, majd külön jóváhagyható.';
+    if((childCount>0||hasChildWord)&&(Number($('price_children')?.value)!==childCount||!childAgesForQuote(childCount,$('price_child_ages')?.value)||childCount===0)){
+      $('price_status').textContent='Gmailből előkészítve: a gyermekek pontos száma és életkora nélkül hiteles árlekérés nem indul.';
       return;
     }
     if(!complete){
@@ -242,20 +242,30 @@
   }
 
   $('prepare_price').onclick = () => prepare(currentMessage());
+  function childAgesForQuote(count,raw) {
+    if(!Number.isInteger(count)||count<0) return null;
+    if(count===0) return [];
+    const parts=String(raw||'').split(/[,;]+/u).map(x=>x.trim());
+    if(parts.length!==count||parts.some(x=>!/^\d{1,2}$/u.test(x))) return null;
+    const ages=parts.map(Number);
+    return ages.every(age=>age>=0&&age<=17)?ages:null;
+  }
   $('check_price').onclick = async () => {
     const status=$('price_status'); status.textContent='Árlekérés folyamatban…';$('price_result').textContent='';
     clearApprovedPrice('Új árlekérés indult; az előző jóváhagyás törölve.');
     const message=currentMessage();
     const analysis=typeof extract==='function' ? extract(message,'') : null;
-    const childCount=Number(analysis?.fields?.children?.value||0);
-    if (childCount>0 || /\b(?:gyerek|gyermek|gyerekek|gyermekek|children|kind(?:er)?|otroka)\b/iu.test(message)) {status.textContent='HITELES ÁRLEKÉRÉS SZÜKSÉGES · Gyermekes érdeklődés: életkor és hiteles gyermekár nélkül kézi ellenőrzés szükséges. A kézzel ellenőrzött teljes ár az Ár jóváhagyása résznél megadható.';return;}
-    const input={arrival:$('price_arrival').value,departure:$('price_departure').value,cabin:$('price_cabin').value,adults:Number($('price_adults').value),children:[]};
+    const childCount=Number($('price_children')?.value||0);
+    const ages=childAgesForQuote(childCount,$('price_child_ages')?.value);
+    if (ages===null || (childCount===0 && /\b(?:gyerek|gyermek|gyerekek|gyermekek|children|kind(?:er)?|otroka)\b/iu.test(message))) {status.textContent='HITELES ÁRLEKÉRÉS SZÜKSÉGES · A gyermekek pontos száma és életkora nélkül ár nem adható.';return;}
+    const input={arrival:$('price_arrival').value,departure:$('price_departure').value,cabin:$('price_cabin').value,adults:Number($('price_adults').value),children:ages};
     if (!input.arrival || !input.departure || !input.cabin || !Number.isInteger(input.adults) || input.adults<1) {status.textContent='Pontos dátum, háztípus és létszám szükséges.';return;}
     try {
       const response=await fetch('/api/price-quote',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input),cache:'no-store'});
       if (!response.headers.get('content-type')?.includes('application/json')) throw Error('Az árlekérő szerver nincs ehhez az oldalhoz csatlakoztatva.');
       const result=await response.json(); if(result.status==='unavailable'){status.textContent='A kért háztípusból a foglalási felület nem mutat szabad egységet erre az időszakra. Ár nem került a válaszba; kezelői ellenőrzés szükséges.';return;} if(!response.ok || result.status!=='review_required')throw Error(result.error||'Nem sikerült az árlekérés.');
-      $('price_result').textContent=`${result.arrival}–${result.departure} · ${result.cabin} · ${result.adults} felnőtt · Szállás: ${result.accommodation.toLocaleString('hu-HU')} Ft · IFA: ${result.tourismTax.toLocaleString('hu-HU')} Ft · Teljes ár: ${result.total.toLocaleString('hu-HU')} Ft · Plusz fő díjkülönbsége és más bontás: nem igazolt · Forrás: Sárberki hivatalos foglalási felület (${result.source}) · Lekérés: ${result.checkedAt} · Szezonfelár beépítése: nem igazolt · 20% törzsvendégkedvezmény: nincs alkalmazva`;
+      if(result.arrival!==input.arrival||result.departure!==input.departure||result.cabin!==input.cabin||result.adults!==input.adults||JSON.stringify(result.children)!==JSON.stringify(input.children)||result.availability!=='available'||!Number.isInteger(result.availableUnits)||result.availableUnits<1||!Number.isSafeInteger(result.total)||result.total<=0||!Number.isSafeInteger(result.accommodation)||!Number.isSafeInteger(result.tourismTax)||result.accommodation+result.tourismTax!==result.total||result.currency!=='HUF') throw Error('A Previo válasza hiányos vagy eltér a kért vendégösszetételtől.');
+      $('price_result').textContent=`${result.arrival}–${result.departure} · ${result.cabin} · ${result.adults} felnőtt${result.children.length?` · ${result.children.length} gyermek (${result.children.join(', ')} éves)`:''} · Szállás: ${result.accommodation.toLocaleString('hu-HU')} Ft · IFA: ${result.tourismTax.toLocaleString('hu-HU')} Ft · Teljes ár: ${result.total.toLocaleString('hu-HU')} Ft · Plusz fő díjkülönbsége és más bontás: nem igazolt · Forrás: Sárberki hivatalos foglalási felület (${result.source}) · Lekérés: ${result.checkedAt} · Szezonfelár beépítése: nem igazolt · 20% törzsvendégkedvezmény: nincs alkalmazva`;
       pendingQuote={total:Number(result.total),source:result.source||'foglalási oldal',fingerprint:quoteFingerprint(),raw:result};
       $('approved_price_manual').value=String(result.total);
       $('approve_price').disabled=false;
