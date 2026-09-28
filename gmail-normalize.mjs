@@ -31,7 +31,7 @@ export function childCountFromText(text=''){
 export function dateRangeFromText(text='', now=new Date()){
   const iso=text.match(/\b(20\d{2})[-./](\d{1,2})[-./](\d{1,2})\s*(?:[-–]|to|bis|do)\s*(?:(20\d{2})[-./](\d{1,2})[-./])?(\d{1,2})\b/iu);
   if(iso) return {arrival:`${iso[1]}-${String(iso[2]).padStart(2,'0')}-${String(iso[3]).padStart(2,'0')}`,departure:`${iso[4]||iso[1]}-${String(iso[5]||iso[2]).padStart(2,'0')}-${String(iso[6]).padStart(2,'0')}`,inferredYear:false};
-  const names='január|február|március|április|május|június|július|augusztus|szeptember|október|november|december|jan\\.?|febr\\.?|márc\\.?|ápr\\.?|máj\\.?|jún\\.?|júl\\.?|aug\\.?|szept\\.?|okt\\.?|nov\\.?|dec\\.?';
+  const names='január|február|március|április|május|június|július|augusztus|szeptember|október|november|december|jan\\.?|febr\\.?|márc\\.?|ápr\\.?|máj\\.?|jún\\.?|júl\\.?|aug\\.?|szept\\.?|okt\\.?|nov\\.?|dec\\.?|january|february|march|april|may|june|july|august|september|october|november|december|januar|februar|märz|maerz|mai|juni|juli|oktober|dezember|marec|maj|junij|julij|avgust';
   const r=text.match(new RegExp(`\\b(?:20\\d{2}\\s*[.\\/-]?\\s*)?(${names})\\s+(\\d{1,2})\\s*(?:[-–]|to|bis|do|(?:-től|-tól))\\s*(?:(?:${names})\\s+)?(\\d{1,2})(?:-ig)?\\b`,'iu'));
   if(!r) return null;
   const month=monthNumber(r[1]); if(!month) return null;
@@ -45,7 +45,7 @@ export function dateRangeFromText(text='', now=new Date()){
 
 export function phoneFromText(text=''){
   const m=text.match(/(?:\+\d{1,3}[\s()./-]*)?(?:\d[\s()./-]*){8,15}/u);
-  return m ? m[0].trim() : null;
+  return m ? m[0].trim().replace(/[.,;:]+$/u,'') : null;
 }
 export function childAgesFromText(text=''){
   const m=text.match(/(?:gyerek\w*|gyermek\w*|children|kinder|otrok\w*)[^.!?\n]{0,80}?(\d{1,2})\s*(?:és|,|and|und|in)\s*(\d{1,2})\s*(?:éves|years? old|jahre alt|let)/iu)
