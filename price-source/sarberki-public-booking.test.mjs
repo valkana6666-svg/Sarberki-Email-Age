@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {fetchPublicBookingQuote} from './sarberki-public-booking.mjs';
+import {fetchPublicBookingQuote,requestPrevioReadOnly} from './sarberki-public-booking.mjs';
 
 const first='<form id="firstStep" action="https://booking.previo.cz/?hotId=753011&amp;currency=HUF&amp;lang=hu&amp;PHPSESSID=test-session"></form>';
 const categories=[{guaId:1,isDefault:true,isChild:false},{guaId:2,isChild:true,ageFrom:8,ageTo:17,isWithoutBed:false},{guaId:3,isChild:true,ageFrom:3,ageTo:7,isWithoutBed:false}];
@@ -86,4 +86,18 @@ test('only the known 302 search redirect is followed as GET',async()=>{
  const quote=await fetchPublicBookingQuote(base,request);
  assert.equal(quote.total,122200);
  assert.equal(count,5);
+});
+test('forbidden endpoint, origin, redirect method and body make zero outbound calls',async()=>{
+ let calls=0;
+ const request=async()=>{calls++;throw Error('outbound call forbidden');};
+ const cases=[
+  ['https://booking.previo.cz/index/save-reservation/?hotId=753011',{method:'POST',body:'x=1'}],
+  ['https://booking.previo.cz/index/step-3/?hotId=753011',{}],
+  ['https://booking.previo.cz/index/get-occupancy-price/?hotId=753011',{method:'POST',body:'name=Teszt+Elek'}],
+  ['https://other.example/index/get-occupancy-price/?hotId=753011',{method:'POST'}],
+  ['https://booking.previo.cz/?hotId=753011',{method:'POST',body:'step=2&arrival=2027-10-16&departure=2027-10-18'}],
+  ['https://booking.previo.cz/?hotId=753011&email=test%40example.invalid',{}]
+ ];
+ for(const [url,options] of cases) await assert.rejects(requestPrevioReadOnly(url,options,request));
+ assert.equal(calls,0);
 });
