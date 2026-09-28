@@ -5,7 +5,7 @@
   // V1 live-read mode: broad inbox read, then conservative local inquiry classification.
   // No sender restriction, no exact subject allowlist, no send/modify permission.
   const INBOX_QUERY = 'in:inbox newer_than:30d -category:promotions -category:social';
-  const INQUIRY_HINT = /(?:érdekl|foglal|szállás|faház|apartman|dézsa|horgász|booking|reservation|accommodation|cabin|bungalow|availability|available|preis|preise|zimmer|unterkunft|reservier|buchung|verfügbar|anfrage|nastanitev|rezervacij|prosto|koča|ribolov)/iu;
+  const ALLOWED_SUBJECTS = new Set(['érdeklődés a szállásról', 'érdeklődés a szallasrol', 'érdeklődés szállásról']);
   function headerMap(message) {
     return Object.fromEntries((message.payload?.headers || []).map(h => [h.name.toLowerCase(), h.value]));
   }
@@ -14,11 +14,11 @@
   }
   function looksLikeInquiry(message) {
     const headers = headerMap(message);
-    const text = [headers.subject || '', plain(message.payload) || ''].join('\n');
+    const subject = (headers.subject || '').trim().toLocaleLowerCase('hu-HU');
     return message.labelIds?.includes('INBOX')
       && Number.isFinite(Number(message.internalDate))
       && Number(message.internalDate) > 0
-      && INQUIRY_HINT.test(text);
+      && ALLOWED_SUBJECTS.has(subject);
   }
   const SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
   const button = document.getElementById('read_gmail');
