@@ -4,11 +4,30 @@
 
 **NOT YET VERIFIED (Previo/PMS oldali hatás):** A nyilvános belső végpontokhoz nincs olyan Previo-dokumentáció vagy PMS naplóhozzáférés, amely kizárná az első dátumos `POST /?step=1&arrival=...&departure=...` művelethez kapcsolódó átmeneti foglalási vagy kapacitászároló rekordot. A válasz a második, keresési lépés HTML-je, benne dátummal, háztípusokkal és vendégkategóriákkal; az eddig megfigyelt válaszban nem volt foglalási azonosító vagy véglegesítési visszaigazolás. Ez a kliensoldali megfigyelés **nem bizonyítja** a szerveroldali mellékhatások hiányát.
 
+**Új kézi megfigyelés:** A felhasználó a teszt után ellenőrizte a Previót, és nem látott új foglalást. Ez a látható foglalási rekord hiányát erősíti meg, de a rövid ideig élő, már lejárt zárolás vagy belső keresési rekord hiányát önmagában nem bizonyítja. A kapu ezért változatlanul zárva marad.
+
 - A Netlify és a helyi ár-végpont alapértelmezésben **503, összeg nélkül** válaszol, és egyáltalán nem hívja a Previót. Csak kifejezett, Previo/PMS oldali foglalásmentességi igazolás után beállított `SARBERKI_PREVIO_NO_HOLD_CONFIRMED=true` kapcsoló engedélyezi. A kapcsolót jelenleg ne állítsuk be.
 - A megőrzött adapter kizárólag `GET /`, `GET /index/step-1/`, `GET /index/step-2/`, `POST /` (`step=1`, csak dátumok), `POST /index/get-object-kind-occupancy/` és `POST /index/get-occupancy-price/` útvonalakat enged. Csak a `booking.previo.cz` origin és `hotId=753011` engedélyezett. Az átirányításokat nem követi automatikusan; a dátumkeresés után kizárólag 302/303 → `GET /index/step-2/` megengedett. Más útvonal, 307/308 vagy megváltozott form action esetén megáll. Az adapter nem küld nevet, e-mailt, telefont vagy fizetési adatot.
 - A korábbi helyi `fetchQuote` Playwright-útvonal a felületi „Foglalás” feliratú választóra kattintott; ezt letiltottuk. A helyi HTTP szerver is a fenti, alapértelmezetten letiltott adapterre mutat. A korábbi UI-validálás során a „Foglalás” opciót és a vendéglétszám „Mentés” gombját megnyomtuk a 2026-10-16–18. időszakhoz, de a 3–4. lépésre, vendégadatokra, megerősítésre vagy fizetésre nem léptünk tovább. A háttérben esetleg keletkező ideiglenes rekordot PMS hozzáférés nélkül nem lehet kizárni.
 - Korábbi tesztidőpontok: 2026-10-16–18. Deluxe 2 felnőtt; Deluxe 2 felnőtt + 7 és 11 éves gyermek; Családi 2 felnőtt. A 2026-10-16–19. időszak a helyi automatizált tesztekben is szerepel; a rendelkezésre álló kód és tesztkimenet alapján ezek mock/validációs esetek, de teljes Previo szervernapló híján a korábbi munkameneteket önmagukban nem zárhatjuk ki. PMS-ben a foglalási naptár, a foglaláslista, a függő/option és a hozzá nem rendelt várólista nézetében a dátum, típus és 2026-09-28-i létrehozási idő alapján kell ellenőrizni a Reservation+ eredetű rekordokat. Törölni/sztornózni csak egy konkrét, azonosított tesztrekord esetén, kezelői döntéssel szabad; jelenleg nincs bizonyítottan létrejött rekord.
 - A következő feloldási feltétel a Previo írásos technikai válasza vagy a szálláshely PMS auditnaplója: a `step=1`, occupancy és price kérések sem foglalást, sem option/hold vagy várólistás rekordot nem hoznak létre, és a fenti korábbi időpontokra sincs tesztből keletkezett rekord. Addig további élő Previo-teszt nem indul.
+
+### Korábbi próbák pontos bemenete
+
+**A Previónak egyetlen nevet sem adtunk meg.** A „Teszt Elek” név és a `+36 30 555 1234` telefonszám az e-mail agent szintetikus vendéglevél-tesztjében szerepelt, nem került az árlekérő JSON-jába vagy a Previo-foglaló vendégadat-mezőibe. E-mail-cím, fizetési adat, cím és megjegyzés sem ment át.
+
+Az éles Netlify `POST /api/price-quote` próbák rögzített JSON törzsei:
+
+```json
+{"arrival":"2026-10-16","departure":"2026-10-18","cabin":"deluxe","adults":2,"children":[]}
+{"arrival":"2026-10-16","departure":"2026-10-18","cabin":"deluxe","adults":2,"children":[7,11]}
+{"arrival":"2026-10-16","departure":"2026-10-18","cabin":"family","adults":2,"children":[]}
+{"arrival":"2026-10-16","departure":"2026-10-18","cabin":"deluxe","adults":2,"children":[7]}
+```
+
+Hiányos kérés próbája: `{"departure":"2026-10-18","cabin":"deluxe","adults":2,"children":[]}`. Ezt a validátor Previo-hívás előtt elutasította. A 2026-10-16–19. dátumok a rendelkezésre álló automatizált tesztben mock/validációs adatok; nincs igazoltan elküldött élő Previo-payload ehhez az időszakhoz. A hivatalos foglalói UI-ban a 2026-10-16–18. dátumot, a fenti Deluxe/Családi típust, 2 felnőttet és a gyermekes esetben a 3–7 és 8–17 éves korcsoportban 1–1 gyermeket választottunk, majd az összesítőt néztük meg. A 3–4. lépésre nem léptünk.
+
+Az adapter a JSON-t kizárólag `step=1&arrival=2026-10-16&departure=2026-10-18` dátumos űrlappá, majd a munkamenetből kiolvasott `obkId`, `guaId` és anonim vendégkategória-darabszámokat tartalmazó kapacitás-/árkéréssé alakította. A gyermekszám és életkorok a Previo kategóriákba kerültek, a gyermekek neve nem. A kérésvalidátor most elutasítja az idegen mezőket, köztük a név, e-mail, telefon, fizetés és foglalásazonosító mezőket; az adapter az ismeretlen query paraméterrel érkező redirectet is elutasítja.
 
 ## Igazolt folyamat
 
