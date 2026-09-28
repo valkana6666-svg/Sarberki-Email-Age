@@ -1,5 +1,20 @@
 # Sárberki érdeklődéskezelő – demó
 
+## Kísérleti árlekérő a tesztágon
+
+A `price-check.js` árlekérő felület az érdeklődésből előkészíti a dátumot,
+háztípust és felnőtt létszámot. A külön futtatott `price-server.mjs` a
+`price-quote.mjs` böngészős adapterrel a foglalási modul végösszegét olvassa.
+Az eredmény csak kezelői ellenőrzésre szolgál; nem kerül a vendégválaszba.
+Gyermekár, több ház, hiányzó típus vagy bizonytalan dátum esetén kézi ellenőrzés
+szükséges. A szerver csak a helyi 127.0.0.1 címen figyel.
+
+Helyi indítás: `npm install`, `npx playwright install chromium`,
+`npm run price-server`; ezután `http://127.0.0.1:8765`.
+Az élő Netlify tesztoldal statikus telepítése még nem futtatja ezt a szervert,
+ezért azon automatikus árlekérés jelenleg nincs. A foglalási felület változásai
+miatt az adaptert élő teszttel kell igazolni minden telepítés előtt.
+
 Ez a tároló a Sárberki Horgásztó e-mailes érdeklődéskezelőjének helyi, szabályalapú prototípusát tartalmazza. A Netlify a `main` ág gyökerében lévő `index.html` fájlt teszi közzé.
 
 ## Jelenlegi működés

@@ -1,0 +1,6 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {"price-server": "node price-server.mjs", "test:price": "node --test price-quote.test.mjs"},
+  "dependencies": {"playwright": "^1.55.0"}
+}

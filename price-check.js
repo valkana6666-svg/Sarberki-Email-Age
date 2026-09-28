@@ -1,0 +1,34 @@
+(() => {
+  const $ = id => document.getElementById(id);
+  const cabins = {deluxe:'Deluxe',family:'Családi',vip:'VIP',small:'Különálló 2 fős'};
+  function prepare(message) {
+    const analysis = typeof extract === 'function' ? extract(message,'') : null;
+    const fields = analysis?.fields || {};
+    $('price_arrival').value = fields.arrival?.value || '';
+    $('price_departure').value = fields.departure?.value || '';
+    const children = Number(fields.children?.value || 0);
+    $('price_adults').value = children ? '' : (fields.adults?.value || fields.guests?.value || '');
+    const unit=(fields.unit?.value || '').toLowerCase();
+    const explicit = /\bvip\b/iu.test(message) ? 'vip' : /\bcsaládi\b/iu.test(message) ? 'family' : /\bdeluxe\b/iu.test(message) ? 'deluxe' : /\bosztott\b/iu.test(message) ? 'split' : '';
+    $('price_cabin').value = explicit || Object.keys(cabins).find(k => unit.includes(cabins[k].toLowerCase())) || '';
+    $('price_result').textContent = '';
+    $('price_status').textContent = children ? 'Gyermek is szerepel a levélben. A gyermekkor szerinti árlekérés még nem működik; kézi ellenőrzés szükséges.' : !explicit ? 'Faház: ? – emberi döntésre vár. Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?' : 'Ellenőrizd a kinyert adatokat. Az automatikus lekérés jelenleg csak felnőttekkel működik.';
+  }
+  $('prepare_price').onclick = () => prepare($('gmail_record').classList.contains('hidden') ? $('message').value : $('gmail_original').textContent);
+  $('check_price').onclick = async () => {
+    const status=$('price_status'); status.textContent='Árlekérés folyamatban…';$('price_result').textContent='';
+    const message=$('gmail_record').classList.contains('hidden') ? $('message').value : $('gmail_original').textContent;
+    const analysis=typeof extract==='function' ? extract(message,'') : null;
+    const childCount=Number(analysis?.fields?.children?.value||0);
+    if (childCount>0 || /\b(?:gyerek|gyermek|gyerekek|gyermekek|children|kind(?:er)?|otroka)\b/iu.test(message)) {status.textContent='Gyermekes érdeklődés: életkor és hiteles gyermekár nélkül kézi ellenőrzés szükséges.';return;}
+    const input={arrival:$('price_arrival').value,departure:$('price_departure').value,cabin:$('price_cabin').value,adults:Number($('price_adults').value),children:[]};
+    if (!input.arrival || !input.departure || !input.cabin || !Number.isInteger(input.adults) || input.adults<1) {status.textContent='Pontos dátum, háztípus és létszám szükséges.';return;}
+    try {
+      const response=await fetch('/api/price-quote',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input),cache:'no-store'});
+      if (!response.headers.get('content-type')?.includes('application/json')) throw Error('Az árlekérő szerver nincs ehhez az oldalhoz csatlakoztatva.');
+      const result=await response.json(); if(!response.ok || result.status!=='review_required')throw Error(result.error||'Nem sikerült az árlekérés.');
+      $('price_result').textContent=`Szállás: ${result.accommodation.toLocaleString('hu-HU')} Ft · IFA: ${result.tourismTax.toLocaleString('hu-HU')} Ft · Teljes ár: ${result.total.toLocaleString('hu-HU')} Ft · Forrás: ${result.source} · Lekérés: ${result.checkedAt} · Szezonfelár beépítése: nem igazolt`;
+      status.textContent='A foglalási oldalon megjelenő ár ellenőrzésre vár. Nem került automatikusan a vendégválaszba, és foglalás nem történt.';
+    } catch(e) {status.textContent=`Nincs igazolt ár: ${e.message} Nyisd meg a foglalási oldalt kézi ellenőrzésre.`;}
+  };
+})();
