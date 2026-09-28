@@ -12,3 +12,10 @@ test('price checker transfers child counts and ages but keeps child-price safety
  assert.match(source,/fields\.child_ages\?\.value/u);
  assert.match(source,/Gyermekes érdeklődés: életkor és hiteles gyermekár nélkül kézi ellenőrzés szükséges/u);
 });
+
+
+test('price checker auto-fills after manual analysis and loaded records',()=>{
+ assert.match(source,/sarberki:analysis-ready/u);
+ assert.match(source,/sarberki:record-loaded/u);
+ assert.match(source,/prepare\(message\)/u);
+});
