@@ -54,3 +54,19 @@ test('Hungarian guest count words are recognized conservatively',()=>{
   assert.equal(guestCountFromText('negyen jönnénk'),4);
   assert.equal(guestCountFromText('8 fo részére'),8);
 });
+
+
+test('informal Hungarian child count and ages are recognized',()=>{
+  const message='szia, ket gyerekkel mennénk, 7 meg 11 evesek';
+  assert.equal(childCountFromText(message),2);
+  assert.deepEqual(childAgesFromText(message),[7,11]);
+  assert.equal(languageFromText(message),'hu');
+});
+
+test('accentless Hungarian booking text is detected as Hungarian',()=>{
+  assert.equal(languageFromText('szallas erdekelne, 4 fo mennénk, dezsa is kellene'),'hu');
+});
+
+test('Hungarian missing-cabin follow-up uses natural wording',()=>{
+  assert.deepEqual(replyQuestions('hu',{needCabin:true}),['Melyik háztípust szeretné: VIP, Családi, Deluxe vagy Osztott?']);
+});
