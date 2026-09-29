@@ -99,3 +99,13 @@ test('over-capacity single-cabin request is stopped in UI before fetch',async()=
   assert.equal(h.calls,0);
   assert.match(h.element('price_status').textContent,/TÖBB HÁZ|KÉZI ELLENŐRZÉS/u);
 });
+
+
+test('split cabin is stopped in UI before live quote fetch',async()=>{
+  const message='Kedves Sárberki Horgásztó! 2027. október 1–3. között 4 fő mennénk. Osztott házat szeretnénk. Mennyi a teljes ár?';
+  const h=harness(message,()=>{throw Error('unexpected fetch')});
+  h.element('prepare_price').onclick();
+  await h.element('check_price').onclick();
+  assert.equal(h.calls,0);
+  assert.match(h.element('price_status').textContent,/OSZTOTT HÁZ|KÉZI ELLENŐRZÉS/u);
+});
