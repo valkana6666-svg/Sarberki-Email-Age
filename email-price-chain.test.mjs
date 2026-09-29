@@ -89,3 +89,13 @@ test('contradictory Gmail booking facts never trigger a quote request',async()=>
   assert.equal(h.element('price_result').textContent,'');
  }
 });
+
+
+test('over-capacity single-cabin request is stopped in UI before fetch',async()=>{
+  const message='Kedves Sárberki Horgásztó! 2027. október 1–3. között 7 fő mennénk: 5 felnőtt és 2 gyermek, 7 és 11 évesek. Deluxe házat szeretnénk. Mennyi a teljes ár?';
+  const h=harness(message,()=>{throw Error('unexpected fetch')});
+  h.element('prepare_price').onclick();
+  await h.element('check_price').onclick();
+  assert.equal(h.calls,0);
+  assert.match(h.element('price_status').textContent,/TÖBB HÁZ|KÉZI ELLENŐRZÉS/u);
+});
