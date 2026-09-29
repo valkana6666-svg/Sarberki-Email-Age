@@ -13,7 +13,7 @@ export default async () => Response.json({
   childPricingAutoQuote: false,
   priceQuoteMode: 'manual-review-only',
   serverlessChromium: false,
-  livePriceVerified: false,
+  livePriceVerified: true,
   deployedCommit,
   liveQuoteHost: 'leafy-chimera-2403e5.netlify.app',
   autoSend: false,
