@@ -16,3 +16,46 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npm test
+
+      - name: Wait for matching Netlify test deploy
+        env:
+          TEST_HOST: https://leafy-chimera-2403e5.netlify.app
+          TARGET_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 24); do
+            BODY="$(curl -fsS "$TEST_HOST/api/health" || true)"
+            DEPLOYED="$(printf '%s' "$BODY" | python3 -c 'import json,sys;\ntry:\n print(json.load(sys.stdin).get("deployedCommit", ""))\nexcept Exception:\n print("")')"
+            echo "Netlify deployedCommit=$DEPLOYED target=$TARGET_SHA"
+            if [ "$DEPLOYED" = "$TARGET_SHA" ]; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Matching Netlify deploy did not become visible" >&2
+          exit 1
+
+      - name: Run one anonymous live Previo quote smoke test
+        env:
+          TEST_HOST: https://leafy-chimera-2403e5.netlify.app
+        run: |
+          set -euo pipefail
+          HTTP_CODE=$(curl -sS -o /tmp/smoke.json -w '%{http_code}' "$TEST_HOST/api/live-price-smoke-20260929")
+          cat /tmp/smoke.json
+          echo
+          echo "HTTP $HTTP_CODE"
+          python3 - <<'PY'
+          import json
+          with open('/tmp/smoke.json', encoding='utf-8') as f:
+              data=json.load(f)
+          if data.get('smokeTest') is not True:
+              raise SystemExit('Not the expected smoke response')
+          if data.get('status') == 'failed':
+              raise SystemExit(data.get('error','Live smoke failed'))
+          result=data.get('result') or {}
+          if result.get('status') not in {'review_required','unavailable'}:
+              raise SystemExit(f'Unexpected result status: {result.get("status")}')
+          if result.get('bookingCompleted') is not False:
+              raise SystemExit('bookingCompleted safety marker missing/invalid')
+          print('LIVE_SMOKE_PASS', json.dumps(result, ensure_ascii=False))
+          PY
