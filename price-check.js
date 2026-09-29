@@ -1,6 +1,7 @@
 (() => {
   const $ = id => document.getElementById(id);
   const cabins = {deluxe:'Deluxe',family:'Családi',vip:'VIP',small:'Különálló 2 fős'};
+  const singleCabinCapacity = {deluxe:6,family:8,vip:7,small:2};
   let approvedPrice = null;
   let pendingQuote = null;
 
@@ -266,6 +267,8 @@
     if (ages===null || (childCount===0 && /\b(?:gyerek|gyermek|gyerekek|gyermekek|children|kind(?:er)?|otroka)\b/iu.test(message))) {status.textContent='HITELES ÁRLEKÉRÉS SZÜKSÉGES · A gyermekek pontos száma és életkora nélkül ár nem adható.';return;}
     const input={arrival:$('price_arrival').value,departure:$('price_departure').value,cabin:$('price_cabin').value,adults:Number($('price_adults').value),children:ages};
     if (!input.arrival || !input.departure || !input.cabin || !Number.isInteger(input.adults) || input.adults<1) {status.textContent='Pontos dátum, háztípus és létszám szükséges.';return;}
+    const capacity=singleCabinCapacity[input.cabin];
+    if(!capacity || input.adults+input.children.length>capacity){status.textContent='TÖBB HÁZ / KÉZI ELLENŐRZÉS SZÜKSÉGES · A vendéglétszám meghaladja az egyetlen kiválasztott ház ellenőrzött kapacitását, ezért automatikus árlekérés nem indul.';return;}
     try {
       const response=await fetch('/api/price-quote',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input),cache:'no-store'});
       if (!response.headers.get('content-type')?.includes('application/json')) throw Error('Az árlekérő szerver nincs ehhez az oldalhoz csatlakoztatva.');
