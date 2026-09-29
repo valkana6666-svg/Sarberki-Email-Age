@@ -10,7 +10,9 @@ test('only exact future dates and explicit room and adult count are accepted', (
     {arrival:'2027-10-02',departure:'2027-10-01',cabin:'deluxe',adults:5},
     {arrival:'2027-10-01',departure:'2027-10-02',cabin:'',adults:5},
     {arrival:'2027-10-01',departure:'2027-10-02',cabin:'deluxe',adults:0},
-    {arrival:'2027-10-01',departure:'2027-10-02',cabin:'deluxe',adults:2,children:[-1]}
+    {arrival:'2027-10-01',departure:'2027-10-02',cabin:'deluxe',adults:2,children:[-1]},
+    {arrival:'2027-10-01',departure:'2027-10-02',cabin:'deluxe',adults:5,children:[7,11]},
+    {arrival:'2027-10-01',departure:'2027-10-02',cabin:'small',adults:2,children:[4]}
   ]) assert.throws(() => validateQuote(bad));
 });
 test('personal and unrecognized fields are rejected before a Previo request',()=>{
@@ -78,4 +80,10 @@ test('without PMS no-hold verification no live request is made',async()=>{
  assert.equal(response.status,503);
  assert.equal(called,false);
  assert.match((await response.json()).error,/foglalásmentessége/u);
+});
+
+
+test('single-cabin live quote refuses multi-house capacity scenarios',()=>{
+  assert.throws(()=>validateQuote({arrival:'2027-10-01',departure:'2027-10-03',cabin:'family',adults:8,children:[7]}),/több házas árlekérés/u);
+  assert.throws(()=>validateQuote({arrival:'2027-10-01',departure:'2027-10-03',cabin:'deluxe',adults:6,children:[3]}),/több házas árlekérés/u);
 });
