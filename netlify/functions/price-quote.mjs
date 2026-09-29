@@ -2,9 +2,7 @@ import {validateQuote} from '../../price-quote.mjs';
 import {fetchPublicBookingQuote} from '../../price-source/sarberki-public-booking.mjs';
 
 const LIVE_TEST_HOSTS=new Set([
-  'leafy-chimera-2403e5.netlify.app',
-  'localhost',
-  '127.0.0.1'
+  'leafy-chimera-2403e5.netlify.app'
 ]);
 
 export function isLivePrevioEnabled(request,env=process.env) {

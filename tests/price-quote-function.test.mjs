@@ -14,6 +14,8 @@ test('env flag cannot enable another host or production',()=>{
   const env={SARBERKI_PREVIO_NO_HOLD_CONFIRMED:'true'};
   assert.equal(isLivePrevioEnabled(new Request('https://example.com/api/price-quote'),env),false);
   assert.equal(isLivePrevioEnabled(new Request('https://moonlit-torrone-88b39d.netlify.app/api/price-quote'),env),false);
+  assert.equal(isLivePrevioEnabled(new Request('http://localhost/api/price-quote'),env),false);
+  assert.equal(isLivePrevioEnabled(new Request('http://127.0.0.1/api/price-quote'),env),false);
 });
 
 test('disabled handler does not call the source',async()=>{
