@@ -40,3 +40,17 @@ Teszt Elek`;
  assert.equal(phoneFromText(message),'+36 30 555 1234');
 });
 test('HU abbreviated October range',()=>assert.deepEqual(dateRangeFromText('okt. 16-18.',now),{arrival:'2026-10-16',departure:'2026-10-18',inferredYear:true}));
+
+
+test('colloquial Hungarian without accents still parses core booking facts',()=>{
+  const message='szia, oktober 16tol 18ig mennénk, oten lennenk, csaladi haz jo lenne';
+  assert.deepEqual(dateRangeFromText(message,now),{arrival:'2026-10-16',departure:'2026-10-18',inferredYear:true});
+  assert.equal(guestCountFromText(message),5);
+  assert.equal(cabinFromText(message),'Családi');
+});
+
+test('Hungarian guest count words are recognized conservatively',()=>{
+  assert.equal(guestCountFromText('hatan mennénk'),6);
+  assert.equal(guestCountFromText('negyen jönnénk'),4);
+  assert.equal(guestCountFromText('8 fo részére'),8);
+});
