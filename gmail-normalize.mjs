@@ -1,7 +1,7 @@
 // Multilingual, conservative parsing helpers for the Gmail bridge.
 // Pure functions: safe to test without Gmail or browser access.
 const MONTHS = {
-  január:1,február:2,március:3,április:4,május:5,június:6,július:7,augusztus:8,szeptember:9,október:10,november:11,december:12,
+  január:1,januar:1,február:2,februar:2,március:3,marcius:3,április:4,aprilis:4,május:5,majus:5,június:6,junius:6,július:7,julius:7,augusztus:8,szeptember:9,október:10,oktober:10,november:11,december:12,
   jan:1,febr:2,márc:3,ápr:4,máj:5,jún:6,júl:7,aug:8,szept:9,okt:10,nov:11,dec:12,
   january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12,
   januar:1,februar:2,märz:3,maerz:3,mai:5,juni:6,juli:7,oktober:10,dezember:12,
@@ -15,14 +15,17 @@ function monthNumber(raw){
 export function cabinFromText(text=''){
   const found=[];
   if (/\bvip\b/iu.test(text)) found.push('VIP');
-  if (/\b(?:családi|family|familien)\b/iu.test(text)) found.push('Családi');
+  if (/\b(?:családi|csaladi|family|familien)\b/iu.test(text)) found.push('Családi');
   if (/\bdeluxe\b/iu.test(text)) found.push('Deluxe');
   if (/\b(?:osztott|split|geteilte[rs]?|deljen[ai]?)\b/iu.test(text)) found.push('Osztott');
   return found.length===1 ? found[0] : '? – emberi döntésre vár';
 }
 export function guestCountFromText(text=''){
-  const m=text.match(/(?:^|\s)(\d{1,2})\s*(?:fő|személy|persons?|people|guests?|gäste|personen|oseb)(?=\s|$|[,.!?])/iu);
-  return m ? Number(m[1]) : null;
+  const m=text.match(/(?:^|\s)(\d{1,2})\s*(?:fő|fo|személy|szemely|persons?|people|guests?|gäste|personen|oseb)(?=\s|$|[,.!?])/iu);
+  if(m) return Number(m[1]);
+  const words={ketten:2,kéten:2,hárman:3,harman:3,négyen:4,negyen:4,öten:5,oten:5,hatan:6,heten:7,nyolcan:8,kilencen:9,tízen:10,tizen:10};
+  const w=text.match(/\b(ketten|kéten|hárman|harman|négyen|negyen|öten|oten|hatan|heten|nyolcan|kilencen|tízen|tizen)\b/iu)?.[1]?.toLocaleLowerCase('hu-HU');
+  return w ? words[w] : null;
 }
 export function childCountFromText(text=''){
   const m=text.match(/\b(\d{1,2})\s*(?:gyerek\w*|gyermek\w*|children|child|kinder|kind|otrok\w*)\b/iu);
@@ -31,8 +34,8 @@ export function childCountFromText(text=''){
 export function dateRangeFromText(text='', now=new Date()){
   const iso=text.match(/\b(20\d{2})[-./](\d{1,2})[-./](\d{1,2})\s*(?:[-–]|to|bis|do)\s*(?:(20\d{2})[-./](\d{1,2})[-./])?(\d{1,2})\b/iu);
   if(iso) return {arrival:`${iso[1]}-${String(iso[2]).padStart(2,'0')}-${String(iso[3]).padStart(2,'0')}`,departure:`${iso[4]||iso[1]}-${String(iso[5]||iso[2]).padStart(2,'0')}-${String(iso[6]).padStart(2,'0')}`,inferredYear:false};
-  const names='január|február|március|április|május|június|július|augusztus|szeptember|október|november|december|jan\\.?|febr\\.?|márc\\.?|ápr\\.?|máj\\.?|jún\\.?|júl\\.?|aug\\.?|szept\\.?|okt\\.?|nov\\.?|dec\\.?|january|february|march|april|may|june|july|august|september|october|november|december|januar|februar|märz|maerz|mai|juni|juli|oktober|dezember|marec|maj|junij|julij|avgust';
-  const r=text.match(new RegExp(`\\b(?:20\\d{2}\\s*[.\\/-]?\\s*)?(${names})\\s+(\\d{1,2})\\s*(?:[-–]|to|bis|do|(?:-től|-tól))\\s*(?:(?:${names})\\s+)?(\\d{1,2})(?:-ig)?\\b`,'iu'));
+  const names='január|januar|február|februar|március|marcius|április|aprilis|május|majus|június|junius|július|julius|augusztus|szeptember|október|oktober|november|december|jan\\.?|febr\\.?|márc\\.?|marc\\.?|ápr\\.?|apr\\.?|máj\\.?|maj\\.?|jún\\.?|jun\\.?|júl\\.?|jul\\.?|aug\\.?|szept\\.?|okt\\.?|nov\\.?|dec\\.?|january|february|march|april|may|june|july|august|september|october|november|december|märz|maerz|mai|juni|juli|dezember|marec|junij|julij|avgust';
+  const r=text.match(new RegExp(`\\b(?:20\\d{2}\\s*[.\\/-]?\\s*)?(${names})\\s+(\\d{1,2})\\s*(?:[-–]|to|bis|do|(?:-?(?:től|tól|tol)))\\s*(?:(?:${names})\\s+)?(\\d{1,2})(?:-?ig)?\\b`,'iu'));
   if(!r) return null;
   const month=monthNumber(r[1]); if(!month) return null;
   const explicit=text.match(/\b20\d{2}\b/u)?.[0];
