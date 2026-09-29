@@ -12,3 +12,8 @@
   from = "/api/health"
   to = "/.netlify/functions/health"
   status = 200
+
+[[redirects]]
+  from = "/api/live-price-smoke-20260929"
+  to = "/.netlify/functions/live-price-smoke-20260929"
+  status = 200
