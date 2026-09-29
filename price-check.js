@@ -267,6 +267,7 @@
     if (ages===null || (childCount===0 && /\b(?:gyerek|gyermek|gyerekek|gyermekek|children|kind(?:er)?|otroka)\b/iu.test(message))) {status.textContent='HITELES ÁRLEKÉRÉS SZÜKSÉGES · A gyermekek pontos száma és életkora nélkül ár nem adható.';return;}
     const input={arrival:$('price_arrival').value,departure:$('price_departure').value,cabin:$('price_cabin').value,adults:Number($('price_adults').value),children:ages};
     if (!input.arrival || !input.departure || !input.cabin || !Number.isInteger(input.adults) || input.adults<1) {status.textContent='Pontos dátum, háztípus és létszám szükséges.';return;}
+    if(input.cabin==='split'){status.textContent='OSZTOTT HÁZ / KÉZI ELLENŐRZÉS SZÜKSÉGES · Az A/B/C egységek külön kapacitással és stégkiosztással működnek, ezért automatikus élő árlekérés még nem indul.';return;}
     const capacity=singleCabinCapacity[input.cabin];
     if(!capacity || input.adults+input.children.length>capacity){status.textContent='TÖBB HÁZ / KÉZI ELLENŐRZÉS SZÜKSÉGES · A vendéglétszám meghaladja az egyetlen kiválasztott ház ellenőrzött kapacitását, ezért automatikus árlekérés nem indul.';return;}
     try {
