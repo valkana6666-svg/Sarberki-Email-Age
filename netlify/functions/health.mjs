@@ -3,7 +3,7 @@ export default async () => Response.json({
   ok: true,
   project: 'sarberki-email-agent',
   channel: 'gmail-test-subject-allowlist',
-  version: 'v0.3.8-test',
+  version: 'v0.3.10-test',
   gmailMode: 'readonly-approved-subjects',
   unifiedPipeline: true,
   multilingual: ['hu','de','en','si'],
