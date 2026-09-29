@@ -262,7 +262,8 @@
     clearApprovedPrice('Új árlekérés indult; az előző jóváhagyás törölve.');
     const message=currentMessage();
     const analysis=typeof extract==='function' ? extract(message,'') : null;
-    if(['modification_request','cancellation_request'].includes(analysis?.intent)||analysis?.warning_codes?.includes('multiple_units')) {status.textContent='KÉZI ELLENŐRZÉS SZÜKSÉGES · Több egységet, módosítást vagy lemondást érintő kérésnél automatikus élő árlekérés nem indul.';return;}
+    const complexRequestText=/(?:\b(?:két|2|három|3|négy|4)\s+(?:db\s+)?(?:vip|családi|deluxe|osztott)?\s*(?:ház|faház|apartman|egység)\b|módosít|változtat|átten|helyett|előző\s+foglalás|lemond|storn|cancel\s+(?:my|our)?\s*(?:booking|reservation)|change\s+(?:my|our)?\s*(?:booking|reservation))/iu.test(message);
+    if(complexRequestText||['modification_request','cancellation_request'].includes(analysis?.intent)||analysis?.warning_codes?.includes('multiple_units')) {status.textContent='KÉZI ELLENŐRZÉS SZÜKSÉGES · Több egységet, módosítást vagy lemondást érintő kérésnél automatikus élő árlekérés nem indul.';return;}
     const childCount=Number($('price_children')?.value||0);
     const ages=childAgesForQuote(childCount,$('price_child_ages')?.value);
     if (ages===null || (childCount===0 && /\b(?:gyerek|gyermek|gyerekek|gyermekek|children|kind(?:er)?|otroka)\b/iu.test(message))) {status.textContent='HITELES ÁRLEKÉRÉS SZÜKSÉGES · A gyermekek pontos száma és életkora nélkül ár nem adható.';return;}
