@@ -2,6 +2,7 @@
 const BOOKING_URL = 'https://sarberkito.hu/foglalas/';
 const TYPES = { deluxe: 'DELUXE faház', family: 'Családi faház', vip: 'VIP apartman', small: 'Különálló 2 fős faház' };
 const MAX_ADULTS = { deluxe: 6, family: 8, vip: 7, small: 2 };
+const MAX_TOTAL_GUESTS = { deluxe: 6, family: 8, vip: 7, small: 2 };
 export const returningGuestReview = Object.freeze({status:'ELLENŐRIZENDŐ – KORÁBBI FOGLALÁS ELLENŐRZÉSE SZÜKSÉGES',lookbackMonths:48,possibleDiscountPercent:20,applied:false,publicSiteLookbackDays:730,source:'https://sarberkito.hu/foglalasrol/'});
 
 export function validateQuote(input) {
@@ -13,7 +14,7 @@ export function validateQuote(input) {
   if (!TYPES[cabin]) throw Error('Pontos, támogatott háztípus szükséges.');
   if (!Number.isInteger(adults) || adults < 1 || adults > 20 || !Array.isArray(children) || children.some(a => !Number.isInteger(a) || a < 0 || a > 17)) throw Error('Add meg a felnőttek számát és minden gyermek életkorát.');
   if (adults > MAX_ADULTS[cabin]) throw Error('A kért felnőtt létszám meghaladja az egyházas lekérés kapacitási korlátját.');
-  if (adults + children.length > 20) throw Error('A létszám túl nagy az egyházas lekéréshez.');
+  if (adults + children.length > MAX_TOTAL_GUESTS[cabin]) throw Error('A teljes vendéglétszám meghaladja az egyetlen kiválasztott ház ellenőrzött kapacitását; több házas árlekérés még nem támogatott.');
   return {arrival,departure,cabin,adults,children};
 }
 
