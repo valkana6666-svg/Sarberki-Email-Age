@@ -29,7 +29,10 @@ export function guestCountFromText(text=''){
 }
 export function childCountFromText(text=''){
   const m=text.match(/\b(\d{1,2})\s*(?:gyerek\w*|gyermek\w*|children|child|kinder|kind|otrok\w*)\b/iu);
-  return m ? Number(m[1]) : null;
+  if(m) return Number(m[1]);
+  const words={egy:1,két:2,ket:2,kettő:2,ketto:2,három:3,harom:3,négy:4,negy:4,öt:5,ot:5,hat:6};
+  const w=text.match(/\b(egy|két|ket|kettő|ketto|három|harom|négy|negy|öt|ot|hat)\s+(?:gyerek\w*|gyermek\w*)\b/iu)?.[1]?.toLocaleLowerCase('hu-HU');
+  return w ? words[w] : null;
 }
 export function dateRangeFromText(text='', now=new Date()){
   const iso=text.match(/\b(20\d{2})[-./](\d{1,2})[-./](\d{1,2})\s*(?:[-–]|to|bis|do)\s*(?:(20\d{2})[-./](\d{1,2})[-./])?(\d{1,2})\b/iu);
@@ -51,13 +54,13 @@ export function phoneFromText(text=''){
   return m ? m[0].trim().replace(/[.,;:]+$/u,'') : null;
 }
 export function childAgesFromText(text=''){
-  const m=text.match(/(?:gyerek\w*|gyermek\w*|children|kinder|otrok\w*)[^.!?\n]{0,80}?(\d{1,2})\s*(?:és|,|and|und|in)\s*(\d{1,2})\s*(?:éves|years? old|jahre alt|let)/iu)
-    || text.match(/(\d{1,2})\s*(?:és|,|and|und|in)\s*(\d{1,2})\s*(?:éves|years? old|jahre alt|let)/iu);
+  const m=text.match(/(?:gyerek\w*|gyermek\w*|children|kinder|otrok\w*)[^.!?\n]{0,80}?(\d{1,2})\s*(?:és|es|meg|,|and|und|in)\s*(\d{1,2})\s*(?:éves|eves|years? old|jahre alt|let)/iu)
+    || text.match(/(\d{1,2})\s*(?:és|es|meg|,|and|und|in)\s*(\d{1,2})\s*(?:éves|eves|years? old|jahre alt|let)/iu);
   return m ? [Number(m[1]),Number(m[2])] : [];
 }
 export function languageFromText(text=''){
   const scores={
-    hu:(text.match(/\b(?:szeretn|érdekl|faház|szállás|gyermek|gyerek|fő|dézsa)\w*/giu)||[]).length,
+    hu:(text.match(/\b(?:szeretn|erdekl|érdekl|faház|fahaz|szállás|szallas|gyermek|gyerek|fő|fo|dézsa|dezsa|mennénk|mennenk|jönnénk|jonnenk)\w*/giu)||[]).length,
     de:(text.match(/\b(?:möchte|anfrage|unterkunft|buchung|gäste|personen|kinder|verfügbar)\w*/giu)||[]).length,
     en:(text.match(/\b(?:would|booking|reservation|accommodation|guests|children|available|cabin)\w*/giu)||[]).length,
     si:(text.match(/\b(?:nastanitev|rezervacij|oseb|otrok|prosto|koča|ribolov)\w*/giu)||[]).length
@@ -67,7 +70,7 @@ export function languageFromText(text=''){
 }
 export function replyQuestions(language='hu', {needPhone=false,needCabin=false,needChildAge=false}={}){
   const q={
-    hu:{phone:'Megírna egy telefonszámot, amelyen elérhetjük?',cabin:'Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?',child:'Megírná a gyermek életkorát?'},
+    hu:{phone:'Megírna egy telefonszámot, amelyen elérhetjük?',cabin:'Melyik háztípust szeretné: VIP, Családi, Deluxe vagy Osztott?',child:'Megírná a gyermek életkorát?'},
     de:{phone:'Bitte teilen Sie uns eine Telefonnummer mit, unter der wir Sie erreichen können.',cabin:'Welchen Haustyp wünschen Sie: VIP, Családi (Familienhaus), Deluxe oder Osztott (geteiltes Haus)?',child:'Bitte teilen Sie uns das Alter des Kindes mit.'},
     en:{phone:'Please send us a phone number where we can reach you.',cabin:'Which cabin type would you like: VIP, Családi (Family), Deluxe or Osztott (Split)?',child:'Please tell us the age of the child.'},
     si:{phone:'Prosimo, sporočite telefonsko številko, na kateri ste dosegljivi.',cabin:'Kateri tip hiške želite: VIP, Családi (družinska), Deluxe ali Osztott (deljena)?',child:'Prosimo, sporočite starost otroka.'}
