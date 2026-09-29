@@ -109,3 +109,19 @@ test('split cabin is stopped in UI before live quote fetch',async()=>{
   assert.equal(h.calls,0);
   assert.match(h.element('price_status').textContent,/OSZTOTT HÁZ|KÉZI ELLENŐRZÉS/u);
 });
+
+
+test('manual price action also blocks multiple-unit, modification and cancellation requests before fetch',async()=>{
+  const messages=[
+    'Kedves Sárberki Horgásztó! 2027. október 1–3. között 4 fő mennénk, két Deluxe házat szeretnénk. Mennyi a teljes ár?',
+    'Kedves Sárberki Horgásztó! A korábbi foglalásunkat 2027. október 1–3. közötti Deluxe házra módosítanánk. Mennyi lenne az ár?',
+    'Kedves Sárberki Horgásztó! A 2027. október 1–3. közötti Deluxe foglalásunkat lemondanánk.'
+  ];
+  for(const message of messages){
+    const h=harness(message,()=>{throw Error('unexpected fetch')});
+    h.element('prepare_price').onclick();
+    await h.element('check_price').onclick();
+    assert.equal(h.calls,0,message);
+    assert.match(h.element('price_status').textContent,/KÉZI ELLENŐRZÉS/u);
+  }
+});
