@@ -7,7 +7,7 @@ const source = fs.readFileSync(new URL('./gmail-readonly.js', import.meta.url), 
 
 import {APPROVED_SUBJECTS,isApprovedSubject} from './gmail-subject.mjs';
 
-test('exact approved subject variants work and other subjects are rejected', () => {
+test('approved subject variants and descriptive inquiry subjects work while unrelated subjects stay rejected', () => {
   assert.deepEqual(APPROVED_SUBJECTS, [
     'érdeklődés a szállásról',
     'érdeklődés a szallasrol',
@@ -17,7 +17,13 @@ test('exact approved subject variants work and other subjects are rejected', () 
     assert.equal(isApprovedSubject(subject), true);
     assert.equal(isApprovedSubject('  ' + subject.toUpperCase() + '  '), true);
   }
-  for (const subject of ['Számla', 'Foglalás', 'Érdeklődés szállásról 6 fő részére októberben', '', null]) {
+  for (const subject of [
+    'Érdeklődés szállásról 6 fő részére októberben',
+    'Érdeklődés a szállásról – Deluxe ház',
+    'Sárberki élő teszt – 5 fő, Deluxe, október',
+    'Sarberki elo teszt - 2 fő'
+  ]) assert.equal(isApprovedSubject(subject), true);
+  for (const subject of ['Számla', 'Foglalás', 'Érdeklődés horgászjegyről', 'Sárberki', '', null]) {
     assert.equal(isApprovedSubject(subject), false);
   }
 });
