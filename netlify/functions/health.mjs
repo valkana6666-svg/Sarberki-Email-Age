@@ -1,3 +1,4 @@
+import {deployedCommit} from '../../build-info.mjs';
 export default async () => Response.json({
   ok: true,
   project: 'sarberki-email-agent',
@@ -13,7 +14,7 @@ export default async () => Response.json({
   priceQuoteMode: 'manual-review-only',
   serverlessChromium: false,
   livePriceVerified: false,
-  deployedCommit: process.env.COMMIT_REF || null,
+  deployedCommit,
   liveQuoteHost: 'leafy-chimera-2403e5.netlify.app',
   autoSend: false,
   autoBookingModification: false
