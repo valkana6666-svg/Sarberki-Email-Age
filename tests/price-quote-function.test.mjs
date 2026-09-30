@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {handlePriceQuote,isLivePrevioEnabled} from '../netlify/functions/price-quote.mjs';
+import {handlePriceQuote,isLivePrevioEnabled,fetchMnbEurRate} from '../netlify/functions/price-quote.mjs';
 
 test('live Previo is enabled on the isolated test host',()=>{
   assert.equal(isLivePrevioEnabled(new Request('https://leafy-chimera-2403e5.netlify.app/api/price-quote'),{}),true);
@@ -55,4 +55,20 @@ test('enabled handler accepts a validated mocked quote',async()=>{
   assert.equal(json.eurConversion.rateHufPerEur,366.31);
   assert.equal(json.eurConversion.rateDate,'2026-09-30');
   assert.ok(json.eurConversion.totalEur>0);
+});
+
+
+test('MNB EUR lookup falls back to the official daily rates page when SOAP is unavailable',async()=>{
+  const calls=[];
+  const rate=await fetchMnbEurRate(async (url,options={})=>{
+    calls.push({url,method:options.method||'GET'});
+    if(String(url).includes('arfolyamok.asmx')) return new Response('service unavailable',{status:503});
+    return new Response('<html><body><div>Napi árfolyamok: 30 September 2026</div><table><tr><td>EUR</td><td>Euro</td><td>1</td><td>366.31</td></tr></table></body></html>',{status:200,headers:{'content-type':'text/html'}});
+  });
+  assert.equal(calls.length,2);
+  assert.equal(calls[0].method,'POST');
+  assert.equal(calls[1].method,'GET');
+  assert.equal(rate.rate,366.31);
+  assert.equal(rate.date,'2026-09-30');
+  assert.equal(rate.source,'Magyar Nemzeti Bank');
 });
