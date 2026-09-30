@@ -12,7 +12,7 @@ for (const [cabin,adults] of [['deluxe',4],['deluxe',5],['deluxe',6],['family',4
 test('season date is preserved, never manually surcharged',()=>{
   assert.equal(validateQuote({arrival:'2027-07-01',departure:'2027-07-04',cabin:'family',adults:5}).arrival,'2027-07-01');
 });
-test('outside single unit capacity is blocked',()=>assert.throws(()=>validateQuote({arrival:'2026-10-16',departure:'2026-10-19',cabin:'deluxe',adults:7}),/kapacitási/));
+test('outside single unit capacity is blocked',()=>assert.throws(()=>validateQuote({arrival:'2026-10-16',departure:'2026-10-19',cabin:'deluxe',adults:7}),/kapacit/));
 test('child quote is blocked before launching browser',async()=>{
   let launched=false;
   await assert.rejects(fetchQuote({arrival:'2026-10-16',departure:'2026-10-19',cabin:'deluxe',adults:4,children:[8]},()=>{launched=true}),/gyermekkor/);
