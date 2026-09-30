@@ -125,3 +125,20 @@ test('manual price action also blocks multiple-unit, modification and cancellati
     assert.match(h.element('price_status').textContent,/KÉZI ELLENŐRZÉS/u);
   }
 });
+
+
+test('informal Hungarian family request survives the full email-to-quote chain',async()=>{
+  const message='Szia! 2026. október 16–18. között négyen mennénk: 2 felnőtt és két gyerekkel, 7 meg 11 évesek. Deluxe házat szeretnénk, lehetőleg dézsával. Telefonszámom: +36 30 555 1234. Van szabad hely, és mennyi lenne összesen?';
+  const expected={arrival:'2026-10-16',departure:'2026-10-18',cabin:'deluxe',adults:2,children:[7,11]};
+  const record=recorded.find(r=>r.cabin==='deluxe'&&r.adults===2&&Array.isArray(r.children)&&r.children.length===2);
+  assert.ok(record,'missing recorded Deluxe family fixture');
+  const h=harness(message,input=>{
+    assert.deepEqual(input,expected);
+    return json(quote(input,record));
+  });
+  const r=await h.run();
+  assert.equal(h.calls,1);
+  assert.equal(h.element('price_child_ages').value,'7, 11');
+  assert.match(r.result,/Teljes ár:/u);
+  assert.doesNotMatch(r.draft,/Ft/u);
+});
