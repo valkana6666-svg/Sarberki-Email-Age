@@ -74,7 +74,6 @@ test('contradictory Gmail booking facts never trigger a quote request',async()=>
  const messages=[
   sample(recorded[1]).replace('4 fő részére','5 fő részére'),
   sample(recorded[0]).replace('2 fő részére','3 éjszakára, 2 fő részére'),
-  sample(recorded[0]).replace('Deluxe házat','két Deluxe házat'),
   sample(recorded[0]).replace('házat szeretnénk','házat szeretnénk az előző foglalás helyett')
  ];
  for(const message of messages){
@@ -91,13 +90,17 @@ test('contradictory Gmail booking facts never trigger a quote request',async()=>
 });
 
 
-test('over-capacity single-cabin request is stopped in UI before fetch',async()=>{
+test('over-capacity request automatically prices the minimum number of houses',async()=>{
   const message='Kedves Sárberki Horgásztó! 2027. október 1–3. között 7 fő mennénk: 5 felnőtt és 2 gyermek, 7 és 11 évesek. Deluxe házat szeretnénk. Mennyi a teljes ár?';
-  const h=harness(message,()=>{throw Error('unexpected fetch')});
-  h.element('prepare_price').onclick();
-  await h.element('check_price').onclick();
-  assert.equal(h.calls,0);
-  assert.match(h.element('price_status').textContent,/TÖBB HÁZ|KÉZI ELLENŐRZÉS/u);
+  const h=harness(message,input=>{
+    assert.equal(input.units,2);
+    return json(quote(input,{availableUnits:4,accommodation:240000,tourismTax:4400,total:244400}));
+  });
+  const r=await h.run();
+  assert.equal(h.calls,1);
+  assert.match(r.result,/Egységek: 2/u);
+  assert.match(r.result,/244.400|244 400/u);
+  assert.doesNotMatch(r.draft,/244.400|244 400/u);
 });
 
 
@@ -111,18 +114,25 @@ test('split cabin is stopped in UI before live quote fetch',async()=>{
 });
 
 
-test('manual price action also blocks multiple-unit, modification and cancellation requests before fetch',async()=>{
-  const messages=[
-    'Kedves Sárberki Horgásztó! 2027. október 1–3. között 4 fő mennénk, két Deluxe házat szeretnénk. Mennyi a teljes ár?',
+test('explicit multiple-unit request gets a live internal price while modifications and cancellations stay blocked',async()=>{
+  const multi='Kedves Sárberki Horgásztó! 2027. október 1–3. között 4 fő mennénk, két Deluxe házat szeretnénk. Mennyi a teljes ár?';
+  const h=harness(multi,input=>{
+    assert.equal(input.units,2);
+    return json(quote(input,{availableUnits:4,accommodation:240000,tourismTax:4400,total:244400}));
+  });
+  const r=await h.run();
+  assert.equal(h.calls,1);
+  assert.match(r.result,/Egységek: 2/u);
+  assert.doesNotMatch(r.draft,/244.400|244 400/u);
+  for(const message of [
     'Kedves Sárberki Horgásztó! A korábbi foglalásunkat 2027. október 1–3. közötti Deluxe házra módosítanánk. Mennyi lenne az ár?',
     'Kedves Sárberki Horgásztó! A 2027. október 1–3. közötti Deluxe foglalásunkat lemondanánk.'
-  ];
-  for(const message of messages){
-    const h=harness(message,()=>{throw Error('unexpected fetch')});
-    h.element('prepare_price').onclick();
-    await h.element('check_price').onclick();
-    assert.equal(h.calls,0,message);
-    assert.match(h.element('price_status').textContent,/KÉZI ELLENŐRZÉS/u);
+  ]){
+    const blocked=harness(message,()=>{throw Error('unexpected fetch')});
+    blocked.element('prepare_price').onclick();
+    await blocked.element('check_price').onclick();
+    assert.equal(blocked.calls,0,message);
+    assert.match(blocked.element('price_status').textContent,/KÉZI ELLENŐRZÉS/u);
   }
 });
 
