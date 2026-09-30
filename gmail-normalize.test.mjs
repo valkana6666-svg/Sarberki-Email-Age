@@ -329,3 +329,28 @@ test('family holiday wording does not invent Family cabin',()=>{
   assert.equal(cabinFromText('We would like a Family cabin.'),'Családi');
   assert.equal(cabinFromText('Wir planen einen Familienurlaub und möchten eine Deluxe Unterkunft.'),'Deluxe');
 });
+
+
+test('English multiple-cabin regression from iPhone screen recording',()=>{
+  const message=`Hello,
+
+We would like to stay at Sárberki Fishing Lake from 16 October 2026 to 18 October 2026.
+
+There will be 8 people in total: 6 adults and 2 children, aged 7 and 11. We would like to book two cabins, preferably Deluxe cabins with hot tubs.
+
+We are also bringing one dog.
+
+Could you please let us know the availability and the price for each cabin separately, as well as the total price?
+
+Phone: +36 30 555 1234
+
+Kind regards,
+John Smith`;
+  assert.deepEqual(dateRangeFromText(message,now),{arrival:'2026-10-16',departure:'2026-10-18',inferredYear:false});
+  assert.equal(languageFromText(message),'en');
+  assert.equal(cabinFromText(message),'Deluxe');
+  assert.equal(guestCountFromText(message),8);
+  assert.equal(childCountFromText(message),2);
+  assert.deepEqual(childAgesFromText(message),[7,11]);
+  assert.equal(phoneFromText(message),'+36 30 555 1234');
+});
