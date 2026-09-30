@@ -85,6 +85,21 @@ export function languageFromText(text=''){
   const best=Object.entries(scores).sort((a,b)=>b[1]-a[1]);
   return best[0][1]>0 && best[0][1]>best[1][1] ? best[0][0] : 'unknown';
 }
+export function replySummary(language='hu', {arrival=null,departure=null,guests=null,children=null,childAges=[],pier=false,hotTub=false,dog=false}={}){
+  if(!arrival||!departure||!guests) return '';
+  const fmt=iso=>{const [y,m,d]=iso.split('-');return `${d}.${m}.${y}`;};
+  const adults=Number.isFinite(children)?Math.max(0,guests-children):null;
+  const ages=Array.isArray(childAges)&&childAges.length ? childAges.join(' und ') : null;
+  if(language==='de'){
+    const people=children ? `${guests} Personen (${adults} Erwachsene und ${children} Kinder${ages ? ` im Alter von ${ages} Jahren` : ''})` : `${guests} Personen`;
+    const extras=[pier?'Wenn möglich, wünschen Sie ein Haus mit eigenem Steg.':null,hotTub?'Außerdem wünschen Sie ein Badefass / einen Whirlpool.':null,dog?'Sie möchten einen Hund mitbringen.':null].filter(Boolean).join(' ');
+    return `Sie möchten vom ${fmt(arrival)} bis ${fmt(departure)} mit ${people} bei uns übernachten.${extras ? ' '+extras : ''}`;
+  }
+  if(language==='en') return `You would like to stay from ${arrival} to ${departure} with ${guests} guests.${pier?' If possible, you would like a cabin with its own fishing pier.':''}`;
+  if(language==='si') return `Pri nas želite bivati od ${arrival} do ${departure} za skupaj ${guests} oseb.${pier?' Če je mogoče, želite hiško z lastnim pomolom.':''}`;
+  return `${arrival} és ${departure} között összesen ${guests} fővel szeretnének érkezni.${pier?' Ha lehetséges, saját / külön stéget kérnek.':''}`;
+}
+
 export function replyQuestions(language='hu', {needPhone=false,needCabin=false,needChildAge=false}={}){
   const q={
     hu:{phone:'Megírna egy telefonszámot, amelyen elérhetjük?',cabin:'Melyik háztípust szeretné: VIP, Családi, Deluxe vagy Osztott?',child:'Megírná a gyermek életkorát?'},
