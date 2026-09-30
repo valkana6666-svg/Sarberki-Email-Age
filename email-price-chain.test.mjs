@@ -118,12 +118,24 @@ test('explicit multiple-unit request gets a live internal price while modificati
   const multi='Kedves Sárberki Horgásztó! 2027. október 1–3. között 4 fő mennénk, két Deluxe házat szeretnénk. Mennyi a teljes ár?';
   const h=harness(multi,input=>{
     assert.equal(input.units,2);
-    return json(quote(input,{availableUnits:4,accommodation:240000,tourismTax:4400,total:244400}));
+    return json({...quote(input,{availableUnits:4,accommodation:240000,tourismTax:4400,total:244400}),
+      unitBreakdown:[
+        {unit:1,adults:2,children:[],accommodation:120000,tourismTax:2200,total:122200},
+        {unit:2,adults:2,children:[],accommodation:120000,tourismTax:2200,total:122200}
+      ],
+      eurConversion:{status:'available',rateHufPerEur:366.31,rateDate:'2026-09-30',source:'Magyar Nemzeti Bank',totalEur:667.20}
+    });
   });
   const r=await h.run();
   assert.equal(h.calls,1);
   assert.match(r.result,/Egységek: 2/u);
+  assert.match(r.result,/1\. egység:.*122.200|1\. egység:.*122 200/u);
+  assert.match(r.result,/2\. egység:.*122.200|2\. egység:.*122 200/u);
+  assert.match(r.result,/EUR:.*667,20|EUR:.*667\.20/u);
   assert.doesNotMatch(r.draft,/244.400|244 400/u);
+  h.element('approve_price').onclick();
+  assert.match(h.element('draft').value,/244.400|244 400/u);
+  assert.match(h.element('draft').value,/Házanként:/u);
   for(const message of [
     'Kedves Sárberki Horgásztó! A korábbi foglalásunkat 2027. október 1–3. közötti Deluxe házra módosítanánk. Mennyi lenne az ár?',
     'Kedves Sárberki Horgásztó! A 2027. október 1–3. közötti Deluxe foglalásunkat lemondanánk.'
