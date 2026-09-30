@@ -70,3 +70,26 @@ test('accentless Hungarian booking text is detected as Hungarian',()=>{
 test('Hungarian missing-cabin follow-up uses natural wording',()=>{
   assert.deepEqual(replyQuestions('hu',{needCabin:true}),['Melyik háztípust szeretné: VIP, Családi, Deluxe vagy Osztott?']);
 });
+
+
+test('real German Gmail regression parses current test message',()=>{
+  const message=`Guten Tag,
+
+wir möchten gerne vom 16. bis 19. Oktober bei Ihnen übernachten.
+
+Wir sind 4 Erwachsene und 2 Kinder im Alter von 6 und 10 Jahren. Wir
+möchten gerne wissen, ob in diesem Zeitraum noch eine passende
+Unterkunft verfügbar ist und wie hoch der Gesamtpreis wäre.
+
+Wenn möglich, hätten wir gerne ein Haus mit eigenem Steg.
+
+Vielen Dank im Voraus.
+
+Mit freundlichen Grüßen
+Thomas Berger`;
+  assert.deepEqual(dateRangeFromText(message,now),{arrival:'2026-10-16',departure:'2026-10-19',inferredYear:true});
+  assert.equal(guestCountFromText(message),6);
+  assert.equal(childCountFromText(message),2);
+  assert.deepEqual(childAgesFromText(message),[6,10]);
+  assert.equal(languageFromText(message),'de');
+});
