@@ -15,7 +15,9 @@ function monthNumber(raw){
 export function cabinFromText(text=''){
   const found=[];
   if (/\bvip\b/iu.test(text)) found.push('VIP');
-  if (/\b(?:családi|csaladi|family|familien)\b/iu.test(text)) found.push('Családi');
+  if (/\b(?:családi|csaladi)\b/iu.test(text)
+      || /\bfamily\s+(?:cabin|house|accommodation|unit)\b/iu.test(text)
+      || /\b(?:familien(?:haus|hütte|unterkunft)|familien\s+(?:haus|unterkunft))\b/iu.test(text)) found.push('Családi');
   if (/\bdeluxe\b/iu.test(text)) found.push('Deluxe');
   if (/\b(?:osztott|split|geteilte[rs]?|deljen[ai]?)\b/iu.test(text)) found.push('Osztott');
   return found.length===1 ? found[0] : '? – emberi döntésre vár';
