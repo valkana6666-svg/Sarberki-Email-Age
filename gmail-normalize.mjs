@@ -23,7 +23,7 @@ export function cabinFromText(text=''){
 export function guestCountFromText(text=''){
   const dePair=text.match(/\b(\d{1,2})\s*erwachsene\w*\s*(?:und|,|\+)\s*(\d{1,2})\s*kinder?\b/iu);
   if(dePair) return Number(dePair[1])+Number(dePair[2]);
-  const m=text.match(/(?:^|\s)(\d{1,2})\s*(?:fő|fo|személy|szemely|persons?|people|guests?|gäste|personen|oseb)(?=\s|$|[,.!?])/iu);
+  const m=text.match(/(?:^|\s)(\d{1,2})\s*(?:fő|fo|személy|szemely|persons?|people|guests?|gäste|personen|oseb)(?=\s|$|[,.!?:;])/iu);
   if(m) return Number(m[1]);
   const words={ketten:2,kéten:2,hárman:3,harman:3,négyen:4,negyen:4,öten:5,oten:5,hatan:6,heten:7,nyolcan:8,kilencen:9,tízen:10,tizen:10};
   const w=text.match(/\b(ketten|kéten|hárman|harman|négyen|negyen|öten|oten|hatan|heten|nyolcan|kilencen|tízen|tizen)\b/iu)?.[1]?.toLocaleLowerCase('hu-HU');
