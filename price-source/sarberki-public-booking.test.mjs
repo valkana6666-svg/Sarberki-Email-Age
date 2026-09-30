@@ -34,6 +34,18 @@ test('different cabin maps to its own Previo object kind',async()=>{
  const m=mock();await fetchPublicBookingQuote({...base,cabin:'family'},m.request);
  assert.equal(m.calls[2].data.obkId,'11');
 });
+test('two units are priced in one anonymous Previo request and require two free units',async()=>{
+ const m=mock({free:3,price:244400,tax:4400});
+ const quote=await fetchPublicBookingQuote({...base,adults:4,units:2},m.request);
+ const rooms=JSON.parse(m.calls.at(-1).data.formData).rooms;
+ assert.equal(rooms.length,2);
+ assert.deepEqual(rooms.map(r=>r.guestCategories[0].count),[2,2]);
+ assert.equal(quote.units,2);
+ assert.equal(quote.total,244400);
+ const unavailable=await fetchPublicBookingQuote({...base,adults:4,units:2},mock({free:1}).request);
+ assert.equal(unavailable.status,'unavailable');
+ assert.equal(unavailable.availableUnits,1);
+});
 test('no capacity never requests a price',async()=>{
  const m=mock({free:0});const quote=await fetchPublicBookingQuote(base,m.request);
  assert.equal(quote.status,'unavailable');assert.equal(quote.total,undefined);assert.equal(m.calls.length,3);
