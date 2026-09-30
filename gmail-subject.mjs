@@ -1,7 +1,10 @@
 export const APPROVED_SUBJECTS = Object.freeze([
   'érdeklődés a szállásról',
   'érdeklődés a szallasrol',
-  'érdeklődés szállásról'
+  'érdeklődés szállásról',
+  'anfrage für einen aufenthalt',
+  'anfrage für eine unterkunft',
+  'anfrage zur unterkunft'
 ]);
 
 export const TEST_SUBJECT_PREFIXES = Object.freeze([
