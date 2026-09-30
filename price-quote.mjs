@@ -6,16 +6,18 @@ const MAX_TOTAL_GUESTS = { deluxe: 6, family: 8, vip: 7, small: 2 };
 export const returningGuestReview = Object.freeze({status:'ELLENŐRIZENDŐ – KORÁBBI FOGLALÁS ELLENŐRZÉSE SZÜKSÉGES',lookbackMonths:48,possibleDiscountPercent:20,applied:false,publicSiteLookbackDays:730,source:'https://sarberkito.hu/foglalasrol/'});
 
 export function validateQuote(input) {
-  if(!input || typeof input!=='object' || Array.isArray(input) || Object.keys(input).some(key=>!['arrival','departure','cabin','adults','children'].includes(key))) throw Error('Csak dátum, háztípus és névtelen létszámadat adható meg; személyes adat nem továbbítható.');
-  const { arrival, departure, cabin, adults, children = [] } = input || {};
+  if(!input || typeof input!=='object' || Array.isArray(input) || Object.keys(input).some(key=>!['arrival','departure','cabin','adults','children','units'].includes(key))) throw Error('Csak dátum, háztípus és névtelen létszámadat adható meg; személyes adat nem továbbítható.');
+  const { arrival, departure, cabin, adults, children = [], units = 1 } = input || {};
   if (!/^\d{4}-\d{2}-\d{2}$/.test(arrival || '') || !/^\d{4}-\d{2}-\d{2}$/.test(departure || '')) throw Error('Pontos érkezési és távozási dátum szükséges.');
   const start = new Date(arrival + 'T00:00:00Z'), end = new Date(departure + 'T00:00:00Z');
   if (!Number.isFinite(+start) || !Number.isFinite(+end) || start.toISOString().slice(0,10) !== arrival || end.toISOString().slice(0,10) !== departure || end <= start || start < new Date(new Date().toISOString().slice(0,10)+'T00:00:00Z')) throw Error('Érvényes, jövőbeli tartózkodást adj meg.');
   if (!TYPES[cabin]) throw Error('Pontos, támogatott háztípus szükséges.');
-  if (!Number.isInteger(adults) || adults < 1 || adults > 20 || !Array.isArray(children) || children.some(a => !Number.isInteger(a) || a < 0 || a > 17)) throw Error('Add meg a felnőttek számát és minden gyermek életkorát.');
-  if (adults > MAX_ADULTS[cabin]) throw Error('A kért felnőtt létszám meghaladja az egyházas lekérés kapacitási korlátját.');
-  if (adults + children.length > MAX_TOTAL_GUESTS[cabin]) throw Error('A teljes vendéglétszám meghaladja az egyetlen kiválasztott ház ellenőrzött kapacitását; több házas árlekérés még nem támogatott.');
-  return {arrival,departure,cabin,adults,children};
+  if (!Number.isInteger(adults) || adults < 1 || adults > 40 || !Array.isArray(children) || children.some(a => !Number.isInteger(a) || a < 0 || a > 17)) throw Error('Add meg a felnőttek számát és minden gyermek életkorát.');
+  if (!Number.isInteger(units) || units < 1 || units > 10) throw Error('Az egységek száma 1 és 10 közötti egész szám lehet.');
+  if (adults > MAX_ADULTS[cabin] * units) throw Error('A kért felnőtt létszám meghaladja a megadott egységszám ellenőrzött kapacitását.');
+  if (adults + children.length > MAX_TOTAL_GUESTS[cabin] * units) throw Error('A teljes vendéglétszám meghaladja a megadott egységszám ellenőrzött kapacitását.');
+  if (units > 1 && adults < units) throw Error('Több házas árlekérésnél minden egységhez legalább egy felnőtt szükséges.');
+  return units===1 ? {arrival,departure,cabin,adults,children} : {arrival,departure,cabin,adults,children,units};
 }
 
 // Legacy browser path is deliberately disabled: it clicked a booking-labelled UI action.
