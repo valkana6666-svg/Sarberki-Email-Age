@@ -89,15 +89,44 @@ export function replySummary(language='hu', {arrival=null,departure=null,guests=
   if(!arrival||!departure||!guests) return '';
   const fmt=iso=>{const [y,m,d]=iso.split('-');return `${d}.${m}.${y}`;};
   const adults=Number.isFinite(children)?Math.max(0,guests-children):null;
-  const ages=Array.isArray(childAges)&&childAges.length ? childAges.join(' und ') : null;
-  if(language==='de'){
-    const people=children ? `${guests} Personen (${adults} Erwachsene und ${children} Kinder${ages ? ` im Alter von ${ages} Jahren` : ''})` : `${guests} Personen`;
-    const extras=[pier?'Wenn möglich, wünschen Sie ein Haus mit eigenem Steg.':null,hotTub?'Außerdem wünschen Sie ein Badefass / einen Whirlpool.':null,dog?'Sie möchten einen Hund mitbringen.':null].filter(Boolean).join(' ');
-    return `Sie möchten vom ${fmt(arrival)} bis ${fmt(departure)} mit ${people} bei uns übernachten.${extras ? ' '+extras : ''}`;
-  }
-  if(language==='en') return `You would like to stay from ${arrival} to ${departure} with ${guests} guests.${pier?' If possible, you would like a cabin with its own fishing pier.':''}`;
-  if(language==='si') return `Pri nas želite bivati od ${arrival} do ${departure} za skupaj ${guests} oseb.${pier?' Če je mogoče, želite hiško z lastnim pomolom.':''}`;
-  return `${arrival} és ${departure} között összesen ${guests} fővel szeretnének érkezni.${pier?' Ha lehetséges, saját / külön stéget kérnek.':''}`;
+  const ageList=(lang)=>{
+    if(!Array.isArray(childAges)||!childAges.length) return '';
+    const joiner={hu:' és ',de:' und ',en:' and ',si:' in '}[lang]||', ';
+    return childAges.join(joiner);
+  };
+  const packs={
+    hu:{
+      people:()=>children?`${guests} fő (${adults} felnőtt és ${children} gyermek${ageList('hu')?`, ${ageList('hu')} évesek`:''})`:`${guests} fő`,
+      base:p=>`${fmt(arrival)} és ${fmt(departure)} között összesen ${p} szeretnének érkezni.`,
+      pier:'Ha lehetséges, saját / külön stéget kérnek.',
+      hotTub:'Dézsát is szeretnének.',
+      dog:'Kutyát is hoznának.'
+    },
+    de:{
+      people:()=>children?`${guests} Personen (${adults} Erwachsene und ${children} Kinder${ageList('de')?` im Alter von ${ageList('de')} Jahren`:''})`:`${guests} Personen`,
+      base:p=>`Sie möchten vom ${fmt(arrival)} bis ${fmt(departure)} mit ${p} bei uns übernachten.`,
+      pier:'Wenn möglich, wünschen Sie ein Haus mit eigenem Steg.',
+      hotTub:'Außerdem wünschen Sie ein Badefass / einen Whirlpool.',
+      dog:'Sie möchten einen Hund mitbringen.'
+    },
+    en:{
+      people:()=>children?`${guests} guests (${adults} adults and ${children} children${ageList('en')?`, aged ${ageList('en')}`:''})`:`${guests} guests`,
+      base:p=>`You would like to stay from ${fmt(arrival)} to ${fmt(departure)} with ${p}.`,
+      pier:'If possible, you would like a cabin with its own fishing pier.',
+      hotTub:'You would also like a hot tub.',
+      dog:'You would like to bring a dog.'
+    },
+    si:{
+      people:()=>children?`${guests} oseb (${adults} odraslih in ${children} otrok${ageList('si')?`, starih ${ageList('si')} let`:''})`:`${guests} oseb`,
+      base:p=>`Pri nas želite bivati od ${fmt(arrival)} do ${fmt(departure)} za skupaj ${p}.`,
+      pier:'Če je mogoče, želite hiško z lastnim pomolom.',
+      hotTub:'Želite tudi masažno / vročo kad.',
+      dog:'S seboj želite pripeljati psa.'
+    }
+  };
+  const pack=packs[language]||packs.hu;
+  const extras=[pier?pack.pier:null,hotTub?pack.hotTub:null,dog?pack.dog:null].filter(Boolean).join(' ');
+  return `${pack.base(pack.people())}${extras?' '+extras:''}`;
 }
 
 export function replyQuestions(language='hu', {needPhone=false,needCabin=false,needChildAge=false}={}){
