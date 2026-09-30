@@ -13,7 +13,11 @@ function mock({free=2,price=122200,tax=2200,error=false,unknown=false}={}){
   let body;
   if(path==='/') body=options.method==='POST'?`var PageParams = ${JSON.stringify({HOT_ID:753011,CUR_CODE:'HUF',RESERVATION_DETAILS:{from:data.arrival,to:data.departure},OBJECT_KINDS:kinds,GUEST_CATEGORIES:categories})} //--><div></div>`:first;
   else if(path==='/index/get-object-kind-occupancy/') body=JSON.stringify({success:true,html:`<form data-numOfFreeRooms="${free}"></form>`});
-  else if(path==='/index/get-occupancy-price/') body=JSON.stringify({success:true,unknownPrice:unknown,totalPrice:price,totalTaxes:tax});
+  else if(path==='/index/get-occupancy-price/'){
+    const roomCount=JSON.parse(data.formData||'{"rooms":[]}').rooms.length||1;
+    const divisor=price===244400&&roomCount===1?2:1;
+    body=JSON.stringify({success:true,unknownPrice:unknown,totalPrice:Math.round(price/divisor),totalTaxes:Math.round(tax/divisor)});
+  }
   else throw Error('Váratlan kérés: '+path);
   return {ok:true,url:path==='/'&&options.method==='POST'?'https://booking.previo.cz/index/step-2/?hotId=753011&PHPSESSID=test-session':'https://booking.previo.cz/index/step-1/?hotId=753011&PHPSESSID=test-session',text:async()=>body,json:async()=>JSON.parse(body)};
  };
@@ -34,14 +38,21 @@ test('different cabin maps to its own Previo object kind',async()=>{
  const m=mock();await fetchPublicBookingQuote({...base,cabin:'family'},m.request);
  assert.equal(m.calls[2].data.obkId,'11');
 });
-test('two units are priced in one anonymous Previo request and require two free units',async()=>{
+test('two units return a reconciled per-unit breakdown and require two free units',async()=>{
  const m=mock({free:3,price:244400,tax:4400});
  const quote=await fetchPublicBookingQuote({...base,adults:4,units:2},m.request);
- const rooms=JSON.parse(m.calls.at(-1).data.formData).rooms;
+ const aggregateCall=m.calls.find(x=>x.path==='/index/get-occupancy-price/'&&JSON.parse(x.data.formData).rooms.length===2);
+ const rooms=JSON.parse(aggregateCall.data.formData).rooms;
  assert.equal(rooms.length,2);
  assert.deepEqual(rooms.map(r=>r.guestCategories[0].count),[2,2]);
  assert.equal(quote.units,2);
  assert.equal(quote.total,244400);
+ assert.deepEqual(quote.unitBreakdown,[
+   {unit:1,adults:2,children:[],accommodation:120000,tourismTax:2200,total:122200},
+   {unit:2,adults:2,children:[],accommodation:120000,tourismTax:2200,total:122200}
+ ]);
+ const priceCalls=m.calls.filter(x=>x.path==='/index/get-occupancy-price/');
+ assert.equal(priceCalls.length,3);
  const unavailable=await fetchPublicBookingQuote({...base,adults:4,units:2},mock({free:1}).request);
  assert.equal(unavailable.status,'unavailable');
  assert.equal(unavailable.availableUnits,1);
