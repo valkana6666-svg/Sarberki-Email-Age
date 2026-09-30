@@ -262,3 +262,63 @@ Emily Carter`;
   assert.deepEqual(childAgesFromText(en),[6,13]);
   assert.equal(phoneFromText(en),'+44 7700 900123');
 });
+
+
+test('real Gmail comprehensive English end-to-end regression',()=>{
+  const message=`Hello,
+
+We are planning a family fishing holiday and would like to stay from
+November 12 to November 16, 2026.
+
+There would be 8 guests altogether: 5 adults and 3 children, aged 4, 9
+and 13. We would prefer a Deluxe cabin, but if one cabin is not
+suitable for our group, we would also be interested in two separate
+accommodation units.
+
+If available, we would like accommodation with a private fishing pier
+and a hot tub. We will also bring one small dog.
+
+We are travelling with three cars, so please let us know whether
+parking for all three vehicles is available.
+
+Is electricity included in the accommodation price, or is consumption
+charged separately according to the meter?
+Is firewood available, and if so, is there an additional charge?
+Would it be possible to arrive at approximately 6:30 PM?
+What time do we need to leave the accommodation on the day of departure?
+
+Could you please tell us the total accommodation price, including any
+applicable seasonal surcharge, tourist tax and hot-tub charge?
+
+We have stayed at Sárberki before, approximately one year ago. Please
+also check whether we may qualify for a returning-guest discount.
+
+Could you also let us know how much deposit is required, when it must
+be paid, and what the cancellation conditions would be for a group of
+this size?
+
+If the Deluxe option is not available for these dates, please suggest
+another suitable cabin type or a combination of units for eight
+people.
+
+We are also interested in fishing. Could you tell us the price of a
+24-hour adult ticket for the Normal lake, whether children need a
+separate ticket, and whether barbed hooks are allowed? We would also
+like to know whether there are minimum fish sizes or separate prices
+for fish that may be taken away.
+
+My phone number is +44 7700 912345.
+
+Thank you very much. We look forward to your reply.
+
+Best regards,
+Michael Thompson`;
+  assert.equal(languageFromText(message),'en');
+  assert.deepEqual(dateRangeFromText(message,now),{arrival:'2026-11-12',departure:'2026-11-16',inferredYear:false});
+  assert.equal(cabinFromText(message),'Deluxe');
+  assert.equal(guestCountFromText(message),8);
+  assert.equal(childCountFromText(message),3);
+  assert.deepEqual(childAgesFromText(message),[4,9,13]);
+  assert.equal(phoneFromText(message),'+44 7700 912345');
+  assert.equal(pierPreferenceFromText(message),true);
+});
