@@ -164,3 +164,37 @@ test('informal Hungarian family request survives the full email-to-quote chain',
   assert.match(r.result,/Teljes ár:/u);
   assert.doesNotMatch(r.draft,/Ft/u);
 });
+
+
+test('English two Deluxe cabins reach quote boundary as two units',async()=>{
+  const message=`Hello,
+
+We would like to stay at Sárberki Fishing Lake from 16 October 2026 to 18 October 2026.
+
+There will be 8 people in total: 6 adults and 2 children, aged 7 and 11. We would like to book two cabins, preferably Deluxe cabins with hot tubs.
+
+We are also bringing one dog.
+
+Could you please let us know the availability and the price for each cabin separately, as well as the total price?
+
+Phone: +36 30 555 1234
+
+Kind regards,
+John Smith`;
+  const h=harness(message,input=>{
+    assert.deepEqual(input,{arrival:'2026-10-16',departure:'2026-10-18',cabin:'deluxe',adults:6,children:[7,11],units:2});
+    return json({...quote(input,{availableUnits:4,accommodation:240000,tourismTax:4400,total:244400}),
+      units:2,
+      unitBreakdown:[
+        {unit:1,adults:3,children:[7],accommodation:120000,tourismTax:2200,total:122200},
+        {unit:2,adults:3,children:[11],accommodation:120000,tourismTax:2200,total:122200}
+      ]
+    });
+  });
+  const r=await h.run();
+  assert.equal(h.calls,1);
+  assert.match(r.result,/Egységek: 2/u);
+  assert.match(r.result,/1\. egység/u);
+  assert.match(r.result,/2\. egység/u);
+  assert.doesNotMatch(r.draft,/244.400|244 400/u);
+});
