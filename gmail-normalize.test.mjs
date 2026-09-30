@@ -202,3 +202,63 @@ test('Slovenian orthography markers are recognized',()=>{
 test('English aged child syntax is recognized',()=>{
   assert.deepEqual(childAgesFromText('2 children, aged 7 and 11'),[7,11]);
 });
+
+
+test('varied real-world DE SI EN inquiry regressions',()=>{
+  const de=`Guten Abend,
+
+für unseren Familienausflug suchen wir vom 7. bis 10. November 2026 eine Unterkunft.
+Wir wären insgesamt 5 Personen: 3 Erwachsene und 2 Kinder im Alter von 8 und 12 Jahren.
+Am liebsten hätten wir ein Deluxe-Haus mit Badefass. Einen kleinen Hund würden wir ebenfalls mitbringen.
+Sie erreichen mich unter +43 660 123 4567.
+
+Könnten Sie uns bitte mitteilen, ob etwas frei ist und wie hoch der Gesamtpreis wäre?
+
+Viele Grüße
+Anna Müller`;
+  assert.equal(languageFromText(de),'de');
+  assert.deepEqual(dateRangeFromText(de,now),{arrival:'2026-11-07',departure:'2026-11-10',inferredYear:false});
+  assert.equal(cabinFromText(de),'Deluxe');
+  assert.equal(guestCountFromText(de),5);
+  assert.equal(childCountFromText(de),2);
+  assert.deepEqual(childAgesFromText(de),[8,12]);
+  assert.equal(phoneFromText(de),'+43 660 123 4567');
+
+  const si=`Pozdravljeni,
+
+novembra bi z družino radi preživeli nekaj dni pri vas. Zanimajo nas datumi od 20. do 23. novembra 2026.
+Prišli bi 4: dva odrasla in dva otroka, stara 5 in 9 let.
+Če je mogoče, bi želeli Deluxe hiško in vročo kad. S seboj bi pripeljali tudi manjšega psa.
+Moja telefonska številka je +386 41 234 567.
+
+Prosim, sporočite, ali je termin prost in kakšna bi bila skupna cena.
+
+Hvala in lep pozdrav,
+Maja Kovačič`;
+  assert.equal(languageFromText(si),'si');
+  assert.deepEqual(dateRangeFromText(si,now),{arrival:'2026-11-20',departure:'2026-11-23',inferredYear:false});
+  assert.equal(cabinFromText(si),'Deluxe');
+  assert.equal(guestCountFromText(si),4);
+  assert.equal(childCountFromText(si),2);
+  assert.deepEqual(childAgesFromText(si),[5,9]);
+  assert.equal(phoneFromText(si),'+386 41 234 567');
+
+  const en=`Hi there,
+
+We're planning a short break and are looking at December 4-7, 2026.
+Our group has 6 guests: 4 adults plus 2 children, aged 6 and 13.
+A Deluxe cabin would be our first choice, and we'd also like a hot tub if one is available.
+We'll be travelling with a small dog. You can reach me on +44 7700 900123.
+
+Could you let me know if you have availability and the total cost?
+
+Best regards,
+Emily Carter`;
+  assert.equal(languageFromText(en),'en');
+  assert.deepEqual(dateRangeFromText(en,now),{arrival:'2026-12-04',departure:'2026-12-07',inferredYear:false});
+  assert.equal(cabinFromText(en),'Deluxe');
+  assert.equal(guestCountFromText(en),6);
+  assert.equal(childCountFromText(en),2);
+  assert.deepEqual(childAgesFromText(en),[6,13]);
+  assert.equal(phoneFromText(en),'+44 7700 900123');
+});
