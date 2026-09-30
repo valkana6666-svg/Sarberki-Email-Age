@@ -87,10 +87,10 @@ export function phoneFromText(text=''){
 }
 export function childAgesFromText(text=''){
   const segments=[
-    text.match(/\baged\s+([^.!?\n]{1,80})/iu)?.[1],
-    text.match(/\bim\s+alter\s+von\s+([^.!?\n]{1,80}?)(?=\s+jahren?\b|[.!?\n]|$)/iu)?.[1],
-    text.match(/\bstar(?:a|i|e)?\s+([^.!?\n]{1,80}?)(?=\s+let\b|[.!?\n]|$)/iu)?.[1],
-    text.match(/([^.!?\n]{1,80}?)(?=\s+(?:évesek|éves|evesek|eves)\b)/iu)?.[1]
+    text.match(/\baged\s+([^.!?]{1,120})/iu)?.[1],
+    text.match(/\bim\s+alter\s+von\s+([^.!?]{1,120}?)(?=\s+jahren?\b|[.!?]|$)/iu)?.[1],
+    text.match(/\bstar(?:a|i|e)?\s+([^.!?]{1,120}?)(?=\s+let\b|[.!?]|$)/iu)?.[1],
+    text.match(/([^.!?]{1,120}?)(?=\s+(?:évesek|éves|evesek|eves)\b)/iu)?.[1]
   ].filter(Boolean);
   for(const segment of segments){
     const nums=[...segment.matchAll(/\b\d{1,2}\b/gu)].map(m=>Number(m[0]));
