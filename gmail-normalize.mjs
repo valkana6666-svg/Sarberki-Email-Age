@@ -21,6 +21,8 @@ export function cabinFromText(text=''){
   return found.length===1 ? found[0] : '? – emberi döntésre vár';
 }
 export function guestCountFromText(text=''){
+  const dePair=text.match(/\b(\d{1,2})\s*erwachsene\w*\s*(?:und|,|\+)\s*(\d{1,2})\s*kinder?\b/iu);
+  if(dePair) return Number(dePair[1])+Number(dePair[2]);
   const m=text.match(/(?:^|\s)(\d{1,2})\s*(?:fő|fo|személy|szemely|persons?|people|guests?|gäste|personen|oseb)(?=\s|$|[,.!?])/iu);
   if(m) return Number(m[1]);
   const words={ketten:2,kéten:2,hárman:3,harman:3,négyen:4,negyen:4,öten:5,oten:5,hatan:6,heten:7,nyolcan:8,kilencen:9,tízen:10,tizen:10};
@@ -38,15 +40,18 @@ export function dateRangeFromText(text='', now=new Date()){
   const iso=text.match(/\b(20\d{2})[-./](\d{1,2})[-./](\d{1,2})\s*(?:[-–]|to|bis|do)\s*(?:(20\d{2})[-./](\d{1,2})[-./])?(\d{1,2})\b/iu);
   if(iso) return {arrival:`${iso[1]}-${String(iso[2]).padStart(2,'0')}-${String(iso[3]).padStart(2,'0')}`,departure:`${iso[4]||iso[1]}-${String(iso[5]||iso[2]).padStart(2,'0')}-${String(iso[6]).padStart(2,'0')}`,inferredYear:false};
   const names='január|januar|február|februar|március|marcius|április|aprilis|május|majus|június|junius|július|julius|augusztus|szeptember|október|oktober|november|december|jan\\.?|febr\\.?|márc\\.?|marc\\.?|ápr\\.?|apr\\.?|máj\\.?|maj\\.?|jún\\.?|jun\\.?|júl\\.?|jul\\.?|aug\\.?|szept\\.?|okt\\.?|nov\\.?|dec\\.?|january|february|march|april|may|june|july|august|september|october|november|december|märz|maerz|mai|juni|juli|dezember|marec|junij|julij|avgust';
+  const dayFirst=text.match(new RegExp(`\\b(?:vom\\s+)?(\\d{1,2})\\.?\\s*(?:bis|[-–])\\s*(\\d{1,2})\\.?\\s+(${names})\\b`,'iu'));
   const r=text.match(new RegExp(`\\b(?:20\\d{2}\\s*[.\\/-]?\\s*)?(${names})\\s+(\\d{1,2})\\s*(?:[-–]|to|bis|do|(?:-?(?:től|tól|tol)))\\s*(?:(?:${names})\\s+)?(\\d{1,2})(?:-?ig)?\\b`,'iu'));
-  if(!r) return null;
-  const month=monthNumber(r[1]); if(!month) return null;
+  if(!r&&!dayFirst) return null;
+  const month=monthNumber(r ? r[1] : dayFirst[3]); if(!month) return null;
   const explicit=text.match(/\b20\d{2}\b/u)?.[0];
   const next=/\b(?:jövőre|következő évben|next year|nächstes jahr|naslednje leto)\b/iu.test(text);
   const local=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Budapest',year:'numeric',month:'2-digit',day:'2-digit'}).format(now).split('-').map(Number);
   let year=explicit?Number(explicit):local[0]+(next?1:0);
-  if(!explicit&&!next&&(month<local[1]||(month===local[1]&&Number(r[2])<local[2]))) year++;
-  return {arrival:`${year}-${String(month).padStart(2,'0')}-${String(r[2]).padStart(2,'0')}`,departure:`${year}-${String(month).padStart(2,'0')}-${String(r[3]).padStart(2,'0')}`,inferredYear:!explicit&&!next};
+  const startDay=Number(r ? r[2] : dayFirst[1]);
+  const endDay=Number(r ? r[3] : dayFirst[2]);
+  if(!explicit&&!next&&(month<local[1]||(month===local[1]&&startDay<local[2]))) year++;
+  return {arrival:`${year}-${String(month).padStart(2,'0')}-${String(startDay).padStart(2,'0')}`,departure:`${year}-${String(month).padStart(2,'0')}-${String(endDay).padStart(2,'0')}`,inferredYear:!explicit&&!next};
 }
 
 export function phoneFromText(text=''){
@@ -54,8 +59,8 @@ export function phoneFromText(text=''){
   return m ? m[0].trim().replace(/[.,;:]+$/u,'') : null;
 }
 export function childAgesFromText(text=''){
-  const m=text.match(/(?:gyerek\w*|gyermek\w*|children|kinder|otrok\w*)[^.!?\n]{0,80}?(\d{1,2})\s*(?:és|es|meg|,|and|und|in)\s*(\d{1,2})\s*(?:éves|eves|years? old|jahre alt|let)/iu)
-    || text.match(/(\d{1,2})\s*(?:és|es|meg|,|and|und|in)\s*(\d{1,2})\s*(?:éves|eves|years? old|jahre alt|let)/iu);
+  const m=text.match(/(?:gyerek\w*|gyermek\w*|children|kinder|otrok\w*)[^.!?\n]{0,80}?(\d{1,2})\s*(?:és|es|meg|,|and|und|in)\s*(\d{1,2})\s*(?:éves|eves|years? old|jahre alt|jahren?|let)/iu)
+    || text.match(/(\d{1,2})\s*(?:és|es|meg|,|and|und|in)\s*(\d{1,2})\s*(?:éves|eves|years? old|jahre alt|jahren?|let)/iu);
   return m ? [Number(m[1]),Number(m[2])] : [];
 }
 export function languageFromText(text=''){
