@@ -43,7 +43,8 @@
       $('price_cabin')?.value||'',
       $('price_adults')?.value||'',
       $('price_children')?.value||'',
-      $('price_child_ages')?.value||''
+      $('price_child_ages')?.value||'',
+      String(requestedUnits(currentMessage())||0)
     ].join('|');
   }
 
@@ -59,10 +60,16 @@
     if(!quote) return '';
     const eur=Number.isFinite(quote.eurTotal)?' (kb. '+formatEur(quote.eurTotal)+', MNB '+(quote.eurRateDate||'')+')':'';
     const total='A foglalási felületen ellenőrzött teljes ár: '+formatFt(quote.total)+eur+'.';
+    const breakdown=Array.isArray(quote.unitBreakdown)&&quote.unitBreakdown.length>1
+      ? ' Házanként: '+quote.unitBreakdown.map(x=>{
+          const eurPart=Number.isFinite(quote.eurRate)&&quote.eurRate>0?' (kb. '+formatEur(Math.round((x.total/quote.eurRate)*100)/100)+')':'';
+          return x.unit+'. egység: '+formatFt(x.total)+eurPart;
+        }).join('; ')+'.'
+      : '';
     if(Number.isFinite(quote.accommodation)&&Number.isFinite(quote.tourismTax)){
-      return total+' Ebből szállás: '+formatFt(quote.accommodation)+', IFA: '+formatFt(quote.tourismTax)+'.';
+      return total+' Ebből szállás: '+formatFt(quote.accommodation)+', IFA: '+formatFt(quote.tourismTax)+'.'+breakdown;
     }
-    return total;
+    return total+breakdown;
   }
 
   function clearApprovedPrice(reason=''){
@@ -212,6 +219,8 @@
       tourismTax:Number.isFinite(Number(pendingQuote?.raw?.tourismTax))?Number(pendingQuote.raw.tourismTax):null,
       eurTotal:Number.isFinite(Number(pendingQuote?.raw?.eurConversion?.totalEur))?Number(pendingQuote.raw.eurConversion.totalEur):null,
       eurRateDate:pendingQuote?.raw?.eurConversion?.rateDate||'',
+      eurRate:Number.isFinite(Number(pendingQuote?.raw?.eurConversion?.rateHufPerEur))?Number(pendingQuote.raw.eurConversion.rateHufPerEur):null,
+      unitBreakdown:Array.isArray(pendingQuote?.raw?.unitBreakdown)?pendingQuote.raw.unitBreakdown:[],
       source:pendingQuote?.source||'kézi ellenőrzés',
       fingerprint:quoteFingerprint(),
       approvedAt:new Date().toISOString()
@@ -297,7 +306,15 @@
       const result=await response.json(); if(result.status==='unavailable'){status.textContent='A kért háztípusból a foglalási felület nem mutat szabad egységet erre az időszakra. Ár nem került a válaszba; kezelői ellenőrzés szükséges.';return;} if(!response.ok || result.status!=='review_required')throw Error(result.error||'Nem sikerült az árlekérés.');
       if(result.arrival!==input.arrival||result.departure!==input.departure||result.cabin!==input.cabin||result.adults!==input.adults||JSON.stringify(result.children)!==JSON.stringify(input.children)||result.availability!=='available'||!Number.isInteger(result.availableUnits)||result.availableUnits<1||!Number.isSafeInteger(result.total)||result.total<=0||!Number.isSafeInteger(result.accommodation)||!Number.isSafeInteger(result.tourismTax)||result.accommodation+result.tourismTax!==result.total||result.currency!=='HUF') throw Error('A Previo válasza hiányos vagy eltér a kért vendégösszetételtől.');
       const eurText=result.eurConversion?.status==='available' ? ` · EUR: ${formatEur(result.eurConversion.totalEur)} · MNB középárfolyam: 1 € = ${Number(result.eurConversion.rateHufPerEur).toLocaleString('hu-HU',{minimumFractionDigits:2,maximumFractionDigits:2})} Ft (${result.eurConversion.rateDate})` : ' · EUR átváltás: jelenleg nem elérhető';
-      $('price_result').textContent=`${result.arrival}–${result.departure} · ${result.cabin}${(result.units||1)>1?` · Egységek: ${result.units}`:''} · ${result.adults} felnőtt${result.children.length?` · ${result.children.length} gyermek (${result.children.join(', ')} éves)`:''} · Szállás: ${result.accommodation.toLocaleString('hu-HU')} Ft · IFA: ${result.tourismTax.toLocaleString('hu-HU')} Ft · Teljes ár: ${result.total.toLocaleString('hu-HU')} Ft${eurText} · Plusz fő díjkülönbsége és más bontás: nem igazolt · Forrás: Sárberki hivatalos foglalási felület (${result.source}) · Lekérés: ${result.checkedAt} · Szezonfelár beépítése: nem igazolt · 20% törzsvendégkedvezmény: nincs alkalmazva`;
+      const unitText=Array.isArray(result.unitBreakdown)&&result.unitBreakdown.length>1
+        ? ' · Házanként: '+result.unitBreakdown.map(x=>{
+            const eurPart=result.eurConversion?.status==='available'&&Number(result.eurConversion.rateHufPerEur)>0
+              ? ' / '+formatEur(Math.round((x.total/Number(result.eurConversion.rateHufPerEur))*100)/100)
+              : '';
+            return `${x.unit}. egység: ${formatFt(x.total)}${eurPart} (${x.adults} felnőtt${x.children?.length?`, ${x.children.length} gyermek`:''})`;
+          }).join(' | ')
+        : '';
+      $('price_result').textContent=`${result.arrival}–${result.departure} · ${result.cabin}${(result.units||1)>1?` · Egységek: ${result.units}`:''} · ${result.adults} felnőtt${result.children.length?` · ${result.children.length} gyermek (${result.children.join(', ')} éves)`:''} · Szállás: ${result.accommodation.toLocaleString('hu-HU')} Ft · IFA: ${result.tourismTax.toLocaleString('hu-HU')} Ft · Teljes ár: ${result.total.toLocaleString('hu-HU')} Ft${eurText}${unitText} · Plusz fő díjkülönbsége és más bontás: nem igazolt · Forrás: Sárberki hivatalos foglalási felület (${result.source}) · Lekérés: ${result.checkedAt} · Szezonfelár beépítése: nem igazolt · 20% törzsvendégkedvezmény: nincs alkalmazva`;
       pendingQuote={total:Number(result.total),source:result.source||'foglalási oldal',fingerprint:quoteFingerprint(),raw:result};
       $('approved_price_manual').value=String(result.total);
       $('approve_price').disabled=false;
