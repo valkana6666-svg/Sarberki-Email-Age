@@ -187,3 +187,18 @@ John Test`;
   assert.match(summary,/hot tub/u);
   assert.match(summary,/bring a dog/u);
 });
+
+
+test('German orthography markers are recognized',()=>{
+  assert.equal(languageFromText('Wir möchten für März eine Unterkunft. Grüße aus München!'),'de');
+  assert.equal(languageFromText('Wir haetten gerne eine Unterkunft im Maerz.'),'de');
+});
+
+test('Slovenian orthography markers are recognized',()=>{
+  assert.equal(languageFromText('Želimo hiško z lastnim pomolom. Prosim, sporočite, če je prosto.'),'si');
+  assert.equal(languageFromText('Čez vikend bi želeli nastanitev za 4 osebe. Hvala in lep pozdrav.'),'si');
+});
+
+test('English aged child syntax is recognized',()=>{
+  assert.deepEqual(childAgesFromText('2 children, aged 7 and 11'),[7,11]);
+});
