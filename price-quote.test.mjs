@@ -83,7 +83,8 @@ test('without PMS no-hold verification no live request is made',async()=>{
 });
 
 
-test('single-cabin live quote refuses multi-house capacity scenarios',()=>{
-  assert.throws(()=>validateQuote({arrival:'2027-10-01',departure:'2027-10-03',cabin:'family',adults:8,children:[7]}),/több házas árlekérés/u);
-  assert.throws(()=>validateQuote({arrival:'2027-10-01',departure:'2027-10-03',cabin:'deluxe',adults:6,children:[3]}),/több házas árlekérés/u);
+test('multi-house capacity is accepted only with an explicit sufficient unit count',()=>{
+  assert.throws(()=>validateQuote({arrival:'2027-10-01',departure:'2027-10-03',cabin:'family',adults:8,children:[7]}),/kapacitását/u);
+  assert.deepEqual(validateQuote({arrival:'2027-10-01',departure:'2027-10-03',cabin:'family',adults:8,children:[7],units:2}),{arrival:'2027-10-01',departure:'2027-10-03',cabin:'family',adults:8,children:[7],units:2});
+  assert.deepEqual(validateQuote({arrival:'2027-10-01',departure:'2027-10-03',cabin:'deluxe',adults:6,children:[3],units:2}),{arrival:'2027-10-01',departure:'2027-10-03',cabin:'deluxe',adults:6,children:[3],units:2});
 });
