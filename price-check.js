@@ -45,9 +45,14 @@
     return Number(value).toLocaleString('hu-HU')+' Ft';
   }
 
+  function formatEur(value){
+    return Number(value).toLocaleString('hu-HU',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  }
+
   function approvedPriceText(quote){
     if(!quote) return '';
-    const total='A foglalási felületen ellenőrzött teljes ár: '+formatFt(quote.total)+'.';
+    const eur=Number.isFinite(quote.eurTotal)?' (kb. '+formatEur(quote.eurTotal)+', MNB '+(quote.eurRateDate||'')+')':'';
+    const total='A foglalási felületen ellenőrzött teljes ár: '+formatFt(quote.total)+eur+'.';
     if(Number.isFinite(quote.accommodation)&&Number.isFinite(quote.tourismTax)){
       return total+' Ebből szállás: '+formatFt(quote.accommodation)+', IFA: '+formatFt(quote.tourismTax)+'.';
     }
@@ -199,6 +204,8 @@
       total:Math.round(inputValue),
       accommodation:Number.isFinite(Number(pendingQuote?.raw?.accommodation))?Number(pendingQuote.raw.accommodation):null,
       tourismTax:Number.isFinite(Number(pendingQuote?.raw?.tourismTax))?Number(pendingQuote.raw.tourismTax):null,
+      eurTotal:Number.isFinite(Number(pendingQuote?.raw?.eurConversion?.totalEur))?Number(pendingQuote.raw.eurConversion.totalEur):null,
+      eurRateDate:pendingQuote?.raw?.eurConversion?.rateDate||'',
       source:pendingQuote?.source||'kézi ellenőrzés',
       fingerprint:quoteFingerprint(),
       approvedAt:new Date().toISOString()
@@ -277,7 +284,8 @@
       if (!response.headers.get('content-type')?.includes('application/json')) throw Error('Az árlekérő szerver nincs ehhez az oldalhoz csatlakoztatva.');
       const result=await response.json(); if(result.status==='unavailable'){status.textContent='A kért háztípusból a foglalási felület nem mutat szabad egységet erre az időszakra. Ár nem került a válaszba; kezelői ellenőrzés szükséges.';return;} if(!response.ok || result.status!=='review_required')throw Error(result.error||'Nem sikerült az árlekérés.');
       if(result.arrival!==input.arrival||result.departure!==input.departure||result.cabin!==input.cabin||result.adults!==input.adults||JSON.stringify(result.children)!==JSON.stringify(input.children)||result.availability!=='available'||!Number.isInteger(result.availableUnits)||result.availableUnits<1||!Number.isSafeInteger(result.total)||result.total<=0||!Number.isSafeInteger(result.accommodation)||!Number.isSafeInteger(result.tourismTax)||result.accommodation+result.tourismTax!==result.total||result.currency!=='HUF') throw Error('A Previo válasza hiányos vagy eltér a kért vendégösszetételtől.');
-      $('price_result').textContent=`${result.arrival}–${result.departure} · ${result.cabin} · ${result.adults} felnőtt${result.children.length?` · ${result.children.length} gyermek (${result.children.join(', ')} éves)`:''} · Szállás: ${result.accommodation.toLocaleString('hu-HU')} Ft · IFA: ${result.tourismTax.toLocaleString('hu-HU')} Ft · Teljes ár: ${result.total.toLocaleString('hu-HU')} Ft · Plusz fő díjkülönbsége és más bontás: nem igazolt · Forrás: Sárberki hivatalos foglalási felület (${result.source}) · Lekérés: ${result.checkedAt} · Szezonfelár beépítése: nem igazolt · 20% törzsvendégkedvezmény: nincs alkalmazva`;
+      const eurText=result.eurConversion?.status==='available' ? ` · EUR: ${formatEur(result.eurConversion.totalEur)} · MNB középárfolyam: 1 € = ${Number(result.eurConversion.rateHufPerEur).toLocaleString('hu-HU',{minimumFractionDigits:2,maximumFractionDigits:2})} Ft (${result.eurConversion.rateDate})` : ' · EUR átváltás: jelenleg nem elérhető';
+      $('price_result').textContent=`${result.arrival}–${result.departure} · ${result.cabin} · ${result.adults} felnőtt${result.children.length?` · ${result.children.length} gyermek (${result.children.join(', ')} éves)`:''} · Szállás: ${result.accommodation.toLocaleString('hu-HU')} Ft · IFA: ${result.tourismTax.toLocaleString('hu-HU')} Ft · Teljes ár: ${result.total.toLocaleString('hu-HU')} Ft${eurText} · Plusz fő díjkülönbsége és más bontás: nem igazolt · Forrás: Sárberki hivatalos foglalási felület (${result.source}) · Lekérés: ${result.checkedAt} · Szezonfelár beépítése: nem igazolt · 20% törzsvendégkedvezmény: nincs alkalmazva`;
       pendingQuote={total:Number(result.total),source:result.source||'foglalási oldal',fingerprint:quoteFingerprint(),raw:result};
       $('approved_price_manual').value=String(result.total);
       $('approve_price').disabled=false;
