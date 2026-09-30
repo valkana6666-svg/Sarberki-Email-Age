@@ -47,3 +47,18 @@ console.log('LIVE PREVIO PRICE PASS', JSON.stringify({
   mnbRate:result.eurConversion.rateHufPerEur,
   mnbRateDate:result.eurConversion.rateDate
 }));
+
+
+const multiInput={arrival:'2026-10-16',departure:'2026-10-18',cabin:'deluxe',adults:4,children:[],units:2};
+const multiResponse=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(multiInput)});
+const multiRaw=await multiResponse.text();
+let multi;
+try { multi=JSON.parse(multiRaw); } catch { throw new Error('A többegységes élő árlekérés nem JSON választ adott: '+multiRaw.slice(0,200)); }
+assert.equal(multiResponse.ok,true,'A többegységes élő árlekérés HTTP hibával tért vissza: '+multiRaw);
+assert.equal(multi.status,'review_required');
+assert.equal(multi.units,2);
+assert.ok(Number.isInteger(multi.availableUnits)&&multi.availableUnits>=2,'Nincs legalább két szabad Deluxe egység az élő többegységes próbához.');
+assert.ok(Number.isSafeInteger(multi.total)&&multi.total>0,'Nincs hiteles többegységes teljes ár.');
+assert.equal(multi.bookingCompleted,false);
+assert.equal(multi.eurConversion?.status,'available');
+console.log('LIVE PREVIO MULTI-UNIT PASS',JSON.stringify({units:multi.units,availableUnits:multi.availableUnits,total:multi.total,eurTotal:multi.eurConversion.totalEur}));
