@@ -69,6 +69,7 @@ export function phoneFromText(text=''){
 }
 export function childAgesFromText(text=''){
   const m=text.match(/(?:gyerek\w*|gyermek\w*|children|kinder|otrok\w*)[^.!?\n]{0,80}?(\d{1,2})\s*(?:és|es|meg|,|and|und|in)\s*(\d{1,2})\s*(?:éves|eves|years? old|jahre alt|jahren?|let)/iu)
+    || text.match(/\baged\s+(\d{1,2})\s*(?:and|,)\s*(\d{1,2})\b/iu)
     || text.match(/(\d{1,2})\s*(?:és|es|meg|,|and|und|in)\s*(\d{1,2})\s*(?:éves|eves|years? old|jahre alt|jahren?|let)/iu);
   return m ? [Number(m[1]),Number(m[2])] : [];
 }
@@ -78,9 +79,11 @@ export function pierPreferenceFromText(text=''){
 export function languageFromText(text=''){
   const scores={
     hu:(text.match(/\b(?:szeretn|erdekl|érdekl|faház|fahaz|szállás|szallas|gyermek|gyerek|fő|fo|dézsa|dezsa|mennénk|mennenk|jönnénk|jonnenk)\w*/giu)||[]).length,
-    de:(text.match(/\b(?:möchte|anfrage|unterkunft|buchung|gäste|personen|kinder|verfügbar)\w*/giu)||[]).length,
-    en:(text.match(/\b(?:would|booking|reservation|accommodation|guests|children|available|cabin)\w*/giu)||[]).length,
-    si:(text.match(/\b(?:nastanitev|rezervacij|oseb|otrok|prosto|koča|ribolov)\w*/giu)||[]).length
+    de:(text.match(/\b(?:möchte|möchten|würde|würden|hätte|hätten|anfrage|unterkunft|buchung|gäste|personen|kinder|verfügbar|übernacht|freundlichen grüßen|für|wäre|eigenem|möglich)\w*/giu)||[]).length
+       + ((text.match(/[äöüß]/giu)||[]).length ? 2 : 0),
+    en:(text.match(/\b(?:would|booking|reservation|accommodation|guests|children|available|cabin|please|total price|thank you|aged)\w*/giu)||[]).length,
+    si:(text.match(/\b(?:nastanitev|rezervacij|oseb|otrok|prosto|koča|hiška|ribolov|želimo|želeli|prosimo|sporočite|lahko|bivali|prihod|odhod|lastnim|pomolom|hvala|lep pozdrav)\w*/giu)||[]).length
+       + ((text.match(/[čšž]/giu)||[]).length ? 2 : 0)
   };
   const best=Object.entries(scores).sort((a,b)=>b[1]-a[1]);
   return best[0][1]>0 && best[0][1]>best[1][1] ? best[0][0] : 'unknown';
