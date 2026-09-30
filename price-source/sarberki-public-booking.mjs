@@ -93,11 +93,22 @@ export async function fetchPublicBookingQuote(raw,request=fetch){
   const categories=params.GUEST_CATEGORIES||[];
   const adult=categories.filter(x=>x.isDefault&&!x.isChild);
   if(adult.length!==1) throw Error('A Previo felnőtt kategóriája nem egyértelmű.');
-  const counts=new Map([[adult[0].guaId,input.adults]]);
-  for(const age of input.children){const id=categoryFor(age,categories).guaId;counts.set(id,(counts.get(id)||0)+1);}
-  const withBed=input.adults+input.children.filter(age=>!categoryFor(age,categories).isWithoutBed).length;
-  const formData={obkId,rooms:[{hash:null,isNonRef:false,numOfGuestsWithBed:withBed,guestCategories:categories.map(x=>({guaId:x.guaId,count:counts.get(x.guaId)||0}))}]};
+  const units=input.units||1;
+  if(free<units) return {status:'unavailable',source:'Sárberki hivatalos foglalási felület',checkedAt:new Date().toISOString(),...input,availability:'unavailable',availableUnits:free,bookingCompleted:false};
+  const parties=Array.from({length:units},()=>({adults:0,children:[]}));
+  for(let i=0;i<units;i++) parties[i].adults=1;
+  for(let i=units;i<input.adults;i++) parties[(i-units)%units].adults++;
+  for(let i=0;i<input.children.length;i++) parties[i%units].children.push(input.children[i]);
+  const maxPerUnit={deluxe:6,family:8,vip:7,small:2}[input.cabin];
+  if(parties.some(p=>p.adults+p.children.length>maxPerUnit)) throw Error('A vendégek nem oszthatók el biztonságosan a kért egységek között.');
+  const rooms=parties.map(p=>{
+    const counts=new Map([[adult[0].guaId,p.adults]]);
+    for(const age of p.children){const id=categoryFor(age,categories).guaId;counts.set(id,(counts.get(id)||0)+1);}
+    const withBed=p.adults+p.children.filter(age=>!categoryFor(age,categories).isWithoutBed).length;
+    return {hash:null,isNonRef:false,numOfGuestsWithBed:withBed,guestCategories:categories.map(x=>({guaId:x.guaId,count:counts.get(x.guaId)||0}))};
+  });
+  const formData={obkId,rooms};
   const priced=await (await post(safe,sessionUrl('/index/get-occupancy-price/',step.url),{...common,formData:JSON.stringify(formData)})).json();
   if(priced.success!==true||priced.unknownPrice!==false||!Number.isSafeInteger(priced.totalPrice)||priced.totalPrice<=0||!Number.isSafeInteger(priced.totalTaxes)||priced.totalTaxes<0||priced.totalTaxes>priced.totalPrice) throw Error('A Previo nem adott ellenőrzött teljes árat.');
-  return {status:'review_required',source:'Sárberki hivatalos foglalási felület',sourceUrl:'https://sarberkito.hu/foglalas/',checkedAt:new Date().toISOString(),...input,availability:'available',availableUnits:free,accommodation:priced.totalPrice-priced.totalTaxes,tourismTax:priced.totalTaxes,total:priced.totalPrice,currency:'HUF',bookingCompleted:false};
+  return {status:'review_required',source:'Sárberki hivatalos foglalási felület',sourceUrl:'https://sarberkito.hu/foglalas/',checkedAt:new Date().toISOString(),...input,units,availability:'available',availableUnits:free,accommodation:priced.totalPrice-priced.totalTaxes,tourismTax:priced.totalTaxes,total:priced.totalPrice,currency:'HUF',bookingCompleted:false};
 }
