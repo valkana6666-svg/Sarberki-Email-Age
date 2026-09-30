@@ -107,8 +107,25 @@ export async function fetchPublicBookingQuote(raw,request=fetch){
     const withBed=p.adults+p.children.filter(age=>!categoryFor(age,categories).isWithoutBed).length;
     return {hash:null,isNonRef:false,numOfGuestsWithBed:withBed,guestCategories:categories.map(x=>({guaId:x.guaId,count:counts.get(x.guaId)||0}))};
   });
-  const formData={obkId,rooms};
-  const priced=await (await post(safe,sessionUrl('/index/get-occupancy-price/',step.url),{...common,formData:JSON.stringify(formData)})).json();
-  if(priced.success!==true||priced.unknownPrice!==false||!Number.isSafeInteger(priced.totalPrice)||priced.totalPrice<=0||!Number.isSafeInteger(priced.totalTaxes)||priced.totalTaxes<0||priced.totalTaxes>priced.totalPrice) throw Error('A Previo nem adott ellenőrzött teljes árat.');
-  return {status:'review_required',source:'Sárberki hivatalos foglalási felület',sourceUrl:'https://sarberkito.hu/foglalas/',checkedAt:new Date().toISOString(),...input,units,availability:'available',availableUnits:free,accommodation:priced.totalPrice-priced.totalTaxes,tourismTax:priced.totalTaxes,total:priced.totalPrice,currency:'HUF',bookingCompleted:false};
+  const priceRooms=async selectedRooms=>{
+    const formData={obkId,rooms:selectedRooms};
+    const priced=await (await post(safe,sessionUrl('/index/get-occupancy-price/',step.url),{...common,formData:JSON.stringify(formData)})).json();
+    if(priced.success!==true||priced.unknownPrice!==false||!Number.isSafeInteger(priced.totalPrice)||priced.totalPrice<=0||!Number.isSafeInteger(priced.totalTaxes)||priced.totalTaxes<0||priced.totalTaxes>priced.totalPrice) throw Error('A Previo nem adott ellenőrzött teljes árat.');
+    return {accommodation:priced.totalPrice-priced.totalTaxes,tourismTax:priced.totalTaxes,total:priced.totalPrice};
+  };
+  const priced=await priceRooms(rooms);
+  let unitBreakdown=[];
+  if(units>1){
+    unitBreakdown=await Promise.all(rooms.map(async(room,index)=>{
+      const one=await priceRooms([room]);
+      return {unit:index+1,adults:parties[index].adults,children:[...parties[index].children],...one};
+    }));
+    const summed=unitBreakdown.reduce((acc,x)=>({
+      accommodation:acc.accommodation+x.accommodation,
+      tourismTax:acc.tourismTax+x.tourismTax,
+      total:acc.total+x.total
+    }),{accommodation:0,tourismTax:0,total:0});
+    if(summed.accommodation!==priced.accommodation||summed.tourismTax!==priced.tourismTax||summed.total!==priced.total) throw Error('A több házas összár és a házankénti Previo-árak eltérnek; kézi ellenőrzés szükséges.');
+  }
+  return {status:'review_required',source:'Sárberki hivatalos foglalási felület',sourceUrl:'https://sarberkito.hu/foglalas/',checkedAt:new Date().toISOString(),...input,units,availability:'available',availableUnits:free,accommodation:priced.accommodation,tourismTax:priced.tourismTax,total:priced.total,unitBreakdown,currency:'HUF',bookingCompleted:false};
 }
