@@ -1,7 +1,7 @@
 /* Browser-only Gmail bridge. Access token stays in memory and is never stored. */
 (async () => {
   'use strict';
-  const { cabinFromText, guestCountFromText, childCountFromText, dateRangeFromText, phoneFromText, childAgesFromText, pierPreferenceFromText, languageFromText, replyQuestions } = await import('./gmail-normalize.mjs');
+  const { cabinFromText, guestCountFromText, childCountFromText, dateRangeFromText, phoneFromText, childAgesFromText, pierPreferenceFromText, languageFromText, replySummary, replyQuestions } = await import('./gmail-normalize.mjs');
   const { isApprovedSubject } = await import('./gmail-subject.mjs');
   // V1 live-read mode: broad inbox read, then conservative local inquiry classification.
   // No sender restriction, no exact subject allowlist, no send/modify permission.
@@ -155,15 +155,14 @@
     humanReview.push('Szabad hely és ár nincs igazolva');
     const language = languageFromText(original);
     const first = name?.split(' ')[1] || null;
-    const time = normalizedDate ? `${normalizedDate.arrival} és ${normalizedDate.departure} között` : 'a jelzett időpontban';
-    const summary = [count ? `összesen ${count} fővel${childCount ? `, köztük ${childCount} gyermekkel` : ''}` : null,hotTub?'dézsás faházat keresnek':null,dog?'kutyát is hoznának':null,pier?'saját / külön stéget kérnek':null].filter(Boolean).join('; ');
+    const bookingSummary = replySummary(language,{arrival:normalizedDate?.arrival,departure:normalizedDate?.departure,guests:count,children:childCount,childAges,pier,hotTub,dog});
     const questions = replyQuestions(language,{needPhone:!phone,needCabin:cabinFromGuestText(original).startsWith('?'),needChildAge:Boolean(childCount && childAges.length<childCount)});
     const greetings={hu:first?`Kedves ${first}!`:'Kedves Vendégünk!',de:first?`Guten Tag ${first}!`:'Guten Tag!',en:first?`Dear ${first},`:'Dear Guest,',si:first?`Pozdravljeni ${first}!`:'Pozdravljeni!'};
     const intros={hu:'Köszönjük érdeklődését.',de:'Vielen Dank für Ihre Anfrage.',en:'Thank you for your inquiry.',si:'Hvala za vaše povpraševanje.'};
     const checks={hu:'A szabad kapacitást és az árat külön ellenőriznünk kell; ezekről egyelőre nem tudunk biztos tájékoztatást adni.',de:'Verfügbarkeit und Preis müssen wir separat prüfen; dazu können wir derzeit noch keine verbindliche Auskunft geben.',en:'We need to check availability and price separately; we cannot confirm either yet.',si:'Razpoložljivost in ceno moramo preveriti posebej; trenutno ju še ne moremo potrditi.'};
     const closings={hu:'Üdvözlettel:',de:'Mit freundlichen Grüßen',en:'Kind regards,',si:'Lep pozdrav,'};
     const lang = language==='unknown' ? 'hu' : language;
-    const replyDraft = `${greetings[lang]}\n\n${intros[lang]}\n\n${questions.join(' ')}${questions.length?'\n\n':''}${checks[lang]}\n\n${closings[lang]}\nSárberki Horgásztó`;
+    const replyDraft = `${greetings[lang]}\n\n${intros[lang]}${bookingSummary?'\n\n'+bookingSummary:''}\n\n${questions.join(' ')}${questions.length?'\n\n':''}${checks[lang]}\n\n${closings[lang]}\nSárberki Horgásztó`;
     return {source:{provider:'gmail',message_id:message.id,thread_id:message.threadId,subject:headers.subject || '',from:headers.from || '',from_email:emailAddress(headers.from || ''),to:headers.to || '',received_at:received.toISOString()},original_message:original,normalized:{language,cabin:cabinFromGuestText(original),dates:normalizedDate,guests:count,children:childCount,child_ages:childAges,phone,hot_tub:hotTub,dog,pier_requested:pier,hot_tub_requested:hotTub,pet_requested:dog},extracted,inferred,missing,human_review:humanReview,reply_draft:replyDraft};
   }
   async function readWithToken(token) {
