@@ -90,7 +90,7 @@ export function childAgesFromText(text=''){
     text.match(/\baged\s+([^.!?]{1,120})/iu)?.[1],
     text.match(/\bim\s+alter\s+von\s+([^.!?]{1,120}?)(?=\s+jahren?\b|[.!?]|$)/iu)?.[1],
     text.match(/\bstar(?:a|i|e)?\s+([^.!?]{1,120}?)(?=\s+let\b|[.!?]|$)/iu)?.[1],
-    text.match(/([^.!?]{1,120}?)(?=\s+(?:évesek|éves|evesek|eves)\b)/iu)?.[1]
+    text.match(/((?:\d{1,2}\s*(?:(?:,|és|es|meg)\s*)?){1,6})(?=\s+(?:évesek|éves|evesek|eves)\b)/iu)?.[1]
   ].filter(Boolean);
   for(const segment of segments){
     const nums=[...segment.matchAll(/\b\d{1,2}\b/gu)].map(m=>Number(m[0]));
