@@ -154,3 +154,36 @@ test('English reply summary uses the shared facts without inventing a cabin or p
   assert.match(summary,/bring a dog/u);
   assert.doesNotMatch(summary,/VIP|Családi|Deluxe|Osztott|€|Ft|Price:/u);
 });
+
+
+test('English full inquiry regression uses the shared multilingual core',()=>{
+  const message=`Hello,
+
+I would like to inquire about accommodation from October 16 to 18, 2026.
+
+There will be 4 guests: 2 adults and 2 children, aged 7 and 11.
+We would like a Deluxe cabin, preferably with a hot tub.
+
+We would also like to bring a small dog.
+
+My phone number is +36 30 555 1234.
+
+Could you please let us know whether accommodation is available and what the total price would be?
+
+Thank you,
+John Test`;
+  assert.deepEqual(dateRangeFromText(message,now),{arrival:'2026-10-16',departure:'2026-10-18',inferredYear:false});
+  assert.equal(cabinFromText(message),'Deluxe');
+  assert.equal(guestCountFromText(message),4);
+  assert.equal(childCountFromText(message),2);
+  assert.deepEqual(childAgesFromText(message),[7,11]);
+  assert.equal(phoneFromText(message),'+36 30 555 1234');
+  assert.equal(languageFromText(message),'en');
+  const summary=replySummary('en',{arrival:'2026-10-16',departure:'2026-10-18',guests:4,children:2,childAges:[7,11],hotTub:true,dog:true});
+  assert.match(summary,/4 guests/u);
+  assert.match(summary,/2 adults/u);
+  assert.match(summary,/2 children/u);
+  assert.match(summary,/aged 7 and 11/u);
+  assert.match(summary,/hot tub/u);
+  assert.match(summary,/bring a dog/u);
+});
