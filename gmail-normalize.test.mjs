@@ -322,3 +322,10 @@ Michael Thompson`;
   assert.equal(phoneFromText(message),'+44 7700 912345');
   assert.equal(pierPreferenceFromText(message),true);
 });
+
+
+test('family holiday wording does not invent Family cabin',()=>{
+  assert.equal(cabinFromText('We are planning a family fishing holiday. We would prefer a Deluxe cabin.'),'Deluxe');
+  assert.equal(cabinFromText('We would like a Family cabin.'),'Családi');
+  assert.equal(cabinFromText('Wir planen einen Familienurlaub und möchten eine Deluxe Unterkunft.'),'Deluxe');
+});
