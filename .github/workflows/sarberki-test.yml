@@ -16,3 +16,5 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npm test
+      - name: Live Previo price smoke test on test Netlify
+        run: node tests/live-price-smoke.mjs
