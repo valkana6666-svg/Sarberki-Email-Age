@@ -16,5 +16,10 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npm test
-      - name: Live Previo price smoke test on test Netlify
+      - name: Verify exact test Netlify commit
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
+          TEST_NETLIFY_URL: https://leafy-chimera-2403e5.netlify.app
+        run: node tests/deployment-sync.mjs
+      - name: Live Previo price smoke test on exact test deploy
         run: node tests/live-price-smoke.mjs
