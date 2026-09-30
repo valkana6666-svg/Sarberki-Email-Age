@@ -84,8 +84,17 @@ export function phoneFromText(text=''){
   return m ? m[0].trim().replace(/[.,;:]+$/u,'') : null;
 }
 export function childAgesFromText(text=''){
+  const segments=[
+    text.match(/\baged\s+([^.!?\n]{1,80})/iu)?.[1],
+    text.match(/\bim\s+alter\s+von\s+([^.!?\n]{1,80}?)(?=\s+jahren?\b|[.!?\n]|$)/iu)?.[1],
+    text.match(/\bstar(?:a|i|e)?\s+([^.!?\n]{1,80}?)(?=\s+let\b|[.!?\n]|$)/iu)?.[1],
+    text.match(/([^.!?\n]{1,80}?)(?=\s+(?:évesek|éves|evesek|eves)\b)/iu)?.[1]
+  ].filter(Boolean);
+  for(const segment of segments){
+    const nums=[...segment.matchAll(/\b\d{1,2}\b/gu)].map(m=>Number(m[0]));
+    if(nums.length) return nums;
+  }
   const m=text.match(/(?:gyerek\w*|gyermek\w*|children|kinder|otrok\w*)[^.!?\n]{0,80}?(\d{1,2})\s*(?:és|es|meg|,|and|und|in)\s*(\d{1,2})\s*(?:éves|eves|years? old|jahre alt|jahren?|let)/iu)
-    || text.match(/\baged\s+(\d{1,2})\s*(?:and|,)\s*(\d{1,2})\b/iu)
     || text.match(/(\d{1,2})\s*(?:és|es|meg|,|and|und|in)\s*(\d{1,2})\s*(?:éves|eves|years? old|jahre alt|jahren?|let)/iu);
   return m ? [Number(m[1]),Number(m[2])] : [];
 }
