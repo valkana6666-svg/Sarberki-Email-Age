@@ -139,3 +139,18 @@ test('German reply summary preserves the real inbox facts without inventing a ca
   assert.match(summary,/eigenem Steg/u);
   assert.doesNotMatch(summary,/VIP|Családi|Deluxe|Osztott|€|Ft|Preis:/u);
 });
+
+
+test('English reply summary uses the shared facts without inventing a cabin or price',()=>{
+  const summary=replySummary('en',{arrival:'2026-10-16',departure:'2026-10-19',guests:6,children:2,childAges:[6,10],pier:true,hotTub:true,dog:true});
+  assert.match(summary,/16\.10\.2026/u);
+  assert.match(summary,/19\.10\.2026/u);
+  assert.match(summary,/6 guests/u);
+  assert.match(summary,/4 adults/u);
+  assert.match(summary,/2 children/u);
+  assert.match(summary,/aged 6 and 10/u);
+  assert.match(summary,/own fishing pier/u);
+  assert.match(summary,/hot tub/u);
+  assert.match(summary,/bring a dog/u);
+  assert.doesNotMatch(summary,/VIP|Családi|Deluxe|Osztott|€|Ft|Price:/u);
+});
