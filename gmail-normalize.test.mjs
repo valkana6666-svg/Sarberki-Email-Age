@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {cabinFromText,guestCountFromText,childCountFromText,dateRangeFromText,phoneFromText,childAgesFromText,pierPreferenceFromText,languageFromText,replyQuestions} from './gmail-normalize.mjs';
+import {cabinFromText,guestCountFromText,childCountFromText,dateRangeFromText,phoneFromText,childAgesFromText,pierPreferenceFromText,languageFromText,replySummary,replyQuestions} from './gmail-normalize.mjs';
 const now=new Date('2026-09-28T08:00:00Z');
 test('HU parse',()=>{assert.equal(cabinFromText('Deluxe faház'), 'Deluxe');assert.equal(guestCountFromText('5 fő'),5);assert.deepEqual(dateRangeFromText('2026 október 16-19',now),{arrival:'2026-10-16',departure:'2026-10-19',inferredYear:false});});
 test('EN parse',()=>{assert.equal(cabinFromText('family cabin'),'Családi');assert.equal(guestCountFromText('4 guests'),4);assert.equal(childCountFromText('2 children'),2);assert.deepEqual(dateRangeFromText('October 16-19 2026',now),{arrival:'2026-10-16',departure:'2026-10-19',inferredYear:false});});
@@ -125,4 +125,17 @@ test('private pier preference is recognized without inferring a cabin type',()=>
   assert.equal(pierPreferenceFromText('private fishing pier please'),true);
   assert.equal(pierPreferenceFromText('saját stéget szeretnénk'),true);
   assert.equal(cabinFromText('Haus mit eigenem Steg'),'? – emberi döntésre vár');
+});
+
+
+test('German reply summary preserves the real inbox facts without inventing a cabin or price',()=>{
+  const summary=replySummary('de',{arrival:'2026-10-16',departure:'2026-10-19',guests:6,children:2,childAges:[6,10],pier:true});
+  assert.match(summary,/16\.10\.2026/u);
+  assert.match(summary,/19\.10\.2026/u);
+  assert.match(summary,/6 Personen/u);
+  assert.match(summary,/4 Erwachsene/u);
+  assert.match(summary,/2 Kinder/u);
+  assert.match(summary,/6 und 10 Jahren/u);
+  assert.match(summary,/eigenem Steg/u);
+  assert.doesNotMatch(summary,/VIP|Családi|Deluxe|Osztott|€|Ft|Preis:/u);
 });
