@@ -72,6 +72,9 @@ export function childAgesFromText(text=''){
     || text.match(/(\d{1,2})\s*(?:és|es|meg|,|and|und|in)\s*(\d{1,2})\s*(?:éves|eves|years? old|jahre alt|jahren?|let)/iu);
   return m ? [Number(m[1]),Number(m[2])] : [];
 }
+export function pierPreferenceFromText(text=''){
+  return /(?:saját|sajat|külön|kulon)\s+stég|stég\w*\s+(?:saját|sajat|külön|kulon)|(?:eigene[rmns]?|privat(?:e[rmns]?)?)\s+steg|(?:own|private)\s+(?:fishing\s+)?(?:pier|dock)|(?:lasten|zaseben)\s+pomol/iu.test(text);
+}
 export function languageFromText(text=''){
   const scores={
     hu:(text.match(/\b(?:szeretn|erdekl|érdekl|faház|fahaz|szállás|szallas|gyermek|gyerek|fő|fo|dézsa|dezsa|mennénk|mennenk|jönnénk|jonnenk)\w*/giu)||[]).length,
