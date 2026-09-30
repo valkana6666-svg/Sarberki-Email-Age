@@ -12,6 +12,12 @@ export const TEST_SUBJECT_PREFIXES = Object.freeze([
   'sarberki elo teszt'
 ]);
 
+export const GERMAN_INQUIRY_PREFIXES = Object.freeze([
+  'anfrage',
+  'buchungsanfrage',
+  'reservierungsanfrage'
+]);
+
 function normalizeSubject(subject) {
   return subject
     .trim()
@@ -28,6 +34,10 @@ export function isApprovedSubject(subject) {
     normalized === base || normalized.startsWith(base + ' ')
   );
   if (approvedInquiry) return true;
+
+  if (GERMAN_INQUIRY_PREFIXES.some(prefix =>
+    normalized === prefix || normalized.startsWith(prefix + ' ')
+  )) return true;
 
   return TEST_SUBJECT_PREFIXES.some(prefix =>
     normalized === prefix
