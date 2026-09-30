@@ -30,7 +30,7 @@ assert.ok(Number.isSafeInteger(result.accommodation) && result.accommodation>=0)
 assert.ok(Number.isSafeInteger(result.tourismTax) && result.tourismTax>=0);
 assert.equal(result.accommodation+result.tourismTax,result.total);
 assert.equal(result.bookingCompleted,false);
-assert.equal(result.eurConversion?.status,'available','Nincs aktuális MNB EUR átváltás.');
+assert.equal(result.eurConversion?.status,'available','Nincs aktuális MNB EUR átváltás: '+JSON.stringify(result.eurConversion));
 assert.ok(Number.isFinite(result.eurConversion.rateHufPerEur) && result.eurConversion.rateHufPerEur>0,'Nincs érvényes MNB EUR-középárfolyam.');
 assert.ok(Number.isFinite(result.eurConversion.totalEur) && result.eurConversion.totalEur>0,'Nincs EUR végösszeg.');
 
