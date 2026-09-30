@@ -47,6 +47,12 @@ export function childCountFromText(text=''){
 export function dateRangeFromText(text='', now=new Date()){
   const iso=text.match(/\b(20\d{2})[-./](\d{1,2})[-./](\d{1,2})\s*(?:[-–]|to|bis|do)\s*(?:(20\d{2})[-./](\d{1,2})[-./])?(\d{1,2})\b/iu);
   if(iso) return {arrival:`${iso[1]}-${String(iso[2]).padStart(2,'0')}-${String(iso[3]).padStart(2,'0')}`,departure:`${iso[4]||iso[1]}-${String(iso[5]||iso[2]).padStart(2,'0')}-${String(iso[6]).padStart(2,'0')}`,inferredYear:false};
+  const enLong=text.match(/\b(?:from\s+)?(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})\s+(?:to|[-–])\s+(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})\b/iu);
+  if(enLong){
+    const m1=monthNumber(enLong[2]), m2=monthNumber(enLong[5]);
+    if(!m1||!m2) return null;
+    return {arrival:`${enLong[3]}-${String(m1).padStart(2,'0')}-${String(enLong[1]).padStart(2,'0')}`,departure:`${enLong[6]}-${String(m2).padStart(2,'0')}-${String(enLong[4]).padStart(2,'0')}`,inferredYear:false};
+  }
   const deRange=text.match(/\b(?:vom\s+)?(\d{1,2})\.?\s*(?:bis|[-–])\s*(\d{1,2})\.?\s+(Januar|Februar|März|Maerz|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)(?:\s+(20\d{2}))?\b/iu);
   const siRange=text.match(/\bod\s+(\d{1,2})\.?\s+do\s+(\d{1,2})\.?\s+(januarja|februarja|marca|aprila|maja|junija|julija|avgusta|septembra|oktobra|novembra|decembra)(?:\s+(20\d{2}))?\b/iu);
   if(siRange){
