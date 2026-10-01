@@ -31,3 +31,20 @@ test('returning discount remains un-applied without Previo history',()=>{
   assert.equal(returningGuestReview.possibleDiscountPercent,20);
   assert.equal(returningGuestReview.publicSiteLookbackDays,730);
 });
+
+
+test('dense English fishing question keeps all requested verified answers',()=>{
+  const answer=fishingQuestion('What is the price of a 24-hour adult ticket for the Normal lake? Do children need a separate ticket? Are barbed hooks allowed? Are there minimum fish sizes and separate prices for fish we may take home?','en');
+  assert.equal(answer.kind,'combined');
+  assert.match(answer.answer,/7,500 HUF/u);
+  assert.match(answer.answer,/3,750 HUF/u);
+  assert.match(answer.answer,/Barbed hooks are not allowed/u);
+  assert.match(answer.answer,/zander 30 cm/u);
+  assert.match(answer.answer,/Take-away fish prices per kg/u);
+  assert.equal(answer.accommodationTotalAffected,false);
+});
+
+test('German and Slovenian barbed-hook questions stay localized',()=>{
+  assert.match(fishingQuestion('Sind Haken mit Widerhaken erlaubt?','de').answer,/nicht erlaubt/u);
+  assert.match(fishingQuestion('Ali so dovoljeni trnki z zalustjo?','si').answer,/niso dovoljeni/u);
+});
