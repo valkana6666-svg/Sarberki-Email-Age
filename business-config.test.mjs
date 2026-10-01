@@ -18,3 +18,12 @@ test('company config is immutable at the top level',()=>{
   assert.equal(Object.isFrozen(BUSINESS.accommodationTypes),true);
   assert.equal(Object.isFrozen(BUSINESS.bookingProvider),true);
 });
+
+
+test('split public fallback prices follow Sárberki website listing',()=>{
+ assert.equal(BUSINESS.accommodationTypes.splitA.publicListedNightlyHuf,23000);
+ assert.equal(BUSINESS.accommodationTypes.splitB.publicListedNightlyHuf,23000);
+ assert.equal(BUSINESS.accommodationTypes.splitC.publicListedNightlyHuf,44000);
+ assert.equal(BUSINESS.accommodationTypes.splitA.publicPriceLabel,'2 fős apartman');
+ assert.equal(BUSINESS.accommodationTypes.splitC.publicPriceLabel,'4 fős apartman');
+});
