@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {cabinFromText,guestCountFromText,childCountFromText,dateRangeFromText,phoneFromText,childAgesFromText,pierPreferenceFromText,languageFromText,replySummary,replyQuestions} from './sarberki-core.mjs';
+import {cabinFromText,guestCountFromText,childCountFromText,dateRangeFromText,phoneFromText,childAgesFromText,pierPreferenceFromText,languageFromText,replySummary,replyQuestions,buildReplyDraft} from './sarberki-core.mjs';
 const now=new Date('2026-09-28T08:00:00Z');
 test('HU parse',()=>{assert.equal(cabinFromText('Deluxe faház'), 'Deluxe');assert.equal(guestCountFromText('5 fő'),5);assert.deepEqual(dateRangeFromText('2026 október 16-19',now),{arrival:'2026-10-16',departure:'2026-10-19',inferredYear:false});});
 test('EN parse',()=>{assert.equal(cabinFromText('family cabin'),'Családi');assert.equal(guestCountFromText('4 guests'),4);assert.equal(childCountFromText('2 children'),2);assert.deepEqual(dateRangeFromText('October 16-19 2026',now),{arrival:'2026-10-16',departure:'2026-10-19',inferredYear:false});});
@@ -353,4 +353,47 @@ John Smith`;
   assert.equal(childCountFromText(message),2);
   assert.deepEqual(childAgesFromText(message),[7,11]);
   assert.equal(phoneFromText(message),'+36 30 555 1234');
+});
+
+
+test('shared reply builder keeps manual and Gmail drafts identical for the same normalized facts',()=>{
+  const facts={
+    name:'Teszt Elek',
+    original:'2026 október 16-18, 4 fő, 2 gyermek 7 és 11 éves, Deluxe, dézsa, kutya. Mennyi a teljes ár?',
+    arrival:'2026-10-16',
+    departure:'2026-10-18',
+    guests:4,
+    children:2,
+    childAges:[7,11],
+    phone:'+36 30 555 1234',
+    cabin:'Deluxe',
+    hotTub:true,
+    dog:true,
+    intent:'booking_request'
+  };
+  for(const language of ['hu','de','en','si']){
+    const manual=buildReplyDraft({language,...facts});
+    const gmail=buildReplyDraft({language,...facts});
+    assert.equal(manual,gmail,language);
+    assert.match(manual,/Sárberki Horgásztó/u);
+    assert.doesNotMatch(manual,/122[ .]?200|128[ .]?000/u);
+  }
+});
+
+test('shared reply builder asks only shared missing-data questions',()=>{
+  const draft=buildReplyDraft({
+    language:'hu',
+    original:'október 16-18, 4 fő, 2 gyermek',
+    arrival:'2026-10-16',
+    departure:'2026-10-18',
+    guests:4,
+    children:2,
+    childAges:[],
+    phone:null,
+    cabin:'? – emberi döntésre vár',
+    intent:'booking_request'
+  });
+  assert.match(draft,/gyermek életkorát/u);
+  assert.match(draft,/telefonszámot/u);
+  assert.match(draft,/Melyik háztípust/u);
 });
