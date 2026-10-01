@@ -52,6 +52,11 @@ export function guestCountFromText(text=''){
   const w=text.match(/\b(ketten|kéten|hárman|harman|négyen|negyen|öten|oten|hatan|heten|nyolcan|kilencen|tízen|tizen)\b/iu)?.[1]?.toLocaleLowerCase('hu-HU');
   return w ? words[w] : null;
 }
+export function adultCountFromText(text=''){
+  const m=text.match(/\b(\d{1,2})\s*(?:felnőtt\w*|felnott\w*|adults?|erwachsene\w*|odrasl\w*)\b/iu);
+  if(m) return Number(m[1]);
+  return null;
+}
 export function childCountFromText(text=''){
   const m=text.match(/\b(\d{1,2})\s*(?:gyerek\w*|gyermek\w*|children|child|kinder|kind|(?:otrok|otroc)\w*)\b/iu);
   if(m) return Number(m[1]);
