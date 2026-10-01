@@ -88,3 +88,9 @@ test('split capacities are wired and explicit A B C units can reach pricing',()=
  assert.match(source,/splitA:2,splitB:2,splitC:5/u);
  assert.match(source,/splitUnit \? `split\$\{splitUnit\}`/u);
 });
+
+
+test('Slovenian family cabin wording reaches pricing',()=>{
+  assert.match(source,/družinsk\\w\*\\s\+\(\?:hišk/u);
+  assert.match(source,/koč\\w\*/u);
+});
