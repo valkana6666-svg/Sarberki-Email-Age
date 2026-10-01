@@ -26,6 +26,13 @@ export function cabinFromText(text=''){
   return found.length===1 ? found[0] : '? – emberi döntésre vár';
 }
 export function guestCountFromText(text=''){
+  const explicitTotal=
+    text.match(/\b(?:összesen|osszesen)\s+(\d{1,2})\s*(?:fő|fo|személy|szemely)\b/iu)
+    || text.match(/\b(?:total(?:\s+of)?|altogether)\s+(\d{1,2})\s*(?:persons?|people|guests?)\b/iu)
+    || text.match(/\b(\d{1,2})\s*(?:persons?|people|guests?)\s+(?:in\s+total|altogether)\b/iu)
+    || text.match(/\binsgesamt\s+(\d{1,2})\s*(?:gäste|personen)\b/iu)
+    || text.match(/\bskupaj\s+(\d{1,2})\s*oseb\b/iu);
+  if(explicitTotal) return Number(explicitTotal[1]);
   const total=text.match(/(?:^|\s)(\d{1,2})\s*(?:fő|fo|személy|szemely|persons?|people|guests?|gäste|personen|oseb)(?=\s|$|[,.!?:;])/iu);
   if(total) return Number(total[1]);
   const adultChildPairs=[
