@@ -199,3 +199,41 @@ John Smith`;
   assert.match(r.result,/2\. egység/u);
   assert.doesNotMatch(r.draft,/244.400|244 400/u);
 });
+
+
+test('Gmail normalized record can rescue weaker extractor values at quote boundary',async()=>{
+  const record=recorded[1];
+  const message='Hello, Deluxe cabin, price please.';
+  const h=harness('',input=>{
+    assert.deepEqual(input,{arrival:'2026-10-16',departure:'2026-10-18',cabin:'deluxe',adults:2,children:[7,11]});
+    return json(quote(input,record));
+  });
+  h.element('gmail_record').classList.contains=()=>false;
+  h.element('gmail_original').textContent=message;
+  h.element('gmail_json').value=JSON.stringify({
+    extracted:[{label:'Időszak',value:'2026-10-16 – 2026-10-18'}],
+    normalized:{dates:{arrival:'2026-10-16',departure:'2026-10-18'},cabin:'Deluxe',guests:4,adults:2,children:2,child_ages:[7,11]},
+    human_review:['Szabad hely és ár nincs igazolva']
+  });
+  h.listeners.get('sarberki:record-loaded')();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(h.calls,1);
+  assert.equal(h.element('price_adults').value,'2');
+  assert.equal(h.element('price_children').value,'2');
+  assert.equal(h.element('price_child_ages').value,'7, 11');
+});
+
+test('Gmail human-review guest contradiction blocks quote even if pricing fields look complete',async()=>{
+  const h=harness('',()=>{throw Error('unexpected fetch')});
+  h.element('gmail_record').classList.contains=()=>false;
+  h.element('gmail_original').textContent='2026. október 16–18. Deluxe, 8 fő: 5 felnőtt és 2 gyermek, 7 és 11 évesek.';
+  h.element('gmail_json').value=JSON.stringify({
+    extracted:[{label:'Időszak',value:'2026-10-16 – 2026-10-18'}],
+    normalized:{dates:{arrival:'2026-10-16',departure:'2026-10-18'},cabin:'Deluxe',guests:8,adults:5,children:2,child_ages:[7,11]},
+    human_review:['Ellentmondó létszámadat: összesen 8 fő, de 5 felnőtt + 2 gyermek = 7 fő']
+  });
+  h.listeners.get('sarberki:record-loaded')();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(h.calls,0);
+  assert.match(h.element('price_status').textContent,/kezelői ellenőrzés/u);
+});
