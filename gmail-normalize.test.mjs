@@ -397,3 +397,10 @@ test('shared reply builder asks only shared missing-data questions',()=>{
   assert.match(draft,/telefonszámot/u);
   assert.match(draft,/Melyik háztípust/u);
 });
+
+
+test('custom business timezone is supported',()=>{
+  const instant=new Date('2026-10-01T22:30:00Z');
+  assert.deepEqual(dateRangeFromText('október 1-2',instant,'Pacific/Honolulu'),{arrival:'2027-10-01',departure:'2027-10-02',inferredYear:true});
+  assert.deepEqual(dateRangeFromText('október 1-2',instant,'Europe/Budapest'),{arrival:'2027-10-01',departure:'2027-10-02',inferredYear:true});
+});
