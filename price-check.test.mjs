@@ -74,17 +74,17 @@ test('Teszt Elek reply retains known facts without inventing a price or pet fee'
 });
 
 
-test('split cabin keeps A B C recognition behind manual verification',()=>{
+test('split cabin requires A B C choice before pricing',()=>{
  assert.match(source,/explicitSplitUnit/u);
+ assert.match(source,/askedSplit&&!explicitSplitUnit\(message\)/u);
  assert.match(source,/Kérjük pontosítani: A, B vagy C egység/u);
- assert.match(source,/kategória-megfeleltetése még nincs hitelesítve/u);
 });
 
 
-test('split capacities are wired while live mapping remains guarded',()=>{
+test('split capacities are wired and explicit A B C units can reach pricing',()=>{
  assert.match(source,/splitA:'Osztott A'/u);
  assert.match(source,/splitB:'Osztott B'/u);
  assert.match(source,/splitC:'Osztott C'/u);
  assert.match(source,/splitA:2,splitB:2,splitC:5/u);
- assert.match(source,/\^split\[ABC\]\$/u);
+ assert.match(source,/price_cabin'\)\.value=splitUnit/u);
 });
