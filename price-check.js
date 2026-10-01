@@ -26,6 +26,15 @@
     return ({'két':2,'2':2,'három':3,'3':3,'négy':4,'4':4,'öt':5,'5':5,'hat':6,'6':6,two:2,three:3,four:4,five:5,six:6,zwei:2,drei:3,vier:4,'fünf':5,funf:5,sechs:6,dva:2,tri:3,'štiri':4,stiri:4,pet:5,'šest':6,sest:6})[m[1].toLowerCase()]||0;
   }
 
+  function gmailNormalizedRecord() {
+    try {
+      const raw=document.getElementById('gmail_json')?.value;
+      if(!raw) return null;
+      const record=JSON.parse(raw);
+      return record && typeof record==='object' ? record : null;
+    } catch { return null; }
+  }
+
   function gmailNormalizedDate() {
     try {
       const raw=document.getElementById('gmail_json')?.value;
@@ -112,14 +121,18 @@
   function prepare(message) {
     const analysis = typeof extract === 'function' ? extract(message,'') : null;
     const fields = analysis?.fields || {};
+    const gmailRecord=gmailNormalizedRecord();
+    const normalized=gmailRecord?.normalized||{};
     const gmailDate=gmailNormalizedDate();
-    $('price_arrival').value = fields.arrival?.value || gmailDate?.arrival || '';
-    $('price_departure').value = fields.departure?.value || gmailDate?.departure || '';
-    const children = Number(fields.children?.value || 0);
-    $('price_adults').value = fields.adults?.value || (children ? '' : fields.guests?.value || '');
+    $('price_arrival').value = fields.arrival?.value || normalized.dates?.arrival || gmailDate?.arrival || '';
+    $('price_departure').value = fields.departure?.value || normalized.dates?.departure || gmailDate?.departure || '';
+    const children = Number.isInteger(Number(normalized.children)) ? Number(normalized.children) : Number(fields.children?.value || 0);
+    const normalizedAdults=Number(normalized.adults);
+    const normalizedGuests=Number(normalized.guests);
+    $('price_adults').value = Number.isInteger(normalizedAdults)&&normalizedAdults>0 ? String(normalizedAdults) : fields.adults?.value || (children ? (Number.isInteger(normalizedGuests)&&normalizedGuests>children?String(normalizedGuests-children):'') : fields.guests?.value || '');
     if ($('price_children')) $('price_children').value = String(children);
-    if ($('price_child_ages')) $('price_child_ages').value = fields.child_ages?.value || '';
-    const unit=(fields.unit?.value || '').toLowerCase();
+    if ($('price_child_ages')) $('price_child_ages').value = Array.isArray(normalized.child_ages)&&normalized.child_ages.length ? normalized.child_ages.join(', ') : fields.child_ages?.value || '';
+    const unit=(fields.unit?.value || normalized.cabin || '').toLowerCase();
     const explicit = explicitCabin(message);
     const splitUnit=explicit==='split'?explicitSplitUnit(message):'';
     $('price_cabin').value = splitUnit ? `split${splitUnit}` : explicit || Object.keys(cabins).find(k => unit.includes(cabins[k].toLowerCase())) || '';
@@ -253,13 +266,17 @@
     prepare(message);
     applyFocusedReply(message);
     const analysis=typeof extract==='function' ? extract(message,'') : null;
-    const childCount=Number(analysis?.fields?.children?.value||0);
+    const gmailRecord=gmailNormalizedRecord();
+    const normalized=gmailRecord?.normalized||{};
+    const childCount=Number.isInteger(Number(normalized.children)) ? Number(normalized.children) : Number(analysis?.fields?.children?.value||0);
     const hasChildWord=/\b(?:gyerek|gyermek|gyerekek|gyermekek|children|child|kind(?:er)?|otroka)\b/iu.test(message);
     const gmailDate=gmailNormalizedDate();
     const complete=Boolean($('price_arrival').value&&$('price_departure').value&&$('price_cabin').value&&Number($('price_adults').value)>0);
     const blockingWarnings=['guest_conflict','nights_conflict','date_conflict','invalid_date','uncertain_date'];
-    const guests=Number(analysis?.fields?.guests?.value);
-    if(['modification_request','cancellation_request'].includes(analysis?.intent)||blockingWarnings.some(code=>analysis?.warning_codes?.includes(code))||!Number.isInteger(guests)||guests<1||guests!==Number($('price_adults').value)+childCount){
+    const guests=Number.isInteger(Number(normalized.guests)) ? Number(normalized.guests) : Number(analysis?.fields?.guests?.value);
+    const gmailReview=Array.isArray(gmailRecord?.human_review)?gmailRecord.human_review:[];
+    const gmailConflict=gmailReview.some(item=>/ellentmondó|contradict/i.test(String(item)));
+    if(gmailConflict||['modification_request','cancellation_request'].includes(analysis?.intent)||blockingWarnings.some(code=>analysis?.warning_codes?.includes(code))||!Number.isInteger(guests)||guests<1||guests!==Number($('price_adults').value)+childCount){
       $('price_status').textContent='Gmailből előkészítve: ellentmondó vagy módosítást érintő foglalási adat miatt automatikus árlekérés nem indul; kezelői ellenőrzés szükséges.';
       return;
     }
