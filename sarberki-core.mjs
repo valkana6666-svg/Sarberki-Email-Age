@@ -27,7 +27,7 @@ export function cabinFromText(text=''){
 }
 export function guestCountFromText(text=''){
   const explicitTotal=
-    text.match(/\b(?:összesen|osszesen)\s+(\d{1,2})\s*(?:fő|fo|személy|szemely)\b/iu)
+    text.match(/\b(?:összesen|osszesen)\s+(\d{1,2})\s*(?:fő|fo|személy|szemely)(?=\s|$|[,.!?:;])/iu)
     || text.match(/\b(?:total(?:\s+of)?|altogether)\s+(\d{1,2})\s*(?:persons?|people|guests?)\b/iu)
     || text.match(/\b(\d{1,2})\s*(?:persons?|people|guests?)\s+(?:in\s+total|altogether)\b/iu)
     || text.match(/\binsgesamt\s+(\d{1,2})\s*(?:gäste|personen)\b/iu)
@@ -171,7 +171,7 @@ export function languageFromText(text=''){
     hu:(text.match(/\b(?:szia|üdv|szeretn|erdekl|érdekl|faház|fahaz|szállás|szallas|felnőtt|felnott|gyermek|gyerek|fő|fo|dézsa|dezsa|mennénk|mennenk|jönnénk|jonnenk|ár|ára|mennyibe|éjszaka)\w*/giu)||[]).length,
     de:(text.match(/\b(?:hallo|guten tag|möchte|möchten|würde|würden|hätte|hätten|anfrage|unterkunft|buchung|gäste|personen|erwachsene|kinder|verfügbar|übernacht|preis|nächte|telefon|freundlichen grüßen|für|wäre|eigenem|möglich)\w*/giu)||[]).length
        + ((text.match(/[äöüß]/giu)||[]).length ? 2 : 0),
-    en:(text.match(/\b(?:hello|hi|would|booking|reservation|accommodation|guests|adults|children|available|availability|cabin|stay|nights?|price|please|phone|total price|thank you|aged)\w*/giu)||[]).length,
+    en:(text.match(/\b(?:would|booking|reservation|accommodation|guests|adults|children|available|availability|cabin|stay|nights?|price|please|phone|total price|thank you|aged)\w*/giu)||[]).length,
     si:(text.match(/\b(?:pozdravljeni|pozdrav|nastanitev|rezervacij|oseb|odrasl|otrok|prosto|koča|hiška|ribolov|želimo|želeli|prosimo|sporočite|lahko|bivali|prihod|odhod|cena|noči|telefon|lastnim|pomolom|hvala|lep pozdrav)\w*/giu)||[]).length
        + ((text.match(/[čšž]/giu)||[]).length ? 2 : 0)
   };
