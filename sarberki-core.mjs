@@ -190,23 +190,33 @@ export function replyQuestions(language='hu', {needPhone=false,needCabin=false,n
 
 
 function bookingQuestionFlags(text=''){
-  const general=/(?:foglalási\s+(?:feltételek|szabályok)|hogyan\s+(?:lehet|tudok|tudunk)\s+foglalni|booking\s+(?:conditions|terms)|buchungsbedingungen|rezervacijski\s+pogoji)/iu.test(text);
-  const depositAmount=general||/(?:mekkora|mennyi(?:\s+az|\s+a)?|hány\s*%)\s*(?:előleg|foglaló)|(?:előleg|foglaló)[^.!?\n]{0,60}(?:mekkora|mennyi|hány\s*%)/iu.test(text);
-  const depositDeadline=general||/(?:hány\s+nap|mennyi\s+(?:nap|idő))[^.!?\n]{0,100}(?:előleg|foglaló)|(?:előleg|foglaló)[^.!?\n]{0,120}(?:mikor|meddig|határidő|hány\s+nap|mennyi\s+idő|befizet|átutal)/iu.test(text);
-  const cancellation=general||/(?:lemondási\s+(?:feltétel|szabály|határidő)|meddig[^.!?\n]{0,60}lemond|hány\s+nap[^.!?\n]{0,60}lemond|cancellation\s+(?:conditions|terms)|stornierungsbedingungen)/iu.test(text);
+  const general=/(?:foglalási\s+(?:feltételek|szabályok)|hogyan\s+(?:lehet|tudok|tudunk)\s+foglalni|booking\s+(?:conditions|terms)|buchungsbedingungen|reservierungsbedingungen|rezervacijski\s+pogoji|pogoji\s+rezervacije)/iu.test(text);
+  const depositAmount=general||/(?:mekkora|mennyi(?:\s+az|\s+a)?|hány\s*%)\s*(?:előleg|foglaló)|(?:előleg|foglaló)[^.!?\n]{0,80}(?:mekkora|mennyi|hány\s*%)|(?:how\s+much|what\s+percentage)[^.!?\n]{0,80}(?:deposit)|(?:deposit)[^.!?\n]{0,80}(?:how\s+much|what\s+percentage)|(?:wie\s+hoch|wie\s+viel)[^.!?\n]{0,80}(?:anzahlung)|(?:anzahlung)[^.!?\n]{0,80}(?:wie\s+hoch|wie\s+viel)|(?:kolikšno|koliko)[^.!?\n]{0,80}(?:predplačilo)|(?:predplačilo)[^.!?\n]{0,80}(?:kolikšno|koliko)/iu.test(text);
+  const depositDeadline=general||/(?:hány\s+nap|mennyi\s+(?:nap|idő))[^.!?\n]{0,100}(?:előleg|foglaló)|(?:előleg|foglaló)[^.!?\n]{0,120}(?:mikor|meddig|határidő|hány\s+nap|mennyi\s+idő|befizet|átutal)|(?:when|how\s+soon)[^.!?\n]{0,100}(?:deposit)[^.!?\n]{0,60}(?:paid|due)?|(?:deposit)[^.!?\n]{0,100}(?:when|due|paid)|(?:wann|bis\s+wann)[^.!?\n]{0,100}(?:anzahlung)|(?:anzahlung)[^.!?\n]{0,100}(?:wann|fällig|bezahlt)|(?:kdaj|do\s+kdaj)[^.!?\n]{0,100}(?:predplačilo)|(?:predplačilo)[^.!?\n]{0,100}(?:kdaj|rok|plač)/iu.test(text);
+  const cancellation=general||/(?:lemondási\s+(?:feltétel|szabály|határidő)|meddig[^.!?\n]{0,60}lemond|hány\s+nap[^.!?\n]{0,60}lemond|cancellation\s+(?:conditions|terms|deadline)|stornierungsbedingungen|stornofrist|pogoji\s+odpovedi|odpovedn(?:i|e)\s+pogoji)/iu.test(text);
   return {general,depositAmount,depositDeadline,cancellation};
 }
 function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
   if(!rules) return [];
   const q=bookingQuestionFlags(original), lines=[];
   const lang=['hu','de','en','si'].includes(language)?language:'hu';
-  if(q.depositAmount&&Number.isFinite(Number(rules.depositPct))){
-    const pct=Number(rules.depositPct);
-    lines.push({
+  if(q.depositAmount){
+    const g=Number(guests);
+    const knownGuests=Number.isFinite(g)&&g>0;
+    const under15=Number(rules.depositPctUnder15Guests ?? rules.depositPct);
+    const from15=Number(rules.depositPctFrom15Guests ?? rules.depositPct);
+    const pct=knownGuests?(g<15?under15:from15):null;
+    if(Number.isFinite(pct)) lines.push({
       hu:`A foglaláshoz ${pct}% előleg szükséges.`,
       de:`Für die Buchung ist eine Anzahlung von ${pct}% erforderlich.`,
       en:`A ${pct}% deposit is required for the booking.`,
       si:`Za rezervacijo je potrebno ${pct}% predplačilo.`
+    }[lang]);
+    else if(Number.isFinite(under15)&&Number.isFinite(from15)&&under15!==from15) lines.push({
+      hu:`Az előleg mértéke létszámfüggő: 15 fő alatt ${under15}%, 15 főtől ${from15}%.`,
+      de:`Die Anzahlung hängt von der Gruppengröße ab: unter 15 Personen ${under15}%, ab 15 Personen ${from15}%.`,
+      en:`The deposit depends on group size: ${under15}% for fewer than 15 guests and ${from15}% for 15 guests or more.`,
+      si:`Višina predplačila je odvisna od velikosti skupine: ${under15}% za manj kot 15 oseb in ${from15}% za 15 oseb ali več.`
     }[lang]);
   }
   if(q.depositDeadline&&Number.isFinite(Number(rules.depositDueDays))){
