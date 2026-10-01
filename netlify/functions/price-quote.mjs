@@ -1,5 +1,6 @@
 import {validateQuote} from '../../price-quote.mjs';
 import {fetchPublicBookingQuote} from '../../price-source/sarberki-public-booking.mjs';
+import {fetchPublicPriceReference} from '../../price-source/public-price-fallback.mjs';
 
 const LIVE_TEST_HOSTS=new Set([
   'leafy-chimera-2403e5.netlify.app'
@@ -81,9 +82,10 @@ export async function handlePriceQuote(request,source=fetchPublicBookingQuote,en
     const raw=await request.text();
     if (raw.length>8192) throw Error('Túl nagy kérés.');
     const input=validateQuote(JSON.parse(raw));
-    const result=await source(input);
+    const result=['splitA','splitB','splitC'].includes(input.cabin) ? fetchPublicPriceReference(input) : await source(input);
     if(result.status==='unavailable') return Response.json(result,{status:200,headers:{'cache-control':'no-store'}});
-    if(result.status!=='review_required'||!Number.isSafeInteger(result.total)||result.total<=0) throw Error('A Previo nem adott hiteles teljes árat.');
+    if(!['review_required','public_reference'].includes(result.status)||!Number.isSafeInteger(result.total)||result.total<=0) throw Error('Nem érkezett ellenőrzött ár.');
+    if(result.status==='public_reference') return Response.json(result,{headers:{'cache-control':'no-store'}});
     let eurConversion={status:'unavailable'};
     try {
       const fx=await fxSource();
