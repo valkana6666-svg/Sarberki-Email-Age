@@ -1,7 +1,7 @@
 /* Browser-only Gmail bridge. Access token stays in memory and is never stored. */
 (async () => {
   'use strict';
-  const { cabinFromText, guestCountFromText, childCountFromText, dateRangeFromText, phoneFromText, childAgesFromText, pierPreferenceFromText, languageFromText, buildReplyDraft } = await import('./sarberki-core.mjs');
+  const { cabinFromText, guestCountFromText, adultCountFromText, childCountFromText, dateRangeFromText, phoneFromText, childAgesFromText, pierPreferenceFromText, languageFromText, buildReplyDraft } = await import('./sarberki-core.mjs');
   const { BUSINESS } = await import('./business-config.mjs');
   const { fishingQuestion } = await import('./fishing-rules.mjs');
   const { isApprovedSubject } = await import('./gmail-subject.mjs');
@@ -145,6 +145,7 @@
     const received = new Date(Number(message.internalDate));
     const normalizedDate = dateRangeFromText(original, new Date(), BUSINESS.timezone);
     const count = guestCountFromText(original) || ({ketten:2,hárman:3,négyen:4,öten:5,hatan:6}[original.match(/\b(ketten|hárman|négyen|öten|hatan)\b/iu)?.[1]?.toLowerCase()] || null);
+    const adultCount = adultCountFromText(original);
     const childCount = childCountFromText(original);
     const childAges = childAgesFromText(original);
     const phone = phoneFromText(original);
@@ -158,7 +159,8 @@
     if (hotTub || dog || pier) extracted.push({label:'Igények',value:[hotTub?'dézsa / hot tub':null,dog?'kutya / dog':null,pier?'saját / külön stég':null].filter(Boolean).join(', '),evidence:'levélszöveg'});
     if (availability) extracted.push({label:'Kérdés',value:'szabad kapacitás',evidence:'levélszöveg'});
     const inferred = [];
-    if (count && childCount) inferred.push({label:'Felnőttek',value:`valószínűleg ${count-childCount}, ha a fennmaradó ${count-childCount} fő felnőtt`});
+    if (adultCount!=null) extracted.push({label:'Felnőttek',value:`${adultCount} fő`,evidence:'levélszöveg'});
+    else if (count && childCount) inferred.push({label:'Felnőttek',value:`valószínűleg ${count-childCount}, ha a fennmaradó ${count-childCount} fő felnőtt`});
     const missing = [];
     if (cabinFromGuestText(original).startsWith('?')) missing.push('Kívánt háztípus (VIP, Családi, Deluxe vagy Osztott) – pontosítandó');
     if (normalizedDate) extracted.push({label:normalizedDate.inferredYear ? 'Időszak, következtetett évvel' : 'Időszak',value:`${normalizedDate.arrival} – ${normalizedDate.departure}`,evidence:'levélszöveg'});
@@ -171,11 +173,12 @@
     const reviewYear = normalizedDate?.inferredYear ? Number(normalizedDate.arrival.slice(0,4)) : null;
     const humanReview = [reviewYear ? `A ${reviewYear}-os év következtetését hagyja jóvá a kezelő` : 'A dátumot ellenőrizni kell'];
     if (cabinFromGuestText(original).startsWith('?')) humanReview.push('A vendég háztípust nem választott; létszámból nem szabad kiválasztani');
+    if (count && adultCount!=null && childCount!=null && adultCount+childCount!==count) humanReview.push(`Ellentmondó létszámadat: összesen ${count} fő, de ${adultCount} felnőtt + ${childCount} gyermek = ${adultCount+childCount} fő`);
     humanReview.push('Szabad hely és ár nincs igazolva');
     const language = languageFromText(original);
     const fishingInfo = fishingQuestion(original,language);
     const replyDraft = buildReplyDraft({language,name,original,arrival:normalizedDate?.arrival,departure:normalizedDate?.departure,guests:count,children:childCount,childAges,phone,cabin:cabinFromGuestText(original),pier,hotTub,dog,intent:'booking_request',brandName:BUSINESS.brandName,bookingRules:BUSINESS.bookingRules,operationalRules:BUSINESS.operationalRules,pricingRules:BUSINESS.pricingRules,knowledgeLines:fishingInfo?[fishingInfo.answer]:[]});
-    return {source:{provider:'gmail',message_id:message.id,thread_id:message.threadId,subject:headers.subject || '',from:headers.from || '',from_email:emailAddress(headers.from || ''),to:headers.to || '',received_at:received.toISOString()},original_message:original,normalized:{language,cabin:cabinFromGuestText(original),dates:normalizedDate,guests:count,children:childCount,child_ages:childAges,phone,hot_tub:hotTub,dog,pier_requested:pier,hot_tub_requested:hotTub,pet_requested:dog},extracted,inferred,missing,human_review:humanReview,reply_draft:replyDraft};
+    return {source:{provider:'gmail',message_id:message.id,thread_id:message.threadId,subject:headers.subject || '',from:headers.from || '',from_email:emailAddress(headers.from || ''),to:headers.to || '',received_at:received.toISOString()},original_message:original,normalized:{language,cabin:cabinFromGuestText(original),dates:normalizedDate,guests:count,adults:adultCount,children:childCount,child_ages:childAges,phone,hot_tub:hotTub,dog,pier_requested:pier,hot_tub_requested:hotTub,pet_requested:dog},extracted,inferred,missing,human_review:humanReview,reply_draft:replyDraft};
   }
   async function readWithToken(token) {
     const headers = {Authorization:`Bearer ${token}`};
