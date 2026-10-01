@@ -514,3 +514,43 @@ test('15+ guest cancellation threshold is localized consistently',()=>{
     assert.match(draft,/30 (?:nap|Tage|days|dni)/u,language);
   }
 });
+
+
+test('dense operational questions are answered from verified config',()=>{
+  const operationalRules={
+    reception24h:true,
+    confirmedLateArrivalExample:'18:30',
+    checkoutBy:'10:00',
+    electricitySettlement:'metered_separate',
+    parking:'available_large_group_review',
+    firewood:'surcharge_price_unverified',
+    returningGuestDiscountPct:20,
+    returningGuestLookbackDays:730,
+    returningGuestRequiresHistoryCheck:true
+  };
+  const draft=buildReplyDraft({
+    language:'en',
+    original:'We have three cars. Is electricity included or charged by the meter? Is firewood available and is there an extra charge? Can we arrive at 6:30 PM? What time do we need to leave? We stayed about one year ago; please check the returning-guest discount.',
+    arrival:'2026-11-12',departure:'2026-11-16',guests:8,children:0,childAges:[],
+    phone:'+44 7700 912345',cabin:'Deluxe',intent:'booking_request',
+    operationalRules
+  });
+  assert.match(draft,/Electricity is charged separately/u);
+  assert.match(draft,/Firewood is available/u);
+  assert.match(draft,/Parking is available/u);
+  assert.match(draft,/18:30/u);
+  assert.match(draft,/10:00/u);
+  assert.match(draft,/20%/u);
+  assert.match(draft,/730 days/u);
+  assert.match(draft,/not applied automatically/u);
+});
+
+test('deposit percentage changes at 15 guests and unknown group size stays explicit',()=>{
+  const rules={depositPctUnder15Guests:50,depositPctFrom15Guests:80,depositDueDays:10,cancellationDaysUnder15Guests:14,cancellationDaysFrom15Guests:30};
+  const under=buildReplyDraft({language:'hu',original:'Mekkora előleg kell?',guests:14,phone:'x',cabin:'Deluxe',bookingRules:rules});
+  const over=buildReplyDraft({language:'hu',original:'Mekkora előleg kell?',guests:15,phone:'x',cabin:'Deluxe',bookingRules:rules});
+  const unknown=buildReplyDraft({language:'hu',original:'Mekkora előleg kell?',guests:null,phone:'x',cabin:'Deluxe',bookingRules:rules});
+  assert.match(under,/50%/u);
+  assert.match(over,/80%/u);
+  assert.match(unknown,/15 fő alatt 50%.*15 főtől 80%/su);
+});
