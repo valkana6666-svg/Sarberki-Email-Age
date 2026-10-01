@@ -8,11 +8,25 @@ export const BUSINESS = Object.freeze({
   locale: 'hu-HU',
   timezone: 'Europe/Budapest',
   bookingRules: Object.freeze({
-    depositPct: 50,
+    depositPctUnder15Guests: 50,
+    depositPctFrom15Guests: 80,
     depositDueDays: 10,
     cancellationDaysUnder15Guests: 14,
     cancellationDaysFrom15Guests: 30,
     source: 'Sárberki booking rules / project knowledge base'
+  }),
+  operationalRules: Object.freeze({
+    reception24h: true,
+    confirmedLateArrivalExample: '18:30',
+    checkoutBy: '10:00',
+    electricitySettlement: 'metered_separate',
+    parking: 'available_large_group_review',
+    firewood: 'surcharge_price_unverified',
+    returningGuestDiscountPct: 20,
+    returningGuestLookbackDays: 730,
+    returningGuestRequiresHistoryCheck: true,
+    petAllowedForFee: true,
+    petFeeVerified: false
   }),
   pricingRules: Object.freeze({
     extraAdultNightlyHuf: 4500,
