@@ -49,6 +49,16 @@ export function childCountFromText(text=''){
 export function dateRangeFromText(text='', now=new Date(), timeZone='Europe/Budapest'){
   const iso=text.match(/\b(20\d{2})[-./](\d{1,2})[-./](\d{1,2})\s*(?:[-–]|to|bis|do)\s*(?:(20\d{2})[-./](\d{1,2})[-./])?(\d{1,2})\b/iu);
   if(iso) return {arrival:`${iso[1]}-${String(iso[2]).padStart(2,'0')}-${String(iso[3]).padStart(2,'0')}`,departure:`${iso[4]||iso[1]}-${String(iso[5]||iso[2]).padStart(2,'0')}-${String(iso[6]).padStart(2,'0')}`,inferredYear:false};
+  const huNaturalRange=text.match(/\b(?:(20\d{2})\.?\s*)?(január|januar|február|februar|március|marcius|április|aprilis|május|majus|június|junius|július|julius|augusztus|szeptember|október|oktober|november|december)\s+(\d{1,2})\.?\s+(?:és|es)\s+(\d{1,2})\.?\s+között\b/iu);
+  if(huNaturalRange){
+    const month=monthNumber(huNaturalRange[2]);
+    const local=new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).format(now).split('-').map(Number);
+    let year=huNaturalRange[1]?Number(huNaturalRange[1]):local[0];
+    const inferred=!huNaturalRange[1];
+    const startDay=Number(huNaturalRange[3]), endDay=Number(huNaturalRange[4]);
+    if(inferred&&(month<local[1]||(month===local[1]&&startDay<local[2]))) year++;
+    return {arrival:`${year}-${String(month).padStart(2,'0')}-${String(startDay).padStart(2,'0')}`,departure:`${year}-${String(month).padStart(2,'0')}-${String(endDay).padStart(2,'0')}`,inferredYear:inferred};
+  }
   const enLong=text.match(/\b(?:from\s+)?(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})\s+(?:to|[-–])\s+(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})\b/iu);
   if(enLong){
     const m1=monthNumber(enLong[2]), m2=monthNumber(enLong[5]);
@@ -179,7 +189,27 @@ export function replyQuestions(language='hu', {needPhone=false,needCabin=false,n
 }
 
 
-export function buildReplyDraft({language='hu',name=null,original='',arrival=null,departure=null,guests=null,children=null,childAges=[],phone=null,cabin='? – emberi döntésre vár',pier=false,hotTub=false,dog=false,intent='booking_request',brandName='Sárberki Horgásztó'}={}){
+function bookingQuestionFlags(text=''){
+  const general=/(?:foglalási\s+(?:feltételek|szabályok)|hogyan\s+(?:lehet|tudok|tudunk)\s+foglalni|booking\s+(?:conditions|terms)|buchungsbedingungen|rezervacijski\s+pogoji)/iu.test(text);
+  const depositAmount=general||/(?:mekkora|mennyi(?:\s+az|\s+a)?|hány\s*%)\s*(?:előleg|foglaló)|(?:előleg|foglaló)[^.!?\n]{0,60}(?:mekkora|mennyi|hány\s*%)/iu.test(text);
+  const depositDeadline=general||/(?:hány|mennyi)\s+nap[^.!?\n]{0,80}(?:előleg|foglaló)|(?:előleg|foglaló)[^.!?\n]{0,100}(?:mikor|meddig|határidő|hány\s+nap|mennyi\s+idő|befizet)/iu.test(text);
+  const cancellation=general||/(?:lemondási\s+(?:feltétel|szabály|határidő)|meddig[^.!?\n]{0,60}lemond|hány\s+nap[^.!?\n]{0,60}lemond|cancellation\s+(?:conditions|terms)|stornierungsbedingungen)/iu.test(text);
+  return {general,depositAmount,depositDeadline,cancellation};
+}
+function huBookingPolicyLines(original='',guests=null,rules=null){
+  if(!rules) return [];
+  const q=bookingQuestionFlags(original), lines=[];
+  if(q.depositAmount&&Number.isFinite(Number(rules.depositPct))) lines.push(`A foglaláshoz ${Number(rules.depositPct)}% előleg szükséges.`);
+  if(q.depositDeadline&&Number.isFinite(Number(rules.depositDueDays))) lines.push(`Az előleget a foglalási szándék rögzítésétől számított ${Number(rules.depositDueDays)} napon belül kell befizetni; ha ez határidőn belül nem érkezik meg, a foglalást töröljük.`);
+  if(q.cancellation&&Number.isFinite(Number(guests))){
+    const g=Number(guests);
+    const days=g<15?Number(rules.cancellationDaysUnder15Guests):Number(rules.cancellationDaysFrom15Guests);
+    if(Number.isFinite(days)) lines.push(`${g<15?'15 fő alatti':'15 fő vagy nagyobb'} foglalásnál a lemondási határidő az érkezés előtt ${days} nap.`);
+  }
+  return lines;
+}
+
+export function buildReplyDraft({language='hu',name=null,original='',arrival=null,departure=null,guests=null,children=null,childAges=[],phone=null,cabin='? – emberi döntésre vár',pier=false,hotTub=false,dog=false,intent='booking_request',brandName='Sárberki Horgásztó',bookingRules=null}={}){
   const lang=language==='unknown'?'hu':language;
   const first=name?.trim()?.split(/\s+/u)?.slice(-1)[0]||null;
   const greetings={hu:first?`Kedves ${first}!`:'Kedves Vendégünk!',de:first?`Guten Tag ${first}!`:'Guten Tag!',en:first?`Dear ${first},`:'Dear Guest,',si:first?`Pozdravljeni ${first}!`:'Pozdravljeni!'};
@@ -193,6 +223,7 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const summary=replySummary(lang,{arrival,departure,guests,children,childAges,pier,hotTub,dog});
   const needCabin=!cabin||String(cabin).startsWith('?');
   const questions=replyQuestions(lang,{needPhone:!phone,needCabin,needChildAge:Boolean(children&&childAges.length<children)});
+  const policyLines=lang==='hu'?huBookingPolicyLines(original,guests,bookingRules):[];
   const asksAvailability=/(?:szabad|elérhető|van[- ]?e .*szállás|van.*hely|available|frei|prosto|verfügbar|razpolož)/iu.test(original);
   const asksPrice=/(?:mennyi|mennyibe|ár|ára|árat|price|cost|kosten|preis|cena)/iu.test(original);
   const checks={
@@ -201,5 +232,5 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
     en: asksAvailability||asksPrice?'We check availability and price separately and will only confirm them after a verified check.':'We will review the details provided and reply with any required information.',
     si: asksAvailability||asksPrice?'Razpoložljivost in ceno preverimo posebej in ju potrdimo šele po zanesljivem preverjanju.':'Preverili bomo navedene podatke in odgovorili s potrebnimi podrobnostmi.'
   };
-  return `${greetings[lang]}\n\n${intros[lang]}${summary?'\n\n'+summary:''}${questions.length?'\n\n'+questions.join(' '):''}\n\n${checks[lang]}\n\n${closings[lang]}\n${brandName}`;
+  return `${greetings[lang]}\n\n${intros[lang]}${summary?'\n\n'+summary:''}${policyLines.length?'\n\n'+policyLines.join('\n'):''}${questions.length?'\n\n'+questions.join(' '):''}\n\n${checks[lang]}\n\n${closings[lang]}\n${brandName}`;
 }
