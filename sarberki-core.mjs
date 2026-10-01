@@ -161,11 +161,11 @@ export function pierPreferenceFromText(text=''){
 }
 export function languageFromText(text=''){
   const scores={
-    hu:(text.match(/\b(?:szeretn|erdekl|érdekl|faház|fahaz|szállás|szallas|gyermek|gyerek|fő|fo|dézsa|dezsa|mennénk|mennenk|jönnénk|jonnenk)\w*/giu)||[]).length,
-    de:(text.match(/\b(?:möchte|möchten|würde|würden|hätte|hätten|anfrage|unterkunft|buchung|gäste|personen|kinder|verfügbar|übernacht|freundlichen grüßen|für|wäre|eigenem|möglich)\w*/giu)||[]).length
+    hu:(text.match(/\b(?:szia|üdv|szeretn|erdekl|érdekl|faház|fahaz|szállás|szallas|felnőtt|felnott|gyermek|gyerek|fő|fo|dézsa|dezsa|mennénk|mennenk|jönnénk|jonnenk|ár|ára|mennyibe|éjszaka)\w*/giu)||[]).length,
+    de:(text.match(/\b(?:hallo|guten tag|möchte|möchten|würde|würden|hätte|hätten|anfrage|unterkunft|buchung|gäste|personen|erwachsene|kinder|verfügbar|übernacht|preis|nächte|telefon|freundlichen grüßen|für|wäre|eigenem|möglich)\w*/giu)||[]).length
        + ((text.match(/[äöüß]/giu)||[]).length ? 2 : 0),
-    en:(text.match(/\b(?:would|booking|reservation|accommodation|guests|children|available|cabin|please|total price|thank you|aged)\w*/giu)||[]).length,
-    si:(text.match(/\b(?:nastanitev|rezervacij|oseb|otrok|prosto|koča|hiška|ribolov|želimo|želeli|prosimo|sporočite|lahko|bivali|prihod|odhod|lastnim|pomolom|hvala|lep pozdrav)\w*/giu)||[]).length
+    en:(text.match(/\b(?:hello|hi|would|booking|reservation|accommodation|guests|adults|children|available|availability|cabin|stay|nights?|price|please|phone|total price|thank you|aged)\w*/giu)||[]).length,
+    si:(text.match(/\b(?:pozdravljeni|pozdrav|nastanitev|rezervacij|oseb|odrasl|otrok|prosto|koča|hiška|ribolov|želimo|želeli|prosimo|sporočite|lahko|bivali|prihod|odhod|cena|noči|telefon|lastnim|pomolom|hvala|lep pozdrav)\w*/giu)||[]).length
        + ((text.match(/[čšž]/giu)||[]).length ? 2 : 0)
   };
   const best=Object.entries(scores).sort((a,b)=>b[1]-a[1]);
