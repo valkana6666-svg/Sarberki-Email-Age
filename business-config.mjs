@@ -7,6 +7,13 @@ export const BUSINESS = Object.freeze({
   currency: 'HUF',
   locale: 'hu-HU',
   timezone: 'Europe/Budapest',
+  bookingRules: Object.freeze({
+    depositPct: 50,
+    depositDueDays: 10,
+    cancellationDaysUnder15Guests: 14,
+    cancellationDaysFrom15Guests: 30,
+    source: 'Sárberki booking rules / project knowledge base'
+  }),
   pricingRules: Object.freeze({
     extraAdultNightlyHuf: 4500,
     child0to3NightlyHuf: 0,
