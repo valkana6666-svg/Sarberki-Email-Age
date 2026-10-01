@@ -404,3 +404,59 @@ test('custom business timezone is supported',()=>{
   assert.deepEqual(dateRangeFromText('október 1-2',instant,'Pacific/Honolulu'),{arrival:'2026-10-01',departure:'2026-10-02',inferredYear:true});
   assert.deepEqual(dateRangeFromText('október 1-2',instant,'Europe/Budapest'),{arrival:'2027-10-01',departure:'2027-10-02',inferredYear:true});
 });
+
+
+test("HU natural 'és ... között' range regression",()=>{
+  assert.deepEqual(
+    dateRangeFromText('2026. október 23. és 26. között szeretnénk megszállni',new Date('2026-10-01T12:00:00Z')),
+    {arrival:'2026-10-23',departure:'2026-10-26',inferredYear:false}
+  );
+});
+
+test('booking subquestions return only the relevant known policy details',()=>{
+  const base={
+    language:'hu',
+    arrival:'2026-10-23',
+    departure:'2026-10-26',
+    guests:8,
+    children:3,
+    childAges:[4,9,13],
+    phone:'+36 30 555 1234',
+    cabin:'Osztott',
+    intent:'booking_request',
+    bookingRules:{depositPct:50,depositDueDays:10,cancellationDaysUnder15Guests:14,cancellationDaysFrom15Guests:30}
+  };
+  const deadlineOnly=buildReplyDraft({...base,original:'Mennyi időn belül kell befizetni az előleget?'});
+  assert.match(deadlineOnly,/10 napon belül/u);
+  assert.match(deadlineOnly,/foglalást töröljük/u);
+  assert.doesNotMatch(deadlineOnly,/A foglaláshoz 50% előleg szükséges/u);
+  assert.doesNotMatch(deadlineOnly,/lemondási határidő/u);
+
+  const general=buildReplyDraft({...base,original:'Mik a foglalási feltételek és a lemondási szabályok?'});
+  assert.match(general,/50% előleg/u);
+  assert.match(general,/10 napon belül/u);
+  assert.match(general,/14 nap/u);
+});
+
+test('dense HU inquiry keeps dates and answers booking conditions together',()=>{
+  const message=`Tisztelt Sárberki Horgásztó!
+
+2026. október 23. és 26. között szeretnénk Önöknél megszállni, összesen 3 éjszakára.
+Összesen 8 fő érkezne: 5 felnőtt és 3 gyermek. A gyermekek 4, 9 és 13 évesek.
+Osztott szállást szeretnénk két egységben, dézsával és egy kis kutyával.
+Kérem írják meg, mennyi előleget kell fizetni, hány napon belül kell átutalni, és mik a lemondási feltételek.`;
+  const range=dateRangeFromText(message,new Date('2026-10-01T12:00:00Z'));
+  assert.deepEqual(range,{arrival:'2026-10-23',departure:'2026-10-26',inferredYear:false});
+  const draft=buildReplyDraft({
+    language:'hu',original:message,arrival:range.arrival,departure:range.departure,
+    guests:8,children:3,childAges:[4,9,13],phone:'+36 30 555 1234',cabin:'Osztott',
+    hotTub:true,dog:true,intent:'booking_request',
+    bookingRules:{depositPct:50,depositDueDays:10,cancellationDaysUnder15Guests:14,cancellationDaysFrom15Guests:30}
+  });
+  assert.match(draft,/23\.10\.2026/u);
+  assert.match(draft,/26\.10\.2026/u);
+  assert.match(draft,/8 fő/u);
+  assert.match(draft,/50% előleg/u);
+  assert.match(draft,/10 napon belül/u);
+  assert.match(draft,/14 nap/u);
+});
