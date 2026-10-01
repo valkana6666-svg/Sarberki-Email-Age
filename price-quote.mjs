@@ -5,7 +5,7 @@ const BOOKING_URL = BUSINESS.bookingUrl;
 const TYPES = Object.fromEntries(Object.entries(BUSINESS.accommodationTypes).map(([key,value])=>[key,value.bookingName]));
 const MAX_ADULTS = Object.fromEntries(Object.entries(BUSINESS.accommodationTypes).map(([key,value])=>[key,value.maxAdults]));
 const MAX_TOTAL_GUESTS = Object.fromEntries(Object.entries(BUSINESS.accommodationTypes).map(([key,value])=>[key,value.maxGuests]));
-export const returningGuestReview = Object.freeze({status:'ELLENŐRIZENDŐ – KORÁBBI FOGLALÁS ELLENŐRZÉSE SZÜKSÉGES',lookbackMonths:48,possibleDiscountPercent:20,applied:false,publicSiteLookbackDays:730,source:'https://sarberkito.hu/foglalasrol/'});
+export const returningGuestReview = Object.freeze({status:'ELLENŐRIZENDŐ – KORÁBBI FOGLALÁS ELLENŐRZÉSE SZÜKSÉGES',lookbackMonths:24,possibleDiscountPercent:20,applied:false,publicSiteLookbackDays:730,source:'https://sarberkito.hu/foglalasrol/'});
 
 export function validateQuote(input) {
   if(!input || typeof input!=='object' || Array.isArray(input) || Object.keys(input).some(key=>!['arrival','departure','cabin','adults','children','units'].includes(key))) throw Error('Csak dátum, háztípus és névtelen létszámadat adható meg; személyes adat nem továbbítható.');
