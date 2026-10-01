@@ -25,8 +25,16 @@ export function cabinFromText(text=''){
   return found.length===1 ? found[0] : '? – emberi döntésre vár';
 }
 export function guestCountFromText(text=''){
-  const dePair=text.match(/\b(\d{1,2})\s*erwachsene\w*\s*(?:und|,|\+)\s*(\d{1,2})\s*kinder?\b/iu);
-  if(dePair) return Number(dePair[1])+Number(dePair[2]);
+  const adultChildPairs=[
+    /\b(\d{1,2})\s*(?:felnőtt|felnott)\w*\s*(?:és|es|,|\+)\s*(\d{1,2})\s*(?:gyerek|gyermek)\w*\b/iu,
+    /\b(\d{1,2})\s*adults?\s*(?:and|,|\+)\s*(\d{1,2})\s*(?:children|child)\b/iu,
+    /\b(\d{1,2})\s*erwachsene\w*\s*(?:und|,|\+)\s*(\d{1,2})\s*kinder?\b/iu,
+    /\b(\d{1,2})\s*odrasl\w*\s*(?:in|,|\+)\s*(\d{1,2})\s*otrok\w*\b/iu
+  ];
+  for(const pattern of adultChildPairs){
+    const pair=text.match(pattern);
+    if(pair) return Number(pair[1])+Number(pair[2]);
+  }
   const siArrival=text.match(/\b(?:prišli|prisli)\s+bi\s+(\d{1,2})(?=\s|$|[,.!?:;])/iu)
     || text.match(/\bskupaj\s+(\d{1,2})(?:\s+oseb)?(?=\s|$|[,.!?:;])/iu);
   if(siArrival) return Number(siArrival[1]);
