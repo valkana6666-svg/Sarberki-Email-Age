@@ -80,8 +80,8 @@ test('Gmail bridge recognizes multilingual hot tub dog availability and child-ag
   assert.match(source, /badefass/u);
   assert.match(source, /verfügbar/u);
   assert.match(source, /razpolož/u);
-  assert.match(source, /years\? old/u);
-  assert.match(source, /jahre alt/u);
+  assert.match(source, /childAgesFromText\(original\)/u);
+  assert.match(source, /childAges\.length < childCount/u);
 });
 
 
