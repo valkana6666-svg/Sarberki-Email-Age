@@ -14,7 +14,13 @@ test('approved subject variants and descriptive inquiry subjects work while unre
     'érdeklődés szállásról',
     'anfrage für einen aufenthalt',
     'anfrage für eine unterkunft',
-    'anfrage zur unterkunft'
+    'anfrage zur unterkunft',
+    'accommodation inquiry',
+    'booking inquiry',
+    'inquiry about accommodation',
+    'povpraševanje za nastanitev',
+    'povpraševanje o nastanitvi',
+    'rezervacija nastanitve'
   ]);
   for (const subject of APPROVED_SUBJECTS) {
     assert.equal(isApprovedSubject(subject), true);
@@ -25,7 +31,11 @@ test('approved subject variants and descriptive inquiry subjects work while unre
     'Érdeklődés a szállásról – Deluxe ház',
     'Sárberki élő teszt – 5 fő, Deluxe, október',
     'Sarberki elo teszt - 2 fő',
-    'Anfrage für einen Aufenthalt im Oktober'
+    'Anfrage für einen Aufenthalt im Oktober',
+    'Accommodation inquiry for October',
+    'Booking inquiry – two Deluxe cabins',
+    'Povpraševanje za nastanitev v oktobru',
+    'Rezervacija nastanitve – družina'
   ]) assert.equal(isApprovedSubject(subject), true);
   for (const subject of ['Számla', 'Foglalás', 'Érdeklődés horgászjegyről', 'Sárberki', '', null]) {
     assert.equal(isApprovedSubject(subject), false);
