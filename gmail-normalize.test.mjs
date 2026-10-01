@@ -554,3 +554,24 @@ test('deposit percentage changes at 15 guests and unknown group size stays expli
   assert.match(over,/80%/u);
   assert.match(unknown,/15 fő alatt 50%.*15 főtől 80%/su);
 });
+
+
+test('pricing subquestions acknowledge season tax and alternatives',()=>{
+  const pricingRules={highSeasonSurchargePct:10,highSeasonStart:'07-01',highSeasonEnd:'08-20',tourismTaxAdultNightlyHuf:550};
+  const outside=buildReplyDraft({
+    language:'en',
+    original:'Please include any seasonal surcharge and tourist tax. If Deluxe is not available, suggest another suitable cabin type or a combination of units.',
+    arrival:'2026-11-12',departure:'2026-11-16',guests:8,phone:'x',cabin:'Deluxe',pricingRules
+  });
+  assert.match(outside,/outside the period with the 10% high-season surcharge/u);
+  assert.match(outside,/550 HUF per adult per night/u);
+  assert.match(outside,/another suitable cabin type or a combination of units/u);
+
+  const inside=buildReplyDraft({
+    language:'hu',
+    original:'Van szezonfelár?',
+    arrival:'2027-07-10',departure:'2027-07-13',guests:4,phone:'x',cabin:'Deluxe',pricingRules
+  });
+  assert.match(inside,/10%-os főszezoni felár/u);
+  assert.match(inside,/szállásdíjra vonatkozik, a dézsára nem/u);
+});
