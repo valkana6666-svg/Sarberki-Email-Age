@@ -1,7 +1,7 @@
 (() => {
   const $ = id => document.getElementById(id);
-  const cabins = {deluxe:'Deluxe',family:'Családi',vip:'VIP',small:'Különálló 2 fős'};
-  const singleCabinCapacity = {deluxe:6,family:8,vip:7,small:2};
+  const cabins = {deluxe:'Deluxe',family:'Családi',vip:'VIP',small:'Különálló 2 fős',splitA:'Osztott A',splitB:'Osztott B',splitC:'Osztott C'};
+  const singleCabinCapacity = {deluxe:6,family:8,vip:7,small:2,splitA:2,splitB:2,splitC:5};
   let approvedPrice = null;
   let pendingQuote = null;
 
@@ -298,8 +298,8 @@
     if (ages===null || (childCount===0 && /\b(?:gyerek|gyermek|gyerekek|gyermekek|children|kind(?:er)?|otroka)\b/iu.test(message))) {status.textContent='HITELES ÁRLEKÉRÉS SZÜKSÉGES · A gyermekek pontos száma és életkora nélkül ár nem adható.';return;}
     const input={arrival:$('price_arrival').value,departure:$('price_departure').value,cabin:$('price_cabin').value,adults:Number($('price_adults').value),children:ages};
     if (!input.arrival || !input.departure || !input.cabin || !Number.isInteger(input.adults) || input.adults<1) {status.textContent='Pontos dátum, háztípus és létszám szükséges.';return;}
-    if(input.cabin==='split'){
-      const splitUnit=explicitSplitUnit(message);
+    if(input.cabin==='split'||/^split[ABC]$/u.test(input.cabin)){
+      const splitUnit=input.cabin==='split' ? explicitSplitUnit(message) : input.cabin.slice(-1);
       status.textContent=splitUnit
         ? `OSZTOTT ${splitUnit} EGYSÉG / KÉZI ELLENŐRZÉS SZÜKSÉGES · Az egységet felismertük, de a Previo pontos ${splitUnit} kategória-megfeleltetése még nincs hitelesítve, ezért élő árlekérés nem indul.`
         : 'OSZTOTT HÁZ / KÉZI ELLENŐRZÉS SZÜKSÉGES · Kérjük pontosítani: A, B vagy C egység. Élő árlekérés csak hitelesített Previo-megfeleltetés után indulhat.';
