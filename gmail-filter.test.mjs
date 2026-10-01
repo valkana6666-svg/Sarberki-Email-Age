@@ -109,3 +109,20 @@ test('Gmail bridge can read HTML-only inquiries',()=>{
   assert.match(source,/return plainText\(part\) \|\| htmlText\(part\)/u);
   assert.match(source,/readableBody\(message\.payload\)/u);
 });
+
+
+test('reply and follow-up inquiry subjects remain readable',async()=>{
+  const {isApprovedSubject}=await import('./gmail-subject.mjs');
+  for(const subject of [
+    'Érdeklődés 2',
+    'Foglalási érdeklődés októberre',
+    'Re: Érdeklődés szállásról – 6 fő',
+    'AW: Anfrage zur Unterkunft',
+    'Reservation inquiry for October',
+    'Fwd: Booking inquiry – two Deluxe cabins',
+    'Povpraševanje za družinsko hiško',
+    'RE: Povpraševanje za nastanitev'
+  ]) assert.equal(isApprovedSubject(subject),true,subject);
+  assert.equal(isApprovedSubject('Hírlevél és akciók'),false);
+  assert.equal(isApprovedSubject('Teszt 3'),false);
+});
