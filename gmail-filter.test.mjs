@@ -45,7 +45,7 @@ test('Gmail bridge imports the shared Sárberki core helpers', () => {
   assert.match(source, /import\('\.\/sarberki-core\.mjs'\)/u);
   assert.match(source, /guestCountFromText\(original\)/u);
   assert.match(source, /childCountFromText\(original\)/u);
-  assert.match(source, /dateRangeFromText\(original\)/u);
+  assert.match(source, /dateRangeFromText\(original, new Date\(\), BUSINESS\.timezone\)/u);
 });
 
 
@@ -76,7 +76,7 @@ test('Gmail bridge recognizes multilingual hot tub dog availability and child-ag
 
 
 test('Gmail bridge has one canonical date parser', () => {
-  assert.match(source, /const normalizedDate = dateRangeFromText\(original\)/u);
+  assert.match(source, /const normalizedDate = dateRangeFromText\(original, new Date\(\), BUSINESS\.timezone\)/u);
   assert.doesNotMatch(source, /const dateText = original\.match/u);
   assert.doesNotMatch(source, /const inferredYear =/u);
   assert.doesNotMatch(source, /const requestedYear =/u);
