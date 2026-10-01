@@ -253,7 +253,9 @@ function operationalTopicLines(language='hu',original='',rules=null){
     parking:/(?:parkol|parking|parkplatz|parkplätze|parkiriš|parkiris|\b(?:cars?|vehicles?)\b|\bautos?\b|\bvozil\w*\b)/iu.test(original),
     arrival:/(?:érkez|check[- ]?in|arriv|ankunft|anreise|prihod)[^.!?\n]{0,80}\d{1,2}[:.]\d{2}/iu.test(original),
     departure:/(?:távoz|kijelentkez|check[- ]?out|what\s+time[^.!?\n]{0,40}(?:leave|departure)|abreise|abreisen|odhod)/iu.test(original),
-    returning:/(?:törzsvend|visszatérő|korábban[^.!?\n]{0,80}(?:száll|járt)|returning\s+guest|stayed[^.!?\n]{0,100}(?:before|ago)|previous\s+stay|stammgast|schon[^.!?\n]{0,80}(?:bei\s+ihnen|übernachtet)|povratn|že[^.!?\n]{0,80}bivali)/iu.test(original)
+    returning:/(?:törzsvend|visszatérő|korábban[^.!?\n]{0,80}(?:száll|járt)|returning\s+guest|stayed[^.!?\n]{0,100}(?:before|ago)|previous\s+stay|stammgast|schon[^.!?\n]{0,80}(?:bei\s+ihnen|übernachtet)|povratn|že[^.!?\n]{0,80}bivali)/iu.test(original),
+    pet:/(?:kuty|háziállat|dog|pet\b|hund|haustier|pes|psa)/iu.test(original),
+    hotTub:/(?:dézs|dézsafürdő|hot[ -]?tub|whirlpool|badefass|vroč\w*\s*kad|masaž\w*\s*kad)/iu.test(original)
   };
   const lines=[];
   if(asks.electricity&&rules.electricitySettlement==='metered_separate') lines.push({
@@ -293,6 +295,22 @@ function operationalTopicLines(language='hu',original='',rules=null){
       de:`Für wiederkehrende Gäste kann ein Rabatt von ${pct}% gelten, wenn der letzte Aufenthalt höchstens ${days} Tage zurückliegt und der Gast im Gästebuch geführt wird. Dies muss anhand der früheren Buchung separat geprüft werden; der Rabatt wird nicht automatisch angewendet.`,
       en:`A returning-guest discount of ${pct}% may apply if the last day of the previous stay was within ${days} days and the guest is recorded in the guest book. This must be checked against the previous booking; the discount is not applied automatically.`,
       si:`Za povratne goste je lahko na voljo ${pct}% popust, če je bil zadnji dan prejšnjega bivanja v zadnjih ${days} dneh in je gost vpisan v knjigo gostov. To je treba posebej preveriti po prejšnji rezervaciji; popust se ne uporabi samodejno.`
+    }[lang]);
+  }
+  if(asks.pet&&rules.petAllowedForFee){
+    lines.push({
+      hu:rules.petFeeVerified?'Háziállat hozható a beállított díj mellett.':'Háziállat hozható térítés ellenében; a pontos díjat kezelői ellenőrzéssel kell megerősíteni.',
+      de:rules.petFeeVerified?'Haustiere sind gegen die hinterlegte Gebühr erlaubt.':'Haustiere sind gegen Aufpreis erlaubt; die genaue Gebühr muss vom Betreiber bestätigt werden.',
+      en:rules.petFeeVerified?'Pets are allowed for the configured fee.':'Pets are allowed for an additional charge; the exact fee must be confirmed by the operator.',
+      si:rules.petFeeVerified?'Hišni ljubljenčki so dovoljeni ob nastavljeni pristojbini.':'Hišni ljubljenčki so dovoljeni z doplačilom; natančno pristojbino mora potrditi upravljavec.'
+    }[lang]);
+  }
+  if(asks.hotTub&&rules.hotTubAvailabilityRequiresCheck){
+    lines.push({
+      hu:rules.hotTubFeeVerified?'A dézsa elérhetőségét külön ellenőrizzük; a beállított díj alkalmazható.':'A dézsa elérhetőségét és díját külön ellenőrizzük; pontos dézsadíjat csak hiteles ellenőrzés után adunk meg.',
+      de:rules.hotTubFeeVerified?'Die Verfügbarkeit des Badefasses wird separat geprüft; die hinterlegte Gebühr kann angewendet werden.':'Verfügbarkeit und Preis des Badefasses werden separat geprüft; einen genauen Preis nennen wir erst nach bestätigter Prüfung.',
+      en:rules.hotTubFeeVerified?'Hot-tub availability is checked separately; the configured fee can be applied.':'Hot-tub availability and its charge are checked separately; we only quote the exact hot-tub fee after a verified check.',
+      si:rules.hotTubFeeVerified?'Razpoložljivost vroče kadi preverimo posebej; uporabi se lahko nastavljena pristojbina.':'Razpoložljivost in doplačilo za vročo kad preverimo posebej; natančno ceno navedemo šele po zanesljivem preverjanju.'
     }[lang]);
   }
   return lines;
