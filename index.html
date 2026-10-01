@@ -73,7 +73,7 @@ function childAgesFromText(t=''){const shared=window.SarberkiNormalize?.childAge
 function canonicalCabin(t=''){const shared=window.SarberkiNormalize?.cabinFromText?.(t);if(shared&&shared!=='? – emberi döntésre vár')return shared;if(/\bvip\b/iu.test(t))return 'VIP';if(/\b(?:családi|family|familien)\b/iu.test(t))return 'Családi';if(/\bdeluxe\b/iu.test(t))return 'Deluxe';if(/\b(?:osztott|split|geteilte[rs]?|deljen[ai]?)\b/iu.test(t))return 'Osztott';return ''}
 function iso(y,m,d){let x=new Date(Date.UTC(+y,+m-1,+d));return x.getUTCFullYear()==+y&&x.getUTCMonth()==+m-1&&x.getUTCDate()==+d?`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`:null}
 function dates(s){
- const shared=window.SarberkiNormalize?.dateRangeFromText?.(s,new Date());
+ const shared=window.SarberkiNormalize?.dateRangeFromText?.(s,new Date(),window.SarberkiConfig?.timezone||'Europe/Budapest');
  if(shared)return [{v:shared.arrival,e:s,inferred:shared.inferredYear},{v:shared.departure,e:s+' (távozás)',inferred:shared.inferredYear}];
  let out=[];const months={január:1,február:2,március:3,április:4,május:5,június:6,július:7,augusztus:8,szeptember:9,október:10,november:11,december:12,jan:1,febr:2,márc:3,ápr:4,máj:5,jún:6,júl:7,aug:8,szept:9,okt:10,nov:11,dec:12,january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
  const enLong=s.match(/\b(?:from\s+)?(\d{1,2})\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+(20\d{2})\s+(?:to|[-–])\s+(\d{1,2})\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+(20\d{2})\b/iu);
