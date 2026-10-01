@@ -1,5 +1,6 @@
-// Sárberki shared core: multilingual, conservative parsing helpers.
+// Shared accommodation-email core: multilingual, conservative parsing helpers.
 // Single source of truth for Gmail, manual paste and future input channels.
+// Business-specific values are supplied by configuration/adapters.
 // Pure functions: safe to test without Gmail or browser access.
 const MONTHS = {
   január:1,januar:1,február:2,februar:2,március:3,marcius:3,április:4,aprilis:4,május:5,majus:5,június:6,junius:6,július:7,julius:7,augusztus:8,szeptember:9,október:10,oktober:10,november:11,december:12,
@@ -45,7 +46,7 @@ export function childCountFromText(text=''){
   const sw=text.match(/\b(en|ena|eno|dva|dve|trije|tri|štirje|stirje|štiri|stiri|pet|šest|sest)\s+otrok\w*\b/iu)?.[1]?.toLocaleLowerCase('sl-SI');
   return sw ? siWords[sw] : null;
 }
-export function dateRangeFromText(text='', now=new Date()){
+export function dateRangeFromText(text='', now=new Date(), timeZone='Europe/Budapest'){
   const iso=text.match(/\b(20\d{2})[-./](\d{1,2})[-./](\d{1,2})\s*(?:[-–]|to|bis|do)\s*(?:(20\d{2})[-./](\d{1,2})[-./])?(\d{1,2})\b/iu);
   if(iso) return {arrival:`${iso[1]}-${String(iso[2]).padStart(2,'0')}-${String(iso[3]).padStart(2,'0')}`,departure:`${iso[4]||iso[1]}-${String(iso[5]||iso[2]).padStart(2,'0')}-${String(iso[6]).padStart(2,'0')}`,inferredYear:false};
   const enLong=text.match(/\b(?:from\s+)?(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})\s+(?:to|[-–])\s+(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})\b/iu);
@@ -58,7 +59,7 @@ export function dateRangeFromText(text='', now=new Date()){
   const siRange=text.match(/\bod\s+(\d{1,2})\.?\s+do\s+(\d{1,2})\.?\s+(januarja|februarja|marca|aprila|maja|junija|julija|avgusta|septembra|oktobra|novembra|decembra)(?:\s+(20\d{2}))?\b/iu);
   if(siRange){
     const month=monthNumber(siRange[3]);
-    const local=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Budapest',year:'numeric',month:'2-digit',day:'2-digit'}).format(now).split('-').map(Number);
+    const local=new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).format(now).split('-').map(Number);
     let year=siRange[4]?Number(siRange[4]):local[0];
     const inferred=!siRange[4];
     if(inferred&&(month<local[1]||(month===local[1]&&Number(siRange[1])<local[2]))) year++;
@@ -67,7 +68,7 @@ export function dateRangeFromText(text='', now=new Date()){
 
   if(deRange){
     const month=monthNumber(deRange[3]);
-    const local=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Budapest',year:'numeric',month:'2-digit',day:'2-digit'}).format(now).split('-').map(Number);
+    const local=new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).format(now).split('-').map(Number);
     let year=deRange[4]?Number(deRange[4]):local[0];
     const inferred=!deRange[4];
     if(inferred&&(month<local[1]||(month===local[1]&&Number(deRange[1])<local[2]))) year++;
@@ -80,7 +81,7 @@ export function dateRangeFromText(text='', now=new Date()){
   const month=monthNumber(r ? r[1] : dayFirst[3]); if(!month) return null;
   const explicit=text.match(/\b20\d{2}\b/u)?.[0];
   const next=/\b(?:jövőre|következő évben|next year|nächstes jahr|naslednje leto)\b/iu.test(text);
-  const local=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Budapest',year:'numeric',month:'2-digit',day:'2-digit'}).format(now).split('-').map(Number);
+  const local=new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).format(now).split('-').map(Number);
   let year=explicit?Number(explicit):local[0]+(next?1:0);
   const startDay=Number(r ? r[2] : dayFirst[1]);
   const endDay=Number(r ? r[3] : dayFirst[2]);
