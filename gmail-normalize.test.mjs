@@ -203,6 +203,12 @@ test('English aged child syntax is recognized',()=>{
   assert.deepEqual(childAgesFromText('2 children, aged 7 and 11'),[7,11]);
 });
 
+test('labelled child age lists parse all ages in DE EN SI',()=>{
+  assert.deepEqual(childAgesFromText('3 Kinder: 4, 9 und 13 Jahre alt'),[4,9,13]);
+  assert.deepEqual(childAgesFromText('3 children: 4, 9 and 13 years old'),[4,9,13]);
+  assert.deepEqual(childAgesFromText('3 otroci: 4, 9 in 13 let'),[4,9,13]);
+});
+
 
 test('varied real-world DE SI EN inquiry regressions',()=>{
   const de=`Guten Abend,
