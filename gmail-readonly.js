@@ -115,15 +115,32 @@
     const bytes = Uint8Array.from(atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')), ch => ch.charCodeAt(0));
     return new TextDecoder('utf-8').decode(bytes);
   }
-  function plain(part) {
-    if (part.mimeType === 'text/plain' && part.body?.data) return decoded(part.body.data);
-    for (const child of part.parts || []) { const value = plain(child); if (value) return value; }
-    return '';  }
+  function plainText(part) {
+    if (part?.mimeType === 'text/plain' && part.body?.data) return decoded(part.body.data);
+    for (const child of part?.parts || []) { const value = plainText(child); if (value) return value; }
+    return '';
+  }
+  function htmlToText(html='') {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return (doc.body?.textContent || '')
+      .replace(/\u00a0/gu, ' ')
+      .replace(/[ \t]+\n/gu, '\n')
+      .replace(/\n{3,}/gu, '\n\n')
+      .trim();
+  }
+  function htmlText(part) {
+    if (part?.mimeType === 'text/html' && part.body?.data) return htmlToText(decoded(part.body.data));
+    for (const child of part?.parts || []) { const value = htmlText(child); if (value) return value; }
+    return '';
+  }
+  function readableBody(part) {
+    return plainText(part) || htmlText(part);
+  }
   const cabinFromGuestText = cabinFromText;
 
   function transform(message) {
     const headers = headerMap(message);
-    const original = plain(message.payload).trim();
+    const original = readableBody(message.payload).trim();
     if (!original) throw Error('A levélnek nincs olvasható szöveges része; emberi ellenőrzés szükséges.');
     const received = new Date(Number(message.internalDate));
     const normalizedDate = dateRangeFromText(original, new Date(), BUSINESS.timezone);
