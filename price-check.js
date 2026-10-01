@@ -8,7 +8,7 @@
   function explicitCabin(message='') {
     const found=[];
     if (/\bvip\b/iu.test(message)) found.push('vip');
-    if (/\b(?:családi|family|familien)\b/iu.test(message)) found.push('family');
+    if (/\b(?:családi|family|familien)\b/iu.test(message) || /\bdružinsk\w*\s+(?:hišk\w*|koč\w*|nastanitev)\b/iu.test(message)) found.push('family');
     if (/\bdeluxe\b/iu.test(message)) found.push('deluxe');
     if (/\b(?:osztott|split|geteilte[rs]?|deljen[ai]?)\b/iu.test(message)) found.push('split');
     return found.length===1 ? found[0] : '';
@@ -21,7 +21,7 @@
   }
 
   function requestedUnits(message='') {
-    const m=message.match(/\b(két|2|három|3|négy|4|öt|5|hat|6|two|three|four|five|six|zwei|drei|vier|fünf|funf|sechs|dva|tri|štiri|stiri|pet|šest|sest)\s+(?:db\s+)?(?:vip|családi|deluxe|family|familien)?\s*(?:házat?|faházat?|apartmant?|egységet?|cabins?|houses?|units?|cottages?|häuser|hauser|einheiten|hišk\w*|hisk\w*|enot\w*)\b/iu);
+    const m=message.match(/\b(két|2|három|3|négy|4|öt|5|hat|6|two|three|four|five|six|zwei|drei|vier|fünf|funf|sechs|dva|tri|štiri|stiri|pet|šest|sest)\s+(?:db\s+)?(?:vip|családi|deluxe|family|familien|družinsk\w*)?\s*(?:házat?|faházat?|apartmant?|egységet?|cabins?|houses?|units?|cottages?|häuser|hauser|einheiten|hišk\w*|hisk\w*|koč\w*|enot\w*)\b/iu);
     if(!m) return 0;
     return ({'két':2,'2':2,'három':3,'3':3,'négy':4,'4':4,'öt':5,'5':5,'hat':6,'6':6,two:2,three:3,four:4,five:5,six:6,zwei:2,drei:3,vier:4,'fünf':5,funf:5,sechs:6,dva:2,tri:3,'štiri':4,stiri:4,pet:5,'šest':6,sest:6})[m[1].toLowerCase()]||0;
   }
