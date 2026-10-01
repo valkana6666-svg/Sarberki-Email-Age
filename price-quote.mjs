@@ -1,8 +1,10 @@
+import {BUSINESS} from './business-config.mjs';
 
-const BOOKING_URL = 'https://sarberkito.hu/foglalas/';
-const TYPES = { deluxe: 'DELUXE faház', family: 'Családi faház', vip: 'VIP apartman', small: 'Különálló 2 fős faház' };
-const MAX_ADULTS = { deluxe: 6, family: 8, vip: 7, small: 2 };
-const MAX_TOTAL_GUESTS = { deluxe: 6, family: 8, vip: 7, small: 2 };
+
+const BOOKING_URL = BUSINESS.bookingUrl;
+const TYPES = Object.fromEntries(Object.entries(BUSINESS.accommodationTypes).map(([key,value])=>[key,value.bookingName]));
+const MAX_ADULTS = Object.fromEntries(Object.entries(BUSINESS.accommodationTypes).map(([key,value])=>[key,value.maxAdults]));
+const MAX_TOTAL_GUESTS = Object.fromEntries(Object.entries(BUSINESS.accommodationTypes).map(([key,value])=>[key,value.maxGuests]));
 export const returningGuestReview = Object.freeze({status:'ELLENŐRIZENDŐ – KORÁBBI FOGLALÁS ELLENŐRZÉSE SZÜKSÉGES',lookbackMonths:48,possibleDiscountPercent:20,applied:false,publicSiteLookbackDays:730,source:'https://sarberkito.hu/foglalasrol/'});
 
 export function validateQuote(input) {
