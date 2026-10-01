@@ -14,6 +14,12 @@
     return found.length===1 ? found[0] : '';
   }
 
+  function explicitSplitUnit(message='') {
+    const nearSplit=message.match(/\b(?:osztott|split|geteilte[rs]?|deljen[ai]?)\b[^\n.!?]{0,40}\b([ABC])\b/iu)
+      || message.match(/\b([ABC])\s*(?:egység|unit|einheit|enota)\b[^\n.!?]{0,40}\b(?:osztott|split|geteilte[rs]?|deljen[ai]?)\b/iu);
+    return nearSplit ? nearSplit[1].toUpperCase() : '';
+  }
+
   function requestedUnits(message='') {
     const m=message.match(/\b(két|2|három|3|négy|4|öt|5|hat|6|two|three|four|five|six|zwei|drei|vier|fünf|funf|sechs|dva|tri|štiri|stiri|pet|šest|sest)\s+(?:db\s+)?(?:vip|családi|deluxe|family|familien)?\s*(?:házat?|faházat?|apartmant?|egységet?|cabins?|houses?|units?|cottages?|häuser|hauser|einheiten|hišk\w*|hisk\w*|enot\w*)\b/iu);
     if(!m) return 0;
@@ -44,7 +50,8 @@
       $('price_adults')?.value||'',
       $('price_children')?.value||'',
       $('price_child_ages')?.value||'',
-      String(requestedUnits(currentMessage())||0)
+      String(requestedUnits(currentMessage())||0),
+      explicitSplitUnit(currentMessage())
     ].join('|');
   }
 
@@ -291,7 +298,13 @@
     if (ages===null || (childCount===0 && /\b(?:gyerek|gyermek|gyerekek|gyermekek|children|kind(?:er)?|otroka)\b/iu.test(message))) {status.textContent='HITELES ÁRLEKÉRÉS SZÜKSÉGES · A gyermekek pontos száma és életkora nélkül ár nem adható.';return;}
     const input={arrival:$('price_arrival').value,departure:$('price_departure').value,cabin:$('price_cabin').value,adults:Number($('price_adults').value),children:ages};
     if (!input.arrival || !input.departure || !input.cabin || !Number.isInteger(input.adults) || input.adults<1) {status.textContent='Pontos dátum, háztípus és létszám szükséges.';return;}
-    if(input.cabin==='split'){status.textContent='OSZTOTT HÁZ / KÉZI ELLENŐRZÉS SZÜKSÉGES · Az A/B/C egységek külön kapacitással és stégkiosztással működnek, ezért automatikus élő árlekérés még nem indul.';return;}
+    if(input.cabin==='split'){
+      const splitUnit=explicitSplitUnit(message);
+      status.textContent=splitUnit
+        ? `OSZTOTT ${splitUnit} EGYSÉG / KÉZI ELLENŐRZÉS SZÜKSÉGES · Az egységet felismertük, de a Previo pontos ${splitUnit} kategória-megfeleltetése még nincs hitelesítve, ezért élő árlekérés nem indul.`
+        : 'OSZTOTT HÁZ / KÉZI ELLENŐRZÉS SZÜKSÉGES · Kérjük pontosítani: A, B vagy C egység. Élő árlekérés csak hitelesített Previo-megfeleltetés után indulhat.';
+      return;
+    }
     const capacity=singleCabinCapacity[input.cabin];
     if(!capacity){status.textContent='KÉZI ELLENŐRZÉS SZÜKSÉGES · Ehhez a háztípushoz nincs ellenőrzött kapacitás.';return;}
     const guestTotal=input.adults+input.children.length;
