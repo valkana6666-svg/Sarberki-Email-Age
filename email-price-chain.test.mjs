@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {validateQuote} from './price-quote.mjs';
-import * as SarberkiNormalize from './sarberki-core.mjs';
 
 const html=fs.readFileSync(new URL('./index.html',import.meta.url),'utf8');
 const pricing=fs.readFileSync(new URL('./price-check.js',import.meta.url),'utf8');
@@ -18,7 +17,7 @@ function harness(message,reply){
  };
  const document={getElementById:id=>id==='price_approval_panel'&&!nodes.has(id)?null:element(id),createElement:()=>({id:'',className:'',innerHTML:''}),addEventListener:(type,fn)=>listeners.set(type,fn)};
  element('gmail_record').classList.contains=()=>true;
- const context=vm.createContext({document,window:{SarberkiNormalize,addEventListener(){}},console,Date,Intl,Number,JSON,setTimeout:fn=>fn(),fetch:async(_url,options)=>{
+ const context=vm.createContext({document,window:{addEventListener(){}},console,Date,Intl,Number,JSON,setTimeout:fn=>fn(),fetch:async(_url,options)=>{
   calls++;
   assert.equal(options.method,'POST');
   const input=validateQuote(JSON.parse(options.body));
