@@ -108,6 +108,7 @@ export function childAgesFromText(text=''){
     text.match(/\baged\s+([^.!?]{1,120})/iu)?.[1],
     text.match(/\bim\s+alter\s+von\s+([^.!?]{1,120}?)(?=\s+jahren?\b|[.!?]|$)/iu)?.[1],
     text.match(/\bstar(?:a|i|e)?\s+([^.!?]{1,120}?)(?=\s+let\b|[.!?]|$)/iu)?.[1],
+    text.match(/\b(?:children|kinder|kindern|gyerek\w*|gyermek\w*|otrok\w*)\b[^0-9.!?\n]{0,40}((?:\d{1,2}\s*(?:(?:,|and|und|in|és|es|meg)\s*)?){1,6})(?=\s*(?:years? old|years?|jahre(?:n)?(?: alt)?|évesek?|evesek?|let)\b)/iu)?.[1],
     text.match(/((?:\d{1,2}\s*(?:(?:,|és|es|meg)\s*)?){1,6})(?=\s+(?:évesek|éves|evesek|eves)\b)/iu)?.[1]
   ].filter(Boolean);
   for(const segment of segments){
