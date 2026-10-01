@@ -72,3 +72,10 @@ test('Teszt Elek reply retains known facts without inventing a price or pet fee'
  assert.doesNotMatch(reply,/telefonszám|házszám|2 000 Ft|jóváhagyott teljes szállásár/iu);
  assert.match(reply,/aktuális teljes árról/u);
 });
+
+
+test('split cabin keeps A B C recognition behind manual verification',()=>{
+ assert.match(source,/explicitSplitUnit/u);
+ assert.match(source,/Kérjük pontosítani: A, B vagy C egység/u);
+ assert.match(source,/kategória-megfeleltetése még nincs hitelesítve/u);
+});
