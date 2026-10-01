@@ -125,7 +125,7 @@
     const original = plain(message.payload).trim();
     if (!original) throw Error('A levélnek nincs olvasható szöveges része; emberi ellenőrzés szükséges.');
     const received = new Date(Number(message.internalDate));
-    const normalizedDate = dateRangeFromText(original);
+    const normalizedDate = dateRangeFromText(original, new Date(), BUSINESS.timezone);
     const count = guestCountFromText(original) || ({ketten:2,hárman:3,négyen:4,öten:5,hatan:6}[original.match(/\b(ketten|hárman|négyen|öten|hatan)\b/iu)?.[1]?.toLowerCase()] || null);
     const childCount = childCountFromText(original);
     const childAges = childAgesFromText(original);
