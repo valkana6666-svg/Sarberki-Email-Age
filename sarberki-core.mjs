@@ -192,7 +192,7 @@ export function replyQuestions(language='hu', {needPhone=false,needCabin=false,n
 function bookingQuestionFlags(text=''){
   const general=/(?:foglalási\s+(?:feltételek|szabályok)|hogyan\s+(?:lehet|tudok|tudunk)\s+foglalni|booking\s+(?:conditions|terms)|buchungsbedingungen|rezervacijski\s+pogoji)/iu.test(text);
   const depositAmount=general||/(?:mekkora|mennyi(?:\s+az|\s+a)?|hány\s*%)\s*(?:előleg|foglaló)|(?:előleg|foglaló)[^.!?\n]{0,60}(?:mekkora|mennyi|hány\s*%)/iu.test(text);
-  const depositDeadline=general||/(?:hány|mennyi)\s+nap[^.!?\n]{0,80}(?:előleg|foglaló)|(?:előleg|foglaló)[^.!?\n]{0,100}(?:mikor|meddig|határidő|hány\s+nap|mennyi\s+idő|befizet)/iu.test(text);
+  const depositDeadline=general||/(?:hány\s+nap|mennyi\s+(?:nap|idő))[^.!?\n]{0,100}(?:előleg|foglaló)|(?:előleg|foglaló)[^.!?\n]{0,120}(?:mikor|meddig|határidő|hány\s+nap|mennyi\s+idő|befizet|átutal)/iu.test(text);
   const cancellation=general||/(?:lemondási\s+(?:feltétel|szabály|határidő)|meddig[^.!?\n]{0,60}lemond|hány\s+nap[^.!?\n]{0,60}lemond|cancellation\s+(?:conditions|terms)|stornierungsbedingungen)/iu.test(text);
   return {general,depositAmount,depositDeadline,cancellation};
 }
