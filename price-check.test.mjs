@@ -79,3 +79,12 @@ test('split cabin keeps A B C recognition behind manual verification',()=>{
  assert.match(source,/Kérjük pontosítani: A, B vagy C egység/u);
  assert.match(source,/kategória-megfeleltetése még nincs hitelesítve/u);
 });
+
+
+test('split capacities are wired while live mapping remains guarded',()=>{
+ assert.match(source,/splitA:'Osztott A'/u);
+ assert.match(source,/splitB:'Osztott B'/u);
+ assert.match(source,/splitC:'Osztott C'/u);
+ assert.match(source,/splitA:2,splitB:2,splitC:5/u);
+ assert.match(source,/\^split\[ABC\]\$/u);
+});
