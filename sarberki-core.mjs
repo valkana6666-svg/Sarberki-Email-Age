@@ -19,12 +19,15 @@ export function cabinFromText(text=''){
   if (/\bvip\b/iu.test(text)) found.push('VIP');
   if (/\b(?:családi|csaladi)\b/iu.test(text)
       || /\bfamily\s+(?:cabin|house|accommodation|unit)\b/iu.test(text)
-      || /\b(?:familien(?:haus|hütte|unterkunft)|familien\s+(?:haus|unterkunft))\b/iu.test(text)) found.push('Családi');
+      || /\b(?:familien(?:haus|hütte|unterkunft)|familien\s+(?:haus|unterkunft))\b/iu.test(text)
+      || /\bdružinsk\w*\s+(?:hišk\w*|koč\w*|nastanitev)\b/iu.test(text)) found.push('Családi');
   if (/\bdeluxe\b/iu.test(text)) found.push('Deluxe');
   if (/\b(?:osztott|split|geteilte[rs]?|deljen[ai]?)\b/iu.test(text)) found.push('Osztott');
   return found.length===1 ? found[0] : '? – emberi döntésre vár';
 }
 export function guestCountFromText(text=''){
+  const total=text.match(/(?:^|\s)(\d{1,2})\s*(?:fő|fo|személy|szemely|persons?|people|guests?|gäste|personen|oseb)(?=\s|$|[,.!?:;])/iu);
+  if(total) return Number(total[1]);
   const adultChildPairs=[
     /\b(\d{1,2})\s*(?:felnőtt|felnott)\w*\s*(?:és|es|,|\+)\s*(\d{1,2})\s*(?:gyerek|gyermek)\w*\b/iu,
     /\b(\d{1,2})\s*adults?\s*(?:and|,|\+)\s*(\d{1,2})\s*(?:children|child)\b/iu,
@@ -38,8 +41,6 @@ export function guestCountFromText(text=''){
   const siArrival=text.match(/\b(?:prišli|prisli)\s+bi\s+(\d{1,2})(?=\s|$|[,.!?:;])/iu)
     || text.match(/\bskupaj\s+(\d{1,2})(?:\s+oseb)?(?=\s|$|[,.!?:;])/iu);
   if(siArrival) return Number(siArrival[1]);
-  const m=text.match(/(?:^|\s)(\d{1,2})\s*(?:fő|fo|személy|szemely|persons?|people|guests?|gäste|personen|oseb)(?=\s|$|[,.!?:;])/iu);
-  if(m) return Number(m[1]);
   const words={ketten:2,kéten:2,hárman:3,harman:3,négyen:4,negyen:4,öten:5,oten:5,hatan:6,heten:7,nyolcan:8,kilencen:9,tízen:10,tizen:10};
   const w=text.match(/\b(ketten|kéten|hárman|harman|négyen|negyen|öten|oten|hatan|heten|nyolcan|kilencen|tízen|tizen)\b/iu)?.[1]?.toLocaleLowerCase('hu-HU');
   return w ? words[w] : null;
@@ -93,6 +94,26 @@ export function dateRangeFromText(text='', now=new Date(), timeZone='Europe/Buda
     return {arrival:`${year}-${String(month).padStart(2,'0')}-${String(deRange[1]).padStart(2,'0')}`,departure:`${year}-${String(month).padStart(2,'0')}-${String(deRange[2]).padStart(2,'0')}`,inferredYear:inferred};
   }
   const names='január|januar|február|februar|március|marcius|április|aprilis|május|majus|június|junius|július|julius|augusztus|szeptember|október|oktober|november|december|jan\\.?|febr\\.?|márc\\.?|marc\\.?|ápr\\.?|apr\\.?|máj\\.?|maj\\.?|jún\\.?|jun\\.?|júl\\.?|jul\\.?|aug\\.?|szept\\.?|okt\\.?|nov\\.?|dec\\.?|january|february|march|april|may|june|july|august|september|october|november|december|märz|maerz|mai|juni|juli|dezember|marec|marca|april_si|aprila|maj|maja|junij|junija|julij|julija|avgust|avgusta|septembra|oktobra|novembra|decembra';
+  const monthFirstCross=text.match(new RegExp(`\\b(${names})\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s*(20\\d{2}))?\\s*(?:[-–]|to|until|through)\\s*(${names})\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s*(20\\d{2}))?\\b`,'iu'));
+  const dayFirstCross=text.match(new RegExp(`\\b(?:from\\s+|vom\\s+|od\\s+)?(\\d{1,2})\\.?\\s+(${names})(?:\\s+(20\\d{2}))?\\s*(?:[-–]|to|bis|do)\\s*(\\d{1,2})\\.?\\s+(${names})(?:\\s+(20\\d{2}))?\\b`,'iu'));
+  if(monthFirstCross||dayFirstCross){
+    const firstMonth=monthNumber(monthFirstCross?monthFirstCross[1]:dayFirstCross[2]);
+    const secondMonth=monthNumber(monthFirstCross?monthFirstCross[4]:dayFirstCross[5]);
+    const firstDay=Number(monthFirstCross?monthFirstCross[2]:dayFirstCross[1]);
+    const secondDay=Number(monthFirstCross?monthFirstCross[5]:dayFirstCross[4]);
+    const startExplicit=monthFirstCross?monthFirstCross[3]:dayFirstCross[3];
+    const endExplicit=monthFirstCross?monthFirstCross[6]:dayFirstCross[6];
+    if(firstMonth&&secondMonth){
+      const local=new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).format(now).split('-').map(Number);
+      const explicitYear=startExplicit||endExplicit||null;
+      const next=/\\b(?:jövőre|következő évben|next year|nächstes jahr|naslednje leto)\\b/iu.test(text);
+      let startYear=explicitYear?Number(explicitYear):local[0]+(next?1:0);
+      if(!explicitYear&&!next&&(firstMonth<local[1]||(firstMonth===local[1]&&firstDay<local[2]))) startYear++;
+      let endYear=endExplicit?Number(endExplicit):startYear;
+      if(!endExplicit&&secondMonth<firstMonth) endYear=startYear+1;
+      return {arrival:`${startYear}-${String(firstMonth).padStart(2,'0')}-${String(firstDay).padStart(2,'0')}`,departure:`${endYear}-${String(secondMonth).padStart(2,'0')}-${String(secondDay).padStart(2,'0')}`,inferredYear:!explicitYear&&!next};
+    }
+  }
   const dayFirst=text.match(new RegExp(`\\b(?:vom\\s+)?(\\d{1,2})\\.?\\s*(?:bis|[-–])\\s*(\\d{1,2})\\.?\\s+(${names})\\b`,'iu'));
   const r=text.match(new RegExp(`\\b(?:20\\d{2}\\s*[.\\/-]?\\s*)?(${names})\\s+(\\d{1,2})\\s*(?:[-–]|to|bis|do|(?:-?(?:től|tól|tol)))\\s*(?:(?:${names})\\s+)?(\\d{1,2})(?:-?ig)?\\b`,'iu'));
   if(!r&&!dayFirst) return null;
