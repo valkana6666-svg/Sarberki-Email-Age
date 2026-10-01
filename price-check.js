@@ -1,7 +1,7 @@
 (() => {
   const $ = id => document.getElementById(id);
   const cabins = {deluxe:'Deluxe',family:'Családi',vip:'VIP',small:'Különálló 2 fős',splitA:'Osztott A',splitB:'Osztott B',splitC:'Osztott C'};
-  const singleCabinCapacity = {deluxe:6,family:8,vip:7,small:2,splitA:2,splitB:2,splitC:5};
+  const singleCabinCapacity = {deluxe:6,family:8,vip:7,small:3,splitA:2,splitB:2,splitC:5};
   let approvedPrice = null;
   let pendingQuote = null;
 
