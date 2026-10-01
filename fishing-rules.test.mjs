@@ -27,7 +27,7 @@ test('barbed hook is prohibited',()=>assert.match(fishingQuestion('Használhatok
 test('unrelated accommodation inquiry does not activate fishing',()=>assert.equal(fishingQuestion('Deluxe faház 5 fő októberben'),null));
 test('returning discount remains un-applied without Previo history',()=>{
   assert.equal(returningGuestReview.applied,false);
-  assert.equal(returningGuestReview.lookbackMonths,48);
+  assert.equal(returningGuestReview.lookbackMonths,24);
   assert.equal(returningGuestReview.possibleDiscountPercent,20);
   assert.equal(returningGuestReview.publicSiteLookbackDays,730);
 });
