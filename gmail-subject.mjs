@@ -19,8 +19,6 @@ export const TEST_SUBJECT_PREFIXES = Object.freeze([
 ]);
 
 export const HUNGARIAN_INQUIRY_PREFIXES = Object.freeze([
-  'érdeklődés',
-  'erdeklodes',
   'foglalási érdeklődés',
   'foglalasi erdeklodes'
 ]);
@@ -62,6 +60,8 @@ export function isApprovedSubject(subject) {
     normalized === base || normalized.startsWith(base + ' ')
   );
   if (approvedInquiry) return true;
+
+  if (/^(?:érdeklődés|erdeklodes)(?:\s+\d+)?$/u.test(normalized)) return true;
 
   const inquiryPrefixes=[
     ...HUNGARIAN_INQUIRY_PREFIXES,
