@@ -66,7 +66,7 @@
   function approvedPriceText(quote){
     if(!quote) return '';
     const eur=Number.isFinite(quote.eurTotal)?' (kb. '+formatEur(quote.eurTotal)+', MNB '+(quote.eurRateDate||'')+')':'';
-    const total='A foglalási felületen ellenőrzött teljes ár: '+formatFt(quote.total)+eur+'.';
+    const total=(quote.referenceOnly?'A Sárberki publikus árlistája alapján számolt teljes ár: ':'A foglalási felületen ellenőrzött teljes ár: ')+formatFt(quote.total)+eur+'.';
     const breakdown=Array.isArray(quote.unitBreakdown)&&quote.unitBreakdown.length>1
       ? ' Házanként: '+quote.unitBreakdown.map(x=>{
           const eurPart=Number.isFinite(quote.eurRate)&&quote.eurRate>0?' (kb. '+formatEur(Math.round((x.total/quote.eurRate)*100)/100)+')':'';
@@ -121,7 +121,8 @@
     if ($('price_child_ages')) $('price_child_ages').value = fields.child_ages?.value || '';
     const unit=(fields.unit?.value || '').toLowerCase();
     const explicit = explicitCabin(message);
-    $('price_cabin').value = explicit || Object.keys(cabins).find(k => unit.includes(cabins[k].toLowerCase())) || '';
+    const splitUnit=explicit==='split'?explicitSplitUnit(message):'';
+    $('price_cabin').value = splitUnit ? `split${splitUnit}` : explicit || Object.keys(cabins).find(k => unit.includes(cabins[k].toLowerCase())) || '';
     $('price_result').textContent = '';
     clearApprovedPrice('Az érdeklődés adatai frissültek; az árat újra ellenőrizni és jóváhagyni kell.');
     $('price_status').textContent = children ? 'Gyermekes foglalás adatai átvéve. Pontos gyermekkorokkal hiteles élő árlekérés indítható; az ár külön jóváhagyásra vár.' : !explicit ? 'Faház: ? – emberi döntésre vár. Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?' : 'Ellenőrizd a kinyert adatokat. Az élő árlekérés után külön árjóváhagyás szükséges.';
@@ -229,6 +230,7 @@
       eurRate:Number.isFinite(Number(pendingQuote?.raw?.eurConversion?.rateHufPerEur))?Number(pendingQuote.raw.eurConversion.rateHufPerEur):null,
       unitBreakdown:Array.isArray(pendingQuote?.raw?.unitBreakdown)?pendingQuote.raw.unitBreakdown:[],
       source:pendingQuote?.source||'kézi ellenőrzés',
+      referenceOnly:Boolean(pendingQuote?.raw?.referenceOnly),
       fingerprint:quoteFingerprint(),
       approvedAt:new Date().toISOString()
     };
@@ -297,14 +299,9 @@
     const ages=childAgesForQuote(childCount,$('price_child_ages')?.value);
     if (ages===null || (childCount===0 && /\b(?:gyerek|gyermek|gyerekek|gyermekek|children|kind(?:er)?|otroka)\b/iu.test(message))) {status.textContent='HITELES ÁRLEKÉRÉS SZÜKSÉGES · A gyermekek pontos száma és életkora nélkül ár nem adható.';return;}
     const input={arrival:$('price_arrival').value,departure:$('price_departure').value,cabin:$('price_cabin').value,adults:Number($('price_adults').value),children:ages};
+    const askedSplit=explicitCabin(message)==='split';
+    if(askedSplit&&!explicitSplitUnit(message)){status.textContent='OSZTOTT HÁZ / KÉZI ELLENŐRZÉS SZÜKSÉGES · Kérjük pontosítani: A, B vagy C egység.';return;}
     if (!input.arrival || !input.departure || !input.cabin || !Number.isInteger(input.adults) || input.adults<1) {status.textContent='Pontos dátum, háztípus és létszám szükséges.';return;}
-    if(input.cabin==='split'||/^split[ABC]$/u.test(input.cabin)){
-      const splitUnit=input.cabin==='split' ? explicitSplitUnit(message) : input.cabin.slice(-1);
-      status.textContent=splitUnit
-        ? `OSZTOTT ${splitUnit} EGYSÉG / KÉZI ELLENŐRZÉS SZÜKSÉGES · Az egységet felismertük, de a Previo pontos ${splitUnit} kategória-megfeleltetése még nincs hitelesítve, ezért élő árlekérés nem indul.`
-        : 'OSZTOTT HÁZ / KÉZI ELLENŐRZÉS SZÜKSÉGES · Kérjük pontosítani: A, B vagy C egység. Élő árlekérés csak hitelesített Previo-megfeleltetés után indulhat.';
-      return;
-    }
     const capacity=singleCabinCapacity[input.cabin];
     if(!capacity){status.textContent='KÉZI ELLENŐRZÉS SZÜKSÉGES · Ehhez a háztípushoz nincs ellenőrzött kapacitás.';return;}
     const guestTotal=input.adults+input.children.length;
@@ -316,8 +313,9 @@
     try {
       const response=await fetch('/api/price-quote',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input),cache:'no-store'});
       if (!response.headers.get('content-type')?.includes('application/json')) throw Error('Az árlekérő szerver nincs ehhez az oldalhoz csatlakoztatva.');
-      const result=await response.json(); if(result.status==='unavailable'){status.textContent='A kért háztípusból a foglalási felület nem mutat szabad egységet erre az időszakra. Ár nem került a válaszba; kezelői ellenőrzés szükséges.';return;} if(!response.ok || result.status!=='review_required')throw Error(result.error||'Nem sikerült az árlekérés.');
-      if(result.arrival!==input.arrival||result.departure!==input.departure||result.cabin!==input.cabin||result.adults!==input.adults||JSON.stringify(result.children)!==JSON.stringify(input.children)||result.availability!=='available'||!Number.isInteger(result.availableUnits)||result.availableUnits<1||!Number.isSafeInteger(result.total)||result.total<=0||!Number.isSafeInteger(result.accommodation)||!Number.isSafeInteger(result.tourismTax)||result.accommodation+result.tourismTax!==result.total||result.currency!=='HUF') throw Error('A Previo válasza hiányos vagy eltér a kért vendégösszetételtől.');
+      const result=await response.json(); if(result.status==='unavailable'){status.textContent='A kért háztípusból a foglalási felület nem mutat szabad egységet erre az időszakra. Ár nem került a válaszba; kezelői ellenőrzés szükséges.';return;} if(!response.ok || !['review_required','public_reference'].includes(result.status))throw Error(result.error||'Nem sikerült az árlekérés.');
+      const referenceOnly=result.status==='public_reference';
+      if(result.arrival!==input.arrival||result.departure!==input.departure||result.cabin!==input.cabin||result.adults!==input.adults||JSON.stringify(result.children)!==JSON.stringify(input.children)||(!referenceOnly&&(result.availability!=='available'||!Number.isInteger(result.availableUnits)||result.availableUnits<1))||!Number.isSafeInteger(result.total)||result.total<=0||!Number.isSafeInteger(result.accommodation)||!Number.isSafeInteger(result.tourismTax)||result.accommodation+result.tourismTax!==result.total||result.currency!=='HUF') throw Error('Az árválasz hiányos vagy eltér a kért vendégösszetételtől.');
       const eurText=result.eurConversion?.status==='available' ? ` · EUR: ${formatEur(result.eurConversion.totalEur)} · MNB középárfolyam: 1 € = ${Number(result.eurConversion.rateHufPerEur).toLocaleString('hu-HU',{minimumFractionDigits:2,maximumFractionDigits:2})} Ft (${result.eurConversion.rateDate})` : ' · EUR átváltás: jelenleg nem elérhető';
       const unitText=Array.isArray(result.unitBreakdown)&&result.unitBreakdown.length>1
         ? ' · Házanként: '+result.unitBreakdown.map(x=>{
@@ -327,12 +325,12 @@
             return `${x.unit}. egység: ${formatFt(x.total)}${eurPart} (${x.adults} felnőtt${x.children?.length?`, ${x.children.length} gyermek`:''})`;
           }).join(' | ')
         : '';
-      $('price_result').textContent=`${result.arrival}–${result.departure} · ${result.cabin}${(result.units||1)>1?` · Egységek: ${result.units}`:''} · ${result.adults} felnőtt${result.children.length?` · ${result.children.length} gyermek (${result.children.join(', ')} éves)`:''} · Szállás: ${result.accommodation.toLocaleString('hu-HU')} Ft · IFA: ${result.tourismTax.toLocaleString('hu-HU')} Ft · Teljes ár: ${result.total.toLocaleString('hu-HU')} Ft${eurText}${unitText} · Plusz fő díjkülönbsége és más bontás: nem igazolt · Forrás: Sárberki hivatalos foglalási felület (${result.source}) · Lekérés: ${result.checkedAt} · Szezonfelár beépítése: nem igazolt · 20% törzsvendégkedvezmény: nincs alkalmazva`;
-      pendingQuote={total:Number(result.total),source:result.source||'foglalási oldal',fingerprint:quoteFingerprint(),raw:result};
+      $('price_result').textContent=`${result.arrival}–${result.departure} · ${result.cabin}${(result.units||1)>1?` · Egységek: ${result.units}`:''} · ${result.adults} felnőtt${result.children.length?` · ${result.children.length} gyermek (${result.children.join(', ')} éves)`:''} · Szállás: ${result.accommodation.toLocaleString('hu-HU')} Ft · IFA: ${result.tourismTax.toLocaleString('hu-HU')} Ft · Teljes ár: ${result.total.toLocaleString('hu-HU')} Ft${referenceOnly?' · PUBLIKUS ÁRLISTA-REFERENCIA · Szabad kapacitás külön ellenőrzendő':eurText+unitText} · Forrás: ${result.source} · Lekérés: ${result.checkedAt} · 20% törzsvendégkedvezmény: nincs alkalmazva`;
+      pendingQuote={total:Number(result.total),source:result.source||'foglalási oldal',fingerprint:quoteFingerprint(),raw:{...result,referenceOnly}};
       $('approved_price_manual').value=String(result.total);
       $('approve_price').disabled=false;
       $('price_approval_status').textContent=`Lekért teljes ár: ${formatFt(result.total)} · jóváhagyásra vár. Még nincs a vendégválaszban.`;
-      status.textContent='A foglalási oldalon megjelenő ár ellenőrzésre vár. Az „Ár jóváhagyása és beépítése a levélbe” gombig nem kerül a vendégválaszba, és foglalás nem történik.';
+      status.textContent=referenceOnly?'A Sárberki publikus árlistája alapján számolt referenciaár elkészült. A szabad kapacitást külön kell ellenőrizni; az összeg csak jóváhagyás után kerülhet a válaszba.':'A foglalási oldalon megjelenő ár ellenőrzésre vár. Az „Ár jóváhagyása és beépítése a levélbe” gombig nem kerül a vendégválaszba, és foglalás nem történik.';
     } catch(e) {status.textContent=`HITELES ÁRLEKÉRÉS SZÜKSÉGES · ${e.message} Nyisd meg a foglalási oldalt kézi ellenőrzésre.`;}
   };
 
