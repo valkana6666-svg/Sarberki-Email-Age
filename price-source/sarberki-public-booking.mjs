@@ -1,8 +1,9 @@
 import {validateQuote} from '../price-quote.mjs';
+import {BUSINESS} from '../business-config.mjs';
 
-const ROOT='https://booking.previo.cz';
-const HOTEL_ID='753011';
-const NAMES={deluxe:'DELUXE faház',family:'Családi faház',vip:'VIP apartman',small:'Különálló 2 fős faház'};
+const ROOT=BUSINESS.bookingProvider.root;
+const HOTEL_ID=BUSINESS.bookingProvider.hotelId;
+const NAMES=Object.fromEntries(Object.entries(BUSINESS.accommodationTypes).map(([key,value])=>[key,value.bookingName]));
 const GET_PATHS=new Set(['/','/index/step-1/','/index/step-2/']);
 const POST_PATHS=new Set(['/','/index/get-object-kind-occupancy/','/index/get-occupancy-price/']);
 const QUERY_KEYS=new Set(['hotId','currency','lang','theme','redirectType','showTabs','PHPSESSID']);
@@ -89,17 +90,17 @@ export async function fetchPublicBookingQuote(raw,request=fetch){
   if(!occupancy.success||typeof occupancy.html!=='string') throw Error('A Previo nem igazolta a rendelkezésre állást.');
   const free=Number(occupancy.html.match(/data-numOfFreeRooms="(\d+)"/)?.[1]);
   if(!Number.isInteger(free)) throw Error('Nem ellenőrizhető a szabad kapacitás.');
-  if(free<1) return {status:'unavailable',source:'Sárberki hivatalos foglalási felület',checkedAt:new Date().toISOString(),...input,availability:'unavailable',bookingCompleted:false};
+  if(free<1) return {status:'unavailable',source:`${BUSINESS.brandName} hivatalos foglalási felület`,checkedAt:new Date().toISOString(),...input,availability:'unavailable',bookingCompleted:false};
   const categories=params.GUEST_CATEGORIES||[];
   const adult=categories.filter(x=>x.isDefault&&!x.isChild);
   if(adult.length!==1) throw Error('A Previo felnőtt kategóriája nem egyértelmű.');
   const units=input.units||1;
-  if(free<units) return {status:'unavailable',source:'Sárberki hivatalos foglalási felület',checkedAt:new Date().toISOString(),...input,availability:'unavailable',availableUnits:free,bookingCompleted:false};
+  if(free<units) return {status:'unavailable',source:`${BUSINESS.brandName} hivatalos foglalási felület`,checkedAt:new Date().toISOString(),...input,availability:'unavailable',availableUnits:free,bookingCompleted:false};
   const parties=Array.from({length:units},()=>({adults:0,children:[]}));
   for(let i=0;i<units;i++) parties[i].adults=1;
   for(let i=units;i<input.adults;i++) parties[(i-units)%units].adults++;
   for(let i=0;i<input.children.length;i++) parties[i%units].children.push(input.children[i]);
-  const maxPerUnit={deluxe:6,family:8,vip:7,small:2}[input.cabin];
+  const maxPerUnit=BUSINESS.accommodationTypes[input.cabin]?.maxGuests;
   if(parties.some(p=>p.adults+p.children.length>maxPerUnit)) throw Error('A vendégek nem oszthatók el biztonságosan a kért egységek között.');
   const rooms=parties.map(p=>{
     const counts=new Map([[adult[0].guaId,p.adults]]);
@@ -127,5 +128,5 @@ export async function fetchPublicBookingQuote(raw,request=fetch){
     }),{accommodation:0,tourismTax:0,total:0});
     if(summed.accommodation!==priced.accommodation||summed.tourismTax!==priced.tourismTax||summed.total!==priced.total) throw Error('A több házas összár és a házankénti Previo-árak eltérnek; kézi ellenőrzés szükséges.');
   }
-  return {status:'review_required',source:'Sárberki hivatalos foglalási felület',sourceUrl:'https://sarberkito.hu/foglalas/',checkedAt:new Date().toISOString(),...input,units,availability:'available',availableUnits:free,accommodation:priced.accommodation,tourismTax:priced.tourismTax,total:priced.total,unitBreakdown,currency:'HUF',bookingCompleted:false};
+  return {status:'review_required',source:'Sárberki hivatalos foglalási felület',sourceUrl:BUSINESS.bookingUrl,checkedAt:new Date().toISOString(),...input,units,availability:'available',availableUnits:free,accommodation:priced.accommodation,tourismTax:priced.tourismTax,total:priced.total,unitBreakdown,currency:'HUF',bookingCompleted:false};
 }
