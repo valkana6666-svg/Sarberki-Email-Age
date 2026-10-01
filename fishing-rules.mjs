@@ -21,7 +21,7 @@ export function fishingQuestion(text='', language='hu') {
     && /(?:24\s*(?:ór|h|hour|stunden|ur)|24-hour|napijegy|day\s*ticket|tageskarte)/iu.test(text);
   const wantsChild=/(?:gyermek|gyerek|child|children|kinder|otrok)/iu.test(text) && /(?:jegy|ticket|karte|vstopnic|ribolov)/iu.test(text);
   const wantsMinimum=/(?:minimum|minimális|legkisebb|méretkorlát|minimum\s+(?:fish\s+)?size|minimum size|mindestmaß|mindestgr|najmanjša\s+mera|minimalna\s+mera)/iu.test(text);
-  const wantsTakeaway=/(?:elvihető|elvitel|hazavi|fish[^.!?\n]{0,50}(?:take\s+away|take\s+home)|takeaway|mitnehmen|entnahme|odnes|odvzem)/iu.test(text)
+  const wantsTakeaway=/(?:elvihető|elvitel|hazavi|fish[^.!?\n]{0,50}(?:take[- ]?away|take\s+home)|takeaway|mitnehmen|entnahme|odnes|odvzem)/iu.test(text)
     && /(?:ár|price|cost|preis|cena|kg)/iu.test(text);
   const answers=[];
   if(wantsNormal24){
