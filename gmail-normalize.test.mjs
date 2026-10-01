@@ -55,6 +55,13 @@ test('Hungarian guest count words are recognized conservatively',()=>{
   assert.equal(guestCountFromText('8 fo részére'),8);
 });
 
+test('adult plus child counts produce total guests in HU EN DE SI',()=>{
+  assert.equal(guestCountFromText('2 felnőtt és 2 gyermek'),4);
+  assert.equal(guestCountFromText('2 adults and 2 children'),4);
+  assert.equal(guestCountFromText('2 Erwachsene und 2 Kinder'),4);
+  assert.equal(guestCountFromText('2 odrasla in 2 otroka'),4);
+});
+
 
 test('informal Hungarian child count and ages are recognized',()=>{
   const message='szia, ket gyerekkel mennénk, 7 meg 11 evesek';
