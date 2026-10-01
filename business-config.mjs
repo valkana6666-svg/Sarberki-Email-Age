@@ -26,7 +26,9 @@ export const BUSINESS = Object.freeze({
     returningGuestLookbackDays: 730,
     returningGuestRequiresHistoryCheck: true,
     petAllowedForFee: true,
-    petFeeVerified: false
+    petFeeVerified: false,
+    hotTubAvailabilityRequiresCheck: true,
+    hotTubFeeVerified: false
   }),
   pricingRules: Object.freeze({
     extraAdultNightlyHuf: 4500,
