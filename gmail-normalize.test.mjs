@@ -641,3 +641,30 @@ Phone: +44 7700 912345.`;
   assert.match(draft,/only confirm them after a verified check/u);
   assert.doesNotMatch(draft,/122[ .]?200|244[ .]?400/u);
 });
+
+test('explicit total guest count overrides conflicting component wording',()=>{
+  assert.equal(guestCountFromText('There will be 8 guests in total: 5 adults and 2 children.'),8);
+  assert.equal(guestCountFromText('Összesen 8 fő érkezik: 5 felnőtt és 2 gyermek.'),8);
+  assert.equal(guestCountFromText('Wir sind 8 Personen: 5 Erwachsene und 2 Kinder.'),8);
+  assert.equal(guestCountFromText('Skupaj 8 oseb: 5 odraslih in 2 otroka.'),8);
+});
+
+test('adult plus child pairs still infer total when no explicit total is present',()=>{
+  assert.equal(guestCountFromText('5 felnőtt és 3 gyermek érkezne.'),8);
+  assert.equal(guestCountFromText('5 adults and 3 children would stay.'),8);
+  assert.equal(guestCountFromText('5 Erwachsene und 3 Kinder kommen.'),8);
+  assert.equal(guestCountFromText('5 odraslih in 3 otroci bi prišli.'),8);
+});
+
+test('cross-month ranges keep both months in EN DE SI and year rollover',()=>{
+  const now=new Date('2026-10-01T12:00:00Z');
+  assert.deepEqual(dateRangeFromText('October 30 to November 2, 2026',now),{arrival:'2026-10-30',departure:'2026-11-02',inferredYear:false});
+  assert.deepEqual(dateRangeFromText('30. Oktober bis 2. November 2026',now),{arrival:'2026-10-30',departure:'2026-11-02',inferredYear:false});
+  assert.deepEqual(dateRangeFromText('od 30. oktobra do 2. novembra 2026',now),{arrival:'2026-10-30',departure:'2026-11-02',inferredYear:false});
+  assert.deepEqual(dateRangeFromText('December 30 to January 2, 2027',now),{arrival:'2027-12-30',departure:'2027-01-02',inferredYear:false});
+});
+
+test('Slovenian family cabin wording maps to Családi',()=>{
+  assert.equal(cabinFromText('Želeli bi družinsko hiško.'),'Családi');
+  assert.equal(cabinFromText('Zanima nas družinska nastanitev.'),'Családi');
+});
