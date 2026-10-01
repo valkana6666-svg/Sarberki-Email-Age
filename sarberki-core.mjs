@@ -139,8 +139,10 @@ export function replySummary(language='hu', {arrival=null,departure=null,guests=
   const adults=Number.isFinite(children)?Math.max(0,guests-children):null;
   const ageList=(lang)=>{
     if(!Array.isArray(childAges)||!childAges.length) return '';
-    const joiner={hu:' és ',de:' und ',en:' and ',si:' in '}[lang]||', ';
-    return childAges.join(joiner);
+    if(childAges.length===1) return String(childAges[0]);
+    const joiner={hu:' és ',de:' und ',en:' and ',si:' in '}[lang]||' and ';
+    if(childAges.length===2) return childAges.join(joiner);
+    return childAges.slice(0,-1).join(', ')+joiner+childAges.at(-1);
   };
   const packs={
     hu:{
