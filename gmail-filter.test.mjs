@@ -57,13 +57,10 @@ test('Gmail record consumes normalized multilingual dates', () => {
 });
 
 
-test('Gmail draft uses multilingual language and missing-data helpers', () => {
+test('Gmail draft uses the shared multilingual reply builder', () => {
   assert.match(source, /languageFromText\(original\)/u);
-  assert.match(source, /replyQuestions\(language/u);
-  assert.match(source, /Vielen Dank für Ihre Anfrage/u);
-  assert.match(source, /Thank you for your inquiry/u);
-  assert.match(source, /Hvala za vaše povpraševanje/u);
-  assert.match(source, /language==='unknown' \? 'hu' : language/u);
+  assert.match(source, /buildReplyDraft\(\{language,name,original/u);
+  assert.doesNotMatch(source, /replyQuestions\(language/u);
 });
 
 
