@@ -176,3 +176,29 @@ export function replyQuestions(language='hu', {needPhone=false,needCabin=false,n
   if(!q) return [];
   return [needChildAge&&q.child,needPhone&&q.phone,needCabin&&q.cabin].filter(Boolean);
 }
+
+
+export function buildReplyDraft({language='hu',name=null,original='',arrival=null,departure=null,guests=null,children=null,childAges=[],phone=null,cabin='? – emberi döntésre vár',pier=false,hotTub=false,dog=false,intent='booking_request'}={}){
+  const lang=language==='unknown'?'hu':language;
+  const first=name?.trim()?.split(/\s+/u)?.slice(-1)[0]||null;
+  const greetings={hu:first?`Kedves ${first}!`:'Kedves Vendégünk!',de:first?`Guten Tag ${first}!`:'Guten Tag!',en:first?`Dear ${first},`:'Dear Guest,',si:first?`Pozdravljeni ${first}!`:'Pozdravljeni!'};
+  const intros={hu:'Köszönjük érdeklődését.',de:'Vielen Dank für Ihre Anfrage.',en:'Thank you for your inquiry.',si:'Hvala za vaše povpraševanje.'};
+  const closings={hu:'Üdvözlettel:',de:'Mit freundlichen Grüßen',en:'Kind regards,',si:'Lep pozdrav,'};
+  if(intent==='cancellation_request'||intent==='modification_request'){
+    const action={hu:intent==='cancellation_request'?'lemondási':'foglalásmódosítási',de:intent==='cancellation_request'?'Stornierungs':'Änderungs',en:intent==='cancellation_request'?'cancellation':'booking change',si:intent==='cancellation_request'?'odpovedi':'spremembe rezervacije'}[lang]||'foglalási';
+    const received={hu:`Megkaptuk a ${action} kérelmét. Hamarosan pontos visszajelzést adunk.`,de:`Wir haben Ihre ${action}anfrage erhalten und prüfen sie.`,en:`We have received your ${action} request and will review it.`,si:`Prejeli smo vašo zahtevo za ${action} in jo bomo preverili.`}[lang];
+    return `${greetings[lang]}\n\n${received}\n\n${closings[lang]}\nSárberki Horgásztó`;
+  }
+  const summary=replySummary(lang,{arrival,departure,guests,children,childAges,pier,hotTub,dog});
+  const needCabin=!cabin||String(cabin).startsWith('?');
+  const questions=replyQuestions(lang,{needPhone:!phone,needCabin,needChildAge:Boolean(children&&childAges.length<children)});
+  const asksAvailability=/(?:szabad|elérhető|van[- ]?e .*szállás|van.*hely|available|frei|prosto|verfügbar|razpolož)/iu.test(original);
+  const asksPrice=/(?:mennyi|mennyibe|ár|ára|árat|price|cost|kosten|preis|cena)/iu.test(original);
+  const checks={
+    hu: asksAvailability||asksPrice?'A szabad kapacitást és az árat külön ellenőrizzük; ezekről csak hiteles ellenőrzés után adunk biztos tájékoztatást.':'A megadott adatokat ellenőrizzük, és a szükséges részletekkel visszajelzünk.',
+    de: asksAvailability||asksPrice?'Verfügbarkeit und Preis prüfen wir separat; eine verbindliche Auskunft geben wir erst nach bestätigter Prüfung.':'Wir prüfen die angegebenen Daten und melden uns mit den nötigen Details.',
+    en: asksAvailability||asksPrice?'We check availability and price separately and will only confirm them after a verified check.':'We will review the details provided and reply with any required information.',
+    si: asksAvailability||asksPrice?'Razpoložljivost in ceno preverimo posebej in ju potrdimo šele po zanesljivem preverjanju.':'Preverili bomo navedene podatke in odgovorili s potrebnimi podrobnostmi.'
+  };
+  return `${greetings[lang]}\n\n${intros[lang]}${summary?'\n\n'+summary:''}${questions.length?'\n\n'+questions.join(' '):''}\n\n${checks[lang]}\n\n${closings[lang]}\nSárberki Horgásztó`;
+}
