@@ -93,7 +93,7 @@ test('Gmail bridge has one canonical date parser', () => {
 });
 
 
-test('Gmail record exposes canonical normalized fields for UI',()=>{assert.match(source,/normalized:\{language,cabin:cabinFromGuestText\(original\),dates:normalizedDate,guests:count,children:childCount,child_ages:childAges,phone,hot_tub:hotTub,dog,pier_requested:pier,hot_tub_requested:hotTub,pet_requested:dog\}/u);});
+test('Gmail record exposes canonical normalized fields for UI',()=>{assert.match(source,/normalized:\{language,cabin:cabinFromGuestText\(original\),dates:normalizedDate,guests:count,adults:adultCount,children:childCount,child_ages:childAges,phone,hot_tub:hotTub,dog,pier_requested:pier,hot_tub_requested:hotTub,pet_requested:dog\}/u);});
 
 
 test('parsed child ages are not falsely marked missing',()=>{
@@ -125,4 +125,11 @@ test('reply and follow-up inquiry subjects remain readable',async()=>{
   ]) assert.equal(isApprovedSubject(subject),true,subject);
   assert.equal(isApprovedSubject('Hírlevél és akciók'),false);
   assert.equal(isApprovedSubject('Teszt 3'),false);
+});
+
+
+test('contradictory adult child totals are escalated to human review',()=>{
+  assert.match(source,/adultCountFromText\(original\)/u);
+  assert.match(source,/adultCount\+childCount!==count/u);
+  assert.match(source,/Ellentmondó létszámadat/u);
 });
