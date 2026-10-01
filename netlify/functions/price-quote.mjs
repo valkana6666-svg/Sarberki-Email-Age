@@ -68,7 +68,8 @@ export async function fetchMnbEurRate(request=fetch) {
 
 export function isLivePrevioEnabled(request,env=process.env) {
   try {
-    return LIVE_TEST_HOSTS.has(new URL(request.url).hostname);
+    return env.SARBERKI_PREVIO_NO_HOLD_CONFIRMED==='true'
+      && LIVE_TEST_HOSTS.has(new URL(request.url).hostname);
   } catch {
     return false;
   }
