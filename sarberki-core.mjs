@@ -27,7 +27,7 @@ export function cabinFromText(text=''){
 }
 export function guestCountFromText(text=''){
   const explicitTotal=
-    text.match(/\b(?:összesen|osszesen)\s+(\d{1,2})\s*(?:fő|fo|személy|szemely)(?=\s|$|[,.!?:;])/iu)
+    text.match(/(?:^|\s)(?:összesen|osszesen)\s+(\d{1,2})\s*(?:fő|fo|személy|szemely)(?=\s|$|[,.!?:;])/iu)
     || text.match(/\b(?:total(?:\s+of)?|altogether)\s+(\d{1,2})\s*(?:persons?|people|guests?)\b/iu)
     || text.match(/\b(\d{1,2})\s*(?:persons?|people|guests?)\s+(?:in\s+total|altogether)\b/iu)
     || text.match(/\binsgesamt\s+(\d{1,2})\s*(?:gäste|personen)\b/iu)
