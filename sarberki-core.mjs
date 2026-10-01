@@ -105,13 +105,21 @@ export function dateRangeFromText(text='', now=new Date(), timeZone='Europe/Buda
     const endExplicit=monthFirstCross?monthFirstCross[6]:dayFirstCross[6];
     if(firstMonth&&secondMonth){
       const local=new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).format(now).split('-').map(Number);
-      const explicitYear=startExplicit||endExplicit||null;
-      const next=/\\b(?:jövőre|következő évben|next year|nächstes jahr|naslednje leto)\\b/iu.test(text);
-      let startYear=explicitYear?Number(explicitYear):local[0]+(next?1:0);
-      if(!explicitYear&&!next&&(firstMonth<local[1]||(firstMonth===local[1]&&firstDay<local[2]))) startYear++;
-      let endYear=endExplicit?Number(endExplicit):startYear;
-      if(!endExplicit&&secondMonth<firstMonth) endYear=startYear+1;
-      return {arrival:`${startYear}-${String(firstMonth).padStart(2,'0')}-${String(firstDay).padStart(2,'0')}`,departure:`${endYear}-${String(secondMonth).padStart(2,'0')}-${String(secondDay).padStart(2,'0')}`,inferredYear:!explicitYear&&!next};
+      const next=/\b(?:jövőre|következő évben|next year|nächstes jahr|naslednje leto)\b/iu.test(text);
+      let startYear;
+      let endYear;
+      if(startExplicit){
+        startYear=Number(startExplicit);
+        endYear=endExplicit?Number(endExplicit):startYear+(secondMonth<firstMonth?1:0);
+      }else if(endExplicit){
+        endYear=Number(endExplicit);
+        startYear=endYear-(secondMonth<firstMonth?1:0);
+      }else{
+        startYear=local[0]+(next?1:0);
+        if(!next&&(firstMonth<local[1]||(firstMonth===local[1]&&firstDay<local[2]))) startYear++;
+        endYear=startYear+(secondMonth<firstMonth?1:0);
+      }
+      return {arrival:`${startYear}-${String(firstMonth).padStart(2,'0')}-${String(firstDay).padStart(2,'0')}`,departure:`${endYear}-${String(secondMonth).padStart(2,'0')}-${String(secondDay).padStart(2,'0')}`,inferredYear:!startExplicit&&!endExplicit&&!next};
     }
   }
   const dayFirst=text.match(new RegExp(`\\b(?:vom\\s+)?(\\d{1,2})\\.?\\s*(?:bis|[-–])\\s*(\\d{1,2})\\.?\\s+(${names})\\b`,'iu'));
