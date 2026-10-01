@@ -11,6 +11,7 @@ export const BUSINESS = Object.freeze({
     extraAdultNightlyHuf: 4500,
     child0to3NightlyHuf: 0,
     child3to8NightlyHuf: 2250,
+    tourismTaxAdultNightlyHuf: 550,
     highSeasonSurchargePct: 10,
     highSeasonStart: '07-01',
     highSeasonEnd: '08-20',
