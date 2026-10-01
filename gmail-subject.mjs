@@ -4,7 +4,13 @@ export const APPROVED_SUBJECTS = Object.freeze([
   'érdeklődés szállásról',
   'anfrage für einen aufenthalt',
   'anfrage für eine unterkunft',
-  'anfrage zur unterkunft'
+  'anfrage zur unterkunft',
+  'accommodation inquiry',
+  'booking inquiry',
+  'inquiry about accommodation',
+  'povpraševanje za nastanitev',
+  'povpraševanje o nastanitvi',
+  'rezervacija nastanitve'
 ]);
 
 export const TEST_SUBJECT_PREFIXES = Object.freeze([
