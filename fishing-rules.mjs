@@ -13,13 +13,59 @@ export const fishing = Object.freeze({
   minimumCm: {zander:30,pike:40,carp:30,grassCarp:40,catfish:50}
 });
 
-export function fishingQuestion(text='') {
-  if (!/horgász|hal(?:at|at fog|elvitel|ár)|ponty|csuka|süllő|harcsa|hor(?:og|got|gok)|szakállas|normál\s*tó|rekord\s*tó|angeln|fishing|fish(?:ing)? ticket/iu.test(text)) return null;
-  const rule = /szakállas|szakáll nélküli|hor(?:og|got|gok)|pontybölcső|fonott|főzsinór/iu.test(text);
-  const normal24 = /normál(?: tó)?/iu.test(text) && /24\s*ór|egy nap|napijegy/iu.test(text);
-  return {namespace:fishing.namespace,kind:rule?'rule':normal24?'normal_24h_adult':'review',
-    answer:rule&&/szakállas|hor(?:og|got|gok)/iu.test(text)?'Szakállas horog nem használható; kizárólag szakáll nélküli, legfeljebb 6-os méretű horog engedélyezett.':normal24?'Normál tó, 24 órás felnőtt horgászjegy: 7 500 Ft. Gyermekjegy: 3 750 Ft. Magyarországra érvényes állami horgászjegy szükséges.':'A horgászati kérdés tó, jegytípus és korcsoport szerint ellenőrizendő.',
-    source:rule?fishing.rulesSource:fishing.source,verifiedAt:fishing.verifiedAt,validFrom:fishing.validFrom,
+export function fishingQuestion(text='', language='hu') {
+  if (!/horgász|hal(?:at|at fog|elvitel|ár)|ponty|csuka|süllő|harcsa|hor(?:og|got|gok)|szakállas|normál\s*tó|rekord\s*tó|angeln|fishing|fish(?:ing)? ticket|barbed|hook|mindestmaß|min(?:imum)?\s+(?:fish\s+)?size|ribolov|trnek/iu.test(text)) return null;
+  const lang=['hu','de','en','si'].includes(language)?language:'hu';
+  const wantsHook=/(?:szakállas|szakáll nélküli|hor(?:og|got|gok)|barbed\s+hooks?|barbless\s+hooks?|haken|widerhaken|trnek)/iu.test(text);
+  const wantsNormal24=/(?:normál(?:\s*tó)?|normal\s+lake|normalteich|normal\s+see|normalno\s+jezero)/iu.test(text)
+    && /(?:24\s*(?:ór|h|hour|stunden|ur)|24-hour|napijegy|day\s*ticket|tageskarte)/iu.test(text);
+  const wantsChild=/(?:gyermek|gyerek|child|children|kinder|otrok)/iu.test(text) && /(?:jegy|ticket|karte|vstopnic|ribolov)/iu.test(text);
+  const wantsMinimum=/(?:minimum|minimális|legkisebb|méretkorlát|minimum\s+(?:fish\s+)?size|minimum size|mindestmaß|mindestgr|najmanjša\s+mera|minimalna\s+mera)/iu.test(text);
+  const wantsTakeaway=/(?:elvihető|elvitel|hazavi|fish[^.!?\n]{0,50}(?:take\s+away|take\s+home)|takeaway|mitnehmen|entnahme|odnes|odvzem)/iu.test(text)
+    && /(?:ár|price|cost|preis|cena|kg)/iu.test(text);
+  const answers=[];
+  if(wantsNormal24){
+    answers.push({
+      hu:'Normál tó: a 24 órás felnőtt jegy 7 500 Ft, a gyermekjegy 3 750 Ft. Magyarországra érvényes állami horgászjegy szükséges.',
+      de:'Normal-See: Die 24-Stunden-Karte kostet für Erwachsene 7.500 Ft und für Kinder 3.750 Ft. Ein für Ungarn gültiger staatlicher Angelschein ist erforderlich.',
+      en:'Normal lake: the 24-hour adult ticket is 7,500 HUF and the child ticket is 3,750 HUF. A state fishing licence valid in Hungary is required.',
+      si:'Normalno jezero: 24-urna odrasla karta stane 7.500 HUF, otroška pa 3.750 HUF. Potrebna je državna ribolovna dovolilnica, veljavna na Madžarskem.'
+    }[lang]);
+  } else if(wantsChild){
+    answers.push({
+      hu:'Gyermekjegy külön váltható; a pontos ár a választott tó és jegy időtartama szerint változik.',
+      de:'Für Kinder gibt es eine eigene Karte; der genaue Preis hängt vom gewählten See und der Gültigkeitsdauer ab.',
+      en:'Children use a separate ticket; the exact price depends on the lake and ticket duration.',
+      si:'Za otroke je potrebna ločena karta; natančna cena je odvisna od jezera in trajanja karte.'
+    }[lang]);
+  }
+  if(wantsHook) answers.push({
+    hu:'Szakállas horog nem használható; kizárólag szakáll nélküli, legfeljebb 6-os méretű horog engedélyezett.',
+    de:'Haken mit Widerhaken sind nicht erlaubt; zulässig sind nur widerhakenlose Haken bis maximal Größe 6.',
+    en:'Barbed hooks are not allowed; only barbless hooks up to size 6 may be used.',
+    si:'Trnki z zalustjo niso dovoljeni; dovoljeni so le trnki brez zalusti do največ velikosti 6.'
+  }[lang]);
+  if(wantsMinimum) answers.push({
+    hu:'Minimum méretek: süllő 30 cm, csuka 40 cm, ponty 30 cm, amur 40 cm, harcsa 50 cm.',
+    de:'Mindestmaße: Zander 30 cm, Hecht 40 cm, Karpfen 30 cm, Graskarpfen 40 cm, Wels 50 cm.',
+    en:'Minimum sizes: zander 30 cm, pike 40 cm, carp 30 cm, grass carp 40 cm, catfish 50 cm.',
+    si:'Najmanjše mere: smuč 30 cm, ščuka 40 cm, krap 30 cm, amur 40 cm, som 50 cm.'
+  }[lang]);
+  if(wantsTakeaway) answers.push({
+    hu:'Elvihető hal ára kilogrammonként: süllő 4 500 Ft, csuka 4 500 Ft, harcsa 1 500 Ft, 5 kg alatti ponty 2 000 Ft, 5 kg alatti amur 2 000 Ft, keszeg 1 350 Ft, kárász 1 350 Ft.',
+    de:'Preis für entnommenen Fisch pro kg: Zander 4.500 Ft, Hecht 4.500 Ft, Wels 1.500 Ft, Karpfen unter 5 kg 2.000 Ft, Graskarpfen unter 5 kg 2.000 Ft, Brasse 1.350 Ft, Karausche 1.350 Ft.',
+    en:'Take-away fish prices per kg: zander 4,500 HUF, pike 4,500 HUF, catfish 1,500 HUF, carp under 5 kg 2,000 HUF, grass carp under 5 kg 2,000 HUF, bream 1,350 HUF, crucian carp 1,350 HUF.',
+    si:'Cena odnesenih rib na kg: smuč 4.500 HUF, ščuka 4.500 HUF, som 1.500 HUF, krap pod 5 kg 2.000 HUF, amur pod 5 kg 2.000 HUF, ploščič 1.350 HUF, koreselj 1.350 HUF.'
+  }[lang]);
+  if(!answers.length) answers.push({
+    hu:'A horgászati kérdés tó, jegytípus és korcsoport szerint ellenőrizendő.',
+    de:'Die Angelanfrage muss nach See, Kartentyp und Altersgruppe geprüft werden.',
+    en:'The fishing question needs to be checked by lake, ticket type and age group.',
+    si:'Ribolovno vprašanje je treba preveriti glede na jezero, vrsto karte in starostno skupino.'
+  }[lang]);
+  const kind=answers.length>1?'combined':wantsHook?'rule':wantsNormal24?'normal_24h_adult':'review';
+  return {namespace:fishing.namespace,kind,answer:answers.join(' '),
+    source:wantsHook||wantsMinimum?fishing.rulesSource:fishing.source,verifiedAt:fishing.verifiedAt,validFrom:fishing.validFrom,
     accommodationTotalAffected:false};
 }
 
