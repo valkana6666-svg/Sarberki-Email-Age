@@ -250,10 +250,10 @@ function operationalTopicLines(language='hu',original='',rules=null){
   const asks={
     electricity:/(?:áram|villany|mérőóra|electricity|power\s+consumption|strom|stromverbrauch|elektrik|elektrika)/iu.test(original),
     firewood:/(?:tűzifa|tüzifa|firewood|brennholz|drva)/iu.test(original),
-    parking:/(?:parkol|parking|parkplatz|parkplätze|parkiriš|parkiris)/iu.test(original),
+    parking:/(?:parkol|parking|parkplatz|parkplätze|parkiriš|parkiris|\b(?:cars?|vehicles?)\b|\bautos?\b|\bvozil\w*\b)/iu.test(original),
     arrival:/(?:érkez|check[- ]?in|arriv|ankunft|anreise|prihod)[^.!?\n]{0,80}\d{1,2}[:.]\d{2}/iu.test(original),
     departure:/(?:távoz|kijelentkez|check[- ]?out|what\s+time[^.!?\n]{0,40}(?:leave|departure)|abreise|abreisen|odhod)/iu.test(original),
-    returning:/(?:törzsvend|visszatérő|korábban[^.!?\n]{0,80}(?:száll|járt)|returning\s+guest|stayed[^.!?\n]{0,80}before|previous\s+stay|stammgast|schon[^.!?\n]{0,80}(?:bei\s+ihnen|übernachtet)|povratn|že[^.!?\n]{0,80}bivali)/iu.test(original)
+    returning:/(?:törzsvend|visszatérő|korábban[^.!?\n]{0,80}(?:száll|járt)|returning\s+guest|stayed[^.!?\n]{0,100}(?:before|ago)|previous\s+stay|stammgast|schon[^.!?\n]{0,80}(?:bei\s+ihnen|übernachtet)|povratn|že[^.!?\n]{0,80}bivali)/iu.test(original)
   };
   const lines=[];
   if(asks.electricity&&rules.electricitySettlement==='metered_separate') lines.push({
