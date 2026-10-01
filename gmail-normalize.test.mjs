@@ -684,3 +684,12 @@ test('explicit total guest count beats earlier per-unit wording',()=>{
   assert.equal(guestCountFromText('Pro Haus 4 Personen, insgesamt 8 Personen.'),8);
   assert.equal(guestCountFromText('V vsaki hiški 4 osebe, skupaj 8 oseb.'),8);
 });
+
+
+test('adult count parser reads all supported languages',async()=>{
+  const {adultCountFromText}=await import('./sarberki-core.mjs');
+  assert.equal(adultCountFromText('5 felnőtt és 3 gyermek'),5);
+  assert.equal(adultCountFromText('5 adults and 3 children'),5);
+  assert.equal(adultCountFromText('5 Erwachsene und 3 Kinder'),5);
+  assert.equal(adultCountFromText('5 odraslih in 3 otroci'),5);
+});
