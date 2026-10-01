@@ -575,3 +575,56 @@ test('pricing subquestions acknowledge season tax and alternatives',()=>{
   assert.match(inside,/10%-os főszezoni felár/u);
   assert.match(inside,/szállásdíjra vonatkozik, a dézsára nem/u);
 });
+
+
+test('dense guest letter keeps every verified answer in one final draft',async()=>{
+  const {BUSINESS}=await import('./business-config.mjs');
+  const {fishingQuestion}=await import('./fishing-rules.mjs');
+  const original=`Hello,
+
+We are planning a family fishing holiday and would like to stay from November 12 to November 16, 2026.
+There would be 8 guests altogether: 5 adults and 3 children, aged 4, 9 and 13. We would prefer a Deluxe cabin, but if it is not available, please suggest another suitable cabin type or a combination of units.
+If available, we would like a private fishing pier and a hot tub. We will also bring one small dog.
+We are travelling with three cars.
+Is electricity included or charged separately according to the meter?
+Is firewood available and is there an additional charge?
+Would it be possible to arrive at approximately 6:30 PM?
+What time do we need to leave on departure day?
+Please include any applicable seasonal surcharge, tourist tax and hot-tub charge.
+We stayed about one year ago. Please check whether we may qualify for a returning-guest discount.
+How much deposit is required, when must it be paid, and what are the cancellation conditions?
+For fishing: what is the price of a 24-hour adult ticket for the Normal lake, do children need a separate ticket, are barbed hooks allowed, what are the minimum fish sizes, and what are the take-away fish prices?
+Phone: +44 7700 912345.`;
+
+  const fishingInfo=fishingQuestion(original,'en');
+  const draft=buildReplyDraft({
+    language:'en',original,arrival:'2026-11-12',departure:'2026-11-16',
+    guests:8,children:3,childAges:[4,9,13],phone:'+44 7700 912345',
+    cabin:'Deluxe',pier:true,hotTub:true,dog:true,intent:'booking_request',
+    bookingRules:BUSINESS.bookingRules,operationalRules:BUSINESS.operationalRules,
+    pricingRules:BUSINESS.pricingRules,knowledgeLines:fishingInfo?[fishingInfo.answer]:[]
+  });
+
+  assert.match(draft,/50% deposit/u);
+  assert.match(draft,/within 10 days/u);
+  assert.match(draft,/14 days before arrival/u);
+  assert.match(draft,/Electricity is charged separately/u);
+  assert.match(draft,/Firewood is available/u);
+  assert.match(draft,/Parking is available/u);
+  assert.match(draft,/18:30/u);
+  assert.match(draft,/10:00/u);
+  assert.match(draft,/20%/u);
+  assert.match(draft,/730 days/u);
+  assert.match(draft,/Pets are allowed for an additional charge/u);
+  assert.match(draft,/Hot-tub availability and its charge are checked separately/u);
+  assert.match(draft,/outside the period with the 10% high-season surcharge/u);
+  assert.match(draft,/550 HUF per adult per night/u);
+  assert.match(draft,/another suitable cabin type or a combination of units/u);
+  assert.match(draft,/7,500 HUF/u);
+  assert.match(draft,/3,750 HUF/u);
+  assert.match(draft,/Barbed hooks are not allowed/u);
+  assert.match(draft,/zander 30 cm/u);
+  assert.match(draft,/Take-away fish prices per kg/u);
+  assert.match(draft,/only confirm them after a verified check/u);
+  assert.doesNotMatch(draft,/122[ .]?200|244[ .]?400/u);
+});
