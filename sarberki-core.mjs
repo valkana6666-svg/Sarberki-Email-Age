@@ -298,7 +298,59 @@ function operationalTopicLines(language='hu',original='',rules=null){
   return lines;
 }
 
-export function buildReplyDraft({language='hu',name=null,original='',arrival=null,departure=null,guests=null,children=null,childAges=[],phone=null,cabin='? – emberi döntésre vár',pier=false,hotTub=false,dog=false,intent='booking_request',brandName='Sárberki Horgásztó',bookingRules=null,operationalRules=null,knowledgeLines=[]}={}){
+
+function pricingTopicLines(language='hu',original='',arrival=null,departure=null,rules=null){
+  const lang=['hu','de','en','si'].includes(language)?language:'hu';
+  const lines=[];
+  const asksSeason=/(?:szezonfelár|főszezon|seasonal\s+surcharge|high[- ]season|saisonaufschlag|hoch saison|sezonsk\w*\s+doplačil)/iu.test(original);
+  const asksTax=/(?:idegenforgalmi\s+adó|ifa\b|tourist\s+tax|tourism\s+tax|kurtaxe|turističn\w*\s+tak)/iu.test(original);
+  const asksAlternative=/(?:ha[^.!?\n]{0,80}nem[^.!?\n]{0,80}(?:elérhető|szabad)|if[^.!?\n]{0,80}not\s+available|alternative\s+(?:cabin|accommodation)|another\s+suitable|alternative\s+unterkunft|falls[^.!?\n]{0,80}nicht\s+verfügbar|druga\s+nastanitev|alternativn\w*\s+nastanitev)/iu.test(original);
+  if(asksSeason&&rules&&Number.isFinite(Number(rules.highSeasonSurchargePct))){
+    const pct=Number(rules.highSeasonSurchargePct);
+    let overlaps=null;
+    if(/^\d{4}-\d{2}-\d{2}$/.test(arrival||'')&&/^\d{4}-\d{2}-\d{2}$/.test(departure||'')&&rules.highSeasonStart&&rules.highSeasonEnd){
+      const year=arrival.slice(0,4);
+      const start=`${year}-${rules.highSeasonStart}`, end=`${year}-${rules.highSeasonEnd}`;
+      overlaps=arrival<=end && departure>start;
+    }
+    if(overlaps===false) lines.push({
+      hu:`A megadott időszak nem esik a ${pct}%-os főszezoni felár időszakába.`,
+      de:`Der angegebene Zeitraum liegt nicht im Zeitraum des ${pct}%-Saisonaufschlags.`,
+      en:`The requested dates are outside the period with the ${pct}% high-season surcharge.`,
+      si:`Izbrani termin je zunaj obdobja ${pct}% sezonskega doplačila.`
+    }[lang]);
+    else if(overlaps===true) lines.push({
+      hu:`A megadott időszak érinti a ${pct}%-os főszezoni felár időszakát; ez a szállásdíjra vonatkozik, a dézsára nem.`,
+      de:`Der angegebene Zeitraum überschneidet sich mit dem ${pct}%-Saisonaufschlag; dieser gilt für die Unterkunft, nicht für das Badefass.`,
+      en:`The requested dates overlap the ${pct}% high-season surcharge period; it applies to accommodation, not to the hot tub.`,
+      si:`Izbrani termin se prekriva z obdobjem ${pct}% sezonskega doplačila; velja za nastanitev, ne za vročo kad.`
+    }[lang]);
+    else lines.push({
+      hu:`A főszezoni felár ${pct}%; a pontos alkalmazását a megadott dátumok alapján ellenőrizzük.`,
+      de:`Der Saisonaufschlag beträgt ${pct}%; die genaue Anwendung prüfen wir anhand der Reisedaten.`,
+      en:`The high-season surcharge is ${pct}%; its exact application will be checked against the requested dates.`,
+      si:`Sezonsko doplačilo znaša ${pct}%; natančno uporabo preverimo glede na izbrane datume.`
+    }[lang]);
+  }
+  if(asksTax&&rules&&Number.isFinite(Number(rules.tourismTaxAdultNightlyHuf))){
+    const tax=Number(rules.tourismTaxAdultNightlyHuf).toLocaleString('hu-HU');
+    lines.push({
+      hu:`Az idegenforgalmi adó jelenlegi beállított összege ${tax} Ft / felnőtt / éjszaka; a végösszegben ezt is külön ellenőrizzük.`,
+      de:`Die aktuell hinterlegte Kurtaxe beträgt ${tax} Ft pro Erwachsenem und Nacht; sie wird in der Gesamtsumme separat geprüft.`,
+      en:`The currently configured tourist tax is ${tax} HUF per adult per night; it will also be checked separately in the final total.`,
+      si:`Trenutno nastavljena turistična taksa je ${tax} HUF na odraslo osebo na noč; posebej jo preverimo tudi v končnem znesku.`
+    }[lang]);
+  }
+  if(asksAlternative) lines.push({
+    hu:'Ha a kért háztípus nem elérhető, megfelelő másik háztípust vagy több egységből álló megoldást is ellenőrzünk; ezt csak a tényleges szabad kapacitás alapján javasoljuk.',
+    de:'Falls der gewünschte Haustyp nicht verfügbar ist, prüfen wir auch einen passenden anderen Haustyp oder eine Kombination mehrerer Einheiten; einen Vorschlag machen wir erst anhand der tatsächlichen Verfügbarkeit.',
+    en:'If the requested cabin type is unavailable, we will also check another suitable cabin type or a combination of units; any suggestion will be based on actual availability.',
+    si:'Če želeni tip hiške ni na voljo, preverimo tudi drug primeren tip ali kombinacijo več enot; predlog podamo šele na podlagi dejanske razpoložljivosti.'
+  }[lang]);
+  return lines;
+}
+
+export function buildReplyDraft({language='hu',name=null,original='',arrival=null,departure=null,guests=null,children=null,childAges=[],phone=null,cabin='? – emberi döntésre vár',pier=false,hotTub=false,dog=false,intent='booking_request',brandName='Sárberki Horgásztó',bookingRules=null,operationalRules=null,pricingRules=null,knowledgeLines=[]}={}){
   const lang=language==='unknown'?'hu':language;
   const first=name?.trim()?.split(/\s+/u)?.slice(-1)[0]||null;
   const greetings={hu:first?`Kedves ${first}!`:'Kedves Vendégünk!',de:first?`Guten Tag ${first}!`:'Guten Tag!',en:first?`Dear ${first},`:'Dear Guest,',si:first?`Pozdravljeni ${first}!`:'Pozdravljeni!'};
@@ -314,6 +366,7 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const questions=replyQuestions(lang,{needPhone:!phone,needCabin,needChildAge:Boolean(children&&childAges.length<children)});
   const policyLines=bookingPolicyLines(lang,original,guests,bookingRules);
   const operationalLines=operationalTopicLines(lang,original,operationalRules);
+  const pricingLines=pricingTopicLines(lang,original,arrival,departure,pricingRules);
   const extraKnowledge=Array.isArray(knowledgeLines)?knowledgeLines.filter(Boolean):[];
   const asksAvailability=/(?:szabad|elérhető|van[- ]?e .*szállás|van.*hely|available|frei|prosto|verfügbar|razpolož)/iu.test(original);
   const asksPrice=/(?:mennyi|mennyibe|ár|ára|árat|price|cost|kosten|preis|cena)/iu.test(original);
@@ -323,5 +376,5 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
     en: asksAvailability||asksPrice?'We check availability and price separately and will only confirm them after a verified check.':'We will review the details provided and reply with any required information.',
     si: asksAvailability||asksPrice?'Razpoložljivost in ceno preverimo posebej in ju potrdimo šele po zanesljivem preverjanju.':'Preverili bomo navedene podatke in odgovorili s potrebnimi podrobnostmi.'
   };
-  return `${greetings[lang]}\n\n${intros[lang]}${summary?'\n\n'+summary:''}${policyLines.length?'\n\n'+policyLines.join('\n'):''}${operationalLines.length?'\n\n'+operationalLines.join('\n'):''}${extraKnowledge.length?'\n\n'+extraKnowledge.join('\n'):''}${questions.length?'\n\n'+questions.join(' '):''}\n\n${checks[lang]}\n\n${closings[lang]}\n${brandName}`;
+  return `${greetings[lang]}\n\n${intros[lang]}${summary?'\n\n'+summary:''}${policyLines.length?'\n\n'+policyLines.join('\n'):''}${operationalLines.length?'\n\n'+operationalLines.join('\n'):''}${pricingLines.length?'\n\n'+pricingLines.join('\n'):''}${extraKnowledge.length?'\n\n'+extraKnowledge.join('\n'):''}${questions.length?'\n\n'+questions.join(' '):''}\n\n${checks[lang]}\n\n${closings[lang]}\n${brandName}`;
 }
