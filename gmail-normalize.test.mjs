@@ -676,3 +676,11 @@ test('short guest emails keep the correct reply language',()=>{
   assert.equal(languageFromText('Pozdravljeni, 2 odrasla, Deluxe, 2 noči. Cena?'),'si');
   assert.equal(languageFromText('Szia, 2 felnőtt, Deluxe, 2 éjszaka. Mennyi az ára?'),'hu');
 });
+
+
+test('explicit total guest count beats earlier per-unit wording',()=>{
+  assert.equal(guestCountFromText('We need two cabins for 4 people each, 8 guests in total.'),8);
+  assert.equal(guestCountFromText('Két házban 4 fő lenne házanként, összesen 8 fő.'),8);
+  assert.equal(guestCountFromText('Pro Haus 4 Personen, insgesamt 8 Personen.'),8);
+  assert.equal(guestCountFromText('V vsaki hiški 4 osebe, skupaj 8 oseb.'),8);
+});
