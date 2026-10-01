@@ -14,9 +14,9 @@ export const fishing = Object.freeze({
 });
 
 export function fishingQuestion(text='', language='hu') {
-  if (!/horgász|hal(?:at|at fog|elvitel|ár)|ponty|csuka|süllő|harcsa|hor(?:og|got|gok)|szakállas|normál\s*tó|rekord\s*tó|angeln|fishing|fish(?:ing)? ticket|barbed|hook|mindestmaß|min(?:imum)?\s+(?:fish\s+)?size|ribolov|trnek/iu.test(text)) return null;
+  if (!/horgász|hal(?:at|at fog|elvitel|ár)|ponty|csuka|süllő|harcsa|hor(?:og|got|gok)|szakállas|normál\s*tó|rekord\s*tó|angeln|fishing|fish(?:ing)? ticket|barbed|hook|haken|widerhaken|mindestmaß|min(?:imum)?\s+(?:fish\s+)?size|ribolov|trnek|trnki|zalust/iu.test(text)) return null;
   const lang=['hu','de','en','si'].includes(language)?language:'hu';
-  const wantsHook=/(?:szakállas|szakáll nélküli|hor(?:og|got|gok)|barbed\s+hooks?|barbless\s+hooks?|haken|widerhaken|trnek)/iu.test(text);
+  const wantsHook=/(?:szakállas|szakáll nélküli|hor(?:og|got|gok)|barbed\s+hooks?|barbless\s+hooks?|haken|widerhaken|trnek|trnki|zalust)/iu.test(text);
   const wantsNormal24=/(?:normál(?:\s*tó)?|normal\s+lake|normalteich|normal\s+see|normalno\s+jezero)/iu.test(text)
     && /(?:24\s*(?:ór|h|hour|stunden|ur)|24-hour|napijegy|day\s*ticket|tageskarte)/iu.test(text);
   const wantsChild=/(?:gyermek|gyerek|child|children|kinder|otrok)/iu.test(text) && /(?:jegy|ticket|karte|vstopnic|ribolov)/iu.test(text);
