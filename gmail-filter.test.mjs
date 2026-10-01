@@ -100,3 +100,12 @@ test('parsed child ages are not falsely marked missing',()=>{
   assert.match(source,/childAges\.length < childCount/u);
   assert.doesNotMatch(source,/!\/\\d\+\\s\*\(\?:éves\|years\? old\|jahre alt\|let\)\/iu\.test\(original\)/u);
 });
+
+
+test('Gmail bridge can read HTML-only inquiries',()=>{
+  assert.match(source,/function htmlText\(part\)/u);
+  assert.match(source,/mimeType === 'text\/html'/u);
+  assert.match(source,/new DOMParser\(\)\.parseFromString/u);
+  assert.match(source,/return plainText\(part\) \|\| htmlText\(part\)/u);
+  assert.match(source,/readableBody\(message\.payload\)/u);
+});
