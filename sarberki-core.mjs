@@ -243,7 +243,62 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
   return lines;
 }
 
-export function buildReplyDraft({language='hu',name=null,original='',arrival=null,departure=null,guests=null,children=null,childAges=[],phone=null,cabin='? – emberi döntésre vár',pier=false,hotTub=false,dog=false,intent='booking_request',brandName='Sárberki Horgásztó',bookingRules=null}={}){
+
+function operationalTopicLines(language='hu',original='',rules=null){
+  if(!rules||!original) return [];
+  const lang=['hu','de','en','si'].includes(language)?language:'hu';
+  const asks={
+    electricity:/(?:áram|villany|mérőóra|electricity|power\s+consumption|strom|stromverbrauch|elektrik|elektrika)/iu.test(original),
+    firewood:/(?:tűzifa|tüzifa|firewood|brennholz|drva)/iu.test(original),
+    parking:/(?:parkol|parking|parkplatz|parkplätze|parkiriš|parkiris)/iu.test(original),
+    arrival:/(?:érkez|check[- ]?in|arriv|ankunft|anreise|prihod)[^.!?\n]{0,80}\d{1,2}[:.]\d{2}/iu.test(original),
+    departure:/(?:távoz|kijelentkez|check[- ]?out|what\s+time[^.!?\n]{0,40}(?:leave|departure)|abreise|abreisen|odhod)/iu.test(original),
+    returning:/(?:törzsvend|visszatérő|korábban[^.!?\n]{0,80}(?:száll|járt)|returning\s+guest|stayed[^.!?\n]{0,80}before|previous\s+stay|stammgast|schon[^.!?\n]{0,80}(?:bei\s+ihnen|übernachtet)|povratn|že[^.!?\n]{0,80}bivali)/iu.test(original)
+  };
+  const lines=[];
+  if(asks.electricity&&rules.electricitySettlement==='metered_separate') lines.push({
+    hu:'Az áramfogyasztás külön fizetendő a tényleges fogyasztás alapján; a pontos végösszeg a mérőállás után állapítható meg.',
+    de:'Der Stromverbrauch wird separat nach dem tatsächlichen Verbrauch berechnet; der genaue Betrag steht erst nach dem Ablesen des Zählers fest.',
+    en:'Electricity is charged separately according to actual consumption; the exact amount can only be determined after the meter is read.',
+    si:'Elektrika se obračuna posebej glede na dejansko porabo; natančen znesek je mogoče določiti šele po odčitku števca.'
+  }[lang]);
+  if(asks.firewood&&rules.firewood==='surcharge_price_unverified') lines.push({
+    hu:'Tűzifa elérhető felár ellenében; a pontos díjat még kezelői ellenőrzéssel kell megerősíteni.',
+    de:'Brennholz ist gegen Aufpreis erhältlich; der genaue Preis muss noch vom Betreiber bestätigt werden.',
+    en:'Firewood is available for an additional charge; the exact fee still needs to be confirmed by the operator.',
+    si:'Drva so na voljo z doplačilom; natančno ceno mora še potrditi upravljavec.'
+  }[lang]);
+  if(asks.parking&&rules.parking==='available_large_group_review') lines.push({
+    hu:'Parkolási lehetőség biztosított; több autó esetén a rendelkezésre álló helyet külön ellenőrizzük.',
+    de:'Parkmöglichkeiten sind vorhanden; bei mehreren Fahrzeugen prüfen wir die verfügbaren Stellplätze separat.',
+    en:'Parking is available; for several vehicles we will confirm the available spaces separately.',
+    si:'Parkiranje je na voljo; pri več vozilih posebej preverimo razpoložljiva parkirna mesta.'
+  }[lang]);
+  if(asks.arrival&&rules.reception24h&&rules.confirmedLateArrivalExample) lines.push({
+    hu:`A ${rules.confirmedLateArrivalExample}-as érkezés megoldható; 24 órás portaszolgálat működik.`,
+    de:`Eine Anreise gegen ${rules.confirmedLateArrivalExample} ist möglich; es gibt einen 24-Stunden-Portierdienst.`,
+    en:`Arrival at around ${rules.confirmedLateArrivalExample} is possible; there is 24-hour reception/porter service.`,
+    si:`Prihod okoli ${rules.confirmedLateArrivalExample} je mogoč; na voljo je 24-urna receptorska/portirska služba.`
+  }[lang]);
+  if(asks.departure&&rules.checkoutBy) lines.push({
+    hu:`A szállást a távozás napján ${rules.checkoutBy}-ig kell elhagyni.`,
+    de:`Am Abreisetag ist die Unterkunft bis ${rules.checkoutBy} Uhr zu verlassen.`,
+    en:`On the day of departure, the accommodation must be vacated by ${rules.checkoutBy}.`,
+    si:`Na dan odhoda je treba nastanitev zapustiti do ${rules.checkoutBy}.`
+  }[lang]);
+  if(asks.returning&&Number.isFinite(Number(rules.returningGuestDiscountPct))&&Number.isFinite(Number(rules.returningGuestLookbackDays))){
+    const pct=Number(rules.returningGuestDiscountPct),days=Number(rules.returningGuestLookbackDays);
+    lines.push({
+      hu:`A visszatérő vendég kedvezmény lehetséges mértéke ${pct}%, ha az előző tartózkodás utolsó napja ${days} napon belül volt és a vendég szerepel a vendégkönyvben. Ezt a korábbi foglalás alapján külön ellenőrizni kell; a kedvezményt most nem alkalmazzuk automatikusan.`,
+      de:`Für wiederkehrende Gäste kann ein Rabatt von ${pct}% gelten, wenn der letzte Aufenthalt höchstens ${days} Tage zurückliegt und der Gast im Gästebuch geführt wird. Dies muss anhand der früheren Buchung separat geprüft werden; der Rabatt wird nicht automatisch angewendet.`,
+      en:`A returning-guest discount of ${pct}% may apply if the last day of the previous stay was within ${days} days and the guest is recorded in the guest book. This must be checked against the previous booking; the discount is not applied automatically.`,
+      si:`Za povratne goste je lahko na voljo ${pct}% popust, če je bil zadnji dan prejšnjega bivanja v zadnjih ${days} dneh in je gost vpisan v knjigo gostov. To je treba posebej preveriti po prejšnji rezervaciji; popust se ne uporabi samodejno.`
+    }[lang]);
+  }
+  return lines;
+}
+
+export function buildReplyDraft({language='hu',name=null,original='',arrival=null,departure=null,guests=null,children=null,childAges=[],phone=null,cabin='? – emberi döntésre vár',pier=false,hotTub=false,dog=false,intent='booking_request',brandName='Sárberki Horgásztó',bookingRules=null,operationalRules=null,knowledgeLines=[]}={}){
   const lang=language==='unknown'?'hu':language;
   const first=name?.trim()?.split(/\s+/u)?.slice(-1)[0]||null;
   const greetings={hu:first?`Kedves ${first}!`:'Kedves Vendégünk!',de:first?`Guten Tag ${first}!`:'Guten Tag!',en:first?`Dear ${first},`:'Dear Guest,',si:first?`Pozdravljeni ${first}!`:'Pozdravljeni!'};
@@ -258,6 +313,8 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const needCabin=!cabin||String(cabin).startsWith('?');
   const questions=replyQuestions(lang,{needPhone:!phone,needCabin,needChildAge:Boolean(children&&childAges.length<children)});
   const policyLines=bookingPolicyLines(lang,original,guests,bookingRules);
+  const operationalLines=operationalTopicLines(lang,original,operationalRules);
+  const extraKnowledge=Array.isArray(knowledgeLines)?knowledgeLines.filter(Boolean):[];
   const asksAvailability=/(?:szabad|elérhető|van[- ]?e .*szállás|van.*hely|available|frei|prosto|verfügbar|razpolož)/iu.test(original);
   const asksPrice=/(?:mennyi|mennyibe|ár|ára|árat|price|cost|kosten|preis|cena)/iu.test(original);
   const checks={
@@ -266,5 +323,5 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
     en: asksAvailability||asksPrice?'We check availability and price separately and will only confirm them after a verified check.':'We will review the details provided and reply with any required information.',
     si: asksAvailability||asksPrice?'Razpoložljivost in ceno preverimo posebej in ju potrdimo šele po zanesljivem preverjanju.':'Preverili bomo navedene podatke in odgovorili s potrebnimi podrobnostmi.'
   };
-  return `${greetings[lang]}\n\n${intros[lang]}${summary?'\n\n'+summary:''}${policyLines.length?'\n\n'+policyLines.join('\n'):''}${questions.length?'\n\n'+questions.join(' '):''}\n\n${checks[lang]}\n\n${closings[lang]}\n${brandName}`;
+  return `${greetings[lang]}\n\n${intros[lang]}${summary?'\n\n'+summary:''}${policyLines.length?'\n\n'+policyLines.join('\n'):''}${operationalLines.length?'\n\n'+operationalLines.join('\n'):''}${extraKnowledge.length?'\n\n'+extraKnowledge.join('\n'):''}${questions.length?'\n\n'+questions.join(' '):''}\n\n${checks[lang]}\n\n${closings[lang]}\n${brandName}`;
 }
