@@ -13,7 +13,7 @@ export function validateQuote(input) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(arrival || '') || !/^\d{4}-\d{2}-\d{2}$/.test(departure || '')) throw Error('Pontos érkezési és távozási dátum szükséges.');
   const start = new Date(arrival + 'T00:00:00Z'), end = new Date(departure + 'T00:00:00Z');
   if (!Number.isFinite(+start) || !Number.isFinite(+end) || start.toISOString().slice(0,10) !== arrival || end.toISOString().slice(0,10) !== departure || end <= start || start < new Date(new Date().toISOString().slice(0,10)+'T00:00:00Z')) throw Error('Érvényes, jövőbeli tartózkodást adj meg.');
-  if (!TYPES[cabin]) throw Error('Pontos, támogatott háztípus szükséges.');
+  if (!Object.prototype.hasOwnProperty.call(BUSINESS.accommodationTypes,cabin)) throw Error('Pontos, támogatott háztípus szükséges.');
   if (!Number.isInteger(adults) || adults < 1 || adults > 40 || !Array.isArray(children) || children.some(a => !Number.isInteger(a) || a < 0 || a > 17)) throw Error('Add meg a felnőttek számát és minden gyermek életkorát.');
   if (!Number.isInteger(units) || units < 1 || units > 10) throw Error('Az egységek száma 1 és 10 közötti egész szám lehet.');
   if (adults > MAX_ADULTS[cabin] * units) throw Error('A kért felnőtt létszám meghaladja a megadott egységszám ellenőrzött kapacitását.');
