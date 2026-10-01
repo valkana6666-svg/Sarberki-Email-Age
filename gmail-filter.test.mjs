@@ -94,3 +94,9 @@ test('Gmail bridge has one canonical date parser', () => {
 
 
 test('Gmail record exposes canonical normalized fields for UI',()=>{assert.match(source,/normalized:\{language,cabin:cabinFromGuestText\(original\),dates:normalizedDate,guests:count,children:childCount,child_ages:childAges,phone,hot_tub:hotTub,dog,pier_requested:pier,hot_tub_requested:hotTub,pet_requested:dog\}/u);});
+
+
+test('parsed child ages are not falsely marked missing',()=>{
+  assert.match(source,/childAges\.length < childCount/u);
+  assert.doesNotMatch(source,/!\/\\d\+\\s\*\(\?:éves\|years\? old\|jahre alt\|let\)\/iu\.test\(original\)/u);
+});
