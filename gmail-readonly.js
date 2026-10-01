@@ -3,6 +3,7 @@
   'use strict';
   const { cabinFromText, guestCountFromText, childCountFromText, dateRangeFromText, phoneFromText, childAgesFromText, pierPreferenceFromText, languageFromText, buildReplyDraft } = await import('./sarberki-core.mjs');
   const { BUSINESS } = await import('./business-config.mjs');
+  const { fishingQuestion } = await import('./fishing-rules.mjs');
   const { isApprovedSubject } = await import('./gmail-subject.mjs');
   // V1 live-read mode: broad inbox read, then conservative local inquiry classification.
   // No sender restriction, no exact subject allowlist, no send/modify permission.
@@ -155,7 +156,8 @@
     if (cabinFromGuestText(original).startsWith('?')) humanReview.push('A vendég háztípust nem választott; létszámból nem szabad kiválasztani');
     humanReview.push('Szabad hely és ár nincs igazolva');
     const language = languageFromText(original);
-    const replyDraft = buildReplyDraft({language,name,original,arrival:normalizedDate?.arrival,departure:normalizedDate?.departure,guests:count,children:childCount,childAges,phone,cabin:cabinFromGuestText(original),pier,hotTub,dog,intent:'booking_request',brandName:BUSINESS.brandName,bookingRules:BUSINESS.bookingRules,operationalRules:BUSINESS.operationalRules});
+    const fishingInfo = fishingQuestion(original,language);
+    const replyDraft = buildReplyDraft({language,name,original,arrival:normalizedDate?.arrival,departure:normalizedDate?.departure,guests:count,children:childCount,childAges,phone,cabin:cabinFromGuestText(original),pier,hotTub,dog,intent:'booking_request',brandName:BUSINESS.brandName,bookingRules:BUSINESS.bookingRules,operationalRules:BUSINESS.operationalRules,knowledgeLines:fishingInfo?[fishingInfo.answer]:[]});
     return {source:{provider:'gmail',message_id:message.id,thread_id:message.threadId,subject:headers.subject || '',from:headers.from || '',from_email:emailAddress(headers.from || ''),to:headers.to || '',received_at:received.toISOString()},original_message:original,normalized:{language,cabin:cabinFromGuestText(original),dates:normalizedDate,guests:count,children:childCount,child_ages:childAges,phone,hot_tub:hotTub,dog,pier_requested:pier,hot_tub_requested:hotTub,pet_requested:dog},extracted,inferred,missing,human_review:humanReview,reply_draft:replyDraft};
   }
   async function readWithToken(token) {
