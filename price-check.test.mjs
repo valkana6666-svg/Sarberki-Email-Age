@@ -94,3 +94,14 @@ test('Slovenian family cabin wording reaches pricing',()=>{
   assert.match(source,/družinsk\\w\*\\s\+\(\?:hišk/u);
   assert.match(source,/koč\\w\*/u);
 });
+
+
+test('Gmail normalized facts override weaker UI extraction and contradiction review blocks auto quote',()=>{
+ assert.match(source,/function gmailNormalizedRecord\(\)/u);
+ assert.match(source,/const normalized=gmailRecord\?\.normalized\|\|\{\}/u);
+ assert.match(source,/normalized\.dates\?\.arrival/u);
+ assert.match(source,/normalized\.adults/u);
+ assert.match(source,/normalized\.child_ages/u);
+ assert.match(source,/gmailRecord\?\.human_review/u);
+ assert.match(source,/gmailConflict/u);
+});
