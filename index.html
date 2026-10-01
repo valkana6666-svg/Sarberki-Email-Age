@@ -34,7 +34,9 @@ footer{font-size:13px;color:#a5a5a5}
 <script src="https://accounts.google.com/gsi/client" async defer></script><script type="module">
 import {cabinFromText,guestCountFromText,childCountFromText,dateRangeFromText,phoneFromText as sharedPhoneFromText,childAgesFromText as sharedChildAgesFromText,languageFromText,buildReplyDraft} from './sarberki-core.mjs';
 import {BUSINESS} from './business-config.mjs';
+import {fishingQuestion} from './fishing-rules.mjs';
 window.SarberkiConfig=BUSINESS;
+window.SarberkiFishingQuestion=fishingQuestion;
 window.SarberkiNormalize={cabinFromText,guestCountFromText,childCountFromText,dateRangeFromText,phoneFromText:sharedPhoneFromText,childAgesFromText:sharedChildAgesFromText,languageFromText,buildReplyDraft};
 </script><script>
 /*
@@ -165,7 +167,9 @@ function extract(s,sender){
 function addEvent(type){record.events.push({time:new Date().toISOString(),type});$('events').textContent=record.events.map(x=>`${x.time} · ${x.type}`).join('\n')}
 function getValues(){let o={};for(let k of Object.keys(labels))o[k]=$('f_'+k).value.trim();return o}
 function draft(v,intent='booking_request',analysis=null){
- const sharedDraft=window.SarberkiNormalize?.buildReplyDraft?.({language:(v.language||'HU').toLowerCase()==='sl'?'si':(v.language||'HU').toLowerCase(),name:v.name||null,original:(record?.original||''),arrival:v.arrival||null,departure:v.departure||null,guests:v.guests?Number(v.guests):null,children:v.children?Number(v.children):0,childAges:v.child_ages?String(v.child_ages).split(',').map(x=>Number(x.trim())).filter(Number.isFinite):[],phone:phoneFromText(record?.original||'')||null,cabin:v.unit||'? – emberi döntésre vár',pier:/(?:stég|pier)/iu.test(record?.original||''),hotTub:Boolean(analysis?.topics?.hot_tub_requested),dog:Boolean(analysis?.topics?.pet_requested),intent,brandName:window.SarberkiConfig?.brandName||'Sárberki Horgásztó',bookingRules:window.SarberkiConfig?.bookingRules||null,operationalRules:window.SarberkiConfig?.operationalRules||null});
+ const sharedLang=(v.language||'HU').toLowerCase()==='sl'?'si':(v.language||'HU').toLowerCase();
+ const fishingInfo=window.SarberkiFishingQuestion?.(record?.original||'',sharedLang);
+ const sharedDraft=window.SarberkiNormalize?.buildReplyDraft?.({language:sharedLang,name:v.name||null,original:(record?.original||''),arrival:v.arrival||null,departure:v.departure||null,guests:v.guests?Number(v.guests):null,children:v.children?Number(v.children):0,childAges:v.child_ages?String(v.child_ages).split(',').map(x=>Number(x.trim())).filter(Number.isFinite):[],phone:phoneFromText(record?.original||'')||null,cabin:v.unit||'? – emberi döntésre vár',pier:/(?:stég|pier)/iu.test(record?.original||''),hotTub:Boolean(analysis?.topics?.hot_tub_requested),dog:Boolean(analysis?.topics?.pet_requested),intent,brandName:window.SarberkiConfig?.brandName||'Sárberki Horgásztó',bookingRules:window.SarberkiConfig?.bookingRules||null,operationalRules:window.SarberkiConfig?.operationalRules||null,knowledgeLines:fishingInfo?[fishingInfo.answer]:[]});
  if(sharedDraft)return sharedDraft;
  const texts={DE:'Guten Tag!\\n\\nVielen Dank für Ihre Nachricht. Wir prüfen Ihre Anfrage und melden uns mit den Einzelheiten bei Ihnen.\\n\\nMit freundlichen Grüßen\\nSárberki Horgásztó',SL:'Pozdravljeni!\\n\\nHvala za vaše sporočilo. Vaše povpraševanje bomo preverili in vam odgovorili s podrobnostmi.\\n\\nLep pozdrav,\\nSárberki Horgásztó',EN:'Hello!\\n\\nThank you for your message. We will review your enquiry and reply with the details.\\n\\nKind regards,\\nSárberki Horgásztó'};
  if(v.language!=='HU')return (texts[v.language]||texts.EN).replace(/\\n/g,'\n');
