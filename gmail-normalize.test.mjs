@@ -460,3 +460,57 @@ Kérem írják meg, mennyi előleget kell fizetni, hány napon belül kell átut
   assert.match(draft,/10 napon belül/u);
   assert.match(draft,/14 nap/u);
 });
+
+
+test('booking policy answers stay equivalent in DE EN SI',()=>{
+  const rules={
+    depositPct:50,
+    depositDueDays:10,
+    cancellationDaysUnder15Guests:14,
+    cancellationDaysFrom15Guests:30
+  };
+  const cases=[
+    ['de','Wie hoch ist die Anzahlung, wann muss sie bezahlt werden und was sind die Stornierungsbedingungen?',8,/50%.*10 Tagen.*14 Tage/su],
+    ['en','How much deposit is required, when must it be paid, and what are the cancellation conditions?',8,/50%.*10 days.*14 days/su],
+    ['si','Kolikšno predplačilo je potrebno, kdaj ga moramo plačati in kakšni so pogoji odpovedi?',8,/50%.*10 dneh.*14 dni/su]
+  ];
+  for(const [language,original,guests,pattern] of cases){
+    const draft=buildReplyDraft({
+      language,
+      original,
+      arrival:'2026-11-12',
+      departure:'2026-11-16',
+      guests,
+      children:0,
+      childAges:[],
+      phone:'+36 30 555 1234',
+      cabin:'Deluxe',
+      intent:'booking_request',
+      bookingRules:rules
+    });
+    assert.match(draft,pattern,language);
+  }
+});
+
+test('15+ guest cancellation threshold is localized consistently',()=>{
+  const rules={
+    depositPct:80,
+    depositDueDays:10,
+    cancellationDaysUnder15Guests:14,
+    cancellationDaysFrom15Guests:30
+  };
+  for(const language of ['hu','de','en','si']){
+    const original={
+      hu:'Mik a foglalási feltételek és a lemondási szabályok?',
+      de:'Was sind die Buchungsbedingungen und Stornierungsbedingungen?',
+      en:'What are the booking conditions and cancellation terms?',
+      si:'Kakšni so rezervacijski pogoji in pogoji odpovedi?'
+    }[language];
+    const draft=buildReplyDraft({
+      language,original,arrival:'2026-11-12',departure:'2026-11-16',
+      guests:15,children:0,childAges:[],phone:'+36 30 555 1234',
+      cabin:'Deluxe',intent:'booking_request',bookingRules:rules
+    });
+    assert.match(draft,/30 (?:nap|Tage|days|dni)/u,language);
+  }
+});
