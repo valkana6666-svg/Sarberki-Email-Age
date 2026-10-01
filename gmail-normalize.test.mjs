@@ -661,7 +661,7 @@ test('cross-month ranges keep both months in EN DE SI and year rollover',()=>{
   assert.deepEqual(dateRangeFromText('October 30 to November 2, 2026',now),{arrival:'2026-10-30',departure:'2026-11-02',inferredYear:false});
   assert.deepEqual(dateRangeFromText('30. Oktober bis 2. November 2026',now),{arrival:'2026-10-30',departure:'2026-11-02',inferredYear:false});
   assert.deepEqual(dateRangeFromText('od 30. oktobra do 2. novembra 2026',now),{arrival:'2026-10-30',departure:'2026-11-02',inferredYear:false});
-  assert.deepEqual(dateRangeFromText('December 30 to January 2, 2027',now),{arrival:'2027-12-30',departure:'2027-01-02',inferredYear:false});
+  assert.deepEqual(dateRangeFromText('December 30 to January 2, 2027',now),{arrival:'2026-12-30',departure:'2027-01-02',inferredYear:false});
 });
 
 test('Slovenian family cabin wording maps to Családi',()=>{
