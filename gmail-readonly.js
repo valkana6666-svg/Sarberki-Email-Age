@@ -148,7 +148,7 @@
     if (!normalizedDate) missing.push('Pontos érkezési és távozási dátum');
     if (normalizedDate?.inferredYear && !inferred.some(x => x.label === 'Év')) inferred.push({label:'Év',value:`${normalizedDate.arrival.slice(0,4)}, a feldolgozás napja alapján következtetve; emberi ellenőrzés szükséges`});
     if (!count) missing.push('Vendégek száma');
-    if (childCount && !/\d+\s*(?:éves|years? old|jahre alt|let)/iu.test(original)) missing.push('Gyermek életkora');
+    if (childCount && childAges.length < childCount) missing.push('Gyermek életkora');
     if (!phone) missing.push('Telefonszám');
     missing.push('Kapacitás és ár csak külön, hiteles ellenőrzéssel állapítható meg');
     const reviewYear = normalizedDate?.inferredYear ? Number(normalizedDate.arrival.slice(0,4)) : null;
