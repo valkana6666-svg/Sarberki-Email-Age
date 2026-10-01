@@ -196,15 +196,39 @@ function bookingQuestionFlags(text=''){
   const cancellation=general||/(?:lemondási\s+(?:feltétel|szabály|határidő)|meddig[^.!?\n]{0,60}lemond|hány\s+nap[^.!?\n]{0,60}lemond|cancellation\s+(?:conditions|terms)|stornierungsbedingungen)/iu.test(text);
   return {general,depositAmount,depositDeadline,cancellation};
 }
-function huBookingPolicyLines(original='',guests=null,rules=null){
+function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
   if(!rules) return [];
   const q=bookingQuestionFlags(original), lines=[];
-  if(q.depositAmount&&Number.isFinite(Number(rules.depositPct))) lines.push(`A foglaláshoz ${Number(rules.depositPct)}% előleg szükséges.`);
-  if(q.depositDeadline&&Number.isFinite(Number(rules.depositDueDays))) lines.push(`Az előleget a foglalási szándék rögzítésétől számított ${Number(rules.depositDueDays)} napon belül kell befizetni; ha ez határidőn belül nem érkezik meg, a foglalást töröljük.`);
+  const lang=['hu','de','en','si'].includes(language)?language:'hu';
+  if(q.depositAmount&&Number.isFinite(Number(rules.depositPct))){
+    const pct=Number(rules.depositPct);
+    lines.push({
+      hu:`A foglaláshoz ${pct}% előleg szükséges.`,
+      de:`Für die Buchung ist eine Anzahlung von ${pct}% erforderlich.`,
+      en:`A ${pct}% deposit is required for the booking.`,
+      si:`Za rezervacijo je potrebno ${pct}% predplačilo.`
+    }[lang]);
+  }
+  if(q.depositDeadline&&Number.isFinite(Number(rules.depositDueDays))){
+    const days=Number(rules.depositDueDays);
+    lines.push({
+      hu:`Az előleget a foglalási szándék rögzítésétől számított ${days} napon belül kell befizetni; ha ez határidőn belül nem érkezik meg, a foglalást töröljük.`,
+      de:`Die Anzahlung muss innerhalb von ${days} Tagen nach Erfassung der Buchungsabsicht eingehen; andernfalls wird die Buchung storniert.`,
+      en:`The deposit must be paid within ${days} days after the booking request is recorded; if it is not received by then, the booking is cancelled.`,
+      si:`Predplačilo mora biti poravnano v ${days} dneh po evidentiranju namere rezervacije; če ga do takrat ne prejmemo, se rezervacija prekliče.`
+    }[lang]);
+  }
   if(q.cancellation&&Number.isFinite(Number(guests))){
     const g=Number(guests);
     const days=g<15?Number(rules.cancellationDaysUnder15Guests):Number(rules.cancellationDaysFrom15Guests);
-    if(Number.isFinite(days)) lines.push(`${g<15?'15 fő alatti':'15 fő vagy nagyobb'} foglalásnál a lemondási határidő az érkezés előtt ${days} nap.`);
+    if(Number.isFinite(days)){
+      lines.push({
+        hu:`${g<15?'15 fő alatti':'15 fő vagy nagyobb'} foglalásnál a lemondási határidő az érkezés előtt ${days} nap.`,
+        de:`Bei Buchungen ${g<15?'mit weniger als 15 Personen':'ab 15 Personen'} beträgt die Stornierungsfrist ${days} Tage vor der Anreise.`,
+        en:`For bookings ${g<15?'with fewer than 15 guests':'of 15 guests or more'}, the cancellation deadline is ${days} days before arrival.`,
+        si:`Pri rezervacijah ${g<15?'za manj kot 15 oseb':'za 15 oseb ali več'} je rok za odpoved ${days} dni pred prihodom.`
+      }[lang]);
+    }
   }
   return lines;
 }
@@ -223,7 +247,7 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const summary=replySummary(lang,{arrival,departure,guests,children,childAges,pier,hotTub,dog});
   const needCabin=!cabin||String(cabin).startsWith('?');
   const questions=replyQuestions(lang,{needPhone:!phone,needCabin,needChildAge:Boolean(children&&childAges.length<children)});
-  const policyLines=lang==='hu'?huBookingPolicyLines(original,guests,bookingRules):[];
+  const policyLines=bookingPolicyLines(lang,original,guests,bookingRules);
   const asksAvailability=/(?:szabad|elérhető|van[- ]?e .*szállás|van.*hely|available|frei|prosto|verfügbar|razpolož)/iu.test(original);
   const asksPrice=/(?:mennyi|mennyibe|ár|ára|árat|price|cost|kosten|preis|cena)/iu.test(original);
   const checks={
