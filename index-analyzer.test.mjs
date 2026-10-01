@@ -46,3 +46,12 @@ test('reply engine answers only actual guest questions while confirming core boo
  assert.match(source,/A kért háztípus:/u);
  assert.match(source,/A vendégek összetétele:/u);
 });
+
+
+test('manual UI and Gmail bridge use the same shared Sarberki core',()=>{
+ assert.match(source,/from '\.\/sarberki-core\.mjs'/u);
+ const gmail=fs.readFileSync(new URL('./gmail-readonly.js',import.meta.url),'utf8');
+ assert.match(gmail,/import\('\.\/sarberki-core\.mjs'\)/u);
+ const alias=fs.readFileSync(new URL('./gmail-normalize.mjs',import.meta.url),'utf8');
+ assert.match(alias,/export \* from '\.\/sarberki-core\.mjs'/u);
+});
