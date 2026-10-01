@@ -11,7 +11,10 @@ export const BUSINESS = Object.freeze({
     deluxe: Object.freeze({label:'Deluxe', bookingName:'DELUXE faház', maxAdults:6, maxGuests:6}),
     family: Object.freeze({label:'Családi', bookingName:'Családi faház', maxAdults:8, maxGuests:8}),
     vip: Object.freeze({label:'VIP', bookingName:'VIP apartman', maxAdults:7, maxGuests:7}),
-    small: Object.freeze({label:'Különálló 2 fős', bookingName:'Különálló 2 fős faház', maxAdults:2, maxGuests:2})
+    small: Object.freeze({label:'Különálló 2 fős', bookingName:'Különálló 2 fős faház', maxAdults:2, maxGuests:2}),
+    splitA: Object.freeze({label:'Osztott A', bookingName:null, maxAdults:2, maxGuests:2, splitUnit:'A', previoMappingVerified:false}),
+    splitB: Object.freeze({label:'Osztott B', bookingName:null, maxAdults:2, maxGuests:2, splitUnit:'B', previoMappingVerified:false}),
+    splitC: Object.freeze({label:'Osztott C', bookingName:null, maxAdults:5, maxGuests:5, splitUnit:'C', previoMappingVerified:false})
   }),
   bookingProvider: Object.freeze({
     kind: 'previo-public-booking',
