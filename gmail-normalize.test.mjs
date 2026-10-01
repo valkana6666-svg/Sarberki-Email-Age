@@ -668,3 +668,11 @@ test('Slovenian family cabin wording maps to Családi',()=>{
   assert.equal(cabinFromText('Želeli bi družinsko hiško.'),'Családi');
   assert.equal(cabinFromText('Zanima nas družinska nastanitev.'),'Családi');
 });
+
+
+test('short guest emails keep the correct reply language',()=>{
+  assert.equal(languageFromText('Hi, 2 adults, Deluxe, 2 nights. Price please?'),'en');
+  assert.equal(languageFromText('Hallo, 2 Erwachsene, Deluxe, 2 Nächte. Preis bitte?'),'de');
+  assert.equal(languageFromText('Pozdravljeni, 2 odrasla, Deluxe, 2 noči. Cena?'),'si');
+  assert.equal(languageFromText('Szia, 2 felnőtt, Deluxe, 2 éjszaka. Mennyi az ára?'),'hu');
+});
