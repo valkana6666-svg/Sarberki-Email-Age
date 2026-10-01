@@ -41,8 +41,8 @@ test('Gmail bridge enforces the predicate after inbox listing', () => {
   assert.equal(source.includes('gmail.modify'), false);
 });
 
-test('Gmail bridge imports multilingual normalization helpers', () => {
-  assert.match(source, /import\('\.\/gmail-normalize\.mjs'\)/u);
+test('Gmail bridge imports the shared Sárberki core helpers', () => {
+  assert.match(source, /import\('\.\/sarberki-core\.mjs'\)/u);
   assert.match(source, /guestCountFromText\(original\)/u);
   assert.match(source, /childCountFromText\(original\)/u);
   assert.match(source, /dateRangeFromText\(original\)/u);
