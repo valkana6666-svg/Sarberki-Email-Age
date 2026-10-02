@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {validateQuote} from './price-quote.mjs';
-import {cabinFromText as sharedCabinFromText,guestCountFromText as sharedGuestCountFromText,adultCountFromText as sharedAdultCountFromText,childCountFromText as sharedChildCountFromText,dateRangeFromText as sharedDateRangeFromText,childAgesFromText as sharedChildAgesFromText,phoneFromText as sharedPhoneFromText,languageFromText as sharedLanguageFromText} from './sarberki-core.mjs';
+import {childAgesFromText as sharedChildAgesFromText} from './sarberki-core.mjs';
 
 const html=fs.readFileSync(new URL('./index.html',import.meta.url),'utf8');
 const pricing=fs.readFileSync(new URL('./price-check.js',import.meta.url),'utf8');
@@ -18,7 +18,7 @@ function harness(message,reply){
  };
  const document={getElementById:id=>id==='price_approval_panel'&&!nodes.has(id)?null:element(id),createElement:()=>({id:'',className:'',innerHTML:''}),addEventListener:(type,fn)=>listeners.set(type,fn)};
  element('gmail_record').classList.contains=()=>true;
- const context=vm.createContext({document,window:{SarberkiConfig:{timezone:'Europe/Budapest'},SarberkiNormalize:{cabinFromText:sharedCabinFromText,guestCountFromText:sharedGuestCountFromText,adultCountFromText:sharedAdultCountFromText,childCountFromText:sharedChildCountFromText,dateRangeFromText:sharedDateRangeFromText,childAgesFromText:sharedChildAgesFromText,phoneFromText:sharedPhoneFromText,languageFromText:sharedLanguageFromText},addEventListener(){}},console,Date,Intl,Number,JSON,setTimeout:fn=>fn(),fetch:async(_url,options)=>{
+ const context=vm.createContext({document,window:{SarberkiNormalize:{childAgesFromText:sharedChildAgesFromText},addEventListener(){}},console,Date,Intl,Number,JSON,setTimeout:fn=>fn(),fetch:async(_url,options)=>{
   calls++;
   assert.equal(options.method,'POST');
   const input=validateQuote(JSON.parse(options.body));
