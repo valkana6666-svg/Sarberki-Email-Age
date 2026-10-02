@@ -693,3 +693,14 @@ test('adult count parser reads all supported languages',async()=>{
   assert.equal(adultCountFromText('5 Erwachsene und 3 Kinder'),5);
   assert.equal(adultCountFromText('5 odraslih in 3 otroci'),5);
 });
+
+
+test('European numeric date ranges work in German and Slovenian style',()=>{
+  const now=new Date('2026-10-02T12:00:00Z');
+  assert.deepEqual(dateRangeFromText('Wir möchten vom 16.10.2026 bis 18.10.2026 bleiben.',now),{
+    arrival:'2026-10-16',departure:'2026-10-18',inferredYear:false
+  });
+  assert.deepEqual(dateRangeFromText('Bivali bi od 16.10.2026 do 18.10.2026.',now),{
+    arrival:'2026-10-16',departure:'2026-10-18',inferredYear:false
+  });
+});
