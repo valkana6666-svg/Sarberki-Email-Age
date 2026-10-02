@@ -207,14 +207,22 @@
     }
 
     if(asked.pet) lines.push('','A kisebb kutyával kapcsolatos kérését is feljegyeztük. Háziállat térítés ellenében hozható; a pontos díjat ellenőrizzük.');
-    if(asked.hotTub) lines.push('','A dézsa rendelkezésre állását is ellenőrizzük a kért időszakra.');
+    if(asked.hotTub){
+      if(/deluxe/iu.test(String(v.unit||''))) lines.push('','A Deluxe házakhoz dézsa tartozik; a kért időszak szabad kapacitását a foglalási felületen ellenőrizzük.');
+      else lines.push('','A dézsa rendelkezésre állását is ellenőrizzük a kért időszakra.');
+    }
 
     if(asked.amenities) lines.push('','A felszereltséggel kapcsolatban a levélben feltett kérdésre külön, a kiválasztott háztípus biztos adatai alapján válaszolunk.');
     if(asked.deposit) lines.push('','Az előlegre vonatkozó kérdést a foglalási feltételek alapján külön ellenőrizzük és pontosan megválaszoljuk.');
     if(asked.cancellation) lines.push('','A lemondási feltételekre vonatkozó kérdést a foglalás létszáma és időpontja alapján külön megválaszoljuk.');
     if(asked.electricity) lines.push('','Az áramfogyasztással kapcsolatos kérdést a mérőállásos elszámolási szabály alapján külön megválaszoljuk.');
     if(asked.firewood) lines.push('','A tűzifával kapcsolatos kérdést külön megválaszoljuk; pontos díjat csak hitelesített adat alapján írunk.');
-    if(asked.pier) lines.push('','A stéghasználatot a kiválasztott háztípus alapján pontosítjuk.');
+    if(asked.pier){
+      if(/deluxe/iu.test(String(v.unit||''))) lines.push('','A Deluxe házhoz saját stég tartozik.');
+      else if(/osztott/iu.test(String(v.unit||''))) lines.push('','Az Osztott háznál a C egységhez külön stég tartozik, az A és B egység közös stéget használ.');
+      else if(/vip|családi/iu.test(String(v.unit||''))) lines.push('','A kiválasztott házhoz stég tartozik.');
+      else lines.push('','A stéghasználatot a kiválasztott háztípus alapján pontosítjuk.');
+    }
     if(asked.parking) lines.push('','A parkolási lehetőséget a megadott autószám és háztípus alapján pontosítjuk.');
     if(asked.arrivalTime) lines.push('','A megadott érkezési időpontot is figyelembe vettük, és visszaigazoljuk, hogy az adott érkezési idő megfelelő-e.');
 
