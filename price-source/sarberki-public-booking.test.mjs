@@ -59,7 +59,7 @@ test('two units return a reconciled per-unit breakdown and require two free unit
 });
 test('no capacity never requests a price',async()=>{
  const m=mock({free:0});const quote=await fetchPublicBookingQuote(base,m.request);
- assert.equal(quote.status,'unavailable');assert.equal(quote.total,undefined);assert.equal(m.calls.length,3);
+ assert.equal(quote.status,'unavailable');assert.equal(quote.availableUnits,0);assert.equal(quote.total,undefined);assert.equal(m.calls.length,3);
 });
 test('invalid input, unknown price and source error fail without a quote',async()=>{
  const m=mock();await assert.rejects(fetchPublicBookingQuote({...base,adults:0},m.request));assert.equal(m.calls.length,0);
