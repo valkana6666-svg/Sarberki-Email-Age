@@ -56,18 +56,20 @@ export function isApprovedSubject(subject) {
   const normalized = normalizeSubject(subject);
   if (!normalized) return false;
 
+  const explicitLodgingBase = base => /(?:szállás|szallas|aufenthalt|unterkunft|accommodation|nastanitev)/u.test(base);
   const approvedInquiry = APPROVED_SUBJECTS.some(base =>
-    normalized === base || normalized.startsWith(base + ' ')
+    normalized === base
+    || (normalized.startsWith(base + ' ') && explicitLodgingBase(base))
   );
   if (approvedInquiry) return true;
 
   if (/^(?:érdeklődés|erdeklodes)(?:\s+\d+)?$/u.test(normalized)) return true;
 
   const prefixGroups=[
-    {prefixes:HUNGARIAN_INQUIRY_PREFIXES, detail:/\b(?:szállás|szallas|faház|fahaz|ház|haz|deluxe|vip|családi|csaladi|osztott|október|oktober|november|március|marcius|április|aprilis|május|majus|június|junius|július|julius|augusztus|szeptember|december|\d{1,2}\s*(?:fő|fo))\b/u},
-    {prefixes:GERMAN_INQUIRY_PREFIXES, detail:/\b(?:unterkunft|aufenthalt|buchung|reservierung|hütte|huette|ferienhaus|deluxe|vip|familienhaus|oktober|november|märz|maerz|april|mai|juni|juli|august|september|dezember|\d{1,2}\s*(?:gäste|personen))\b/u},
-    {prefixes:ENGLISH_INQUIRY_PREFIXES, detail:/\b(?:accommodation|stay|booking|reservation|cabin|house|deluxe|vip|family|october|november|march|april|may|june|july|august|september|december|\d{1,2}\s*(?:guests?|people|persons?))\b/u},
-    {prefixes:SLOVENIAN_INQUIRY_PREFIXES, detail:/\b(?:nastanitev|rezervacij|bivanje|hišk|hisk|koč|koc|deluxe|vip|družinsk|druzinsk|oktober|november|marec|april|maj|junij|julij|avgust|september|december|\d{1,2}\s*oseb)\b/u}
+    {prefixes:HUNGARIAN_INQUIRY_PREFIXES, detail:/(?:szállás|szallas|faház|fahaz|deluxe|vip|családi|csaladi|osztott|\d{1,2}\s*(?:fő|fo))/u},
+    {prefixes:GERMAN_INQUIRY_PREFIXES, detail:/(?:unterkunft|aufenthalt|hütte|huette|ferienhaus|deluxe|vip|familienhaus|\d{1,2}\s*(?:gäste|personen))/u},
+    {prefixes:ENGLISH_INQUIRY_PREFIXES, detail:/(?:accommodation|stay|cabin|house|deluxe|vip|family|\d{1,2}\s*(?:guests?|people|persons?))/u},
+    {prefixes:SLOVENIAN_INQUIRY_PREFIXES, detail:/(?:nastanitev|bivanje|hišk|hisk|koč|koc|deluxe|vip|družinsk|druzinsk|\d{1,2}\s*oseb)/u}
   ];
   for (const {prefixes,detail} of prefixGroups) {
     if (prefixes.some(prefix => normalized === prefix)) return true;
