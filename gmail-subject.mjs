@@ -65,15 +65,18 @@ export function isApprovedSubject(subject) {
 
   if (/^(?:érdeklődés|erdeklodes)(?:\s+\d+)?$/u.test(normalized)) return true;
 
+  const unrelatedBusiness = /\b(?:számla|szamla|invoice|rechnung|receipt|nyugta|fizetés|fizetes|payment|zahlung|račun|racun|plačilo|placilo)\b/u;
   const prefixGroups=[
-    {prefixes:HUNGARIAN_INQUIRY_PREFIXES, detail:/(?:szállás|szallas|faház|fahaz|deluxe|vip|családi|csaladi|osztott|\d{1,2}\s*(?:fő|fo))/u},
-    {prefixes:GERMAN_INQUIRY_PREFIXES, detail:/(?:unterkunft|aufenthalt|hütte|huette|ferienhaus|deluxe|vip|familienhaus|\d{1,2}\s*(?:gäste|personen))/u},
-    {prefixes:ENGLISH_INQUIRY_PREFIXES, detail:/(?:accommodation|stay|cabin|house|deluxe|vip|family|\d{1,2}\s*(?:guests?|people|persons?))/u},
-    {prefixes:SLOVENIAN_INQUIRY_PREFIXES, detail:/(?:nastanitev|bivanje|hišk|hisk|koč|koc|deluxe|vip|družinsk|druzinsk|\d{1,2}\s*oseb)/u}
+    {prefixes:HUNGARIAN_INQUIRY_PREFIXES, detail:/(?:szállás|szallas|faház|fahaz|deluxe|vip|családi|csaladi|osztott|január|januar|február|februar|március|marcius|április|aprilis|május|majus|június|junius|július|julius|augusztus|szeptember|október|oktober|november|december|\d{1,2}\s*(?:fő|fo))/u},
+    {prefixes:GERMAN_INQUIRY_PREFIXES, detail:/(?:unterkunft|aufenthalt|hütte|huette|ferienhaus|deluxe|vip|familienhaus|januar|februar|märz|maerz|april|mai|juni|juli|august|september|oktober|november|dezember|\d{1,2}\s*(?:gäste|personen))/u},
+    {prefixes:ENGLISH_INQUIRY_PREFIXES, detail:/(?:accommodation|stay|cabin|house|deluxe|vip|family|january|february|march|april|may|june|july|august|september|october|november|december|\d{1,2}\s*(?:guests?|people|persons?))/u},
+    {prefixes:SLOVENIAN_INQUIRY_PREFIXES, detail:/(?:nastanitev|bivanje|hišk|hisk|koč|koc|deluxe|vip|družinsk|druzinsk|januar|februar|marec|april|maj|junij|julij|avgust|september|oktober|november|december|\d{1,2}\s*oseb)/u}
   ];
   for (const {prefixes,detail} of prefixGroups) {
     if (prefixes.some(prefix => normalized === prefix)) return true;
-    if (prefixes.some(prefix => normalized.startsWith(prefix + ' ')) && detail.test(normalized)) return true;
+    if (prefixes.some(prefix => normalized.startsWith(prefix + ' '))
+        && detail.test(normalized)
+        && !unrelatedBusiness.test(normalized)) return true;
   }
 
   return TEST_SUBJECT_PREFIXES.some(prefix =>
