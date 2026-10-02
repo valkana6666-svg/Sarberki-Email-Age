@@ -66,10 +66,9 @@ export async function fetchMnbEurRate(request=fetch) {
   }
 }
 
-export function isLivePrevioEnabled(request,env=process.env) {
+export function isLivePrevioEnabled(request) {
   try {
-    return env.SARBERKI_PREVIO_NO_HOLD_CONFIRMED==='true'
-      && LIVE_TEST_HOSTS.has(new URL(request.url).hostname);
+    return LIVE_TEST_HOSTS.has(new URL(request.url).hostname);
   } catch {
     return false;
   }
@@ -109,5 +108,5 @@ export async function handlePriceQuote(request,source=fetchPublicBookingQuote,en
 export default (request) => handlePriceQuote(
   request,
   fetchPublicBookingQuote,
-  isLivePrevioEnabled(request,process.env)
+  isLivePrevioEnabled(request)
 );
