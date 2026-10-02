@@ -63,15 +63,16 @@ export function isApprovedSubject(subject) {
 
   if (/^(?:érdeklődés|erdeklodes)(?:\s+\d+)?$/u.test(normalized)) return true;
 
-  const inquiryPrefixes=[
-    ...HUNGARIAN_INQUIRY_PREFIXES,
-    ...GERMAN_INQUIRY_PREFIXES,
-    ...ENGLISH_INQUIRY_PREFIXES,
-    ...SLOVENIAN_INQUIRY_PREFIXES
+  const prefixGroups=[
+    {prefixes:HUNGARIAN_INQUIRY_PREFIXES, detail:/\b(?:szállás|szallas|faház|fahaz|ház|haz|deluxe|vip|családi|csaladi|osztott|október|oktober|november|március|marcius|április|aprilis|május|majus|június|junius|július|julius|augusztus|szeptember|december|\d{1,2}\s*(?:fő|fo))\b/u},
+    {prefixes:GERMAN_INQUIRY_PREFIXES, detail:/\b(?:unterkunft|aufenthalt|buchung|reservierung|hütte|huette|ferienhaus|deluxe|vip|familienhaus|oktober|november|märz|maerz|april|mai|juni|juli|august|september|dezember|\d{1,2}\s*(?:gäste|personen))\b/u},
+    {prefixes:ENGLISH_INQUIRY_PREFIXES, detail:/\b(?:accommodation|stay|booking|reservation|cabin|house|deluxe|vip|family|october|november|march|april|may|june|july|august|september|december|\d{1,2}\s*(?:guests?|people|persons?))\b/u},
+    {prefixes:SLOVENIAN_INQUIRY_PREFIXES, detail:/\b(?:nastanitev|rezervacij|bivanje|hišk|hisk|koč|koc|deluxe|vip|družinsk|druzinsk|oktober|november|marec|april|maj|junij|julij|avgust|september|december|\d{1,2}\s*oseb)\b/u}
   ];
-  if (inquiryPrefixes.some(prefix =>
-    normalized === prefix || normalized.startsWith(prefix + ' ')
-  )) return true;
+  for (const {prefixes,detail} of prefixGroups) {
+    if (prefixes.some(prefix => normalized === prefix)) return true;
+    if (prefixes.some(prefix => normalized.startsWith(prefix + ' ')) && detail.test(normalized)) return true;
+  }
 
   return TEST_SUBJECT_PREFIXES.some(prefix =>
     normalized === prefix
