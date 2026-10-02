@@ -321,7 +321,8 @@
     clearApprovedPrice('Új árlekérés indult; az előző jóváhagyás törölve.');
     const message=currentMessage();
     const analysis=typeof extract==='function' ? extract(message,'') : null;
-    const changeOrCancel=/(?:módosít|változtat|átten|előző\s+foglalás|korábbi\s+foglalás|lemond|storn|cancel\s+(?:my|our)?\s*(?:booking|reservation)|change\s+(?:my|our)?\s*(?:booking|reservation)|(?:foglalás|booking|reservation)[^.!?\n]{0,80}\b(?:helyett|instead of|statt|namesto)\b)/iu.test(message);
+    const cancellationTermsOnly=/(?:lemondási\s+feltét|lemondás\s+feltét|milyen\s+feltételekkel\s+lemond|cancellation\s+(?:terms|policy)|storno(?:bedingungen|bedingungen)|odpovedn\w*\s+pogoj)/iu.test(message);
+    const changeOrCancel=/(?:módosít|változtat|átten|előző\s+foglalás|korábbi\s+foglalás|(?:szeretn(?:ém|énk)|akar(?:om|juk)|kérem|kérjük)[^.!?\n]{0,80}lemond|foglalás[^.!?\n]{0,40}lemond(?:ás|ani|om|juk)|stornieren|cancel\s+(?:my|our)?\s*(?:booking|reservation)|change\s+(?:my|our)?\s*(?:booking|reservation)|(?:foglalás|booking|reservation)[^.!?\n]{0,80}\b(?:helyett|instead of|statt|namesto)\b)/iu.test(message) && !cancellationTermsOnly;
     if(changeOrCancel||['modification_request','cancellation_request'].includes(analysis?.intent)) {status.textContent='KÉZI ELLENŐRZÉS SZÜKSÉGES · Módosítás vagy lemondás esetén az ár megjelenítése csak a meglévő foglalás kézi azonosítása után biztonságos.';return;}
     const childCount=Number($('price_children')?.value||0);
     const ages=childAgesForQuote(childCount,$('price_child_ages')?.value);
