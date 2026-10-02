@@ -70,6 +70,14 @@ export function childCountFromText(text=''){
 export function dateRangeFromText(text='', now=new Date(), timeZone='Europe/Budapest'){
   const iso=text.match(/\b(20\d{2})[-./](\d{1,2})[-./](\d{1,2})\s*(?:[-–]|to|bis|do)\s*(?:(20\d{2})[-./](\d{1,2})[-./])?(\d{1,2})\b/iu);
   if(iso) return {arrival:`${iso[1]}-${String(iso[2]).padStart(2,'0')}-${String(iso[3]).padStart(2,'0')}`,departure:`${iso[4]||iso[1]}-${String(iso[5]||iso[2]).padStart(2,'0')}-${String(iso[6]).padStart(2,'0')}`,inferredYear:false};
+  const europeanNumeric=text.match(/\b(\d{1,2})[./-](\d{1,2})[./-](20\d{2})\s*(?:[-–]|to|bis|do)\s*(\d{1,2})[./-](\d{1,2})[./-](20\d{2})\b/iu);
+  if(europeanNumeric){
+    return {
+      arrival:`${europeanNumeric[3]}-${String(europeanNumeric[2]).padStart(2,'0')}-${String(europeanNumeric[1]).padStart(2,'0')}`,
+      departure:`${europeanNumeric[6]}-${String(europeanNumeric[5]).padStart(2,'0')}-${String(europeanNumeric[4]).padStart(2,'0')}`,
+      inferredYear:false
+    };
+  }
   const huNaturalRange=text.match(/\b(?:(20\d{2})\.?\s*)?(január|januar|február|februar|március|marcius|április|aprilis|május|majus|június|junius|július|julius|augusztus|szeptember|október|oktober|november|december)\s+(\d{1,2})\.?\s+(?:és|es)\s+(\d{1,2})\.?\s+között\b/iu);
   if(huNaturalRange){
     const month=monthNumber(huNaturalRange[2]);
