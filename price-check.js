@@ -21,6 +21,8 @@
   }
 
   function requestedUnits(message='') {
+    const open=/\b(?:több|multiple|several|mehrere|več)\s+(?:szállás)?(?:egység\w*|faház\w*|ház\w*|apartman\w*|units?|cabins?|houses?|einheiten|enot\w*)\b/iu.test(message);
+    if(open) return null;
     const m=message.match(/\b(két|2|három|3|négy|4|öt|5|hat|6|two|three|four|five|six|zwei|drei|vier|fünf|funf|sechs|dva|tri|štiri|stiri|pet|šest|sest)\s+(?:db\s+)?(?:vip|családi|deluxe|family|familien|družinsk\w*)?\s*(?:házat?|faházat?|apartmant?|egységet?|cabins?|houses?|units?|cottages?|häuser|hauser|einheiten|hišk\w*|hisk\w*|koč\w*|enot\w*)\b/iu);
     if(!m) return 0;
     return ({'két':2,'2':2,'három':3,'3':3,'négy':4,'4':4,'öt':5,'5':5,'hat':6,'6':6,two:2,three:3,four:4,five:5,six:6,zwei:2,drei:3,vier:4,'fünf':5,funf:5,sechs:6,dva:2,tri:3,'štiri':4,stiri:4,pet:5,'šest':6,sest:6})[m[1].toLowerCase()]||0;
@@ -48,9 +50,10 @@
   }
 
   function currentMessage(){
-    const active=String($('message')?.value||'').trim();
-    if(active) return active;
-    return $('gmail_record') && !$('gmail_record').classList.contains('hidden') ? ($('gmail_original')?.textContent||'') : '';
+    const gmailVisible=$('gmail_record') && !$('gmail_record').classList.contains('hidden');
+    const gmailMessage=String($('gmail_original')?.textContent||'').trim();
+    if(gmailVisible&&gmailMessage) return gmailMessage;
+    return String($('message')?.value||'').trim();
   }
 
   function quoteFingerprint(){
