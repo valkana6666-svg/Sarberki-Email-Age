@@ -48,7 +48,9 @@
   }
 
   function currentMessage(){
-    return $('gmail_record') && !$('gmail_record').classList.contains('hidden') ? ($('gmail_original')?.textContent||'') : ($('message')?.value||'');
+    const active=String($('message')?.value||'').trim();
+    if(active) return active;
+    return $('gmail_record') && !$('gmail_record').classList.contains('hidden') ? ($('gmail_original')?.textContent||'') : '';
   }
 
   function quoteFingerprint(){
