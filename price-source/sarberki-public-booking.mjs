@@ -90,7 +90,7 @@ export async function fetchPublicBookingQuote(raw,request=fetch){
   if(!occupancy.success||typeof occupancy.html!=='string') throw Error('A Previo nem igazolta a rendelkezésre állást.');
   const free=Number(occupancy.html.match(/data-numOfFreeRooms="(\d+)"/)?.[1]);
   if(!Number.isInteger(free)) throw Error('Nem ellenőrizhető a szabad kapacitás.');
-  if(free<1) return {status:'unavailable',source:`${BUSINESS.brandName} hivatalos foglalási felület`,checkedAt:new Date().toISOString(),...input,availability:'unavailable',bookingCompleted:false};
+  if(free<1) return {status:'unavailable',source:`${BUSINESS.brandName} hivatalos foglalási felület`,checkedAt:new Date().toISOString(),...input,availability:'unavailable',availableUnits:free,bookingCompleted:false};
   const categories=params.GUEST_CATEGORIES||[];
   const adult=categories.filter(x=>x.isDefault&&!x.isChild);
   if(adult.length!==1) throw Error('A Previo felnőtt kategóriája nem egyértelmű.');
