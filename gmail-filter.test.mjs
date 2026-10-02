@@ -133,3 +133,21 @@ test('contradictory adult child totals are escalated to human review',()=>{
   assert.match(source,/adultCount\+childCount!==count/u);
   assert.match(source,/Ellentmondó létszámadat/u);
 });
+
+
+test('generic inquiry prefixes do not admit unrelated mail',()=>{
+  for(const subject of [
+    'Anfrage Rechnung September',
+    'Anfrage zur Rechnung',
+    'Booking inquiry about invoice copy',
+    'Reservation inquiry about payment receipt',
+    'Povpraševanje glede računa',
+    'Povprasevanje glede racuna'
+  ]) assert.equal(isApprovedSubject(subject),false,subject);
+  for(const subject of [
+    'Anfrage Deluxe für 4 Gäste im Oktober',
+    'Booking inquiry for a Deluxe cabin in October',
+    'Povpraševanje za družinsko hiško v oktobru',
+    'Foglalási érdeklődés Deluxe ház 4 fő'
+  ]) assert.equal(isApprovedSubject(subject),true,subject);
+});
