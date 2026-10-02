@@ -265,3 +265,29 @@ Teszt Elek`;
   assert.doesNotMatch(r.status,/Módosítás vagy lemondás/u);
   assert.match(r.result,/Egységek: 2/u);
 });
+
+
+test('dense Deluxe inquiry reports two required units when Previo has zero free units',async()=>{
+  const message=`Tisztelt Sárberki Horgásztó!
+
+2026. október 23–26. között szeretnénk Önöknél megszállni, összesen 3 éjszakára.
+
+Összesen 8 fő érkezne: 5 felnőtt és 3 gyermek. A gyermekek 4, 9 és 13 évesek.
+
+Elsősorban Deluxe házat szeretnénk, lehetőleg dézsafürdővel és saját stéggel. Mivel nyolcan érkezünk, több szállásegység is megfelelő lehet számunkra, ezért szeretnénk megtudni, milyen elhelyezést tudnak ajánlani erre a létszámra.
+
+Kérem, írják meg, hogy az adott időszakban milyen szabad szálláslehetőségek vannak, valamint mennyi lenne a teljes szállásdíj a 3 éjszakára.
+
+Köszönettel:
+Teszt Elek`;
+  const h=harness(message,input=>{
+    assert.deepEqual(input,{arrival:'2026-10-23',departure:'2026-10-26',cabin:'deluxe',adults:5,children:[4,9,13],units:2});
+    return json({status:'unavailable',availability:'unavailable',availableUnits:0,...input});
+  });
+  const r=await h.run();
+  assert.equal(h.calls,1,r.status);
+  assert.match(r.status,/2 egység szükséges/u);
+  assert.match(r.status,/0 szabad egységet/u);
+  assert.equal(r.result,'');
+  assert.equal(h.element('approve_price').disabled,true);
+});
