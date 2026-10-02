@@ -2,24 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {handlePriceQuote,isLivePrevioEnabled,fetchMnbEurRate} from '../netlify/functions/price-quote.mjs';
 
-test('live Previo stays disabled on the isolated test host until no-hold is confirmed',()=>{
-  assert.equal(isLivePrevioEnabled(new Request('https://leafy-chimera-2403e5.netlify.app/api/price-quote'),{}),false);
-  assert.equal(isLivePrevioEnabled(
-    new Request('https://leafy-chimera-2403e5.netlify.app/api/price-quote'),
-    {SARBERKI_PREVIO_NO_HOLD_CONFIRMED:'true'}
-  ),true);
+test('live Previo is enabled only on the isolated test host',()=>{
+  assert.equal(isLivePrevioEnabled(new Request('https://leafy-chimera-2403e5.netlify.app/api/price-quote')),true);
 });
 
 test('live Previo stays disabled on production host by default',()=>{
   assert.equal(isLivePrevioEnabled(new Request('https://moonlit-torrone-88b39d.netlify.app/api/price-quote'),{}),false);
 });
 
-test('env flag cannot enable another host or production',()=>{
-  const env={SARBERKI_PREVIO_NO_HOLD_CONFIRMED:'true'};
-  assert.equal(isLivePrevioEnabled(new Request('https://example.com/api/price-quote'),env),false);
-  assert.equal(isLivePrevioEnabled(new Request('https://moonlit-torrone-88b39d.netlify.app/api/price-quote'),env),false);
-  assert.equal(isLivePrevioEnabled(new Request('http://localhost/api/price-quote'),env),false);
-  assert.equal(isLivePrevioEnabled(new Request('http://127.0.0.1/api/price-quote'),env),false);
+test('live Previo cannot be enabled on another host or production',()=>{
+  assert.equal(isLivePrevioEnabled(new Request('https://example.com/api/price-quote')),false);
+  assert.equal(isLivePrevioEnabled(new Request('https://moonlit-torrone-88b39d.netlify.app/api/price-quote')),false);
+  assert.equal(isLivePrevioEnabled(new Request('http://localhost/api/price-quote')),false);
+  assert.equal(isLivePrevioEnabled(new Request('http://127.0.0.1/api/price-quote')),false);
 });
 
 test('disabled handler does not call the source',async()=>{
