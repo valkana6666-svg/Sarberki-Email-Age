@@ -108,6 +108,14 @@ test('Gmail normalized facts override weaker UI extraction and contradiction rev
 });
 
 
+test('approved quote asks for explicit guest confirmation before booking in all four languages',()=>{
+ assert.match(source,/Amennyiben az ajánlat megfelel Önnek/u);
+ assert.match(source,/A foglalást csak az Ön egyértelmű visszaigazolása után rögzítjük/u);
+ assert.match(source,/If this offer is suitable for you/u);
+ assert.match(source,/Wenn dieses Angebot für Sie passt/u);
+ assert.match(source,/Če vam ponudba ustreza/u);
+});
+
 test('multilingual approved price survives draft rewrite',()=>{
  assert.match(source,/function foreignFocusedReply/u);
  assert.match(source,/The .*selected for your stay/u);
