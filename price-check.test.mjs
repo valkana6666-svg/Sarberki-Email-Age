@@ -35,11 +35,12 @@ test('price approval requires a separate human action before draft insertion',()
  assert.match(source,/E-mail nem lett elküldve/u);
 });
 
-test('reply uses approved total only when the guest asked for price',()=>{
- assert.match(source,/const priceApproved=asked\.price&&approvedPrice/u);
- assert.match(source,/Az aktuális teljes árat a foglalási felületen ellenőrizzük/u);
- assert.match(source,/A foglalási felületen ellenőrzött teljes ár/u);
- assert.match(source,/a vendég nem kérdezett árat, ezért nem került a válaszlevélbe/u);
+test('approved price insertion follows explicit human approval and manual cabin choice',()=>{
+ assert.match(source,/const selectedCabin=cabins\[\$\('price_cabin'\)\?\.value\|\|''\]\|\|''/u);
+ assert.match(source,/if\(selectedCabin\) v\.unit=selectedCabin/u);
+ assert.match(source,/const priceApproved=approvedPrice&&approvedPrice\.fingerprint===quoteFingerprint\(\)/u);
+ assert.match(source,/A kezelő által jóváhagyott adatok alapján/u);
+ assert.doesNotMatch(source,/a vendég nem kérdezett árat, ezért nem került a válaszlevélbe/u);
 });
 
 test('approved online quote keeps accommodation and IFA breakdown',()=>{
