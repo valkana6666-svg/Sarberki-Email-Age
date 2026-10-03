@@ -735,3 +735,18 @@ test('written Hungarian and Slovenian adult-child counts are parsed without a nu
   assert.equal(guestCountFromText('trije odrasli in dva otroka'),5);
   assert.equal(adultCountFromText('trije odrasli in dva otroka'),3);
 });
+
+
+test('unknown child status also asks for child ages in HU DE EN SI',()=>{
+  const cases=[
+    ['hu',/Ha igen, kérjük, adja meg a gyermek\(ek\) életkorát is/u],
+    ['de',/Falls ja, teilen Sie uns bitte auch das Alter der Kinder mit/u],
+    ['en',/If so, please also tell us their ages/u],
+    ['si',/Če bodo z vami otroci, prosimo navedite tudi njihovo starost/u]
+  ];
+  for(const [lang,pattern] of cases){
+    const questions=replyQuestions(lang,{needChildStatus:true});
+    assert.equal(questions.length,1);
+    assert.match(questions[0],pattern);
+  }
+});
