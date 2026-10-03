@@ -53,6 +53,7 @@
     status.insertAdjacentElement('afterend', wrap);
     wrap.querySelector('#gmail_open_selected').addEventListener('click', () => openSelected(false));
     wrap.querySelector('#gmail_open_next_unread').addEventListener('click', () => openSelected(true));
+    wrap.querySelector('#gmail_message_picker').addEventListener('change', () => openSelected(false));
     return wrap;
   }
   function renderPicker(messages) {
