@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" role="img" aria-label="Sárberki Horgásztó Lenti">
+<rect width="800" height="520" fill="#050505"/>
+<rect x="18" y="18" width="764" height="484" rx="44" fill="none" stroke="#ff7a00" stroke-width="10"/>
+<g fill="#ff7a00" stroke="#ff7a00">
+  <path d="M340 92l28-38 21 28 27-48 27 48 21-28 28 38-12 42H352z" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M350 108h100" fill="none" stroke="#050505" stroke-width="8"/>
+  <circle cx="370" cy="108" r="5" fill="#050505" stroke="none"/><circle cx="400" cy="108" r="5" fill="#050505" stroke="none"/><circle cx="430" cy="108" r="5" fill="#050505" stroke="none"/>
+  <g fill="none" stroke-width="9" stroke-linecap="round">
+    <path d="M230 345C145 300 120 220 170 135"/><path d="M570 345C655 300 680 220 630 135"/>
+  </g>
+  <g stroke="none">
+    <ellipse cx="180" cy="160" rx="18" ry="38" transform="rotate(-35 180 160)"/>
+    <ellipse cx="155" cy="205" rx="18" ry="38" transform="rotate(-22 155 205)"/>
+    <ellipse cx="153" cy="255" rx="18" ry="38" transform="rotate(-8 153 255)"/>
+    <ellipse cx="175" cy="304" rx="18" ry="38" transform="rotate(18 175 304)"/>
+    <ellipse cx="210" cy="337" rx="18" ry="38" transform="rotate(38 210 337)"/>
+    <ellipse cx="620" cy="160" rx="18" ry="38" transform="rotate(35 620 160)"/>
+    <ellipse cx="645" cy="205" rx="18" ry="38" transform="rotate(22 645 205)"/>
+    <ellipse cx="647" cy="255" rx="18" ry="38" transform="rotate(8 647 255)"/>
+    <ellipse cx="625" cy="304" rx="18" ry="38" transform="rotate(-18 625 304)"/>
+    <ellipse cx="590" cy="337" rx="18" ry="38" transform="rotate(-38 590 337)"/>
+  </g>
+  <g transform="translate(0,10)">
+    <path d="M272 212c47-74 163-92 246-43 25 15 42 32 56 52-28 5-52 13-73 27-58 39-127 42-191 8-18-10-32-24-38-44z" stroke="#050505" stroke-width="8"/>
+    <path d="M270 221l-68-42 24 55-27 51 72-31z" stroke="#050505" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M331 180c23-32 53-49 88-57 20 13 35 29 44 49-47-8-88-5-132 8z" stroke="#050505" stroke-width="7"/>
+    <path d="M410 248c-11 18-17 34-19 48 25-1 46-9 65-23-14-14-29-22-46-25z" stroke="#050505" stroke-width="7"/>
+    <path d="M520 185c38 5 65 24 84 56-26 7-51 8-72-3" fill="none" stroke="#050505" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="522" cy="190" r="8" fill="#050505" stroke="none"/>
+    <path d="M286 217c62 15 119 15 171 0" fill="none" stroke="#050505" stroke-width="6"/>
+    <path d="M329 206l15 29m18-35 14 39m20-42 12 43m22-43 9 39m25-33 7 27" fill="none" stroke="#050505" stroke-width="6"/>
+  </g>
+  <path d="M110 300l85-22c133-28 277-28 410 0l85 22-40 36 18 57-92-32c-118-26-234-26-352 0l-92 32 18-57z" stroke="#050505" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M150 315c153-30 347-30 500 0l-15 62c-144-27-326-27-470 0z" fill="#050505" stroke="#ff7a00" stroke-width="7"/>
+</g>
+<text x="400" y="352" text-anchor="middle" fill="#ff7a00" font-family="Georgia, 'Times New Roman', serif" font-size="46" font-weight="700" letter-spacing="1">SÁRBERKI HORGÁSZTÓ</text>
+<text x="400" y="405" text-anchor="middle" fill="#ff7a00" font-family="Georgia, 'Times New Roman', serif" font-size="28" font-weight="700" letter-spacing="12">LENTI</text>
+<g fill="#ff7a00">
+  <path d="M342 430l9 18 20 3-15 14 4 20-18-10-18 10 4-20-15-14 20-3z"/>
+  <path d="M400 430l9 18 20 3-15 14 4 20-18-10-18 10 4-20-15-14 20-3z"/>
+  <path d="M458 430l9 18 20 3-15 14 4 20-18-10-18 10 4-20-15-14 20-3z"/>
+</g>
+</svg>
