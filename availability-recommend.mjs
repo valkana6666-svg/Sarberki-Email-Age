@@ -22,9 +22,13 @@ function replaceCapacityPlaceholder(draft,sentence,manual){
   if(draft.includes(placeholder))return draft.replace(placeholder,combined);
   return draft+'\n\n'+combined;
 }
+let inflightKey=null;
 async function enrich(){
   const arrival=$('f_arrival')?.value||'', departure=$('f_departure')?.value||'', guests=Number($('f_guests')?.value||0), cabin=$('f_unit')?.value||'';
   if(!arrival||!departure||!Number.isInteger(guests)||guests<1||hasSpecificCabin(cabin))return;
+  const key=[arrival,departure,guests].join('|');
+  if(inflightKey===key)return;
+  inflightKey=key;
   const status=$('status'), draft=$('draft');
   if(!draft)return;
   if(status){status.className='warning';status.textContent='Kapacitás-ellenőrzés folyamatban a teszt Previo-forrásból…';}
@@ -38,7 +42,11 @@ async function enrich(){
     if(status){status.className='warning';status.textContent='Kapacitás ellenőrizve; a tervezet frissítve. Emberi jóváhagyás szükséges.';}
   }catch(error){
     if(status){status.className='warning';status.textContent='A kapacitás nem volt hitelesen ellenőrizhető: '+error.message;}
+  }finally{
+    if(inflightKey===key)inflightKey=null;
   }
 }
-document.addEventListener('sarberki:analysis-ready',()=>{void enrich();});
-document.addEventListener('sarberki:gmail-normalized',()=>{setTimeout(()=>void enrich(),0);});
+if(typeof document!=='undefined'){
+  document.addEventListener('sarberki:analysis-ready',()=>{void enrich();});
+  document.addEventListener('sarberki:gmail-normalized',()=>{setTimeout(()=>void enrich(),0);});
+}
