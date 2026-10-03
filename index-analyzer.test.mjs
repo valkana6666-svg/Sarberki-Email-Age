@@ -90,8 +90,16 @@ test('test UI does not overclaim Previo side-effect safety',()=>{
 
 
 test('test deployment cache-busts the updated rule modules',()=>{
- assert.match(source,/v0\.3\.12 TEST/u);
+ assert.match(source,/v0\.3\.13 TEST/u);
  assert.match(source,/sarberki-core\.mjs\?v=20261003-1525/u);
  assert.match(source,/gmail-readonly\.js\?v=20261003-1525/u);
- assert.match(source,/availability-recommend\.mjs\?v=20261003-1525/u);
+ assert.match(source,/availability-recommend\.mjs\?v=20261003-1545/u);
+});
+
+
+test('availability integration regenerates the full reply instead of appending to a stale draft',()=>{
+ const availability=fs.readFileSync(new URL('./availability-recommend.mjs',import.meta.url),'utf8');
+ assert.match(availability,/const fresh=currentReplyBase\(\)/u);
+ assert.match(availability,/knowledgeLines:fishing\?\[fishing\.answer\]:\[\]/u);
+ assert.doesNotMatch(availability,/replaceCapacityPlaceholder\(draft\.value,sentence,manual\)/u);
 });
