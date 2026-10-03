@@ -1,0 +1,10 @@
+SÁRBERKI HORGÁSZTÓ – KÖZPONTI SZABÁLYGYŰJTŐ
+
+Ez a fájl a Sárberki projekt üzleti és válaszadási szabályainak központi, ember által olvasható gyűjtőhelye.
+
+Állapot:
+- tesztági munkafájl
+- a futó alkalmazás szabályait jelenleg továbbra is a kódfájlok érvényesítik
+- új szabályt csak akkor tekintünk a rendszerben aktívnak, ha a megfelelő programlogikába és tesztekbe is bekerült
+
+További szabályok ide kerülnek összegyűjtésre és rendszerezésre.
