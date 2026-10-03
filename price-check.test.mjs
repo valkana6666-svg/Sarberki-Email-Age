@@ -116,6 +116,17 @@ test('approved quote asks for explicit guest confirmation before booking in all 
  assert.match(source,/Če vam ponudba ustreza/u);
 });
 
+test('approved price reply always includes 50 percent deposit due by bank transfer within 10 days in all four languages',()=>{
+ assert.match(source,/A foglaló összege a teljes szállásdíj 50%-a/u);
+ assert.match(source,/10 napon belül átutalással/u);
+ assert.match(source,/booking deposit is 50%/u);
+ assert.match(source,/bank transfer within 10 days/u);
+ assert.match(source,/Anzahlung beträgt 50 %/u);
+ assert.match(source,/innerhalb von 10 Tagen per Überweisung/u);
+ assert.match(source,/Akontacija za rezervacijo znaša 50 %/u);
+ assert.match(source,/bančnim nakazilom v 10 dneh/u);
+});
+
 test('multilingual approved price survives draft rewrite',()=>{
  assert.match(source,/function foreignFocusedReply/u);
  assert.match(source,/The .*selected for your stay/u);
