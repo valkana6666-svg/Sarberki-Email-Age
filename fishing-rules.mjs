@@ -17,6 +17,7 @@ export function fishingQuestion(text='', language='hu') {
   if (!/horgász|hal(?:at|at fog|elvitel|ár)|ponty|csuka|süllő|harcsa|hor(?:og|got|gok)|szakállas|normál\s*tó|rekord\s*tó|angeln|fishing|fish(?:ing)? ticket|barbed|hook|haken|widerhaken|mindestmaß|min(?:imum)?\s+(?:fish\s+)?size|ribolov|trnek|trnki|zalust/iu.test(text)) return null;
   const lang=['hu','de','en','si'].includes(language)?language:'hu';
   const wantsHook=/(?:szakállas|szakáll nélküli|hor(?:og|got|gok)|barbed\s+hooks?|barbless\s+hooks?|haken|widerhaken|trnek|trnki|zalust)/iu.test(text);
+  const wantsGeneral=/(?:horgászat(?:nak)?[^.!?\n]{0,80}(?:feltétel|szabály)|milyen[^.!?\n]{0,80}(?:horgászati|horgászat)[^.!?\n]{0,40}(?:feltétel|szabály)|fishing[^.!?\n]{0,80}(?:conditions|rules|requirements)|angeln[^.!?\n]{0,80}(?:bedingungen|regeln|voraussetzungen)|ribolov[^.!?\n]{0,80}(?:pogoji|pravila))/iu.test(text);
   const wantsNormal24=/(?:normál(?:\s*tó)?|normal\s+lake|normalteich|normal\s+see|normalno\s+jezero)/iu.test(text)
     && /(?:24\s*(?:ór|h|hour|stunden|ur)|24-hour|napijegy|day\s*ticket|tageskarte)/iu.test(text);
   const wantsChild=/(?:gyermek|gyerek|child|children|kinder|otrok)/iu.test(text) && /(?:jegy|ticket|karte|vstopnic|ribolov)/iu.test(text);
@@ -24,6 +25,14 @@ export function fishingQuestion(text='', language='hu') {
   const wantsTakeaway=/(?:elvihető|elvitel|hazavi|fish[^.!?\n]{0,50}(?:take[- ]?away|take\s+home)|takeaway|mitnehmen|entnahme|odnes|odvzem)/iu.test(text)
     && /(?:ár|price|cost|preis|cena|kg)/iu.test(text);
   const answers=[];
+  if(wantsGeneral){
+    answers.push({
+      hu:'A horgászathoz Magyarországra érvényes állami horgászjegy szükséges. Csak szakáll nélküli, legfeljebb 6-os méretű horog használható. Kötelező felszerelés a pontybölcső, merítőháló, sebfertőtlenítő és pontyzsák. A választott tóhoz és időtartamhoz tartozó Sárberki horgászjegyet külön kell kiválasztani.',
+      de:'Zum Angeln ist ein in Ungarn gültiger staatlicher Angelschein erforderlich. Es dürfen nur widerhakenlose Haken bis maximal Größe 6 verwendet werden. Abhakmatte, Kescher, Wunddesinfektionsmittel und Karpfensack sind erforderlich. Die Sárberki-Angelkarte wird je nach See und Gültigkeitsdauer separat gewählt.',
+      en:'Fishing requires a state fishing licence valid in Hungary. Only barbless hooks up to size 6 may be used. A carp cradle/unhooking mat, landing net, wound disinfectant and carp sack are required. The Sárberki fishing ticket is selected separately according to the lake and duration.',
+      si:'Za ribolov je potrebna državna ribolovna dovolilnica, veljavna na Madžarskem. Dovoljeni so le trnki brez zalusti do največ velikosti 6. Potrebni so podloga za krape, podmetalka, razkužilo za rane in vreča za krape. Ribolovna karta Sárberki se izbere posebej glede na jezero in trajanje.'
+    }[lang]);
+  }
   if(wantsNormal24){
     answers.push({
       hu:'Normál tó: a 24 órás felnőtt jegy 7 500 Ft, a gyermekjegy 3 750 Ft. Magyarországra érvényes állami horgászjegy szükséges.',
@@ -63,7 +72,7 @@ export function fishingQuestion(text='', language='hu') {
     en:'The fishing question needs to be checked by lake, ticket type and age group.',
     si:'Ribolovno vprašanje je treba preveriti glede na jezero, vrsto karte in starostno skupino.'
   }[lang]);
-  const kind=answers.length>1?'combined':wantsHook?'rule':wantsNormal24?'normal_24h_adult':'review';
+  const kind=answers.length>1?'combined':wantsGeneral?'general_conditions':wantsHook?'rule':wantsNormal24?'normal_24h_adult':'review';
   return {namespace:fishing.namespace,kind,answer:answers.join(' '),
     source:wantsHook||wantsMinimum?fishing.rulesSource:fishing.source,verifiedAt:fishing.verifiedAt,validFrom:fishing.validFrom,
     accommodationTotalAffected:false};
