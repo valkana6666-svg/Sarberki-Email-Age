@@ -201,6 +201,23 @@ John Smith`;
 });
 
 
+test('German and Slovenian explicit two-unit wording reaches the same quote boundary',async()=>{
+  const cases=[
+    ['Guten Tag! Wir möchten vom 16. bis 18. Oktober 2027 mit 4 Erwachsenen kommen und zwei Deluxe-Häuser buchen. Wie hoch ist der Gesamtpreis?', 'de'],
+    ['Pozdravljeni! Od 16. do 18. oktobra 2027 bi prišli 4 odrasli in želeli dve Deluxe hiški. Kakšna je skupna cena?', 'si']
+  ];
+  for(const [message,label] of cases){
+    const h=harness(message,input=>{
+      assert.deepEqual(input,{arrival:'2027-10-16',departure:'2027-10-18',cabin:'deluxe',adults:4,children:[],units:2},label);
+      return json({...quote(input,{availableUnits:4,accommodation:240000,tourismTax:4400,total:244400}),units:2});
+    });
+    const r=await h.run();
+    assert.equal(h.calls,1,label+' '+r.status);
+    assert.match(r.result,/Egységek: 2/u,label);
+    assert.doesNotMatch(r.draft,/244.400|244 400/u,label);
+  }
+});
+
 test('Gmail normalized record can rescue weaker extractor values at quote boundary',async()=>{
   const record=recorded[1];
   const message='Hello, Deluxe cabin, price please.';
