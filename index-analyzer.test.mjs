@@ -87,3 +87,11 @@ test('test UI does not overclaim Previo side-effect safety',()=>{
  assert.match(source,/átmeneti Previo hold\/zárolás hiánya még nincs igazolva/u);
  assert.doesNotMatch(source,/Előleget vagy foglalást nem hoz létre/u);
 });
+
+
+test('test deployment cache-busts the updated rule modules',()=>{
+ assert.match(source,/v0\.3\.12 TEST/u);
+ assert.match(source,/sarberki-core\.mjs\?v=20261003-1525/u);
+ assert.match(source,/gmail-readonly\.js\?v=20261003-1525/u);
+ assert.match(source,/availability-recommend\.mjs\?v=20261003-1525/u);
+});
