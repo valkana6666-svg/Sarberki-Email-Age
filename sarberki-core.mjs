@@ -489,17 +489,24 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const summary=replySummary(lang,{arrival,departure,guests,children,childAges,pier,hotTub,dog});
   const needCabin=!cabin||String(cabin).startsWith('?');
   const needDates=!arrival||!departure;
+  const canRecommendByCapacity=needCabin&&!needDates&&Number.isInteger(Number(guests))&&Number(guests)>0;
   const derivedAdults=(Number.isInteger(Number(guests))&&Number.isInteger(Number(children))&&Number(children)>=0&&Number(guests)>=Number(children))?Number(guests)-Number(children):null;
   const effectiveAdults=(Number.isInteger(Number(adults))&&Number(adults)>0)?Number(adults):derivedAdults;
   const needAdults=!(Number.isInteger(effectiveAdults)&&effectiveAdults>0);
   const childStatusKnown=children!==null&&children!==undefined&&children!==''&&Number.isInteger(Number(children))&&Number(children)>=0;
   const needChildStatus=!childStatusKnown;
   const needChildAge=childStatusKnown&&Number(children)>0&&childAges.length<Number(children);
-  const questions=replyQuestions(lang,{needDates,needAdults,needChildStatus,needPhone:!phone,needCabin,needChildAge});
+  const questions=replyQuestions(lang,{needDates,needAdults,needChildStatus,needPhone:!phone,needCabin:needCabin&&!canRecommendByCapacity,needChildAge});
   const policyLines=bookingPolicyLines(lang,original,guests,bookingRules);
   const operationalLines=operationalTopicLines(lang,original,operationalRules);
   const pricingLines=pricingTopicLines(lang,original,arrival,departure,pricingRules);
   const extraKnowledge=Array.isArray(knowledgeLines)?knowledgeLines.filter(Boolean):[];
+  if(canRecommendByCapacity) extraKnowledge.unshift({
+    hu:'A megadott létszám alapján ellenőrizzük az összes megfelelő szállástípust és csak a ténylegesen szabad lehetőségeket ajánljuk fel.',
+    de:'Anhand der angegebenen Personenzahl prüfen wir alle passenden Unterkunftstypen und schlagen nur tatsächlich verfügbare Möglichkeiten vor.',
+    en:'Based on the stated party size, we check all suitable accommodation types and only offer options that are actually available.',
+    si:'Glede na navedeno število gostov preverimo vse primerne vrste nastanitve in ponudimo le dejansko razpoložljive možnosti.'
+  }[lang]);
   const asksAvailability=/(?:szabad|elérhető|van[- ]?e .*szállás|van.*hely|available|frei|prosto|verfügbar|razpolož)/iu.test(original);
   const asksPrice=/(?:mennyi|mennyibe|ár|ára|árat|price|cost|kosten|preis|cena)/iu.test(original);
   const checks={
