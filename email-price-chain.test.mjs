@@ -337,3 +337,15 @@ test('explicit special requests survive all four languages in the canonical manu
     assert.ok(analysis.fields.request.value.includes(request),analysis.fields.request.value);
   }
 });
+
+
+test('total-only guest count never becomes adult count and blocks price lookup',async()=>{
+  const message='Pozdravljeni, od 20. do 23. novembra 2026 bi želeli Deluxe nastanitev. Skupaj 5 oseb. Kakšna je cena?';
+  const h=harness(message,()=>{throw Error('unexpected fetch')});
+  h.element('prepare_price').onclick();
+  assert.equal(h.element('price_adults').value,'');
+  assert.equal(h.element('price_children').value,'');
+  await h.element('check_price').onclick();
+  assert.equal(h.calls,0);
+  assert.match(h.element('price_status').textContent,/otrok|gyermek|tisztázni/u);
+});
