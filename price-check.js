@@ -21,6 +21,8 @@
   }
 
   function requestedUnits(message='') {
+    const shared=window.SarberkiNormalize?.requestedUnitsFromText?.(message);
+    if(shared) return shared.open ? null : Number(shared.count||0);
     const open=/\b(?:több|multiple|several|mehrere|več)\s+(?:szállás)?(?:egység\w*|faház\w*|ház\w*|apartman\w*|units?|cabins?|houses?|einheiten|enot\w*)\b/iu.test(message);
     if(open) return null;
     const m=message.match(/\b(két|2|három|3|négy|4|öt|5|hat|6|two|three|four|five|six|zwei|drei|vier|fünf|funf|sechs|dva|dve|tri|štiri|stiri|pet|šest|sest)\s+(?:db\s+)?(?:vip|családi|deluxe|family|familien|družinsk\w*)?(?:\s*[-–]?\s*)(?:házat?|faházat?|apartmant?|egységet?|cabins?|houses?|units?|cottages?|häuser|hauser|einheiten|hišk\w*|hisk\w*|koč\w*|enot\w*)\b/iu);
