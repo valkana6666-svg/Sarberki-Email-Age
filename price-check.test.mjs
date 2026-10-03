@@ -135,3 +135,23 @@ test('multilingual approved price survives draft rewrite',()=>{
  assert.match(source,/Cena za izbrano nastanitev/u);
  assert.match(source,/if\(replyLanguage!=='HU'\) return foreignFocusedReply/u);
 });
+
+
+test('focused replies ask for every missing booking basic',()=>{
+ assert.match(source,/pontos érkezési és távozási dátum/u);
+ assert.match(source,/kért háztípus/u);
+ assert.match(source,/felnőttek száma/u);
+ assert.match(source,/érkezik-e gyermek/u);
+ assert.match(source,/gyermek\(ek\) életkora/u);
+ assert.match(source,/exact arrival and departure dates/u);
+ assert.match(source,/number of adults/u);
+ assert.match(source,/whether any children will be staying/u);
+ assert.match(source,/genaues Anreise- und Abreisedatum/u);
+ assert.match(source,/točen datum prihoda in odhoda/u);
+});
+
+test('price preparation no longer falls back from total guests to adults',()=>{
+ assert.doesNotMatch(source,/fields\.guests\?\.value \|\| \(Number\.isInteger\(sharedGuests\)/u);
+ assert.match(source,/const knownAdults=/u);
+ assert.match(source,/Előbb tisztázni kell, érkezik-e gyermek/u);
+});
