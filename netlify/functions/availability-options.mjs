@@ -41,7 +41,7 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
 
   const mapped=Object.entries(BUSINESS.accommodationTypes)
     .filter(([,x])=>x.bookingName)
-    .map(([key,x])=>({key,label:x.label,capacity:x.maxGuests,units:Math.ceil(guests/x.maxGuests)}))
+    .map(([key,x])=>({key,label:x.label,capacity:x.maxGuests,units:Math.max(Math.ceil(guests/x.maxGuests),Math.ceil(guests/x.maxAdults))}))
     .filter(x=>x.units>=1&&x.units<=10);
 
   const checked=await Promise.all(mapped.map(async option=>{
