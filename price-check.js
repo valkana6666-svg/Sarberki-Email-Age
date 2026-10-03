@@ -206,10 +206,24 @@
     } else if(asked.availability) {
       lines.push('','Ellenőrizzük, hogy a megadott időpontra elérhető-e a kért háztípus, és hamarosan visszajelzünk.');
     } else if(asked.price) {
-      if(priceApproved) lines.push('','A megadott adatok alapján '+approvedPriceText(approvedPrice));
+      if(priceApproved) {
+        const selectedLabel=selectedCabin||v.unit||'kiválasztott háztípus';
+        const approvedParty=[];
+        if(v.adults) approvedParty.push(`${v.adults} felnőtt`);
+        if(v.children) approvedParty.push(`${v.children} gyermek${v.child_ages?` (${v.child_ages} éves)`:''}`);
+        const partyText=approvedParty.length ? approvedParty.join(' és ')+' részére' : (v.guests ? `${v.guests} fő részére` : '');
+        lines.push('',`Az Ön által választott ${selectedLabel} ${partyText ? partyText+' ' : ''}a jóváhagyott adatok alapján ${approvedPriceText(approvedPrice)}`);
+      }
       else lines.push('','Az aktuális teljes árat a foglalási felületen ellenőrizzük, és ezt követően tudunk pontos tájékoztatást adni.');
     } else if(priceApproved) {
-      lines.push('','A kezelő által jóváhagyott adatok alapján '+approvedPriceText(approvedPrice));
+      const selectedLabel=selectedCabin||v.unit||'kiválasztott háztípus';
+      const approvedParty=[];
+      if(v.adults) approvedParty.push(`${v.adults} felnőtt`);
+      if(v.children) approvedParty.push(`${v.children} gyermek${v.child_ages?` (${v.child_ages} éves)`:''}`);
+      const partyText=approvedParty.length ? approvedParty.join(' és ')+' részére' : (v.guests ? `${v.guests} fő részére` : '');
+      lines.push('',
+        `Az Ön által választott ${selectedLabel} ${partyText ? partyText+' ' : ''}a jóváhagyott adatok alapján ${approvedPriceText(approvedPrice)}`
+      );
     }
 
     if(asked.pet) lines.push('','A kisebb kutyával kapcsolatos kérését is feljegyeztük. Háziállat térítés ellenében hozható; a pontos díjat ellenőrizzük.');
