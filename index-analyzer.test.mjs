@@ -110,3 +110,10 @@ test('availability block is inserted before the email signature',()=>{
  assert.match(availability,/Üdvözlettel:/u);
  assert.match(availability,/return draft\.replace\(closing, '\\\\n\\\\n'\+combined\+'\$&'\)/u);
 });
+
+
+test('Gmail draft mirrors the unified main reply and availability result',()=>{
+ assert.match(source,/gmail_draft'\)\.value=\$\('draft'\)\.value/u);
+ const availability=fs.readFileSync(new URL('./availability-recommend.mjs',import.meta.url),'utf8');
+ assert.match(availability,/gmailDraft\.value=draft\.value/u);
+});
