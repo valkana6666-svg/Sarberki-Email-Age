@@ -89,6 +89,18 @@ export function dateRangeFromText(text='', now=new Date(), timeZone='Europe/Buda
       inferredYear:false
     };
   }
+  const europeanCompactRange=text.match(/\b(\d{1,2})[./](\d{1,2})[./]?\s*(?:[-–]|to|bis|do|tól|tol)\s*(\d{1,2})[./](\d{1,2})(?:[./]?\s*(20\d{2}))?\b/iu);
+  if(europeanCompactRange){
+    const local=new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).format(now).split('-').map(Number);
+    const startDay=Number(europeanCompactRange[1]), startMonth=Number(europeanCompactRange[2]);
+    const endDay=Number(europeanCompactRange[3]), endMonth=Number(europeanCompactRange[4]);
+    if(startMonth<1||startMonth>12||endMonth<1||endMonth>12||startDay<1||startDay>31||endDay<1||endDay>31) return null;
+    let startYear=europeanCompactRange[5]?Number(europeanCompactRange[5]):local[0];
+    const inferred=!europeanCompactRange[5];
+    if(inferred&&(startMonth<local[1]||(startMonth===local[1]&&startDay<local[2]))) startYear++;
+    const endYear=startYear+(endMonth<startMonth?1:0);
+    return {arrival:`${startYear}-${String(startMonth).padStart(2,'0')}-${String(startDay).padStart(2,'0')}`,departure:`${endYear}-${String(endMonth).padStart(2,'0')}-${String(endDay).padStart(2,'0')}`,inferredYear:inferred};
+  }
   const huNaturalRange=text.match(/\b(?:(20\d{2})\.?\s*)?(január|januar|február|februar|március|marcius|április|aprilis|május|majus|június|junius|július|julius|augusztus|szeptember|október|oktober|november|december)\s+(\d{1,2})\.?\s+(?:és|es)\s+(\d{1,2})\.?\s+között\b/iu);
   if(huNaturalRange){
     const month=monthNumber(huNaturalRange[2]);
