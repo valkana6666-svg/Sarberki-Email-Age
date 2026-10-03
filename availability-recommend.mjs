@@ -78,6 +78,8 @@ async function enrich(){
     const sentence=availabilitySentence(data), manual=splitReviewSentence(data);
     const fresh=currentReplyBase();
     draft.value=replaceCapacityPlaceholder(fresh,sentence,manual);
+    const gmailDraft=$('gmail_draft');
+    if(gmailDraft) gmailDraft.value=draft.value;
     draft.dispatchEvent(new Event('input',{bubbles:true}));
     if(status){status.className='warning';status.textContent='Kapacitás ellenőrizve; a tervezet frissítve. Emberi jóváhagyás szükséges.';}
   }catch(error){
