@@ -1,9 +1,9 @@
 /* Browser-only Gmail bridge. Access token stays in memory and is never stored. */
 (async () => {
   'use strict';
-  const { cabinFromText, guestCountFromText, adultCountFromText, childCountFromText, dateRangeFromText, phoneFromText, childAgesFromText, pierPreferenceFromText, languageFromText, buildReplyDraft, specialRequestsFromText, requestedUnitsFromText } = await import('./sarberki-core.mjs');
-  const { BUSINESS } = await import('./business-config.mjs');
-  const { fishingQuestion } = await import('./fishing-rules.mjs');
+  const { cabinFromText, guestCountFromText, adultCountFromText, childCountFromText, dateRangeFromText, phoneFromText, childAgesFromText, pierPreferenceFromText, languageFromText, buildReplyDraft, specialRequestsFromText, requestedUnitsFromText } = await import('./sarberki-core.mjs?v=20261003-1525');
+  const { BUSINESS } = await import('./business-config.mjs?v=20261003-1525');
+  const { fishingQuestion } = await import('./fishing-rules.mjs?v=20261003-1525');
   const { INBOX_QUERY, TEST_GMAIL_ACCOUNT, assertTestGmailAccount, isTestInquiry } = await import('./gmail-policy.mjs');
 
   function headerMap(message) {
