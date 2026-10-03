@@ -199,7 +199,7 @@
       return response.json();
     }));
     const matching = messages.filter(isTestInquiry);
-    if (!matching.length) throw Error('A kijelölt feladótól, 2026.09.25. után nem található engedélyezett tárgyú beérkezett érdeklődés.');
+    if (!matching.length) throw Error('2026.09.25. után nem található beérkezett Gmail-üzenet a tesztfiók inboxában.');
     matching.sort((a, b) => Number(b.internalDate) - Number(a.internalDate) || b.id.localeCompare(a.id));
     return matching;
   }
