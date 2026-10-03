@@ -1,10 +1,482 @@
 SÁRBERKI HORGÁSZTÓ – KÖZPONTI SZABÁLYGYŰJTŐ
+================================================
 
-Ez a fájl a Sárberki projekt üzleti és válaszadási szabályainak központi, ember által olvasható gyűjtőhelye.
+Cél:
+Ez a fájl a tesztágon jelenleg kódban szétszórva lévő üzleti, válaszadási,
+ár-, kapacitás-, horgászati, Gmail- és biztonsági szabályokat gyűjti össze
+ember által olvasható formában.
 
-Állapot:
-- tesztági munkafájl
-- a futó alkalmazás szabályait jelenleg továbbra is a kódfájlok érvényesítik
-- új szabályt csak akkor tekintünk a rendszerben aktívnak, ha a megfelelő programlogikába és tesztekbe is bekerült
+FONTOS:
+- Ez a fájl dokumentáció. A futó rendszer szabályait továbbra is a hivatkozott
+  .mjs fájlok hajtják végre.
+- Egy új szabály csak akkor aktív, ha a programlogikába és a tesztekbe is bekerül.
+- A sorszámok a jelenlegi tesztági állapotra vonatkoznak, későbbi kódmódosítás
+  eltolhatja őket.
+- Ahol "ellenőrzendő", "nem hitelesített" vagy "referencia" szerepel, ott a rendszer
+  nem állíthat biztos tényt automatikusan.
 
-További szabályok ide kerülnek összegyűjtésre és rendszerezésre.
+----------------------------------------------------------------
+1. FOGLALÓ / ELŐLEG / LEMONDÁS
+----------------------------------------------------------------
+
+1.1 15 fő alatt a foglaló 50%.
+Forrás: business-config.mjs:10-16
+Komment: A vendéglétszám alapján választja ki a kisebb csoportokra érvényes foglaló mértékét.
+
+1.2 15 főtől a foglaló 80%.
+Forrás: business-config.mjs:10-16
+Komment: 15 vagy több vendégnél magasabb foglaló-százalékot használ.
+
+1.3 A foglaló befizetési határideje 10 nap.
+Forrás: business-config.mjs:10-16
+Komment: A foglalási szándék rögzítésétől számított 10 napon belül kell beérkeznie.
+
+1.4 Lemondási határidő 15 fő alatt: érkezés előtt 14 nap.
+Forrás: business-config.mjs:10-16
+Komment: Kisebb foglalásokra a 14 napos lemondási szabály vonatkozik.
+
+1.5 Lemondási határidő 15 főtől: érkezés előtt 30 nap.
+Forrás: business-config.mjs:10-16
+Komment: Nagyobb csoportnál hosszabb lemondási határidőt használ.
+
+1.6 A foglaló és a lemondási napok mindig a létszám alapján kerülnek kiválasztásra.
+Forrás: booking-confirmation.mjs:3-13
+Komment: A program külön függvényben számolja ki a megfelelő százalékot és lemondási határidőt.
+
+1.7 A foglaló beérkezése után generált levél véglegesített foglalásról tájékoztat,
+és tartalmazza a létszám szerinti lemondási határidőt.
+Forrás: booking-confirmation.mjs:15-80
+Komment: HU/DE/EN/SL nyelven készít visszaigazoló tervezetet.
+
+----------------------------------------------------------------
+2. ÜZEMELTETÉSI SZABÁLYOK
+----------------------------------------------------------------
+
+2.1 24 órás portaszolgálat / recepciós elérhetőség van beállítva.
+Forrás: business-config.mjs:18-31
+Komment: Emiatt például a későbbi érkezés kezelhető.
+
+2.2 A kódban hitelesített késői érkezési példa: 18:30.
+Forrás: business-config.mjs:18-31; sarberki-core.mjs:386-391
+Komment: Ha a vendég ilyen érkezési időről kérdez, a válasz jelezheti, hogy megoldható.
+
+2.3 Távozás legkésőbb 10:00.
+Forrás: business-config.mjs:18-31; sarberki-core.mjs:392-397
+Komment: A kijelentkezési időt a válaszban csak akkor emeli ki, ha a vendég rákérdez.
+
+2.4 Az áramfogyasztás külön, mérőóra alapján fizetendő.
+Forrás: business-config.mjs:18-31; sarberki-core.mjs:368-373
+Komment: A végleges összeg csak a tényleges fogyasztás / mérőállás alapján állapítható meg.
+
+2.5 Parkolási lehetőség biztosított.
+Forrás: business-config.mjs:18-31; sarberki-core.mjs:380-385
+Komment: Több autó esetén a rendelkezésre álló helyet külön kell ellenőrizni.
+
+2.6 Tűzifa elérhető felár ellenében, de a pontos díj nincs hitelesítve.
+Forrás: business-config.mjs:18-31; sarberki-core.mjs:374-379
+Komment: A rendszer nem írhat automatikusan konkrét tűzifaárat.
+
+2.7 Háziállat hozható térítés ellenében, de a pontos díj nincs hitelesítve.
+Forrás: business-config.mjs:18-31; sarberki-core.mjs:407-413
+Komment: A rendszer csak a díjkötelességet állíthatja biztosan, a konkrét összeget nem.
+
+2.8 Dézsa elérhetőségét külön ellenőrizni kell; a dézsadíj nincs hitelesítve.
+Forrás: business-config.mjs:18-31; sarberki-core.mjs:415-421
+Komment: Szabad dézsát és pontos árat csak ellenőrzés után szabad visszaigazolni.
+
+2.9 Visszatérő vendég kedvezmény: lehetséges 20%, 730 napos visszatekintéssel.
+Forrás: business-config.mjs:25-27; sarberki-core.mjs:398-405
+Komment: Csak akkor alkalmazható, ha a korábbi tartózkodás és a vendégkönyv alapján
+igazolható; automatikusan nem kerül levonásra.
+
+----------------------------------------------------------------
+3. ÁRAZÁSI SZABÁLYOK
+----------------------------------------------------------------
+
+3.1 Extra felnőtt díja: 4 500 Ft / éjszaka.
+Forrás: business-config.mjs:33-42
+Komment: A publikus referenciaár-számítás ezt használja az alaplétszám feletti felnőtteknél.
+
+3.2 Gyermek 0-2 éves korig: 0 Ft / éjszaka a jelenlegi konfigurációban.
+Forrás: business-config.mjs:33-42; price-source/public-price-fallback.mjs:11-15
+Komment: Ez konfigurált referencia-szabály; az élő Previo gyermekár-teszteket külön kell kezelni.
+
+3.3 Gyermek 3-8 éves korig: 2 250 Ft / éjszaka a jelenlegi konfigurációban.
+Forrás: business-config.mjs:33-42; price-source/public-price-fallback.mjs:11-15
+Komment: Ez konfigurált referencia-szabály; az élő Previo ár elsőbbséget élvez, ha hitelesen lekérhető.
+
+3.4 8 év felett a referenciaár-számítás extra felnőtt díjat használ.
+Forrás: price-source/public-price-fallback.mjs:11-15
+Komment: A publikus fallback logika így számol; nem szabad összekeverni az élő Previo kategóriákkal.
+
+3.5 Idegenforgalmi adó: 550 Ft / felnőtt / éjszaka.
+Forrás: business-config.mjs:33-42; sarberki-core.mjs:460-467
+Komment: A vendégnek külön tételként jelezhető, de végösszegnél ellenőrizni kell.
+
+3.6 Főszezoni felár: 10%.
+Forrás: business-config.mjs:33-42
+Komment: A magas szezonra vonatkozó szállásdíj-felár.
+
+3.7 Főszezon időszaka: július 1. – augusztus 20.
+Forrás: business-config.mjs:38-40
+Komment: A rendszer a dátumokkal átfedést vizsgál.
+
+3.8 A főszezoni 10% felár a szállásdíjra vonatkozik, a dézsára nem.
+Forrás: sarberki-core.mjs:433-458
+Komment: A válasz ezt csak akkor közli, ha a vendég a szezonfelárra kérdez.
+
+3.9 Egyéjszakás felár: 20%.
+Forrás: business-config.mjs:33-42; price-source/public-price-fallback.mjs:35
+Komment: A publikus referenciaár egyetlen éjszakánál megemeli a szállásdíjat.
+
+3.10 Az Osztott A/B/C publikus referenciaár csak referencia, nem elérhetőség-igazolás.
+Forrás: price-source/public-price-fallback.mjs:16-50
+Komment: A visszaadott státusz "public_reference", availability="not_checked",
+bookingCompleted=false.
+
+----------------------------------------------------------------
+4. HÁZTÍPUSOK ÉS KAPACITÁSOK
+----------------------------------------------------------------
+
+4.1 Deluxe: alapár 4 főre 60 000 Ft/éj, max. 6 felnőtt, max. 6 fő.
+Forrás: business-config.mjs:45-53
+Komment: Élő Previo név: "DELUXE faház".
+
+4.2 Családi: alapár 4 főre 52 000 Ft/éj, max. 8 felnőtt, max. 8 fő.
+Forrás: business-config.mjs:54-62
+Komment: Élő Previo név: "Családi faház".
+
+4.3 VIP: alapár 4 főre 60 000 Ft/éj, max. 7 felnőtt, max. 7 fő.
+Forrás: business-config.mjs:63-71
+Komment: Élő Previo név: "VIP apartman".
+
+4.4 Különálló 2 fős: alapár 30 000 Ft/éj, max. 2 felnőtt, max. 3 fő.
+Forrás: business-config.mjs:72-81
+Komment: Harmadik férőhely csak gyermek pótágy lehet; extra felnőtt nem engedélyezett.
+
+4.5 Osztott A: 23 000 Ft/éj, max. 2 fő.
+Forrás: business-config.mjs:82-94
+Komment: Élő Previo mapping nincs hitelesítve.
+
+4.6 Osztott B: 23 000 Ft/éj, max. 2 fő.
+Forrás: business-config.mjs:95-107
+Komment: Élő Previo mapping nincs hitelesítve.
+
+4.7 Osztott C: 44 000 Ft/éj, max. 5 fő.
+Forrás: business-config.mjs:108-120
+Komment: Élő Previo mapping nincs hitelesítve; extra felnőtt árazás engedélyezett a konfigurációban.
+
+4.8 Az élő foglalási szolgáltató Previo, hotelId=753011, pénznem HUF, nyelv HU.
+Forrás: business-config.mjs:122-127
+Komment: A Previo adapter csak ehhez a szálláshelyhez enged kéréseket.
+
+----------------------------------------------------------------
+5. DÁTUMKEZELÉS ÉS ÉVKÖVETKEZTETÉS
+----------------------------------------------------------------
+
+5.1 A "2026.10.09-től 10.13.ig" formátum közvetlenül felismerhető.
+Forrás: sarberki-core.mjs:81-96
+Komment: Az év egyszer szerepel, a távozásnál csak hónap/nap; a rendszer ezt helyesen összerakja.
+
+5.2 Év nélküli dátumnál az aktuális év az alap.
+Forrás: sarberki-core.mjs:107-118, 119-127, 183-194
+Komment: Ha a dátum még nem múlt el, az aktuális évre következtet.
+
+5.3 Ha az év nélküli dátum már elmúlt, a következő évre vált.
+Forrás: sarberki-core.mjs:109-117, 122-127, 188-194
+Komment: Például egy augusztusi kérés szeptember/október után a következő évre kerül.
+
+5.4 "Jövőre / next year / nächstes Jahr / naslednje leto" esetén a következő év explicit következtetés.
+Forrás: sarberki-core.mjs:166-180, 188-194
+Komment: Ilyenkor nem kell külön évszámot visszakérdezni.
+
+5.5 A rendszer HU/EN/DE/SL dátumformátumokat támogat.
+Forrás: sarberki-core.mjs:81-194
+Komment: Többféle számos és hónapnéves alakot is felismer.
+
+----------------------------------------------------------------
+6. ADATFELISMERÉS ÉS HIÁNYZÓ ADATOK
+----------------------------------------------------------------
+
+6.1 Ha pontosan egy háztípus felismerhető, azt használja; többértelmű vagy hiányzó
+háztípus esetén emberi döntésre vár.
+Forrás: sarberki-core.mjs:17-27
+Komment: Nem talál ki önkényesen háztípust a szövegből.
+
+6.2 Támogatott bemeneti csatornák: email, web_form, phone_ai, manual.
+Forrás: booking-input.mjs:12-21
+Komment: Más csatornát a foglalási normalizáló nem fogad el.
+
+6.3 Árlekéréshez kötelező: pontos dátum, háztípus, felnőttek száma,
+gyermek státusz, és gyermek esetén minden gyermek életkora.
+Forrás: booking-input.mjs:22-35, 43-55
+Komment: readyForPrice csak akkor igaz, ha nincs hiányzó kötelező adat.
+
+6.4 Ha a szöveg explicit azt mondja, hogy nincs gyermek, children=0.
+Forrás: booking-input.mjs:14-16, 25-27
+Komment: Nem kell gyermekstátuszt újra visszakérdezni.
+
+6.5 Több szállásegység kérése felismerhető, de nyitott "több egység" kérésnél
+nem feltételez darabszámot.
+Forrás: sarberki-core.mjs:217-223; intake-normalize.mjs:56-57
+Komment: A rendszer nem talál ki konkrét egységszámot.
+
+----------------------------------------------------------------
+7. VÁLASZADÁSI LOGIKA
+----------------------------------------------------------------
+
+7.1 A rendszer csak a ténylegesen hiányzó adatokat kérdezze vissza.
+Forrás: sarberki-core.mjs:287-295, 490-499
+Komment: Dátumot, felnőttszámot, gyermekstátuszt, életkort, telefont vagy háztípust
+csak akkor kér, ha az adott adat valóban hiányzik.
+
+7.2 Ha megvan a pontos dátum és az összlétszám, de nincs háztípus,
+nem kérdezi vissza automatikusan a háztípust.
+Forrás: sarberki-core.mjs:490-505
+Komment: Ilyenkor kapacitás alapján alkalmas háztípusokat kell keresni és
+csak ténylegesen szabad lehetőséget szabad ajánlani.
+
+7.3 Elérhetőségről és árról csak hiteles ellenőrzés után adhat biztos választ.
+Forrás: sarberki-core.mjs:510-518
+Komment: A válasz külön jelzi, ha még ellenőrzés szükséges.
+
+7.4 Alternatív háztípust vagy több egységből álló megoldást csak tényleges
+szabad kapacitás alapján szabad javasolni.
+Forrás: sarberki-core.mjs:469-474
+Komment: A kapacitás önmagában nem jelenti azt, hogy az adott egység szabad.
+
+7.5 Módosítási vagy lemondási kérésnél rövid visszaigazoló tervezet készül,
+nem automatikus PMS-művelet.
+Forrás: sarberki-core.mjs:478-488
+Komment: A rendszer csak jelzi, hogy a kérelmet megkaptuk és ellenőrizzük.
+
+----------------------------------------------------------------
+8. KAPACITÁSAJÁNLÁS
+----------------------------------------------------------------
+
+8.1 Élő kapacitásellenőrzés csak a külön tesztoldalon engedélyezett.
+Forrás: netlify/functions/availability-options.mjs:4-8, 68-80
+Komment: Production vagy más host nem használhatja automatikusan ezt az élő végpontot.
+
+8.2 Kapacitásajánláshoz pontos dátum és 1-40 közötti összlétszám kell.
+Forrás: netlify/functions/availability-options.mjs:37-45
+Komment: Hibás dátum vagy létszám esetén nincs automatikus ajánlás.
+
+8.3 A szükséges egységszámot mind a max. vendéglétszám, mind a max. felnőttlétszám
+figyelembevételével számolja.
+Forrás: netlify/functions/availability-options.mjs:42-45
+Komment: Ez biztonságos akkor is, ha a felnőtt/gyermek bontás még nem ismert.
+
+8.4 Csak az kerül "available_options" közé, amelynél az élő forrás szerint
+elég szabad egység van.
+Forrás: netlify/functions/availability-options.mjs:47-64
+Komment: A kapacitásban megfelelő, de foglalt ház nem ajánlható szabadként.
+
+8.5 Osztott A/B/C kombináció kapacitás alapján számítható, de elérhetősége
+nem tekinthető igazoltnak.
+Forrás: netlify/functions/availability-options.mjs:12-35
+Komment: Az Osztott egységek Previo mappingje nincs hitelesítve, ezért csak
+"manual_review" lehetőségként jelenhetnek meg.
+
+8.6 A kapacitás-végpont csak arrival, departure és guests adatot fogad.
+Forrás: netlify/functions/availability-options.mjs:68-79
+Komment: Személyes adatot nem szabad elküldeni a kapacitáslekéréshez.
+
+----------------------------------------------------------------
+9. ÁRLEKÉRÉS ÉS BIZTONSÁGI KORLÁTOK
+----------------------------------------------------------------
+
+9.1 Árlekéréshez kizárólag dátum, háztípus, felnőttszám, gyermekkorok és
+egységszám adható át; személyes adat tilos.
+Forrás: price-quote.mjs:10-22
+Komment: Név, email, telefon, foglalási azonosító stb. nem küldhető tovább.
+
+9.2 Csak érvényes, jövőbeli tartózkodás árazható.
+Forrás: price-quote.mjs:13-16
+Komment: Múltbeli, hibás vagy fordított dátumot elutasít.
+
+9.3 Gyermek esetén minden gyermek életkora kötelező, és csak 0-17 év fogadható el.
+Forrás: price-quote.mjs:17
+Komment: A gyermekár-kategória csak életkor alapján állapítható meg.
+
+9.4 Egy árlekérésben 1-10 egység engedélyezett.
+Forrás: price-quote.mjs:18
+Komment: Ennél több egység automatikus lekérése tiltott.
+
+9.5 A felnőtt- és teljes létszám nem haladhatja meg az ellenőrzött kapacitást.
+Forrás: price-quote.mjs:19-20
+Komment: A rendszer kapacitáson felüli ajánlatot nem árazhat.
+
+9.6 Több házas árlekérésnél minden egységhez legalább egy felnőtt kell.
+Forrás: price-quote.mjs:21
+Komment: Ez a több egységre szétosztás biztonsági feltétele.
+
+9.7 A régi böngészős, kattintásos árlekérés le van tiltva.
+Forrás: price-quote.mjs:25-31
+Komment: Csak igazoltan foglalásmentes, őrzött publikus adapter használható.
+
+9.8 Csak HUF formátumú ár fogadható el.
+Forrás: price-quote.mjs:34-37
+Komment: Más pénznem vagy nem ellenőrizhető árformátum elutasításra kerül.
+
+----------------------------------------------------------------
+10. PREVIO READ-ONLY BIZTONSÁGI SZABÁLYOK
+----------------------------------------------------------------
+
+10.1 Csak előre engedélyezett Previo GET/POST útvonalak hívhatók.
+Forrás: price-source/sarberki-public-booking.mjs:4-23
+Komment: Más host, path, hotId, query kulcs vagy pénznem tiltott.
+
+10.2 Dátumkeresés POST csak arrival, departure, step=1 mezőket tartalmazhat.
+Forrás: price-source/sarberki-public-booking.mjs:14-17
+Komment: Ha a Previo űrlap szerkezete megváltozik, a rendszer fail-closed módon leáll.
+
+10.3 Árlekérésnél csak névtelen vendégkategóriák küldhetők.
+Forrás: price-source/sarberki-public-booking.mjs:24-33
+Komment: Név, email, telefon és más személyes adat nem kerülhet a Previo kérésbe.
+
+10.4 Csak ellenőrzött Previo átirányítások követhetők.
+Forrás: price-source/sarberki-public-booking.mjs:39-53
+Komment: Ismeretlen redirect cél esetén a folyamat leáll.
+
+10.5 Gyermek életkorát pontosan egy Previo gyermek-kategóriához kell tudni rendelni.
+Forrás: price-source/sarberki-public-booking.mjs:69-72
+Komment: Többértelmű kategória esetén nincs automatikus ár.
+
+10.6 Availability lekérés csak dátumot és hitelesen mappingelt háztípust használ.
+Forrás: price-source/sarberki-public-booking.mjs:85-110
+Komment: Felnőtt/gyermek bontás és személyes adat nem kell a puszta szabadhely-ellenőrzéshez.
+
+10.7 Ha a Previo nem igazolja a szabad egységszámot, nincs biztos elérhetőségi állítás.
+Forrás: price-source/sarberki-public-booking.mjs:101-110
+Komment: A rendszer csak számszerűen kiolvasott free rooms értéket fogad el.
+
+10.8 Több azonos egységnél a vendégeket biztonságosan szét kell osztani,
+és egyik egység sem lépheti túl a kapacitást.
+Forrás: price-source/sarberki-public-booking.mjs:138-150
+Komment: Minden egység legalább egy felnőttet kap, a gyermekek elosztása külön történik.
+
+10.9 Csak ellenőrzött Previo totalPrice / totalTaxes fogadható el.
+Forrás: price-source/sarberki-public-booking.mjs:152-157
+Komment: Ismeretlen vagy hibás árstruktúra esetén nincs automatikus ár.
+
+10.10 Több házas árnál az összárnak egyeznie kell a házankénti árak összegével.
+Forrás: price-source/sarberki-public-booking.mjs:158-170
+Komment: Eltérés esetén kézi ellenőrzés szükséges.
+
+10.11 A Previo adapter soha nem jelöl foglalást befejezettnek.
+Forrás: price-source/sarberki-public-booking.mjs:110, 134, 172
+Komment: bookingCompleted=false; az adapter célja olvasás/ellenőrzés, nem foglalás létrehozása.
+
+----------------------------------------------------------------
+11. HORGÁSZATI SZABÁLYOK
+----------------------------------------------------------------
+
+11.1 A horgászati árakat soha nem szabad a szállás végösszegéhez automatikusan hozzáadni.
+Forrás: fishing-rules.mjs:1-14, 76-78
+Komment: A horgászat külön namespace és külön díjrendszer.
+
+11.2 Horgászathoz Magyarországra érvényes állami horgászjegy szükséges.
+Forrás: fishing-rules.mjs:28-34
+Komment: Általános horgászati feltételként kerül a válaszba.
+
+11.3 Csak szakáll nélküli, legfeljebb 6-os méretű horog használható.
+Forrás: fishing-rules.mjs:28-34, 51-56
+Komment: Szakállas horog nem engedélyezett.
+
+11.4 Kötelező felszerelés: pontybölcső, merítőháló, sebfertőtlenítő, pontyzsák.
+Forrás: fishing-rules.mjs:28-34
+Komment: Általános horgászati feltételek része.
+
+11.5 A Sárberki horgászjegyet a választott tó és időtartam szerint külön kell kiválasztani.
+Forrás: fishing-rules.mjs:28-34
+Komment: Nem létezik egyetlen univerzális jegy minden esetre.
+
+11.6 Normál tó 24 órás jegy: felnőtt 7 500 Ft, gyermek 3 750 Ft.
+Forrás: fishing-rules.mjs:36-42
+Komment: Csak akkor kerül válaszba, ha a vendég erre a konkrét jegyre kérdez.
+
+11.7 Gyermekjegy külön váltható; ára tó és időtartam függő.
+Forrás: fishing-rules.mjs:43-49
+Komment: Ha nincs pontos tó/időtartam, nem ad fix árat.
+
+11.8 Minimum halméretek: süllő 30 cm, csuka 40 cm, ponty 30 cm,
+amur 40 cm, harcsa 50 cm.
+Forrás: fishing-rules.mjs:57-62
+Komment: Csak a minimum méretre irányuló kérdésnél jelenik meg.
+
+11.9 Elvihető hal kg-árak:
+süllő 4 500 Ft, csuka 4 500 Ft, harcsa 1 500 Ft,
+5 kg alatti ponty 2 000 Ft, 5 kg alatti amur 2 000 Ft,
+keszeg 1 350 Ft, kárász 1 350 Ft.
+Forrás: fishing-rules.mjs:63-68
+Komment: Ezek külön horgászati díjak, nem szállásárak.
+
+11.10 A horgászati szabályforrás 2026-09-28-án volt ellenőrizve,
+és 2026-01-01-től érvényes adatként van jelölve.
+Forrás: fishing-rules.mjs:2-14
+Komment: Forrásfrissítésnél ezt a dátumot is aktualizálni kell.
+
+----------------------------------------------------------------
+12. GMAIL TESZTSZABÁLYOK
+----------------------------------------------------------------
+
+12.1 Csak a sarberkiprojecttest@gmail.com tesztfiók olvasható.
+Forrás: gmail-policy.mjs:1, 6-9
+Komment: Más Google-fiókkal a rendszer hibát dob.
+
+12.2 Gmail keresés: inbox, 2026-09-25 után.
+Forrás: gmail-policy.mjs:2-4
+Komment: A helyi dátumhatár a Gmail after: viselkedéséhez igazodik.
+
+12.3 Csak INBOX címkés és a dátumhatárnál újabb üzenet számít tesztérdeklődésnek.
+Forrás: gmail-policy.mjs:11-15
+Komment: Régi vagy nem inbox üzenetet a tesztlogika nem dolgoz fel érdeklődésként.
+
+----------------------------------------------------------------
+13. BEMENETI NORMALIZÁLÁS
+----------------------------------------------------------------
+
+13.1 Engedélyezett általános bemeneti csatornák:
+manual, gmail, web_form, phone_ai.
+Forrás: intake-normalize.mjs:14-26
+Komment: Ismeretlen csatorna elutasításra kerül.
+
+13.2 Üres vendégüzenet nem normalizálható.
+Forrás: intake-normalize.mjs:24-26
+Komment: A rendszer csak tényleges szövegből dolgozik.
+
+13.3 A normalizált rekord megőrzi az eredeti szöveget és forrásadatokat.
+Forrás: intake-normalize.mjs:35-60
+Komment: Auditálható marad, hogy miből származott a felismert adat.
+
+13.4 A normalizált adatok között külön szerepel:
+nyelv, dátum, háztípus, összlétszám, felnőttek, gyermekek,
+gyermekkorok, telefonszám, egységszám és külön kérések.
+Forrás: intake-normalize.mjs:43-59
+Komment: Ezekre épül a későbbi validáció és válaszlogika.
+
+----------------------------------------------------------------
+14. ÁLTALÁNOS BIZTONSÁGI ELV
+----------------------------------------------------------------
+
+14.1 A rendszer bizonytalan adatból nem készíthet biztos üzleti állítást.
+Forrás: sarberki-core.mjs:1-4; price-quote.mjs:10-31;
+price-source/sarberki-public-booking.mjs:11-53
+Komment: Ha valami nem egyértelmű, hiányzik vagy a külső rendszer megváltozott,
+a folyamat inkább álljon meg / kérjen ellenőrzést, mint hogy kitaláljon adatot.
+
+14.2 A szabadhely-, ár- és foglalási státusz három külön dolog.
+Forrás: netlify/functions/availability-options.mjs:57-65;
+price-source/sarberki-public-booking.mjs:110, 172
+Komment: Szabad kapacitás lekérhető anélkül, hogy foglalás jönne létre;
+az ár lekérése sem jelent foglalás-véglegesítést.
+
+14.3 Automatikus foglalás-véglegesítés nincs ezekben az olvasó/árlekérő modulokban.
+Forrás: price-source/sarberki-public-booking.mjs:113-172;
+price-source/public-price-fallback.mjs:37-50
+Komment: A modulok bookingCompleted=false értékkel térnek vissza.
+
+================================================
+DOKUMENTUM VÉGE
+================================================
