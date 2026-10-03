@@ -205,11 +205,18 @@
         ? 'Če vam ponudba ustreza, prosimo odgovorite na to e-pošto in potrdite, da lahko rezervacijo zabeležimo pod zgoraj navedenimi pogoji.'
         : 'If this offer is suitable for you, please reply to this email and confirm that we may proceed with the booking under the conditions above.')
       : '';
+    const depositLine=priceApproved
+      ? (lang==='DE'
+        ? 'Die Anzahlung beträgt 50 % des Unterkunftspreises und ist innerhalb von 10 Tagen per Überweisung zu bezahlen.'
+        : lang==='SL'
+        ? 'Akontacija za rezervacijo znaša 50 % cene nastanitve in jo je treba poravnati z bančnim nakazilom v 10 dneh.'
+        : 'The booking deposit is 50% of the accommodation price and must be paid by bank transfer within 10 days.')
+      : '';
     const lines=lang==='DE'
-      ? [`Guten Tag${v.name?', '+v.name:''}!`,'','Vielen Dank für Ihre Anfrage.',stay?`Gewünschter Zeitraum: ${stay}.`:'',cabin?`Ausgewählter Haustyp: ${cabin}.`:'',priceLine,confirmationLine,'','Mit freundlichen Grüßen','Sárberki Horgásztó']
+      ? [`Guten Tag${v.name?', '+v.name:''}!`,'','Vielen Dank für Ihre Anfrage.',stay?`Gewünschter Zeitraum: ${stay}.`:'',cabin?`Ausgewählter Haustyp: ${cabin}.`:'',priceLine,depositLine,confirmationLine,'','Mit freundlichen Grüßen','Sárberki Horgásztó']
       : lang==='SL'
-      ? [`Pozdravljeni${v.name?', '+v.name:''}!`,'','Hvala za vaše povpraševanje.',stay?`Želeno obdobje: ${stay}.`:'',cabin?`Izbrana nastanitev: ${cabin}.`:'',priceLine,confirmationLine,'','Lep pozdrav,','Sárberki Horgásztó']
-      : [`Dear ${v.name||'Guest'},`,'','Thank you for your inquiry.',stay?`Requested stay: ${stay}.`:'',cabin?`Selected accommodation: ${cabin}.`:'',priceLine,confirmationLine,'','Kind regards,','Sárberki Horgásztó'];
+      ? [`Pozdravljeni${v.name?', '+v.name:''}!`,'','Hvala za vaše povpraševanje.',stay?`Želeno obdobje: ${stay}.`:'',cabin?`Izbrana nastanitev: ${cabin}.`:'',priceLine,depositLine,confirmationLine,'','Lep pozdrav,','Sárberki Horgásztó']
+      : [`Dear ${v.name||'Guest'},`,'','Thank you for your inquiry.',stay?`Requested stay: ${stay}.`:'',cabin?`Selected accommodation: ${cabin}.`:'',priceLine,depositLine,confirmationLine,'','Kind regards,','Sárberki Horgásztó'];
     return lines.filter(x=>x!==''||true).join('\n');
   }
 
@@ -269,7 +276,7 @@
       );
     }
 
-    if(priceApproved) lines.push('','Amennyiben az ajánlat megfelel Önnek, kérjük, válasz e-mailben erősítse meg, hogy a foglalást a fenti feltételekkel rögzíthetjük. A foglalást csak az Ön egyértelmű visszaigazolása után rögzítjük.');
+    if(priceApproved) lines.push('','A foglaló összege a teljes szállásdíj 50%-a, amelyet 10 napon belül átutalással kérünk rendezni.','Amennyiben az ajánlat megfelel Önnek, kérjük, válasz e-mailben erősítse meg, hogy a foglalást a fenti feltételekkel rögzíthetjük. A foglalást csak az Ön egyértelmű visszaigazolása után rögzítjük.');
 
     if(asked.pet) lines.push('','A kisebb kutyával kapcsolatos kérését is feljegyeztük. Háziállat térítés ellenében hozható; a pontos díjat ellenőrizzük.');
     if(asked.hotTub){
