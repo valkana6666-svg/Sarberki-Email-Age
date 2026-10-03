@@ -106,3 +106,13 @@ test('Gmail normalized facts override weaker UI extraction and contradiction rev
  assert.match(source,/gmailRecord\?\.human_review/u);
  assert.match(source,/gmailConflict/u);
 });
+
+
+test('multilingual approved price survives draft rewrite',()=>{
+ assert.match(source,/function foreignFocusedReply/u);
+ assert.match(source,/The .*selected for your stay/u);
+ assert.match(source,/approved total price/u);
+ assert.match(source,/Der von Ihnen ausgewählte Haustyp/u);
+ assert.match(source,/Cena za izbrano nastanitev/u);
+ assert.match(source,/if\(replyLanguage!=='HU'\) return foreignFocusedReply/u);
+});
