@@ -82,6 +82,34 @@ async function post(request,url,data,ajax=true){
   return response;
 }
 
+// Read-only availability check. It sends dates and a mapped accommodation type only;
+ // no customer identity and no adult/child composition is required.
+export async function fetchPublicBookingAvailability(raw,request=fetch){
+  const {arrival,departure,cabin}=raw||{};
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(arrival||'')||!/^\d{4}-\d{2}-\d{2}$/.test(departure||'')) throw Error('Pontos érkezési és távozási dátum szükséges.');
+  const start=new Date(arrival+'T00:00:00Z'), end=new Date(departure+'T00:00:00Z');
+  if(!Number.isFinite(+start)||!Number.isFinite(+end)||end<=start) throw Error('Érvényes tartózkodási időszak szükséges.');
+  if(!NAMES[cabin]) throw Error('Ehhez a háztípushoz nincs ellenőrzött Previo megfeleltetés.');
+  const safe=(url,options)=>requestPrevioReadOnly(url,options,request);
+  const initial=await checkedResponse(await safe(`${ROOT}/?hotId=${HOTEL_ID}&currency=HUF&lang=hu&redirectType=iframe`,{signal:AbortSignal.timeout(45000)}));
+  const first=await initial.text();
+  const form=first.match(/<form[^>]*id="firstStep"[^>]*>/)?.[0];
+  const action=form?.match(/action="([^"]+)"/)?.[1]?.replace(/&amp;/g,'&');
+  if(!action||new URL(action).origin!==ROOT||new URL(action).pathname!=='/'||new URL(action).searchParams.get('hotId')!==HOTEL_ID) throw Error('A Previo dátuműrlapja megváltozott.');
+  const step=await post(safe,action,{step:'1',arrival,departure},false);
+  const stepHtml=await step.text(), params=pageParams(stepHtml);
+  if(params.RESERVATION_DETAILS?.from!==arrival||params.RESERVATION_DETAILS?.to!==departure) throw Error('A Previo dátumai eltérnek a kért időszaktól.');
+  const kind=params.OBJECT_KINDS?.filter(x=>x.hotelLangName===NAMES[cabin]);
+  if(kind?.length!==1) throw Error('A kért háztípus nem azonosítható egyértelműen.');
+  const obkId=kind[0].obkId;
+  const common={hotId:HOTEL_ID,currency:'HUF',lang:'hu',obkId:String(obkId),PHPSESSID:new URL(step.url).searchParams.get('PHPSESSID')||new URL(action).searchParams.get('PHPSESSID')||''};
+  const occupancy=await (await post(safe,sessionUrl('/index/get-object-kind-occupancy/',step.url),{...common,newDesign:'1'})).json();
+  if(!occupancy.success||typeof occupancy.html!=='string') throw Error('A Previo nem igazolta a rendelkezésre állást.');
+  const free=Number(occupancy.html.match(/data-numOfFreeRooms="(\d+)"/)?.[1]);
+  if(!Number.isInteger(free)) throw Error('Nem ellenőrizhető a szabad kapacitás.');
+  return {status:'review_required',source:'Sárberki hivatalos foglalási felület',sourceUrl:BUSINESS.bookingUrl,checkedAt:new Date().toISOString(),arrival,departure,cabin,availability:free>0?'available':'unavailable',availableUnits:free,bookingCompleted:false};
+}
+
 // Only read-only quote endpoints. No reservation submission or customer data.
 export async function fetchPublicBookingQuote(raw,request=fetch){
   const input=validateQuote(raw);
