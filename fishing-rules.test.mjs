@@ -48,3 +48,15 @@ test('German and Slovenian barbed-hook questions stay localized',()=>{
   assert.match(fishingQuestion('Sind Haken mit Widerhaken erlaubt?','de').answer,/nicht erlaubt/u);
   assert.match(fishingQuestion('Ali so dovoljeni trnki z zalustjo?','si').answer,/niso dovoljeni/u);
 });
+
+test('generic Hungarian fishing conditions question gets concrete verified rules',()=>{
+  const answer=fishingQuestion('Horgászni szeretnénk. A horgászatnak milyen feltételei vannak?','hu');
+  assert.equal(answer.kind,'general_conditions');
+  assert.match(answer.answer,/állami horgászjegy/u);
+  assert.match(answer.answer,/szakáll nélküli/u);
+  assert.match(answer.answer,/6-os/u);
+  assert.match(answer.answer,/pontybölcső/u);
+  assert.match(answer.answer,/merítőháló/u);
+  assert.match(answer.answer,/sebfertőtlenítő/u);
+  assert.match(answer.answer,/pontyzsák/u);
+});
