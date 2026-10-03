@@ -63,13 +63,13 @@ test('manual UI and Gmail bridge use the same shared Sarberki core',()=>{
 });
 
 
-test('test header logo uses the committed PNG asset and has a visible fallback',()=>{
- assert.match(source,/class="brand-logo"[^>]+src="\.\/sarberki-logo-orange\.png\?v=20261003-1"/u);
+test('test header logo uses the committed crowned fish SVG asset and has a visible fallback',()=>{
+ assert.match(source,/class="brand-logo"[^>]+src="\.\/sarberki-logo-crownfish-orange\.svg\?v=20261003-1010"/u);
  assert.match(source,/alt="Sárberki Horgásztó · Lenti logó"/u);
  assert.match(source,/brand-logo-fallback/u);
  assert.match(source,/logo-failed/u);
- const logo=fs.readFileSync(new URL('./sarberki-logo-orange.png',import.meta.url));
- assert.deepEqual([...logo.subarray(0,8)],[137,80,78,71,13,10,26,10]);
+ const logo=fs.readFileSync(new URL('./sarberki-logo-crownfish-orange.svg',import.meta.url),'utf8');
+ assert.match(logo,/^<svg\b/u);
 });
 
 test('Gmail bridge remains strictly read-only and exposes no send action',()=>{
