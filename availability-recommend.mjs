@@ -19,14 +19,17 @@ function hasSpecificCabin(value=''){return /vip|családi|deluxe|osztott|külön�
 function replaceCapacityPlaceholder(draft,sentence,manual){
   const placeholder='A megadott létszám alapján ellenőrizzük az összes megfelelő szállástípust, és csak a ténylegesen szabad lehetőségeket ajánljuk fel.';
   const combined=[sentence,manual].filter(Boolean).join('\n');
-  if(draft.includes(placeholder))return draft.replace(placeholder,combined);
-  const closing=/\n\n(?:Üdvözlettel:|Mit freundlichen Grüßen|Kind regards,|Lep pozdrav,)\nSárberki Horgásztó\s*$/u;
-  if(closing.test(draft)) return draft.replace(closing, '\n\n'+combined+'function replaceCapacityPlaceholder(draft,sentence,manual){
-  const placeholder='A megadott létszám alapján ellenőrizzük az összes megfelelő szállástípust, és csak a ténylegesen szabad lehetőségeket ajánljuk fel.';
-  const combined=[sentence,manual].filter(Boolean).join('\n');
-  if(draft.includes(placeholder))return draft.replace(placeholder,combined);
-  return draft+'\n\n'+combined;
-}');
+  if(draft.includes(placeholder)) return draft.replace(placeholder,combined);
+
+  const signatures=[
+    '\n\nÜdvözlettel:\nSárberki Horgásztó',
+    '\n\nMit freundlichen Grüßen\nSárberki Horgásztó',
+    '\n\nKind regards,\nSárberki Horgásztó',
+    '\n\nLep pozdrav,\nSárberki Horgásztó'
+  ];
+  for(const signature of signatures){
+    if(draft.includes(signature)) return draft.replace(signature,'\n\n'+combined+signature);
+  }
   return draft+'\n\n'+combined;
 }
 function currentReplyBase(){
