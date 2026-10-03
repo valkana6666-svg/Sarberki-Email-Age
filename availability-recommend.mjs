@@ -22,6 +22,38 @@ function replaceCapacityPlaceholder(draft,sentence,manual){
   if(draft.includes(placeholder))return draft.replace(placeholder,combined);
   return draft+'\n\n'+combined;
 }
+function currentReplyBase(){
+  const normalize=window.SarberkiNormalize;
+  if(!normalize?.buildReplyDraft)return $('draft')?.value||'';
+  const original=$('message')?.value||$('gmail_original')?.textContent||'';
+  const rawLang=($('f_language')?.value||'HU').toLowerCase();
+  const language=rawLang==='sl'?'si':rawLang;
+  const childrenRaw=$('f_children')?.value;
+  const childAges=($('f_child_ages')?.value||'').split(',').map(x=>Number(x.trim())).filter(Number.isFinite);
+  const fishing=window.SarberkiFishingQuestion?.(original,language);
+  return normalize.buildReplyDraft({
+    language,
+    name:$('f_name')?.value||null,
+    original,
+    arrival:$('f_arrival')?.value||null,
+    departure:$('f_departure')?.value||null,
+    guests:$('f_guests')?.value?Number($('f_guests').value):null,
+    adults:$('f_adults')?.value?Number($('f_adults').value):null,
+    children:childrenRaw===''||childrenRaw==null?null:Number(childrenRaw),
+    childAges,
+    phone:normalize.phoneFromText?.(original)||null,
+    cabin:'? – emberi döntésre vár',
+    pier:/(?:stég|pier)/iu.test(original),
+    hotTub:/(?:dézs|hot[ -]?tub|jacuzzi|badefass)/iu.test(original),
+    dog:/(?:kuty|dog|pet|hund|pes)/iu.test(original),
+    intent:'booking_request',
+    brandName:window.SarberkiConfig?.brandName||'Sárberki Horgásztó',
+    bookingRules:window.SarberkiConfig?.bookingRules||null,
+    operationalRules:window.SarberkiConfig?.operationalRules||null,
+    pricingRules:window.SarberkiConfig?.pricingRules||null,
+    knowledgeLines:fishing?[fishing.answer]:[]
+  });
+}
 let inflightKey=null;
 async function enrich(){
   const arrival=$('f_arrival')?.value||'', departure=$('f_departure')?.value||'', guests=Number($('f_guests')?.value||0), cabin=$('f_unit')?.value||'';
@@ -37,7 +69,8 @@ async function enrich(){
     const data=await response.json();
     if(!response.ok)throw Error(data.error||'Nem sikerült a kapacitás-ellenőrzés.');
     const sentence=availabilitySentence(data), manual=splitReviewSentence(data);
-    draft.value=replaceCapacityPlaceholder(draft.value,sentence,manual);
+    const fresh=currentReplyBase();
+    draft.value=replaceCapacityPlaceholder(fresh,sentence,manual);
     draft.dispatchEvent(new Event('input',{bubbles:true}));
     if(status){status.className='warning';status.textContent='Kapacitás ellenőrizve; a tervezet frissítve. Emberi jóváhagyás szükséges.';}
   }catch(error){
