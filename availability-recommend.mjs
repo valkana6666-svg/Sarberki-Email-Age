@@ -20,6 +20,13 @@ function replaceCapacityPlaceholder(draft,sentence,manual){
   const placeholder='A megadott létszám alapján ellenőrizzük az összes megfelelő szállástípust, és csak a ténylegesen szabad lehetőségeket ajánljuk fel.';
   const combined=[sentence,manual].filter(Boolean).join('\n');
   if(draft.includes(placeholder))return draft.replace(placeholder,combined);
+  const closing=/\n\n(?:Üdvözlettel:|Mit freundlichen Grüßen|Kind regards,|Lep pozdrav,)\nSárberki Horgásztó\s*$/u;
+  if(closing.test(draft)) return draft.replace(closing, '\n\n'+combined+'function replaceCapacityPlaceholder(draft,sentence,manual){
+  const placeholder='A megadott létszám alapján ellenőrizzük az összes megfelelő szállástípust, és csak a ténylegesen szabad lehetőségeket ajánljuk fel.';
+  const combined=[sentence,manual].filter(Boolean).join('\n');
+  if(draft.includes(placeholder))return draft.replace(placeholder,combined);
+  return draft+'\n\n'+combined;
+}');
   return draft+'\n\n'+combined;
 }
 function currentReplyBase(){
