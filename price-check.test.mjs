@@ -65,7 +65,7 @@ test('Teszt Elek reply retains known facts without inventing a price or pet fee'
  const replyCode=source.slice(source.indexOf('  function huAskedTopics('),source.indexOf('  function applyFocusedReply('));
  const fields={name:'Teszt Elek',arrival:'2026-10-16',departure:'2026-10-18',nights:'2',guests:'4',adults:'2',children:'2',child_ages:'7, 11',unit:'Deluxe',language:'HU'};
  const extract=()=>({fields:Object.fromEntries(Object.entries(fields).map(([k,value])=>[k,{value}])),intent:'booking_request',topics:{secondary_intents:[],requested_addons:['hot_tub']},warning_codes:[]});
- const context={extract,accommodationPlan:()=>({specific:true}),approvedPrice:null,quoteFingerprint:()=>'',Number};
+ const context={extract,accommodationPlan:()=>({specific:true}),approvedPrice:null,quoteFingerprint:()=>'',Number,cabins:{deluxe:'Deluxe',family:'Családi',vip:'VIP',small:'Különálló 2 fős',splitA:'Osztott A',splitB:'Osztott B',splitC:'Osztott C'},$:(id)=>id==='price_cabin'?{value:'deluxe'}:null};
  vm.createContext(context);vm.runInContext(replyCode+';globalThis.makeReply=focusedReply;',context);
  const message='2026. október 16–18. között 2 felnőtt és 2 gyermek (7 és 11 éves) érkezne Deluxe házba, dézsával és kisebb kutyával. Telefonszámom: +36 30 555 1234. Van szabad hely, és mennyibe kerül?';
  const reply=context.makeReply(message);
