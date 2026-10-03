@@ -134,3 +134,13 @@ test('initial anonymous GET may redirect only to step-1',async()=>{
  });
  assert.equal(response.status,200);assert.equal(calls,2);
 });
+
+test('nested personal fields and reservation hashes are blocked before network access',async()=>{
+  let calls=0;
+  const room={hash:null,isNonRef:false,numOfGuestsWithBed:2,guestCategories:[{guaId:1,count:2}]};
+  for(const rooms of [[{...room,email:'test@example.invalid'}],[{...room,hash:'reservation-id'}],[{...room,guestCategories:[{guaId:1,count:2,name:'Guest'}]}]]) {
+    const body=new URLSearchParams({hotId:'753011',currency:'HUF',lang:'hu',obkId:'10',PHPSESSID:'test',formData:JSON.stringify({obkId:10,rooms})});
+    await assert.rejects(requestPrevioReadOnly('https://booking.previo.cz/index/get-occupancy-price/?hotId=753011',{method:'POST',body},async()=>{calls++;}),/névtelen/u);
+  }
+  assert.equal(calls,0);
+});

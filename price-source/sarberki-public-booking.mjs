@@ -19,6 +19,19 @@ function validatePrevioRequest(url,options={}) {
     const keys=[...new URLSearchParams(options.body).keys()].sort().join(',');
     const expected=target.pathname==='/index/get-object-kind-occupancy/'?'PHPSESSID,currency,hotId,lang,newDesign,obkId':'PHPSESSID,currency,formData,hotId,lang,obkId';
     if(keys!==expected) throw Error('A Previo ár- vagy kapacitáskérésének mezői megváltoztak.');
+    const body=new URLSearchParams(options.body);
+    if(body.get('hotId')!==HOTEL_ID||body.get('currency')!=='HUF'||!/^\d+$/.test(body.get('obkId')||'')) throw Error('Eltérő Previo szálláshely, pénznem vagy háztípus.');
+    if(target.pathname==='/index/get-occupancy-price/') {
+      const form=JSON.parse(body.get('formData'));
+      const exact=(obj,keys)=>obj&&typeof obj==='object'&&!Array.isArray(obj)&&Object.keys(obj).sort().join(',')===keys;
+      if(!exact(form,'obkId,rooms')||String(form.obkId)!==body.get('obkId')||!Array.isArray(form.rooms)||form.rooms.length<1||form.rooms.length>10
+        ||form.rooms.some(room=>!exact(room,'guestCategories,hash,isNonRef,numOfGuestsWithBed')||room.hash!==null||room.isNonRef!==false
+          ||!Number.isInteger(room.numOfGuestsWithBed)||room.numOfGuestsWithBed<1||room.numOfGuestsWithBed>40
+          ||!Array.isArray(room.guestCategories)||room.guestCategories.length<1
+          ||room.guestCategories.some(cat=>!exact(cat,'count,guaId')||!Number.isInteger(cat.guaId)||cat.guaId<1||!Number.isInteger(cat.count)||cat.count<0||cat.count>40)))
+        throw Error('Csak névtelen vendégkategóriák küldhetők a Previo árlekéréshez.');
+    }
+
   }
   return target;
 }

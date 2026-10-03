@@ -1,52 +1,65 @@
 # Sárberki érdeklődéskezelő – tesztág
 
-A `gmail-test-subject-allowlist` ág külön Netlify tesztprojektje:
-https://leafy-chimera-2403e5.netlify.app/ — felületi verzió: v0.3.8 TEST.
-A `main` és a külön éles Netlify projekt nem része ennek a tesztnek.
+Kizárólag `gmail-test-subject-allowlist`; tesztoldal:
+https://leafy-chimera-2403e5.netlify.app/
+A `main` és a külön éles Netlify projekt nem része a munkának.
 
 ## Gmail, csak olvasás
 
-A böngészős OAuth kizárólag `gmail.readonly` scope-ot kér. A fiók a
-Google-ablakban választott `users/me` fiók; a tesztkapuhoz kijelölt fiók
-`sarberkiprojecttest@gmail.com`. A query:
-`in:inbox newer_than:30d -category:promotions -category:social`.
-A queryben nincs tárgyfeltétel. A beolvasott teljes levelek közül a helyi
-`gmail-subject.mjs` csak az alábbi pontos tárgyakat engedi át
-(kis-/nagybetű és szélső szóköz eltérés megengedett):
+Böngészős Google Identity Services token-popup, kizárólag `gmail.readonly`.
+A nyilvános OAuth client ID az `index.html` meta mezőjében van; ehhez az
+útvonalhoz nem kell Netlify client secret vagy szerveroldali callback.
+Az engedélyezett JavaScript origin a tesztoldal HTTPS originje.
+A Google Console origin- és tesztfelhasználó-listája külön adminisztratív
+ellenőrzést igényel; a popup megnyílása önmagában nem igazolja az engedélyt.
+Az access token csak memóriában marad, nem kerül GitHubba vagy localStorage-ba.
 
-- Érdeklődés a szállásról
-- Érdeklődés a szallasrol
-- Érdeklődés szállásról
+A `gmail-policy.mjs` profil-ellenőrzése minden levéllistázás előtt megköveteli
+a `sarberkiprojecttest@gmail.com` fiókot. Másik fiókból levél nem olvasható.
+Keresés: `in:inbox from:valkana6666@gmail.com after:2026/09/25`.
+A helyi kapu ismét ellenőrzi az INBOX címkét, feladót, dátumot és tárgyat.
+A `gmail-subject.mjs` megőrzi a magyar tárgyváltozatokat, a HU/DE/SI/EN
+szállásérdeklődéseket és a korábban támogatott teszt-/választárgyakat.
+A feldolgozás közös `sarberki-core.mjs` segédfüggvényeken és ugyanazon
+kezelői `extract` útvonalon fut a kézi és Gmail-forrásból is.
 
-A találatok közül a legújabb `internalDate` alapján készül a kezelői rekord.
-A rekordban eredeti szöveg, forrás, normalizált mezők, bizonytalanságok,
-hiányok és szerkeszthető választervezet jelenik meg. A kézi JSON-betöltés
-opcionális tartalék út. A válasz emberi ellenőrzést igényel; automatikus
-e-mail-küldés és foglalásmódosítás nincs. Az aktuális kiadás valós Gmail
-OAuth → rekord → felület végigfutása még nincs újra élőben igazolva.
+Élő OAuth → levél → kezelői rekord ellenőrzés még szükséges. 2026.10.03-án
+az elérhető Google-fiókválasztó csak a feladói fiókot mutatta; a tesztfiók
+belépésénél a kezelő közreműködése szükséges. Nem kértünk vagy fogadtunk el
+új engedélyt automatikusan. A Gmail connector saját kapcsolata nem helyettesíti
+a tesztoldal OAuth-ját.
 
 ## Ár és kapacitás
 
-A nyilvános foglalási oldal Previo-keretet használ. A szerveroldali
-Chromium-próbán a `sarberkito.hu/foglalas/` Cloudflare-ellenőrző keretet
-szolgáltatott, a Previo iframe nem jelent meg. Emiatt a Netlify
-`/api/price-quote` validált input után 503-as JSON
-`status: unverified` választ ad. A felület kézi ellenőrzést kér,
-nem jelenít meg becsült összeget, és a vendégtervezetbe nem kerül ár.
-Ez az útvonal nem igazol szabad kapacitást, dátum-, létszám-, háztípus-
-vagy egységszintű élő árat. A `price-quote.mjs` kísérleti böngészős
-adaptere megmaradt helyi fejlesztésre, de a Netlify-funkció nem futtatja.
-Gyermekár és több egység automatikus árazása nincs kész.
+A tesztoldal `/api/price-quote` Netlify-funkciója a külön teszthosthoz kötött.
+A `price-source/sarberki-public-booking.mjs` kizárólag anonim dátumkeresést,
+occupancy és price kéréseket enged. A 3–4. foglalási lépés, ügyféladatok,
+foglalási hash és nem engedélyezett redirect tiltott. A szolgáltató belső,
+dokumentálatlan végpontjainak változása esetén hibával megáll.
+
+Minden eredmény kezelői ellenőrzésre vár (`review_required`). A gyermekes
+érdeklődés minden életkorát meg kell adni; végleges automatikus ajánlat nincs.
+Több azonos típusú háznál az egységárak összege egyeztetett a teljes árral.
+Vegyes háztípusok egy kérésen belüli árazása nem támogatott. Osztott A/B/C
+esetén csak nyilvános referencia/kezelői ellenőrzés van, élő mapping nincs.
+HUF mellett a hivatalos MNB-forrás sikeres válasza adja az EUR átváltást;
+forráshiba esetén nincs kitalált árfolyam. A dézsa és kisállat külön díját
+nem szabad ellenőrzött kiegészítő ár nélkül a Previo szállásárhoz adni.
+
+2026.10.03-i élő referencia: 2026.10.16–18., Deluxe, 2 felnőtt:
+4 szabad egység; szállás 120 000 Ft + IFA 2 200 Ft = 122 200 Ft.
+MNB 2026.10.02.: 367,87 Ft/EUR; teljes ár 332,18 EUR.
+Két Deluxe ház / 4 felnőtt: 244 400 Ft / 664,37 EUR.
+Az élő ellenőrzés nem hoz létre foglalást és nem küld vendéglevelet.
 
 ## Ellenőrzés
 
-`npm install && npm test` fut a GitHub Actions tesztági workflow-ban.
-A tesztek a tárgyszűrő tényleges elfogadó/elutasító eseteit, a dátum
-és háztípus normalizálását, a fő árinput-korlátokat és a 503-as,
-nem igazolt ár JSON-választ is ellenőrzik. A CI sikere nem bizonyít
-valós Gmail-beolvasást vagy Previo-árat.
+`npm test`: helyi, hálózat nélküli mock/fixture tesztek (a HTTP források mockoltak).
+`EXPECTED_COMMIT=<40 karakteres SHA> node tests/deployment-sync.mjs`:
+pontos tesztági Netlify kiadás ellenőrzése.
+`node tests/live-price-smoke.mjs`: külön, csak olvasási élő próba egy házra,
+két házra egységár-egyeztetéssel és 7/11 éves gyermekekre kezelői státusszal.
+Ez a parancs csak az auditált adapter és a kijelölt tesztoldal ellenőrzése
+után futtatható. A CI élő próbája külön repository variable kapuhoz kötött.
 
-Élő kiadási kapu: kijelölt fiók OAuth-ja; jóváhagyott tárgyú tesztlevél
-automatikus beolvasása; egységes rekord és választervezet megjelenése;
-emberi jóváhagyási határ ellenőrzése. Élő árhoz külön, engedélyezett,
-csak olvasási adatforrás és valós ár-összehasonlító teszt szükséges.
+Automatikus e-mail-küldés, foglalás és PMS-módosítás nincs.

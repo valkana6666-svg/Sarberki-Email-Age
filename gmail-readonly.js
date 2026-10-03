@@ -1,26 +1,16 @@
 /* Browser-only Gmail bridge. Access token stays in memory and is never stored. */
 (async () => {
   'use strict';
-  const { cabinFromText, guestCountFromText, adultCountFromText, childCountFromText, dateRangeFromText, phoneFromText, childAgesFromText, pierPreferenceFromText, languageFromText, buildReplyDraft } = await import('./sarberki-core.mjs');
+  const { cabinFromText, guestCountFromText, adultCountFromText, childCountFromText, dateRangeFromText, phoneFromText, childAgesFromText, pierPreferenceFromText, languageFromText, buildReplyDraft, specialRequestsFromText } = await import('./sarberki-core.mjs');
   const { BUSINESS } = await import('./business-config.mjs');
   const { fishingQuestion } = await import('./fishing-rules.mjs');
-  const { isApprovedSubject } = await import('./gmail-subject.mjs');
-  // V1 live-read mode: broad inbox read, then conservative local inquiry classification.
-  // No sender restriction, no exact subject allowlist, no send/modify permission.
-  const INBOX_QUERY = 'in:inbox newer_than:30d -category:promotions -category:social';
+  const { INBOX_QUERY, TEST_GMAIL_ACCOUNT, assertTestGmailAccount, isTestInquiry } = await import('./gmail-policy.mjs');
 
   function headerMap(message) {
     return Object.fromEntries((message.payload?.headers || []).map(h => [h.name.toLowerCase(), h.value]));
   }
   function emailAddress(value='') {
     return value.match(/<([^<>]+)>\s*$/u)?.[1] || value.trim();
-  }
-  function looksLikeInquiry(message) {
-    const headers = headerMap(message);
-    return message.labelIds?.includes('INBOX')
-      && Number.isFinite(Number(message.internalDate))
-      && Number(message.internalDate) > 0
-      && isApprovedSubject(headers.subject);
   }
   const SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
   const button = document.getElementById('read_gmail');
@@ -151,7 +141,9 @@
     const phone = phoneFromText(original);
     const name = original.match(/(?:^|\n)\s*([A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+\s+[A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+)\s*$/mu)?.[1];
     const hotTub = /(?:dézs|hot\s*tub|whirlpool|badefass|vroč\w*\s*kad|masaž\w*\s*kad)/iu.test(original), dog = /(?:kuty|dog|hund|pes|psa)/iu.test(original), pier = pierPreferenceFromText(original), availability = /(?:szabad\s+hely|availab|verfügbar|prosto|razpolož)/iu.test(original);
+    const specialRequests = specialRequestsFromText(original);
     const extracted = [];
+    if (specialRequests.length) extracted.push({label:'Külön kérés',value:specialRequests.join('; '),evidence:'levélszöveg'});
     if (name) extracted.push({label:'Vendég neve',value:name,evidence:'aláírás'});
     if (count) extracted.push({label:'Létszám',value:`${count} fő${childCount ? `, ebből ${childCount} gyermek` : ''}`,evidence:original.match(/[^\n.]*?(?:fő|négyen|hárman|ketten|öten|hatan)[^\n.]*/iu)?.[0]?.trim() || 'levélszöveg'});
     if (childAges.length) extracted.push({label:'Gyermekkorok',value:childAges.join(', ')+' éves',evidence:'levélszöveg'});
@@ -182,6 +174,9 @@
   }
   async function readWithToken(token) {
     const headers = {Authorization:`Bearer ${token}`};
+    const profileResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {headers,cache:'no-store'});
+    if (!profileResponse.ok) throw Error(`A Gmail tesztfiók nem ellenőrizhető (${profileResponse.status}).`);
+    assertTestGmailAccount(await profileResponse.json());
     const candidates = [];
     let pageToken;
     do {
@@ -201,8 +196,8 @@
       if (!response.ok) throw Error(`Gmail-olvasási hiba (${response.status}).`);
       return response.json();
     }));
-    const matching = messages.filter(looksLikeInquiry);
-    if (!matching.length) throw Error('Az elmúlt 30 nap beérkező levelei között nem találtunk egyértelmű szállás-/foglalási érdeklődést.');
+    const matching = messages.filter(isTestInquiry);
+    if (!matching.length) throw Error('A kijelölt feladótól, 2026.09.25. után nem található engedélyezett tárgyú beérkezett érdeklődés.');
     matching.sort((a, b) => Number(b.internalDate) - Number(a.internalDate) || b.id.localeCompare(a.id));
     return matching;
   }
@@ -211,7 +206,7 @@
     if (!window.google?.accounts?.oauth2) { say('A Google belépési szolgáltatása még nem töltődött be. Próbálja újra.'); return; }
     button.disabled = true;
     say('Google-olvasási engedély kérése…');
-    const client = google.accounts.oauth2.initTokenClient({client_id:clientId,scope:SCOPE,callback:async result => {
+    const client = google.accounts.oauth2.initTokenClient({client_id:clientId,scope:SCOPE,hint:TEST_GMAIL_ACCOUNT,include_granted_scopes:false,callback:async result => {
       try {
         if (!result.access_token) throw Error(result.error || 'A hozzáférés nem jött létre.');
         say('A levelek betöltése…');

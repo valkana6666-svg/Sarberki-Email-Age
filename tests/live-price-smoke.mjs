@@ -61,4 +61,19 @@ assert.ok(Number.isInteger(multi.availableUnits)&&multi.availableUnits>=2,'Nincs
 assert.ok(Number.isSafeInteger(multi.total)&&multi.total>0,'Nincs hiteles többegységes teljes ár.');
 assert.equal(multi.bookingCompleted,false);
 assert.equal(multi.eurConversion?.status,'available');
+assert.equal(multi.unitBreakdown.length,2);
+assert.equal(multi.unitBreakdown.reduce((sum,unit)=>sum+unit.total,0),multi.total);
+assert.equal(multi.unitBreakdown.reduce((sum,unit)=>sum+unit.tourismTax,0),multi.tourismTax);
+for(const unit of multi.unitBreakdown) assert.ok(Number.isSafeInteger(unit.total)&&unit.total>0);
 console.log('LIVE PREVIO MULTI-UNIT PASS',JSON.stringify({units:multi.units,availableUnits:multi.availableUnits,total:multi.total,eurTotal:multi.eurConversion.totalEur}));
+
+const childInput={...input,children:[7,11]};
+const childResponse=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(childInput),signal:AbortSignal.timeout(60000)});
+const child=await childResponse.json();
+assert.equal(childResponse.ok,true,JSON.stringify(child));
+assert.equal(child.status,'review_required');
+assert.deepEqual(child.children,[7,11]);
+assert.equal(child.bookingCompleted,false);
+assert.equal(child.accommodation+child.tourismTax,child.total);
+assert.equal(child.eurConversion?.status,'available');
+console.log('LIVE PREVIO CHILD REVIEW PASS',JSON.stringify({children:child.children,availableUnits:child.availableUnits,total:child.total,tourismTax:child.tourismTax,eurTotal:child.eurConversion.totalEur,status:child.status}));

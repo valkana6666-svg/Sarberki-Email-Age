@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {validateQuote} from './price-quote.mjs';
-import {childAgesFromText as sharedChildAgesFromText} from './sarberki-core.mjs';
+import * as sharedNormalize from './sarberki-core.mjs';
 
 const html=fs.readFileSync(new URL('./index.html',import.meta.url),'utf8');
 const pricing=fs.readFileSync(new URL('./price-check.js',import.meta.url),'utf8');
@@ -18,7 +18,7 @@ function harness(message,reply){
  };
  const document={getElementById:id=>id==='price_approval_panel'&&!nodes.has(id)?null:element(id),createElement:()=>({id:'',className:'',innerHTML:''}),addEventListener:(type,fn)=>listeners.set(type,fn)};
  element('gmail_record').classList.contains=()=>true;
- const context=vm.createContext({document,window:{SarberkiNormalize:{childAgesFromText:sharedChildAgesFromText},addEventListener(){}},console,Date,Intl,Number,JSON,setTimeout:fn=>fn(),fetch:async(_url,options)=>{
+ const context=vm.createContext({document,window:{SarberkiNormalize:sharedNormalize,addEventListener(){}},console,Date,Intl,Number,JSON,setTimeout:fn=>fn(),fetch:async(_url,options)=>{
   calls++;
   assert.equal(options.method,'POST');
   const input=validateQuote(JSON.parse(options.body));
@@ -290,4 +290,33 @@ Teszt Elek`;
   assert.match(r.status,/0 szabad egységet/u);
   assert.equal(r.result,'');
   assert.equal(h.element('approve_price').disabled,true);
+});
+
+for(const [language,message] of [
+  ['hu','Kedves Sárberki! 2027. október 16–18. között 2 felnőtt és 2 gyermek, 7 és 11 évesek részére Deluxe házat szeretnénk dézsával és kutyával. Telefonszám: +36 30 555 1234. Külön kérés: saját stég.'],
+  ['de','Guten Tag! Wir möchten vom 16.10.2027 bis 18.10.2027 ein Deluxe Haus für 2 Erwachsene und 2 Kinder, 7 und 11 Jahre alt, buchen. Wir wünschen einen Whirlpool und bringen einen Hund mit. Telefon: +43 660 123 4567. Bitte einen privaten Steg. Viele Grüße, Großmann.'],
+  ['si','Pozdravljeni! Želimo nastanitev od 16.10.2027 do 18.10.2027 v hiški Deluxe za 2 odrasla in 2 otroka, stara 7 in 11 let. Želimo vročo kad in pripeljemo psa. Telefon: +386 41 234 567. Prosim za lasten pomol.'],
+  ['en','Hello! We would like a Deluxe cabin from October 16 to October 18, 2027, for 2 adults and 2 children, aged 7 and 11. We would like a hot tub and will bring a dog. Phone: +44 7700 900123. Please provide a private fishing pier.']
+]) test(`${language} complete inquiry reaches anonymous quote and requires child-price approval`,async()=>{
+  const h=harness(message,input=>{
+    assert.equal(input.arrival,'2027-10-16');assert.equal(input.departure,'2027-10-18');assert.equal(input.cabin,'deluxe');assert.equal(input.adults,2);assert.deepEqual(input.children,[7,11]);
+    assert.deepEqual(Object.keys(input).sort(),['adults','arrival','cabin','children','departure']);
+    return json({...quote(input,recorded[0]),eurConversion:{status:'available',rateHufPerEur:367.87,rateDate:'2026-10-02',totalEur:332.18}});
+  });
+  const result=await h.run();assert.equal(h.calls,1,JSON.stringify({result,arrival:h.element('price_arrival').value,departure:h.element('price_departure').value,cabin:h.element('price_cabin').value,adults:h.element('price_adults').value,ages:h.element('price_child_ages').value}));assert.match(result.result,/122.200|122 200/u);assert.match(result.result,/332[,.]18/u);assert.doesNotMatch(result.draft,/122.200|122 200/u);assert.match(result.status,/jóváhagyás|ellenőrzés/u);
+});
+
+test('adult-only inquiry does not copy total guests into child count',()=>{
+  const h=harness('2027. október 16–18. között Deluxe házat szeretnénk 2 felnőtt részére.',()=>{});
+  const analysis=vm.runInContext("extract(document.getElementById('message').value,'')",h.context);
+  assert.equal(analysis.fields.children.value,'');
+  assert.equal(analysis.fields.adults.value,'2');
+});
+
+test('explicit special requests survive all four languages in the canonical manual record',()=>{
+  for(const [label,request] of [['Külön kérés','késői érkezés'],['Besonderer Wunsch','barrierefreier Zugang für Großmann'],['Special request','late arrival'],['Posebna želja','pozen prihod']]) {
+    const h=harness(`2027. október 16–18. Deluxe, 2 felnőtt. ${label}: ${request}.`,()=>{});
+    const analysis=vm.runInContext("extract(document.getElementById('message').value,'')",h.context);
+    assert.ok(analysis.fields.request.value.includes(request),analysis.fields.request.value);
+  }
 });

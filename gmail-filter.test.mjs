@@ -43,9 +43,9 @@ test('approved subject variants and descriptive inquiry subjects work while unre
 });
 
 test('Gmail bridge enforces the predicate after inbox listing', () => {
-  assert.match(source, /import\('\.\/gmail-subject\.mjs'\)/u);
-  assert.match(source, /isApprovedSubject\(headers\.subject\)/u);
-  assert.match(source, /newer_than:30d/u);
+  assert.match(source, /import\('\.\/gmail-policy\.mjs'\)/u);
+  assert.match(source, /messages\.filter\(isTestInquiry\)/u);
+  assert.match(source, /assertTestGmailAccount\(await profileResponse\.json\(\)\)/u);
   assert.match(source, /gmail\.readonly/u);
   assert.equal(source.includes('gmail.send'), false);
   assert.equal(source.includes('gmail.modify'), false);

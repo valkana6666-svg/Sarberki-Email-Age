@@ -467,3 +467,10 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   };
   return `${greetings[lang]}\n\n${intros[lang]}${summary?'\n\n'+summary:''}${policyLines.length?'\n\n'+policyLines.join('\n'):''}${operationalLines.length?'\n\n'+operationalLines.join('\n'):''}${pricingLines.length?'\n\n'+pricingLines.join('\n'):''}${extraKnowledge.length?'\n\n'+extraKnowledge.join('\n'):''}${questions.length?'\n\n'+questions.join(' '):''}\n\n${checks[lang]}\n\n${closings[lang]}\n${brandName}`;
 }
+// Preserve explicitly labelled requests without interpreting them as booking facts.
+export function specialRequestsFromText(text='') {
+  const requests=[];
+  const pattern=/(?:^|[.!?\n]\s*)(?:külön\s+kérés|kulon\s+keres|special\s+requests?|besondere(?:r|s)?\s+w(?:u|ü)nsch(?:e)?|posebn(?:a|e)\s+(?:želja|zelja|zahteva))\s*:\s*([^\n.!?]+)/giu;
+  for(const match of text.matchAll(pattern)) if(match[1].trim()) requests.push(match[1].trim());
+  return requests;
+}
