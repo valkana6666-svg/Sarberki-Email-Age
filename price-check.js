@@ -58,6 +58,18 @@
     return String($('message')?.value||'').trim();
   }
 
+  function explicitNoChildren(message=''){
+    return /\\b(?:nincs(?:enek)?\\s+gyerek|nincs(?:enek)?\\s+gyermek|gyermek\\s+nélkül|gyerek\\s+nélkül|no\\s+children|without\\s+children|keine\\s+kinder|ohne\\s+kinder|brez\\s+otrok)\\b/iu.test(message);
+  }
+
+  function childStatusKnown(message='',analysis=null,normalized={}){
+    if(normalized?.children!==null&&normalized?.children!==undefined&&normalized?.children!==''&&Number.isInteger(Number(normalized.children))) return true;
+    const field=analysis?.fields?.children?.value;
+    if(field!==null&&field!==undefined&&field!==''&&Number.isInteger(Number(field))) return true;
+    if(window.SarberkiNormalize?.childCountFromText?.(message)!=null) return true;
+    return explicitNoChildren(message);
+  }
+
   function quoteFingerprint(){
     return [
       $('price_arrival')?.value||'',
@@ -135,14 +147,17 @@
     $('price_arrival').value = fields.arrival?.value || normalized.dates?.arrival || gmailDate?.arrival || sharedRange?.arrival || '';
     $('price_departure').value = fields.departure?.value || normalized.dates?.departure || gmailDate?.departure || sharedRange?.departure || '';
     const sharedChildren=window.SarberkiNormalize?.childCountFromText?.(message);
-    const children = Number.isInteger(Number(normalized.children)) ? Number(normalized.children) : (Number.isInteger(Number(fields.children?.value)) ? Number(fields.children.value) : (Number.isInteger(Number(sharedChildren)) ? Number(sharedChildren) : 0));
+    const hasKnownChildStatus=childStatusKnown(message,analysis,normalized);
+    const children = normalized.children!==null&&normalized.children!==undefined&&normalized.children!==''&&Number.isInteger(Number(normalized.children)) ? Number(normalized.children) : (fields.children?.value!==null&&fields.children?.value!==undefined&&fields.children?.value!==''&&Number.isInteger(Number(fields.children.value)) ? Number(fields.children.value) : (sharedChildren!=null&&Number.isInteger(Number(sharedChildren)) ? Number(sharedChildren) : (explicitNoChildren(message)?0:null)));
     const normalizedAdults=Number(normalized.adults);
     const normalizedGuests=Number(normalized.guests);
-    const sharedGuests=Number(window.SarberkiNormalize?.guestCountFromText?.(message));
+    const sharedGuestsRaw=window.SarberkiNormalize?.guestCountFromText?.(message);
+    const sharedGuests=sharedGuestsRaw==null?null:Number(sharedGuestsRaw);
     const adultMatch=message.match(/\b(\d+)\s*(?:felnőtt\w*|adults?|erwachsene\w*|odrasl\w*)\b/iu);
     const directAdults=adultMatch?Number(adultMatch[1]):null;
-    $('price_adults').value = Number.isInteger(normalizedAdults)&&normalizedAdults>0 ? String(normalizedAdults) : fields.adults?.value || (Number.isInteger(directAdults)&&directAdults>0?String(directAdults):'') || (children ? (Number.isInteger(normalizedGuests)&&normalizedGuests>children?String(normalizedGuests-children):Number.isInteger(sharedGuests)&&sharedGuests>children?String(sharedGuests-children):'') : fields.guests?.value || (Number.isInteger(sharedGuests)&&sharedGuests>0?String(sharedGuests):''));
-    if ($('price_children')) $('price_children').value = String(children);
+    const knownAdults=Number.isInteger(normalizedAdults)&&normalizedAdults>0 ? normalizedAdults : (fields.adults?.value&&Number.isInteger(Number(fields.adults.value))&&Number(fields.adults.value)>0 ? Number(fields.adults.value) : (Number.isInteger(directAdults)&&directAdults>0 ? directAdults : (hasKnownChildStatus&&Number.isInteger(children)&&children>0&&Number.isInteger(normalizedGuests)&&normalizedGuests>children ? normalizedGuests-children : (hasKnownChildStatus&&Number.isInteger(children)&&children>0&&Number.isInteger(sharedGuests)&&sharedGuests>children ? sharedGuests-children : null))));
+    $('price_adults').value = Number.isInteger(knownAdults)&&knownAdults>0 ? String(knownAdults) : '';
+    if ($('price_children')) $('price_children').value = Number.isInteger(children)&&children>=0 ? String(children) : '';
     const sharedAges=window.SarberkiNormalize?.childAgesFromText?.(message)||[];
     if ($('price_child_ages')) $('price_child_ages').value = Array.isArray(normalized.child_ages)&&normalized.child_ages.length ? normalized.child_ages.join(', ') : fields.child_ages?.value || (Array.isArray(sharedAges)&&sharedAges.length?sharedAges.join(', '):'');
     const unit=(fields.unit?.value || normalized.cabin || window.SarberkiNormalize?.cabinFromText?.(message) || '').toLowerCase();
@@ -151,7 +166,7 @@
     $('price_cabin').value = splitUnit ? `split${splitUnit}` : explicit || Object.keys(cabins).find(k => unit.includes(cabins[k].toLowerCase())) || '';
     $('price_result').textContent = '';
     clearApprovedPrice('Az érdeklődés adatai frissültek; az árat újra ellenőrizni és jóváhagyni kell.');
-    $('price_status').textContent = children ? 'Gyermekes foglalás adatai átvéve. Pontos gyermekkorokkal hiteles élő árlekérés indítható; az ár külön jóváhagyásra vár.' : !explicit ? 'Faház: ? – emberi döntésre vár. Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?' : 'Ellenőrizd a kinyert adatokat. Az élő árlekérés után külön árjóváhagyás szükséges.';
+    $('price_status').textContent = !hasKnownChildStatus ? 'A teljes létszám ismert lehet, de a felnőtt/gyermek összetétel még hiányzik. Árlekérés csak ennek pontosítása után indulhat.' : children ? 'Gyermekes foglalás adatai átvéve. Pontos gyermekkorokkal hiteles élő árlekérés indítható; az ár külön jóváhagyásra vár.' : !explicit ? 'Faház: ? – emberi döntésre vár. Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?' : 'Ellenőrizd a kinyert adatokat. Az élő árlekérés után külön árjóváhagyás szükséges.';
   }
 
   function huAskedTopics(message='',analysis=null){
@@ -355,7 +370,10 @@
     const analysis=typeof extract==='function' ? extract(message,'') : null;
     const gmailRecord=gmailNormalizedRecord();
     const normalized=gmailRecord?.normalized||{};
-    const childCount=Number.isInteger(Number(normalized.children)) ? Number(normalized.children) : Number(analysis?.fields?.children?.value||0);
+    const hasKnownChildStatus=childStatusKnown(message,analysis,normalized);
+    const normalizedChildRaw=normalized.children;
+    const fieldChildRaw=analysis?.fields?.children?.value;
+    const childCount=normalizedChildRaw!==null&&normalizedChildRaw!==undefined&&normalizedChildRaw!==''&&Number.isInteger(Number(normalizedChildRaw)) ? Number(normalizedChildRaw) : (fieldChildRaw!==null&&fieldChildRaw!==undefined&&fieldChildRaw!==''&&Number.isInteger(Number(fieldChildRaw)) ? Number(fieldChildRaw) : (explicitNoChildren(message)?0:null));
     const hasChildWord=/\b(?:gyerek|gyermek|gyerekek|gyermekek|children|child|kind(?:er)?|otroka)\b/iu.test(message);
     const gmailDate=gmailNormalizedDate();
     const complete=Boolean($('price_arrival').value&&$('price_departure').value&&$('price_cabin').value&&Number($('price_adults').value)>0);
@@ -363,7 +381,7 @@
     const guests=Number.isInteger(Number(normalized.guests)) ? Number(normalized.guests) : Number(analysis?.fields?.guests?.value);
     const gmailReview=Array.isArray(gmailRecord?.human_review)?gmailRecord.human_review:[];
     const gmailConflict=gmailReview.some(item=>/ellentmondó|contradict/i.test(String(item)));
-    if(gmailConflict||['modification_request','cancellation_request'].includes(analysis?.intent)||blockingWarnings.some(code=>analysis?.warning_codes?.includes(code))||!Number.isInteger(guests)||guests<1||guests!==Number($('price_adults').value)+childCount){
+    if(!hasKnownChildStatus||gmailConflict||['modification_request','cancellation_request'].includes(analysis?.intent)||blockingWarnings.some(code=>analysis?.warning_codes?.includes(code))||!Number.isInteger(guests)||guests<1||!Number.isInteger(childCount)||guests!==Number($('price_adults').value)+childCount){
       $('price_status').textContent='Gmailből előkészítve: ellentmondó vagy módosítást érintő foglalási adat miatt automatikus árlekérés nem indul; kezelői ellenőrzés szükséges.';
       return;
     }
@@ -400,7 +418,9 @@
     const cancellationTermsOnly=/(?:lemondási\s+feltét|lemondás\s+feltét|milyen\s+feltételekkel\s+lemond|cancellation\s+(?:terms|policy)|storno(?:bedingungen|bedingungen)|odpovedn\w*\s+pogoj)/iu.test(message);
     const changeOrCancel=/(?:módosít|változtat|átten|előző\s+foglalás|korábbi\s+foglalás|(?:szeretn(?:ém|énk)|akar(?:om|juk)|kérem|kérjük)[^.!?\n]{0,80}lemond|foglalás[^.!?\n]{0,40}lemond[\p{L}]*|stornieren|cancel\s+(?:my|our)?\s*(?:booking|reservation)|change\s+(?:my|our)?\s*(?:booking|reservation)|(?:foglalás|booking|reservation)[^.!?\n]{0,80}\b(?:helyett|instead of|statt|namesto)\b)/iu.test(message) && !cancellationTermsOnly;
     if(changeOrCancel||['modification_request','cancellation_request'].includes(analysis?.intent)) {status.textContent='KÉZI ELLENŐRZÉS SZÜKSÉGES · Módosítás vagy lemondás esetén az ár megjelenítése csak a meglévő foglalás kézi azonosítása után biztonságos.';return;}
-    const childCount=Number($('price_children')?.value||0);
+    const childRaw=$('price_children')?.value;
+    if(childRaw===null||childRaw===undefined||childRaw===''){status.textContent='HITELES ÁRLEKÉRÉS SZÜKSÉGES · Előbb tisztázni kell, érkezik-e gyermek.';return;}
+    const childCount=Number(childRaw);
     const ages=childAgesForQuote(childCount,$('price_child_ages')?.value);
     if (ages===null || (childCount===0 && /\b(?:gyerek|gyermek|gyerekek|gyermekek|children|kind(?:er)?|otroka)\b/iu.test(message))) {status.textContent='HITELES ÁRLEKÉRÉS SZÜKSÉGES · A gyermekek pontos száma és életkora nélkül ár nem adható.';return;}
     const input={arrival:$('price_arrival').value,departure:$('price_departure').value,cabin:$('price_cabin').value,adults:Number($('price_adults').value),children:ages};
