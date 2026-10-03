@@ -269,15 +269,15 @@ export function replySummary(language='hu', {arrival=null,departure=null,guests=
   return `${pack.base(pack.people())}${extras?' '+extras:''}`;
 }
 
-export function replyQuestions(language='hu', {needPhone=false,needCabin=false,needChildAge=false}={}){
+export function replyQuestions(language='hu', {needDates=false,needAdults=false,needChildStatus=false,needPhone=false,needCabin=false,needChildAge=false}={}){
   const q={
-    hu:{phone:'Megírna egy telefonszámot, amelyen elérhetjük?',cabin:'Melyik háztípust szeretné: VIP, Családi, Deluxe vagy Osztott?',child:'Megírná a gyermek életkorát?'},
-    de:{phone:'Bitte teilen Sie uns eine Telefonnummer mit, unter der wir Sie erreichen können.',cabin:'Welchen Haustyp wünschen Sie: VIP, Családi (Familienhaus), Deluxe oder Osztott (geteiltes Haus)?',child:'Bitte teilen Sie uns das Alter des Kindes mit.'},
-    en:{phone:'Please send us a phone number where we can reach you.',cabin:'Which cabin type would you like: VIP, Családi (Family), Deluxe or Osztott (Split)?',child:'Please tell us the age of the child.'},
-    si:{phone:'Prosimo, sporočite telefonsko številko, na kateri ste dosegljivi.',cabin:'Kateri tip hiške želite: VIP, Családi (družinska), Deluxe ali Osztott (deljena)?',child:'Prosimo, sporočite starost otroka.'}
+    hu:{dates:'Kérjük, írja meg a pontos érkezési és távozási dátumot.',adults:'Kérjük, írja meg, hány felnőtt érkezik.',childStatus:'Kérjük, írja meg, érkezik-e gyermek is.',phone:'Megírna egy telefonszámot, amelyen elérhetjük?',cabin:'Melyik háztípust szeretné: VIP, Családi, Deluxe vagy Osztott?',child:'Kérjük, írja meg a gyermek(ek) életkorát.'},
+    de:{dates:'Bitte teilen Sie uns das genaue Anreise- und Abreisedatum mit.',adults:'Bitte teilen Sie uns mit, wie viele Erwachsene anreisen.',childStatus:'Bitte teilen Sie uns mit, ob auch Kinder mitreisen.',phone:'Bitte teilen Sie uns eine Telefonnummer mit, unter der wir Sie erreichen können.',cabin:'Welchen Haustyp wünschen Sie: VIP, Családi (Familienhaus), Deluxe oder Osztott (geteiltes Haus)?',child:'Bitte teilen Sie uns das Alter der Kinder mit.'},
+    en:{dates:'Please tell us the exact arrival and departure dates.',adults:'Please tell us how many adults will be staying.',childStatus:'Please let us know whether any children will be staying.',phone:'Please send us a phone number where we can reach you.',cabin:'Which cabin type would you like: VIP, Családi (Family), Deluxe or Osztott (Split)?',child:'Please tell us the ages of the children.'},
+    si:{dates:'Prosimo, sporočite točen datum prihoda in odhoda.',adults:'Prosimo, sporočite, koliko odraslih oseb bo prišlo.',childStatus:'Prosimo, sporočite, ali bodo z vami tudi otroci.',phone:'Prosimo, sporočite telefonsko številko, na kateri ste dosegljivi.',cabin:'Kateri tip hiške želite: VIP, Családi (družinska), Deluxe ali Osztott (deljena)?',child:'Prosimo, sporočite starost otrok.'}
   }[language]||null;
   if(!q) return [];
-  return [needChildAge&&q.child,needPhone&&q.phone,needCabin&&q.cabin].filter(Boolean);
+  return [needDates&&q.dates,needCabin&&q.cabin,needAdults&&q.adults,needChildStatus&&q.childStatus,needChildAge&&q.child,needPhone&&q.phone].filter(Boolean);
 }
 
 
@@ -460,7 +460,7 @@ function pricingTopicLines(language='hu',original='',arrival=null,departure=null
   return lines;
 }
 
-export function buildReplyDraft({language='hu',name=null,original='',arrival=null,departure=null,guests=null,children=null,childAges=[],phone=null,cabin='? – emberi döntésre vár',pier=false,hotTub=false,dog=false,intent='booking_request',brandName='Sárberki Horgásztó',bookingRules=null,operationalRules=null,pricingRules=null,knowledgeLines=[]}={}){
+export function buildReplyDraft({language='hu',name=null,original='',arrival=null,departure=null,guests=null,adults=null,children=null,childAges=[],phone=null,cabin='? – emberi döntésre vár',pier=false,hotTub=false,dog=false,intent='booking_request',brandName='Sárberki Horgásztó',bookingRules=null,operationalRules=null,pricingRules=null,knowledgeLines=[]}={}){
   const lang=language==='unknown'?'hu':language;
   const first=name?.trim()?.split(/\s+/u)?.slice(-1)[0]||null;
   const greetings={hu:first?`Kedves ${first}!`:'Kedves Vendégünk!',de:first?`Guten Tag ${first}!`:'Guten Tag!',en:first?`Dear ${first},`:'Dear Guest,',si:first?`Pozdravljeni ${first}!`:'Pozdravljeni!'};
@@ -473,7 +473,12 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   }
   const summary=replySummary(lang,{arrival,departure,guests,children,childAges,pier,hotTub,dog});
   const needCabin=!cabin||String(cabin).startsWith('?');
-  const questions=replyQuestions(lang,{needPhone:!phone,needCabin,needChildAge:Boolean(children&&childAges.length<children)});
+  const needDates=!arrival||!departure;
+  const needAdults=!(Number.isInteger(Number(adults))&&Number(adults)>0);
+  const childStatusKnown=Number.isInteger(Number(children))&&Number(children)>=0;
+  const needChildStatus=!childStatusKnown;
+  const needChildAge=childStatusKnown&&Number(children)>0&&childAges.length<Number(children);
+  const questions=replyQuestions(lang,{needDates,needAdults,needChildStatus,needPhone:!phone,needCabin,needChildAge});
   const policyLines=bookingPolicyLines(lang,original,guests,bookingRules);
   const operationalLines=operationalTopicLines(lang,original,operationalRules);
   const pricingLines=pricingTopicLines(lang,original,arrival,departure,pricingRules);
