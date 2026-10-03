@@ -80,3 +80,10 @@ test('Gmail bridge remains strictly read-only and exposes no send action',()=>{
  assert.doesNotMatch(gmail,/\/messages\/send\b/u);
  assert.doesNotMatch(gmail,/\/drafts\/send\b/u);
 });
+
+
+test('test UI does not overclaim Previo side-effect safety',()=>{
+ assert.match(source,/biztonsági kapu feloldása után/u);
+ assert.match(source,/átmeneti Previo hold\/zárolás hiánya még nincs igazolva/u);
+ assert.doesNotMatch(source,/Előleget vagy foglalást nem hoz létre/u);
+});
