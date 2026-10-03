@@ -128,3 +128,11 @@ test('analysis waits for the shared rules engine and availability can recover mi
  assert.match(availability,/SarberkiAvailabilityReady=true/u);
  assert.match(availability,/if\(\$\('results'\).*setTimeout\(\(\)=>void enrich\(\),0\)/su);
 });
+
+
+test('availability insertion function is not corrupted',()=>{
+ const availability=fs.readFileSync(new URL('./availability-recommend.mjs',import.meta.url),'utf8');
+ assert.match(availability,/const signatures=\[/u);
+ assert.match(availability,/return draft\.replace\(signature,'\\n\\n'\+combined\+signature\)/u);
+ assert.doesNotMatch(availability,/combined\+'function replaceCapacityPlaceholder/u);
+});
