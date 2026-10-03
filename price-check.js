@@ -67,6 +67,9 @@
     const field=analysis?.fields?.children?.value;
     if(field!==null&&field!==undefined&&field!==''&&Number.isInteger(Number(field))) return true;
     if(window.SarberkiNormalize?.childCountFromText?.(message)!=null) return true;
+    const guests=window.SarberkiNormalize?.guestCountFromText?.(message);
+    const adults=window.SarberkiNormalize?.adultCountFromText?.(message);
+    if(Number.isInteger(guests)&&Number.isInteger(adults)&&guests===adults&&guests>0) return true;
     return explicitNoChildren(message);
   }
 
@@ -148,7 +151,10 @@
     $('price_departure').value = fields.departure?.value || normalized.dates?.departure || gmailDate?.departure || sharedRange?.departure || '';
     const sharedChildren=window.SarberkiNormalize?.childCountFromText?.(message);
     const hasKnownChildStatus=childStatusKnown(message,analysis,normalized);
-    const children = normalized.children!==null&&normalized.children!==undefined&&normalized.children!==''&&Number.isInteger(Number(normalized.children)) ? Number(normalized.children) : (fields.children?.value!==null&&fields.children?.value!==undefined&&fields.children?.value!==''&&Number.isInteger(Number(fields.children.value)) ? Number(fields.children.value) : (sharedChildren!=null&&Number.isInteger(Number(sharedChildren)) ? Number(sharedChildren) : (explicitNoChildren(message)?0:null)));
+    const directTotal=window.SarberkiNormalize?.guestCountFromText?.(message);
+    const directAdult=window.SarberkiNormalize?.adultCountFromText?.(message);
+    const deterministicNoChildren=Number.isInteger(directTotal)&&Number.isInteger(directAdult)&&directTotal===directAdult&&directTotal>0;
+    const children = normalized.children!==null&&normalized.children!==undefined&&normalized.children!==''&&Number.isInteger(Number(normalized.children)) ? Number(normalized.children) : (fields.children?.value!==null&&fields.children?.value!==undefined&&fields.children?.value!==''&&Number.isInteger(Number(fields.children.value)) ? Number(fields.children.value) : (sharedChildren!=null&&Number.isInteger(Number(sharedChildren)) ? Number(sharedChildren) : ((explicitNoChildren(message)||deterministicNoChildren)?0:null)));
     const normalizedAdults=Number(normalized.adults);
     const normalizedGuests=Number(normalized.guests);
     const sharedGuestsRaw=window.SarberkiNormalize?.guestCountFromText?.(message);
@@ -384,7 +390,10 @@
     const hasKnownChildStatus=childStatusKnown(message,analysis,normalized);
     const normalizedChildRaw=normalized.children;
     const fieldChildRaw=analysis?.fields?.children?.value;
-    const childCount=normalizedChildRaw!==null&&normalizedChildRaw!==undefined&&normalizedChildRaw!==''&&Number.isInteger(Number(normalizedChildRaw)) ? Number(normalizedChildRaw) : (fieldChildRaw!==null&&fieldChildRaw!==undefined&&fieldChildRaw!==''&&Number.isInteger(Number(fieldChildRaw)) ? Number(fieldChildRaw) : (explicitNoChildren(message)?0:null));
+    const directTotal=window.SarberkiNormalize?.guestCountFromText?.(message);
+    const directAdult=window.SarberkiNormalize?.adultCountFromText?.(message);
+    const deterministicNoChildren=Number.isInteger(directTotal)&&Number.isInteger(directAdult)&&directTotal===directAdult&&directTotal>0;
+    const childCount=normalizedChildRaw!==null&&normalizedChildRaw!==undefined&&normalizedChildRaw!==''&&Number.isInteger(Number(normalizedChildRaw)) ? Number(normalizedChildRaw) : (fieldChildRaw!==null&&fieldChildRaw!==undefined&&fieldChildRaw!==''&&Number.isInteger(Number(fieldChildRaw)) ? Number(fieldChildRaw) : ((explicitNoChildren(message)||deterministicNoChildren)?0:null));
     const hasChildWord=/\b(?:gyerek|gyermek|gyerekek|gyermekek|children|child|kind(?:er)?|otroka)\b/iu.test(message);
     const gmailDate=gmailNormalizedDate();
     const complete=Boolean($('price_arrival').value&&$('price_departure').value&&$('price_cabin').value&&Number($('price_adults').value)>0);
