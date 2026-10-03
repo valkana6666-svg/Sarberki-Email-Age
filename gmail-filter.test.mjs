@@ -151,3 +151,11 @@ test('generic inquiry prefixes do not admit unrelated mail',()=>{
     'Foglalási érdeklődés Deluxe ház 4 fő'
   ]) assert.equal(isApprovedSubject(subject),true,subject);
 });
+
+
+test('previously read Gmail messages can be reopened directly from the picker',()=>{
+  assert.match(source,/gmail_message_picker/iu);
+  assert.match(source,/addEventListener\('change', \(\) => openSelected\(false\)\)/u);
+  assert.match(source,/currentMessages\.find\(m => m\.id === id\)/u);
+  assert.match(source,/Bármelyik korábban olvasott levél újra megnyitható/iu);
+});
