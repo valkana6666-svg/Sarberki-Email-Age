@@ -106,7 +106,7 @@ test('over-capacity request automatically prices the minimum number of houses',a
 
 
 test('split cabin is stopped in UI before live quote fetch',async()=>{
-  const message='Kedves Sárberki Horgásztó! 2027. október 1–3. között 4 fő mennénk. Osztott házat szeretnénk. Mennyi a teljes ár?';
+  const message='Kedves Sárberki Horgásztó! 2027. október 1–3. között 4 felnőtt mennénk, gyermek nélkül. Osztott házat szeretnénk. Mennyi a teljes ár?';
   const h=harness(message,()=>{throw Error('unexpected fetch')});
   h.element('prepare_price').onclick();
   await h.element('check_price').onclick();
@@ -116,7 +116,7 @@ test('split cabin is stopped in UI before live quote fetch',async()=>{
 
 
 test('explicit multiple-unit request gets a live internal price while modifications and cancellations stay blocked',async()=>{
-  const multi='Kedves Sárberki Horgásztó! 2027. október 1–3. között 4 fő mennénk, két Deluxe házat szeretnénk. Mennyi a teljes ár?';
+  const multi='Kedves Sárberki Horgásztó! 2027. október 1–3. között 4 felnőtt mennénk, gyermek nélkül, két Deluxe házat szeretnénk. Mennyi a teljes ár?';
   const h=harness(multi,input=>{
     assert.equal(input.units,2);
     return json({...quote(input,{availableUnits:4,accommodation:240000,tourismTax:4400,total:244400}),
@@ -203,8 +203,8 @@ John Smith`;
 
 test('German and Slovenian explicit two-unit wording reaches the same quote boundary',async()=>{
   const cases=[
-    ['Guten Tag! Wir möchten vom 16. bis 18. Oktober 2027 mit 4 Erwachsenen kommen und zwei Deluxe-Häuser buchen. Wie hoch ist der Gesamtpreis?', 'de'],
-    ['Pozdravljeni! Od 16. do 18. oktobra 2027 bi prišli 4 odrasli in želeli dve Deluxe hiški. Kakšna je skupna cena?', 'si']
+    ['Guten Tag! Wir möchten vom 16. bis 18. Oktober 2027 mit 4 Erwachsenen ohne Kinder kommen und zwei Deluxe-Häuser buchen. Wie hoch ist der Gesamtpreis?', 'de'],
+    ['Pozdravljeni! Od 16. do 18. oktobra 2027 bi prišli 4 odrasli brez otrok in želeli dve Deluxe hiški. Kakšna je skupna cena?', 'si']
   ];
   for(const [message,label] of cases){
     const h=harness(message,input=>{
