@@ -61,3 +61,18 @@ test('manual UI and Gmail bridge use the same shared Sarberki core',()=>{
  const alias=fs.readFileSync(new URL('./gmail-normalize.mjs',import.meta.url),'utf8');
  assert.match(alias,/export \* from '\.\/sarberki-core\.mjs'/u);
 });
+
+
+test('test header logo is embedded and visible without a separate asset request',()=>{
+ assert.match(source,/class="brand-logo"[^>]+src="data:image\/png;base64,/u);
+ assert.match(source,/alt="Sárberki Horgásztó · Lenti logó"/u);
+ assert.match(source,/\.brand-logo\{width:190px/u);
+});
+
+test('Gmail bridge remains strictly read-only and exposes no send action',()=>{
+ const gmail=fs.readFileSync(new URL('./gmail-readonly.js',import.meta.url),'utf8');
+ assert.match(gmail,/https:\/\/www\.googleapis\.com\/auth\/gmail\.readonly/u);
+ assert.doesNotMatch(gmail,/https:\/\/www\.googleapis\.com\/auth\/gmail\.send/u);
+ assert.doesNotMatch(gmail,/\/messages\/send\b/u);
+ assert.doesNotMatch(gmail,/\/drafts\/send\b/u);
+});
