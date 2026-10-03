@@ -91,4 +91,7 @@ async function enrich(){
 if(typeof document!=='undefined'){
   document.addEventListener('sarberki:analysis-ready',()=>{void enrich();});
   document.addEventListener('sarberki:gmail-normalized',()=>{setTimeout(()=>void enrich(),0);});
+  window.SarberkiAvailabilityReady=true;
+  document.dispatchEvent(new Event('sarberki:availability-ready'));
+  if($('results')&&!$('results').classList.contains('hidden')) setTimeout(()=>void enrich(),0);
 }
