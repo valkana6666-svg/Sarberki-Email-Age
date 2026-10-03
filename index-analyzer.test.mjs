@@ -4,7 +4,7 @@ test('main analyzer recognizes multilingual explicit cabin vocabulary',()=>{for(
 test('main analyzer still blocks ambiguous cabin selection',()=>{assert.match(source,/uncertain_unit/u);assert.match(source,/létszámból nem választható/u);});
 
 test('open multi-unit wording stays uncertain instead of becoming one unit',()=>{
- assert.match(source,/openMulti=t\.match/u);
+ assert.match(source,/requestedUnitsFromText/u);
  assert.match(source,/több – pontosítandó/u);
  assert.match(source,/pontos darabszám nincs automatikusan feltételezve/u);
 });
@@ -56,6 +56,7 @@ test('reply engine answers only actual guest questions while confirming core boo
 
 test('manual UI and Gmail bridge use the same shared Sarberki core',()=>{
  assert.match(source,/from '\.\/sarberki-core\.mjs'/u);
+ assert.match(source,/requestedUnitsFromText/u);
  const gmail=fs.readFileSync(new URL('./gmail-readonly.js',import.meta.url),'utf8');
  assert.match(gmail,/import\('\.\/sarberki-core\.mjs'\)/u);
  const alias=fs.readFileSync(new URL('./gmail-normalize.mjs',import.meta.url),'utf8');
