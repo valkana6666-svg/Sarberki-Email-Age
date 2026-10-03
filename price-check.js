@@ -172,9 +172,43 @@
     };
   }
 
+  function foreignFocusedReply(message='',analysis=null,lang='EN'){
+    const f=analysis?.fields||{};
+    const v=Object.fromEntries(Object.entries(f).map(([k,x])=>[k,x?.value||'']));
+    const selectedCabin=cabins[$('price_cabin')?.value||'']||v.unit||'';
+    const priceApproved=approvedPrice&&approvedPrice.fingerprint===quoteFingerprint();
+    const adults=v.adults||$('price_adults')?.value||'';
+    const children=v.children||$('price_children')?.value||'';
+    const ages=v.child_ages||$('price_child_ages')?.value||'';
+    const guests=v.guests||((Number(adults)||0)+(Number(children)||0)||'');
+    const total=priceApproved?formatFt(approvedPrice.total):'';
+    const eur=priceApproved&&Number.isFinite(approvedPrice.eurTotal)?formatEur(approvedPrice.eurTotal):'';
+    const stay=v.arrival&&v.departure?`${v.arrival} – ${v.departure}`:'';
+    const party=adults ? (lang==='DE'?`${adults} Erwachsene`:lang==='SL'?`${adults} odraslih`:`${adults} adults`) : (guests ? (lang==='DE'?`${guests} Personen`:lang==='SL'?`${guests} oseb`:`${guests} guests`) : '');
+    const childText=Number(children)>0 ? (lang==='DE'?` und ${children} Kinder${ages?` (${ages} Jahre)`:''}`:lang==='SL'?` in ${children} otrok${ages?` (${ages} let)`:''}`:` and ${children} children${ages?` (ages ${ages})`:''}`) : '';
+    const cabin=selectedCabin||v.unit||'';
+    const priceLine=priceApproved
+      ? (lang==='DE'
+        ? `Der von Ihnen ausgewählte Haustyp ${cabin||'Unterkunft'} kostet für ${party||'die angegebene Gästezahl'}${childText} laut freigegebenem Preis insgesamt ${total}${eur?` (ca. ${eur})`:''}.`
+        : lang==='SL'
+        ? `Cena za izbrano nastanitev ${cabin||''} za ${party||'navedeno število gostov'}${childText} po potrjeni ponudbi znaša skupaj ${total}${eur?` (približno ${eur})`:''}.`
+        : `The ${cabin||'accommodation'} selected for your stay for ${party||'the stated number of guests'}${childText} has an approved total price of ${total}${eur?` (approx. ${eur})`:''}.`)
+      : (lang==='DE'
+        ? 'Den aktuellen Gesamtpreis bestätigen wir nach der Preisprüfung.'
+        : lang==='SL'
+        ? 'Aktualno skupno ceno potrdimo po preverjanju cene.'
+        : 'We will confirm the current total price after the price check.');
+    const lines=lang==='DE'
+      ? [`Guten Tag${v.name?', '+v.name:''}!`,'','Vielen Dank für Ihre Anfrage.',stay?`Gewünschter Zeitraum: ${stay}.`:'' ,cabin?`Ausgewählter Haustyp: ${cabin}.`:'',priceLine,'','Mit freundlichen Grüßen','Sárberki Horgásztó']
+      : lang==='SL'
+      ? [`Pozdravljeni${v.name?', '+v.name:''}!`,'','Hvala za vaše povpraševanje.',stay?`Želeno obdobje: ${stay}.`:'',cabin?`Izbrana nastanitev: ${cabin}.`:'',priceLine,'','Lep pozdrav,','Sárberki Horgásztó']
+      : [`Dear ${v.name||'Guest'},`,'','Thank you for your inquiry.',stay?`Requested stay: ${stay}.`:'',cabin?`Selected accommodation: ${cabin}.`:'',priceLine,'','Kind regards,','Sárberki Horgásztó'];
+    return lines.filter(x=>x!==''||true).join('\n');
+  }
+
   function focusedReply(message=''){
     const analysis=typeof extract==='function'?extract(message,''):null;
-    if(!analysis||analysis.fields?.language?.value!=='HU') return '';
+    if(!analysis) return '';\n    const replyLanguage=analysis.fields?.language?.value||'HU';\n    if(replyLanguage!=='HU') return foreignFocusedReply(message,analysis,replyLanguage);
     if(['cancellation_request','modification_request'].includes(analysis.intent)) return '';
     const f=analysis.fields||{};
     const v=Object.fromEntries(Object.entries(f).map(([k,x])=>[k,x?.value||'']));
