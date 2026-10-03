@@ -237,6 +237,8 @@ function draft(v,intent='booking_request',analysis=null){
    if(v.adults)party.push(`${v.adults} felnőtt`);
    if(v.children)party.push(`${v.children} gyermek${v.child_ages?' ('+v.child_ages+' éves)':''}`);
    lines.push(`A kért háztípus: ${v.unit}.${party.length?' A vendégek összetétele: '+party.join(', ')+'.':''}`);
+ } else if(plan&&v.arrival&&v.departure&&v.guests){
+   lines.push('','A megadott létszám alapján ellenőrizzük az összes megfelelő szállástípust, és csak a ténylegesen szabad lehetőségeket ajánljuk fel.');
  } else if(plan){
    lines.push('','Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?');
  }
@@ -277,7 +279,7 @@ function draft(v,intent='booking_request',analysis=null){
  if(!v.guests)missing.push('a vendégek létszámát');
  if(v.children&&Number(v.children)>0&&analysis?.warning_codes?.includes('missing_child_ages'))missing.push('a gyermek(ek) életkorát');
  if(!v.email&&!/\b(?:\+?\d[\d\s()/-]{7,}\d)\b/u.test(record?.original||''))missing.push('egy telefonszámot vagy e-mail-címet');
- if(!plan?.specific)missing.push('a kívánt háztípust');
+ if(!plan?.specific&&!(v.arrival&&v.departure&&v.guests))missing.push('a kívánt háztípust');
  if(missing.length)lines.push('',`Kérjük, írja meg még: ${missing.join(', ')}.`);
 
  lines.push('','','Üdvözlettel:','Sárberki Horgásztó');
@@ -350,5 +352,5 @@ function displayGmailRecord(data){
 }
 $('load_gmail_record').onclick=()=>{const error=$('gmail_error');error.classList.add('hidden');try{const raw=$('gmail_json').value;if(raw.length>100000)throw Error('A rekord túl nagy.');const data=JSON.parse(raw);if(data?.source?.provider!=='gmail'||typeof data.source.message_id!=='string'||!data.source.message_id||typeof data.original_message!=='string'||!data.original_message.trim()||!data.extracted||!Array.isArray(data.inferred)||!Array.isArray(data.missing)||!Array.isArray(data.human_review)||typeof data.reply_draft!=='string')throw Error('Hiányos Gmail-rekord. Szükséges: source.provider, source.message_id, original_message, extracted, inferred, missing, human_review, reply_draft.');if(!Array.isArray(data.extracted)||[...data.extracted,...data.inferred,...data.missing,...data.human_review].some(x=>!(typeof x==='string'||(x&&typeof x.label==='string'&&typeof x.value==='string'))))throw Error('Az adatlisták formátuma hibás.');$('gmail_meta').textContent='Gmail-azonosító: '+data.source.message_id+' · Feladó: '+String(data.source.from_email||data.source.from||'nincs megadva')+' · Tárgy: '+String(data.source.subject||'nincs megadva')+' · Beérkezés: '+String(data.source.received_at||'nincs megadva');$('gmail_original').textContent=data.original_message;$('gmail_cabin').textContent=data.normalized?.cabin||'? – emberi döntésre vár';bridgeItems('gmail_extracted',data.extracted);bridgeItems('gmail_inferred',data.inferred);bridgeItems('gmail_missing',data.missing);bridgeItems('gmail_review',data.human_review);$('gmail_draft').value=data.reply_draft;$('gmail_record').classList.remove('hidden');$('gmail_record').scrollIntoView({behavior:'smooth',block:'start'});document.dispatchEvent(new Event('sarberki:record-loaded'))}catch(e){$('gmail_record').classList.add('hidden');error.textContent='Nem sikerült betölteni: '+e.message;error.classList.remove('hidden')}};
 try{document.body.classList.add('mobile-ready');setRuntimeStatus('kész — Gmail readonly és egységes kezelői feldolgozás tesztágon aktív',true)}catch(e){}
-</script><script src="pushover-test.js"></script><script src="gmail-readonly.js?v=20261003-1134"></script><script src="price-check.js?v=20261003-1305"></script><script type="module" src="fishing-rules.mjs"></script></html>
+</script><script src="pushover-test.js"></script><script src="gmail-readonly.js?v=20261003-1134"></script><script src="price-check.js?v=20261003-1305"></script><script type="module" src="availability-recommend.mjs?v=20261003-1506"></script><script type="module" src="fishing-rules.mjs"></script></html>
 
