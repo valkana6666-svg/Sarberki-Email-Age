@@ -193,7 +193,7 @@
     const selectedCabin=cabins[$('price_cabin')?.value||'']||v.unit||'';
     const priceApproved=approvedPrice&&approvedPrice.fingerprint===quoteFingerprint();
     const adults=v.adults||$('price_adults')?.value||'';
-    const children=v.children||$('price_children')?.value||'';
+    const children=(v.children!==null&&v.children!==undefined&&v.children!=='')?v.children:($('price_children')?.value??'');
     const ages=v.child_ages||$('price_child_ages')?.value||'';
     const guests=v.guests||((Number(adults)||0)+(Number(children)||0)||'');
     const total=priceApproved?formatFt(approvedPrice.total):'';
@@ -213,6 +213,14 @@
         : lang==='SL'
         ? 'Aktualno skupno ceno potrdimo po preverjanju cene.'
         : 'We will confirm the current total price after the price check.');
+    const basicsMissing=[];
+    if(!v.arrival||!v.departure) basicsMissing.push(lang==='DE'?'genaues Anreise- und Abreisedatum':lang==='SL'?'točen datum prihoda in odhoda':'exact arrival and departure dates');
+    if(!cabin) basicsMissing.push(lang==='DE'?'gewünschter Haustyp':lang==='SL'?'želeni tip hiške':'requested cabin type');
+    if(!adults) basicsMissing.push(lang==='DE'?'Anzahl der Erwachsenen':lang==='SL'?'število odraslih':'number of adults');
+    const childKnown=children!==''&&children!==null&&children!==undefined;
+    if(!childKnown) basicsMissing.push(lang==='DE'?'ob Kinder mitreisen':lang==='SL'?'ali bodo z vami otroci':'whether any children will be staying');
+    if(childKnown&&Number(children)>0&&!ages) basicsMissing.push(lang==='DE'?'Alter der Kinder':lang==='SL'?'starost otrok':'ages of the children');
+    const missingLine=basicsMissing.length ? (lang==='DE'?'Bitte teilen Sie uns noch mit: '+basicsMissing.join(', ')+'.':lang==='SL'?'Prosimo, sporočite še: '+basicsMissing.join(', ')+'.':'Please also provide: '+basicsMissing.join(', ')+'.') : '';
     const confirmationLine=priceApproved
       ? (lang==='DE'
         ? 'Wenn dieses Angebot für Sie passt, antworten Sie bitte auf diese E-Mail und bestätigen Sie, dass wir die Buchung zu den oben genannten Bedingungen erfassen dürfen.'
@@ -228,10 +236,10 @@
         : 'The booking deposit is 50% of the accommodation price and must be paid by bank transfer within 10 days.')
       : '';
     const lines=lang==='DE'
-      ? [`Guten Tag${v.name?', '+v.name:''}!`,'','Vielen Dank für Ihre Anfrage.',stay?`Gewünschter Zeitraum: ${stay}.`:'',cabin?`Ausgewählter Haustyp: ${cabin}.`:'',priceLine,depositLine,confirmationLine,'','Mit freundlichen Grüßen','Sárberki Horgásztó']
+      ? [`Guten Tag${v.name?', '+v.name:''}!`,'','Vielen Dank für Ihre Anfrage.',stay?`Gewünschter Zeitraum: ${stay}.`:'',cabin?`Ausgewählter Haustyp: ${cabin}.`:'',missingLine,priceLine,depositLine,confirmationLine,'','Mit freundlichen Grüßen','Sárberki Horgásztó']
       : lang==='SL'
-      ? [`Pozdravljeni${v.name?', '+v.name:''}!`,'','Hvala za vaše povpraševanje.',stay?`Želeno obdobje: ${stay}.`:'',cabin?`Izbrana nastanitev: ${cabin}.`:'',priceLine,depositLine,confirmationLine,'','Lep pozdrav,','Sárberki Horgásztó']
-      : [`Dear ${v.name||'Guest'},`,'','Thank you for your inquiry.',stay?`Requested stay: ${stay}.`:'',cabin?`Selected accommodation: ${cabin}.`:'',priceLine,depositLine,confirmationLine,'','Kind regards,','Sárberki Horgásztó'];
+      ? [`Pozdravljeni${v.name?', '+v.name:''}!`,'','Hvala za vaše povpraševanje.',stay?`Želeno obdobje: ${stay}.`:'',cabin?`Izbrana nastanitev: ${cabin}.`:'',missingLine,priceLine,depositLine,confirmationLine,'','Lep pozdrav,','Sárberki Horgásztó']
+      : [`Dear ${v.name||'Guest'},`,'','Thank you for your inquiry.',stay?`Requested stay: ${stay}.`:'',cabin?`Selected accommodation: ${cabin}.`:'',missingLine,priceLine,depositLine,confirmationLine,'','Kind regards,','Sárberki Horgásztó'];
     return lines.filter(x=>x!==''||true).join('\n');
   }
 
@@ -315,8 +323,11 @@
 
     const missing=[];
     if(!v.arrival||!v.departure) missing.push('pontos érkezési és távozási dátum');
-    if(!v.guests) missing.push('vendéglétszám');
-    if(v.children&&Number(v.children)>0&&analysis.warning_codes?.includes('missing_child_ages')) missing.push('gyermek(ek) életkora');
+    if(!v.unit||/^(?:ház|faház|apartman|cabin)$/iu.test(v.unit)) missing.push('kért háztípus');
+    if(!v.adults) missing.push('felnőttek száma');
+    const childKnown=v.children!==null&&v.children!==undefined&&v.children!=='';
+    if(!childKnown) missing.push('érkezik-e gyermek');
+    if(childKnown&&Number(v.children)>0&&!v.child_ages) missing.push('gyermek(ek) életkora');
     if(missing.length) lines.push('',`A pontos válaszhoz kérjük, írja meg még: ${missing.join(', ')}.`);
 
     lines.push('','','Üdvözlettel:','Sárberki Horgásztó');
