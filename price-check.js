@@ -442,7 +442,7 @@
     if(childRaw===null||childRaw===undefined||childRaw===''){status.textContent='HITELES ÁRLEKÉRÉS SZÜKSÉGES · Előbb tisztázni kell, érkezik-e gyermek.';return;}
     const childCount=Number(childRaw);
     const ages=childAgesForQuote(childCount,$('price_child_ages')?.value);
-    if (ages===null || (childCount===0 && /\b(?:gyerek|gyermek|gyerekek|gyermekek|children|kind(?:er)?|otroka)\b/iu.test(message))) {status.textContent='HITELES ÁRLEKÉRÉS SZÜKSÉGES · A gyermekek pontos száma és életkora nélkül ár nem adható.';return;}
+    if (ages===null || (!explicitNoChildren(message) && childCount===0 && /\b(?:gyerek|gyermek|gyerekek|gyermekek|children|kind(?:er)?|otroka)\b/iu.test(message))) {status.textContent='HITELES ÁRLEKÉRÉS SZÜKSÉGES · A gyermekek pontos száma és életkora nélkül ár nem adható.';return;}
     const input={arrival:$('price_arrival').value,departure:$('price_departure').value,cabin:$('price_cabin').value,adults:Number($('price_adults').value),children:ages};
     const askedSplit=explicitCabin(message)==='split';
     if(askedSplit&&!explicitSplitUnit(message)){status.textContent='OSZTOTT HÁZ / KÉZI ELLENŐRZÉS SZÜKSÉGES · Kérjük pontosítani: A, B vagy C egység.';return;}
