@@ -79,6 +79,21 @@ export function childCountFromText(text=''){
   return sw ? siWords[sw] : null;
 }
 export function dateRangeFromText(text='', now=new Date(), timeZone='Europe/Budapest'){
+  // Real-world Hungarian numeric form: "2026.10.09-től 10.13.ig".
+  // The year is stated once, while month/day are repeated for departure.
+  const huNumericSuffix=text.match(/\b(20\d{2})[.\/-](\d{1,2})[.\/-](\d{1,2})\.?\s*-?\s*(?:től|tól|tol)\s+(\d{1,2})[.\/-](\d{1,2})\.?\s*-?\s*ig\b/iu);
+  if(huNumericSuffix){
+    const startYear=Number(huNumericSuffix[1]);
+    const startMonth=Number(huNumericSuffix[2]), startDay=Number(huNumericSuffix[3]);
+    const endMonth=Number(huNumericSuffix[4]), endDay=Number(huNumericSuffix[5]);
+    if(startMonth<1||startMonth>12||endMonth<1||endMonth>12||startDay<1||startDay>31||endDay<1||endDay>31) return null;
+    const endYear=startYear+(endMonth<startMonth?1:0);
+    return {
+      arrival:`${startYear}-${String(startMonth).padStart(2,'0')}-${String(startDay).padStart(2,'0')}`,
+      departure:`${endYear}-${String(endMonth).padStart(2,'0')}-${String(endDay).padStart(2,'0')}`,
+      inferredYear:false
+    };
+  }
   const iso=text.match(/\b(20\d{2})[-./](\d{1,2})[-./](\d{1,2})\s*(?:[-–]|to|bis|do)\s*(?:(20\d{2})[-./](\d{1,2})[-./])?(\d{1,2})\b/iu);
   if(iso) return {arrival:`${iso[1]}-${String(iso[2]).padStart(2,'0')}-${String(iso[3]).padStart(2,'0')}`,departure:`${iso[4]||iso[1]}-${String(iso[5]||iso[2]).padStart(2,'0')}-${String(iso[6]).padStart(2,'0')}`,inferredYear:false};
   const europeanNumeric=text.match(/\b(\d{1,2})[./-](\d{1,2})[./-](20\d{2})\s*(?:[-–]|to|bis|do)\s*(\d{1,2})[./-](\d{1,2})[./-](20\d{2})\b/iu);
