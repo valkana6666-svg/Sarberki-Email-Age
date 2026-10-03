@@ -208,7 +208,9 @@
 
   function focusedReply(message=''){
     const analysis=typeof extract==='function'?extract(message,''):null;
-    if(!analysis) return '';\n    const replyLanguage=analysis.fields?.language?.value||'HU';\n    if(replyLanguage!=='HU') return foreignFocusedReply(message,analysis,replyLanguage);
+    if(!analysis) return '';
+    const replyLanguage=analysis.fields?.language?.value||'HU';
+    if(replyLanguage!=='HU') return foreignFocusedReply(message,analysis,replyLanguage);
     if(['cancellation_request','modification_request'].includes(analysis.intent)) return '';
     const f=analysis.fields||{};
     const v=Object.fromEntries(Object.entries(f).map(([k,x])=>[k,x?.value||'']));
