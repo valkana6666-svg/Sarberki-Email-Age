@@ -103,3 +103,10 @@ test('availability integration regenerates the full reply instead of appending t
  assert.match(availability,/knowledgeLines:fishing\?\[fishing\.answer\]:\[\]/u);
  assert.doesNotMatch(availability,/replaceCapacityPlaceholder\(draft\.value,sentence,manual\)/u);
 });
+
+
+test('availability block is inserted before the email signature',()=>{
+ const availability=fs.readFileSync(new URL('./availability-recommend.mjs',import.meta.url),'utf8');
+ assert.match(availability,/Üdvözlettel:/u);
+ assert.match(availability,/return draft\.replace\(closing, '\\\\n\\\\n'\+combined\+'\$&'\)/u);
+});
