@@ -39,7 +39,7 @@ test('approved price insertion follows explicit human approval and manual cabin 
  assert.match(source,/const selectedCabin=cabins\[\$\('price_cabin'\)\?\.value\|\|''\]\|\|''/u);
  assert.match(source,/if\(selectedCabin\) v\.unit=selectedCabin/u);
  assert.match(source,/const priceApproved=approvedPrice&&approvedPrice\.fingerprint===quoteFingerprint\(\)/u);
- assert.match(source,/A kezelő által jóváhagyott adatok alapján/u);
+ assert.match(source,/a jóváhagyott adatok alapján/u);
  assert.doesNotMatch(source,/a vendég nem kérdezett árat, ezért nem került a válaszlevélbe/u);
 });
 
