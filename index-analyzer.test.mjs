@@ -117,3 +117,14 @@ test('Gmail draft mirrors the unified main reply and availability result',()=>{
  const availability=fs.readFileSync(new URL('./availability-recommend.mjs',import.meta.url),'utf8');
  assert.match(availability,/gmailDraft\.value=draft\.value/u);
 });
+
+
+test('analysis waits for the shared rules engine and availability can recover missed events',()=>{
+ assert.match(source,/id="analyze" disabled/u);
+ assert.match(source,/id="read_gmail" type="button" disabled/u);
+ assert.match(source,/SarberkiRulesReady=true/u);
+ assert.match(source,/sarberki:rules-ready/u);
+ const availability=fs.readFileSync(new URL('./availability-recommend.mjs',import.meta.url),'utf8');
+ assert.match(availability,/SarberkiAvailabilityReady=true/u);
+ assert.match(availability,/if\(\$\('results'\).*setTimeout\(\(\)=>void enrich\(\),0\)/su);
+});
