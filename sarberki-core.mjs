@@ -89,7 +89,7 @@ export function dateRangeFromText(text='', now=new Date(), timeZone='Europe/Buda
       inferredYear:false
     };
   }
-  const europeanCompactRange=text.match(/\b(\d{1,2})[./](\d{1,2})[./]?\s*(?:[-–]|to|bis|do|tól|tol)\s*(\d{1,2})[./](\d{1,2})(?:[./]?\s*(20\d{2}))?\b/iu);
+  const europeanCompactRange=text.match(/\b(\d{1,2})\s*[./]\s*(\d{1,2})\s*[./]?\s*(?:[-–]|to|bis|do|tól|tol)\s*(\d{1,2})\s*[./]\s*(\d{1,2})(?:\s*[./]?\s*(20\d{2}))?\b/iu);
   if(europeanCompactRange){
     const local=new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).format(now).split('-').map(Number);
     const startDay=Number(europeanCompactRange[1]), startMonth=Number(europeanCompactRange[2]);
