@@ -40,6 +40,15 @@ Teszt Elek`;
  assert.equal(phoneFromText(message),'+36 30 555 1234');
 });
 test('HU abbreviated October range',()=>assert.deepEqual(dateRangeFromText('okt. 16-18.',now),{arrival:'2026-10-16',departure:'2026-10-18',inferredYear:true}));
+test('compact European numeric date ranges work in DE SI and HU wording',()=>{
+  assert.deepEqual(dateRangeFromText('vom 16.10. bis 18.10.2027',now),{arrival:'2027-10-16',departure:'2027-10-18',inferredYear:false});
+  assert.deepEqual(dateRangeFromText('od 16. 10. do 18. 10. 2027',now),{arrival:'2027-10-16',departure:'2027-10-18',inferredYear:false});
+  assert.deepEqual(dateRangeFromText('16.10.–18.10.2027 között',now),{arrival:'2027-10-16',departure:'2027-10-18',inferredYear:false});
+});
+test('yearless compact European range follows the shared year inference rule',()=>{
+  assert.deepEqual(dateRangeFromText('16.10.–18.10.',now),{arrival:'2026-10-16',departure:'2026-10-18',inferredYear:true});
+  assert.deepEqual(dateRangeFromText('16.08.–18.08.',now),{arrival:'2027-08-16',departure:'2027-08-18',inferredYear:true});
+});
 
 
 test('colloquial Hungarian without accents still parses core booking facts',()=>{
