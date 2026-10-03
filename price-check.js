@@ -178,6 +178,8 @@
     if(['cancellation_request','modification_request'].includes(analysis.intent)) return '';
     const f=analysis.fields||{};
     const v=Object.fromEntries(Object.entries(f).map(([k,x])=>[k,x?.value||'']));
+    const selectedCabin=cabins[$('price_cabin')?.value||'']||'';
+    if(selectedCabin) v.unit=selectedCabin;
     const asked=huAskedTopics(message,analysis);
     const lines=[`Kedves ${v.name||'Érdeklődő'}!`,'','Köszönjük érdeklődését a Sárberki Horgásztó iránt.'];
 
@@ -197,7 +199,7 @@
     else if(v.unit&&!/^(?:ház|faház|apartman|cabin)$/iu.test(v.unit)) lines.push(`A megadott szállástípus: ${v.unit}.`);
     else if(!v.unit) lines.push('Kérjük, írja meg, melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?');
 
-    const priceApproved=asked.price&&approvedPrice&&approvedPrice.fingerprint===quoteFingerprint();
+    const priceApproved=approvedPrice&&approvedPrice.fingerprint===quoteFingerprint();
     if(asked.availability&&asked.price){
       if(priceApproved) lines.push('','Ellenőrizzük, hogy a megadott időpontra elérhető-e a kért háztípus. '+approvedPriceText(approvedPrice)+' Az elérhetőséget külön visszaigazoljuk.');
       else lines.push('','Ellenőrizzük, hogy a megadott időpontra elérhető-e a kért háztípus. Az aktuális teljes árról ezt követően tudunk pontos tájékoztatást adni.');
@@ -206,6 +208,8 @@
     } else if(asked.price) {
       if(priceApproved) lines.push('','A megadott adatok alapján '+approvedPriceText(approvedPrice));
       else lines.push('','Az aktuális teljes árat a foglalási felületen ellenőrizzük, és ezt követően tudunk pontos tájékoztatást adni.');
+    } else if(priceApproved) {
+      lines.push('','A kezelő által jóváhagyott adatok alapján '+approvedPriceText(approvedPrice));
     }
 
     if(asked.pet) lines.push('','A kisebb kutyával kapcsolatos kérését is feljegyeztük. Háziállat térítés ellenében hozható; a pontos díjat ellenőrizzük.');
@@ -268,10 +272,6 @@
       fingerprint:quoteFingerprint(),
       approvedAt:new Date().toISOString()
     };
-    if(!asked.price){
-      $('price_approval_status').textContent=`Az ár jóváhagyva (${formatFt(approvedPrice.total)}), de a vendég nem kérdezett árat, ezért nem került a válaszlevélbe.`;
-      return;
-    }
     applyFocusedReply(message);
     $('price_approval_status').textContent=`Jóváhagyva: ${formatFt(approvedPrice.total)}. Az összeg automatikusan bekerült a választervezetbe. E-mail nem lett elküldve.`;
     const status=$('status');
