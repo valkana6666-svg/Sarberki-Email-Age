@@ -750,3 +750,8 @@ test('unknown child status also asks for child ages in HU DE EN SI',()=>{
     assert.match(questions[0],pattern);
   }
 });
+
+test('real Kovacs Istvan numeric Hungarian date range is parsed',()=>{
+  const message='2026.10.09-től 10.13.ig szeretnénk házat foglalni. 6 fő részére.';
+  assert.deepEqual(dateRangeFromText(message,now),{arrival:'2026-10-09',departure:'2026-10-13',inferredYear:false});
+});
