@@ -59,7 +59,7 @@
   }
 
   function explicitNoChildren(message=''){
-    return /\\b(?:nincs(?:enek)?\\s+gyerek|nincs(?:enek)?\\s+gyermek|gyermek\\s+nélkül|gyerek\\s+nélkül|no\\s+children|without\\s+children|keine\\s+kinder|ohne\\s+kinder|brez\\s+otrok)\\b/iu.test(message);
+    return /\b(?:nincs(?:enek)?\s+gyerek|nincs(?:enek)?\s+gyermek|gyermek\s+nélkül|gyerek\s+nélkül|no\s+children|without\s+children|keine\s+kinder|ohne\s+kinder|brez\s+otrok)\b/iu.test(message);
   }
 
   function childStatusKnown(message='',analysis=null,normalized={}){
