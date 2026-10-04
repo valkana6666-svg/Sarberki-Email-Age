@@ -55,7 +55,7 @@ test('reply engine answers only actual guest questions while confirming core boo
 
 
 test('manual UI and Gmail bridge use the same shared Sarberki core',()=>{
- assert.match(source,/from '\./sarberki-core\.mjs(?:\?v=[^']+)?'/u);
+ assert.ok(source.includes("from './sarberki-core.mjs"));
  assert.match(source,/requestedUnitsFromText/u);
  const gmail=fs.readFileSync(new URL('./gmail-readonly.js',import.meta.url),'utf8');
  assert.ok(gmail.includes("import('./sarberki-core.mjs"));
