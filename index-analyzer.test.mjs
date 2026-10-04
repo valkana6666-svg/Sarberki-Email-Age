@@ -58,9 +58,9 @@ test('manual UI and Gmail bridge use the same shared Sarberki core',()=>{
  assert.match(source,/from '\./sarberki-core\.mjs(?:\?v=[^']+)?'/u);
  assert.match(source,/requestedUnitsFromText/u);
  const gmail=fs.readFileSync(new URL('./gmail-readonly.js',import.meta.url),'utf8');
- assert.match(gmail,/import\('\.\/sarberki-core\.mjs'\)/u);
+ assert.match(gmail,/import\('\.\/sarberki-core\.mjs(?:\\?v=[^']+)?'\)/u);
  const alias=fs.readFileSync(new URL('./gmail-normalize.mjs',import.meta.url),'utf8');
- assert.match(alias,/export \* from '\./sarberki-core\.mjs(?:\?v=[^']+)?'/u);
+ assert.match(alias,/export \* from '\.\/sarberki-core\.mjs(?:\\?v=[^']+)?'/u);
 });
 
 
@@ -80,7 +80,7 @@ test('test UI does not overclaim Previo side-effect safety',()=>{
 });
 
 
-test('test deployment cache-busts the updated rule modules',()=>{\n assert.match(source,/v0\\.3\\.18 TEST/u);\n assert.match(source,/sarberki-core\\.mjs\\?v=\\d+/u);\n assert.match(source,/gmail-readonly\\.js\\?v=\\d+/u);\n assert.match(source,/availability-recommend\\.mjs\\?v=\\d+/u);\n});
+test('test deployment cache-busts the updated rule modules',()=>{\n assert.match(source,/v0\.3\.18 TEST/u);\n assert.match(source,/sarberki-core\.mjs\?v=\d+/u);\n assert.match(source,/gmail-readonly\.js\?v=\d+/u);\n assert.match(source,/availability-recommend\.mjs\?v=\d+/u);\n});
 
 
 test('availability integration regenerates the full reply instead of appending to a stale draft',()=>{
@@ -94,7 +94,7 @@ test('availability integration regenerates the full reply instead of appending t
 test('availability block is inserted before the email signature',()=>{
  const availability=fs.readFileSync(new URL('./availability-recommend.mjs',import.meta.url),'utf8');
  assert.match(availability,/Üdvözlettel:/u);
- assert.match(availability,/return draft\\.replace\\(signature,'\\\\n\\\\n'\\+combined\\+signature\\)/u);
+ assert.match(availability,/return draft\.replace\(signature,'\\n\\n'\+combined\+signature\)/u);
 });
 
 
