@@ -80,7 +80,12 @@ test('test UI does not overclaim Previo side-effect safety',()=>{
 });
 
 
-test('test deployment cache-busts the updated rule modules',()=>{\n assert.ok(source.includes('v0.3.18 TEST'));\n assert.match(source,/sarberki-core\\.mjs\\?v=\\d+/u);\n assert.match(source,/gmail-readonly\\.js\\?v=\\d+/u);\n assert.match(source,/availability-recommend\\.mjs\\?v=\\d+/u);\n});
+test('test deployment cache-busts the updated rule modules',()=>{
+ assert.ok(source.includes('v0.3.18 TEST'));
+ assert.ok(source.includes('sarberki-core.mjs?v='));
+ assert.ok(source.includes('gmail-readonly.js?v='));
+ assert.ok(source.includes('availability-recommend.mjs?v='));
+});
 
 
 test('availability integration regenerates the full reply instead of appending to a stale draft',()=>{
