@@ -425,7 +425,7 @@ test('shared reply builder asks only shared missing-data questions',()=>{
   });
   assert.match(draft,/gyermek életkorát/u);
   assert.match(draft,/telefonszámot/u);
-  assert.match(draft,/Melyik háztípust/u);
+  assert.doesNotMatch(draft,/Melyik háztípust/u);
 });
 
 
