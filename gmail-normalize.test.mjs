@@ -760,6 +760,6 @@ test('known dates and party size do not ask the guest to choose a cabin before c
  const reply=buildReplyDraft({language:'hu',arrival:'2026-10-09',departure:'2026-10-13',guests:6,adults:null,children:null,cabin:'? – emberi döntésre vár',original:'6 fő részére. Milyen lehetőségek vannak erre az időpontra?'});
  assert.doesNotMatch(reply,/Melyik háztípust szeretné/u);
  assert.match(reply,/összes megfelelő szállástípust/u);
- assert.match(reply,/hány felnőtt érkezik/u);
+ assert.doesNotMatch(reply,/hány felnőtt érkezik/u);
  assert.match(reply,/érkezik-e gyermek/u);
 });
