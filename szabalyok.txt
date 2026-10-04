@@ -433,6 +433,30 @@ Komment: A helyi dátumhatár a Gmail after: viselkedéséhez igazodik.
 Forrás: gmail-policy.mjs:11-15
 Komment: Régi vagy nem inbox üzenetet a tesztlogika nem dolgoz fel érdeklődésként.
 
+12.4 A Gmail-beolvasás jelenlegi működése NEM használ tárgy-allowlistet és NEM szűr feladóra.
+Forrás: gmail-readonly.js:1-8, 130-154; gmail-policy.mjs:1-15
+Komment: A Gmail lista lekérése az INBOX_QUERY alapján történik, majd az isTestInquiry csak az INBOX címkét és a dátumhatárt ellenőrzi. A gmail-subject.mjs-ben megmaradt tárgyfelismerő kód jelenleg nincs bekötve a Gmail-beolvasási láncba.
+
+12.5 A Gmail OAuth jogosultság kizárólag gmail.readonly.
+Forrás: gmail-readonly.js:12-17
+Komment: A tesztoldal a Gmailből olvas, de nem küld, nem töröl és nem módosít levelet.
+
+12.6 A Gmail OAuth access token csak memóriában marad, nincs tartósan eltárolva.
+Forrás: gmail-readonly.js:1, 16-18, 155-177
+Komment: A böngészős tesztkapcsolat nem menti el a hozzáférési tokent localStorage-ba vagy más tartós tárolóba.
+
+12.7 A helyi „olvasott” állapot legfeljebb 500 Gmail message ID-t őriz a böngésző localStorage-jában.
+Forrás: gmail-readonly.js:17-31
+Komment: Ez csak a tesztfelület saját olvasottsági jelölése; a Gmail szerverén nem módosítja az üzenet olvasott/olvasatlan állapotát.
+
+12.8 A beolvasott Gmail-üzenetnek olvasható text/plain vagy text/html törzzsel kell rendelkeznie.
+Forrás: gmail-readonly.js:79-104
+Komment: Ha egyik sem nyerhető ki, a rendszer emberi ellenőrzést kér, és nem talál ki tartalmat.
+
+12.9 A Gmail-feldolgozás minden, 2026.09.25. utáni INBOX-üzenetet jelölt tesztérdeklődésként kezel; ezért a tesztfiókot csak tesztcélra szabad használni.
+Forrás: gmail-policy.mjs:2-15; gmail-readonly.js:130-154
+Komment: Mivel nincs feladó- vagy tárgyszűrés, egy nem teszt jellegű inbox-levél is bekerülhet a listába. Ez megfelel a „bármely feladó, bármely tárgy” tesztkövetelménynek, de elkülönített tesztfiókot igényel.
+
 ----------------------------------------------------------------
 13. BEMENETI NORMALIZÁLÁS
 ----------------------------------------------------------------
