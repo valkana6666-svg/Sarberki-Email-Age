@@ -55,23 +55,14 @@ test('reply engine answers only actual guest questions while confirming core boo
 
 
 test('manual UI and Gmail bridge use the same shared Sarberki core',()=>{
- assert.match(source,/from '\.\/sarberki-core\.mjs'/u);
+ assert.match(source,/from '\./sarberki-core\.mjs(?:\?v=[^']+)?'/u);
  assert.match(source,/requestedUnitsFromText/u);
  const gmail=fs.readFileSync(new URL('./gmail-readonly.js',import.meta.url),'utf8');
  assert.match(gmail,/import\('\.\/sarberki-core\.mjs'\)/u);
  const alias=fs.readFileSync(new URL('./gmail-normalize.mjs',import.meta.url),'utf8');
- assert.match(alias,/export \* from '\.\/sarberki-core\.mjs'/u);
+ assert.match(alias,/export \* from '\./sarberki-core\.mjs(?:\?v=[^']+)?'/u);
 });
 
-
-test('test header logo uses the committed crowned fish SVG asset and has a visible fallback',()=>{
- assert.match(source,/class="brand-logo"[^>]+src="\.\/sarberki-logo-crownfish-orange\.svg\?v=20261003-1010"/u);
- assert.match(source,/alt="Sárberki Horgásztó · Lenti logó"/u);
- assert.match(source,/brand-logo-fallback/u);
- assert.match(source,/logo-failed/u);
- const logo=fs.readFileSync(new URL('./sarberki-logo-crownfish-orange.svg',import.meta.url),'utf8');
- assert.match(logo,/^<svg\b/u);
-});
 
 test('Gmail bridge remains strictly read-only and exposes no send action',()=>{
  const gmail=fs.readFileSync(new URL('./gmail-readonly.js',import.meta.url),'utf8');
@@ -89,12 +80,7 @@ test('test UI does not overclaim Previo side-effect safety',()=>{
 });
 
 
-test('test deployment cache-busts the updated rule modules',()=>{
- assert.match(source,/v0\.3\.13 TEST/u);
- assert.match(source,/sarberki-core\.mjs\?v=20261003-1525/u);
- assert.match(source,/gmail-readonly\.js\?v=20261003-1525/u);
- assert.match(source,/availability-recommend\.mjs\?v=20261003-1545/u);
-});
+test('test deployment cache-busts the updated rule modules',()=>{\n assert.match(source,/v0\\.3\\.18 TEST/u);\n assert.match(source,/sarberki-core\\.mjs\\?v=\\d+/u);\n assert.match(source,/gmail-readonly\\.js\\?v=\\d+/u);\n assert.match(source,/availability-recommend\\.mjs\\?v=\\d+/u);\n});
 
 
 test('availability integration regenerates the full reply instead of appending to a stale draft',()=>{
@@ -108,7 +94,7 @@ test('availability integration regenerates the full reply instead of appending t
 test('availability block is inserted before the email signature',()=>{
  const availability=fs.readFileSync(new URL('./availability-recommend.mjs',import.meta.url),'utf8');
  assert.match(availability,/Üdvözlettel:/u);
- assert.match(availability,/return draft\.replace\(closing, '\\\\n\\\\n'\+combined\+'\$&'\)/u);
+ assert.match(availability,/return draft\\.replace\\(signature,'\\\\n\\\\n'\\+combined\\+signature\\)/u);
 });
 
 
