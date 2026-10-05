@@ -45,6 +45,8 @@ export function guestCountFromText(text=''){
     const pair=text.match(pattern);
     if(pair) return Number(pair[1])+Number(pair[2]);
   }
+  const adultOnly=adultCountFromText(text);
+  if(Number.isInteger(adultOnly)&&adultOnly>0&&childCountFromText(text)===0) return adultOnly;
   const huCountWords={egy:1,két:2,ket:2,kettő:2,ketto:2,három:3,harom:3,négy:4,negy:4,öt:5,ot:5,hat:6,hét:7,het:7,nyolc:8};
   const siCountWords={en:1,ena:1,eno:1,dva:2,dve:2,trije:3,tri:3,štirje:4,stirje:4,štiri:4,stiri:4,pet:5,šest:6,sest:6,sedem:7,osem:8};
   const huWordPair=text.match(/\b(egy|két|ket|kettő|ketto|három|harom|négy|negy|öt|ot|hat|hét|het|nyolc)\s+(?:felnőtt|felnott)\w*\s*(?:és|es|,|\+)\s*(egy|két|ket|kettő|ketto|három|harom|négy|negy|öt|ot|hat|hét|het|nyolc)\s+(?:gyerek|gyermek)\w*\b/iu);
