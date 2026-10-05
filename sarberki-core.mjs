@@ -318,7 +318,9 @@ export function languageFromText(text=''){
 }
 export function replySummary(language='hu', {arrival=null,departure=null,guests=null,adults:knownAdults=null,children=null,childAges=[],pier=false,hotTub=false,dog=false}={}){
   if(!arrival||!departure||!guests) return '';
-  const fmt=iso=>{const [y,m,d]=iso.split('-');return `${d}.${m}.${y}`;};
+  const fmtNumeric=iso=>{const [y,m,d]=iso.split('-');return `${d}.${m}.${y}`;};
+  const enMonths=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const fmtEnglish=iso=>{const [y,m,d]=iso.split('-');return `${Number(d)} ${enMonths[Number(m)-1]} ${y}`;};
   const adults=Number.isInteger(knownAdults)?knownAdults:Number.isFinite(children)?Math.max(0,guests-children):null;
   const ageList=(lang)=>{
     if(!Array.isArray(childAges)||!childAges.length) return '';
@@ -327,31 +329,43 @@ export function replySummary(language='hu', {arrival=null,departure=null,guests=
     if(childAges.length===2) return childAges.join(joiner);
     return childAges.slice(0,-1).join(', ')+joiner+childAges.at(-1);
   };
+  const siAdults=n=>{
+    if(n===1)return '1 odrasla oseba';
+    if(n===2)return '2 odrasli osebi';
+    if(n===3||n===4)return `${n} odrasle osebe`;
+    return `${n} odraslih oseb`;
+  };
+  const siChildren=n=>{
+    if(n===1)return '1 otrok';
+    if(n===2)return '2 otroka';
+    if(n===3||n===4)return `${n} otroci`;
+    return `${n} otrok`;
+  };
   const packs={
     hu:{
       people:()=>children?`${guests} fő (${adults} felnőtt és ${children} gyermek${ageList('hu')?`, ${ageList('hu')} ${children===1?'éves':'évesek'}`:''})`:`${guests} fő${adults!==null?` (${adults} felnőtt)`:''}`,
-      base:p=>`${fmt(arrival)} és ${fmt(departure)} között összesen ${p} szeretnének érkezni.`,
+      base:p=>`${fmtNumeric(arrival)} és ${fmtNumeric(departure)} között ${p} részére keresnek szállást.`,
       pier:'Ha lehetséges, saját / külön stéget kérnek.',
       hotTub:'Dézsát is szeretnének.',
       dog:'Kutyát is hoznának.'
     },
     de:{
-      people:()=>children?`${guests} Personen (${adults} Erwachsene und ${children} Kinder${ageList('de')?` im Alter von ${ageList('de')} Jahren`:''})`:`${guests} Personen`,
-      base:p=>`Sie möchten vom ${fmt(arrival)} bis ${fmt(departure)} mit ${p} bei uns übernachten.`,
+      people:()=>children?`${guests} Personen (${adults} Erwachsene und ${children} ${children===1?'Kind':'Kinder'}${ageList('de')?` im Alter von ${ageList('de')} Jahren`:''})`:`${guests} Personen`,
+      base:p=>`Sie möchten vom ${fmtNumeric(arrival)} bis ${fmtNumeric(departure)} mit ${p} bei uns übernachten.`,
       pier:'Wenn möglich, wünschen Sie ein Haus mit eigenem Steg.',
       hotTub:'Außerdem wünschen Sie ein Badefass / einen Whirlpool.',
       dog:'Sie möchten einen Hund mitbringen.'
     },
     en:{
-      people:()=>children?`${guests} guests (${adults} adults and ${children} children${ageList('en')?`, aged ${ageList('en')}`:''})`:`${guests} guests`,
-      base:p=>`You would like to stay from ${fmt(arrival)} to ${fmt(departure)} with ${p}.`,
+      people:()=>children?`${guests} guests (${adults} adults and ${children} ${children===1?'child':'children'}${ageList('en')?`, aged ${ageList('en')}`:''})`:`${guests} guests`,
+      base:p=>`You would like to stay with us from ${fmtEnglish(arrival)} to ${fmtEnglish(departure)} with ${p}.`,
       pier:'If possible, you would like a cabin with its own fishing pier.',
       hotTub:'You would also like a hot tub.',
       dog:'You would like to bring a dog.'
     },
     si:{
-      people:()=>children?`${guests} oseb (${adults} odraslih in ${children} otrok${ageList('si')?`, starih ${ageList('si')} let`:''})`:`${guests} oseb`,
-      base:p=>`Pri nas želite bivati od ${fmt(arrival)} do ${fmt(departure)} za skupaj ${p}.`,
+      people:()=>children?`${guests} oseb (${siAdults(adults)} in ${siChildren(children)}${ageList('si')?`; starost otrok: ${ageList('si')} let`:''})`:`${guests} oseb`,
+      base:p=>`Pri nas želite bivati od ${fmtNumeric(arrival)} do ${fmtNumeric(departure)}, skupaj ${p}.`,
       pier:'Če je mogoče, želite hiško z lastnim pomolom.',
       hotTub:'Želite tudi masažno / vročo kad.',
       dog:'S seboj želite pripeljati psa.'
@@ -365,8 +379,8 @@ export function replySummary(language='hu', {arrival=null,departure=null,guests=
 export function replyQuestions(language='hu', {needDates=false,needAdults=false,needChildStatus=false,needPhone=false,needCabin=false,needChildAge=false}={}){
   const q={
     hu:{dates:'Kérjük, írja meg a pontos érkezési és távozási dátumot.',adults:'Kérjük, írja meg, hány felnőtt érkezik.',childStatus:'Kérjük, írja meg, érkezik-e gyermek is. Ha igen, kérjük, adja meg a gyermek(ek) életkorát is.',phone:'Megírna egy telefonszámot, amelyen elérhetjük?',cabin:'Melyik háztípust szeretné: VIP, Családi, Deluxe vagy Osztott?',child:'Kérjük, írja meg a gyermek életkorát, több gyermek esetén mindegyikét.'},
-    de:{dates:'Bitte teilen Sie uns das genaue Anreise- und Abreisedatum mit.',adults:'Bitte teilen Sie uns mit, wie viele Erwachsene anreisen.',childStatus:'Bitte teilen Sie uns mit, ob auch Kinder mitreisen. Falls ja, teilen Sie uns bitte auch das Alter der Kinder mit.',phone:'Bitte teilen Sie uns eine Telefonnummer mit, unter der wir Sie erreichen können.',cabin:'Welchen Haustyp wünschen Sie: VIP, Családi (Familienhaus), Deluxe oder Osztott (geteiltes Haus)?',child:'Bitte teilen Sie uns das Alter der Kinder mit.'},
-    en:{dates:'Please tell us the exact arrival and departure dates.',adults:'Please tell us how many adults will be staying.',childStatus:'Please let us know whether any children will be staying. If so, please also tell us their ages.',phone:'Please send us a phone number where we can reach you.',cabin:'Which cabin type would you like: VIP, Családi (Family), Deluxe or Osztott (Split)?',child:'Please tell us the ages of the children.'},
+    de:{dates:'Könnten Sie uns bitte das genaue An- und Abreisedatum nennen?',adults:'Wie viele Erwachsene reisen an?',childStatus:'Reisen auch Kinder mit? Falls ja, wie alt sind sie?',phone:'Könnten Sie uns bitte noch eine Telefonnummer mitteilen, unter der wir Sie erreichen können?',cabin:'Welchen Haustyp wünschen Sie: VIP, Családi (Familienhaus), Deluxe oder Osztott (geteiltes Haus)?',child:'Wie alt sind die mitreisenden Kinder?'},
+    en:{dates:'Could you please confirm the exact arrival and departure dates?',adults:'Could you please tell us how many adults will be staying?',childStatus:'Will any children be staying with you? If so, please let us know their ages.',phone:'Could you please send us a phone number where we can reach you?',cabin:'Which cabin type would you like: VIP, Családi (Family), Deluxe or Osztott (Split)?',child:"Could you please tell us the children's ages?"},
     si:{dates:'Prosimo, sporočite točen datum prihoda in odhoda.',adults:'Prosimo, sporočite, koliko odraslih oseb bo prišlo.',childStatus:'Prosimo, sporočite, ali bodo z vami tudi otroci. Če bodo z vami otroci, prosimo navedite tudi njihovo starost.',phone:'Prosimo, sporočite telefonsko številko, na kateri ste dosegljivi.',cabin:'Kateri tip hiške želite: VIP, Családi (družinska), Deluxe ali Osztott (deljena)?',child:'Prosimo, sporočite starost otrok.'}
   }[language]||null;
   if(!q) return [];
@@ -567,10 +581,11 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const flags=requestFlagsFromText(original);
   if(/kuty|dog|hund|\bpes\b|\bpsa\b/iu.test(original))dog=flags.petRequested;
   if(/dézs|dezsa|hot.?tub|badefass|whirlpool/iu.test(original))hotTub=flags.hotTubRequested;
-  const first=name?.trim()?.split(/\s+/u)?.slice(-1)[0]||null;
-  const greetings={hu:first?`Kedves ${first}!`:'Kedves Vendégünk!',de:first?`Guten Tag ${first}!`:'Guten Tag!',en:first?`Dear ${first},`:'Dear Guest,',si:first?`Pozdravljeni ${first}!`:'Pozdravljeni!'};
-  const intros={hu:'Köszönjük érdeklődését.',de:'Vielen Dank für Ihre Anfrage.',en:'Thank you for your inquiry.',si:'Hvala za vaše povpraševanje.'};
-  const closings={hu:'Üdvözlettel:',de:'Mit freundlichen Grüßen',en:'Kind regards,',si:'Lep pozdrav,'};
+  const nameParts=name?.trim()?.replace(/^[\"']|[\"']$/gu,'').split(/\s+/u).filter(Boolean)||[];
+  const first=nameParts.length?(lang==='hu'?nameParts.at(-1):nameParts[0]):null;
+  const greetings={hu:first?`Kedves ${first}!`:'Kedves Vendégünk!',de:first?`Guten Tag, ${first}!`:'Guten Tag!',en:first?`Dear ${first},`:'Dear Guest,',si:first?`Pozdravljeni, ${first}!`:'Pozdravljeni!'};
+  const intros={hu:'Köszönjük érdeklődését.',de:'Vielen Dank für Ihre Anfrage.',en:'Thank you for your enquiry.',si:'Hvala za vaše povpraševanje.'};
+  const closings={hu:'Üdvözlettel:',de:'Mit freundlichen Grüßen',en:'Kind regards,',si:'Lep pozdrav'};
   if(intent==='cancellation_request'||intent==='modification_request'){
     const action={hu:intent==='cancellation_request'?'lemondási':'foglalásmódosítási',de:intent==='cancellation_request'?'Stornierungs':'Änderungs',en:intent==='cancellation_request'?'cancellation':'booking change',si:intent==='cancellation_request'?'odpovedi':'spremembe rezervacije'}[lang]||'foglalási';
     const received={hu:`Megkaptuk a ${action} kérelmét. Hamarosan pontos visszajelzést adunk.`,de:`Wir haben Ihre ${action}anfrage erhalten und prüfen sie.`,en:`We have received your ${action} request and will review it.`,si:`Prejeli smo vašo zahtevo za ${action} in jo bomo preverili.`}[lang];
