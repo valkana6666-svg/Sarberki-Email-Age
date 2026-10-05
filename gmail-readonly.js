@@ -1,7 +1,7 @@
 /* Browser-only Gmail bridge. Access token stays in memory and is never stored. */
 (async () => {
   'use strict';
-  const { cabinFromText, guestCountFromText, adultCountFromText, childCountFromText, dateRangeFromText, phoneFromText, childAgesFromText, pierPreferenceFromText, languageFromText, buildReplyDraft, specialRequestsFromText, requestedUnitsFromText, activeMessageText, requestFlagsFromText } = await import('./sarberki-core.mjs?v=20261005-stress1');
+  const { cabinFromText, guestCountFromText, adultCountFromText, childCountFromText, dateRangeFromText, phoneFromText, childAgesFromText, pierPreferenceFromText, languageFromText, buildReplyDraft, specialRequestsFromText, requestedUnitsFromText, activeMessageText, requestFlagsFromText } = await import('./sarberki-core.mjs?v=20261005-theme1');
   const { BUSINESS } = await import('./business-config.mjs?v=20261005-stress1');
   const { fishingQuestion } = await import('./fishing-rules.mjs?v=20261005-stress1');
   const { INBOX_QUERY, TEST_GMAIL_ACCOUNT, assertTestGmailAccount, isTestInquiry } = await import('./gmail-policy.mjs');
@@ -220,7 +220,7 @@
     const childCount = childCountFromText(original);
     const childAges = childAgesFromText(original);
     const phone = phoneFromText(original);
-    const name = original.match(/(?:^|\n)\s*([A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+\s+[A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+)\s*$/mu)?.[1];
+    const name = original.match(/(?:^|\n)\s*(?:üdv\.?|üdvözlettel|tisztelettel)\s*[:.,-]*\s*([A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+\s+[A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+)\s*$/imu)?.[1] || original.match(/(?:^|\n)\s*([A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+\s+[A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+)\s*$/mu)?.[1];
     const flags = requestFlagsFromText(original);
     const hotTub = flags.hotTubRequested, dog = flags.petRequested, pier = pierPreferenceFromText(original), availability = /(?:szabad\s+hely|availab|verfügbar|prosto|razpolož)/iu.test(original);
     const specialRequests = specialRequestsFromText(original);
@@ -237,7 +237,9 @@
     if (adultCount!=null) extracted.push({label:'Felnőttek',value:`${adultCount} fő`,evidence:'levélszöveg'});
     else if (count && childCount) inferred.push({label:'Felnőttek',value:`valószínűleg ${count-childCount}, ha a fennmaradó ${count-childCount} fő felnőtt`});
     const missing = [];
-    if (cabinFromGuestText(original).startsWith('?')) missing.push('Kívánt háztípus (VIP, Családi, Deluxe vagy Osztott) – pontosítandó');
+    const cabinMissing = cabinFromGuestText(original).startsWith('?');
+    const capacityRecommendationReady = Boolean(normalizedDate && count);
+    if (cabinMissing && !capacityRecommendationReady) missing.push('Kívánt háztípus (VIP, Családi, Deluxe vagy Osztott) – pontosítandó');
     if (normalizedDate) extracted.push({label:normalizedDate.inferredYear ? 'Időszak, következtetett évvel' : 'Időszak',value:`${normalizedDate.arrival} – ${normalizedDate.departure}`,evidence:'levélszöveg'});
     if (!normalizedDate) missing.push('Pontos érkezési és távozási dátum');
     if (normalizedDate?.inferredYear && !inferred.some(x => x.label === 'Év')) inferred.push({label:'Év',value:`${normalizedDate.arrival.slice(0,4)}, a feldolgozás napja alapján következtetve; emberi ellenőrzés szükséges`});
@@ -246,12 +248,13 @@
     if (childCount==null) missing.push('Érkezik-e gyermek; ha igen, hányan és milyen életkorúak');
     if (childCount && childAges.length < childCount) missing.push('Gyermek életkora');
     if (!phone) missing.push('Telefonszám');
-    missing.push('Kapacitás és ár csak külön, hiteles ellenőrzéssel állapítható meg');
     const reviewYear = normalizedDate?.inferredYear ? Number(normalizedDate.arrival.slice(0,4)) : null;
-    const humanReview = [reviewYear ? `A ${reviewYear}-os év következtetését hagyja jóvá a kezelő` : 'A dátumot ellenőrizni kell'];
-    if (cabinFromGuestText(original).startsWith('?')) humanReview.push('A vendég háztípust nem választott; létszámból nem szabad kiválasztani');
+    const humanReview = [];
+    if (reviewYear) humanReview.push(`A ${reviewYear}-os év következtetését hagyja jóvá a kezelő`);
+    if (cabinMissing && !capacityRecommendationReady) humanReview.push('A vendég háztípust nem választott; a választást pontosítani kell');
     if (count && adultCount!=null && childCount!=null && adultCount+childCount!==count) humanReview.push(`Ellentmondó létszámadat: összesen ${count} fő, de ${adultCount} felnőtt + ${childCount} gyermek = ${adultCount+childCount} fő`);
-    humanReview.push('Szabad hely és ár nincs igazolva');
+    const priceQuestion=/(?:mennyi|mennyibe|ár|ára|árat|price|cost|kosten|preis|cena)/iu.test(original);
+    if (availability || priceQuestion) humanReview.push('A szabad kapacitás és/vagy ár hiteles ellenőrzése szükséges');
     const language = languageFromText(original);
     const fishingInfo = fishingQuestion(original,language);
     const replyDraft = buildReplyDraft({language,name,original,arrival:normalizedDate?.arrival,departure:normalizedDate?.departure,guests:count,adults:adultCount,children:childCount,childAges,phone,cabin:cabinFromGuestText(original),pier,hotTub,dog,intent:'booking_request',brandName:BUSINESS.brandName,bookingRules:BUSINESS.bookingRules,operationalRules:BUSINESS.operationalRules,pricingRules:BUSINESS.pricingRules,knowledgeLines:fishingInfo?[fishingInfo.answer]:[]});
