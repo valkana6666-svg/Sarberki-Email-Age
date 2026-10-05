@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {fetchPublicBookingQuote,requestPrevioReadOnly} from './sarberki-public-booking.mjs';
 
 const first='<form id="firstStep" action="https://booking.previo.cz/?hotId=753011&amp;currency=HUF&amp;lang=hu&amp;PHPSESSID=test-session"></form>';
-const categories=[{guaId:1,isDefault:true,isChild:false},{guaId:2,isChild:true,ageFrom:8,ageTo:17,isWithoutBed:false},{guaId:3,isChild:true,ageFrom:3,ageTo:7,isWithoutBed:false}];
-const kinds=[{obkId:10,hotelLangName:'DELUXE faház'},{obkId:11,hotelLangName:'Családi faház'}];
+const categories=[{guaId:1,isDefault:true,isChild:false},{guaId:2,isChild:true,ageFrom:8,ageTo:17,isWithoutBed:false},{guaId:3,isChild:true,ageFrom:3,ageTo:7,isWithoutBed:false},{guaId:4,isChild:true,ageFrom:0,ageTo:2,isWithoutBed:true}];
+const kinds=[{obkId:10,hotelLangName:'DELUXE faház'},{obkId:11,hotelLangName:'Családi faház'},{obkId:12,hotelLangName:'VIP apartman'},{obkId:13,hotelLangName:'Különálló 2 fős faház'}];
 function mock({free=2,price=122200,tax=2200,error=false,unknown=false}={}){
  const calls=[];
  const request=async(url,options={})=>{
@@ -32,12 +32,45 @@ test('2 adults: source JSON is the sole price, and availability is checked',asyn
 test('2 adults and 7/11 year old children use separate Previo categories',async()=>{
  const m=mock();await fetchPublicBookingQuote({...base,children:[7,11]},m.request);
  const room=JSON.parse(m.calls.at(-1).data.formData).rooms[0];
- assert.equal(room.numOfGuestsWithBed,4);assert.deepEqual(room.guestCategories.map(x=>x.count),[2,1,1]);
+ assert.equal(room.numOfGuestsWithBed,4);assert.deepEqual(room.guestCategories.map(x=>x.count),[2,1,1,0]);
 });
 test('different cabin maps to its own Previo object kind',async()=>{
  const m=mock();await fetchPublicBookingQuote({...base,cabin:'family'},m.request);
  assert.equal(m.calls[2].data.obkId,'11');
 });
+test('child age boundaries are preserved for every live-mapped Sárberki cabin',async()=>{
+ const cabins=[['deluxe','10'],['family','11'],['vip','12'],['small','13']];
+ const ageCases=[
+  [2,4,false],
+  [5,3,true],
+  [13,2,true],
+  [17,2,true]
+ ];
+ for(const [cabin,obkId] of cabins){
+  for(const [age,guaId,withBed] of ageCases){
+   const m=mock();
+   await fetchPublicBookingQuote({...base,cabin,children:[age]},m.request);
+   assert.equal(m.calls[2].data.obkId,obkId);
+   const room=JSON.parse(m.calls.at(-1).data.formData).rooms[0];
+   const category=room.guestCategories.find(x=>x.guaId===guaId);
+   assert.equal(category.count,1,`${cabin} age ${age}`);
+   assert.equal(room.guestCategories.find(x=>x.guaId===1).count,2,`${cabin} adult count`);
+   assert.equal(room.numOfGuestsWithBed,withBed?3:2,`${cabin} age ${age} bed count`);
+  }
+ }
+});
+
+test('18-year-old control is sent as an adult, never as a child category',async()=>{
+ for(const [cabin,obkId] of [['deluxe','10'],['family','11'],['vip','12']]){
+  const m=mock();
+  await fetchPublicBookingQuote({...base,cabin,adults:3,children:[]},m.request);
+  assert.equal(m.calls[2].data.obkId,obkId);
+  const room=JSON.parse(m.calls.at(-1).data.formData).rooms[0];
+  assert.equal(room.guestCategories.find(x=>x.guaId===1).count,3);
+  assert.equal(room.guestCategories.filter(x=>x.guaId!==1).reduce((sum,x)=>sum+x.count,0),0);
+ }
+});
+
 test('two units return a reconciled per-unit breakdown and require two free units',async()=>{
  const m=mock({free:3,price:244400,tax:4400});
  const quote=await fetchPublicBookingQuote({...base,adults:4,units:2},m.request);
