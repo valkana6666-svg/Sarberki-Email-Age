@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {availabilitySentence,splitReviewSentence} from '../availability-recommend.mjs';
+import {availabilitySentence,splitReviewSentence,replaceCapacityPlaceholder} from '../availability-recommend.mjs';
 import * as core from '../sarberki-core.mjs';
 const available={available_options:[{label:'Deluxe',units:1},{label:'Családi',units:2}],manual_review_options:[{label:'Osztott A + C'}]};
 for(const [lang,word] of [['hu','szabad'],['de','verfügbare'],['en','available'],['si','proste']]){
@@ -23,7 +23,7 @@ for(const [lang,expected] of Object.entries(labelCases)){
    assert.doesNotMatch(sentence,/Családi|Osztott/u);
    assert.doesNotMatch(manual,/Családi|Osztott/u);
  });
- test(`core reply avoids Hungarian cabin labels in ${lang}`,()=>{
+ test(`core reply does not invent a cabin choice in ${lang}`,()=>{
    const draft=core.buildReplyDraft({
      language:lang,
      original:'test',
@@ -35,8 +35,8 @@ for(const [lang,expected] of Object.entries(labelCases)){
      phone:'+36 30 555 1234',
      cabin:'? – emberi döntésre vár'
    });
-   assert.doesNotMatch(draft,/Családi|Osztott/u);
-   assert.match(draft,new RegExp(expected.family,'u'));
+   assert.doesNotMatch(draft,/Családi|Osztott|Familienhaus|Family cabin|Družinska hiška/u);
+   assert.doesNotMatch(draft,/Which cabin type|Welchen Haustyp|Kateri tip hiške/u);
  });
 }
 
@@ -60,4 +60,18 @@ test('blank child ages never become age zero during capacity enrichment',async()
  h.pending[0]({ok:true,json:async()=>available});await p;
  assert.match(h.node('draft').value,/életkor/u);assert.doesNotMatch(h.node('draft').value,/0 éves/u);
  assert.ok(h.node('draft').value.indexOf('szabad lehetőségek')<h.node('draft').value.indexOf('Üdvözlettel:'));
+});
+
+
+test('verified availability replaces the generic capacity placeholder inside the accommodation block',()=>{
+  const base=core.buildReplyDraft({
+    language:'hu',
+    original:'2026. október 9-13. 6 felnőtt, gyermek nélkül. Van szabad hely? Horgászni is szeretnénk.',
+    arrival:'2026-10-09',departure:'2026-10-13',guests:6,adults:6,children:0,phone:'+36 30 555 1234',
+    cabin:'? – emberi döntésre vár',knowledgeLines:['Horgászati feltételek.']
+  });
+  const result=replaceCapacityPlaceholder(base,availabilitySentence(available,'hu'),splitReviewSentence(available,'hu'));
+  assert.doesNotMatch(result,/megkeressük a megfelelő szabad szállástípusokat/u);
+  assert.match(result,/ellenőrzött, szabad lehetőségek/u);
+  assert.ok(result.indexOf('ellenőrzött, szabad lehetőségek')<result.indexOf('Horgászat\n'));
 });
