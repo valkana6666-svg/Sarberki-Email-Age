@@ -36,21 +36,56 @@ export function splitReviewSentence(result,language='hu'){
   return ({hu:`Kapacitás alapján szóba jöhet ${labels}; az együttes elérhetőséget külön ellenőrizzük, és ezt csak utána tudjuk visszaigazolni.`,de:`Nach Kapazität kommen ${labels} infrage; die gemeinsame Verfügbarkeit prüfen und bestätigen wir separat.`,en:`Capacity options may include ${labels}; we will check and confirm their combined availability separately.`,si:`Glede na kapaciteto pridejo v poštev ${labels}; skupno razpoložljivost preverimo in potrdimo posebej.`})[language]||splitReviewSentence(result,'hu');
 }
 function hasSpecificCabin(value=''){return /vip|családi|deluxe|osztott|különálló|2 fős/iu.test(value);}
-function replaceCapacityPlaceholder(draft,sentence,manual){
-  const placeholder='A megadott létszám alapján ellenőrizzük az összes megfelelő szállástípust, és csak a ténylegesen szabad lehetőségeket ajánljuk fel.';
+export function replaceCapacityPlaceholder(draft,sentence,manual){
+  const placeholders=[
+    'A megadott létszám alapján megkeressük a megfelelő szabad szállástípusokat.',
+    'Anhand der angegebenen Personenzahl suchen wir die passenden verfügbaren Unterkunftstypen.',
+    'Based on the stated party size, we will find the suitable available accommodation types.',
+    'Glede na navedeno število gostov poiščemo primerne razpoložljive vrste nastanitve.'
+  ];
   const combined=[sentence,manual].filter(Boolean).join('\n');
-  if(draft.includes(placeholder)) return draft.replace(placeholder,combined);
+  for(const placeholder of placeholders){
+    if(draft.includes(placeholder)) return draft.replace(placeholder,combined);
+  }
 
   const signatures=[
     '\n\nÜdvözlettel:\nSárberki Horgásztó',
     '\n\nMit freundlichen Grüßen\nSárberki Horgásztó',
     '\n\nKind regards,\nSárberki Horgásztó',
+    '\n\nLep pozdrav\nSárberki Horgásztó',
     '\n\nLep pozdrav,\nSárberki Horgásztó'
   ];
   for(const signature of signatures){
     if(draft.includes(signature)) return draft.replace(signature,'\n\n'+combined+signature);
   }
   return draft+'\n\n'+combined;
+}
+
+function removeListItems(id,patterns){
+  const root=$(id);
+  if(!root?.children)return;
+  for(const li of [...root.children]){
+    if(patterns.some(pattern=>pattern.test(li.textContent||''))) li.remove();
+  }
+  if(!root.children.length){
+    const li=document.createElement('li');
+    li.textContent='Nincs további tétel';
+    root.append(li);
+  }
+}
+
+function syncGmailRecordAfterAvailability(){
+  removeListItems('gmail_missing',[
+    /Kívánt háztípus/iu,
+    /Kapacitás és ár/iu
+  ]);
+  removeListItems('gmail_review',[
+    /A dátumot ellenőrizni kell/iu,
+    /háztípust nem választott/iu,
+    /Szabad hely és ár nincs igazolva/iu
+  ]);
+  const state=$('gmail_record_state');
+  if(state) state.textContent='Kapacitás ellenőrizve · ár csak külön árlekérés után';
 }
 function currentReplyBase(){
   const normalize=window.SarberkiNormalize;
@@ -108,7 +143,8 @@ async function enrich(){
     const gmailDraft=$('gmail_draft');
     if(gmailDraft) gmailDraft.value=draft.value;
     draft.dispatchEvent(new Event('input',{bubbles:true}));
-    if(status){status.className='warning';status.textContent='Kapacitás ellenőrizve; a tervezet frissítve. Emberi jóváhagyás szükséges.';}
+    syncGmailRecordAfterAvailability();
+    if(status){status.className='ok';status.textContent='Kapacitás ellenőrizve; a tervezet frissítve.';}
   }catch(error){
     if(key!==fingerprint())return;
     if(status){status.className='warning';status.textContent='A kapacitás nem volt hitelesen ellenőrizhető: '+error.message;}
