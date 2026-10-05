@@ -14,6 +14,7 @@ test('email web form and phone AI produce the same booking facts',()=>{
     assert.equal(r.booking.adults,2);
     assert.equal(r.booking.children,2);
     assert.deepEqual(r.booking.childAges,[6,10]);
+    assert.equal(r.humanReviewRequired,false);
     assert.equal(r.readyForPrice,true);
   }
   assert.deepEqual(records[0].booking,records[1].booking);
@@ -35,6 +36,21 @@ test('explicit no-children statement makes child status known',()=>{
   assert.equal(r.booking.adults,4);
   assert.equal(r.booking.children,0);
   assert.ok(!r.missing.includes('children_status'));
+});
+
+test('contradictory guest total is blocked and marked for human review',()=>{
+  const r=normalizeBookingInput({
+    channel:'email',
+    text:'2027. október 16-18. között 5 fő mennénk: 2 felnőtt és 2 gyermek, 7 és 11 évesek. Deluxe házat szeretnénk.',
+    now:new Date('2026-10-03T10:00:00Z')
+  });
+  assert.equal(r.booking.guests,5);
+  assert.equal(r.booking.adults,2);
+  assert.equal(r.booking.children,2);
+  assert.equal(r.missing.length,0);
+  assert.equal(r.contradictions[0].code,'guest_total_mismatch');
+  assert.equal(r.humanReviewRequired,true);
+  assert.equal(r.readyForPrice,false);
 });
 
 test('unknown channel is rejected',()=>{
