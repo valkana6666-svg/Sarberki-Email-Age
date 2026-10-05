@@ -107,3 +107,24 @@ A 18 éves kontroll felnőttként szerepel, ezért 3 felnőttes lekérés.
 **Következtetés:** a vizsgált időszakban a Deluxe, Családi és VIP háztípusnál a 2, 5, 13 és 17 éves gyermek között a Previo nem változtatta sem a szállásdíjat, sem az IFA-t. A 18 éves személy felnőttként kezelve ugyanazon szállásdíj mellett csak az IFA-t növelte 1 100 Ft-tal a 2 éjszakás tartózkodásra. Ez a megfigyelés a fenti dátumra és élő Previo-konfigurációra igaz; tarifa- vagy konfigurációváltozás esetén újra ellenőrizendő.
 
 A Különálló 2 fős ház ezen az időszakon 0 szabad egységet adott, ezért gyermekár nem volt hitelesen lekérhető. A 18 éves kontroll 2 felnőtt + 1 további felnőtt felállásban kapacitási okból nem alkalmazható ehhez a háztípushoz.
+
+
+## Osztott A/B/C Previo mapping – 2026-10-05
+
+Read-only Reservation+ feltérképezés, időszak: **2026-10-16–18.**
+
+A Previo `PageParams.OBJECT_KINDS` és az occupancy végpont alapján a Sárberki Osztott egységek két összevont objektumtípusként jelennek meg:
+
+- **2 fős apartman**: `obkId=766441`, kapacitás 2, 2 ágy, 0 pótágy, `numOfRooms=8`. A leírás szerint a faház földszintjén két külön 2 ágyas apartman található, közös stéggel. Ez megfelel a 7–10-es házak A/B egységeinek: 4 fizikai ház × 2 alsó egység = 8.
+- **4 fős apartman**: `obkId=766443`, kapacitás 5, 4 ágy + 1 pótágy, `numOfRooms=4`. A leírás szerint a faház felső szintjén található apartman külön stéggel. Ez megfelel a 7–10-es házak C egységeinek: 4 fizikai ház × 1 felső egység = 4.
+
+Az adott dátumra az occupancy végpont 4 szabad 2 fős apartmant és 3 szabad 4 fős apartmant jelzett. Ez csak dátumhoz kötött élő pillanatkép, nem állandó kapacitásadat.
+
+**Bizonyítási határ:** a publikus read-only Reservation+ útvonal az objektumtípus `obkId`-ját és az összevont szabad darabszámot adja vissza. A második lépés `PageParams` adataiban és az occupancy HTML-ben nem jelent meg egyedi 7A/7B/7C… szoba-/egységazonosító, és nem jelent meg olyan fizikai-ház kapcsolat sem, amelyből bizonyítható lenne, hogy egy adott szabad A vagy B ugyanahhoz a házhoz tartozik, mint egy adott szabad C.
+
+Következmény:
+
+- **VERIFIED TYPE MAPPING:** A/B → `2 fős apartman` / `766441`; C → `4 fős apartman` / `766443`.
+- **NOT VERIFIED INDIVIDUAL MAPPING:** 7A, 7B, 7C … 10C konkrét Previo-egységazonosítói.
+- **NOT VERIFIED PAIRING:** ugyanazon fizikai ház A/B + C párosának egyidejű elérhetősége.
+- A 6 fős A+C vagy B+C ajánlás ezért továbbra is `manual_review`, még akkor is, ha mindkét összevont Previo poolban van szabad egység.
