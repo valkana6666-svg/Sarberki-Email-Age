@@ -769,8 +769,8 @@ test('written Hungarian and Slovenian adult-child counts are parsed without a nu
 test('unknown child status also asks for child ages in HU DE EN SI',()=>{
   const cases=[
     ['hu',/Ha igen, kérjük, adja meg a gyermek\(ek\) életkorát is/u],
-    ['de',/Falls ja, teilen Sie uns bitte auch das Alter der Kinder mit/u],
-    ['en',/If so, please also tell us their ages/u],
+    ['de',/Falls ja, wie alt sind sie/u],
+    ['en',/If so, please let us know their ages/u],
     ['si',/Če bodo z vami otroci, prosimo navedite tudi njihovo starost/u]
   ];
   for(const [lang,pattern] of cases){
