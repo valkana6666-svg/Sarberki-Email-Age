@@ -34,6 +34,8 @@ export const BUSINESS = Object.freeze({
     extraAdultNightlyHuf: 4500,
     child0to3NightlyHuf: 0,
     child3to8NightlyHuf: 2250,
+    publicExtraGuestRatesVerified: false,
+    publicExtraGuestRatesNote: 'Legacy public price-list values conflict with the current accommodation base prices; do not use automatically without fresh verification.',
     tourismTaxAdultNightlyHuf: 550,
     highSeasonSurchargePct: 10,
     highSeasonStart: '07-01',
