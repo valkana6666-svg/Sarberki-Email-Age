@@ -9,7 +9,7 @@ export function isLiveAvailabilityEnabled(request){
 
 function validDate(value){return /^\d{4}-\d{2}-\d{2}$/.test(value||'')&&Number.isFinite(+new Date(value+'T00:00:00Z'));}
 
-export function splitCapacityOptions(guests){
+export function splitCapacityOptions(guests,poolChecks={}){
   const units=[
     {key:'splitA',label:'Osztott A',capacity:BUSINESS.accommodationTypes.splitA.maxGuests},
     {key:'splitB',label:'Osztott B',capacity:BUSINESS.accommodationTypes.splitB.maxGuests},
@@ -24,14 +24,29 @@ export function splitCapacityOptions(guests){
   combos.sort((a,b)=>a.excess-b.excess||a.count-b.count||a.labels.join().localeCompare(b.labels.join()));
   const best=combos[0];
   if(!best)return [];
-  return combos.filter(x=>x.excess===best.excess&&x.count===best.count).map(x=>({
-    kind:'split_manual_review',
-    label:x.labels.join(' + '),
-    units:x.units,
-    capacity:x.capacity,
-    availability_verified:false,
-    reason:'A Previo-típusmapping hitelesített (A/B = 2 fős apartman pool, C = 4 fős apartman pool), de az egyedi 7A–10C egység-ID és az azonos fizikai házhoz tartozó A/B + C párosítás ezen a read-only útvonalon nem látszik.'
-  }));
+  return combos.filter(x=>x.excess===best.excess&&x.count===best.count).map(x=>{
+    const needAB=x.units.filter(key=>key==='splitA'||key==='splitB').length;
+    const needC=x.units.filter(key=>key==='splitC').length;
+    const ab=poolChecks.splitAB||null, upper=poolChecks.splitC||null;
+    const abOk=needAB===0||Boolean(ab?.verified&&ab.availableUnits>=needAB);
+    const cOk=needC===0||Boolean(upper?.verified&&upper.availableUnits>=needC);
+    const pooledAvailabilityVerified=abOk&&cOk&&(needAB===0||ab?.verified)&&(needC===0||upper?.verified);
+    return {
+      kind:'split_manual_review',
+      label:x.labels.join(' + '),
+      units:x.units,
+      capacity:x.capacity,
+      availability_verified:false,
+      pooled_availability_verified:Boolean(pooledAvailabilityVerified),
+      pool_checks:{
+        splitAB:needAB?ab:null,
+        splitC:needC?upper:null
+      },
+      reason:pooledAvailabilityVerified
+        ?'A szükséges 2 fős és 4 fős Previo poolban van elég szabad egység, de az egyedi 7A–10C egység-ID és az azonos fizikai házhoz tartozó A/B + C párosítás ezen a read-only útvonalon nem látszik.'
+        :'A Previo-típusmapping hitelesített (A/B = 2 fős apartman pool, C = 4 fős apartman pool), de a szükséges pooled elérhetőség vagy a fizikai A/B + C párosítás még kézi ellenőrzést igényel.'
+    };
+  });
 }
 
 export async function buildAvailabilityOptions(input,source=fetchPublicBookingAvailability){
@@ -54,13 +69,25 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
     }
   }));
 
+  const checkPool=async cabin=>{
+    try{
+      const result=await source({arrival,departure,cabin});
+      return {verified:true,availability:result.availability,availableUnits:Number(result.availableUnits)||0,checkedAt:result.checkedAt||null,source:result.source||null};
+    }catch(error){
+      return {verified:false,availability:'unverified',availableUnits:null,error:error.message};
+    }
+  };
+  const [splitAB,splitC]=await Promise.all([checkPool('splitA'),checkPool('splitC')]);
+  const split_pool_checks={splitAB,splitC};
+
   return {
     status:'review_required',
     arrival,departure,guests,
     available_options:checked.filter(x=>x.availability==='available'),
     unavailable_options:checked.filter(x=>x.availability==='unavailable'),
     unverified_options:checked.filter(x=>x.availability==='unverified'),
-    manual_review_options:splitCapacityOptions(guests),
+    split_pool_checks,
+    manual_review_options:splitCapacityOptions(guests,split_pool_checks),
     bookingCompleted:false
   };
 }
