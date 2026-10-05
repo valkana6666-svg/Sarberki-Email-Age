@@ -60,3 +60,18 @@ test('generic Hungarian fishing conditions question gets concrete verified rules
   assert.match(answer.answer,/sebfertőtlenítő/u);
   assert.match(answer.answer,/pontyzsák/u);
 });
+
+
+test('plain fishing intent gets the full verified requirements in all supported languages',()=>{
+  const cases=[
+    ['Horgászni szeretnénk.','hu',/állami horgászjegy/u],
+    ['Wir möchten angeln.','de',/staatlicher Angelschein/u],
+    ['We would like to fish.','en',/state fishing licence valid in Hungary/u],
+    ['Želeli bi ribolov.','si',/državna ribolovna dovolilnica/u]
+  ];
+  for(const [text,lang,pattern] of cases){
+    const answer=fishingQuestion(text,lang);
+    assert.equal(answer.kind,'general_conditions');
+    assert.match(answer.answer,pattern);
+  }
+});
