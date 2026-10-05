@@ -16,10 +16,10 @@ Az access token csak memóriában marad, nem kerül GitHubba vagy localStorage-b
 
 A `gmail-policy.mjs` profil-ellenőrzése minden levéllistázás előtt megköveteli
 a `sarberkiprojecttest@gmail.com` fiókot. Másik fiókból levél nem olvasható.
-Keresés: `in:inbox from:valkana6666@gmail.com after:2026/09/25`.
-A helyi kapu ismét ellenőrzi az INBOX címkét, feladót, dátumot és tárgyat.
-A `gmail-subject.mjs` megőrzi a magyar tárgyváltozatokat, a HU/DE/SI/EN
-szállásérdeklődéseket és a korábban támogatott teszt-/választárgyakat.
+Keresés: `in:inbox after:2026/09/25`.
+Nincs feladó- vagy tárgy-allowlist: a tesztfiók bármely új Inbox-levele feldolgozható.
+A helyi kapu az INBOX címkét és a dátumhatárt ellenőrzi, valamint minden olvasás előtt
+kötelezően ellenőrzi, hogy a megnyitott fiók pontosan a `sarberkiprojecttest@gmail.com`.
 A feldolgozás közös `sarberki-core.mjs` segédfüggvényeken és ugyanazon
 kezelői `extract` útvonalon fut a kézi és Gmail-forrásból is.
 
@@ -28,6 +28,27 @@ az elérhető Google-fiókválasztó csak a feladói fiókot mutatta; a tesztfi�
 belépésénél a kezelő közreműködése szükséges. Nem kértünk vagy fogadtunk el
 új engedélyt automatikusan. A Gmail connector saját kapcsolata nem helyettesíti
 a tesztoldal OAuth-ját.
+
+## Pushover értesítés
+
+A tesztoldal böngészős Gmail-figyelése a bejelentkezés után kb. 60 másodpercenként
+ellenőrzi a tesztfiók Inboxát, és az új üzenet azonosítóját a
+`/api/pushover-gmail` tesztoldali Netlify-funkciónak adja át. A funkció újra
+ellenőrzi a Gmail-fiókot és az INBOX címkét, a feladót/tárgyat pedig kizárólag
+a Gmailből olvassa ki; tetszőleges kliensoldali értesítésszöveg nem küldhető be.
+A Pushover API-token és user key csak Netlify környezeti változó marad.
+
+Fontos korlát: ez a böngészős figyelés csak addig működik, amíg a tesztoldal
+nyitva van és az ideiglenes Gmail OAuth access token érvényes. Ez még NEM
+háttérben futó, oldalfüggetlen értesítés.
+
+Az oldal bezárása melletti azonnali értesítéshez jelenleg a legegyszerűbb
+tesztmegoldás a Gmail automatikus továbbítása a Pushover saját `@pomail.net`
+gateway-címére. A gateway közvetlen tesztje sikeres volt. A Gmail-fiókszintű
+továbbítás bekapcsolása azonban Google-fiók beállítás és ellenőrzés, ezért azt
+nem a repó kódja végzi. Hosszabb távú szerveroldali megoldásként Gmail push /
+Google Cloud Pub/Sub + Sárberki backend + Pushover API használható külön OAuth-
+és infrastruktúra-beállítással.
 
 ## Ár és kapacitás
 
