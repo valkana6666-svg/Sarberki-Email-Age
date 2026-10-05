@@ -302,7 +302,7 @@
     const parkingAsked=/(?:parking|parkplatz|parken|auto(?:s)?\b|parkir|avto\w*)/iu.test(message);
     const parkingLine=!parkingAsked?'':lang==='DE'?'Parkplätze sind vorhanden. Wenn Sie mit mehreren Autos anreisen, teilen Sie uns bitte die Anzahl mit; dies wird separat geprüft.':lang==='SL'?'Parkiranje je zagotovljeno. Če prihajate z več avtomobili, prosimo sporočite njihovo število; to preverimo posebej.':'Parking is available. If you are arriving with more than one car, please tell us how many cars; this is checked separately.';
     const fishingLang=lang==='SL'?'si':lang.toLowerCase();
-    const fishingAnswer=window.SarberkiFishingQuestion?.(message,fishingLang)?.answer||'';
+    const fishingAnswer=(typeof window!=='undefined'&&window.SarberkiFishingQuestion?.(message,fishingLang)?.answer)||'';
     const lines=lang==='DE'?[
       'Guten Tag'+(v.name?', '+v.name:'')+'!','', 'Vielen Dank für Ihre Anfrage.', stay?'Gewünschter Zeitraum: '+stay+'.':'', cabin?'Ausgewählter Haustyp: '+cabin+'.':'', priceLine, parkingLine, fishingAnswer, '', ...availabilityLines, missingLine
     ]:lang==='SL'?[
@@ -312,9 +312,9 @@
     ];
     if(priceApproved){
       const terms=bookingTermsForGuests(Number(adults||0)+Number(children||0));
-      if(lang==='DE') lines.push('', 'Die Anzahlung beträgt '+terms.depositPct+' % des Unterkunftspreises und ist innerhalb von '+terms.depositDueDays+' Tagen per Überweisung zu bezahlen.', 'Eine Stornierung ist bis '+terms.cancellationDays+' Tage vor der Anreise gemäß den Buchungsbedingungen möglich.', 'Wenn dieses Angebot für Sie passt, antworten Sie bitte auf diese E-Mail und bestätigen Sie, dass wir die Buchung zu den oben genannten Bedingungen erfassen dürfen.');
-      else if(lang==='SL') lines.push('', 'Akontacija za rezervacijo znaša '+terms.depositPct+' % cene nastanitve in jo je treba poravnati z bančnim nakazilom v '+terms.depositDueDays+' dneh.', 'Rezervacijo je mogoče odpovedati do '+terms.cancellationDays+' dni pred prihodom v skladu s pogoji rezervacije.', 'Če vam ponudba ustreza, prosimo odgovorite na to e-pošto in potrdite, da lahko rezervacijo zabeležimo pod zgoraj navedenimi pogoji.');
-      else lines.push('', 'The booking deposit is '+terms.depositPct+'% of the accommodation price and must be paid by bank transfer within '+terms.depositDueDays+' days.', 'The reservation may be cancelled up to '+terms.cancellationDays+' days before arrival in accordance with the booking conditions.', 'If this offer is suitable for you, please reply to this email and confirm that we may proceed with the booking under the conditions above.');
+      if(lang==='DE') lines.push('', `Die Anzahlung beträgt ${terms.depositPct} % des Unterkunftspreises und ist innerhalb von ${terms.depositDueDays} Tagen per Überweisung zu bezahlen.`, `Eine Stornierung ist bis ${terms.cancellationDays} Tage vor der Anreise gemäß den Buchungsbedingungen möglich.`, 'Wenn dieses Angebot für Sie passt, antworten Sie bitte auf diese E-Mail und bestätigen Sie, dass wir die Buchung zu den oben genannten Bedingungen erfassen dürfen.');
+      else if(lang==='SL') lines.push('', `Akontacija za rezervacijo znaša ${terms.depositPct} % cene nastanitve in jo je treba poravnati z bančnim nakazilom v ${terms.depositDueDays} dneh.`, `Rezervacijo je mogoče odpovedati do ${terms.cancellationDays} dni pred prihodom v skladu s pogoji rezervacije.`, 'Če vam ponudba ustreza, prosimo odgovorite na to e-pošto in potrdite, da lahko rezervacijo zabeležimo pod zgoraj navedenimi pogoji.');
+      else lines.push('', `The booking deposit is ${terms.depositPct}% of the accommodation price and must be paid by bank transfer within ${terms.depositDueDays} days.`, `The reservation may be cancelled up to ${terms.cancellationDays} days before arrival in accordance with the booking conditions.`, 'If this offer is suitable for you, please reply to this email and confirm that we may proceed with the booking under the conditions above.');
     }
     if(lang==='DE') lines.push('','Mit freundlichen Grüßen','Sárberki Horgásztó');
     else if(lang==='SL') lines.push('','Lep pozdrav,','Sárberki Horgásztó');
@@ -372,7 +372,7 @@
     if(priceApproved){
       const guestCount=(Number(v.adults)||Number($('price_adults')?.value)||0)+(Number(v.children)||Number($('price_children')?.value)||0);
       const terms=bookingTermsForGuests(guestCount);
-      lines.push('','A foglaló összege a teljes szállásdíj '+terms.depositPct+'%-a, amelyet '+terms.depositDueDays+' napon belül átutalással kérünk rendezni.','A foglalás az érkezést megelőző '+terms.cancellationDays+'. napig mondható le a foglalási feltételek szerint.','Amennyiben az ajánlat megfelel Önnek, kérjük, válasz e-mailben erősítse meg, hogy a foglalást a fenti feltételekkel rögzíthetjük. A foglalást csak az Ön egyértelmű visszaigazolása után rögzítjük.');
+      lines.push('',`A foglaló összege a teljes szállásdíj ${terms.depositPct}%-a, amelyet ${terms.depositDueDays} napon belül átutalással kérünk rendezni.`,`A foglalás az érkezést megelőző ${terms.cancellationDays}. napig mondható le a foglalási feltételek szerint.`,'Amennyiben az ajánlat megfelel Önnek, kérjük, válasz e-mailben erősítse meg, hogy a foglalást a fenti feltételekkel rögzíthetjük. A foglalást csak az Ön egyértelmű visszaigazolása után rögzítjük.');
     }
     if(asked.pet) lines.push('','A kisebb kutyával kapcsolatos kérését is feljegyeztük. Háziállat térítés ellenében hozható; a pontos díjat ellenőrizzük.');
     if(asked.hotTub){ if(/deluxe/iu.test(String(v.unit||''))) lines.push('','A Deluxe házakhoz dézsa tartozik; a kért időszak szabad kapacitását a foglalási felületen ellenőrizzük.'); else lines.push('','A dézsa rendelkezésre állását is ellenőrizzük a kért időszakra.'); }
@@ -389,7 +389,7 @@
     }
     if(asked.parking) lines.push('','A parkolás biztosított. Ha több autóval érkeznek, kérjük, jelezzék az autók számát, mert ezt külön ellenőrizzük.');
     if(asked.arrivalTime) lines.push('','A megadott érkezési időpontot is figyelembe vettük, és visszaigazoljuk, hogy az adott érkezési idő megfelelő-e.');
-    const fishingAnswer=window.SarberkiFishingQuestion?.(message,'hu')?.answer||'';
+    const fishingAnswer=(typeof window!=='undefined'&&window.SarberkiFishingQuestion?.(message,'hu')?.answer)||'';
     if(fishingAnswer) lines.push('',fishingAnswer);
     if(availabilityLines.length) lines.push('',...availabilityLines);
     const missing=[];
