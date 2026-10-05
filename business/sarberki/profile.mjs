@@ -4,6 +4,7 @@ import {createAccommodationBusinessProfile} from '../../shared-core/business-pro
 export const SARBERKI_PROFILE=createAccommodationBusinessProfile({
   id:'sarberki',
   brandName:BUSINESS.brandName,
+  bookingUrl:BUSINESS.bookingUrl,
   locale:BUSINESS.locale,
   timezone:BUSINESS.timezone,
   currency:BUSINESS.currency,
