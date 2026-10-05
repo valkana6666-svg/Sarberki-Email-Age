@@ -379,9 +379,9 @@ export function replySummary(language='hu', {arrival=null,departure=null,guests=
 export function replyQuestions(language='hu', {needDates=false,needAdults=false,needChildStatus=false,needPhone=false,needCabin=false,needChildAge=false}={}){
   const q={
     hu:{dates:'Kérjük, írja meg a pontos érkezési és távozási dátumot.',adults:'Kérjük, írja meg, hány felnőtt érkezik.',childStatus:'Kérjük, írja meg, érkezik-e gyermek is. Ha igen, kérjük, adja meg a gyermek(ek) életkorát is.',phone:'Megírna egy telefonszámot, amelyen elérhetjük?',cabin:'Melyik háztípust szeretné: VIP, Családi, Deluxe vagy Osztott?',child:'Kérjük, írja meg a gyermek életkorát, több gyermek esetén mindegyikét.'},
-    de:{dates:'Könnten Sie uns bitte das genaue An- und Abreisedatum nennen?',adults:'Wie viele Erwachsene reisen an?',childStatus:'Reisen auch Kinder mit? Falls ja, wie alt sind sie?',phone:'Könnten Sie uns bitte noch eine Telefonnummer mitteilen, unter der wir Sie erreichen können?',cabin:'Welchen Haustyp wünschen Sie: VIP, Családi (Familienhaus), Deluxe oder Osztott (geteiltes Haus)?',child:'Wie alt sind die mitreisenden Kinder?'},
-    en:{dates:'Could you please confirm the exact arrival and departure dates?',adults:'Could you please tell us how many adults will be staying?',childStatus:'Will any children be staying with you? If so, please let us know their ages.',phone:'Could you please send us a phone number where we can reach you?',cabin:'Which cabin type would you like: VIP, Családi (Family), Deluxe or Osztott (Split)?',child:"Could you please tell us the children's ages?"},
-    si:{dates:'Prosimo, sporočite točen datum prihoda in odhoda.',adults:'Prosimo, sporočite, koliko odraslih oseb bo prišlo.',childStatus:'Prosimo, sporočite, ali bodo z vami tudi otroci. Če bodo z vami otroci, prosimo navedite tudi njihovo starost.',phone:'Prosimo, sporočite telefonsko številko, na kateri ste dosegljivi.',cabin:'Kateri tip hiške želite: VIP, Családi (družinska), Deluxe ali Osztott (deljena)?',child:'Prosimo, sporočite starost otrok.'}
+    de:{dates:'Könnten Sie uns bitte das genaue An- und Abreisedatum nennen?',adults:'Wie viele Erwachsene reisen an?',childStatus:'Reisen auch Kinder mit? Falls ja, wie alt sind sie?',phone:'Könnten Sie uns bitte noch eine Telefonnummer mitteilen, unter der wir Sie erreichen können?',cabin:'Welchen Haustyp wünschen Sie: VIP, Familienhaus, Deluxe oder geteiltes Haus?',child:'Wie alt sind die mitreisenden Kinder?'},
+    en:{dates:'Could you please confirm the exact arrival and departure dates?',adults:'Could you please tell us how many adults will be staying?',childStatus:'Will any children be staying with you? If so, please let us know their ages.',phone:'Could you please send us a phone number where we can reach you?',cabin:'Which cabin type would you like: VIP, Family cabin, Deluxe or Split cabin?',child:"Could you please tell us the children's ages?"},
+    si:{dates:'Prosimo, sporočite točen datum prihoda in odhoda.',adults:'Prosimo, sporočite, koliko odraslih oseb bo prišlo.',childStatus:'Prosimo, sporočite, ali bodo z vami tudi otroci. Če bodo z vami otroci, prosimo navedite tudi njihovo starost.',phone:'Prosimo, sporočite telefonsko številko, na kateri ste dosegljivi.',cabin:'Kateri tip hiške želite: VIP, Družinska hiška, Deluxe ali Deljena hiška?',child:'Prosimo, sporočite starost otrok.'}
   }[language]||null;
   if(!q) return [];
   return [needDates&&q.dates,needAdults&&q.adults,needChildStatus&&q.childStatus,needChildAge&&q.child,needPhone&&q.phone,needCabin&&q.cabin].filter(Boolean);
@@ -575,6 +575,25 @@ function pricingTopicLines(language='hu',original='',arrival=null,departure=null
   return lines;
 }
 
+function cabinDisplayName(cabin,language='hu'){
+  const lang=['hu','de','en','si'].includes(language)?language:'hu';
+  const names={
+    'Családi':{hu:'Családi',de:'Familienhaus',en:'Family cabin',si:'Družinska hiška'},
+    'Osztott':{hu:'Osztott',de:'Geteiltes Haus',en:'Split cabin',si:'Deljena hiška'},
+    'Különálló 2 fős':{hu:'Különálló 2 fős',de:'Freistehende Hütte für 2 Personen',en:'Standalone 2-person cabin',si:'Samostojna hiška za 2 osebi'}
+  };
+  return names[cabin]?.[lang]||cabin;
+}
+
+function capacityOptionText(guests,language='hu'){
+  const lang=['hu','de','en','si'].includes(language)?language:'hu';
+  const family=cabinDisplayName('Családi',lang);
+  if(Number(guests)<=6)return `Deluxe, ${family}, VIP`;
+  if(Number(guests)<=7)return `${family}, VIP`;
+  if(Number(guests)<=8)return family;
+  return {hu:'több ház',de:'mehrere Häuser',en:'multiple cabins',si:'več hišk'}[lang];
+}
+
 export function buildReplyDraft({language='hu',name=null,original='',arrival=null,departure=null,guests=null,adults=null,children=null,childAges=[],phone=null,cabin='? – emberi döntésre vár',pier=false,hotTub=false,dog=false,intent='booking_request',brandName='Sárberki Horgásztó',bookingRules=null,operationalRules=null,pricingRules=null,knowledgeLines=[]}={}){
   original=activeMessageText(original);
   const lang=['hu','de','en','si'].includes(language)?language:'hu';
@@ -608,10 +627,14 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const operationalLines=operationalTopicLines(lang,original,operationalRules);
   const pricingLines=pricingTopicLines(lang,original,arrival,departure,pricingRules);
   const extraKnowledge=Array.isArray(knowledgeLines)?knowledgeLines.filter(Boolean):[];
-  if(!needCabin)extraKnowledge.unshift({hu:`A kért háztípus: ${cabin}.`,de:`Gewünschter Haustyp: ${cabin}.`,en:`Requested cabin type: ${cabin}.`,si:`Želeni tip hiške: ${cabin}.`}[lang]);
+  if(!needCabin){
+    const displayCabin=cabinDisplayName(cabin,lang);
+    extraKnowledge.unshift({hu:`A kért háztípus: ${displayCabin}.`,de:`Gewünschter Haustyp: ${displayCabin}.`,en:`Requested cabin type: ${displayCabin}.`,si:`Želeni tip hiške: ${displayCabin}.`}[lang]);
+  }
   if(canRecommendByCapacity){
-    const options=Number(guests)<=6?'Deluxe, Családi, VIP':Number(guests)<=7?'Családi, VIP':Number(guests)<=8?'Családi':'több ház / multiple cabins';
-    extraKnowledge.push({hu:`Kapacitás alapján szóba jöhet: ${options}${Number(guests)>8?'':' vagy több egység kombinációja'}. Ezek elérhetőségét külön ellenőrizzük.`,de:`Nach Kapazität kommen ${options} oder mehrere Einheiten infrage. Die Verfügbarkeit wird separat geprüft.`,en:`Capacity options include ${options} or a combination of units. Availability will be checked separately.`,si:`Glede na kapaciteto pridejo v poštev ${options} ali kombinacija več enot. Razpoložljivost preverimo posebej.`}[lang]);
+    const options=capacityOptionText(guests,lang);
+    const combination=Number(guests)>8?'':({hu:' vagy több egység kombinációja',de:' oder eine Kombination mehrerer Einheiten',en:' or a combination of units',si:' ali kombinacija več enot'}[lang]);
+    extraKnowledge.push({hu:`Kapacitás alapján szóba jöhet: ${options}${combination}. Ezek elérhetőségét külön ellenőrizzük.`,de:`Nach Kapazität kommen ${options}${combination} infrage. Die Verfügbarkeit wird separat geprüft.`,en:`Capacity options include ${options}${combination}. Availability will be checked separately.`,si:`Glede na kapaciteto pridejo v poštev ${options}${combination}. Razpoložljivost preverimo posebej.`}[lang]);
   }
   if(canRecommendByCapacity) extraKnowledge.unshift({
     hu:'A megadott létszám alapján ellenőrizzük az összes megfelelő szállástípust és csak a ténylegesen szabad lehetőségeket ajánljuk fel.',
