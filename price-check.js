@@ -4,6 +4,7 @@
   const singleCabinCapacity = {deluxe:6,family:8,vip:7,small:3,splitA:2,splitB:2,splitC:5};
   let approvedPrice = null;
   let pendingQuote = null;
+  let availabilityOptions = null;
 
   function explicitCabin(message='') {
     const found=[];
@@ -103,6 +104,52 @@
       depositDueDays:Number(rules.depositDueDays)||10,
       cancellationDays:Number(large?rules.cancellationDaysFrom15Guests:rules.cancellationDaysUnder15Guests)|| (large?30:14)
     };
+  }
+
+  function availabilityFingerprint(arrival,departure,guests){
+    return [arrival||'',departure||'',String(guests||'')].join('|');
+  }
+
+  function currentAvailabilityLines(v={}){
+    const arrival=v.arrival||$('price_arrival')?.value||'';
+    const departure=v.departure||$('price_departure')?.value||'';
+    const guests=Number(v.guests||0);
+    if(!availabilityOptions||availabilityOptions.fingerprint!==availabilityFingerprint(arrival,departure,guests)) return [];
+    const verified=(availabilityOptions.available_options||[]).filter(x=>x&&x.availability_verified!==false);
+    const manual=(availabilityOptions.manual_review_options||[]).filter(Boolean);
+    const lines=[];
+    if(verified.length){
+      lines.push('A foglalási felületen ellenőrzött szabad lehetőségek:');
+      for(const option of verified) lines.push(`– ${option.label}${Number(option.units)>1?` (${option.units} egység)`:''}`);
+    }
+    if(manual.length){
+      lines.push('Az Osztott házaknál külön kézi elérhetőség-ellenőrzés szükséges; kapacitás alapján szóba jöhet:');
+      for(const option of manual) lines.push(`– ${option.label}`);
+    }
+    return lines;
+  }
+
+  async function refreshAvailabilityOptions(message=''){
+    const analysis=typeof extract==='function'?extract(message,''):null;
+    if(!analysis||explicitCabin(message)){availabilityOptions=null;return;}
+    const arrival=analysis.fields?.arrival?.value||$('price_arrival')?.value||'';
+    const departure=analysis.fields?.departure?.value||$('price_departure')?.value||'';
+    const guests=Number(analysis.fields?.guests?.value||window.SarberkiNormalize?.guestCountFromText?.(message)||0);
+    if(!arrival||!departure||!Number.isInteger(guests)||guests<1){availabilityOptions=null;return;}
+    try{
+      const response=await fetch('/api/availability-options',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({arrival,departure,guests}),cache:'no-store'});
+      if(!response.headers.get('content-type')?.includes('application/json')) throw Error('A kapacitás-ellenőrző szerver nincs csatlakoztatva.');
+      const result=await response.json();
+      if(!response.ok||result.status!=='review_required'||result.arrival!==arrival||result.departure!==departure||Number(result.guests)!==guests||result.bookingCompleted!==false||!Array.isArray(result.available_options)||!Array.isArray(result.manual_review_options)) throw Error(result.error||'A kapacitásválasz hiányos vagy eltér a kért adatoktól.');
+      availabilityOptions={...result,fingerprint:availabilityFingerprint(arrival,departure,guests)};
+      applyFocusedReply(message);
+      const status=$('price_status');
+      if(status) status.textContent='A megadott létszámhoz tartozó szabad háztípusok ellenőrizve; a lista bekerült a választervezetbe. Az Osztott egységek továbbra is kézi ellenőrzést igényelnek.';
+    }catch(error){
+      availabilityOptions=null;
+      const status=$('price_status');
+      if(status&&!$('price_cabin')?.value) status.textContent='HITELES KAPACITÁSELLENŐRZÉS SZÜKSÉGES · '+error.message;
+    }
   }
 
   function approvedPriceText(quote){
@@ -295,7 +342,7 @@
     const plan=typeof accommodationPlan==='function'?accommodationPlan(v):null;
     if(plan?.specific&&v.unit) lines.push(`A kért ${v.unit} háztípust figyelembe vettük.`);
     else if(v.unit&&!/^(?:ház|faház|apartman|cabin)$/iu.test(v.unit)) lines.push(`A megadott szállástípus: ${v.unit}.`);
-    else if(!v.unit) lines.push('Kérjük, írja meg, melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?');
+    else if(!v.unit&&!currentAvailabilityLines(v).length) lines.push('Kérjük, írja meg, melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?');
 
     const priceApproved=approvedPrice&&approvedPrice.fingerprint===quoteFingerprint();
     if(asked.availability&&asked.price){
@@ -353,6 +400,9 @@
     }
     if(asked.parking) lines.push('','A parkolási lehetőséget a megadott autószám és háztípus alapján pontosítjuk.');
     if(asked.arrivalTime) lines.push('','A megadott érkezési időpontot is figyelembe vettük, és visszaigazoljuk, hogy az adott érkezési idő megfelelő-e.');
+
+    const availabilityLines=currentAvailabilityLines(v);
+    if(availabilityLines.length) lines.push('',...availabilityLines);
 
     const missing=[];
     if(!v.arrival||!v.departure) missing.push('pontos érkezési és távozási dátum');
@@ -516,6 +566,7 @@
     if(message){
       prepare(message);
       setTimeout(()=>applyFocusedReply(message),0);
+      refreshAvailabilityOptions(message).catch(()=>{});
     }
   });
   document.addEventListener('sarberki:record-loaded',()=>{autoPrepareAndQuoteFromGmail().catch(e=>{$('price_status').textContent='Automatikus adatátadás nem sikerült: '+e.message;});});
