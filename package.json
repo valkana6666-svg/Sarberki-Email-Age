@@ -5,7 +5,7 @@
     "price-server": "node price-server.mjs",
     "test:price": "node --test price-quote.test.mjs",
     "test:gmail": "node --test gmail-filter.test.mjs",
-    "test": "node --test index-analyzer.test.mjs gmail-filter.test.mjs gmail-policy.test.mjs gmail-normalize.test.mjs price-check.test.mjs price-quote.test.mjs price-source/sarberki-public-booking.test.mjs tests/price-quote-function.test.mjs tests/availability-options.test.mjs email-price-chain.test.mjs fishing-rules.test.mjs business-config.test.mjs booking-confirmation.test.mjs booking-input.test.mjs intake-normalize.test.mjs tests/inquiry-contract.test.mjs tests/inquiry-assessment.test.mjs tests/workflow-decision.test.mjs tests/pms-adapter.test.mjs tests/pushover-test-function.test.mjs",
+    "test": "node --test index-analyzer.test.mjs gmail-filter.test.mjs gmail-policy.test.mjs gmail-normalize.test.mjs price-check.test.mjs price-quote.test.mjs price-source/sarberki-public-booking.test.mjs tests/price-quote-function.test.mjs tests/availability-options.test.mjs email-price-chain.test.mjs fishing-rules.test.mjs business-config.test.mjs booking-confirmation.test.mjs booking-input.test.mjs intake-normalize.test.mjs tests/inquiry-contract.test.mjs tests/inquiry-assessment.test.mjs tests/workflow-decision.test.mjs tests/pms-adapter.test.mjs tests/business-profile.test.mjs tests/pushover-test-function.test.mjs",
     "test:gmail-normalize": "node --test gmail-normalize.test.mjs"
   },
   "dependencies": {
