@@ -600,7 +600,7 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const flags=requestFlagsFromText(original);
   if(/kuty|dog|hund|\bpes\b|\bpsa\b/iu.test(original))dog=flags.petRequested;
   if(/dézs|dezsa|hot.?tub|badefass|whirlpool/iu.test(original))hotTub=flags.hotTubRequested;
-  const nameParts=name?.trim()?.replace(/^[\"']|[\"']$/gu,'').split(/\s+/u).filter(Boolean)||[];
+  const nameParts=name?.trim()?.replace(/^["']|["']$/gu,'').split(/\s+/u).filter(Boolean)||[];
   const first=nameParts.length?(lang==='hu'?nameParts.at(-1):nameParts[0]):null;
   const greetings={hu:first?`Kedves ${first}!`:'Kedves Vendégünk!',de:first?`Guten Tag, ${first}!`:'Guten Tag!',en:first?`Dear ${first},`:'Dear Guest,',si:first?`Pozdravljeni, ${first}!`:'Pozdravljeni!'};
   const intros={hu:'Köszönjük érdeklődését.',de:'Vielen Dank für Ihre Anfrage.',en:'Thank you for your enquiry.',si:'Hvala za vaše povpraševanje.'};
