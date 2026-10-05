@@ -75,15 +75,6 @@
     const hasAdultCount=Number.isInteger(adults)&&adults>0;
     const mentionsChildren=/\b(?:gyerek\w*|gyermek\w*|children?|kids?|kind(?:er)?|otrok\w*)\b/iu.test(message);
     return hasAdultCount&&!mentionsChildren;
-  }){
-    if(normalized?.children!==null&&normalized?.children!==undefined&&normalized?.children!==''&&Number.isInteger(Number(normalized.children))) return true;
-    const field=analysis?.fields?.children?.value;
-    if(field!==null&&field!==undefined&&field!==''&&Number.isInteger(Number(field))) return true;
-    if(window.SarberkiNormalize?.childCountFromText?.(message)!=null) return true;
-    const guests=window.SarberkiNormalize?.guestCountFromText?.(message);
-    const adults=window.SarberkiNormalize?.adultCountFromText?.(message);
-    if(Number.isInteger(guests)&&Number.isInteger(adults)&&guests===adults&&guests>0) return true;
-    return explicitNoChildren(message);
   }
 
   function quoteFingerprint(){
@@ -146,23 +137,6 @@
     if(manual.length){
       lines.push(copy.manual);
       for(const option of manual) lines.push('– '+option.label);
-    }
-    return lines;
-  }){
-    const arrival=v.arrival||$('price_arrival')?.value||'';
-    const departure=v.departure||$('price_departure')?.value||'';
-    const guests=Number(v.guests||0);
-    if(!availabilityOptions||availabilityOptions.fingerprint!==availabilityFingerprint(arrival,departure,guests)) return [];
-    const verified=(availabilityOptions.available_options||[]).filter(x=>x&&x.availability_verified!==false);
-    const manual=(availabilityOptions.manual_review_options||[]).filter(Boolean);
-    const lines=[];
-    if(verified.length){
-      lines.push('A foglalási felületen ellenőrzött szabad lehetőségek:');
-      for(const option of verified) lines.push(`– ${option.label}${Number(option.units)>1?` (${option.units} egység)`:''}`);
-    }
-    if(manual.length){
-      lines.push('Az Osztott házaknál külön kézi elérhetőség-ellenőrzés szükséges; kapacitás alapján szóba jöhet:');
-      for(const option of manual) lines.push(`– ${option.label}`);
     }
     return lines;
   }
