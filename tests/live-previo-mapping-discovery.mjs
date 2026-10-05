@@ -24,7 +24,25 @@ if(!match) throw Error('PageParams not found');
 const params=JSON.parse(match[1]);
 const primitives=obj=>Object.fromEntries(Object.entries(obj||{}).filter(([,v])=>v===null||['string','number','boolean'].includes(typeof v)));
 const kinds=(params.OBJECT_KINDS||[]).map(k=>({keys:Object.keys(k).sort(),values:primitives(k)}));
+console.log('PREVIO MAPPING PAGEPARAMS KEYS',JSON.stringify(Object.keys(params).sort()));
 console.log('PREVIO MAPPING OBJECT_KINDS',JSON.stringify(kinds));
+for(const [key,value] of Object.entries(params)){
+  if(key==='OBJECT_KINDS'||key==='GUEST_CATEGORIES'||key==='RESERVATION_DETAILS') continue;
+  if(/room|object|unit|house|accommod|apart|bungal|reservation/i.test(key)){
+    const summary=Array.isArray(value)?{type:'array',length:value.length,sample:value.slice(0,5).map(v=>typeof v==='object'?primitives(v):v)}:
+      value&&typeof value==='object'?{type:'object',keys:Object.keys(value).sort(),values:primitives(value)}:
+      {type:typeof value,value};
+    console.log('PREVIO MAPPING SUSPICIOUS PARAM',JSON.stringify({key,summary}));
+  }
+}
+const suspicious=[];
+for(const re of [/obj(?:ect)?Id/gi,/roomId/gi,/unitId/gi,/roomNumber/gi,/objectNumber/gi,/\bOBJECTS\b/g,/\bROOMS\b/g]){
+  let m;
+  while((m=re.exec(html))&&suspicious.length<80){
+    suspicious.push(html.slice(Math.max(0,m.index-180),Math.min(html.length,m.index+300)).replace(/PHPSESSID=[^&"'\\s<]+/gi,'PHPSESSID=[redacted]').replace(/\s+/g,' '));
+  }
+}
+console.log('PREVIO MAPPING HTML ID HINTS',JSON.stringify([...new Set(suspicious)]));
 
 const stepUrl=new URL(step.url);
 const session=stepUrl.searchParams.get('PHPSESSID')||new URL(action).searchParams.get('PHPSESSID')||'';
