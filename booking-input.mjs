@@ -8,6 +8,7 @@ import {
   phoneFromText,
   languageFromText
 } from './sarberki-core.mjs';
+import { assessAccommodationInquiry } from './shared-core/inquiry-assessment.mjs';
 
 export const BOOKING_CHANNELS=Object.freeze(['email','web_form','phone_ai','manual']);
 
@@ -26,12 +27,16 @@ export function normalizeBookingInput({channel='manual',text='',sourceId=null,re
   const children=parsedChildren==null?(explicitNoChildren(original)?0:null):parsedChildren;
   const childAges=childAgesFromText(original);
   const cabin=cabinFromText(original);
-  const missing=[];
-  if(!dates?.arrival||!dates?.departure) missing.push('dates');
-  if(!cabin||cabin.startsWith('?')) missing.push('cabin');
-  if(!(Number.isInteger(adults)&&adults>0)) missing.push('adults');
-  if(children==null) missing.push('children_status');
-  if(Number.isInteger(children)&&children>0&&childAges.length<children) missing.push('child_ages');
+  const assessment=assessAccommodationInquiry({
+    arrival:dates?.arrival||null,
+    departure:dates?.departure||null,
+    accommodation:cabin,
+    guests:Number.isInteger(guests)?guests:null,
+    adults:Number.isInteger(adults)?adults:null,
+    children:Number.isInteger(children)?children:null,
+    childAges
+  });
+  const missing=assessment.missing.map(key=>key==='accommodation'?'cabin':key);
 
   return Object.freeze({
     schema:'sarberki.booking-input.v1',
@@ -52,6 +57,8 @@ export function normalizeBookingInput({channel='manual',text='',sourceId=null,re
       phone:phoneFromText(original)
     }),
     missing:Object.freeze(missing),
-    readyForPrice:missing.length===0
+    contradictions:assessment.contradictions,
+    humanReviewRequired:assessment.human_review_required,
+    readyForPrice:assessment.ready
   });
 }
