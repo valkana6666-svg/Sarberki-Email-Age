@@ -785,10 +785,24 @@ test('real Kovacs Istvan numeric Hungarian date range is parsed',()=>{
   assert.deepEqual(dateRangeFromText(message,now),{arrival:'2026-10-09',departure:'2026-10-13',inferredYear:false});
 });
 
-test('known dates and party size offer capacity options and ask for missing cabin and adult details',()=>{
+test('known dates and party size offer capacity options without asking for a cabin type',()=>{
  const reply=buildReplyDraft({language:'hu',arrival:'2026-10-09',departure:'2026-10-13',guests:6,adults:null,children:null,cabin:'? – emberi döntésre vár',original:'6 fő részére. Milyen lehetőségek vannak erre az időpontra?'});
- assert.match(reply,/Melyik háztípust szeretné/u);
+ assert.doesNotMatch(reply,/Melyik háztípust szeretné/u);
+ assert.match(reply,/Szállás:/u);
+ assert.match(reply,/6 fő/u);
  assert.match(reply,/összes megfelelő szállástípust/u);
  assert.match(reply,/hány felnőtt érkezik/u);
  assert.match(reply,/érkezik-e gyermek/u);
+});
+
+test('guest reply keeps accommodation and fishing in separate thematic blocks',async()=>{
+ const {BUSINESS}=await import('./business-config.mjs');
+ const {fishingQuestion}=await import('./fishing-rules.mjs');
+ const original='2026.10.09-től 10.13.ig 6 fő részére keresünk szállást. Milyen lehetőségek vannak? Horgászni is szeretnénk, milyen szabályok vannak?';
+ const fishing=fishingQuestion(original,'hu');
+ const reply=buildReplyDraft({language:'hu',arrival:'2026-10-09',departure:'2026-10-13',guests:6,cabin:'? – emberi döntésre vár',original,operationalRules:BUSINESS.operationalRules,bookingRules:BUSINESS.bookingRules,pricingRules:BUSINESS.pricingRules,knowledgeLines:fishing?[fishing.answer]:[]});
+ assert.match(reply,/Szállás:/u);
+ assert.match(reply,/Horgászat:/u);
+ assert.ok(reply.indexOf('Szállás:')<reply.indexOf('Horgászat:'));
+ assert.doesNotMatch(reply,/Melyik háztípust szeretné/u);
 });
