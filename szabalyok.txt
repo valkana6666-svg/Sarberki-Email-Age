@@ -14,6 +14,9 @@ FONTOS:
   eltolhatja őket.
 - Ahol "ellenőrzendő", "nem hitelesített" vagy "referencia" szerepel, ott a rendszer
   nem állíthat biztos tényt automatikusan.
+- A 2026-10-05-i architektúrában a futó ár- és PMS-közeli modulok a
+  business/sarberki/profile.mjs profilon keresztül kapják meg a Sárberki-specifikus
+  konfigurációt; a konkrét értékek forrása továbbra is a business-config.mjs.
 
 ----------------------------------------------------------------
 1. FOGLALÓ / ELŐLEG / LEMONDÁS
@@ -500,6 +503,87 @@ az ár lekérése sem jelent foglalás-véglegesítést.
 Forrás: price-source/sarberki-public-booking.mjs:113-172;
 price-source/public-price-fallback.mjs:37-50
 Komment: A modulok bookingCompleted=false értékkel térnek vissza.
+
+
+----------------------------------------------------------------
+15. ÚJ ÜZLETI PROFIL / MEGOSZTOTT MAG – 2026-10-05
+----------------------------------------------------------------
+
+15.1 A Sárberki-specifikus konfiguráció külön business profile-on keresztül kerül
+a megosztott workflow- és ármodulokhoz.
+Forrás: business/sarberki/profile.mjs:1-17
+Komment: A profil a business-config.mjs konkrét Sárberki értékeit csomagolja szabványos formába.
+Ez az új határ teszi lehetővé, hogy a közös motor más szálláshelyhez is újrahasznosítható legyen.
+
+15.2 A business profile kötelező mezői: azonosító, név, locale, timezone, currency,
+foglalási szabályok, üzemeltetési szabályok, árazási szabályok, szállástípusok
+és foglalási/PMS szolgáltató.
+Forrás: shared-core/business-profile.mjs:5-29
+Komment: Hiányos profil esetén a rendszer már induláskor hibát dob; így üzleti szabály nem
+maradhat csendben undefined állapotban.
+
+15.3 A létrehozott business profile immutable/fagyasztott objektum.
+Forrás: shared-core/business-profile.mjs:30-42
+Komment: A közös workflow futás közben nem írhatja át véletlenül a Sárberki konfigurációt.
+
+15.4 Az érdeklődés közös borítéka csak a támogatott csatornákat fogadja:
+manual, gmail, web_form, phone_ai.
+Forrás: shared-core/inquiry-contract.mjs:4-10, 18-35
+Komment: Ismeretlen forráscsatorna vagy üres vendégüzenet már a közös szerződés szintjén elutasításra kerül.
+
+15.5 A közös inquiry assessment külön kezeli a hiányzó adatokat és az ellentmondásokat.
+Forrás: shared-core/inquiry-assessment.mjs:8-53
+Komment: Hiányzó dátum/háztípus/felnőtt/gyermekstátusz/gyermekkor visszakérdezhető;
+ellentmondó létszámadatnál viszont emberi ellenőrzés szükséges.
+
+15.6 Ha a teljes vendéglétszám nem egyezik a felnőttek és gyermekek összegével,
+human review szükséges.
+Forrás: shared-core/inquiry-assessment.mjs:26-33
+Komment: A rendszer nem próbálja kitalálni, melyik vendéglétszám a helyes.
+
+15.7 Ha több gyermekéletkor érkezik, mint a megadott gyermeklétszám,
+human review szükséges.
+Forrás: shared-core/inquiry-assessment.mjs:35-41
+Komment: Az életkorlista és a gyermeklétszám közötti ellentmondást nem lehet automatikusan feloldani.
+
+15.8 A közös workflow három következő lépést különböztet meg:
+collect_missing_data, human_review, ready_for_pricing.
+Forrás: shared-core/workflow-decision.mjs:5-34
+Komment: Először a hiányzó adatok gyűjtése történik, utána az ellentmondások emberi ellenőrzése,
+és csak teljes, konzisztens adat mehet árazásra.
+
+15.9 A PMS adapter közös szerződése read-only: availability és quote olvasás engedélyezett,
+foglalás létrehozása, módosítása és törlése tiltott.
+Forrás: shared-core/pms-adapter.mjs:5-40
+Komment: A capabilities alapértékei createBooking=false, modifyBooking=false, cancelBooking=false;
+ha ezeket valaki true-ra állítaná, az adapter létrehozása hibával leáll.
+
+15.10 Már létező PMS adapter használat előtt is külön ellenőrizhető, hogy valóban read-only.
+Forrás: shared-core/pms-adapter.mjs:42-48
+Komment: Ez második védelmi réteg a foglalást módosító adapter véletlen bekötése ellen.
+
+15.11 A price-quote.mjs a Sárberki business profile-ból veszi a foglalási URL-t,
+háztípus-neveket és kapacitáskorlátokat.
+Forrás: price-quote.mjs:1-7, 16-21
+Komment: Az árvalidáció már nem közvetlenül a BUSINESS objektumhoz kötődik.
+
+15.12 A publikus Osztott A/B/C referenciaár-számítás a Sárberki business profile
+árazási és szállástípus-adatait használja.
+Forrás: price-source/public-price-fallback.mjs:1-43
+Komment: A konkrét árértékek továbbra is a business-config.mjs-ből származnak, de a futó modul
+a profilon keresztül kapja őket.
+
+15.13 A Previo read-only adapter a hotelId-t, hostot, háztípus mappinget és kapacitást
+a Sárberki business profile-ból veszi.
+Forrás: price-source/sarberki-public-booking.mjs:1-6, 137-149
+Komment: A Previo-specifikus biztonsági validáció megmaradt, miközben az üzleti konfiguráció
+külön rétegbe került.
+
+15.14 A business-profile határhoz külön automatikus teszt tartozik,
+és a teljes npm test csomag része.
+Forrás: tests/business-profile.test.mjs:1-33; package.json:5-10
+Komment: A profil kötelező mezőit és a Sárberki profil alapvető határait regressziós teszt védi.
+
 
 ================================================
 DOKUMENTUM VÉGE
