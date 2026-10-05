@@ -1,15 +1,15 @@
-import {BUSINESS} from './business-config.mjs';
+import {SARBERKI_PROFILE} from './business/sarberki/profile.mjs';
 
 export function cancellationDaysForGuests(guests){
   const n=Number(guests);
   if(!Number.isInteger(n)||n<1) throw new Error('Érvényes vendéglétszám szükséges.');
-  return n>=15 ? BUSINESS.bookingRules.cancellationDaysFrom15Guests : BUSINESS.bookingRules.cancellationDaysUnder15Guests;
+  return n>=15 ? SARBERKI_PROFILE.bookingRules.cancellationDaysFrom15Guests : SARBERKI_PROFILE.bookingRules.cancellationDaysUnder15Guests;
 }
 
 export function depositPercentForGuests(guests){
   const n=Number(guests);
   if(!Number.isInteger(n)||n<1) throw new Error('Érvényes vendéglétszám szükséges.');
-  return n>=15 ? BUSINESS.bookingRules.depositPctFrom15Guests : BUSINESS.bookingRules.depositPctUnder15Guests;
+  return n>=15 ? SARBERKI_PROFILE.bookingRules.depositPctFrom15Guests : SARBERKI_PROFILE.bookingRules.depositPctUnder15Guests;
 }
 
 export function generateDepositReceivedDraft({
@@ -38,7 +38,7 @@ export function generateDepositReceivedDraft({
       `Die Buchung kann bis ${cancelDays} Tage vor der Anreise gemäß den Buchungsbedingungen storniert werden.`,
       '',
       'Mit freundlichen Grüßen',
-      BUSINESS.brandName
+      SARBERKI_PROFILE.brandName
     ].filter(Boolean).join('\n');
   }
   if(lang==='SL'){
@@ -51,7 +51,7 @@ export function generateDepositReceivedDraft({
       `Rezervacijo je mogoče odpovedati do ${cancelDays} dni pred prihodom v skladu s pogoji rezervacije.`,
       '',
       'Lep pozdrav,',
-      BUSINESS.brandName
+      SARBERKI_PROFILE.brandName
     ].filter(Boolean).join('\n');
   }
   if(lang==='EN'){
@@ -64,7 +64,7 @@ export function generateDepositReceivedDraft({
       `The reservation may be cancelled up to ${cancelDays} days before arrival in accordance with the booking conditions.`,
       '',
       'Kind regards,',
-      BUSINESS.brandName
+      SARBERKI_PROFILE.brandName
     ].filter(Boolean).join('\n');
   }
   return [
@@ -76,6 +76,6 @@ export function generateDepositReceivedDraft({
     `A foglalás az érkezést megelőző ${cancelDays}. napig mondható le a foglalási feltételek szerint.`,
     '',
     'Üdvözlettel:',
-    BUSINESS.brandName
+    SARBERKI_PROFILE.brandName
   ].filter(Boolean).join('\n');
 }
