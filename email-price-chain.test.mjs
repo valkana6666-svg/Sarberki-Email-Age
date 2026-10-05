@@ -23,7 +23,7 @@ function harness(message,reply){
   calls++;
   assert.equal(options.method,'POST');
   const input=validateQuote(JSON.parse(options.body));
-  return reply(input);
+  return reply(input,_url);
  }});
  vm.runInContext(html.slice(html.indexOf('const $='),html.indexOf('function addEvent(')),context);
  vm.runInContext(pricing,context);
@@ -399,4 +399,42 @@ test('approved quote switches to 80 percent deposit and 30 day cancellation from
   assert.match(draft,/30\. napig/u);
   assert.match(draft,/10 napon belül/u);
   assert.match(draft,/328.500|328 500/u);
+});
+
+
+test('six-person inquiry lists verified availability before signature',async()=>{
+  const message='Jó napot! 2026. október 9–13. között 6 felnőtt mennénk, gyermek nélkül. Van szabad hely? Horgászni szeretnénk, és parkolás is érdekel.';
+  const h=harness(message,(input,url)=>{
+    assert.match(String(url),/availability-options/u);
+    assert.deepEqual(input,{arrival:'2026-10-09',departure:'2026-10-13',guests:6});
+    return json({
+      status:'review_required',
+      arrival:'2026-10-09',
+      departure:'2026-10-13',
+      guests:6,
+      available_options:[
+        {key:'deluxe',label:'Deluxe',units:1,availability_verified:true},
+        {key:'family',label:'Családi',units:1,availability_verified:true},
+        {key:'vip',label:'VIP',units:1,availability_verified:true}
+      ],
+      unavailable_options:[],
+      unverified_options:[],
+      manual_review_options:[
+        {label:'Osztott A + Osztott C',availability_verified:false},
+        {label:'Osztott B + Osztott C',availability_verified:false}
+      ],
+      bookingCompleted:false
+    });
+  });
+  h.listeners.get('sarberki:analysis-ready')({detail:{message}});
+  await new Promise(resolve=>setImmediate(resolve));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(h.calls,1);
+  const draft=h.element('draft').value;
+  assert.match(draft,/foglalási felületen ellenőrzött szabad lehetőségek/u);
+  for(const label of ['Deluxe','Családi','VIP','Osztott A + Osztott C','Osztott B + Osztott C']) assert.match(draft,new RegExp(label.replace('+','\\+'),'u'));
+  const optionsAt=draft.indexOf('foglalási felületen ellenőrzött szabad lehetőségek');
+  const signatureAt=draft.indexOf('Üdvözlettel:');
+  assert.ok(optionsAt>=0&&signatureAt>optionsAt,'A szabad lehetőségek listájának az aláírás előtt kell lennie.');
+  assert.match(draft,/Osztott házaknál külön kézi elérhetőség-ellenőrzés szükséges/u);
 });
