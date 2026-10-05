@@ -1,5 +1,5 @@
 import {validateQuote} from '../../price-quote.mjs';
-import {fetchPublicBookingQuote} from '../../price-source/sarberki-public-booking.mjs';
+import {previoReadOnlyAdapter} from '../../price-source/previo-adapter.mjs';
 import {fetchPublicPriceReference} from '../../price-source/public-price-fallback.mjs';
 
 const LIVE_TEST_HOSTS=new Set([
@@ -74,7 +74,7 @@ export function isLivePrevioEnabled(request) {
   }
 }
 
-export async function handlePriceQuote(request,source=fetchPublicBookingQuote,enabled=false,fxSource=fetchMnbEurRate) {
+export async function handlePriceQuote(request,source=previoReadOnlyAdapter.getQuote,enabled=false,fxSource=fetchMnbEurRate) {
   if (request.method !== 'POST') return Response.json({error:'POST szükséges.'},{status:405});
   if (!enabled) return Response.json({status:'unverified',error:'HITELES ÁRLEKÉRÉS SZÜKSÉGES · Élő Previo-lekérés csak a külön Sárberki tesztoldalon engedélyezett; a Previo dátumkeresésének foglalásmentessége más környezetben nincs igazolva.'},{status:503,headers:{'cache-control':'no-store'}});
   try {
@@ -107,6 +107,6 @@ export async function handlePriceQuote(request,source=fetchPublicBookingQuote,en
 
 export default (request) => handlePriceQuote(
   request,
-  fetchPublicBookingQuote,
+  previoReadOnlyAdapter.getQuote,
   isLivePrevioEnabled(request)
 );
