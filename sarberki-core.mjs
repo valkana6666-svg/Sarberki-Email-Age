@@ -611,7 +611,7 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
     return `${greetings[lang]}\n\n${received}\n\n${closings[lang]}\n${brandName}`;
   }
   const mismatch=Number.isInteger(guests)&&Number.isInteger(adults)&&Number.isInteger(children)&&guests!==adults+children;
-  const summary=mismatch?'':replySummary(lang,{arrival,departure,guests,adults,children,childAges,pier,hotTub,dog});
+  const summary=mismatch?'':replySummary(lang,{arrival,departure,guests,adults,children,childAges,pier:false,hotTub:false,dog:false});
   const needCabin=!cabin||String(cabin).startsWith('?')||cabinFromText(String(cabin)).startsWith('?');
   const needDates=!arrival||!departure;
   const canRecommendByCapacity=needCabin&&!needDates&&Number.isInteger(Number(guests))&&Number(guests)>0;
@@ -621,12 +621,13 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const childStatusKnown=children!==null&&children!==undefined&&children!==''&&Number.isInteger(Number(children))&&Number(children)>=0;
   const needChildStatus=!childStatusKnown;
   const needChildAge=childStatusKnown&&Number(children)>0&&childAges.length<Number(children);
-  const questions=replyQuestions(lang,{needDates,needAdults,needChildStatus,needPhone:!phone,needCabin,needChildAge});
+  const questions=replyQuestions(lang,{needDates,needAdults,needChildStatus,needPhone:!phone,needCabin:needCabin&&!canRecommendByCapacity,needChildAge});
   if(mismatch)questions.unshift({hu:'Kérjük, pontosítsa a létszámot: az összlétszám eltér a megadott felnőttek és gyermekek összegétől.',de:'Bitte klären Sie die Personenzahl: Die Gesamtzahl stimmt nicht mit der Zahl der Erwachsenen und Kinder überein.',en:'Please clarify the party size: the total differs from the number of adults and children.',si:'Prosimo, pojasnite število gostov: skupno število se ne ujema s številom odraslih in otrok.'}[lang]);
   const policyLines=bookingPolicyLines(lang,original,guests,bookingRules);
   const operationalLines=operationalTopicLines(lang,original,operationalRules);
   const pricingLines=pricingTopicLines(lang,original,arrival,departure,pricingRules);
-  const extraKnowledge=Array.isArray(knowledgeLines)?knowledgeLines.filter(Boolean):[];
+  const fishingKnowledge=Array.isArray(knowledgeLines)?knowledgeLines.filter(Boolean):[];
+  const extraKnowledge=[];
   if(!needCabin){
     const displayCabin=cabinDisplayName(cabin,lang);
     extraKnowledge.unshift({hu:`A kért háztípus: ${displayCabin}.`,de:`Gewünschter Haustyp: ${displayCabin}.`,en:`Requested cabin type: ${displayCabin}.`,si:`Želeni tip hiške: ${displayCabin}.`}[lang]);
@@ -644,13 +645,40 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   }[lang]);
   const asksAvailability=/(?:szabad|elérhető|van[- ]?e .*szállás|van.*hely|available|frei|prosto|verfügbar|razpolož)/iu.test(original);
   const asksPrice=/(?:mennyi|mennyibe|ár|ára|árat|price|cost|kosten|preis|cena)/iu.test(original);
-  const checks={
-    hu: asksAvailability||asksPrice?'A szabad kapacitást és az árat külön ellenőrizzük; ezekről csak hiteles ellenőrzés után adunk biztos tájékoztatást.':'A megadott adatokat ellenőrizzük, és a szükséges részletekkel visszajelzünk.',
-    de: asksAvailability||asksPrice?'Verfügbarkeit und Preis prüfen wir separat; eine verbindliche Auskunft geben wir erst nach bestätigter Prüfung.':'Wir prüfen die angegebenen Daten und melden uns mit den nötigen Details.',
-    en: asksAvailability||asksPrice?'We check availability and price separately and will only confirm them after a verified check.':'We will review the details provided and reply with any required information.',
-    si: asksAvailability||asksPrice?'Razpoložljivost in ceno preverimo posebej in ju potrdimo šele po zanesljivem preverjanju.':'Preverili bomo navedene podatke in odgovorili s potrebnimi podrobnostmi.'
-  };
-  return `${greetings[lang]}\n\n${intros[lang]}${summary?'\n\n'+summary:''}${policyLines.length?'\n\n'+policyLines.join('\n'):''}${operationalLines.length?'\n\n'+operationalLines.join('\n'):''}${pricingLines.length?'\n\n'+pricingLines.join('\n'):''}${extraKnowledge.length?'\n\n'+extraKnowledge.join('\n'):''}${questions.length?'\n\n'+questions.join(' '):''}\n\n${checks[lang]}\n\n${closings[lang]}\n${brandName}`;
+  const titles={
+    hu:{stay:'Szállás',booking:'Foglalás',extras:'Kiegészítő információk',price:'Ár és díjak',fishing:'Horgászat',missing:'Pontosítandó adatok'},
+    de:{stay:'Unterkunft',booking:'Buchung',extras:'Weitere Informationen',price:'Preis und Gebühren',fishing:'Angeln',missing:'Fehlende Angaben'},
+    en:{stay:'Accommodation',booking:'Booking',extras:'Additional information',price:'Price and charges',fishing:'Fishing',missing:'Details to confirm'},
+    si:{stay:'Nastanitev',booking:'Rezervacija',extras:'Dodatne informacije',price:'Cena in doplačila',fishing:'Ribolov',missing:'Podatki za dopolnitev'}
+  }[lang];
+  const stayLines=[summary,...extraKnowledge].filter(Boolean);
+  if(asksAvailability&&!canRecommendByCapacity){
+    stayLines.push({
+      hu:'A szabad kapacitást a megadott időszakra külön ellenőrizzük, és csak a ténylegesen szabad lehetőséget igazoljuk vissza.',
+      de:'Die freie Kapazität für den gewünschten Zeitraum prüfen wir separat und bestätigen nur tatsächlich verfügbare Möglichkeiten.',
+      en:'We check availability for the requested dates separately and only confirm options that are actually available.',
+      si:'Razpoložljivost za izbrani termin preverimo posebej in potrdimo le dejansko proste možnosti.'
+    }[lang]);
+  }
+  const priceLines=[...pricingLines];
+  if(asksPrice){
+    priceLines.push({
+      hu:'A pontos árat külön, hiteles ellenőrzés után adjuk meg.',
+      de:'Den genauen Preis nennen wir nach einer separaten, bestätigten Prüfung.',
+      en:'We provide the exact price after a separate verified check.',
+      si:'Natančno ceno sporočimo po ločenem in zanesljivem preverjanju.'
+    }[lang]);
+  }
+  const blocks=[];
+  const addBlock=(title,lines)=>{const clean=lines.filter(Boolean);if(clean.length)blocks.push(`${title}:\n${clean.join('\n')}`);};
+  addBlock(titles.stay,stayLines);
+  addBlock(titles.booking,policyLines);
+  addBlock(titles.extras,operationalLines);
+  addBlock(titles.price,priceLines);
+  addBlock(titles.fishing,fishingKnowledge);
+  addBlock(titles.missing,questions);
+  return `${greetings[lang]}\n\n${intros[lang]}${blocks.length?'\n\n'+blocks.join('\n\n'):''}\n\n${closings[lang]}\n${brandName}`;
+
 }
 // Preserve explicitly labelled requests without interpreting them as booking facts.
 export function specialRequestsFromText(text='') {
