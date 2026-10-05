@@ -43,3 +43,15 @@ test('split planner never claims verified availability',()=>{
   assert.equal(options.length,2);
   assert.ok(options.every(x=>x.availability_verified===false));
 });
+
+
+test('split manual review explains the verified pooled Previo type mapping boundary',()=>{
+  const options=splitCapacityOptions(6);
+  assert.equal(options.length,2);
+  for(const option of options){
+    assert.match(option.reason,/2 fős apartman pool/u);
+    assert.match(option.reason,/4 fős apartman pool/u);
+    assert.match(option.reason,/egyedi 7A–10C/u);
+    assert.equal(option.availability_verified,false);
+  }
+});
