@@ -122,7 +122,33 @@
     return [arrival||'',departure||'',String(guests||'')].join('|');
   }
 
-  function currentAvailabilityLines(v={}){
+  function currentAvailabilityLines(v={},lang='HU'){
+    const arrival=v.arrival||$('price_arrival')?.value||'';
+    const departure=v.departure||$('price_departure')?.value||'';
+    const adultsRaw=v.adults??$('price_adults')?.value??'';
+    const childrenRaw=v.children??$('price_children')?.value??'';
+    const inferredGuests=(Number(adultsRaw)||0)+(Number(childrenRaw)||0);
+    const guests=Number(v.guests||inferredGuests||0);
+    if(!availabilityOptions||availabilityOptions.fingerprint!==availabilityFingerprint(arrival,departure,guests)) return [];
+    const verified=(availabilityOptions.available_options||[]).filter(x=>x&&x.availability_verified!==false);
+    const manual=(availabilityOptions.manual_review_options||[]).filter(x=>x&&x.pooled_availability_verified===true);
+    const copy={
+      HU:{verified:'A foglalási felületen ellenőrzött szabad lehetőségek:',manual:'Az Osztott egységeknél a szükséges 2 fős és 4 fős Previo poolban van szabad kapacitás; a konkrét A/B + C fizikai párosítást kézzel kell ellenőrizni:',unit:'egység'},
+      DE:{verified:'Auf der Buchungsseite geprüfte freie Möglichkeiten:',manual:'Für die geteilten Einheiten ist in den benötigten 2-Personen- und 4-Personen-Previo-Pools freie Kapazität vorhanden; die konkrete physische Zuordnung A/B + C muss manuell geprüft werden:',unit:'Einheiten'},
+      SL:{verified:'Na rezervacijskem sistemu preverjene proste možnosti:',manual:'V potrebnih Previo skupinah za 2- in 4-osebne deljene enote je dovolj prostih kapacitet; konkretno fizično kombinacijo A/B + C je treba preveriti ročno:',unit:'enoti'},
+      EN:{verified:'Available options verified on the booking system:',manual:'The required 2-person and 4-person Previo pools have free capacity for the split units; the specific physical A/B + C pairing still requires manual verification:',unit:'units'}
+    }[lang]||{verified:'Available options verified on the booking system:',manual:'Split-unit pool capacity is available; the specific physical pairing requires manual verification:',unit:'units'};
+    const lines=[];
+    if(verified.length){
+      lines.push(copy.verified);
+      for(const option of verified) lines.push('– '+option.label+(Number(option.units)>1?' ('+option.units+' '+copy.unit+')':''));
+    }
+    if(manual.length){
+      lines.push(copy.manual);
+      for(const option of manual) lines.push('– '+option.label);
+    }
+    return lines;
+  }){
     const arrival=v.arrival||$('price_arrival')?.value||'';
     const departure=v.departure||$('price_departure')?.value||'';
     const guests=Number(v.guests||0);
@@ -156,7 +182,7 @@
       availabilityOptions={...result,fingerprint:availabilityFingerprint(arrival,departure,guests)};
       applyFocusedReply(message);
       const status=$('price_status');
-      if(status) status.textContent='A megadott létszámhoz tartozó szabad háztípusok ellenőrizve; a lista bekerült a választervezetbe. Az Osztott egységek továbbra is kézi ellenőrzést igényelnek.';
+      if(status) status.textContent='A megadott létszámhoz tartozó szabad háztípusok ellenőrizve; a lista bekerült a választervezetbe. Az Osztott típusok pooled kapacitása ellenőrizhető, a konkrét A/B + C fizikai párosítás továbbra is kézi ellenőrzést igényel.';
     }catch(error){
       availabilityOptions=null;
       const status=$('price_status');
