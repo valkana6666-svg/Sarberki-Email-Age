@@ -10,8 +10,7 @@ import {
   requestedUnitsFromText,
   specialRequestsFromText
 } from './sarberki-core.mjs';
-
-const ALLOWED_CHANNELS=new Set(['manual','gmail','web_form','phone_ai']);
+import { createInquiryEnvelope } from './shared-core/inquiry-contract.mjs';
 
 export function normalizeInquiryInput({
   sourceChannel,
@@ -21,9 +20,7 @@ export function normalizeInquiryInput({
   now=new Date(),
   timeZone='Europe/Budapest'
 }={}){
-  if(!ALLOWED_CHANNELS.has(sourceChannel)) throw new Error('Ismeretlen bemeneti csatorna.');
   const text=String(rawText||'').trim();
-  if(!text) throw new Error('Üres vendégüzenet nem normalizálható.');
 
   const dateRange=dateRangeFromText(text,now,timeZone);
   const guests=guestCountFromText(text);
@@ -32,14 +29,12 @@ export function normalizeInquiryInput({
   const childAges=childAgesFromText(text);
   const units=requestedUnitsFromText(text);
 
-  return {
-    schema_version:'sarberki_inquiry_v1',
-    source:{
-      channel:sourceChannel,
-      received_at:receivedAt,
-      sender:sender||null
-    },
-    original_text:text,
+  return createInquiryEnvelope({
+    schemaVersion:'sarberki_inquiry_v1',
+    sourceChannel,
+    rawText:text,
+    receivedAt,
+    sender,
     normalized:{
       language:languageFromText(text),
       dates:dateRange ? {
@@ -57,7 +52,7 @@ export function normalizeInquiryInput({
       units_open_request:Boolean(units?.open),
       special_requests:specialRequestsFromText(text)
     }
-  };
+  });
 }
 
 export function normalizePhoneAiTranscript(input={}){
