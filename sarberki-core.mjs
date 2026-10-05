@@ -69,6 +69,7 @@ export function adultCountFromText(text=''){
   return sw ? siWords[sw] : null;
 }
 export function childCountFromText(text=''){
+  if(/(?:gyermek|gyerek)\s+nélkül|nincs\s+(?:gyermek|gyerek)|no\s+children|without\s+children|ohne\s+kinder|keine\s+kinder|brez\s+otrok|ni\s+otrok/iu.test(text)) return 0;
   const m=text.match(/\b(\d{1,2})\s*(?:gyerek\w*|gyermek\w*|children|child|kinder|kind|(?:otrok|otroc)\w*)\b/iu);
   if(m) return Number(m[1]);
   const huWords={egy:1,két:2,ket:2,kettő:2,ketto:2,három:3,harom:3,négy:4,negy:4,öt:5,ot:5,hat:6};
@@ -125,6 +126,13 @@ export function dateRangeFromText(text='', now=new Date(), timeZone='Europe/Buda
     const startDay=Number(huNaturalRange[3]), endDay=Number(huNaturalRange[4]);
     if(inferred&&(month<local[1]||(month===local[1]&&startDay<local[2]))) year++;
     return {arrival:`${year}-${String(month).padStart(2,'0')}-${String(startDay).padStart(2,'0')}`,departure:`${year}-${String(month).padStart(2,'0')}-${String(endDay).padStart(2,'0')}`,inferredYear:inferred};
+  }
+  const enCrossMonth=text.match(/\b(?:from\s+)?(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(?:to|[-–])\s+(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December),?\s+(20\d{2})\b/iu);
+  if(enCrossMonth){
+    const m1=monthNumber(enCrossMonth[2]), m2=monthNumber(enCrossMonth[4]), year=Number(enCrossMonth[5]);
+    if(!m1||!m2) return null;
+    const endYear=year+(m2<m1?1:0);
+    return {arrival:`${year}-${String(m1).padStart(2,'0')}-${String(enCrossMonth[1]).padStart(2,'0')}`,departure:`${endYear}-${String(m2).padStart(2,'0')}-${String(enCrossMonth[3]).padStart(2,'0')}`,inferredYear:false};
   }
   const enLong=text.match(/\b(?:from\s+)?(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})\s+(?:to|[-–])\s+(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})\b/iu);
   if(enLong){
