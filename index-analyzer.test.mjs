@@ -127,3 +127,10 @@ test('availability insertion function is not corrupted',()=>{
  assert.match(availability,/return draft\.replace\(signature,'\\n\\n'\+combined\+signature\)/u);
  assert.doesNotMatch(availability,/combined\+'function replaceCapacityPlaceholder/u);
 });
+
+
+test('approved fish logo asset remains wired on the test UI',()=>{
+ assert.match(source,/src="\.\/sarberki-logo-orange\.png\?v=/u);
+ assert.ok(fs.existsSync(new URL('./sarberki-logo-orange.png',import.meta.url)));
+ assert.doesNotMatch(source,/sarberki-logo-crownfish-orange\.svg/u);
+});
