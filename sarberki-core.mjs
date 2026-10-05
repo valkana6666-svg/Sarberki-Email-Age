@@ -619,7 +619,7 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   if(/dézs|dezsa|hot.?tub|badefass|whirlpool/iu.test(original)) hotTub=flags.hotTubRequested;
 
   const resolvedName=name?.trim()||nameFromText(original);
-  const nameParts=resolvedName?.replace(/^["']|["']$/gu,'').split(/\\s+/u).filter(Boolean)||[];
+  const nameParts=resolvedName?.replace(/^["']|["']$/gu,'').split(/\s+/u).filter(Boolean)||[];
   const first=nameParts.length?(lang==='hu'?nameParts.at(-1):nameParts[0]):null;
   const greetings={hu:first?`Kedves ${first}!`:'Kedves Vendégünk!',de:first?`Guten Tag, ${first}!`:'Guten Tag!',en:first?`Dear ${first},`:'Dear Guest,',si:first?`Pozdravljeni, ${first}!`:'Pozdravljeni!'};
   const intros={hu:'Köszönjük érdeklődését.',de:'Vielen Dank für Ihre Anfrage.',en:'Thank you for your enquiry.',si:'Hvala za vaše povpraševanje.'};
@@ -683,7 +683,7 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
     si:'Skupno ceno navedemo za možnost, ki je dejansko na voljo.'
   }[lang]);
 
-  const fishingAsked=/(?:horgász|angeln|fishing|ribolov|ribe)/iu.test(original);
+  const fishingAsked=/(?:horgász|horgasz|angeln|fish(?:ing)?|ribolov|ribe)/iu.test(original);
   const fishingLines=fishingAsked&&Array.isArray(knowledgeLines)?knowledgeLines.filter(Boolean):[];
   const bookingLines=bookingPolicyLines(lang,original,guests,bookingRules);
   const blocks=[];
