@@ -20,7 +20,7 @@ test('past yearless date rolls to next year and requires review',()=>assert.deep
 test('next-year wording is explicit inference without review flag',()=>assert.deepEqual(dateRangeFromText('jövőre október 16-19',now),{arrival:'2027-10-16',departure:'2027-10-19',inferredYear:false}));
 
 test('language detection is conservative across HU DE EN SI',()=>{assert.equal(languageFromText('Szeretnénk szállást foglalni 4 fő részére'),'hu');assert.equal(languageFromText('Wir möchten eine Unterkunft für 4 Personen buchen'),'de');assert.equal(languageFromText('We would like accommodation for 4 guests'),'en');assert.equal(languageFromText('Želimo nastanitev za 4 oseb'),'si');assert.equal(languageFromText('Hello'),'unknown');});
-test('reply questions follow detected language and only ask missing fields',()=>{assert.deepEqual(replyQuestions('de',{needPhone:true,needCabin:true}),['Bitte teilen Sie uns eine Telefonnummer mit, unter der wir Sie erreichen können.','Welchen Haustyp wünschen Sie: VIP, Családi (Familienhaus), Deluxe oder Osztott (geteiltes Haus)?']);assert.deepEqual(replyQuestions('unknown',{needPhone:true}),[]);});
+test('reply questions follow detected language and only ask missing fields',()=>{assert.deepEqual(replyQuestions('de',{needPhone:true,needCabin:true}),['Könnten Sie uns bitte noch eine Telefonnummer mitteilen, unter der wir Sie erreichen können?','Welchen Haustyp wünschen Sie: VIP, Családi (Familienhaus), Deluxe oder Osztott (geteiltes Haus)?']);assert.deepEqual(replyQuestions('unknown',{needPhone:true}),[]);});
 
 
 test('Teszt Elek concrete regression parses all confirmed core fields',()=>{
@@ -167,8 +167,8 @@ test('German reply summary preserves the real inbox facts without inventing a ca
 
 test('English reply summary uses the shared facts without inventing a cabin or price',()=>{
   const summary=replySummary('en',{arrival:'2026-10-16',departure:'2026-10-19',guests:6,children:2,childAges:[6,10],pier:true,hotTub:true,dog:true});
-  assert.match(summary,/16\.10\.2026/u);
-  assert.match(summary,/19\.10\.2026/u);
+  assert.match(summary,/16 October 2026/u);
+  assert.match(summary,/19 October 2026/u);
   assert.match(summary,/6 guests/u);
   assert.match(summary,/4 adults/u);
   assert.match(summary,/2 children/u);
@@ -179,6 +179,35 @@ test('English reply summary uses the shared facts without inventing a cabin or p
   assert.doesNotMatch(summary,/VIP|Családi|Deluxe|Osztott|€|Ft|Price:/u);
 });
 
+
+test('guest-facing email style follows language-specific conventions',()=>{
+  const common={arrival:'2026-10-16',departure:'2026-10-18',guests:4,adults:2,children:2,childAges:[7,11],phone:'+36 30 555 1234',cabin:'Deluxe',original:'Van szabad hely? / Is it available? / Ist es verfügbar? / Ali je prosto?'};
+  const hu=buildReplyDraft({language:'hu',name:'Nagy Péter',...common});
+  const de=buildReplyDraft({language:'de',name:'Thomas Berger',...common});
+  const en=buildReplyDraft({language:'en',name:'John Smith',...common});
+  const si=buildReplyDraft({language:'si',name:'Janez Novak',...common});
+  assert.match(hu,/^Kedves Péter!/u);
+  assert.match(de,/^Guten Tag, Thomas!/u);
+  assert.match(en,/^Dear John,/u);
+  assert.match(en,/16 October 2026/u);
+  assert.doesNotMatch(en,/16\.10\.2026/u);
+  assert.match(si,/2 odrasli osebi/u);
+  assert.match(si,/2 otroka/u);
+  assert.match(si,/Lep pozdrav\nSárberki Horgásztó$/u);
+  assert.doesNotMatch(si,/Lep pozdrav,/u);
+});
+
+test('polite German and English follow-up questions avoid robotic repetition',()=>{
+  assert.deepEqual(replyQuestions('de',{needDates:true,needAdults:true,needChildStatus:true}),[
+    'Könnten Sie uns bitte das genaue An- und Abreisedatum nennen?',
+    'Wie viele Erwachsene reisen an?',
+    'Reisen auch Kinder mit? Falls ja, wie alt sind sie?'
+  ]);
+  assert.deepEqual(replyQuestions('en',{needDates:true,needPhone:true}),[
+    'Could you please confirm the exact arrival and departure dates?',
+    'Could you please send us a phone number where we can reach you?'
+  ]);
+});
 
 test('English full inquiry regression uses the shared multilingual core',()=>{
   const message=`Hello,
