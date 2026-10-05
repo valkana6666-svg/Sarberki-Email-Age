@@ -132,8 +132,31 @@ test('fresh Gmail inbox fixtures survive Gmail transform and reply drafting',asy
     assert.match(record.reply_draft,item.parking,item.subject);
     assert.match(record.reply_draft,item.fishing,item.subject);
     assert.doesNotMatch(record.reply_draft,item.childQuestion,item.subject);
-    // The current stress-task requires capacity options followed by a cabin question.
-    assert.match(record.reply_draft,/Deluxe|Családi|VIP/u,item.subject);
+    assert.doesNotMatch(record.reply_draft,/Melyik háztípust|Which cabin type|Welchen Haustyp|Kateri tip hiške/u,item.subject);
+    assert.doesNotMatch(record.missing.join(' '),/Kívánt háztípus/u,item.subject);
+    assert.doesNotMatch(record.human_review.join(' '),/A dátumot ellenőrizni kell|háztípust nem választott|Szabad hely és ár nincs igazolva/u,item.subject);
     assert.doesNotMatch(record.reply_draft,/\b\d{2,3}[ .]?\d{3}\s*Ft\b/u,item.subject);
   }
+});
+
+
+test('Kovács István six-person inquiry keeps total count, signature name and clean review state',async()=>{
+  const transform=await createTransform();
+  const body=`Jó napot!
+
+2026.10.09-től 10.13.ig szeretnénk megszállni 6 fő részére.
+Ház típust nem választottunk. Horgászni szeretnénk, és a parkolás is érdekel.
+Milyen lehetőségek vannak erre az időpontra?
+
+Üdv.: Kovács István`;
+  const record=transform(message(body,'Teszt – 6 fő horgászat parkolás','kovacs-istvan-6'));
+  assert.equal(record.normalized.guests,6);
+  assert.equal(record.normalized.dates?.arrival,'2026-10-09');
+  assert.equal(record.normalized.dates?.departure,'2026-10-13');
+  assert.match(record.reply_draft,/^Kedves István!/u);
+  assert.match(record.reply_draft,/6 fő/u);
+  assert.match(record.reply_draft,/Szállás\n/u);
+  assert.match(record.reply_draft,/Horgászat\n/u);
+  assert.doesNotMatch(record.reply_draft,/Melyik háztípust/u);
+  assert.doesNotMatch(record.human_review.join(' '),/A dátumot ellenőrizni kell|háztípust nem választott|Szabad hely és ár nincs igazolva/u);
 });
