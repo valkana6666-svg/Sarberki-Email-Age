@@ -69,3 +69,40 @@ for(const [lang,sentences] of Object.entries(topics))for(let variant=0;variant<2
 add('arrival-time-changed','2026. október 16-18. Deluxe, 4 fő. Érkezés 22:15-kor.',{...dates},{contains:/22:15/,absent:/18:30/},'arrival-time');
 add('age-adult-child','2026. október 16-18. Deluxe. 2 felnőtt és 1 gyerek. Én 42 éves vagyok, a gyermek 7 éves.',{...dates,childAges:[7]},{absent:/42 éves/},'adult-age');
 add('fishing-accentless','2026 oktober 16-18. Deluxe, 4 fo. Horgasznank, mik a horgaszati szabalyok? Parkolas van?',{...dates,fishingQuestion:true,parking:true},{contains:/állami horgászjegy[\s\S]*szakáll nélküli[\s\S]*6-os[\s\S]*pontybölcső[\s\S]*merítőháló[\s\S]*sebfertőtlenítő[\s\S]*pontyzsák/},'fishing-accentless');
+
+
+// Public language-guide patterns, paraphrased into Sárberki-specific realistic inquiries.
+add('realistic-hu-email',`Jó napot kívánok!
+
+Érdeklődni szeretnék, hogy 2026. október 16. és 18. között lenne-e szabad Deluxe házuk.
+2 felnőtt és 2 gyermek mennénk, a gyerekek 7 és 11 évesek.
+Megírnák, kérem, hogy mennyi lenne a teljes ár?
+
+Köszönöm előre is.
+Üdvözlettel,
+Nagy Péter`,{...dates,guests:4,adults:2,children:2,childAges:[7,11],cabin:'Deluxe'},{contains:/Köszönjük érdeklődését/u},'realistic-public-style');
+
+add('realistic-de-email',`Guten Tag,
+
+hätten Sie vom 16. bis 18. Oktober 2026 noch eine Deluxe-Unterkunft für 2 Erwachsene und 2 Kinder im Alter von 7 und 11 Jahren frei?
+Könnten Sie uns bitte auch den Gesamtpreis mitteilen?
+
+Vielen Dank im Voraus.
+Mit freundlichen Grüßen
+Thomas Berger`,{...dates,guests:4,adults:2,children:2,childAges:[7,11],cabin:'Deluxe'},{contains:/Vielen Dank für Ihre Anfrage/u},'realistic-public-style');
+
+add('realistic-en-email',`Hello,
+
+We are looking for a Deluxe cabin from 16 October to 18 October, 2026 for 2 adults and 2 children aged 7 and 11.
+Could you please let us know whether it is available and what the total price would be?
+
+Many thanks,
+John Smith`,{...dates,guests:4,adults:2,children:2,childAges:[7,11],cabin:'Deluxe'},{contains:/16 October 2026[\\s\\S]*18 October 2026/u},'realistic-public-style');
+
+add('realistic-si-email',`Pozdravljeni!
+
+Zanima me nastanitev od 16. do 18. oktobra 2026 za 2 odrasla in 2 otroka, stara 7 in 11 let.
+Ali je Deluxe hiška prosta in kakšna bi bila skupna cena?
+
+Hvala in lep pozdrav
+Janez Novak`,{...dates,guests:4,adults:2,children:2,childAges:[7,11],cabin:'Deluxe'},{contains:/2 odrasli osebi[\\s\\S]*2 otroka/u},'realistic-public-style');
