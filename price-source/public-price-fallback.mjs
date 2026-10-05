@@ -25,6 +25,9 @@ export function fetchPublicPriceReference(raw){
   const baseChildSlots=Math.max(0,base-input.adults);
   const extraAdults=Math.max(0,input.adults-base);
   const extraChildren=input.children.slice(baseChildSlots);
+  if((extraAdults>0||extraChildren.length>0)&&!SARBERKI_PROFILE.pricingRules.publicExtraGuestRatesVerified){
+    throw Error('A publikus pótvendég-/gyermekár nem hitelesített aktuális díj; kézi vagy Previo-ellenőrzés szükséges.');
+  }
   const nightlyExtra=extraAdults*SARBERKI_PROFILE.pricingRules.extraAdultNightlyHuf+extraChildren.reduce((s,age)=>s+childExtraRate(age),0);
   let accommodation=0;
   for(let i=0;i<count;i++){
