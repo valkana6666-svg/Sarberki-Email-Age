@@ -61,3 +61,26 @@ test('group-size booking rules stay explicit',()=>{
   assert.equal(BUSINESS.operationalRules.returningGuestDiscountPct,20);
   assert.equal(BUSINESS.operationalRules.checkoutBy,'10:00');
 });
+
+
+test('split Previo object-kind mapping is verified only at pooled type level',()=>{
+  const a=BUSINESS.accommodationTypes.splitA;
+  const b=BUSINESS.accommodationTypes.splitB;
+  const upper=BUSINESS.accommodationTypes.splitC;
+  assert.equal(a.previoTypeMappingVerified,true);
+  assert.equal(b.previoTypeMappingVerified,true);
+  assert.equal(upper.previoTypeMappingVerified,true);
+  assert.equal(a.previoObjectKindName,'2 fős apartman');
+  assert.equal(b.previoObjectKindName,'2 fős apartman');
+  assert.equal(a.previoObjectKindId,766441);
+  assert.equal(b.previoObjectKindId,766441);
+  assert.equal(a.previoObjectKindPoolSize,8);
+  assert.equal(upper.previoObjectKindName,'4 fős apartman');
+  assert.equal(upper.previoObjectKindId,766443);
+  assert.equal(upper.previoObjectKindPoolSize,4);
+  for(const unit of [a,b,upper]){
+    assert.equal(unit.previoIndividualUnitMappingVerified,false);
+    assert.equal(unit.previoPairingVerified,false);
+    assert.equal(unit.previoMappingVerified,false);
+  }
+});
