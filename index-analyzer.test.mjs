@@ -130,7 +130,10 @@ test('availability insertion function is not corrupted',()=>{
 
 
 test('approved fish logo asset remains wired on the test UI',()=>{
- assert.match(source,/src="\.\/sarberki-logo-orange\.png\?v=/u);
- assert.ok(fs.existsSync(new URL('./sarberki-logo-orange.png',import.meta.url)));
- assert.doesNotMatch(source,/sarberki-logo-crownfish-orange\.svg/u);
+ assert.match(source,/src="\.\/sarberki-logo-orange\.svg\?v=/u);
+ assert.ok(fs.existsSync(new URL('./sarberki-logo-orange.svg',import.meta.url)));
+ const logo=fs.readFileSync(new URL('./sarberki-logo-orange.svg',import.meta.url),'utf8');
+ assert.match(logo,/aria-label="Sárberki Horgásztó Lenti logó"/u);
+ assert.match(logo,/fill="#ff7a00"/u);
+ assert.doesNotMatch(source,/class="brand-logo"[^>]+sarberki-logo-orange\.png/u);
 });
