@@ -1,11 +1,29 @@
 const $=id=>document.getElementById(id);
 
-function unitText(option){
+function localizedOptionLabel(label,language='hu'){
+  const lang=['hu','de','en','si'].includes(language)?language:'hu';
+  let text=String(label||'');
+  if(lang==='de') return text
+    .replace(/Különálló 2 fős/gu,'Freistehende Hütte für 2 Personen')
+    .replace(/Családi/gu,'Familienhaus')
+    .replace(/Osztott/gu,'Geteilte Einheit');
+  if(lang==='en') return text
+    .replace(/Különálló 2 fős/gu,'Standalone 2-person cabin')
+    .replace(/Családi/gu,'Family cabin')
+    .replace(/Osztott/gu,'Split unit');
+  if(lang==='si') return text
+    .replace(/Különálló 2 fős/gu,'Samostojna hiška za 2 osebi')
+    .replace(/Családi/gu,'Družinska hiška')
+    .replace(/Osztott/gu,'Deljena enota');
+  return text;
+}
+function unitText(option,language='hu'){
   const count=Number(option.units)||1;
-  return count===1?option.label:`${count} × ${option.label}`;
+  const label=localizedOptionLabel(option.label,language);
+  return count===1?label:`${count} × ${label}`;
 }
 export function availabilitySentence(result,language='hu'){
-  const available=(result?.available_options||[]).map(unitText);
+  const available=(result?.available_options||[]).map(option=>unitText(option,language));
   if(!available.length)return ({hu:'A megadott időszakra a hitelesen ellenőrizhető háztípusok között jelenleg nem találtunk megfelelő szabad kapacitást.',de:'Für den gewünschten Zeitraum haben wir bei den geprüften Haustypen keine passende freie Kapazität gefunden.',en:'We have not found suitable availability among the verified cabin types for the requested dates.',si:'Za izbrani termin med preverjenimi tipi hišk nismo našli primerne proste kapacitete.'})[language]||availabilitySentence(result,'hu');
   const intro=({hu:'A megadott időpontban a létszám alapján ellenőrzött, szabad lehetőségek: ',de:'Geprüfte verfügbare Optionen für Ihre Reisedaten und Personenzahl: ',en:'Verified available options for your dates and party size: ',si:'Preverjene proste možnosti za vaš termin in število gostov: '})[language]||'A megadott időpontban a létszám alapján ellenőrzött, szabad lehetőségek: ';
   return intro+available.join(', ')+'.';
@@ -13,7 +31,8 @@ export function availabilitySentence(result,language='hu'){
 export function splitReviewSentence(result,language='hu'){
   const manual=(result?.manual_review_options||[]);
   if(!manual.length)return '';
-  const labels=manual.map(x=>x.label).join(' vagy ');
+  const joiner=({hu:' vagy ',de:' oder ',en:' or ',si:' ali '})[language]||' vagy ';
+  const labels=manual.map(x=>localizedOptionLabel(x.label,language)).join(joiner);
   return ({hu:`Kapacitás alapján szóba jöhet ${labels}; az együttes elérhetőséget külön ellenőrizzük, és ezt csak utána tudjuk visszaigazolni.`,de:`Nach Kapazität kommen ${labels} infrage; die gemeinsame Verfügbarkeit prüfen und bestätigen wir separat.`,en:`Capacity options may include ${labels}; we will check and confirm their combined availability separately.`,si:`Glede na kapaciteto pridejo v poštev ${labels}; skupno razpoložljivost preverimo in potrdimo posebej.`})[language]||splitReviewSentence(result,'hu');
 }
 function hasSpecificCabin(value=''){return /vip|családi|deluxe|osztott|különálló|2 fős/iu.test(value);}
