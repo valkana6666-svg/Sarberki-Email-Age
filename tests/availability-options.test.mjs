@@ -14,6 +14,38 @@ test('six guests produce verified single-house options and split manual-review c
   assert.ok(result.manual_review_options.every(x=>x.availability_verified===false));
 });
 
+test('split pooled availability can be verified while physical pairing stays manual',async()=>{
+  const free={deluxe:2,family:1,vip:1,splitA:4,splitC:3};
+  const result=await buildAvailabilityOptions({arrival:'2026-10-09',departure:'2026-10-13',guests:6},async input=>({
+    status:'review_required',
+    availability:(free[input.cabin]||0)>0?'available':'unavailable',
+    availableUnits:free[input.cabin]||0,
+    checkedAt:'2026-10-05T13:00:00Z',
+    source:'test'
+  }));
+  assert.equal(result.split_pool_checks.splitAB.verified,true);
+  assert.equal(result.split_pool_checks.splitAB.availableUnits,4);
+  assert.equal(result.split_pool_checks.splitC.verified,true);
+  assert.equal(result.split_pool_checks.splitC.availableUnits,3);
+  for(const option of result.manual_review_options){
+    assert.equal(option.pooled_availability_verified,true);
+    assert.equal(option.availability_verified,false);
+    assert.match(option.reason,/van elég szabad egység/u);
+    assert.match(option.reason,/párosítás/u);
+  }
+});
+
+test('insufficient split pool capacity never upgrades the manual-review combination',async()=>{
+  const free={deluxe:2,family:1,vip:1,splitA:0,splitC:3};
+  const result=await buildAvailabilityOptions({arrival:'2026-10-09',departure:'2026-10-13',guests:6},async input=>({
+    status:'review_required',
+    availability:(free[input.cabin]||0)>0?'available':'unavailable',
+    availableUnits:free[input.cabin]||0
+  }));
+  assert.ok(result.manual_review_options.every(x=>x.pooled_availability_verified===false));
+  assert.ok(result.manual_review_options.every(x=>x.availability_verified===false));
+});
+
 test('same-type multi-unit option requires enough free units',async()=>{
   const result=await buildAvailabilityOptions({arrival:'2026-10-09',departure:'2026-10-13',guests:12},async input=>({
     status:'review_required',availability:'available',availableUnits:input.cabin==='family'?2:1
