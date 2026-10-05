@@ -97,7 +97,7 @@ We are looking for a Deluxe cabin from 16 October to 18 October, 2026 for 2 adul
 Could you please let us know whether it is available and what the total price would be?
 
 Many thanks,
-John Smith`,{...dates,guests:4,adults:2,children:2,childAges:[7,11],cabin:'Deluxe'},{contains:/16 October 2026[\\s\\S]*18 October 2026/u},'realistic-public-style');
+John Smith`,{...dates,guests:4,adults:2,children:2,childAges:[7,11],cabin:'Deluxe'},{contains:/16 October 2026[\s\S]*18 October 2026/u},'realistic-public-style');
 
 add('realistic-si-email',`Pozdravljeni!
 
@@ -105,4 +105,4 @@ Zanima me nastanitev od 16. do 18. oktobra 2026 za 2 odrasla in 2 otroka, stara 
 Ali je Deluxe hiška prosta in kakšna bi bila skupna cena?
 
 Hvala in lep pozdrav
-Janez Novak`,{...dates,guests:4,adults:2,children:2,childAges:[7,11],cabin:'Deluxe'},{contains:/2 odrasli osebi[\\s\\S]*2 otroka/u},'realistic-public-style');
+Janez Novak`,{...dates,guests:4,adults:2,children:2,childAges:[7,11],cabin:'Deluxe'},{contains:/2 odrasli osebi[\s\S]*2 otroka/u},'realistic-public-style');
