@@ -17,8 +17,11 @@
   const status = document.getElementById('gmail_auth_status');
   const clientId = document.querySelector('meta[name="google-oauth-client-id"]')?.content?.trim();
   const READ_STORAGE_KEY = 'sarberki.gmail.read-message-ids.v1';
+  const PUSHOVER_WATCH_STORAGE_KEY = 'sarberki.gmail.pushover-message-ids.v1';
+  const PUSHOVER_WATCH_INTERVAL_MS = 60000;
   let currentToken = null;
   let currentMessages = [];
+  let pushoverWatchTimer = null;
 
   const say = message => { status.textContent = message; };
   function readIds() {
@@ -31,6 +34,82 @@
     localStorage.setItem(READ_STORAGE_KEY, JSON.stringify([...ids].slice(-500)));
   }
   function isLocallyRead(id) { return readIds().has(id); }
+  function pushoverNotifiedIds() {
+    try { return new Set(JSON.parse(localStorage.getItem(PUSHOVER_WATCH_STORAGE_KEY) || '[]')); }
+    catch { return new Set(); }
+  }
+  function savePushoverNotifiedIds(ids) {
+    localStorage.setItem(PUSHOVER_WATCH_STORAGE_KEY, JSON.stringify([...ids].slice(-1000)));
+  }
+  function ensurePushoverWatchStatus() {
+    let el = document.getElementById('gmail_pushover_watch_status');
+    if (el) return el;
+    el = document.createElement('p');
+    el.id = 'gmail_pushover_watch_status';
+    el.className = 'muted';
+    el.setAttribute('role','status');
+    el.setAttribute('aria-live','polite');
+    status.insertAdjacentElement('afterend', el);
+    return el;
+  }
+  function pushoverWatchSay(message, ok=true) {
+    const el = ensurePushoverWatchStatus();
+    el.className = ok ? 'ok' : 'warning';
+    el.textContent = message;
+  }
+  async function sendPushoverForMessage(message) {
+    if (!currentToken) throw Error('A Gmail-hozzáférés lejárt; jelentkezz be újra a figyelés folytatásához.');
+    const response = await fetch('/api/pushover-gmail', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'authorization': `Bearer ${currentToken}`
+      },
+      body: JSON.stringify({event:'gmail-new-message',messageId:message.id})
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok) {
+      const errors = {
+        GMAIL_AUTH_REQUIRED: 'A Gmail-hozzáférés lejárt; jelentkezz be újra.',
+        WRONG_GMAIL_ACCOUNT: 'Nem a Sárberki teszt Gmail-fiók van megnyitva.',
+        MESSAGE_NOT_IN_INBOX: 'Az új üzenet már nincs az Inboxban.',
+        MISSING_CONFIGURATION: 'A Pushover nincs teljesen beállítva a Netlify tesztkörnyezetben.',
+        PUSHOVER_REJECTED: 'A Pushover elutasította az értesítést.',
+        PUSHOVER_UNAVAILABLE: 'A Pushover átmenetileg nem érhető el.'
+      };
+      throw Error(errors[data.code] || 'Az új Gmail-levél Pushover értesítése sikertelen.');
+    }
+  }
+  async function pollPushoverWatch() {
+    if (!currentToken) return;
+    try {
+      const freshMessages = await readWithToken(currentToken);
+      const notified = pushoverNotifiedIds();
+      const newMessages = freshMessages
+        .filter(message => !notified.has(message.id))
+        .sort((a,b) => Number(a.internalDate) - Number(b.internalDate));
+      for (const message of newMessages) {
+        await sendPushoverForMessage(message);
+        notified.add(message.id);
+        savePushoverNotifiedIds(notified);
+      }
+      currentMessages = freshMessages;
+      renderPicker(currentMessages);
+      pushoverWatchSay(newMessages.length
+        ? `Pushover figyelés aktív · ${newMessages.length} új Inbox-levélről értesítés elküldve.`
+        : 'Pushover figyelés aktív · minden új Inbox-levél · ellenőrzés kb. percenként.');
+    } catch (error) {
+      pushoverWatchSay(error.message || 'A Pushover Gmail-figyelés hibát jelzett.', false);
+    }
+  }
+  function startPushoverWatch(messages) {
+    const notified = pushoverNotifiedIds();
+    for (const message of messages) notified.add(message.id);
+    savePushoverNotifiedIds(notified);
+    if (pushoverWatchTimer) clearInterval(pushoverWatchTimer);
+    pushoverWatchTimer = setInterval(pollPushoverWatch, PUSHOVER_WATCH_INTERVAL_MS);
+    pushoverWatchSay('Pushover figyelés aktív · minden új Inbox-levél · ellenőrzés kb. percenként.');
+  }
   function messageLabel(message) {
     const headers = headerMap(message);
     const when = new Date(Number(message.internalDate));
@@ -219,6 +298,7 @@
         currentToken = result.access_token;
         currentMessages = await readWithToken(currentToken);
         renderPicker(currentMessages);
+        startPushoverWatch(currentMessages);
         const nextUnread = currentMessages.find(message => !isLocallyRead(message.id));
         if (nextUnread) {
           displayMessage(nextUnread);
