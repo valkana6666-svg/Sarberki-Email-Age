@@ -44,7 +44,7 @@ export function splitCapacityOptions(guests,poolChecks={}){
       },
       reason:pooledAvailabilityVerified
         ?'A szükséges 2 fős és 4 fős Previo poolban van elég szabad egység, de az egyedi 7A–10C egység-ID és az azonos fizikai házhoz tartozó A/B + C párosítás ezen a read-only útvonalon nem látszik.'
-        :'A Previo-típusmapping hitelesített (A/B = 2 fős apartman pool, C = 4 fős apartman pool), de a szükséges pooled elérhetőség vagy a fizikai A/B + C párosítás még kézi ellenőrzést igényel.'
+        :'A Previo-típusmapping hitelesített (A/B = 2 fős apartman pool, C = 4 fős apartman pool), de a szükséges pooled elérhetőség, az egyedi 7A–10C egység-ID vagy a fizikai A/B + C párosítás még kézi ellenőrzést igényel.'
     };
   });
 }
