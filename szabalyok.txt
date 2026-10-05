@@ -158,16 +158,16 @@ Forrás: business-config.mjs:72-81
 Komment: Harmadik férőhely csak gyermek pótágy lehet; extra felnőtt nem engedélyezett.
 
 4.5 Osztott A: 23 000 Ft/éj, max. 2 fő.
-Forrás: business-config.mjs:82-94
-Komment: Élő Previo mapping nincs hitelesítve.
+Forrás: business-config.mjs; PRICE_SOURCE_STATUS.md
+Komment: Típus-szintű Previo mapping hitelesített: "2 fős apartman", obkId=766441, 8 egységes közös A/B pool. Az egyedi 7A–10A azonosítók és a fizikai házpárosítás nem láthatók a publikus read-only útvonalon.
 
 4.6 Osztott B: 23 000 Ft/éj, max. 2 fő.
-Forrás: business-config.mjs:95-107
-Komment: Élő Previo mapping nincs hitelesítve.
+Forrás: business-config.mjs; PRICE_SOURCE_STATUS.md
+Komment: Típus-szintű Previo mapping hitelesített: "2 fős apartman", obkId=766441, 8 egységes közös A/B pool. Az egyedi 7B–10B azonosítók és a fizikai házpárosítás nem láthatók a publikus read-only útvonalon.
 
 4.7 Osztott C: 44 000 Ft/éj, max. 5 fő.
-Forrás: business-config.mjs:108-120
-Komment: Élő Previo mapping nincs hitelesítve; extra felnőtt árazás engedélyezett a konfigurációban.
+Forrás: business-config.mjs; PRICE_SOURCE_STATUS.md
+Komment: Típus-szintű Previo mapping hitelesített: "4 fős apartman", obkId=766443, 4 egységes C pool, 4 ágy + 1 pótágy. Az egyedi 7C–10C azonosítók nem láthatók a publikus read-only útvonalon.
 
 4.8 Az élő foglalási szolgáltató Previo, hotelId=753011, pénznem HUF, nyelv HU.
 Forrás: business-config.mjs:122-127
@@ -275,11 +275,9 @@ elég szabad egység van.
 Forrás: netlify/functions/availability-options.mjs:47-64
 Komment: A kapacitásban megfelelő, de foglalt ház nem ajánlható szabadként.
 
-8.5 Osztott A/B/C kombináció kapacitás alapján számítható, de elérhetősége
-nem tekinthető igazoltnak.
-Forrás: netlify/functions/availability-options.mjs:12-35
-Komment: Az Osztott egységek Previo mappingje nincs hitelesítve, ezért csak
-"manual_review" lehetőségként jelenhetnek meg.
+8.5 Osztott A/B/C kombináció kapacitás alapján számítható, de az azonos fizikai házhoz tartozó párosítás elérhetősége nem tekinthető igazoltnak.
+Forrás: netlify/functions/availability-options.mjs; business-config.mjs; PRICE_SOURCE_STATUS.md
+Komment: A Previo-típusmapping hitelesített: A/B a 2 fős apartman közös poolja, C a 4 fős apartman poolja. A publikus read-only útvonal azonban nem ad egyedi 7A–10C ID-t és nem mutatja az A/B+C fizikai házkapcsolatot, ezért a kombináció továbbra is "manual_review".
 
 8.6 A kapacitás-végpont csak arrival, departure és guests adatot fogad.
 Forrás: netlify/functions/availability-options.mjs:68-79
