@@ -69,6 +69,8 @@ export function createHandler({env = process.env, send = fetch} = {}) {
         body:new URLSearchParams({
           token,user,
           title:'Sárberki · új levél',
+          url:ORIGIN + '/',
+          url_title:'Sarberki tesztoldal megnyitasa',
           message:`Új levél érkezett a Sárberki tesztfiókba.\nFeladó: ${from}\nTárgy: ${subject}`
         }),
         signal:AbortSignal.timeout(10000)
