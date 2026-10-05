@@ -77,3 +77,43 @@ assert.equal(child.bookingCompleted,false);
 assert.equal(child.accommodation+child.tourismTax,child.total);
 assert.equal(child.eurConversion?.status,'available');
 console.log('LIVE PREVIO CHILD REVIEW PASS',JSON.stringify({children:child.children,availableUnits:child.availableUnits,total:child.total,tourismTax:child.tourismTax,eurTotal:child.eurConversion.totalEur,status:child.status}));
+
+
+const mappedCabins=['deluxe','family','vip','small'];
+const childAges=[2,5,13,17];
+const matrix=[];
+for(const cabin of mappedCabins){
+  for(const age of childAges){
+    const matrixInput={arrival:'2026-10-16',departure:'2026-10-18',cabin,adults:2,children:[age]};
+    const matrixResponse=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(matrixInput),signal:AbortSignal.timeout(60000)});
+    const matrixRaw=await matrixResponse.text();
+    let quote;
+    try { quote=JSON.parse(matrixRaw); } catch { throw new Error(`Nem JSON élő gyermekár-válasz: ${cabin}/${age}: ${matrixRaw.slice(0,200)}`); }
+    assert.equal(matrixResponse.ok,true,`Élő gyermekár HTTP hiba ${cabin}/${age}: ${matrixRaw}`);
+    assert.equal(quote.status,'review_required',`${cabin}/${age}`);
+    assert.equal(quote.cabin,cabin);
+    assert.equal(quote.adults,2);
+    assert.deepEqual(quote.children,[age]);
+    assert.equal(quote.bookingCompleted,false);
+    assert.equal(quote.currency,'HUF');
+    assert.equal(quote.availability,'available',`Nincs szabad ${cabin} egység a gyermekár-kontrollhoz.`);
+    assert.ok(Number.isSafeInteger(quote.total)&&quote.total>0,`${cabin}/${age}: nincs teljes ár`);
+    assert.equal(quote.accommodation+quote.tourismTax,quote.total);
+    matrix.push({cabin,age,adults:2,children:[age],availableUnits:quote.availableUnits,accommodation:quote.accommodation,tourismTax:quote.tourismTax,total:quote.total});
+  }
+  const adultControlInput={arrival:'2026-10-16',departure:'2026-10-18',cabin,adults:3,children:[]};
+  const adultResponse=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(adultControlInput),signal:AbortSignal.timeout(60000)});
+  const adultRaw=await adultResponse.text();
+  let adultQuote;
+  try { adultQuote=JSON.parse(adultRaw); } catch { throw new Error(`Nem JSON élő 18 éves/felnőtt kontroll: ${cabin}: ${adultRaw.slice(0,200)}`); }
+  assert.equal(adultResponse.ok,true,`Élő felnőtt kontroll HTTP hiba ${cabin}: ${adultRaw}`);
+  assert.equal(adultQuote.status,'review_required');
+  assert.equal(adultQuote.cabin,cabin);
+  assert.equal(adultQuote.adults,3);
+  assert.deepEqual(adultQuote.children,[]);
+  assert.equal(adultQuote.bookingCompleted,false);
+  assert.equal(adultQuote.availability,'available',`Nincs szabad ${cabin} egység a 18 éves/felnőtt kontrollhoz.`);
+  assert.ok(Number.isSafeInteger(adultQuote.total)&&adultQuote.total>0);
+  matrix.push({cabin,age:18,adults:3,children:[],availableUnits:adultQuote.availableUnits,accommodation:adultQuote.accommodation,tourismTax:adultQuote.tourismTax,total:adultQuote.total});
+}
+console.log('LIVE PREVIO CHILD MATRIX PASS',JSON.stringify(matrix));
