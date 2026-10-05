@@ -30,7 +30,7 @@ export function splitCapacityOptions(guests){
     units:x.units,
     capacity:x.capacity,
     availability_verified:false,
-    reason:'Az Osztott A/B/C egységek élő Previo-megfeleltetése még nincs hitelesítve.'
+    reason:'A Previo-típusmapping hitelesített (A/B = 2 fős apartman pool, C = 4 fős apartman pool), de az egyedi 7A–10C egység-ID és az azonos fizikai házhoz tartozó A/B + C párosítás ezen a read-only útvonalon nem látszik.'
   }));
 }
 
