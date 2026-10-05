@@ -96,21 +96,21 @@ igazolható; automatikusan nem kerül levonásra.
 3. ÁRAZÁSI SZABÁLYOK
 ----------------------------------------------------------------
 
-3.1 Extra felnőtt díja: 4 500 Ft / éjszaka.
-Forrás: business-config.mjs:33-42
-Komment: A publikus referenciaár-számítás ezt használja az alaplétszám feletti felnőtteknél.
+3.1 Régi publikus árlista szerinti extra felnőtt referencia: 4 500 Ft / éjszaka.
+Forrás: business-config.mjs; a régi publikus árlista
+Komment: NEM hitelesített aktuális automatikus díj. A régi árlista alapárai eltérnek a jelenlegi szállásoldal alapáraitól, ezért pótvendég-árazásnál kézi vagy Previo-ellenőrzés szükséges.
 
-3.2 Gyermek 0-2 éves korig: 0 Ft / éjszaka a jelenlegi konfigurációban.
-Forrás: business-config.mjs:33-42; price-source/public-price-fallback.mjs:11-15
-Komment: Ez konfigurált referencia-szabály; az élő Previo gyermekár-teszteket külön kell kezelni.
+3.2 Régi publikus árlista szerinti 0-2 éves gyermek referencia: 0 Ft / éjszaka.
+Forrás: business-config.mjs; a régi publikus árlista
+Komment: Történeti referencia, nem hitelesített aktuális automatikus pótvendég-díj.
 
-3.3 Gyermek 3-8 éves korig: 2 250 Ft / éjszaka a jelenlegi konfigurációban.
-Forrás: business-config.mjs:33-42; price-source/public-price-fallback.mjs:11-15
-Komment: Ez konfigurált referencia-szabály; az élő Previo ár elsőbbséget élvez, ha hitelesen lekérhető.
+3.3 Régi publikus árlista szerinti 3-8 éves gyermek referencia: 2 250 Ft / éjszaka.
+Forrás: business-config.mjs; a régi publikus árlista
+Komment: Történeti referencia, nem hitelesített aktuális automatikus pótvendég-díj.
 
-3.4 8 év felett a referenciaár-számítás extra felnőtt díjat használ.
-Forrás: price-source/public-price-fallback.mjs:11-15
-Komment: A publikus fallback logika így számol; nem szabad összekeverni az élő Previo kategóriákkal.
+3.4 A publikus Osztott fallback nem használhat automatikusan pótvendég- vagy gyermekdíjat, amíg ezek aktuális összege nincs frissen hitelesítve.
+Forrás: business-config.mjs; price-source/public-price-fallback.mjs
+Komment: Alaplétszámig a jelenlegi publikus alapár referencia maradhat; pótvendégnél a rendszer hibával megáll és kézi/Previo-ellenőrzést kér.
 
 3.5 Idegenforgalmi adó: 550 Ft / felnőtt / éjszaka.
 Forrás: business-config.mjs:33-42; sarberki-core.mjs:460-467
