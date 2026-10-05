@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {cabinFromText,guestCountFromText,adultCountFromText,childCountFromText,dateRangeFromText,phoneFromText,childAgesFromText,pierPreferenceFromText,languageFromText,replySummary,replyQuestions,buildReplyDraft,requestedUnitsFromText} from './sarberki-core.mjs';
+import {cabinFromText,guestCountFromText,adultCountFromText,childCountFromText,dateRangeFromText,phoneFromText,childAgesFromText,pierPreferenceFromText,languageFromText,replySummary,replyQuestions,buildReplyDraft,requestedUnitsFromText,nameFromText} from './sarberki-core.mjs';
 const now=new Date('2026-09-28T08:00:00Z');
 test('HU parse',()=>{assert.equal(cabinFromText('Deluxe faház'), 'Deluxe');assert.equal(guestCountFromText('5 fő'),5);assert.deepEqual(dateRangeFromText('2026 október 16-19',now),{arrival:'2026-10-16',departure:'2026-10-19',inferredYear:false});});
 test('EN parse',()=>{assert.equal(cabinFromText('family cabin'),'Családi');assert.equal(guestCountFromText('4 guests'),4);assert.equal(childCountFromText('2 children'),2);assert.deepEqual(dateRangeFromText('October 16-19 2026',now),{arrival:'2026-10-16',departure:'2026-10-19',inferredYear:false});});
@@ -454,7 +454,7 @@ test('shared reply builder asks only shared missing-data questions',()=>{
   });
   assert.match(draft,/gyermek életkorát/u);
   assert.match(draft,/telefonszámot/u);
-  assert.match(draft,/Melyik háztípust/u);
+  assert.doesNotMatch(draft,/Melyik háztípust/u);
 });
 
 
@@ -805,4 +805,31 @@ test('guest reply keeps accommodation and fishing in separate thematic blocks',a
  assert.match(reply,/Horgászat:/u);
  assert.ok(reply.indexOf('Szállás:')<reply.indexOf('Horgászat:'));
  assert.doesNotMatch(reply,/Melyik háztípust szeretné/u);
+});
+
+
+test('Hungarian short signature extracts guest name',()=>{
+  assert.equal(nameFromText('Jó napot!\n6 fő részére érdeklődöm.\nÜdv.: Kovács István'),'Kovács István');
+  const draft=buildReplyDraft({
+    language:'hu',
+    original:'2026.10.09-től 10.13.ig szeretnénk megszállni. 6 fő részére. Horgászat és parkolás érdekel.\nÜdv.: Kovács István',
+    arrival:'2026-10-09',departure:'2026-10-13',guests:6,adults:null,children:null,phone:null,cabin:'? – emberi döntésre vár',
+    knowledgeLines:['Horgászati tájékoztató.']
+  });
+  assert.match(draft,/^Kedves István!/u);
+});
+
+test('guest reply is grouped by topic and avoids repeated review language',()=>{
+  const draft=buildReplyDraft({
+    language:'hu',
+    name:'Kovács István',
+    original:'2026.10.09-től 10.13.ig 6 fő. Van szabad hely? Horgászni szeretnénk. Parkolás is érdekel.',
+    arrival:'2026-10-09',departure:'2026-10-13',guests:6,adults:null,children:null,phone:null,cabin:'? – emberi döntésre vár',
+    operationalRules:{parking:'available_large_group_review'},
+    knowledgeLines:['Horgászati tájékoztató.']
+  });
+  assert.ok(draft.indexOf('Szállás\n')<draft.indexOf('Horgászat\n'));
+  assert.match(draft,/Horgászat\nHorgászati tájékoztató\./u);
+  assert.doesNotMatch(draft,/Melyik háztípust/u);
+  assert.doesNotMatch(draft,/ellenőrzésre vár|emberi jóváhagyás|HUMAN_APPROVAL_REQUIRED/u);
 });
