@@ -684,7 +684,10 @@ Phone: +44 7700 912345.`;
   assert.match(draft,/Barbed hooks are not allowed/u);
   assert.match(draft,/zander 30 cm/u);
   assert.match(draft,/Take-away fish prices per kg/u);
-  assert.match(draft,/only confirm them after a verified check/u);
+  assert.match(draft,/Accommodation\n/u);
+  assert.match(draft,/Fishing\n/u);
+  assert.match(draft,/Booking terms\n/u);
+  assert.doesNotMatch(draft,/only confirm them after a verified check|HUMAN_APPROVAL_REQUIRED|human approval required/iu);
   assert.doesNotMatch(draft,/122[ .]?200|244[ .]?400/u);
 });
 
@@ -788,7 +791,7 @@ test('real Kovacs Istvan numeric Hungarian date range is parsed',()=>{
 test('known dates and party size offer capacity options without asking for a cabin type',()=>{
  const reply=buildReplyDraft({language:'hu',arrival:'2026-10-09',departure:'2026-10-13',guests:6,adults:null,children:null,cabin:'? – emberi döntésre vár',original:'6 fő részére. Milyen lehetőségek vannak erre az időpontra?'});
  assert.doesNotMatch(reply,/Melyik háztípust szeretné/u);
- assert.match(reply,/Szállás:/u);
+ assert.match(reply,/Szállás\n/u);
  assert.match(reply,/6 fő/u);
  assert.match(reply,/összes megfelelő szállástípust/u);
  assert.match(reply,/hány felnőtt érkezik/u);
@@ -801,9 +804,9 @@ test('guest reply keeps accommodation and fishing in separate thematic blocks',a
  const original='2026.10.09-től 10.13.ig 6 fő részére keresünk szállást. Milyen lehetőségek vannak? Horgászni is szeretnénk, milyen szabályok vannak?';
  const fishing=fishingQuestion(original,'hu');
  const reply=buildReplyDraft({language:'hu',arrival:'2026-10-09',departure:'2026-10-13',guests:6,cabin:'? – emberi döntésre vár',original,operationalRules:BUSINESS.operationalRules,bookingRules:BUSINESS.bookingRules,pricingRules:BUSINESS.pricingRules,knowledgeLines:fishing?[fishing.answer]:[]});
- assert.match(reply,/Szállás:/u);
- assert.match(reply,/Horgászat:/u);
- assert.ok(reply.indexOf('Szállás:')<reply.indexOf('Horgászat:'));
+ assert.match(reply,/Szállás\n/u);
+ assert.match(reply,/Horgászat\n/u);
+ assert.ok(reply.indexOf('Szállás\n')<reply.indexOf('Horgászat\n'));
  assert.doesNotMatch(reply,/Melyik háztípust szeretné/u);
 });
 
