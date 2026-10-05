@@ -71,6 +71,18 @@
     const guests=window.SarberkiNormalize?.guestCountFromText?.(message);
     const adults=window.SarberkiNormalize?.adultCountFromText?.(message);
     if(Number.isInteger(guests)&&Number.isInteger(adults)&&guests===adults&&guests>0) return true;
+    if(explicitNoChildren(message)) return true;
+    const hasAdultCount=Number.isInteger(adults)&&adults>0;
+    const mentionsChildren=/\b(?:gyerek\w*|gyermek\w*|children?|kids?|kind(?:er)?|otrok\w*)\b/iu.test(message);
+    return hasAdultCount&&!mentionsChildren;
+  }){
+    if(normalized?.children!==null&&normalized?.children!==undefined&&normalized?.children!==''&&Number.isInteger(Number(normalized.children))) return true;
+    const field=analysis?.fields?.children?.value;
+    if(field!==null&&field!==undefined&&field!==''&&Number.isInteger(Number(field))) return true;
+    if(window.SarberkiNormalize?.childCountFromText?.(message)!=null) return true;
+    const guests=window.SarberkiNormalize?.guestCountFromText?.(message);
+    const adults=window.SarberkiNormalize?.adultCountFromText?.(message);
+    if(Number.isInteger(guests)&&Number.isInteger(adults)&&guests===adults&&guests>0) return true;
     return explicitNoChildren(message);
   }
 
@@ -212,7 +224,9 @@
     const directTotal=window.SarberkiNormalize?.guestCountFromText?.(message);
     const directAdult=window.SarberkiNormalize?.adultCountFromText?.(message);
     const deterministicNoChildren=Number.isInteger(directTotal)&&Number.isInteger(directAdult)&&directTotal===directAdult&&directTotal>0;
-    const children = normalized.children!==null&&normalized.children!==undefined&&normalized.children!==''&&Number.isInteger(Number(normalized.children)) ? Number(normalized.children) : (fields.children?.value!==null&&fields.children?.value!==undefined&&fields.children?.value!==''&&Number.isInteger(Number(fields.children.value)) ? Number(fields.children.value) : (sharedChildren!=null&&Number.isInteger(Number(sharedChildren)) ? Number(sharedChildren) : ((explicitNoChildren(message)||deterministicNoChildren)?0:null)));
+    const mentionsChildren=/\b(?:gyerek\w*|gyermek\w*|children?|kids?|kind(?:er)?|otrok\w*)\b/iu.test(message);
+        const adultsOnlyMention=Number.isInteger(directAdult)&&directAdult>0&&!mentionsChildren;
+        const children = normalized.children!==null&&normalized.children!==undefined&&normalized.children!==''&&Number.isInteger(Number(normalized.children)) ? Number(normalized.children) : (fields.children?.value!==null&&fields.children?.value!==undefined&&fields.children?.value!==''&&Number.isInteger(Number(fields.children.value)) ? Number(fields.children.value) : (sharedChildren!=null&&Number.isInteger(Number(sharedChildren)) ? Number(sharedChildren) : ((explicitNoChildren(message)||deterministicNoChildren||adultsOnlyMention)?0:null)));
     const normalizedAdults=Number(normalized.adults);
     const normalizedGuests=Number(normalized.guests);
     const sharedGuestsRaw=window.SarberkiNormalize?.guestCountFromText?.(message);
@@ -230,7 +244,7 @@
     $('price_cabin').value = splitUnit ? `split${splitUnit}` : explicit || Object.keys(cabins).find(k => unit.includes(cabins[k].toLowerCase())) || '';
     $('price_result').textContent = '';
     clearApprovedPrice('Az érdeklődés adatai frissültek; az árat újra ellenőrizni és jóváhagyni kell.');
-    $('price_status').textContent = !hasKnownChildStatus ? 'A teljes létszám ismert lehet, de a felnőtt/gyermek összetétel még hiányzik. Árlekérés csak ennek pontosítása után indulhat.' : children ? 'Gyermekes foglalás adatai átvéve. Pontos gyermekkorokkal hiteles élő árlekérés indítható; az ár külön jóváhagyásra vár.' : !explicit ? 'Faház: ? – emberi döntésre vár. Melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?' : 'Ellenőrizd a kinyert adatokat. Az élő árlekérés után külön árjóváhagyás szükséges.';
+    $('price_status').textContent = !hasKnownChildStatus ? 'A teljes létszám ismert lehet, de a felnőtt/gyermek összetétel még hiányzik. Árlekérés csak ennek pontosítása után indulhat.' : children ? 'Gyermekes foglalás adatai átvéve. Pontos gyermekkorokkal hiteles élő árlekérés indítható; az ár külön jóváhagyásra vár.' : !explicit ? 'Háztípus nincs megadva; pontos dátum és létszám esetén a szabad, kapacitásban megfelelő lehetőségeket automatikusan ellenőrizzük.' : 'Ellenőrizd a kinyert adatokat. Az élő árlekérés után külön árjóváhagyás szükséges.';
   }
 
   function huAskedTopics(message='',analysis=null){
