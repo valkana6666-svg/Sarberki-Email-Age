@@ -14,7 +14,7 @@ export const fishing = Object.freeze({
 });
 
 export function fishingQuestion(text='', language='hu') {
-  if (!/horgász|hal(?:at|at fog|elvitel|ár)|ponty|csuka|süllő|harcsa|hor(?:og|got|gok)|szakállas|normál\s*tó|rekord\s*tó|angeln|fishing|\bfish\b|fish(?:ing)? ticket|barbed|hook|haken|widerhaken|mindestmaß|min(?:imum)?\s+(?:fish\s+)?size|ribolov|trnek|trnki|zalust/iu.test(text)) return null;
+  if (!/horgász|hal(?:at|at fog|elvitel|ár)|ponty|csuka|süllő|harcsa|hor(?:og|got|gok)|szakállas|normál\s*tó|rekord\s*tó|angeln|fishing|\bfish\b|fish(?:ing)? ticket|barbed|hook|haken|widerhaken|mindestmaß|min(?:imum)?\s+(?:fish\s+)?size|ribolov|lovili\s+ribe|loviti\s+ribe|trnek|trnki|zalust/iu.test(text)) return null;
   const lang=['hu','de','en','si'].includes(language)?language:'hu';
   const wantsHook=/(?:szakállas|szakáll nélküli|hor(?:og|got|gok)|barbed\s+hooks?|barbless\s+hooks?|haken|widerhaken|trnek|trnki|zalust)/iu.test(text);
   const wantsGeneral=/(?:horgászat(?:nak)?[^.!?\n]{0,80}(?:feltétel|szabály)|milyen[^.!?\n]{0,80}(?:horgászati|horgászat)[^.!?\n]{0,40}(?:feltétel|szabály)|horgász(?:ni|nánk|nénk|nék)|fishing[^.!?\n]{0,80}(?:conditions|rules|requirements)|(?:would|want|like)[^.!?\n]{0,40}(?:to\s+)?fish|angeln[^.!?\n]{0,80}(?:bedingungen|regeln|voraussetzungen)|möcht(?:e|en)[^.!?\n]{0,40}angeln|ribolov[^.!?\n]{0,80}(?:pogoji|pravila)|(?:želel|želeli|radi)[^.!?\n]{0,50}(?:ribolov|loviti|lovili\s+ribe))/iu.test(text);
