@@ -116,15 +116,21 @@ test('approved quote asks for explicit guest confirmation before booking in all 
  assert.match(source,/Če vam ponudba ustreza/u);
 });
 
-test('approved price reply always includes 50 percent deposit due by bank transfer within 10 days in all four languages',()=>{
- assert.match(source,/A foglaló összege a teljes szállásdíj 50%-a/u);
- assert.match(source,/10 napon belül átutalással/u);
- assert.match(source,/booking deposit is 50%/u);
- assert.match(source,/bank transfer within 10 days/u);
- assert.match(source,/Anzahlung beträgt 50 %/u);
- assert.match(source,/innerhalb von 10 Tagen per Überweisung/u);
- assert.match(source,/Akontacija za rezervacijo znaša 50 %/u);
- assert.match(source,/bančnim nakazilom v 10 dneh/u);
+test('approved price reply uses configured group-size deposit and cancellation terms in all four languages',()=>{
+ assert.match(source,/function bookingTermsForGuests/u);
+ assert.match(source,/depositPctFrom15Guests/u);
+ assert.match(source,/depositPctUnder15Guests/u);
+ assert.match(source,/cancellationDaysFrom15Guests/u);
+ assert.match(source,/cancellationDaysUnder15Guests/u);
+ assert.match(source,/depositDueDays/u);
+ assert.match(source,/A foglaló összege a teljes szállásdíj \$\{terms\.depositPct\}%-a/u);
+ assert.match(source,/\$\{terms\.cancellationDays\}\. napig/u);
+ assert.match(source,/booking deposit is \$\{terms\.depositPct\}%/u);
+ assert.match(source,/cancelled up to \$\{terms\.cancellationDays\} days/u);
+ assert.match(source,/Anzahlung beträgt \$\{terms\.depositPct\} %/u);
+ assert.match(source,/Stornierung ist bis \$\{terms\.cancellationDays\} Tage/u);
+ assert.match(source,/Akontacija za rezervacijo znaša \$\{terms\.depositPct\} %/u);
+ assert.match(source,/odpovedati do \$\{terms\.cancellationDays\} dni/u);
 });
 
 test('multilingual approved price survives draft rewrite',()=>{
