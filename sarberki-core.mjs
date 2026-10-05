@@ -26,7 +26,6 @@ export function activeMessageText(text=''){
   }
   return current.join('\n').trim();
 }
-
 export function nameFromText(text=''){
   const current=activeMessageText(text);
   const fullName='([A-ZÁÉÍÓÖŐÚÜŰČŠŽÄÖÜ][\\p{L}-]+\\s+[A-ZÁÉÍÓÖŐÚÜŰČŠŽÄÖÜ][\\p{L}-]+)';
@@ -34,7 +33,7 @@ export function nameFromText(text=''){
     new RegExp('(?:^|\\n)\\s*(?:üdv(?:özlettel)?|tisztelettel|köszönettel)\\s*\\.?\\s*[:,-]?\\s*'+fullName+'\\s*$','imu'),
     new RegExp('(?:^|\\n)\\s*(?:mit\\s+freundlichen\\s+grüßen|viele\\s+grüße|freundliche\\s+grüße)\\s*[,.:;-]?\\s*'+fullName+'\\s*$','imu'),
     new RegExp('(?:^|\\n)\\s*(?:best\\s+regards|kind\\s+regards|regards|thank\\s+you)\\s*[,.:;-]?\\s*'+fullName+'\\s*$','imu'),
-    new RegExp('(?:^|\\n)\\s*(?:lep\\s+pozdrav|hvala\\s+in\\s+lep\\s+pozdrav|pozdrav)\\s*[,.:;-]?\\s*'+fullName+'\\s*$','imu'),
+    new RegExp('(?:^|\\n)\\s*(?:hvala\\s+in\\s+lep\\s+pozdrav|lep\\s+pozdrav|pozdrav)\\s*[,.:;-]?\\s*'+fullName+'\\s*$','imu'),
     new RegExp('(?:^|\\n)\\s*'+fullName+'\\s*$','mu')
   ];
   for(const pattern of patterns){
@@ -616,20 +615,20 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   original=activeMessageText(original);
   const lang=['hu','de','en','si'].includes(language)?language:'hu';
   const flags=requestFlagsFromText(original);
-  if(/kuty|dog|hund|\bpes\b|\bpsa\b/iu.test(original))dog=flags.petRequested;
-  if(/dézs|dezsa|hot.?tub|badefass|whirlpool/iu.test(original))hotTub=flags.hotTubRequested;
+  if(/kuty|dog|hund|\\bpes\\b|\\bpsa\\b/iu.test(original)) dog=flags.petRequested;
+  if(/dézs|dezsa|hot.?tub|badefass|whirlpool/iu.test(original)) hotTub=flags.hotTubRequested;
 
   const resolvedName=name?.trim()||nameFromText(original);
-  const nameParts=resolvedName?.replace(/^["']|["']$/gu,'').split(/\s+/u).filter(Boolean)||[];
+  const nameParts=resolvedName?.replace(/^["']|["']$/gu,'').split(/\\s+/u).filter(Boolean)||[];
   const first=nameParts.length?(lang==='hu'?nameParts.at(-1):nameParts[0]):null;
   const greetings={hu:first?`Kedves ${first}!`:'Kedves Vendégünk!',de:first?`Guten Tag, ${first}!`:'Guten Tag!',en:first?`Dear ${first},`:'Dear Guest,',si:first?`Pozdravljeni, ${first}!`:'Pozdravljeni!'};
   const intros={hu:'Köszönjük érdeklődését.',de:'Vielen Dank für Ihre Anfrage.',en:'Thank you for your enquiry.',si:'Hvala za vaše povpraševanje.'};
   const closings={hu:'Üdvözlettel:',de:'Mit freundlichen Grüßen',en:'Kind regards,',si:'Lep pozdrav'};
   const titles={
-    hu:{stay:'Szállás',fishing:'Horgászat',booking:'Foglalási feltételek',missing:'Pontosítandó adatok'},
-    de:{stay:'Unterkunft',fishing:'Angeln',booking:'Buchungsbedingungen',missing:'Noch benötigte Angaben'},
-    en:{stay:'Accommodation',fishing:'Fishing',booking:'Booking terms',missing:'Details still needed'},
-    si:{stay:'Nastanitev',fishing:'Ribolov',booking:'Pogoji rezervacije',missing:'Podatki za dopolnitev'}
+    hu:{stay:'Szállás',extras:'Kiegészítő információk',price:'Ár és díjak',fishing:'Horgászat',booking:'Foglalási feltételek',missing:'Pontosítandó adatok'},
+    de:{stay:'Unterkunft',extras:'Weitere Informationen',price:'Preis und Gebühren',fishing:'Angeln',booking:'Buchungsbedingungen',missing:'Noch benötigte Angaben'},
+    en:{stay:'Accommodation',extras:'Additional information',price:'Price and charges',fishing:'Fishing',booking:'Booking terms',missing:'Details still needed'},
+    si:{stay:'Nastanitev',extras:'Dodatne informacije',price:'Cena in doplačila',fishing:'Ribolov',booking:'Pogoji rezervacije',missing:'Podatki za dopolnitev'}
   }[lang];
 
   if(intent==='cancellation_request'||intent==='modification_request'){
@@ -650,7 +649,7 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const needChildStatus=!childStatusKnown;
   const needChildAge=childStatusKnown&&Number(children)>0&&childAges.length<Number(children);
   const questions=replyQuestions(lang,{needDates,needAdults,needChildStatus,needPhone:!phone,needCabin:needCabin&&!canRecommendByCapacity,needChildAge});
-  if(mismatch)questions.unshift({hu:'Kérjük, pontosítsa a létszámot: az összlétszám eltér a megadott felnőttek és gyermekek összegétől.',de:'Bitte klären Sie die Personenzahl: Die Gesamtzahl stimmt nicht mit der Zahl der Erwachsenen und Kinder überein.',en:'Please clarify the party size: the total differs from the number of adults and children.',si:'Prosimo, pojasnite število gostov: skupno število se ne ujema s številom odraslih in otrok.'}[lang]);
+  if(mismatch) questions.unshift({hu:'Kérjük, pontosítsa a létszámot: az összlétszám eltér a megadott felnőttek és gyermekek összegétől.',de:'Bitte klären Sie die Personenzahl: Die Gesamtzahl stimmt nicht mit der Zahl der Erwachsenen und Kinder überein.',en:'Please clarify the party size: the total differs from the number of adults and children.',si:'Prosimo, pojasnite število gostov: skupno število se ne ujema s številom odraslih in otrok.'}[lang]);
 
   const stayLines=[];
   if(summary) stayLines.push(summary);
@@ -666,10 +665,6 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
     }[lang]);
   }
 
-  const operationalLines=operationalTopicLines(lang,original,operationalRules);
-  const pricingLines=pricingTopicLines(lang,original,arrival,departure,pricingRules);
-  stayLines.push(...operationalLines,...pricingLines);
-
   const asksAvailability=/(?:szabad|elérhető|van[- ]?e .*szállás|van.*hely|available|frei|prosto|verfügbar|razpolož)/iu.test(original);
   const asksPrice=/(?:mennyi|mennyibe|ár|ára|árat|price|cost|kosten|preis|cena)/iu.test(original);
   if(asksAvailability&&!canRecommendByCapacity) stayLines.push({
@@ -678,7 +673,10 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
     en:'We will check availability for the requested dates.',
     si:'Preverimo proste kapacitete za izbrani termin.'
   }[lang]);
-  if(asksPrice) stayLines.push({
+
+  const operationalLines=operationalTopicLines(lang,original,operationalRules);
+  const pricingLines=pricingTopicLines(lang,original,arrival,departure,pricingRules);
+  if(asksPrice) pricingLines.push({
     hu:'A teljes árat a ténylegesen szabad lehetőség alapján adjuk meg.',
     de:'Den Gesamtpreis nennen wir anhand der tatsächlich verfügbaren Möglichkeit.',
     en:'We will quote the total price for the option that is actually available.',
@@ -689,10 +687,13 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const fishingLines=fishingAsked&&Array.isArray(knowledgeLines)?knowledgeLines.filter(Boolean):[];
   const bookingLines=bookingPolicyLines(lang,original,guests,bookingRules);
   const blocks=[];
-  if(stayLines.length) blocks.push([titles.stay,...stayLines].join('\n'));
-  if(fishingLines.length) blocks.push([titles.fishing,...fishingLines].join('\n'));
-  if(bookingLines.length) blocks.push([titles.booking,...bookingLines].join('\n'));
-  if(questions.length) blocks.push([titles.missing,questions.join(' ')].join('\n'));
+  const add=(title,lines)=>{const clean=lines.filter(Boolean);if(clean.length)blocks.push([title,...clean].join('\n'));};
+  add(titles.stay,stayLines);
+  add(titles.extras,operationalLines);
+  add(titles.price,pricingLines);
+  add(titles.fishing,fishingLines);
+  add(titles.booking,bookingLines);
+  add(titles.missing,questions);
 
   return `${greetings[lang]}\n\n${intros[lang]}${blocks.length?'\n\n'+blocks.join('\n\n'):''}\n\n${closings[lang]}\n${brandName}`;
 }
