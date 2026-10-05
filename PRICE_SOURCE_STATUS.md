@@ -128,3 +128,16 @@ Következmény:
 - **NOT VERIFIED INDIVIDUAL MAPPING:** 7A, 7B, 7C … 10C konkrét Previo-egységazonosítói.
 - **NOT VERIFIED PAIRING:** ugyanazon fizikai ház A/B + C párosának egyidejű elérhetősége.
 - A 6 fős A+C vagy B+C ajánlás ezért továbbra is `manual_review`, még akkor is, ha mindkét összevont Previo poolban van szabad egység.
+
+
+## Osztott apartman Previo típusszintű mapping – 2026-10-05
+
+A Sárberki hivatalos szállásoldal „Szállás foglalása” linkjei a foglalási oldalnak `room_id` paramétert adnak át. A már korábban a Previo `OBJECT_KINDS` adatából igazolt Deluxe `obkId=766439` pontosan megegyezik a Deluxe nyilvános `room_id=766439` értékével. Ugyanezen linkstruktúra alapján:
+
+- **2 fős apartman pool:** `room_id=766441`; ide tartoznak a 7–10 házak A és B földszinti, 2 fős egységei, összesen 8 egyenértékű foglalható egység.
+- **4 fős apartman pool:** `room_id=766443`; ide tartoznak a 7–10 házak C felső egységei, összesen 4 egyenértékű foglalható egység.
+- Keresztellenőrzési pontok: Különálló 2 fős `766433`, Családi `766435`, VIP `766437`, Deluxe `766439`.
+
+**Bizonyítási határ:** ez a mapping a Previo foglalási **típus / object-kind pool** szintjét azonosítja. Nem adja meg, hogy a poolon belül mely konkrét fizikai egység a 7A, 7B, 8A, 8B stb., és nem bizonyítja, hogy egy adott A/B egység ugyanabban a 7–10-es fizikai házban párosítható egy adott C egységgel. Ezért a konkrét **A/B + C párosítás továbbra is manual_review**.
+
+A konfiguráció ezt külön jelöli: `previoTypeMappingVerified=true`, miközben `previoIndividualUnitMappingVerified=false`, `previoPairingVerified=false` és a régi teljes `previoMappingVerified=false` kapu változatlan marad. Emiatt a jelenlegi automatikus availability/quote adapter nem kezdi el A/B/C-ként biztosan használni a pooled mappinget.
