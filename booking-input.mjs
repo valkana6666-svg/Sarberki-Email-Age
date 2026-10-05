@@ -9,6 +9,7 @@ import {
   languageFromText
 } from './sarberki-core.mjs';
 import { assessAccommodationInquiry } from './shared-core/inquiry-assessment.mjs';
+import { decideInquiryNextAction } from './shared-core/workflow-decision.mjs';
 
 export const BOOKING_CHANNELS=Object.freeze(['email','web_form','phone_ai','manual']);
 
@@ -37,6 +38,10 @@ export function normalizeBookingInput({channel='manual',text='',sourceId=null,re
     childAges
   });
   const missing=assessment.missing.map(key=>key==='accommodation'?'cabin':key);
+  const nextAction=decideInquiryNextAction({
+    ...assessment,
+    missing
+  });
 
   return Object.freeze({
     schema:'sarberki.booking-input.v1',
@@ -59,6 +64,7 @@ export function normalizeBookingInput({channel='manual',text='',sourceId=null,re
     missing:Object.freeze(missing),
     contradictions:assessment.contradictions,
     humanReviewRequired:assessment.human_review_required,
-    readyForPrice:assessment.ready
+    nextAction,
+    readyForPrice:nextAction.action==='ready_for_pricing'
   });
 }
