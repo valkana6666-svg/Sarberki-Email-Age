@@ -47,6 +47,7 @@ export const BUSINESS = Object.freeze({
     deluxe: Object.freeze({
       label:'Deluxe',
       bookingName:'DELUXE faház',
+      publicBookingRoomId:766439,
       basePriceGuests:4,
       publicListedNightlyHuf:60000,
       maxAdults:6,
@@ -56,6 +57,7 @@ export const BUSINESS = Object.freeze({
     family: Object.freeze({
       label:'Családi',
       bookingName:'Családi faház',
+      publicBookingRoomId:766435,
       basePriceGuests:4,
       publicListedNightlyHuf:52000,
       maxAdults:8,
@@ -65,6 +67,7 @@ export const BUSINESS = Object.freeze({
     vip: Object.freeze({
       label:'VIP',
       bookingName:'VIP apartman',
+      publicBookingRoomId:766437,
       basePriceGuests:4,
       publicListedNightlyHuf:60000,
       maxAdults:7,
@@ -74,6 +77,7 @@ export const BUSINESS = Object.freeze({
     small: Object.freeze({
       label:'Különálló 2 fős',
       bookingName:'Különálló 2 fős faház',
+      publicBookingRoomId:766433,
       basePriceGuests:2,
       publicListedNightlyHuf:30000,
       maxAdults:2,
@@ -84,6 +88,10 @@ export const BUSINESS = Object.freeze({
     splitA: Object.freeze({
       label:'Osztott A',
       bookingName:null,
+      publicBookingRoomId:766441,
+      publicBookingPoolName:'2 Fős apartman',
+      previoTypeMappingVerified:true,
+      previoIndividualUnitMappingVerified:false,
       basePriceGuests:2,
       publicListedNightlyHuf:23000,
       maxAdults:2,
@@ -103,6 +111,10 @@ export const BUSINESS = Object.freeze({
     splitB: Object.freeze({
       label:'Osztott B',
       bookingName:null,
+      publicBookingRoomId:766441,
+      publicBookingPoolName:'2 Fős apartman',
+      previoTypeMappingVerified:true,
+      previoIndividualUnitMappingVerified:false,
       basePriceGuests:2,
       publicListedNightlyHuf:23000,
       maxAdults:2,
@@ -122,6 +134,10 @@ export const BUSINESS = Object.freeze({
     splitC: Object.freeze({
       label:'Osztott C',
       bookingName:null,
+      publicBookingRoomId:766443,
+      publicBookingPoolName:'4 Fős apartman',
+      previoTypeMappingVerified:true,
+      previoIndividualUnitMappingVerified:false,
       basePriceGuests:4,
       publicListedNightlyHuf:44000,
       maxAdults:5,
