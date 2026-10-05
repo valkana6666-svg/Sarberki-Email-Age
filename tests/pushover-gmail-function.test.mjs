@@ -31,6 +31,8 @@ function mockFetch({account='sarberkiprojecttest@gmail.com',inbox=true,pushoverS
     });
     if (url==='https://api.pushover.net/1/messages.json') {
       assert.equal(options.body.get('title'),'Sárberki · új levél');
+      assert.equal(options.body.get('url'),origin+'/');
+      assert.equal(options.body.get('url_title'),'Sarberki tesztoldal megnyitasa');
       assert.match(options.body.get('message'),/Any Sender/u);
       assert.match(options.body.get('message'),/Bármilyen tárgy/u);
       return Response.json({status:pushoverStatus,request:'push-request'},{status:pushoverStatus===1?200:400});
