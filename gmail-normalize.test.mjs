@@ -793,7 +793,7 @@ test('known dates and party size offer capacity options without asking for a cab
  assert.doesNotMatch(reply,/Melyik háztípust szeretné/u);
  assert.match(reply,/Szállás\n/u);
  assert.match(reply,/6 fő/u);
- assert.match(reply,/összes megfelelő szállástípust/u);
+ assert.match(reply,/megfelelő szabad szállástípusokat/u);
  assert.match(reply,/hány felnőtt érkezik/u);
  assert.match(reply,/érkezik-e gyermek/u);
 });
