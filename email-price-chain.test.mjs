@@ -8,7 +8,8 @@ import * as sharedNormalize from './sarberki-core.mjs';
 const html=fs.readFileSync(new URL('./index.html',import.meta.url),'utf8');
 const pricing=fs.readFileSync(new URL('./price-check.js',import.meta.url),'utf8');
 const recorded=JSON.parse(fs.readFileSync(new URL('./price-source/fixtures/recorded-previo-quotes.json',import.meta.url),'utf8')).cases;
-const sample=(c,extra='')=>`Kedves Sárberki Horgásztó! 2026. október 16–18. között ${c.adults+c.children.length} fő részére, ${c.adults} felnőtt${c.children.length?` és ${c.children.length} gyermek, ${c.children.join(' és ')} évesek`:''} számára ${c.cabin==='family'?'Családi':'Deluxe'} házat szeretnénk. Van szabad hely, és mennyibe kerül összesen? ${extra} Üdvözlettel, Teszt Elek`;
+const cabinLabel=cabin=>({deluxe:'Deluxe',family:'Családi',vip:'VIP',small:'Különálló'})[cabin]||cabin;
+const sample=(c,extra='')=>`Kedves Sárberki Horgásztó! 2026. október 16–18. között ${c.adults+c.children.length} fő részére, ${c.adults} felnőtt${c.children.length?` és ${c.children.length} gyermek, ${c.children.join(' és ')} évesek`:''} számára ${cabinLabel(c.cabin)} házat szeretnénk. Van szabad hely, és mennyibe kerül összesen? ${extra} Üdvözlettel, Teszt Elek`;
 
 function harness(message,reply){
  const nodes=new Map(),listeners=new Map();let calls=0;
