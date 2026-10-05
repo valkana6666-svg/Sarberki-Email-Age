@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {fetchPublicBookingQuote,requestPrevioReadOnly} from './sarberki-public-booking.mjs';
+import {fetchPublicBookingAvailability,fetchPublicBookingQuote,requestPrevioReadOnly} from './sarberki-public-booking.mjs';
 
 const first='<form id="firstStep" action="https://booking.previo.cz/?hotId=753011&amp;currency=HUF&amp;lang=hu&amp;PHPSESSID=test-session"></form>';
 const categories=[{guaId:1,isDefault:true,isChild:false},{guaId:2,isChild:true,ageFrom:8,ageTo:17,isWithoutBed:false},{guaId:3,isChild:true,ageFrom:3,ageTo:7,isWithoutBed:false},{guaId:4,isChild:true,ageFrom:0,ageTo:2,isWithoutBed:true}];
-const kinds=[{obkId:10,hotelLangName:'DELUXE faház'},{obkId:11,hotelLangName:'Családi faház'},{obkId:12,hotelLangName:'VIP apartman'},{obkId:13,hotelLangName:'Különálló 2 fős faház'}];
+const kinds=[{obkId:10,hotelLangName:'DELUXE faház'},{obkId:11,hotelLangName:'Családi faház'},{obkId:12,hotelLangName:'VIP apartman'},{obkId:13,hotelLangName:'Különálló 2 fős faház'},{obkId:766441,hotelLangName:'2 fős apartman',numOfRooms:8},{obkId:766443,hotelLangName:'4 fős apartman',numOfRooms:4}];
 function mock({free=2,price=122200,tax=2200,error=false,unknown=false}={}){
  const calls=[];
  const request=async(url,options={})=>{
@@ -24,6 +24,27 @@ function mock({free=2,price=122200,tax=2200,error=false,unknown=false}={}){
  return {request,calls};
 }
 const base={arrival:'2027-10-16',departure:'2027-10-18',cabin:'deluxe',adults:2,children:[]};
+test('split pools are available for read-only occupancy without enabling split quotes',async()=>{
+ const a=mock({free:4});
+ const avA=await fetchPublicBookingAvailability({arrival:'2027-10-16',departure:'2027-10-18',cabin:'splitA'},a.request);
+ assert.equal(avA.availableUnits,4);
+ assert.equal(a.calls[2].data.obkId,'766441');
+
+ const b=mock({free:4});
+ const avB=await fetchPublicBookingAvailability({arrival:'2027-10-16',departure:'2027-10-18',cabin:'splitB'},b.request);
+ assert.equal(avB.availableUnits,4);
+ assert.equal(b.calls[2].data.obkId,'766441');
+
+ const upper=mock({free:3});
+ const avC=await fetchPublicBookingAvailability({arrival:'2027-10-16',departure:'2027-10-18',cabin:'splitC'},upper.request);
+ assert.equal(avC.availableUnits,3);
+ assert.equal(upper.calls[2].data.obkId,'766443');
+
+ const quote=mock();
+ await assert.rejects(fetchPublicBookingQuote({...base,cabin:'splitA'},quote.request),/nincs ellenőrzött Previo megfeleltetés/u);
+ assert.equal(quote.calls.length,0);
+});
+
 test('2 adults: source JSON is the sole price, and availability is checked',async()=>{
  const m=mock();const quote=await fetchPublicBookingQuote(base,m.request);
  assert.equal(quote.total,122200);assert.equal(quote.tourismTax,2200);assert.equal(quote.availableUnits,2);assert.equal(quote.source,'Sárberki hivatalos foglalási felület');
