@@ -132,3 +132,17 @@ Ha a bizonyosság nem elég magas, a rendszer ne állítson biztos tényt, hanem
 - a belőle levont fejlesztési tanulság a megfelelő döntés- vagy tanulságfájlba kerüljön;
 - konkrét Sárberki szabály csak akkor kerüljön a `szabalyok.txt`-be, ha annak üzleti forrása is megvan;
 - élő ár/kapacitás eredményt dátummal és bizonyítási státusszal kell rögzíteni.
+
+### Aktuális és régi Sárberki árforrás ütközése
+
+2026-10-05-i ellenőrzéskor a jelenlegi szállásoldal magasabb alapárakat mutat (például Családi 52 000 Ft, Deluxe/VIP 60 000 Ft, 4 fős apartman 44 000 Ft, 2 fős apartman 23 000 Ft), miközben a külön régi árlistaoldal még a korábbi 26 000 / 30 000 / 20 000 / 11 000 Ft alapárakat és a 4 500 / 2 250 Ft pótvendég-/gyermekárakat tartalmazza.
+
+Következmény: a régi pótvendég- és gyermekárak történeti referenciák, de **nem használhatók automatikusan aktuális fallbackként**, amíg nincs friss üzleti vagy Previo-hitelesítés. A rendszer ezért pótvendég-árazásnál fail-closed módon kezelői/Previo ellenőrzést kér.
+
+Aktuális szállásoldal:
+- https://sarberkito.hu/accomodation/
+
+Régi árlista:
+- https://sarberkito.hu/price-list/?lang=en
+- https://sarberkito.hu/arlista/?lang=de
+
