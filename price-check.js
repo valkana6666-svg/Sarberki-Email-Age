@@ -355,71 +355,53 @@
     if(replyLanguage!=='HU') return foreignFocusedReply(message,analysis,replyLanguage);
     if(['cancellation_request','modification_request'].includes(analysis.intent)) return '';
     const f=analysis.fields||{};
-    const v=Object.fromEntries(Object.entries(f).map(([k,x])=>[k,x?.value||'']));
+    const v=Object.fromEntries(Object.entries(f).map(([k,x])=>[k,x?.value??'']));
     const selectedCabin=cabins[$('price_cabin')?.value||'']||'';
     if(selectedCabin) v.unit=selectedCabin;
+    v.adults=v.adults||$('price_adults')?.value||'';
+    if(v.children===''||v.children===null||v.children===undefined) v.children=$('price_children')?.value??'';
+    if(!v.guests) v.guests=(Number(v.adults)||0)+(Number(v.children)||0)||'';
     const asked=huAskedTopics(message,analysis);
-    const lines=[`Kedves ${v.name||'Érdeklődő'}!`,'','Köszönjük érdeklődését a Sárberki Horgásztó iránt.'];
-
+    const availabilityLines=currentAvailabilityLines(v,'HU');
+    const lines=['Kedves '+(v.name||'Érdeklődő')+'!','','Köszönjük érdeklődését a Sárberki Horgásztó iránt.'];
     const bookingBits=[];
-    if(v.arrival&&v.departure) bookingBits.push(`${v.arrival} – ${v.departure}`);
-    if(v.nights) bookingBits.push(`${v.nights} éjszakára`);
-    if(v.guests) bookingBits.push(`${v.guests} fő részére`);
-    if(bookingBits.length) lines.push('',`Örömmel fogadtuk érdeklődését a ${bookingBits.join(', ')} tervezett tartózkodásról.`);
-
+    if(v.arrival&&v.departure) bookingBits.push(v.arrival+' – '+v.departure);
+    if(v.nights) bookingBits.push(v.nights+' éjszakára');
+    if(v.guests) bookingBits.push(v.guests+' fő részére');
+    if(bookingBits.length) lines.push('','Örömmel fogadtuk érdeklődését a '+bookingBits.join(', ')+' tervezett tartózkodásról.');
     const party=[];
-    if(v.adults) party.push(`${v.adults} felnőtt`);
-    if(v.children) party.push(`${v.children} gyermek${v.child_ages?` (${v.child_ages} éves)`:''}`);
-    if(party.length) lines.push(`Úgy látjuk, ${party.join(' és ')} érkezne.`);
-
+    if(v.adults) party.push(v.adults+' felnőtt');
+    if(Number(v.children)>0) party.push(v.children+' gyermek'+(v.child_ages?' ('+v.child_ages+' éves)':''));
+    if(party.length) lines.push('Úgy látjuk, '+party.join(' és ')+' érkezne.');
     const plan=typeof accommodationPlan==='function'?accommodationPlan(v):null;
-    if(plan?.specific&&v.unit) lines.push(`A kért ${v.unit} háztípust figyelembe vettük.`);
-    else if(v.unit&&!/^(?:ház|faház|apartman|cabin)$/iu.test(v.unit)) lines.push(`A megadott szállástípus: ${v.unit}.`);
-    else if(!v.unit&&!currentAvailabilityLines(v).length) lines.push('Kérjük, írja meg, melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?');
-
+    if(plan?.specific&&v.unit) lines.push('A kért '+v.unit+' háztípust figyelembe vettük.');
+    else if(v.unit&&!/^(?:ház|faház|apartman|cabin)$/iu.test(v.unit)) lines.push('A megadott szállástípus: '+v.unit+'.');
+    else if(!v.unit&&!availabilityLines.length) lines.push('Kérjük, írja meg, melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?');
     const priceApproved=approvedPrice&&approvedPrice.fingerprint===quoteFingerprint();
     if(asked.availability&&asked.price){
       if(priceApproved) lines.push('','Ellenőrizzük, hogy a megadott időpontra elérhető-e a kért háztípus. '+approvedPriceText(approvedPrice)+' Az elérhetőséget külön visszaigazoljuk.');
       else lines.push('','Ellenőrizzük, hogy a megadott időpontra elérhető-e a kért háztípus. Az aktuális teljes árról ezt követően tudunk pontos tájékoztatást adni.');
-    } else if(asked.availability) {
-      lines.push('','Ellenőrizzük, hogy a megadott időpontra elérhető-e a kért háztípus, és hamarosan visszajelzünk.');
-    } else if(asked.price) {
-      if(priceApproved) {
-        const selectedLabel=selectedCabin||v.unit||'kiválasztott háztípus';
-        const approvedParty=[];
-        if(v.adults) approvedParty.push(`${v.adults} felnőtt`);
-        if(v.children) approvedParty.push(`${v.children} gyermek${v.child_ages?` (${v.child_ages} éves)`:''}`);
-        const partyText=approvedParty.length ? approvedParty.join(' és ')+' részére' : (v.guests ? `${v.guests} fő részére` : '');
-        lines.push('',`Az Ön által választott ${selectedLabel} ${partyText ? partyText+' ' : ''}a jóváhagyott adatok alapján ${approvedPriceText(approvedPrice)}`);
-      }
-      else lines.push('','Az aktuális teljes árat a foglalási felületen ellenőrizzük, és ezt követően tudunk pontos tájékoztatást adni.');
-    } else if(priceApproved) {
-      const selectedLabel=selectedCabin||v.unit||'kiválasztott háztípus';
-      const approvedParty=[];
-      if(v.adults) approvedParty.push(`${v.adults} felnőtt`);
-      if(v.children) approvedParty.push(`${v.children} gyermek${v.child_ages?` (${v.child_ages} éves)`:''}`);
-      const partyText=approvedParty.length ? approvedParty.join(' és ')+' részére' : (v.guests ? `${v.guests} fő részére` : '');
-      lines.push('',
-        `Az Ön által választott ${selectedLabel} ${partyText ? partyText+' ' : ''}a jóváhagyott adatok alapján ${approvedPriceText(approvedPrice)}`
-      );
+    } else if(asked.availability&&!availabilityLines.length) lines.push('','Ellenőrizzük, hogy a megadott időpontra elérhető-e a kért háztípus, és hamarosan visszajelzünk.');
+    else if(asked.price){
+      if(priceApproved){
+        const label=selectedCabin||v.unit||'kiválasztott háztípus';
+        const pp=[]; if(v.adults)pp.push(v.adults+' felnőtt'); if(Number(v.children)>0)pp.push(v.children+' gyermek'+(v.child_ages?' ('+v.child_ages+' éves)':''));
+        const pt=pp.length?pp.join(' és ')+' részére':(v.guests?v.guests+' fő részére':'');
+        lines.push('','Az Ön által választott '+label+' '+(pt?pt+' ':'')+'a jóváhagyott adatok alapján '+approvedPriceText(approvedPrice));
+      } else lines.push('','Az aktuális teljes árat a foglalási felületen ellenőrizzük, és ezt követően tudunk pontos tájékoztatást adni.');
+    } else if(priceApproved){
+      const label=selectedCabin||v.unit||'kiválasztott háztípus';
+      const pp=[]; if(v.adults)pp.push(v.adults+' felnőtt'); if(Number(v.children)>0)pp.push(v.children+' gyermek'+(v.child_ages?' ('+v.child_ages+' éves)':''));
+      const pt=pp.length?pp.join(' és ')+' részére':(v.guests?v.guests+' fő részére':'');
+      lines.push('','Az Ön által választott '+label+' '+(pt?pt+' ':'')+'a jóváhagyott adatok alapján '+approvedPriceText(approvedPrice));
     }
-
     if(priceApproved){
       const guestCount=(Number(v.adults)||Number($('price_adults')?.value)||0)+(Number(v.children)||Number($('price_children')?.value)||0);
       const terms=bookingTermsForGuests(guestCount);
-      lines.push('',
-        `A foglaló összege a teljes szállásdíj ${terms.depositPct}%-a, amelyet ${terms.depositDueDays} napon belül átutalással kérünk rendezni.`,
-        `A foglalás az érkezést megelőző ${terms.cancellationDays}. napig mondható le a foglalási feltételek szerint.`,
-        'Amennyiben az ajánlat megfelel Önnek, kérjük, válasz e-mailben erősítse meg, hogy a foglalást a fenti feltételekkel rögzíthetjük. A foglalást csak az Ön egyértelmű visszaigazolása után rögzítjük.'
-      );
+      lines.push('','A foglaló összege a teljes szállásdíj '+terms.depositPct+'%-a, amelyet '+terms.depositDueDays+' napon belül átutalással kérünk rendezni.','A foglalás az érkezést megelőző '+terms.cancellationDays+'. napig mondható le a foglalási feltételek szerint.','Amennyiben az ajánlat megfelel Önnek, kérjük, válasz e-mailben erősítse meg, hogy a foglalást a fenti feltételekkel rögzíthetjük. A foglalást csak az Ön egyértelmű visszaigazolása után rögzítjük.');
     }
-
     if(asked.pet) lines.push('','A kisebb kutyával kapcsolatos kérését is feljegyeztük. Háziállat térítés ellenében hozható; a pontos díjat ellenőrizzük.');
-    if(asked.hotTub){
-      if(/deluxe/iu.test(String(v.unit||''))) lines.push('','A Deluxe házakhoz dézsa tartozik; a kért időszak szabad kapacitását a foglalási felületen ellenőrizzük.');
-      else lines.push('','A dézsa rendelkezésre állását is ellenőrizzük a kért időszakra.');
-    }
-
+    if(asked.hotTub){ if(/deluxe/iu.test(String(v.unit||''))) lines.push('','A Deluxe házakhoz dézsa tartozik; a kért időszak szabad kapacitását a foglalási felületen ellenőrizzük.'); else lines.push('','A dézsa rendelkezésre állását is ellenőrizzük a kért időszakra.'); }
     if(asked.amenities) lines.push('','A felszereltséggel kapcsolatban a levélben feltett kérdésre külön, a kiválasztott háztípus biztos adatai alapján válaszolunk.');
     if(asked.deposit) lines.push('','Az előlegre vonatkozó kérdést a foglalási feltételek alapján külön ellenőrizzük és pontosan megválaszoljuk.');
     if(asked.cancellation) lines.push('','A lemondási feltételekre vonatkozó kérdést a foglalás létszáma és időpontja alapján külön megválaszoljuk.');
@@ -431,21 +413,19 @@
       else if(/vip|családi/iu.test(String(v.unit||''))) lines.push('','A kiválasztott házhoz stég tartozik.');
       else lines.push('','A stéghasználatot a kiválasztott háztípus alapján pontosítjuk.');
     }
-    if(asked.parking) lines.push('','A parkolási lehetőséget a megadott autószám és háztípus alapján pontosítjuk.');
+    if(asked.parking) lines.push('','A parkolás biztosított. Ha több autóval érkeznek, kérjük, jelezzék az autók számát, mert ezt külön ellenőrizzük.');
     if(asked.arrivalTime) lines.push('','A megadott érkezési időpontot is figyelembe vettük, és visszaigazoljuk, hogy az adott érkezési idő megfelelő-e.');
-
-    const availabilityLines=currentAvailabilityLines(v);
+    const fishingAnswer=window.SarberkiFishingQuestion?.(message,'hu')?.answer||'';
+    if(fishingAnswer) lines.push('',fishingAnswer);
     if(availabilityLines.length) lines.push('',...availabilityLines);
-
     const missing=[];
     if(!v.arrival||!v.departure) missing.push('pontos érkezési és távozási dátum');
-    if(!v.unit||/^(?:ház|faház|apartman|cabin)$/iu.test(v.unit)) missing.push('kért háztípus');
+    if((!v.unit||/^(?:ház|faház|apartman|cabin)$/iu.test(v.unit))&&!availabilityLines.length) missing.push('kért háztípus');
     if(!v.adults) missing.push('felnőttek száma');
     const childKnown=v.children!==null&&v.children!==undefined&&v.children!=='';
     if(!childKnown) missing.push('érkezik-e gyermek');
     if(childKnown&&Number(v.children)>0&&!v.child_ages) missing.push('gyermek(ek) életkora');
-    if(missing.length) lines.push('',`A pontos válaszhoz kérjük, írja meg még: ${missing.join(', ')}.`);
-
+    if(missing.length) lines.push('','A pontos válaszhoz kérjük, írja meg még: '+missing.join(', ')+'.');
     lines.push('','','Üdvözlettel:','Sárberki Horgásztó');
     return lines.join('\n');
   }
