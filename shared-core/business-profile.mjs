@@ -5,6 +5,7 @@
 export function createAccommodationBusinessProfile({
   id,
   brandName,
+  bookingUrl=null,
   locale,
   timezone,
   currency,
@@ -16,6 +17,7 @@ export function createAccommodationBusinessProfile({
 }={}){
   if(!id||typeof id!=='string') throw new Error('A business profile azonosítója kötelező.');
   if(!brandName||typeof brandName!=='string') throw new Error('A business profile neve kötelező.');
+  if(bookingUrl!==null&&typeof bookingUrl!=='string') throw new Error('A bookingUrl csak szöveg vagy null lehet.');
   if(!locale||!timezone||!currency) throw new Error('A business profile locale/timezone/currency mezői kötelezők.');
   if(!bookingRules||typeof bookingRules!=='object') throw new Error('A foglalási szabályok hiányoznak.');
   if(!operationalRules||typeof operationalRules!=='object') throw new Error('Az üzemeltetési szabályok hiányoznak.');
@@ -26,6 +28,7 @@ export function createAccommodationBusinessProfile({
   return Object.freeze({
     id,
     brandName,
+    bookingUrl,
     locale,
     timezone,
     currency,
