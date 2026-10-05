@@ -3,7 +3,8 @@ import {SARBERKI_PROFILE} from '../business/sarberki/profile.mjs';
 
 const ROOT=SARBERKI_PROFILE.bookingProvider.root;
 const HOTEL_ID=SARBERKI_PROFILE.bookingProvider.hotelId;
-const NAMES=Object.fromEntries(Object.entries(SARBERKI_PROFILE.accommodationTypes).map(([key,value])=>[key,value.bookingName]));
+const TYPES=SARBERKI_PROFILE.accommodationTypes;
+const NAMES=Object.fromEntries(Object.entries(TYPES).map(([key,value])=>[key,value.bookingName]));
 const GET_PATHS=new Set(['/','/index/step-1/','/index/step-2/']);
 const POST_PATHS=new Set(['/','/index/get-object-kind-occupancy/','/index/get-occupancy-price/']);
 const QUERY_KEYS=new Set(['hotId','currency','lang','theme','redirectType','showTabs','PHPSESSID']);
@@ -71,6 +72,25 @@ function categoryFor(age,categories){
   if(matches.length!==1) throw Error('A gyermek életkora nem rendelhető egyértelmű Previo-kategóriához.');
   return matches[0];
 }
+function normalizedName(value){return String(value||'').trim().toLocaleLowerCase('hu-HU');}
+function availabilityKind(cabin,params){
+  const type=TYPES[cabin];
+  if(!type) throw Error('Ismeretlen háztípus.');
+  if(type.bookingName){
+    const matches=params.OBJECT_KINDS?.filter(x=>x.hotelLangName===type.bookingName)||[];
+    if(matches.length!==1) throw Error('A kért háztípus nem azonosítható egyértelműen.');
+    return matches[0];
+  }
+  if(type.previoTypeMappingVerified===true&&Number.isInteger(type.previoObjectKindId)){
+    const matches=params.OBJECT_KINDS?.filter(x=>Number(x.obkId)===type.previoObjectKindId)||[];
+    if(matches.length!==1) throw Error('A hitelesített Previo típusszintű mapping nem található egyértelműen.');
+    const kind=matches[0];
+    if(type.previoObjectKindName&&normalizedName(kind.hotelLangName)!==normalizedName(type.previoObjectKindName)) throw Error('A Previo típusszintű mapping neve megváltozott.');
+    if(Number.isInteger(type.previoObjectKindPoolSize)&&Number.isFinite(Number(kind.numOfRooms))&&Number(kind.numOfRooms)!==type.previoObjectKindPoolSize) throw Error('A Previo típusszintű pool mérete megváltozott.');
+    return kind;
+  }
+  throw Error('Ehhez a háztípushoz nincs ellenőrzött Previo megfeleltetés.');
+}
 async function checkedResponse(response){
   if(!response.ok) throw Error(`A Previo nem elérhető (${response.status}).`);
   return response;
@@ -89,7 +109,6 @@ export async function fetchPublicBookingAvailability(raw,request=fetch){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(arrival||'')||!/^\d{4}-\d{2}-\d{2}$/.test(departure||'')) throw Error('Pontos érkezési és távozási dátum szükséges.');
   const start=new Date(arrival+'T00:00:00Z'), end=new Date(departure+'T00:00:00Z');
   if(!Number.isFinite(+start)||!Number.isFinite(+end)||end<=start) throw Error('Érvényes tartózkodási időszak szükséges.');
-  if(!NAMES[cabin]) throw Error('Ehhez a háztípushoz nincs ellenőrzött Previo megfeleltetés.');
   const safe=(url,options)=>requestPrevioReadOnly(url,options,request);
   const initial=await checkedResponse(await safe(`${ROOT}/?hotId=${HOTEL_ID}&currency=HUF&lang=hu&redirectType=iframe`,{signal:AbortSignal.timeout(45000)}));
   const first=await initial.text();
@@ -99,9 +118,8 @@ export async function fetchPublicBookingAvailability(raw,request=fetch){
   const step=await post(safe,action,{step:'1',arrival,departure},false);
   const stepHtml=await step.text(), params=pageParams(stepHtml);
   if(params.RESERVATION_DETAILS?.from!==arrival||params.RESERVATION_DETAILS?.to!==departure) throw Error('A Previo dátumai eltérnek a kért időszaktól.');
-  const kind=params.OBJECT_KINDS?.filter(x=>x.hotelLangName===NAMES[cabin]);
-  if(kind?.length!==1) throw Error('A kért háztípus nem azonosítható egyértelműen.');
-  const obkId=kind[0].obkId;
+  const kind=availabilityKind(cabin,params);
+  const obkId=kind.obkId;
   const common={hotId:HOTEL_ID,currency:'HUF',lang:'hu',obkId:String(obkId),PHPSESSID:new URL(step.url).searchParams.get('PHPSESSID')||new URL(action).searchParams.get('PHPSESSID')||''};
   const occupancy=await (await post(safe,sessionUrl('/index/get-object-kind-occupancy/',step.url),{...common,newDesign:'1'})).json();
   if(!occupancy.success||typeof occupancy.html!=='string') throw Error('A Previo nem igazolta a rendelkezésre állást.');
