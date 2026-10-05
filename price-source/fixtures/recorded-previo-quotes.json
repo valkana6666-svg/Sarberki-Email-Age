@@ -1,8 +1,260 @@
 {
-  "provenance": "2026-09-28-i korábbi élő Previo és hivatalos UI összevetésből rögzített eredmények; a teljes nyers HTTP-válasz nem áll rendelkezésre. Kizárólag offline tesztadat, nem aktuális árforrás.",
+  "provenance": "2026-09-28-i és 2026-10-05-i korábbi élő Previo / hivatalos UI ellenőrzésekből rögzített eredmények. Kizárólag offline regressziós tesztadat, nem aktuális vendégárforrás.",
   "cases": [
-    {"arrival":"2026-10-16","departure":"2026-10-18","cabin":"deluxe","adults":2,"children":[],"availableUnits":4,"accommodation":120000,"tourismTax":2200,"total":122200},
-    {"arrival":"2026-10-16","departure":"2026-10-18","cabin":"deluxe","adults":2,"children":[7,11],"availableUnits":4,"accommodation":120000,"tourismTax":2200,"total":122200},
-    {"arrival":"2026-10-16","departure":"2026-10-18","cabin":"family","adults":2,"children":[],"availableUnits":3,"accommodation":104000,"tourismTax":2200,"total":106200}
+    {
+      "arrival": "2026-10-16",
+      "departure": "2026-10-18",
+      "cabin": "deluxe",
+      "adults": 2,
+      "children": [],
+      "availableUnits": 4,
+      "accommodation": 120000,
+      "tourismTax": 2200,
+      "total": 122200
+    },
+    {
+      "arrival": "2026-10-16",
+      "departure": "2026-10-18",
+      "cabin": "deluxe",
+      "adults": 2,
+      "children": [
+        7,
+        11
+      ],
+      "availableUnits": 4,
+      "accommodation": 120000,
+      "tourismTax": 2200,
+      "total": 122200
+    },
+    {
+      "arrival": "2026-10-16",
+      "departure": "2026-10-18",
+      "cabin": "family",
+      "adults": 2,
+      "children": [],
+      "availableUnits": 3,
+      "accommodation": 104000,
+      "tourismTax": 2200,
+      "total": 106200
+    },
+    {
+      "arrival": "2026-10-16",
+      "departure": "2026-10-18",
+      "cabin": "deluxe",
+      "adults": 2,
+      "children": [
+        2
+      ],
+      "availableUnits": 4,
+      "accommodation": 120000,
+      "tourismTax": 2200,
+      "total": 122200,
+      "verifiedAt": "2026-10-05",
+      "controlAge": 2
+    },
+    {
+      "arrival": "2026-10-16",
+      "departure": "2026-10-18",
+      "cabin": "deluxe",
+      "adults": 2,
+      "children": [
+        5
+      ],
+      "availableUnits": 4,
+      "accommodation": 120000,
+      "tourismTax": 2200,
+      "total": 122200,
+      "verifiedAt": "2026-10-05",
+      "controlAge": 5
+    },
+    {
+      "arrival": "2026-10-16",
+      "departure": "2026-10-18",
+      "cabin": "deluxe",
+      "adults": 2,
+      "children": [
+        13
+      ],
+      "availableUnits": 4,
+      "accommodation": 120000,
+      "tourismTax": 2200,
+      "total": 122200,
+      "verifiedAt": "2026-10-05",
+      "controlAge": 13
+    },
+    {
+      "arrival": "2026-10-16",
+      "departure": "2026-10-18",
+      "cabin": "deluxe",
+      "adults": 2,
+      "children": [
+        17
+      ],
+      "availableUnits": 4,
+      "accommodation": 120000,
+      "tourismTax": 2200,
+      "total": 122200,
+      "verifiedAt": "2026-10-05",
+      "controlAge": 17
+    },
+    {
+      "arrival": "2026-10-16",
+      "departure": "2026-10-18",
+      "cabin": "deluxe",
+      "adults": 3,
+      "children": [],
+      "availableUnits": 4,
+      "accommodation": 120000,
+      "tourismTax": 3300,
+      "total": 123300,
+      "verifiedAt": "2026-10-05",
+      "controlAge": 18
+    },
+    {
+      "arrival": "2026-10-16",
+      "departure": "2026-10-18",
+      "cabin": "family",
+      "adults": 2,
+      "children": [
+        2
+      ],
+      "availableUnits": 3,
+      "accommodation": 104000,
+      "tourismTax": 2200,
+      "total": 106200,
+      "verifiedAt": "2026-10-05",
+      "controlAge": 2
+    },
+    {
+      "arrival": "2026-10-16",
+      "departure": "2026-10-18",
+      "cabin": "family",
+      "adults": 2,
+      "children": [
+        5
+      ],
+      "availableUnits": 3,
+      "accommodation": 104000,
+      "tourismTax": 2200,
+      "total": 106200,
+      "verifiedAt": "2026-10-05",
+      "controlAge": 5
+    },
+    {
+      "arrival": "2026-10-16",
+      "departure": "2026-10-18",
+      "cabin": "family",
+      "adults": 2,
+      "children": [
+        13
+      ],
+      "availableUnits": 3,
+      "accommodation": 104000,
+      "tourismTax": 2200,
+      "total": 106200,
+      "verifiedAt": "2026-10-05",
+      "controlAge": 13
+    },
+    {
+      "arrival": "2026-10-16",
+      "departure": "2026-10-18",
+      "cabin": "family",
+      "adults": 2,
+      "children": [
+        17
+      ],
+      "availableUnits": 3,
+      "accommodation": 104000,
+      "tourismTax": 2200,
+      "total": 106200,
+      "verifiedAt": "2026-10-05",
+      "controlAge": 17
+    },
+    {
+      "arrival": "2026-10-16",
+      "departure": "2026-10-18",
+      "cabin": "family",
+      "adults": 3,
+      "children": [],
+      "availableUnits": 3,
+      "accommodation": 104000,
+      "tourismTax": 3300,
+      "total": 107300,
+      "verifiedAt": "2026-10-05",
+      "controlAge": 18
+    },
+    {
+      "arrival": "2026-10-16",
+      "departure": "2026-10-18",
+      "cabin": "vip",
+      "adults": 2,
+      "children": [
+        2
+      ],
+      "availableUnits": 1,
+      "accommodation": 120000,
+      "tourismTax": 2200,
+      "total": 122200,
+      "verifiedAt": "2026-10-05",
+      "controlAge": 2
+    },
+    {
+      "arrival": "2026-10-16",
+      "departure": "2026-10-18",
+      "cabin": "vip",
+      "adults": 2,
+      "children": [
+        5
+      ],
+      "availableUnits": 1,
+      "accommodation": 120000,
+      "tourismTax": 2200,
+      "total": 122200,
+      "verifiedAt": "2026-10-05",
+      "controlAge": 5
+    },
+    {
+      "arrival": "2026-10-16",
+      "departure": "2026-10-18",
+      "cabin": "vip",
+      "adults": 2,
+      "children": [
+        13
+      ],
+      "availableUnits": 1,
+      "accommodation": 120000,
+      "tourismTax": 2200,
+      "total": 122200,
+      "verifiedAt": "2026-10-05",
+      "controlAge": 13
+    },
+    {
+      "arrival": "2026-10-16",
+      "departure": "2026-10-18",
+      "cabin": "vip",
+      "adults": 2,
+      "children": [
+        17
+      ],
+      "availableUnits": 1,
+      "accommodation": 120000,
+      "tourismTax": 2200,
+      "total": 122200,
+      "verifiedAt": "2026-10-05",
+      "controlAge": 17
+    },
+    {
+      "arrival": "2026-10-16",
+      "departure": "2026-10-18",
+      "cabin": "vip",
+      "adults": 3,
+      "children": [],
+      "availableUnits": 1,
+      "accommodation": 120000,
+      "tourismTax": 3300,
+      "total": 123300,
+      "verifiedAt": "2026-10-05",
+      "controlAge": 18
+    }
   ]
 }
