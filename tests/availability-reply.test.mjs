@@ -9,6 +9,37 @@ for(const [lang,word] of [['hu','szabad'],['de','verfügbare'],['en','available'
  test(`availability reply ${lang} uses the guest language`,()=>assert.ok(availabilitySentence(available,lang).includes(word)));
  test(`availability reply ${lang} does not expose internal PMS mapping`,()=>assert.doesNotMatch(splitReviewSentence(available,lang),/Previo|megfeleltetés|7A|10C|pool|mapping/iu));
 }
+const labelCases={
+ de:{family:'Familienhaus',split:'Geteilte Einheit'},
+ en:{family:'Family cabin',split:'Split unit'},
+ si:{family:'Družinska hiška',split:'Deljena enota'}
+};
+for(const [lang,expected] of Object.entries(labelCases)){
+ test(`availability option labels are localized for ${lang}`,()=>{
+   const sentence=availabilitySentence({available_options:[{label:'Családi',units:1}]},lang);
+   const manual=splitReviewSentence({manual_review_options:[{label:'Osztott A + Osztott C'}]},lang);
+   assert.match(sentence,new RegExp(expected.family,'u'));
+   assert.match(manual,new RegExp(expected.split,'u'));
+   assert.doesNotMatch(sentence,/Családi|Osztott/u);
+   assert.doesNotMatch(manual,/Családi|Osztott/u);
+ });
+ test(`core reply avoids Hungarian cabin labels in ${lang}`,()=>{
+   const draft=core.buildReplyDraft({
+     language:lang,
+     original:'test',
+     arrival:'2026-11-13',
+     departure:'2026-11-15',
+     guests:6,
+     adults:6,
+     children:0,
+     phone:'+36 30 555 1234',
+     cabin:'? – emberi döntésre vár'
+   });
+   assert.doesNotMatch(draft,/Családi|Osztott/u);
+   assert.match(draft,new RegExp(expected.family,'u'));
+ });
+}
+
 test('empty availability does not promise accommodation',()=>assert.match(availabilitySentence({available_options:[]},'en'),/not found/u));
 function harness(){
  const source=fs.readFileSync(new URL('../availability-recommend.mjs',import.meta.url),'utf8').replaceAll('export function','function');
