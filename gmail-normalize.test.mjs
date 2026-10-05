@@ -20,7 +20,7 @@ test('past yearless date rolls to next year and requires review',()=>assert.deep
 test('next-year wording is explicit inference without review flag',()=>assert.deepEqual(dateRangeFromText('jövőre október 16-19',now),{arrival:'2027-10-16',departure:'2027-10-19',inferredYear:false}));
 
 test('language detection is conservative across HU DE EN SI',()=>{assert.equal(languageFromText('Szeretnénk szállást foglalni 4 fő részére'),'hu');assert.equal(languageFromText('Wir möchten eine Unterkunft für 4 Personen buchen'),'de');assert.equal(languageFromText('We would like accommodation for 4 guests'),'en');assert.equal(languageFromText('Želimo nastanitev za 4 oseb'),'si');assert.equal(languageFromText('Hello'),'unknown');});
-test('reply questions follow detected language and only ask missing fields',()=>{assert.deepEqual(replyQuestions('de',{needPhone:true,needCabin:true}),['Könnten Sie uns bitte noch eine Telefonnummer mitteilen, unter der wir Sie erreichen können?','Welchen Haustyp wünschen Sie: VIP, Családi (Familienhaus), Deluxe oder Osztott (geteiltes Haus)?']);assert.deepEqual(replyQuestions('unknown',{needPhone:true}),[]);});
+test('reply questions follow detected language and only ask missing fields',()=>{assert.deepEqual(replyQuestions('de',{needPhone:true,needCabin:true}),['Könnten Sie uns bitte noch eine Telefonnummer mitteilen, unter der wir Sie erreichen können?','Welchen Haustyp wünschen Sie: VIP, Familienhaus, Deluxe oder geteiltes Haus?']);assert.deepEqual(replyQuestions('unknown',{needPhone:true}),[]);});
 
 
 test('Teszt Elek concrete regression parses all confirmed core fields',()=>{
