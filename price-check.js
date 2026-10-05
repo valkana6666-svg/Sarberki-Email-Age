@@ -94,6 +94,17 @@
     return Number(value).toLocaleString('hu-HU',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
   }
 
+  function bookingTermsForGuests(guests){
+    const n=Number(guests);
+    const rules=window.SarberkiConfig?.bookingRules||{};
+    const large=Number.isInteger(n)&&n>=15;
+    return {
+      depositPct:Number(large?rules.depositPctFrom15Guests:rules.depositPctUnder15Guests)|| (large?80:50),
+      depositDueDays:Number(rules.depositDueDays)||10,
+      cancellationDays:Number(large?rules.cancellationDaysFrom15Guests:rules.cancellationDaysUnder15Guests)|| (large?30:14)
+    };
+  }
+
   function approvedPriceText(quote){
     if(!quote) return '';
     const eur=Number.isFinite(quote.eurTotal)?' (kb. '+formatEur(quote.eurTotal)+', MNB '+(quote.eurRateDate||'')+')':'';
@@ -227,6 +238,7 @@
     if(!childKnown) basicsMissing.push(lang==='DE'?'ob Kinder mitreisen':lang==='SL'?'ali bodo z vami otroci':'whether any children will be staying');
     if(childKnown&&Number(children)>0&&!ages) basicsMissing.push(lang==='DE'?'Alter der Kinder':lang==='SL'?'starost otrok':'ages of the children');
     const missingLine=basicsMissing.length ? (lang==='DE'?'Bitte teilen Sie uns noch mit: '+basicsMissing.join(', ')+'.':lang==='SL'?'Prosimo, sporočite še: '+basicsMissing.join(', ')+'.':'Please also provide: '+basicsMissing.join(', ')+'.') : '';
+    const terms=bookingTermsForGuests(Number(adults||0)+Number(children||0));
     const confirmationLine=priceApproved
       ? (lang==='DE'
         ? 'Wenn dieses Angebot für Sie passt, antworten Sie bitte auf diese E-Mail und bestätigen Sie, dass wir die Buchung zu den oben genannten Bedingungen erfassen dürfen.'
@@ -236,16 +248,23 @@
       : '';
     const depositLine=priceApproved
       ? (lang==='DE'
-        ? 'Die Anzahlung beträgt 50 % des Unterkunftspreises und ist innerhalb von 10 Tagen per Überweisung zu bezahlen.'
+        ? `Die Anzahlung beträgt ${terms.depositPct} % des Unterkunftspreises und ist innerhalb von ${terms.depositDueDays} Tagen per Überweisung zu bezahlen.`
         : lang==='SL'
-        ? 'Akontacija za rezervacijo znaša 50 % cene nastanitve in jo je treba poravnati z bančnim nakazilom v 10 dneh.'
-        : 'The booking deposit is 50% of the accommodation price and must be paid by bank transfer within 10 days.')
+        ? `Akontacija za rezervacijo znaša ${terms.depositPct} % cene nastanitve in jo je treba poravnati z bančnim nakazilom v ${terms.depositDueDays} dneh.`
+        : `The booking deposit is ${terms.depositPct}% of the accommodation price and must be paid by bank transfer within ${terms.depositDueDays} days.`)
+      : '';
+    const cancellationLine=priceApproved
+      ? (lang==='DE'
+        ? `Eine Stornierung ist bis ${terms.cancellationDays} Tage vor der Anreise gemäß den Buchungsbedingungen möglich.`
+        : lang==='SL'
+        ? `Rezervacijo je mogoče odpovedati do ${terms.cancellationDays} dni pred prihodom v skladu s pogoji rezervacije.`
+        : `The reservation may be cancelled up to ${terms.cancellationDays} days before arrival in accordance with the booking conditions.`)
       : '';
     const lines=lang==='DE'
-      ? [`Guten Tag${v.name?', '+v.name:''}!`,'','Vielen Dank für Ihre Anfrage.',stay?`Gewünschter Zeitraum: ${stay}.`:'',cabin?`Ausgewählter Haustyp: ${cabin}.`:'',missingLine,priceLine,depositLine,confirmationLine,'','Mit freundlichen Grüßen','Sárberki Horgásztó']
+      ? [`Guten Tag${v.name?', '+v.name:''}!`,'','Vielen Dank für Ihre Anfrage.',stay?`Gewünschter Zeitraum: ${stay}.`:'',cabin?`Ausgewählter Haustyp: ${cabin}.`:'',missingLine,priceLine,depositLine,cancellationLine,confirmationLine,'','Mit freundlichen Grüßen','Sárberki Horgásztó']
       : lang==='SL'
-      ? [`Pozdravljeni${v.name?', '+v.name:''}!`,'','Hvala za vaše povpraševanje.',stay?`Želeno obdobje: ${stay}.`:'',cabin?`Izbrana nastanitev: ${cabin}.`:'',missingLine,priceLine,depositLine,confirmationLine,'','Lep pozdrav,','Sárberki Horgásztó']
-      : [`Dear ${v.name||'Guest'},`,'','Thank you for your inquiry.',stay?`Requested stay: ${stay}.`:'',cabin?`Selected accommodation: ${cabin}.`:'',missingLine,priceLine,depositLine,confirmationLine,'','Kind regards,','Sárberki Horgásztó'];
+      ? [`Pozdravljeni${v.name?', '+v.name:''}!`,'','Hvala za vaše povpraševanje.',stay?`Želeno obdobje: ${stay}.`:'',cabin?`Izbrana nastanitev: ${cabin}.`:'',missingLine,priceLine,depositLine,cancellationLine,confirmationLine,'','Lep pozdrav,','Sárberki Horgásztó']
+      : [`Dear ${v.name||'Guest'},`,'','Thank you for your inquiry.',stay?`Requested stay: ${stay}.`:'',cabin?`Selected accommodation: ${cabin}.`:'',missingLine,priceLine,depositLine,cancellationLine,confirmationLine,'','Kind regards,','Sárberki Horgásztó'];
     return lines.filter(x=>x!==''||true).join('\n');
   }
 
@@ -305,7 +324,15 @@
       );
     }
 
-    if(priceApproved) lines.push('','A foglaló összege a teljes szállásdíj 50%-a, amelyet 10 napon belül átutalással kérünk rendezni.','Amennyiben az ajánlat megfelel Önnek, kérjük, válasz e-mailben erősítse meg, hogy a foglalást a fenti feltételekkel rögzíthetjük. A foglalást csak az Ön egyértelmű visszaigazolása után rögzítjük.');
+    if(priceApproved){
+      const guestCount=(Number(v.adults)||Number($('price_adults')?.value)||0)+(Number(v.children)||Number($('price_children')?.value)||0);
+      const terms=bookingTermsForGuests(guestCount);
+      lines.push('',
+        `A foglaló összege a teljes szállásdíj ${terms.depositPct}%-a, amelyet ${terms.depositDueDays} napon belül átutalással kérünk rendezni.`,
+        `A foglalás az érkezést megelőző ${terms.cancellationDays}. napig mondható le a foglalási feltételek szerint.`,
+        'Amennyiben az ajánlat megfelel Önnek, kérjük, válasz e-mailben erősítse meg, hogy a foglalást a fenti feltételekkel rögzíthetjük. A foglalást csak az Ön egyértelmű visszaigazolása után rögzítjük.'
+      );
+    }
 
     if(asked.pet) lines.push('','A kisebb kutyával kapcsolatos kérését is feljegyeztük. Háziállat térítés ellenében hozható; a pontos díjat ellenőrizzük.');
     if(asked.hotTub){
