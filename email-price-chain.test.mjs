@@ -22,7 +22,8 @@ function harness(message,reply){
  const context=vm.createContext({document,window:{SarberkiNormalize:sharedNormalize,addEventListener(){}},console,Date,Intl,Number,JSON,setTimeout:fn=>fn(),fetch:async(_url,options)=>{
   calls++;
   assert.equal(options.method,'POST');
-  const input=validateQuote(JSON.parse(options.body));
+  const parsed=JSON.parse(options.body);
+  const input=String(_url).includes('availability-options')?parsed:validateQuote(parsed);
   return reply(input,_url);
  }});
  vm.runInContext(html.slice(html.indexOf('const $='),html.indexOf('function addEvent(')),context);
