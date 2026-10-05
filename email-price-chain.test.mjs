@@ -350,3 +350,53 @@ test('total-only guest count never becomes adult count and blocks price lookup',
   assert.equal(h.calls,0);
   assert.match(h.element('price_status').textContent,/otrok|gyermek|tisztázni/u);
 });
+
+
+test('approved child quote includes age, HUF, EUR and under-15 booking terms',async()=>{
+  const record=recorded.find(r=>r.cabin==='family'&&r.controlAge===13);
+  assert.ok(record,'missing family age-13 fixture');
+  const h=harness(sample(record),input=>json({
+    ...quote(input,record),
+    eurConversion:{status:'available',rateHufPerEur:367.87,rateDate:'2026-10-02',source:'Magyar Nemzeti Bank',totalEur:288.69}
+  }));
+  const r=await h.run();
+  assert.equal(h.calls,1);
+  assert.doesNotMatch(r.draft,/106.200|106 200/u);
+  h.element('approve_price').onclick();
+  const draft=h.element('draft').value;
+  assert.match(draft,/1 gyermek \(13 éves\)/u);
+  assert.match(draft,/106.200|106 200/u);
+  assert.match(draft,/288,69|288\.69/u);
+  assert.match(draft,/50%-a/u);
+  assert.match(draft,/14\. napig/u);
+  assert.match(draft,/10 napon belül/u);
+});
+
+test('approved quote switches to 80 percent deposit and 30 day cancellation from 15 guests',async()=>{
+  const message='Kedves Sárberki Horgásztó! 2027. október 1–3. között 15 felnőtt mennénk, gyermek nélkül, három Családi házat szeretnénk. Mennyi a teljes ár?';
+  const h=harness(message,input=>{
+    assert.equal(input.cabin,'family');
+    assert.equal(input.adults,15);
+    assert.equal(input.units,3);
+    assert.deepEqual(input.children,[]);
+    return json({
+      ...quote(input,{availableUnits:5,accommodation:312000,tourismTax:16500,total:328500}),
+      units:3,
+      unitBreakdown:[
+        {unit:1,adults:5,children:[],accommodation:104000,tourismTax:5500,total:109500},
+        {unit:2,adults:5,children:[],accommodation:104000,tourismTax:5500,total:109500},
+        {unit:3,adults:5,children:[],accommodation:104000,tourismTax:5500,total:109500}
+      ],
+      eurConversion:{status:'available',rateHufPerEur:367.87,rateDate:'2026-10-02',source:'Magyar Nemzeti Bank',totalEur:892.98}
+    });
+  });
+  const r=await h.run();
+  assert.equal(h.calls,1);
+  assert.doesNotMatch(r.draft,/328.500|328 500/u);
+  h.element('approve_price').onclick();
+  const draft=h.element('draft').value;
+  assert.match(draft,/80%-a/u);
+  assert.match(draft,/30\. napig/u);
+  assert.match(draft,/10 napon belül/u);
+  assert.match(draft,/328.500|328 500/u);
+});
