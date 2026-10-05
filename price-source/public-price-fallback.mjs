@@ -1,22 +1,22 @@
 import {validateQuote} from '../price-quote.mjs';
-import {BUSINESS} from '../business-config.mjs';
+import {SARBERKI_PROFILE} from '../business/sarberki/profile.mjs';
 
 function nights(arrival,departure){
   return Math.round((Date.parse(departure+'T00:00:00Z')-Date.parse(arrival+'T00:00:00Z'))/86400000);
 }
 function highSeason(date){
   const md=date.slice(5);
-  return md>=BUSINESS.pricingRules.highSeasonStart&&md<=BUSINESS.pricingRules.highSeasonEnd;
+  return md>=SARBERKI_PROFILE.pricingRules.highSeasonStart&&md<=SARBERKI_PROFILE.pricingRules.highSeasonEnd;
 }
 function childExtraRate(age){
-  if(age<3) return BUSINESS.pricingRules.child0to3NightlyHuf;
-  if(age<=8) return BUSINESS.pricingRules.child3to8NightlyHuf;
-  return BUSINESS.pricingRules.extraAdultNightlyHuf;
+  if(age<3) return SARBERKI_PROFILE.pricingRules.child0to3NightlyHuf;
+  if(age<=8) return SARBERKI_PROFILE.pricingRules.child3to8NightlyHuf;
+  return SARBERKI_PROFILE.pricingRules.extraAdultNightlyHuf;
 }
 export function fetchPublicPriceReference(raw){
   const input=validateQuote(raw);
   if(!['splitA','splitB','splitC'].includes(input.cabin)) throw Error('Publikus referenciaár csak az Osztott A/B/C egységekhez használható.');
-  const type=BUSINESS.accommodationTypes[input.cabin];
+  const type=SARBERKI_PROFILE.accommodationTypes[input.cabin];
   const count=nights(input.arrival,input.departure);
   if(count<1) throw Error('Érvénytelen éjszakaszám.');
   const units=input.units||1;
@@ -25,19 +25,19 @@ export function fetchPublicPriceReference(raw){
   const baseChildSlots=Math.max(0,base-input.adults);
   const extraAdults=Math.max(0,input.adults-base);
   const extraChildren=input.children.slice(baseChildSlots);
-  const nightlyExtra=extraAdults*BUSINESS.pricingRules.extraAdultNightlyHuf+extraChildren.reduce((s,age)=>s+childExtraRate(age),0);
+  const nightlyExtra=extraAdults*SARBERKI_PROFILE.pricingRules.extraAdultNightlyHuf+extraChildren.reduce((s,age)=>s+childExtraRate(age),0);
   let accommodation=0;
   for(let i=0;i<count;i++){
     const d=new Date(Date.parse(input.arrival+'T00:00:00Z')+i*86400000).toISOString().slice(0,10);
     const rawNight=type.publicListedNightlyHuf+nightlyExtra;
-    accommodation+=Math.round(rawNight*(highSeason(d)?1+BUSINESS.pricingRules.highSeasonSurchargePct/100:1));
+    accommodation+=Math.round(rawNight*(highSeason(d)?1+SARBERKI_PROFILE.pricingRules.highSeasonSurchargePct/100:1));
   }
-  if(count===1) accommodation=Math.round(accommodation*(1+BUSINESS.pricingRules.oneNightSurchargePct/100));
-  const tourismTax=input.adults*count*BUSINESS.pricingRules.tourismTaxAdultNightlyHuf;
+  if(count===1) accommodation=Math.round(accommodation*(1+SARBERKI_PROFILE.pricingRules.oneNightSurchargePct/100));
+  const tourismTax=input.adults*count*SARBERKI_PROFILE.pricingRules.tourismTaxAdultNightlyHuf;
   return {
     status:'public_reference',
     source:'Sárberki hivatalos publikus árlista',
-    sourceUrl:type.publicPriceUrl||BUSINESS.bookingUrl,
+    sourceUrl:type.publicPriceUrl||SARBERKI_PROFILE.bookingUrl,
     checkedAt:new Date().toISOString(),
     ...input,
     units:1,
