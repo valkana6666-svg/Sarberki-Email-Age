@@ -73,3 +73,37 @@ Az adapter a JSON-t kizárólag `step=1&arrival=2026-10-16&departure=2026-10-18`
 
 - **NOT YET VERIFIED** – hosszú távú Netlify/Previo stabilitás, build/function log és szerződéses API-garancia; a dokumentálatlan belső API bármikor változhat. Timeout, hibás JSON, `unknownPrice`, 0 kapacitás és részleges válasz továbbra is összeg nélküli hibastátuszt eredményez.
 - A jelenlegi végpont nem szerződéses vagy garantált API; a Previo változtathatja. A Previo hivatalos, olvasási API-ja hosszabb távon előnyösebb csereadapter.
+
+
+## Gyermekár élő Previo mátrix – 2026-10-05
+
+Read-only Netlify → Previo lekérés, időszak: **2026-10-16–18., 2 éjszaka**.
+A gyermekes sorok minden esetben 2 felnőtt + 1 gyermek felállást használnak.
+A 18 éves kontroll felnőttként szerepel, ezért 3 felnőttes lekérés.
+
+| Háztípus | Kor | Szállásdíj | IFA | Végösszeg | Szabad egység | Eredmény |
+|---|---:|---:|---:|---:|---:|---|
+| Deluxe | 2 | 120 000 Ft | 2 200 Ft | 122 200 Ft | 4 | VERIFIED LIVE |
+| Deluxe | 5 | 120 000 Ft | 2 200 Ft | 122 200 Ft | 4 | VERIFIED LIVE |
+| Deluxe | 13 | 120 000 Ft | 2 200 Ft | 122 200 Ft | 4 | VERIFIED LIVE |
+| Deluxe | 17 | 120 000 Ft | 2 200 Ft | 122 200 Ft | 4 | VERIFIED LIVE |
+| Deluxe | 18 (felnőtt kontroll) | 120 000 Ft | 3 300 Ft | 123 300 Ft | 4 | VERIFIED LIVE |
+| Családi | 2 | 104 000 Ft | 2 200 Ft | 106 200 Ft | 3 | VERIFIED LIVE |
+| Családi | 5 | 104 000 Ft | 2 200 Ft | 106 200 Ft | 3 | VERIFIED LIVE |
+| Családi | 13 | 104 000 Ft | 2 200 Ft | 106 200 Ft | 3 | VERIFIED LIVE |
+| Családi | 17 | 104 000 Ft | 2 200 Ft | 106 200 Ft | 3 | VERIFIED LIVE |
+| Családi | 18 (felnőtt kontroll) | 104 000 Ft | 3 300 Ft | 107 300 Ft | 3 | VERIFIED LIVE |
+| VIP | 2 | 120 000 Ft | 2 200 Ft | 122 200 Ft | 1 | VERIFIED LIVE |
+| VIP | 5 | 120 000 Ft | 2 200 Ft | 122 200 Ft | 1 | VERIFIED LIVE |
+| VIP | 13 | 120 000 Ft | 2 200 Ft | 122 200 Ft | 1 | VERIFIED LIVE |
+| VIP | 17 | 120 000 Ft | 2 200 Ft | 122 200 Ft | 1 | VERIFIED LIVE |
+| VIP | 18 (felnőtt kontroll) | 120 000 Ft | 3 300 Ft | 123 300 Ft | 1 | VERIFIED LIVE |
+| Különálló 2 fős | 2 | – | – | – | 0 | UNAVAILABLE |
+| Különálló 2 fős | 5 | – | – | – | 0 | UNAVAILABLE |
+| Különálló 2 fős | 13 | – | – | – | 0 | UNAVAILABLE |
+| Különálló 2 fős | 17 | – | – | – | 0 | UNAVAILABLE |
+| Különálló 2 fős | 18 (felnőtt kontroll) | – | – | – | – | NOT APPLICABLE: max. 2 felnőtt |
+
+**Következtetés:** a vizsgált időszakban a Deluxe, Családi és VIP háztípusnál a 2, 5, 13 és 17 éves gyermek között a Previo nem változtatta sem a szállásdíjat, sem az IFA-t. A 18 éves személy felnőttként kezelve ugyanazon szállásdíj mellett csak az IFA-t növelte 1 100 Ft-tal a 2 éjszakás tartózkodásra. Ez a megfigyelés a fenti dátumra és élő Previo-konfigurációra igaz; tarifa- vagy konfigurációváltozás esetén újra ellenőrizendő.
+
+A Különálló 2 fős ház ezen az időszakon 0 szabad egységet adott, ezért gyermekár nem volt hitelesen lekérhető. A 18 éves kontroll 2 felnőtt + 1 további felnőtt felállásban kapacitási okból nem alkalmazható ehhez a háztípushoz.
