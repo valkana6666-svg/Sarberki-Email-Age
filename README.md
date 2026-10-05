@@ -63,3 +63,14 @@ Ez a parancs csak az auditált adapter és a kijelölt tesztoldal ellenőrzése
 után futtatható. A CI élő próbája külön repository variable kapuhoz kötött.
 
 Automatikus e-mail-küldés, foglalás és PMS-módosítás nincs.
+
+## Projekt-dokumentáció
+
+A fejlesztési döntések és külső kutatások külön dokumentumokban vannak, hogy a futó üzleti szabályok ne keveredjenek az architekturális mintákkal:
+
+- [DAKTELA_TANULSAGOK.md](DAKTELA_TANULSAGOK.md) – mit tanultunk a Daktela nyilvános működéséből, és mit nem bizonyítottunk.
+- [ARCHITEKTURA_DONTESEK.md](ARCHITEKTURA_DONTESEK.md) – a rendszer biztonsági és szerkezeti döntései, valamint azok indokai.
+- [FORRASOK.md](FORRASOK.md) – Daktela, Previo és belső projektforrások bizonyítási szintekkel.
+- [szabalyok.txt](szabalyok.txt) – a jelenlegi Sárberki üzleti és válaszadási szabályok.
+- [PRICE_SOURCE_STATUS.md](PRICE_SOURCE_STATUS.md) – Previo árforrás, élő ellenőrzések és mellékhatás-biztonsági státusz.
+
