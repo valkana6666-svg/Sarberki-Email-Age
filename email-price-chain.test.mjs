@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import {validateQuote} from './price-quote.mjs';
 import * as sharedNormalize from './sarberki-core.mjs';
+import {fishingQuestion} from './fishing-rules.mjs';
 
 const html=fs.readFileSync(new URL('./index.html',import.meta.url),'utf8');
 const pricing=fs.readFileSync(new URL('./price-check.js',import.meta.url),'utf8');
@@ -19,7 +20,7 @@ function harness(message,reply){
  };
  const document={getElementById:id=>id==='price_approval_panel'&&!nodes.has(id)?null:element(id),createElement:()=>({id:'',className:'',innerHTML:''}),addEventListener:(type,fn)=>listeners.set(type,fn)};
  element('gmail_record').classList.contains=()=>true;
- const context=vm.createContext({document,window:{SarberkiNormalize:sharedNormalize,addEventListener(){}},console,Date,Intl,Number,JSON,setTimeout:fn=>fn(),fetch:async(_url,options)=>{
+ const context=vm.createContext({document,window:{SarberkiNormalize:sharedNormalize,SarberkiFishingQuestion:fishingQuestion,addEventListener(){}},console,Date,Intl,Number,JSON,setTimeout:fn=>fn(),fetch:async(_url,options)=>{
   calls++;
   assert.equal(options.method,'POST');
   const parsed=JSON.parse(options.body);
@@ -421,8 +422,8 @@ test('six-person inquiry lists verified availability before signature',async()=>
       unavailable_options:[],
       unverified_options:[],
       manual_review_options:[
-        {label:'Osztott A + Osztott C',availability_verified:false},
-        {label:'Osztott B + Osztott C',availability_verified:false}
+        {label:'Osztott A + Osztott C',availability_verified:false,pooled_availability_verified:true},
+        {label:'Osztott B + Osztott C',availability_verified:false,pooled_availability_verified:true}
       ],
       bookingCompleted:false
     });
@@ -437,5 +438,88 @@ test('six-person inquiry lists verified availability before signature',async()=>
   const optionsAt=draft.indexOf('foglalási felületen ellenőrzött szabad lehetőségek');
   const signatureAt=draft.indexOf('Üdvözlettel:');
   assert.ok(optionsAt>=0&&signatureAt>optionsAt,'A szabad lehetőségek listájának az aláírás előtt kell lennie.');
-  assert.match(draft,/Osztott házaknál külön kézi elérhetőség-ellenőrzés szükséges/u);
+  assert.doesNotMatch(draft,/kért háztípus|melyik háztípust/u);
+  assert.doesNotMatch(draft,/érkezik-e gyermek/u);
+  assert.match(draft,/parkolás biztosított/u);
+  assert.match(draft,/állami horgászjegy/u);
+  assert.match(draft,/szakáll nélküli/u);
+  assert.match(draft,/legfeljebb 6-os/u);
+  assert.match(draft,/pontybölcső/u);
+  assert.match(draft,/merítőháló/u);
+  assert.match(draft,/sebfertőtlenítő/u);
+  assert.match(draft,/pontyzsák/u);
+  assert.match(draft,/Sárberki horgászjegyet külön/u);
+  assert.match(draft,/2 fős és 4 fős Previo poolban van szabad kapacitás/u);
+  assert.match(draft,/konkrét A\/B \+ C fizikai párosítást kézzel kell ellenőrizni/u);
+});
+
+
+test('six-adult availability reply stays complete in DE EN and SL',async()=>{
+  const cases=[
+    {
+      message:'Guten Tag! Vom 2026-10-09 bis 2026-10-13 möchten wir mit 6 Erwachsenen kommen. Haben Sie etwas frei? Wir möchten angeln und brauchen einen Parkplatz.',
+      heading:/Auf der Buchungsseite geprüfte freie Möglichkeiten/u,
+      parking:/Parkplätze sind vorhanden/u,
+      fishing:/staatlicher Angelschein/u,
+      noChild:/ob Kinder mitreisen/u,
+      noCabin:/gewünschter Haustyp/u
+    },
+    {
+      message:'Hello! From 2026-10-09 to 2026-10-13 we would like to stay as 6 adults. Is anything available? We would like to fish and need parking.',
+      heading:/Available options verified on the booking system/u,
+      parking:/Parking is available/u,
+      fishing:/state fishing licence valid in Hungary/u,
+      noChild:/whether any children will be staying/u,
+      noCabin:/requested cabin type/u
+    },
+    {
+      message:'Pozdravljeni! Od 2026-10-09 do 2026-10-13 bi prišlo 6 odraslih. Ali imate prosto nastanitev? Želeli bi ribolov in parkiranje.',
+      heading:/Na rezervacijskem sistemu preverjene proste možnosti/u,
+      parking:/Parkiranje je zagotovljeno/u,
+      fishing:/državna ribolovna dovolilnica/u,
+      noChild:/ali bodo z vami otroci/u,
+      noCabin:/želeni tip hiške/u
+    }
+  ];
+  for(const item of cases){
+    const h=harness(item.message,(input,url)=>{
+      assert.match(String(url),/availability-options/u);
+      assert.equal(input.guests,6);
+      return json({
+        status:'review_required',
+        arrival:'2026-10-09',
+        departure:'2026-10-13',
+        guests:6,
+        available_options:[
+          {key:'deluxe',label:'Deluxe',units:1,availability_verified:true},
+          {key:'family',label:'Családi',units:1,availability_verified:true},
+          {key:'vip',label:'VIP',units:1,availability_verified:true}
+        ],
+        unavailable_options:[],
+        unverified_options:[],
+        split_pool_checks:{
+          splitAB:{verified:true,availability:'available',availableUnits:4},
+          splitC:{verified:true,availability:'available',availableUnits:3}
+        },
+        manual_review_options:[
+          {label:'Osztott A + Osztott C',availability_verified:false,pooled_availability_verified:true},
+          {label:'Osztott B + Osztott C',availability_verified:false,pooled_availability_verified:true}
+        ],
+        bookingCompleted:false
+      });
+    });
+    h.listeners.get('sarberki:analysis-ready')({detail:{message:item.message}});
+    await new Promise(resolve=>setImmediate(resolve));
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(h.calls,1);
+    const draft=h.element('draft').value;
+    assert.match(draft,item.heading);
+    assert.match(draft,item.parking);
+    assert.match(draft,item.fishing);
+    assert.doesNotMatch(draft,item.noChild);
+    assert.doesNotMatch(draft,item.noCabin);
+    for(const label of ['Deluxe','Családi','VIP','Osztott A + Osztott C','Osztott B + Osztott C']) assert.match(draft,new RegExp(label.replace('+','\\+'),'u'));
+    const signature=/(?:Mit freundlichen Grüßen|Kind regards|Lep pozdrav,)/u.exec(draft)?.index??-1;
+    assert.ok(signature>draft.indexOf('Deluxe'));
+  }
 });
