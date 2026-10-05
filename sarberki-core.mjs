@@ -31,7 +31,20 @@ export function nameFromText(text=''){
   const current=activeMessageText(text);
   const fullName='([A-ZÁÉÍÓÖŐÚÜŰČŠŽÄÖÜ][\\p{L}-]+\\s+[A-ZÁÉÍÓÖŐÚÜŰČŠŽÄÖÜ][\\p{L}-]+)';
   const patterns=[
-    new RegExp('(?:^|\\n)\\s*(?:üdv(?:özlettel)?|tisztelettel|köszönettel)\\s*\\.?\\s*[:,-]?\\s*'+fullName+'\\s*export function requestFlagsFromText(text=''){
+    new RegExp('(?:^|\\n)\\s*(?:üdv(?:özlettel)?|tisztelettel|köszönettel)\\s*\\.?\\s*[:,-]?\\s*'+fullName+'\\s*$','imu'),
+    new RegExp('(?:^|\\n)\\s*(?:mit\\s+freundlichen\\s+grüßen|viele\\s+grüße|freundliche\\s+grüße)\\s*[,.:;-]?\\s*'+fullName+'\\s*$','imu'),
+    new RegExp('(?:^|\\n)\\s*(?:best\\s+regards|kind\\s+regards|regards|thank\\s+you)\\s*[,.:;-]?\\s*'+fullName+'\\s*$','imu'),
+    new RegExp('(?:^|\\n)\\s*(?:lep\\s+pozdrav|hvala\\s+in\\s+lep\\s+pozdrav|pozdrav)\\s*[,.:;-]?\\s*'+fullName+'\\s*$','imu'),
+    new RegExp('(?:^|\\n)\\s*'+fullName+'\\s*$','mu')
+  ];
+  for(const pattern of patterns){
+    const match=current.match(pattern);
+    if(match?.[1]) return match[1].trim();
+  }
+  return null;
+}
+
+export function requestFlagsFromText(text=''){
   text=activeMessageText(text);
   const pet=/(?:kuty\p{L}*|háziállat\p{L}*|dogs?|pets?|hund\p{L}*|haustier\p{L}*|\bpes\b|\bpsa\b)/iu;
   const tub=/(?:dézs\p{L}*|dezsa\p{L}*|hot[ -]?tub|whirlpool|badefass|jacuzzi|(?:vroč\p{L}*|masaž\p{L}*)\s*kad)/iu;
