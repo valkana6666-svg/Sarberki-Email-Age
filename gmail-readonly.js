@@ -1,9 +1,9 @@
 /* Browser-only Gmail bridge. Access token stays in memory and is never stored. */
 (async () => {
   'use strict';
-  const { cabinFromText, guestCountFromText, adultCountFromText, childCountFromText, dateRangeFromText, phoneFromText, childAgesFromText, pierPreferenceFromText, languageFromText, buildReplyDraft, specialRequestsFromText, requestedUnitsFromText } = await import('./sarberki-core.mjs?v=20261003-1635');
-  const { BUSINESS } = await import('./business-config.mjs?v=20261003-1635');
-  const { fishingQuestion } = await import('./fishing-rules.mjs?v=20261003-1635');
+  const { cabinFromText, guestCountFromText, adultCountFromText, childCountFromText, dateRangeFromText, phoneFromText, childAgesFromText, pierPreferenceFromText, languageFromText, buildReplyDraft, specialRequestsFromText, requestedUnitsFromText, activeMessageText, requestFlagsFromText } = await import('./sarberki-core.mjs?v=20261005-stress1');
+  const { BUSINESS } = await import('./business-config.mjs?v=20261005-stress1');
+  const { fishingQuestion } = await import('./fishing-rules.mjs?v=20261005-stress1');
   const { INBOX_QUERY, TEST_GMAIL_ACCOUNT, assertTestGmailAccount, isTestInquiry } = await import('./gmail-policy.mjs');
 
   function headerMap(message) {
@@ -131,7 +131,8 @@
 
   function transform(message) {
     const headers = headerMap(message);
-    const original = readableBody(message.payload).trim();
+    const rawOriginal = readableBody(message.payload).trim();
+    const original = activeMessageText(rawOriginal);
     if (!original) throw Error('A levélnek nincs olvasható szöveges része; emberi ellenőrzés szükséges.');
     const received = new Date(Number(message.internalDate));
     const normalizedDate = dateRangeFromText(original, new Date(), BUSINESS.timezone);
@@ -141,7 +142,8 @@
     const childAges = childAgesFromText(original);
     const phone = phoneFromText(original);
     const name = original.match(/(?:^|\n)\s*([A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+\s+[A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+)\s*$/mu)?.[1];
-    const hotTub = /(?:dézs|hot\s*tub|whirlpool|badefass|vroč\w*\s*kad|masaž\w*\s*kad)/iu.test(original), dog = /(?:kuty|dog|hund|pes|psa)/iu.test(original), pier = pierPreferenceFromText(original), availability = /(?:szabad\s+hely|availab|verfügbar|prosto|razpolož)/iu.test(original);
+    const flags = requestFlagsFromText(original);
+    const hotTub = flags.hotTubRequested, dog = flags.petRequested, pier = pierPreferenceFromText(original), availability = /(?:szabad\s+hely|availab|verfügbar|prosto|razpolož)/iu.test(original);
     const specialRequests = specialRequestsFromText(original);
     const requestedUnits = requestedUnitsFromText(original);
     const extracted = [];
@@ -161,6 +163,8 @@
     if (!normalizedDate) missing.push('Pontos érkezési és távozási dátum');
     if (normalizedDate?.inferredYear && !inferred.some(x => x.label === 'Év')) inferred.push({label:'Év',value:`${normalizedDate.arrival.slice(0,4)}, a feldolgozás napja alapján következtetve; emberi ellenőrzés szükséges`});
     if (!count) missing.push('Vendégek száma');
+    if (adultCount==null) missing.push('Felnőttek száma');
+    if (childCount==null) missing.push('Érkezik-e gyermek; ha igen, hányan és milyen életkorúak');
     if (childCount && childAges.length < childCount) missing.push('Gyermek életkora');
     if (!phone) missing.push('Telefonszám');
     missing.push('Kapacitás és ár csak külön, hiteles ellenőrzéssel állapítható meg');
@@ -171,8 +175,8 @@
     humanReview.push('Szabad hely és ár nincs igazolva');
     const language = languageFromText(original);
     const fishingInfo = fishingQuestion(original,language);
-    const replyDraft = buildReplyDraft({language,name,original,arrival:normalizedDate?.arrival,departure:normalizedDate?.departure,guests:count,children:childCount,childAges,phone,cabin:cabinFromGuestText(original),pier,hotTub,dog,intent:'booking_request',brandName:BUSINESS.brandName,bookingRules:BUSINESS.bookingRules,operationalRules:BUSINESS.operationalRules,pricingRules:BUSINESS.pricingRules,knowledgeLines:fishingInfo?[fishingInfo.answer]:[]});
-    return {source:{provider:'gmail',message_id:message.id,thread_id:message.threadId,subject:headers.subject || '',from:headers.from || '',from_email:emailAddress(headers.from || ''),to:headers.to || '',received_at:received.toISOString()},original_message:original,normalized:{language,cabin:cabinFromGuestText(original),dates:normalizedDate,guests:count,adults:adultCount,children:childCount,child_ages:childAges,phone,units_requested:requestedUnits.count||null,units_open:requestedUnits.open,pier_requested:pier,hot_tub_requested:hotTub,pet_requested:dog},extracted,inferred,missing,human_review:humanReview,reply_draft:replyDraft};
+    const replyDraft = buildReplyDraft({language,name,original,arrival:normalizedDate?.arrival,departure:normalizedDate?.departure,guests:count,adults:adultCount,children:childCount,childAges,phone,cabin:cabinFromGuestText(original),pier,hotTub,dog,intent:'booking_request',brandName:BUSINESS.brandName,bookingRules:BUSINESS.bookingRules,operationalRules:BUSINESS.operationalRules,pricingRules:BUSINESS.pricingRules,knowledgeLines:fishingInfo?[fishingInfo.answer]:[]});
+    return {source:{provider:'gmail',message_id:message.id,thread_id:message.threadId,subject:headers.subject || '',from:headers.from || '',from_email:emailAddress(headers.from || ''),to:headers.to || '',received_at:received.toISOString()},original_message:rawOriginal,normalized:{language,cabin:cabinFromGuestText(original),dates:normalizedDate,guests:count,adults:adultCount,children:childCount,child_ages:childAges,phone,nights:normalizedDate?(Date.parse(normalizedDate.departure)-Date.parse(normalizedDate.arrival))/86400000:null,special_requests:specialRequests,fishing_question:Boolean(fishingInfo),parking_question:/(?:parkol|parking|parkplatz|parkplätze|parkiriš|parkiris)/iu.test(original),units_requested:requestedUnits.count||null,units_open:requestedUnits.open,pier_requested:pier,hot_tub_requested:hotTub,pet_requested:dog},extracted,inferred,missing,human_review:humanReview,reply_draft:replyDraft};
   }
   async function readWithToken(token) {
     const headers = {Authorization:`Bearer ${token}`};

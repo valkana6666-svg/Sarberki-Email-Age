@@ -22,5 +22,6 @@ jobs:
           TEST_NETLIFY_URL: https://leafy-chimera-2403e5.netlify.app
         run: node tests/deployment-sync.mjs
       - name: Live Previo price smoke test on exact test deploy
-        if: ${{ vars.SARBERKI_PREVIO_LIVE_SMOKE_ENABLED == 'true' }}
+        # Push validation stays offline; live smoke needs an explicit manual dispatch.
+        if: ${{ github.event_name == 'workflow_dispatch' && vars.SARBERKI_PREVIO_LIVE_SMOKE_ENABLED == 'true' }}
         run: node tests/live-price-smoke.mjs

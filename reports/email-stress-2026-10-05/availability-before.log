@@ -1,0 +1,257 @@
+✔ availability reply hu uses the guest language (0.904749ms)
+✖ availability reply hu does not expose internal PMS mapping (2.944616ms)
+✖ availability reply de uses the guest language (6.065352ms)
+✖ availability reply de does not expose internal PMS mapping (1.035542ms)
+✖ availability reply en uses the guest language (0.417197ms)
+✖ availability reply en does not expose internal PMS mapping (0.122151ms)
+✖ availability reply si uses the guest language (0.211423ms)
+✖ availability reply si does not expose internal PMS mapping (0.103844ms)
+✖ empty availability does not promise accommodation (0.225975ms)
+✖ late availability response cannot overwrite a changed inquiry (7.791015ms)
+✖ blank child ages never become age zero during capacity enrichment (2.333382ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 1
+ℹ fail 10
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 137.195093
+
+✖ failing tests:
+
+test at ../../../../tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:10:2
+✖ availability reply hu does not expose internal PMS mapping (2.944616ms)
+  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /Previo|megfeleltetés|7A|10C|pool|mapping/iu. Input:
+  
+  'Osztott ház esetén kapacitás alapján szóba jöhet Osztott A + C, de ennek tényleges elérhetőségét csak az A/B/C Previo-megfeleltetés hitelesítése után szabad visszaigazolni.'
+  
+      at TestContext.<anonymous> (file:///tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:10:84)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Osztott ház esetén kapacitás alapján szóba jöhet Osztott A + C, de ennek tényleges elérhetőségét csak az A/B/C Previo-megfeleltetés hitelesítése után szabad visszaigazolni.',
+    expected: /Previo|megfeleltetés|7A|10C|pool|mapping/iu,
+    operator: 'doesNotMatch',
+    diff: 'simple'
+  }
+
+test at ../../../../tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:9:2
+✖ availability reply de uses the guest language (6.065352ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(availabilitySentence(available,lang).includes(word))
+  
+      at TestContext.<anonymous> (file:///tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:9:71)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at ../../../../tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:10:2
+✖ availability reply de does not expose internal PMS mapping (1.035542ms)
+  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /Previo|megfeleltetés|7A|10C|pool|mapping/iu. Input:
+  
+  'Osztott ház esetén kapacitás alapján szóba jöhet Osztott A + C, de ennek tényleges elérhetőségét csak az A/B/C Previo-megfeleltetés hitelesítése után szabad visszaigazolni.'
+  
+      at TestContext.<anonymous> (file:///tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:10:84)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Osztott ház esetén kapacitás alapján szóba jöhet Osztott A + C, de ennek tényleges elérhetőségét csak az A/B/C Previo-megfeleltetés hitelesítése után szabad visszaigazolni.',
+    expected: /Previo|megfeleltetés|7A|10C|pool|mapping/iu,
+    operator: 'doesNotMatch',
+    diff: 'simple'
+  }
+
+test at ../../../../tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:9:2
+✖ availability reply en uses the guest language (0.417197ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(availabilitySentence(available,lang).includes(word))
+  
+      at TestContext.<anonymous> (file:///tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:9:71)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at ../../../../tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:10:2
+✖ availability reply en does not expose internal PMS mapping (0.122151ms)
+  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /Previo|megfeleltetés|7A|10C|pool|mapping/iu. Input:
+  
+  'Osztott ház esetén kapacitás alapján szóba jöhet Osztott A + C, de ennek tényleges elérhetőségét csak az A/B/C Previo-megfeleltetés hitelesítése után szabad visszaigazolni.'
+  
+      at TestContext.<anonymous> (file:///tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:10:84)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Osztott ház esetén kapacitás alapján szóba jöhet Osztott A + C, de ennek tényleges elérhetőségét csak az A/B/C Previo-megfeleltetés hitelesítése után szabad visszaigazolni.',
+    expected: /Previo|megfeleltetés|7A|10C|pool|mapping/iu,
+    operator: 'doesNotMatch',
+    diff: 'simple'
+  }
+
+test at ../../../../tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:9:2
+✖ availability reply si uses the guest language (0.211423ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(availabilitySentence(available,lang).includes(word))
+  
+      at TestContext.<anonymous> (file:///tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:9:71)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at ../../../../tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:10:2
+✖ availability reply si does not expose internal PMS mapping (0.103844ms)
+  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /Previo|megfeleltetés|7A|10C|pool|mapping/iu. Input:
+  
+  'Osztott ház esetén kapacitás alapján szóba jöhet Osztott A + C, de ennek tényleges elérhetőségét csak az A/B/C Previo-megfeleltetés hitelesítése után szabad visszaigazolni.'
+  
+      at TestContext.<anonymous> (file:///tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:10:84)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Osztott ház esetén kapacitás alapján szóba jöhet Osztott A + C, de ennek tényleges elérhetőségét csak az A/B/C Previo-megfeleltetés hitelesítése után szabad visszaigazolni.',
+    expected: /Previo|megfeleltetés|7A|10C|pool|mapping/iu,
+    operator: 'doesNotMatch',
+    diff: 'simple'
+  }
+
+test at ../../../../tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:12:1
+✖ empty availability does not promise accommodation (0.225975ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /not found/u. Input:
+  
+  'A megadott időszakra a hitelesen ellenőrizhető háztípusok között jelenleg nem találtunk megfelelő szabad kapacitást.'
+  
+      at TestContext.<anonymous> (file:///tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:12:69)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'A megadott időszakra a hitelesen ellenőrizhető háztípusok között jelenleg nem találtunk megfelelő szabad kapacitást.',
+    expected: /not found/u,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at ../../../../tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:23:1
+✖ late availability response cannot overwrite a changed inquiry (7.791015ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'Kedves Vendégünk!\n' +
+  +   '\n' +
+  +   'Köszönjük érdeklődését.\n' +
+  +   '\n' +
+  +   '20.11.2026 és 18.10.2026 között összesen 6 fő szeretnének érkezni.\n' +
+  +   '\n' +
+  +   'A megadott létszám alapján ellenőrizzük az összes megfelelő szállástípust és csak a ténylegesen szabad lehetőségeket ajánljuk fel.\n' +
+  +   '\n' +
+  +   'Kérjük, írja meg, érkezik-e gyermek is. Ha igen, kérjük, adja meg a gyermek(ek) életkorát is. Megírna egy telefonszámot, amelyen elérhetjük?\n' +
+  +   '\n' +
+  +   'A megadott adatokat ellenőrizzük, és a szükséges részletekkel visszajelzünk.\n' +
+  +   '\n' +
+  +   'A megadott időpontban a létszám alapján ellenőrzött, szabad lehetőségek: Deluxe, 2 × Családi.\n' +
+  +   'Osztott ház esetén kapacitás alapján szóba jöhet Osztott A + C, de ennek tényleges elérhetőségét csak az A/B/C Previo-megfeleltetés hitelesítése után szabad visszaigazolni.\n' +
+  +   '\n' +
+  +   'Üdvözlettel:\n' +
+  +   'Sárberki Horgásztó'
+  - 'új érdeklődés'
+  
+      at TestContext.<anonymous> (file:///tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:25:65)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Kedves Vendégünk!\n\nKöszönjük érdeklődését.\n\n20.11.2026 és 18.10.2026 között összesen 6 fő szeretnének érkezni.\n\nA megadott létszám alapján ellenőrizzük az összes megfelelő szállástípust és csak a ténylegesen szabad lehetőségeket ajánljuk fel.\n\nKérjük, írja meg, érkezik-e gyermek is. Ha igen, kérjük, adja meg a gyermek(ek) életkorát is. Megírna egy telefonszámot, amelyen elérhetjük?\n\nA megadott adatokat ellenőrizzük, és a szükséges részletekkel visszajelzünk.\n\nA megadott időpontban a létszám alapján ellenőrzött, szabad lehetőségek: Deluxe, 2 × Családi.\nOsztott ház esetén kapacitás alapján szóba jöhet Osztott A + C, de ennek tényleges elérhetőségét csak az A/B/C Previo-megfeleltetés hitelesítése után szabad visszaigazolni.\n\nÜdvözlettel:\nSárberki Horgásztó',
+    expected: 'új érdeklődés',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at ../../../../tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:27:1
+✖ blank child ages never become age zero during capacity enrichment (2.333382ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /életkor/u. Input:
+  
+  'Kedves Vendégünk!\n' +
+    '\n' +
+    'Köszönjük érdeklődését.\n' +
+    '\n' +
+    '16.10.2026 és 18.10.2026 között összesen 6 fő (5 felnőtt és 1 gyermek, 0 évesek) szeretnének érkezni.\n' +
+    '\n' +
+    'A megadott létszám alapján ellenőrizzük az összes megfelelő szállástípust és csak a ténylegesen szabad lehetőségeket ajánljuk fel.\n' +
+    '\n' +
+    'Megírna egy telefonszámot, amelyen elérhetjük?\n' +
+    '\n' +
+    'A megadott adatokat ellenőrizzük, és a szükséges részletekkel visszajelzünk.\n' +
+    '\n' +
+    'A megadott időpontban a létszám alapján ellenőrzött, szabad lehetőségek: Deluxe, 2 × Családi.\n' +
+    'Osztott ház esetén kapacitás alapján szóba jöhet Osztott A + C, de ennek tényleges elérhetőségét csak az A/B/C Previo-megfeleltetés hitelesítése után szabad visszaigazolni.\n' +
+    '\n' +
+    'Üdvözlettel:\n' +
+    'Sárberki Horgásztó'
+  
+      at TestContext.<anonymous> (file:///tmp/sarberki-original-4aa78f3/tests/availability-reply.test.mjs:30:9)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Kedves Vendégünk!\n\nKöszönjük érdeklődését.\n\n16.10.2026 és 18.10.2026 között összesen 6 fő (5 felnőtt és 1 gyermek, 0 évesek) szeretnének érkezni.\n\nA megadott létszám alapján ellenőrizzük az összes megfelelő szállástípust és csak a ténylegesen szabad lehetőségeket ajánljuk fel.\n\nMegírna egy telefonszámot, amelyen elérhetjük?\n\nA megadott adatokat ellenőrizzük, és a szükséges részletekkel visszajelzünk.\n\nA megadott időpontban a létszám alapján ellenőrzött, szabad lehetőségek: Deluxe, 2 × Családi.\nOsztott ház esetén kapacitás alapján szóba jöhet Osztott A + C, de ennek tényleges elérhetőségét csak az A/B/C Previo-megfeleltetés hitelesítése után szabad visszaigazolni.\n\nÜdvözlettel:\nSárberki Horgásztó',
+    expected: /életkor/u,
+    operator: 'match',
+    diff: 'simple'
+  }

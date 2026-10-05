@@ -1,0 +1,20 @@
+{
+  "baseline_commit": "4aa78f3048b2d02b5207be30f7295609eaccef98",
+  "merged_parent_commit": "cc2ef8d216b0817aa950efc7db96de4bc2506c86",
+  "letters": 245,
+  "new_tests": 256,
+  "final_test_count": 500,
+  "final_pass": 500,
+  "baseline_failing_letters": 96,
+  "remaining_failing_letters": 0,
+  "bug_entries": 27,
+  "severity": {
+    "kritikus": 9,
+    "közepes": 15,
+    "kisebb": 3
+  },
+  "open_reproduced_bugs": 0,
+  "live_gmail_calls": 0,
+  "live_previo_calls": 0,
+  "emails_sent": 0
+}

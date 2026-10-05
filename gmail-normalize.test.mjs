@@ -425,7 +425,7 @@ test('shared reply builder asks only shared missing-data questions',()=>{
   });
   assert.match(draft,/gyermek életkorát/u);
   assert.match(draft,/telefonszámot/u);
-  assert.doesNotMatch(draft,/Melyik háztípust/u);
+  assert.match(draft,/Melyik háztípust/u);
 });
 
 
@@ -756,10 +756,10 @@ test('real Kovacs Istvan numeric Hungarian date range is parsed',()=>{
   assert.deepEqual(dateRangeFromText(message,now),{arrival:'2026-10-09',departure:'2026-10-13',inferredYear:false});
 });
 
-test('known dates and party size do not ask the guest to choose a cabin before capacity search',()=>{
+test('known dates and party size offer capacity options and ask for missing cabin and adult details',()=>{
  const reply=buildReplyDraft({language:'hu',arrival:'2026-10-09',departure:'2026-10-13',guests:6,adults:null,children:null,cabin:'? – emberi döntésre vár',original:'6 fő részére. Milyen lehetőségek vannak erre az időpontra?'});
- assert.doesNotMatch(reply,/Melyik háztípust szeretné/u);
+ assert.match(reply,/Melyik háztípust szeretné/u);
  assert.match(reply,/összes megfelelő szállástípust/u);
- assert.doesNotMatch(reply,/hány felnőtt érkezik/u);
+ assert.match(reply,/hány felnőtt érkezik/u);
  assert.match(reply,/érkezik-e gyermek/u);
 });

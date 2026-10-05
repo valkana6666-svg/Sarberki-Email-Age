@@ -14,7 +14,31 @@ function monthNumber(raw){
   if (MONTHS[k]) return MONTHS[k];
   return MONTHS[k+'_si'] || null;
 }
+// Csak az aktuális üzenet tényeit használjuk, az idézett előzményt megőrzi a hívó.
+export function activeMessageText(text=''){
+  const lines=String(text).replace(/\r\n?/g,'\n').split('\n');
+  const current=[];
+  for(const line of lines){
+    if(/^\s*>/.test(line)||/^\s*-{2,}\s*(?:original message|eredeti üzenet|ursprüngliche nachricht|forwarded message)/iu.test(line)
+      ||/^\s*On .{1,200}wrote:\s*$/iu.test(line)||/^\s*Am .{1,200}schrieb.{0,100}:\s*$/iu.test(line)
+      ||/^\s*.+(?:írta|napisal(?:a)?):\s*$/iu.test(line)) break;
+    current.push(line);
+  }
+  return current.join('\n').trim();
+}
+export function requestFlagsFromText(text=''){
+  text=activeMessageText(text);
+  const pet=/(?:kuty\p{L}*|háziállat\p{L}*|dogs?|pets?|hund\p{L}*|haustier\p{L}*|\bpes\b|\bpsa\b)/iu;
+  const tub=/(?:dézs\p{L}*|dezsa\p{L}*|hot[ -]?tub|whirlpool|badefass|jacuzzi|(?:vroč\p{L}*|masaž\p{L}*)\s*kad)/iu;
+  const negation=/(?<!\p{L})(?:nem|mégsem|megsem|nincs|nélkül|nelkul|not|no|without|kein\p{L}*|nicht|ohne|brez|ne)(?!\p{L})/iu;
+  const requested=pattern=>{
+    const mentions=text.split(/[.!?\n]|\b(?:de|but|aber|ampak)\b/iu).filter(s=>pattern.test(s));
+    return mentions.length? !negation.test(mentions.at(-1)):false;
+  };
+  return {petRequested:requested(pet),hotTubRequested:requested(tub),parkingQuestion:/(?:parkol|parking|parkpl(?:atz|ätze)|parkiriš|parkiris)/iu.test(text)};
+}
 export function cabinFromText(text=''){
+  text=activeMessageText(text);
   const found=[];
   if (/\bvip\b/iu.test(text)) found.push('VIP');
   if (/\b(?:családi|csaladi)\b/iu.test(text)
@@ -26,6 +50,9 @@ export function cabinFromText(text=''){
   return found.length===1 ? found[0] : '? – emberi döntésre vár';
 }
 export function guestCountFromText(text=''){
+  text=activeMessageText(text);
+  const wordTotal=text.match(/(?:összesen|osszesen)\s+(ketten|hárman|harman|négyen|negyen|öten|oten|hatan|heten|nyolcan|kilencen|tízen|tizen)\b/iu);
+  if(wordTotal)return ({ketten:2,hárman:3,harman:3,négyen:4,negyen:4,öten:5,oten:5,hatan:6,heten:7,nyolcan:8,kilencen:9,tízen:10,tizen:10})[wordTotal[1].toLowerCase()];
   const explicitTotal=
     text.match(/(?:^|\s)(?:összesen|osszesen)\s+(\d{1,2})\s*(?:fő|fo|személy|szemely)(?=\s|$|[,.!?:;])/iu)
     || text.match(/\b(?:total(?:\s+of)?|altogether)\s+(\d{1,2})\s*(?:persons?|people|guests?)\b/iu)
@@ -46,7 +73,7 @@ export function guestCountFromText(text=''){
     if(pair) return Number(pair[1])+Number(pair[2]);
   }
   const adultOnly=adultCountFromText(text);
-  if(Number.isInteger(adultOnly)&&adultOnly>0&&childCountFromText(text)===0) return adultOnly;
+  if(Number.isInteger(adultOnly)&&adultOnly>0&&childCountFromText(text)===0)return adultOnly;
   const huCountWords={egy:1,két:2,ket:2,kettő:2,ketto:2,három:3,harom:3,négy:4,negy:4,öt:5,ot:5,hat:6,hét:7,het:7,nyolc:8};
   const siCountWords={en:1,ena:1,eno:1,dva:2,dve:2,trije:3,tri:3,štirje:4,stirje:4,štiri:4,stiri:4,pet:5,šest:6,sest:6,sedem:7,osem:8};
   const huWordPair=text.match(/\b(egy|két|ket|kettő|ketto|három|harom|négy|negy|öt|ot|hat|hét|het|nyolc)\s+(?:felnőtt|felnott)\w*\s*(?:és|es|,|\+)\s*(egy|két|ket|kettő|ketto|három|harom|négy|negy|öt|ot|hat|hét|het|nyolc)\s+(?:gyerek|gyermek)\w*\b/iu);
@@ -61,6 +88,7 @@ export function guestCountFromText(text=''){
   return w ? words[w] : null;
 }
 export function adultCountFromText(text=''){
+  text=activeMessageText(text);
   const m=text.match(/\b(\d{1,2})\s*(?:felnőtt\w*|felnott\w*|adults?|erwachsene\w*|odrasl\w*)\b/iu);
   if(m) return Number(m[1]);
   const huWords={egy:1,két:2,ket:2,kettő:2,ketto:2,három:3,harom:3,négy:4,negy:4,öt:5,ot:5,hat:6,hét:7,het:7,nyolc:8};
@@ -71,7 +99,8 @@ export function adultCountFromText(text=''){
   return sw ? siWords[sw] : null;
 }
 export function childCountFromText(text=''){
-  if(/(?:gyermek|gyerek)\s+nélkül|nincs\s+(?:gyermek|gyerek)|no\s+children|without\s+children|ohne\s+kinder|keine\s+kinder|brez\s+otrok|ni\s+otrok/iu.test(text)) return 0;
+  text=activeMessageText(text);
+  if(/\b(?:nincs(?:enek)?\s+(?:gyerek|gyermek)|(?:gyermek|gyerek)\s+(?:nélkül|nelkul)|no\s+children|without\s+children|keine\s+kinder|ohne\s+kinder|brez\s+otrok|ni\s+otrok)\b/iu.test(text))return 0;
   const m=text.match(/\b(\d{1,2})\s*(?:gyerek\w*|gyermek\w*|children|child|kinder|kind|(?:otrok|otroc)\w*)\b/iu);
   if(m) return Number(m[1]);
   const huWords={egy:1,két:2,ket:2,kettő:2,ketto:2,három:3,harom:3,négy:4,negy:4,öt:5,ot:5,hat:6};
@@ -81,7 +110,12 @@ export function childCountFromText(text=''){
   const sw=text.match(/\b(en|ena|eno|dva|dve|trije|tri|štirje|stirje|štiri|stiri|pet|šest|sest)\s+(?:otrok|otroc)\w*\b/iu)?.[1]?.toLocaleLowerCase('sl-SI');
   return sw ? siWords[sw] : null;
 }
-export function dateRangeFromText(text='', now=new Date(), timeZone='Europe/Budapest'){
+function parseDateRange(text='', now=new Date(), timeZone='Europe/Budapest'){
+  const enCrossMonth=text.match(/\b(?:from\s+)?(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(?:to|[-–])\s+(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December),?\s+(20\d{2})\b/iu);
+  if(enCrossMonth){
+    const m1=monthNumber(enCrossMonth[2]),m2=monthNumber(enCrossMonth[4]),year=Number(enCrossMonth[5]);
+    return {arrival:`${year}-${String(m1).padStart(2,'0')}-${String(enCrossMonth[1]).padStart(2,'0')}`,departure:`${year+(m2<m1?1:0)}-${String(m2).padStart(2,'0')}-${String(enCrossMonth[3]).padStart(2,'0')}`,inferredYear:false};
+  }
   // Real-world Hungarian numeric form: "2026.10.09-től 10.13.ig".
   // The year is stated once, while month/day are repeated for departure.
   const huNumericSuffix=text.match(/\b(20\d{2})[.\/-](\d{1,2})[.\/-](\d{1,2})\.?\s*-?\s*(?:től|tól|tol)\s+(\d{1,2})[.\/-](\d{1,2})\.?\s*-?\s*ig\b/iu);
@@ -128,13 +162,6 @@ export function dateRangeFromText(text='', now=new Date(), timeZone='Europe/Buda
     const startDay=Number(huNaturalRange[3]), endDay=Number(huNaturalRange[4]);
     if(inferred&&(month<local[1]||(month===local[1]&&startDay<local[2]))) year++;
     return {arrival:`${year}-${String(month).padStart(2,'0')}-${String(startDay).padStart(2,'0')}`,departure:`${year}-${String(month).padStart(2,'0')}-${String(endDay).padStart(2,'0')}`,inferredYear:inferred};
-  }
-  const enCrossMonth=text.match(/\b(?:from\s+)?(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(?:to|[-–])\s+(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December),?\s+(20\d{2})\b/iu);
-  if(enCrossMonth){
-    const m1=monthNumber(enCrossMonth[2]), m2=monthNumber(enCrossMonth[4]), year=Number(enCrossMonth[5]);
-    if(!m1||!m2) return null;
-    const endYear=year+(m2<m1?1:0);
-    return {arrival:`${year}-${String(m1).padStart(2,'0')}-${String(enCrossMonth[1]).padStart(2,'0')}`,departure:`${endYear}-${String(m2).padStart(2,'0')}-${String(enCrossMonth[3]).padStart(2,'0')}`,inferredYear:false};
   }
   const enLong=text.match(/\b(?:from\s+)?(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})\s+(?:to|[-–])\s+(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})\b/iu);
   if(enLong){
@@ -204,11 +231,51 @@ export function dateRangeFromText(text='', now=new Date(), timeZone='Europe/Buda
   return {arrival:`${year}-${String(month).padStart(2,'0')}-${String(startDay).padStart(2,'0')}`,departure:`${year}-${String(month).padStart(2,'0')}-${String(endDay).padStart(2,'0')}`,inferredYear:!explicit&&!next};
 }
 
+function validIsoDate(value){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(value||''))return false;
+  const d=new Date(value+'T00:00:00Z');
+  return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===value;
+}
+export function dateRangeFromText(text='',now=new Date(),timeZone='Europe/Budapest'){
+  text=activeMessageText(text);
+  const explicitDates=[...text.matchAll(/\b20\d{2}[./-]\d{1,2}[./-]\d{1,2}\b/gu)].map(m=>m[0]);
+  if(new Set(explicitDates).size>2)return null;
+  // Több külön időszakból soha ne válasszuk ki csendben az elsőt.
+  const parts=text.split(/\b(?:vagy|or|oder|ali)\b|[;\n]/iu);
+  const ranges=parts.map(p=>parseDateRange(p,now,timeZone)).filter(Boolean);
+  if(new Set(ranges.map(r=>r.arrival+'|'+r.departure)).size>1)return null;
+  let result=parseDateRange(text,now,timeZone);
+  if(!result)return null;
+  if(/(?:jövőre|jovore|következő évben|next year|nächstes jahr|naslednje leto)/iu.test(text)&&result.inferredYear){
+    const year=Number(new Intl.DateTimeFormat('en',{timeZone,year:'numeric'}).format(now))+1;
+    const cross=result.departure.slice(0,4)!==result.arrival.slice(0,4);
+    result={arrival:year+result.arrival.slice(4),departure:(year+(cross?1:0))+result.departure.slice(4),inferredYear:false};
+  }
+  if(!validIsoDate(result.arrival)||!validIsoDate(result.departure)||result.departure<=result.arrival)return null;
+  return result;
+}
 export function phoneFromText(text=''){
-  const m=text.match(/(?:\+\d{1,3}[\s()./-]*)?(?:\d[\s()./-]*){8,15}/u);
-  return m ? m[0].trim().replace(/[.,;:]+$/u,'') : null;
+  text=activeMessageText(text);
+  const international=text.match(/\+\d(?:[ ()-]*\d){7,14}(?!\d)/u);
+  if(international)return international[0].trim().replace(/\s+/g,' ');
+  const labelled=text.match(/(?:telefon\p{L}*|phone|tel\.?|mobil\p{L}*)\s*[:：]?\s*((?:\d[ ()/-]*){8,15})/iu);
+  if(labelled)return labelled[1].trim().replace(/[ /-]+$/u,'').replace(/\s+/g,' ');
+  // Dátum és foglalási azonosító nem lehet elérhetőség.
+  const scrubbed=text.replace(/\b20\d{2}[./-]\d{1,2}[./-]\d{1,2}\.?/gu,' ')
+    .replace(/\b\d{1,2}[./-]\d{1,2}[./-]20\d{2}\b/gu,' ')
+    .replace(/\b\d{1,2}\s*[-–]\s*\d{1,2}\s+20\d{2}\b/gu,' ')
+    .replace(/(?:foglalási\s*(?:szám|azonosító)|booking\s*(?:id|number)|reservierungsnummer|številka rezervacije)\s*[:#]?\s*[\w-]+/giu,' ');
+  const m=scrubbed.match(/(?<!\d)(?:0\d|\d{3})(?:[ ()-]*\d){6,11}(?!\d)/u);
+  return m?m[0].trim().replace(/\s+/g,' '):null;
 }
 export function childAgesFromText(text=''){
+  text=activeMessageText(text);
+  text=text.replace(/(?<!\p{L})(?:én|en|i am|ich bin|star sem)\s+\d{1,2}\s*(?:éves|eves|years? old|jahre alt|let)(?:\s+vagyok)?/giu,'');
+  if(!/(?:gyerek|gyermek|child|children|kinder|kind\b|otrok|otroc)/iu.test(text))return [];
+  const separate=[...text.matchAll(/\b(\d{1,2})\s*(?:éves|eves|years? old|jahre alt)\b/giu)];
+  if(separate.length>1)return separate.map(m=>Number(m[1]));
+  const ageList=text.match(/\b(?:aged|im\s+alter\s+von|star(?:a|i|e)?)\s+((?:\d{1,2})(?:\s*(?:,|and|und|in|és|es)\s*\d{1,2})*)/iu);
+  if(ageList)return [...ageList[1].matchAll(/\d{1,2}/g)].map(m=>Number(m[0]));
   const segments=[
     text.match(/\baged\s+([^.!?]{1,120})/iu)?.[1],
     text.match(/\bim\s+alter\s+von\s+([^.!?]{1,120}?)(?=\s+jahren?\b|[.!?]|$)/iu)?.[1],
@@ -225,6 +292,7 @@ export function childAgesFromText(text=''){
   return m ? [Number(m[1]),Number(m[2])] : [];
 }
 export function requestedUnitsFromText(text=''){
+  text=activeMessageText(text);
   const open=/\b(?:több|multiple|several|mehrere|več)\s+(?:szállás)?(?:egység\w*|faház\w*|ház\w*|apartman\w*|units?|cabins?|houses?|einheiten|enot\w*)\b/iu.test(text);
   if(open) return {count:null,open:true,evidence:text.match(/\b(?:több|multiple|several|mehrere|več)\s+(?:szállás)?(?:egység\w*|faház\w*|ház\w*|apartman\w*|units?|cabins?|houses?|einheiten|enot\w*)\b/iu)?.[0]||''};
   const m=text.match(/\b(egy|1|két|kettő|2|három|3|négy|4|öt|5|hat|6|one|two|three|four|five|six|ein|eine|zwei|drei|vier|fünf|funf|sechs|en|ena|eno|dva|dve|tri|štiri|stiri|pet|šest|sest)\s+(?:külön\s*)?(?:db\s*)?(?:vip|családi|deluxe|osztott|family|familien|družinsk\w*)?(?:\s*[-–]?\s*)(?:házat?|faházat?|apartmant?|egységet?|cabins?|houses?|units?|cottages?|häuser|hauser|einheiten|hišk\w*|hisk\w*|koč\w*|enot\w*)\b/iu);
@@ -248,10 +316,10 @@ export function languageFromText(text=''){
   const best=Object.entries(scores).sort((a,b)=>b[1]-a[1]);
   return best[0][1]>0 && best[0][1]>best[1][1] ? best[0][0] : 'unknown';
 }
-export function replySummary(language='hu', {arrival=null,departure=null,guests=null,children=null,childAges=[],pier=false,hotTub=false,dog=false}={}){
+export function replySummary(language='hu', {arrival=null,departure=null,guests=null,adults:knownAdults=null,children=null,childAges=[],pier=false,hotTub=false,dog=false}={}){
   if(!arrival||!departure||!guests) return '';
   const fmt=iso=>{const [y,m,d]=iso.split('-');return `${d}.${m}.${y}`;};
-  const adults=Number.isFinite(children)?Math.max(0,guests-children):null;
+  const adults=Number.isInteger(knownAdults)?knownAdults:Number.isFinite(children)?Math.max(0,guests-children):null;
   const ageList=(lang)=>{
     if(!Array.isArray(childAges)||!childAges.length) return '';
     if(childAges.length===1) return String(childAges[0]);
@@ -261,7 +329,7 @@ export function replySummary(language='hu', {arrival=null,departure=null,guests=
   };
   const packs={
     hu:{
-      people:()=>children?`${guests} fő (${adults} felnőtt és ${children} gyermek${ageList('hu')?`, ${ageList('hu')} évesek`:''})`:`${guests} fő`,
+      people:()=>children?`${guests} fő (${adults} felnőtt és ${children} gyermek${ageList('hu')?`, ${ageList('hu')} ${children===1?'éves':'évesek'}`:''})`:`${guests} fő${adults!==null?` (${adults} felnőtt)`:''}`,
       base:p=>`${fmt(arrival)} és ${fmt(departure)} között összesen ${p} szeretnének érkezni.`,
       pier:'Ha lehetséges, saját / külön stéget kérnek.',
       hotTub:'Dézsát is szeretnének.',
@@ -345,7 +413,8 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
       si:`Predplačilo mora biti poravnano v ${days} dneh po evidentiranju namere rezervacije; če ga do takrat ne prejmemo, se rezervacija prekliče.`
     }[lang]);
   }
-  if(q.cancellation&&Number.isFinite(Number(guests))){
+  if(q.general)lines.push({hu:'A foglalás az előleg beérkezése után válik véglegessé.',de:'Die Buchung wird erst nach Eingang der Anzahlung verbindlich.',en:'The booking becomes final once the deposit has been received.',si:'Rezervacija postane dokončna po prejemu predplačila.'}[lang]);
+  if(q.cancellation&&guests!==null&&guests!==undefined&&Number(guests)>0){
     const g=Number(guests);
     const days=g<15?Number(rules.cancellationDaysUnder15Guests):Number(rules.cancellationDaysFrom15Guests);
     if(Number.isFinite(days)){
@@ -393,11 +462,18 @@ function operationalTopicLines(language='hu',original='',rules=null){
     en:'Parking is available; for several vehicles we will confirm the available spaces separately.',
     si:'Parkiranje je na voljo; pri več vozilih posebej preverimo razpoložljiva parkirna mesta.'
   }[lang]);
-  if(asks.arrival&&rules.reception24h&&rules.confirmedLateArrivalExample) lines.push({
-    hu:`A ${rules.confirmedLateArrivalExample}-as érkezés megoldható; 24 órás portaszolgálat működik.`,
-    de:`Eine Anreise gegen ${rules.confirmedLateArrivalExample} ist möglich; es gibt einen 24-Stunden-Portierdienst.`,
-    en:`Arrival at around ${rules.confirmedLateArrivalExample} is possible; there is 24-hour reception/porter service.`,
-    si:`Prihod okoli ${rules.confirmedLateArrivalExample} je mogoč; na voljo je 24-urna receptorska/portirska služba.`
+  const arrivalMatch=original.match(/(?:érkez|check[- ]?in|arriv|ankunft|anreise|prihod)[^!?\n]{0,80}?(?<!\d)((?:[01]?\d|2[0-3])[:.][0-5]\d)(?!\d)(?:\s*(AM|PM)\b)?/iu);
+  let arrivalTime=arrivalMatch?.[1];
+  if(arrivalTime&&arrivalMatch[2]){
+    const [h,m]=arrivalTime.split(/[:.]/u).map(Number);
+    if(h>=1&&h<=12)arrivalTime=String(h%12+(arrivalMatch[2].toUpperCase()==='PM'?12:0)).padStart(2,'0')+':'+String(m).padStart(2,'0');
+    else arrivalTime=null;
+  }
+  if(asks.arrival&&rules.reception24h&&arrivalTime) lines.push({
+    hu:`Az érkezés ${arrivalTime}-kor megoldható; 24 órás portaszolgálat működik.`,
+    de:`Eine Anreise gegen ${arrivalTime} ist möglich; es gibt einen 24-Stunden-Portierdienst.`,
+    en:`Arrival at around ${arrivalTime} is possible; there is 24-hour reception/porter service.`,
+    si:`Prihod okoli ${arrivalTime} je mogoč; na voljo je 24-urna receptorska/portirska služba.`
   }[lang]);
   if(asks.departure&&rules.checkoutBy) lines.push({
     hu:`A szállást a távozás napján ${rules.checkoutBy}-ig kell elhagyni.`,
@@ -486,7 +562,11 @@ function pricingTopicLines(language='hu',original='',arrival=null,departure=null
 }
 
 export function buildReplyDraft({language='hu',name=null,original='',arrival=null,departure=null,guests=null,adults=null,children=null,childAges=[],phone=null,cabin='? – emberi döntésre vár',pier=false,hotTub=false,dog=false,intent='booking_request',brandName='Sárberki Horgásztó',bookingRules=null,operationalRules=null,pricingRules=null,knowledgeLines=[]}={}){
-  const lang=language==='unknown'?'hu':language;
+  original=activeMessageText(original);
+  const lang=['hu','de','en','si'].includes(language)?language:'hu';
+  const flags=requestFlagsFromText(original);
+  if(/kuty|dog|hund|\bpes\b|\bpsa\b/iu.test(original))dog=flags.petRequested;
+  if(/dézs|dezsa|hot.?tub|badefass|whirlpool/iu.test(original))hotTub=flags.hotTubRequested;
   const first=name?.trim()?.split(/\s+/u)?.slice(-1)[0]||null;
   const greetings={hu:first?`Kedves ${first}!`:'Kedves Vendégünk!',de:first?`Guten Tag ${first}!`:'Guten Tag!',en:first?`Dear ${first},`:'Dear Guest,',si:first?`Pozdravljeni ${first}!`:'Pozdravljeni!'};
   const intros={hu:'Köszönjük érdeklődését.',de:'Vielen Dank für Ihre Anfrage.',en:'Thank you for your inquiry.',si:'Hvala za vaše povpraševanje.'};
@@ -496,21 +576,28 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
     const received={hu:`Megkaptuk a ${action} kérelmét. Hamarosan pontos visszajelzést adunk.`,de:`Wir haben Ihre ${action}anfrage erhalten und prüfen sie.`,en:`We have received your ${action} request and will review it.`,si:`Prejeli smo vašo zahtevo za ${action} in jo bomo preverili.`}[lang];
     return `${greetings[lang]}\n\n${received}\n\n${closings[lang]}\n${brandName}`;
   }
-  const summary=replySummary(lang,{arrival,departure,guests,children,childAges,pier,hotTub,dog});
-  const needCabin=!cabin||String(cabin).startsWith('?');
+  const mismatch=Number.isInteger(guests)&&Number.isInteger(adults)&&Number.isInteger(children)&&guests!==adults+children;
+  const summary=mismatch?'':replySummary(lang,{arrival,departure,guests,adults,children,childAges,pier,hotTub,dog});
+  const needCabin=!cabin||String(cabin).startsWith('?')||cabinFromText(String(cabin)).startsWith('?');
   const needDates=!arrival||!departure;
   const canRecommendByCapacity=needCabin&&!needDates&&Number.isInteger(Number(guests))&&Number(guests)>0;
-  const derivedAdults=(Number.isInteger(Number(guests))&&Number.isInteger(Number(children))&&Number(children)>=0&&Number(guests)>=Number(children))?Number(guests)-Number(children):null;
+  const derivedAdults=(children!==null&&children!==undefined&&children!==''&&Number.isInteger(Number(guests))&&Number.isInteger(Number(children))&&Number(children)>=0&&Number(guests)>=Number(children)&&!mismatch)?Number(guests)-Number(children):null;
   const effectiveAdults=(Number.isInteger(Number(adults))&&Number(adults)>0)?Number(adults):derivedAdults;
   const needAdults=!(Number.isInteger(effectiveAdults)&&effectiveAdults>0);
   const childStatusKnown=children!==null&&children!==undefined&&children!==''&&Number.isInteger(Number(children))&&Number(children)>=0;
   const needChildStatus=!childStatusKnown;
   const needChildAge=childStatusKnown&&Number(children)>0&&childAges.length<Number(children);
-  const questions=replyQuestions(lang,{needDates,needAdults,needChildStatus,needPhone:!phone,needCabin:needCabin&&!canRecommendByCapacity,needChildAge});
+  const questions=replyQuestions(lang,{needDates,needAdults,needChildStatus,needPhone:!phone,needCabin,needChildAge});
+  if(mismatch)questions.unshift({hu:'Kérjük, pontosítsa a létszámot: az összlétszám eltér a megadott felnőttek és gyermekek összegétől.',de:'Bitte klären Sie die Personenzahl: Die Gesamtzahl stimmt nicht mit der Zahl der Erwachsenen und Kinder überein.',en:'Please clarify the party size: the total differs from the number of adults and children.',si:'Prosimo, pojasnite število gostov: skupno število se ne ujema s številom odraslih in otrok.'}[lang]);
   const policyLines=bookingPolicyLines(lang,original,guests,bookingRules);
   const operationalLines=operationalTopicLines(lang,original,operationalRules);
   const pricingLines=pricingTopicLines(lang,original,arrival,departure,pricingRules);
   const extraKnowledge=Array.isArray(knowledgeLines)?knowledgeLines.filter(Boolean):[];
+  if(!needCabin)extraKnowledge.unshift({hu:`A kért háztípus: ${cabin}.`,de:`Gewünschter Haustyp: ${cabin}.`,en:`Requested cabin type: ${cabin}.`,si:`Želeni tip hiške: ${cabin}.`}[lang]);
+  if(canRecommendByCapacity){
+    const options=Number(guests)<=6?'Deluxe, Családi, VIP':Number(guests)<=7?'Családi, VIP':Number(guests)<=8?'Családi':'több ház / multiple cabins';
+    extraKnowledge.push({hu:`Kapacitás alapján szóba jöhet: ${options}${Number(guests)>8?'':' vagy több egység kombinációja'}. Ezek elérhetőségét külön ellenőrizzük.`,de:`Nach Kapazität kommen ${options} oder mehrere Einheiten infrage. Die Verfügbarkeit wird separat geprüft.`,en:`Capacity options include ${options} or a combination of units. Availability will be checked separately.`,si:`Glede na kapaciteto pridejo v poštev ${options} ali kombinacija več enot. Razpoložljivost preverimo posebej.`}[lang]);
+  }
   if(canRecommendByCapacity) extraKnowledge.unshift({
     hu:'A megadott létszám alapján ellenőrizzük az összes megfelelő szállástípust és csak a ténylegesen szabad lehetőségeket ajánljuk fel.',
     de:'Anhand der angegebenen Personenzahl prüfen wir alle passenden Unterkunftstypen und schlagen nur tatsächlich verfügbare Möglichkeiten vor.',

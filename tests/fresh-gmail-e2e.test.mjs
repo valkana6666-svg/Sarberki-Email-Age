@@ -132,7 +132,8 @@ test('fresh Gmail inbox fixtures survive Gmail transform and reply drafting',asy
     assert.match(record.reply_draft,item.parking,item.subject);
     assert.match(record.reply_draft,item.fishing,item.subject);
     assert.doesNotMatch(record.reply_draft,item.childQuestion,item.subject);
-    assert.doesNotMatch(record.reply_draft,/Melyik háztípust|requested cabin type|gewünschter Haustyp|želeni tip hiške/u,item.subject);
+    // The current stress-task requires capacity options followed by a cabin question.
+    assert.match(record.reply_draft,/Deluxe|Családi|VIP/u,item.subject);
     assert.doesNotMatch(record.reply_draft,/\b\d{2,3}[ .]?\d{3}\s*Ft\b/u,item.subject);
   }
 });

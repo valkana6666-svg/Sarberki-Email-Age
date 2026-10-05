@@ -1,4 +1,6 @@
 import {
+  activeMessageText,
+  requestFlagsFromText,
   cabinFromText,
   guestCountFromText,
   adultCountFromText,
@@ -20,7 +22,7 @@ export function normalizeInquiryInput({
   now=new Date(),
   timeZone='Europe/Budapest'
 }={}){
-  const text=String(rawText||'').trim();
+  const text=activeMessageText(rawText);
 
   const dateRange=dateRangeFromText(text,now,timeZone);
   const guests=guestCountFromText(text);
@@ -48,6 +50,7 @@ export function normalizeInquiryInput({
       children:children ?? null,
       child_ages:Array.isArray(childAges)?childAges:[],
       phone:phoneFromText(text),
+      ...requestFlagsFromText(text),
       units_requested:units?.open ? null : (units?.count||null),
       units_open_request:Boolean(units?.open),
       special_requests:specialRequestsFromText(text)

@@ -1,4 +1,5 @@
 import {
+  activeMessageText,
   cabinFromText,
   guestCountFromText,
   adultCountFromText,
@@ -19,7 +20,7 @@ function explicitNoChildren(text=''){
 
 export function normalizeBookingInput({channel='manual',text='',sourceId=null,receivedAt=null,now=new Date(),timeZone='Europe/Budapest'}={}){
   if(!BOOKING_CHANNELS.includes(channel)) throw new Error('Nem támogatott foglalási csatorna.');
-  const original=String(text||'').trim();
+  const original=activeMessageText(text);
   if(!original) throw new Error('A foglalási bemenet nem lehet üres.');
   const dates=dateRangeFromText(original,now,timeZone);
   const guests=guestCountFromText(original);

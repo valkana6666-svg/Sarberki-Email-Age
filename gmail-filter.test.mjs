@@ -75,9 +75,9 @@ test('Gmail draft uses the shared multilingual reply builder', () => {
 
 
 test('Gmail bridge recognizes multilingual hot tub dog availability and child-age wording', () => {
-  assert.match(source, /hot\\s\*tub/u);
-  assert.match(source, /whirlpool/u);
-  assert.match(source, /badefass/u);
+  assert.match(source, /requestFlagsFromText\(original\)/u);
+  const core=fs.readFileSync(new URL('./sarberki-core.mjs',import.meta.url),'utf8');
+  assert.match(core,/whirlpool|badefass/u);
   assert.match(source, /verfügbar/u);
   assert.match(source, /razpolož/u);
   assert.match(source, /childAgesFromText\(original\)/u);
@@ -93,7 +93,7 @@ test('Gmail bridge has one canonical date parser', () => {
 });
 
 
-test('Gmail record exposes canonical normalized fields for UI',()=>{assert.match(source,/normalized:\{language,cabin:cabinFromGuestText\(original\),dates:normalizedDate,guests:count,adults:adultCount,children:childCount,child_ages:childAges,phone,units_requested:requestedUnits\.count\|\|null,units_open:requestedUnits\.open,pier_requested:pier,hot_tub_requested:hotTub,pet_requested:dog\}/u);});
+test('Gmail record exposes canonical normalized fields for UI',()=>{assert.match(source,/normalized:\{language,cabin:cabinFromGuestText\(original\),dates:normalizedDate,guests:count,adults:adultCount,children:childCount,child_ages:childAges,phone,.*units_requested:requestedUnits\.count\|\|null,units_open:requestedUnits\.open,pier_requested:pier,hot_tub_requested:hotTub,pet_requested:dog\}/u);});
 
 
 test('parsed child ages are not falsely marked missing',()=>{
