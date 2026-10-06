@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {cabinFromText,guestCountFromText,adultCountFromText,childCountFromText,dateRangeFromText,phoneFromText,childAgesFromText,pierPreferenceFromText,languageFromText,replySummary,replyQuestions,buildReplyDraft,requestedUnitsFromText,nameFromText} from './sarberki-core.mjs';
+import {cabinFromText,cabinClarificationRequired,guestCountFromText,adultCountFromText,childCountFromText,dateRangeFromText,phoneFromText,childAgesFromText,pierPreferenceFromText,languageFromText,replySummary,replyQuestions,buildReplyDraft,requestedUnitsFromText,nameFromText} from './sarberki-core.mjs';
 const now=new Date('2026-09-28T08:00:00Z');
 test('HU parse',()=>{assert.equal(cabinFromText('Deluxe faház'), 'Deluxe');assert.equal(guestCountFromText('5 fő'),5);assert.deepEqual(dateRangeFromText('2026 október 16-19',now),{arrival:'2026-10-16',departure:'2026-10-19',inferredYear:false});});
 test('EN parse',()=>{assert.equal(cabinFromText('family cabin'),'Családi');assert.equal(guestCountFromText('4 guests'),4);assert.equal(childCountFromText('2 children'),2);assert.deepEqual(dateRangeFromText('October 16-19 2026',now),{arrival:'2026-10-16',departure:'2026-10-19',inferredYear:false});});
@@ -835,4 +835,41 @@ test('guest reply is grouped by topic and avoids repeated review language',()=>{
   assert.match(draft,/Horgászat\nHorgászati tájékoztató\./u);
   assert.doesNotMatch(draft,/Melyik háztípust/u);
   assert.doesNotMatch(draft,/ellenőrzésre vár|emberi jóváhagyás|HUMAN_APPROVAL_REQUIRED/u);
+});
+
+
+test('standalone two-person wording maps to the 15th-house type while generic two-person stays stay ambiguous',()=>{
+  assert.equal(cabinFromText('különálló kétfős faházat szeretnénk'),'Különálló 2 fős');
+  assert.equal(cabinFromText('kétfős apartmant szeretnénk'),'? – emberi döntésre vár');
+  assert.equal(cabinClarificationRequired('kétfős apartmant szeretnénk',2),true);
+  assert.equal(cabinClarificationRequired('különálló kétfős faházat szeretnénk',2),false);
+});
+
+test('generic two-person enquiry asks cabin type and includes the standalone option',()=>{
+  const reply=buildReplyDraft({
+    language:'hu',
+    original:'2026. november 6-8. között ketten jönnénk, egy kétfős apartmant szeretnénk.',
+    arrival:'2026-11-06',departure:'2026-11-08',guests:2,adults:2,children:0,phone:'+36 30 555 1234',
+    cabin:'? – emberi döntésre vár'
+  });
+  assert.match(reply,/Melyik háztípust szeretné/u);
+  assert.match(reply,/Különálló 2 fős/u);
+  assert.doesNotMatch(reply,/megkeressük a megfelelő szabad szállástípusokat/u);
+});
+
+test('generic four-person enquiry asks cabin type instead of silently treating it as split C',()=>{
+  const reply=buildReplyDraft({
+    language:'hu',
+    original:'2026. november 6-8. között négyen jönnénk, egy négyfős apartmant szeretnénk.',
+    arrival:'2026-11-06',departure:'2026-11-08',guests:4,adults:4,children:0,phone:'+36 30 555 1234',
+    cabin:'? – emberi döntésre vár'
+  });
+  assert.match(reply,/Melyik háztípust szeretné/u);
+  assert.doesNotMatch(reply,/megkeressük a megfelelő szabad szállástípusokat/u);
+});
+
+test('two explicitly requested two-person apartments are parsed as two units',()=>{
+  assert.deepEqual(requestedUnitsFromText('kettő darab kétfős osztott apartmant szeretnénk'),{
+    count:2,open:false,evidence:'kettő darab kétfős osztott apartmant'
+  });
 });
