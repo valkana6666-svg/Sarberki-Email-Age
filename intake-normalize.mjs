@@ -13,6 +13,7 @@ import {
   specialRequestsFromText
 } from './sarberki-core.mjs';
 import { createInquiryEnvelope } from './shared-core/inquiry-contract.mjs';
+import { splitRequestFromText } from './split-units.mjs';
 
 export function normalizeInquiryInput({
   sourceChannel,
@@ -53,7 +54,8 @@ export function normalizeInquiryInput({
       ...requestFlagsFromText(text),
       units_requested:units?.open ? null : (units?.count||null),
       units_open_request:Boolean(units?.open),
-      special_requests:specialRequestsFromText(text)
+      special_requests:specialRequestsFromText(text),
+      split_request:splitRequestFromText(text)
     }
   });
 }
