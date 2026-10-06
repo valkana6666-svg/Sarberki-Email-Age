@@ -64,8 +64,19 @@ export function cabinFromText(text=''){
       || /\bdružinsk\w*\s+(?:hišk\w*|koč\w*|nastanitev)\b/iu.test(text)) found.push('Családi');
   if (/\bdeluxe\b/iu.test(text)) found.push('Deluxe');
   if (/\b(?:osztott|split|geteilte[rs]?|deljen[ai]?)\b/iu.test(text)) found.push('Osztott');
+  if (/\b(?:különálló|kulonallo|külön\s+álló)\b/iu.test(text)
+      || /\b(?:standalone|detached)\s+(?:cabin|house|accommodation|unit)\b/iu.test(text)
+      || /\bfreistehend\w*\s+(?:hütte|haus|unterkunft)\b/iu.test(text)
+      || /\bsamostojn\w*\s+(?:hišk\w*|koč\w*|nastanitev)\b/iu.test(text)) found.push('Különálló 2 fős');
   return found.length===1 ? found[0] : '? – emberi döntésre vár';
 }
+export function cabinClarificationRequired(text='',guests=null){
+  const parsed=cabinFromText(text);
+  if(parsed&&!parsed.startsWith('?')) return false;
+  const count=Number(guests);
+  return count===2||count===4;
+}
+
 export function guestCountFromText(text=''){
   text=activeMessageText(text);
   const wordTotal=text.match(/(?:összesen|osszesen)\s+(ketten|hárman|harman|négyen|negyen|öten|oten|hatan|heten|nyolcan|kilencen|tízen|tizen)\b/iu);
