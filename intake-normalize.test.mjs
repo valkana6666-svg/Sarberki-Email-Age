@@ -28,3 +28,17 @@ test('phone AI transcript uses the common core without creating a separate booki
 test('unknown channels are rejected',()=>{
   assert.throws(()=>normalizeInquiryInput({sourceChannel:'other',rawText:text}),/Ismeretlen bemeneti csatorna/u);
 });
+
+
+test('split-unit intent is normalized consistently across channels',()=>{
+  const message='2027. október 16-18. között kettő darab kétfős osztott apartmant szeretnénk, 4 felnőtt részére.';
+  const rows=['manual','gmail','web_form','phone_ai'].map(sourceChannel=>normalizeInquiryInput({sourceChannel,rawText:message,now:new Date('2026-10-03T10:00:00Z')}));
+  for(const row of rows){
+    assert.equal(row.normalized.cabin,'Osztott');
+    assert.equal(row.normalized.split_request.isSplit,true);
+    assert.equal(row.normalized.split_request.requestedAB,2);
+    assert.equal(row.normalized.split_request.requestedC,0);
+    assert.equal(row.normalized.split_request.sameHousePreferred,true);
+    assert.equal(row.normalized.split_request.crossHouseFallbackRequiresApproval,true);
+  }
+});
