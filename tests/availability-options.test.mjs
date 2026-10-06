@@ -11,6 +11,8 @@ test('six guests produce verified single-house options and split manual-review c
   assert.deepEqual(result.available_options.map(x=>x.units),[1,1,1]);
   const split=result.manual_review_options.map(x=>x.label).sort();
   assert.deepEqual(split,['Osztott A + Osztott C','Osztott B + Osztott C']);
+  assert.ok(result.manual_review_options.every(x=>x.same_house_preferred===true));
+  assert.deepEqual(result.manual_review_options[0].candidate_combinations,[['7A','7C'],['8A','8C'],['9A','9C'],['10A','10C']]);
   assert.ok(result.manual_review_options.every(x=>x.availability_verified===false));
 });
 
