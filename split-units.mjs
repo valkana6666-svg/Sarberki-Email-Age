@@ -97,7 +97,7 @@ function decorate({label,units,capacity,candidateCombinations,needAB,needC,reque
     pooled_availability_verified:pool.pooledAvailabilityVerified,
     individual_unit_mapping_verified:false,
     same_house_pairing_verified:false,
-    business_placement_requires_human_approval:false,
+    business_placement_requires_human_approval:totalUnits>1,
     individual_mapping_requires_review:true,
     current_read_only_mapping_requires_human_approval:true,
     same_house_preferred:totalUnits>1,
@@ -131,7 +131,7 @@ function specifiedOptions(request,poolChecks={}){
   if(ab===1&&c===0){
     label='Osztott A/B';
     units=['splitA_or_B'];
-    combos=physicalForSegment('A').concat(physicalForSegment('B')).map(id=>[id]);
+    combos=HOUSES.flatMap(house=>[[`${house}A`],[`${house}B`]]);
     mode='single_two_person';
   }else if(ab===2&&c===0){
     label='Osztott A + Osztott B';
