@@ -31,10 +31,46 @@ export function availabilitySentence(result,language='hu'){
 export function splitReviewSentence(result,language='hu'){
   const manual=(result?.manual_review_options||[]);
   if(!manual.length)return '';
-  const joiner=({hu:' vagy ',de:' oder ',en:' or ',si:' ali '})[language]||' vagy ';
-  const labels=manual.map(x=>localizedOptionLabel(x.label,language)).join(joiner);
-  return ({hu:`Kapacitás alapján szóba jöhet ${labels}; az együttes elérhetőséget külön ellenőrizzük, és ezt csak utána tudjuk visszaigazolni.`,de:`Nach Kapazität kommen ${labels} infrage; die gemeinsame Verfügbarkeit prüfen und bestätigen wir separat.`,en:`Capacity options may include ${labels}; we will check and confirm their combined availability separately.`,si:`Glede na kapaciteto pridejo v poštev ${labels}; skupno razpoložljivost preverimo in potrdimo posebej.`})[language]||splitReviewSentence(result,'hu');
+  const lang=['hu','de','en','si'].includes(language)?language:'hu';
+  const mode=manual[0]?.request_mode||'generic_capacity';
+  const specific={
+    single_two_person:{
+      hu:'Egy 2 fős osztott apartman esetén a konkrét egységet a szabad A/B egységek közül választjuk ki.',
+      de:'Bei einem geteilten 2-Personen-Apartment wählen wir die konkrete Einheit aus den freien A/B-Einheiten aus.',
+      en:'For one 2-person split apartment, we choose the specific unit from the available A/B units.',
+      si:'Pri enem 2-osebnem deljenem apartmaju izberemo konkretno enoto med prostimi enotami A/B.'
+    },
+    double_two_person:{
+      hu:'Két 2 fős osztott apartmannál elsőként ugyanazon faház egymás melletti A+B egységét keressük. Ha csak különböző faházakból állítható össze, azt külön emberi jóváhagyással ajánljuk.',
+      de:'Bei zwei geteilten 2-Personen-Apartments suchen wir zuerst das A+B-Paar im selben Haus. Eine Kombination aus verschiedenen Häusern wird nur nach manueller Freigabe angeboten.',
+      en:'For two 2-person split apartments, we first look for the A+B pair in the same house. A combination across different houses is offered only after human approval.',
+      si:'Pri dveh 2-osebnih deljenih apartmajih najprej iščemo par A+B v isti hiški. Kombinacijo iz različnih hišk ponudimo le po ročni potrditvi.'
+    },
+    single_four_person:{
+      hu:'A 4 fős osztott apartman az osztott faház emeleti egysége; a ténylegesen szabad 4 fős egységet ellenőrizzük.',
+      de:'Das geteilte 4-Personen-Apartment ist die obere Einheit des Hauses; wir prüfen, welche 4-Personen-Einheit tatsächlich frei ist.',
+      en:'The 4-person split apartment is the upper unit of the house; we check which 4-person unit is actually available.',
+      si:'4-osebni deljeni apartma je zgornja enota hiške; preverimo, katera 4-osebna enota je dejansko prosta.'
+    },
+    two_plus_four:{
+      hu:'A 2 fős és 4 fős osztott egységet elsőként ugyanabban a fizikai faházban keressük. Különböző házak kombinációja csak emberi jóváhagyással ajánlható.',
+      de:'Die 2- und 4-Personen-Einheit suchen wir zuerst im selben Haus. Eine Kombination aus verschiedenen Häusern wird nur nach manueller Freigabe angeboten.',
+      en:'We first look for the 2-person and 4-person split units in the same physical house. A cross-house combination is offered only after human approval.',
+      si:'2- in 4-osebno deljeno enoto najprej iščemo v isti hiški. Kombinacijo iz različnih hišk ponudimo le po ročni potrditvi.'
+    },
+    full_split_house:{
+      hu:'Teljes osztott faház igénynél elsőként ugyanazon fizikai faház A+B+C egységeit keressük együtt.',
+      de:'Bei einem vollständigen geteilten Haus suchen wir zuerst A+B+C gemeinsam im selben Haus.',
+      en:'For a full split house, we first look for A+B+C together in the same physical house.',
+      si:'Pri celotni deljeni hiški najprej iščemo A+B+C skupaj v isti fizični hiški.'
+    }
+  };
+  if(specific[mode])return specific[mode][lang];
+  const joiner=({hu:' vagy ',de:' oder ',en:' or ',si:' ali '})[lang];
+  const labels=manual.map(x=>localizedOptionLabel(x.label,lang)).join(joiner);
+  return ({hu:`Kapacitás alapján szóba jöhet ${labels}; az együttes elérhetőséget külön ellenőrizzük, és ezt csak utána tudjuk visszaigazolni.`,de:`Nach Kapazität kommen ${labels} infrage; die gemeinsame Verfügbarkeit prüfen und bestätigen wir separat.`,en:`Capacity options may include ${labels}; we will check and confirm their combined availability separately.`,si:`Glede na kapaciteto pridejo v poštev ${labels}; skupno razpoložljivost preverimo in potrdimo posebej.`})[lang];
 }
+
 function hasSpecificCabin(value=''){return /vip|családi|deluxe|osztott|különálló|2 fős/iu.test(value);}
 export function replaceCapacityPlaceholder(draft,sentence,manual){
   const placeholders=[
