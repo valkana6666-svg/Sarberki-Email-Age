@@ -168,8 +168,11 @@ async function enrich(){
   const original=$('message')?.value||$('gmail_original')?.textContent||'';
   const splitCabin=/^Osztott$/iu.test(cabin.trim());
   const mustClarify=Boolean(window.SarberkiNormalize?.cabinClarificationRequired?.(original,guests));
+  const initialSplitRequest=splitCabin?(window.SarberkiSplitUnits?.splitRequestFromText?.(original)||null):null;
+  const initialSplitPlan=splitCabin?(window.SarberkiSplitUnits?.splitCapacityOptions?.(guests,{},initialSplitRequest)||[]):[];
+  if(splitCabin)renderSplitInternalNote(initialSplitPlan,initialSplitRequest);
   if(!arrival||!departure||!Number.isInteger(guests)||guests<1||(hasSpecificCabin(cabin)&&!splitCabin)||mustClarify){
-    renderSplitInternalNote([],null);
+    if(!splitCabin)renderSplitInternalNote([],null);
     return;
   }
   const fingerprint=()=>[ $('f_arrival')?.value||'', $('f_departure')?.value||'', $('f_guests')?.value||'', $('f_unit')?.value||'', $('message')?.value||'', $('gmail_original')?.textContent||'', $('f_language')?.value||'' ].join('|');
@@ -188,7 +191,7 @@ async function enrich(){
     if(!response.ok)throw Error(data.error||'Nem sikerült a kapacitás-ellenőrzés.');
     const rawLang=($('f_language')?.value||'HU').toLowerCase();
     const lang=rawLang==='sl'?'si':rawLang;
-    const splitRequest=window.SarberkiSplitUnits?.splitRequestFromText?.(original)||null;
+    const splitRequest=initialSplitRequest||(window.SarberkiSplitUnits?.splitRequestFromText?.(original)||null);
     const planned=window.SarberkiSplitUnits?.splitCapacityOptions?.(guests,data.split_pool_checks||{},splitCabin?splitRequest:null);
     const manualOptions=Array.isArray(planned)?planned:(data.manual_review_options||[]);
     const manualData={...data,manual_review_options:manualOptions};
