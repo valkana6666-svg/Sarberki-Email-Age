@@ -16,8 +16,9 @@ export function carsFromText(text='') {
   return match ? (words[match[1].toLowerCase()] ?? Number(match[1])) : null;
 }
 function hotTubAtHouse(unit='') {
-  if(/osztott|split/iu.test(unit)) return false;
-  if(/deluxe|családi|family|vip|különálló|small/iu.test(unit)) return true;
+  const value=String(unit||'').trim();
+  if(/osztott|split/iu.test(value)||/^(?:7|8|9|10)[ABC]$/iu.test(value)) return false;
+  if(/deluxe|családi|family|vip|különálló|small/iu.test(value)||/^15(?:-ös)?$/iu.test(value)) return true;
   return null;
 }
 export function createCaseState({original='', values={}, intent='booking_request', unresolvedQuestions=[], now=new Date().toISOString()}={}) {
