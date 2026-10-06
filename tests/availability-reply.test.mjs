@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import {availabilitySentence,splitReviewSentence,replaceCapacityPlaceholder} from '../availability-recommend.mjs';
 import * as core from '../sarberki-core.mjs';
+import * as splitUnits from '../split-units.mjs';
 const available={available_options:[{label:'Deluxe',units:1},{label:'Családi',units:2}],manual_review_options:[{label:'Osztott A + C'}]};
 for(const [lang,word] of [['hu','szabad'],['de','verfügbare'],['en','available'],['si','proste']]){
  test(`availability reply ${lang} uses the guest language`,()=>assert.ok(availabilitySentence(available,lang).includes(word)));
@@ -46,7 +47,7 @@ function harness(){
  const nodes=new Map();
  const node=id=>{if(!nodes.has(id))nodes.set(id,{value:'',textContent:'',classList:{contains:()=>true},dispatchEvent(){}});return nodes.get(id);};
  const pending=[];
- const context=vm.createContext({document:{getElementById:node,addEventListener(){},dispatchEvent(){}},window:{SarberkiNormalize:core},Event,console,Number,JSON,setTimeout(){},fetch:()=>new Promise(resolve=>pending.push(resolve))});
+ const context=vm.createContext({document:{getElementById:node,addEventListener(){},dispatchEvent(){}},window:{SarberkiNormalize:core,SarberkiSplitUnits:splitUnits},Event,console,Number,JSON,setTimeout(){},fetch:()=>new Promise(resolve=>pending.push(resolve))});
  node('f_arrival').value='2026-10-16';node('f_departure').value='2026-10-18';node('f_guests').value='6';node('f_language').value='HU';node('message').value='6 fő';node('draft').value='eredeti';
  vm.runInContext(source,context);
  return {node,pending,run:()=>vm.runInContext('enrich()',context)};
@@ -81,4 +82,51 @@ test('exact physical split ids remain internal and are not echoed to the guest',
   const sentence=splitReviewSentence({manual_review_options:[{request_mode:'exact',label:'7A + 7C'}]},'hu');
   assert.doesNotMatch(sentence,/7A|7C|8A|10C/u);
   assert.match(sentence,/megjelölt osztott egységek/u);
+});
+
+
+test('ambiguous four-person apartment request waits for cabin type instead of calling availability',async()=>{
+  const h=harness();
+  h.node('f_guests').value='4';
+  h.node('f_unit').value='';
+  h.node('message').value='Négyen jönnénk, egy négyfős apartmant szeretnénk.';
+  await h.run();
+  assert.equal(h.pending.length,0);
+});
+
+test('explicit four-person split request uses C logic internally without exposing physical house ids',async()=>{
+  const h=harness();
+  h.node('f_guests').value='4';
+  h.node('f_unit').value='Osztott';
+  h.node('message').value='Egy 4 fős osztott apartmant szeretnénk.';
+  const p=h.run();
+  assert.equal(h.pending.length,1);
+  h.pending[0]({ok:true,json:async()=>({
+    available_options:[],
+    manual_review_options:[],
+    split_pool_checks:{splitAB:{verified:true,availableUnits:8},splitC:{verified:true,availableUnits:4}}
+  })});
+  await p;
+  assert.match(h.node('split_internal_note').textContent,/7C, 8C, 9C, 10C/u);
+  assert.match(h.node('draft').value,/emeleti egysége/u);
+  assert.doesNotMatch(h.node('draft').value,/7C|8C|9C|10C/u);
+});
+
+test('two two-person split apartments show same-house A+B priority internally',async()=>{
+  const h=harness();
+  h.node('f_guests').value='4';
+  h.node('f_unit').value='Osztott';
+  h.node('message').value='Kettő darab kétfős osztott apartmant szeretnénk.';
+  const p=h.run();
+  assert.equal(h.pending.length,1);
+  h.pending[0]({ok:true,json:async()=>({
+    available_options:[],
+    manual_review_options:[],
+    split_pool_checks:{splitAB:{verified:true,availableUnits:8},splitC:{verified:true,availableUnits:4}}
+  })});
+  await p;
+  assert.match(h.node('split_internal_note').textContent,/7A\+7B/u);
+  assert.match(h.node('split_internal_note').textContent,/emberi jóváhagyással/u);
+  assert.match(h.node('draft').value,/ugyanazon faház.*A\+B/u);
+  assert.doesNotMatch(h.node('draft').value,/7A|7B|8A|8B/u);
 });
