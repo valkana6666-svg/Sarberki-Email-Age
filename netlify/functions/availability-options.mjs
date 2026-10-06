@@ -1,5 +1,6 @@
 import {BUSINESS} from '../../business-config.mjs';
 import {fetchPublicBookingAvailability} from '../../price-source/sarberki-public-booking.mjs';
+import {splitCapacityOptions as buildSplitCapacityOptions} from '../../split-units.mjs';
 
 const LIVE_TEST_HOSTS=new Set(['leafy-chimera-2403e5.netlify.app']);
 
@@ -10,43 +11,7 @@ export function isLiveAvailabilityEnabled(request){
 function validDate(value){return /^\d{4}-\d{2}-\d{2}$/.test(value||'')&&Number.isFinite(+new Date(value+'T00:00:00Z'));}
 
 export function splitCapacityOptions(guests,poolChecks={}){
-  const units=[
-    {key:'splitA',label:'Osztott A',capacity:BUSINESS.accommodationTypes.splitA.maxGuests},
-    {key:'splitB',label:'Osztott B',capacity:BUSINESS.accommodationTypes.splitB.maxGuests},
-    {key:'splitC',label:'Osztott C',capacity:BUSINESS.accommodationTypes.splitC.maxGuests}
-  ];
-  const combos=[];
-  for(let mask=1;mask<(1<<units.length);mask++){
-    const selected=units.filter((_,i)=>mask&(1<<i));
-    const capacity=selected.reduce((n,x)=>n+x.capacity,0);
-    if(capacity>=guests) combos.push({units:selected.map(x=>x.key),labels:selected.map(x=>x.label),capacity,excess:capacity-guests,count:selected.length});
-  }
-  combos.sort((a,b)=>a.excess-b.excess||a.count-b.count||a.labels.join().localeCompare(b.labels.join()));
-  const best=combos[0];
-  if(!best)return [];
-  return combos.filter(x=>x.excess===best.excess&&x.count===best.count).map(x=>{
-    const needAB=x.units.filter(key=>key==='splitA'||key==='splitB').length;
-    const needC=x.units.filter(key=>key==='splitC').length;
-    const ab=poolChecks.splitAB||null, upper=poolChecks.splitC||null;
-    const abOk=needAB===0||Boolean(ab?.verified&&ab.availableUnits>=needAB);
-    const cOk=needC===0||Boolean(upper?.verified&&upper.availableUnits>=needC);
-    const pooledAvailabilityVerified=abOk&&cOk&&(needAB===0||ab?.verified)&&(needC===0||upper?.verified);
-    return {
-      kind:'split_manual_review',
-      label:x.labels.join(' + '),
-      units:x.units,
-      capacity:x.capacity,
-      availability_verified:false,
-      pooled_availability_verified:Boolean(pooledAvailabilityVerified),
-      pool_checks:{
-        splitAB:needAB?ab:null,
-        splitC:needC?upper:null
-      },
-      reason:pooledAvailabilityVerified
-        ?'A szükséges 2 fős és 4 fős Previo poolban van elég szabad egység, de az egyedi 7A–10C egység-ID és az azonos fizikai házhoz tartozó A/B + C párosítás ezen a read-only útvonalon nem látszik.'
-        :'A Previo-típusmapping hitelesített (A/B = 2 fős apartman pool, C = 4 fős apartman pool), de a szükséges pooled elérhetőség, az egyedi 7A–10C egység-ID vagy a fizikai A/B + C párosítás még kézi ellenőrzést igényel.'
-    };
-  });
+  return buildSplitCapacityOptions(guests,poolChecks);
 }
 
 export async function buildAvailabilityOptions(input,source=fetchPublicBookingAvailability){
