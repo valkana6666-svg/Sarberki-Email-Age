@@ -83,7 +83,7 @@ function optionReason(pooled,totalUnits){
   }
   return totalUnits>1
     ?'A Previo-típusmapping hitelesített (A/B = 2 fős apartman pool, C = 4 fős apartman pool), de a szükséges pooled elérhetőség, az egyedi 7A–10C egység-ID vagy a fizikai párosítás még kézi ellenőrzést igényel.'
-    :'A Previo-típusmapping hitelesített, de a szükséges pooled elérhetőség vagy az egyedi 7A–10C egység-ID még kézi ellenőrzést igényel.';
+    :'A Previo-típusmapping hitelesített (A/B = 2 fős apartman pool, C = 4 fős apartman pool), de a szükséges pooled elérhetőség vagy az egyedi 7A–10C egység-ID még kézi ellenőrzést igényel.';
 }
 function decorate({label,units,capacity,candidateCombinations,needAB,needC,requestMode,poolChecks}){
   const pool=poolStatus(needAB,needC,poolChecks);
