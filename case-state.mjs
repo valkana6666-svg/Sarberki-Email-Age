@@ -1,5 +1,5 @@
-import {buildReplyDraft, phoneFromText, requestFlagsFromText, activeMessageText, cabinFromText, cabinClarificationRequired} from './sarberki-core.mjs';
-import {BUSINESS} from './business-config.mjs';
+import {buildReplyDraft, phoneFromText, requestFlagsFromText, activeMessageText, cabinFromText, cabinClarificationRequired} from './sarberki-core.mjs?v=20261006-split6';
+import {BUSINESS} from './business-config.mjs?v=20261006-split6';
 import {fishingQuestion} from './fishing-rules.mjs';
 
 const clone = value => JSON.parse(JSON.stringify(value));
