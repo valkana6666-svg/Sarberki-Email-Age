@@ -1,4 +1,4 @@
-import {BUSINESS} from './business-config.mjs';
+import {BUSINESS} from './business-config.mjs?v=20261006-split6';
 
 const PHYSICAL_UNITS=BUSINESS.splitPhysicalUnits||[];
 const HOUSES=[7,8,9,10];
