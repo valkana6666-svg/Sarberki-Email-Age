@@ -63,6 +63,12 @@ export function splitReviewSentence(result,language='hu'){
       de:'Bei einem vollständigen geteilten Haus suchen wir zuerst A+B+C gemeinsam im selben Haus.',
       en:'For a full split house, we first look for A+B+C together in the same physical house.',
       si:'Pri celotni deljeni hiški najprej iščemo A+B+C skupaj v isti fizični hiški.'
+    },
+    exact:{
+      hu:'A megjelölt osztott egységek elérhetőségét külön ellenőrizzük; a végleges elhelyezést csak ezután igazoljuk vissza.',
+      de:'Die Verfügbarkeit der angegebenen geteilten Einheiten prüfen wir separat; die endgültige Unterbringung bestätigen wir erst danach.',
+      en:'We will check the availability of the specified split units separately and only then confirm the final accommodation.',
+      si:'Razpoložljivost navedenih deljenih enot preverimo posebej; končno namestitev potrdimo šele nato.'
     }
   };
   if(specific[mode])return specific[mode][lang];
