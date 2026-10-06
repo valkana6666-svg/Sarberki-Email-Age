@@ -75,3 +75,10 @@ test('verified availability replaces the generic capacity placeholder inside the
   assert.match(result,/ellenőrzött, szabad lehetőségek/u);
   assert.ok(result.indexOf('ellenőrzött, szabad lehetőségek')<result.indexOf('Horgászat\n'));
 });
+
+
+test('exact physical split ids remain internal and are not echoed to the guest',()=>{
+  const sentence=splitReviewSentence({manual_review_options:[{request_mode:'exact',label:'7A + 7C'}]},'hu');
+  assert.doesNotMatch(sentence,/7A|7C|8A|10C/u);
+  assert.match(sentence,/megjelölt osztott egységek/u);
+});
