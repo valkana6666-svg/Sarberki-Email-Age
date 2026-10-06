@@ -38,6 +38,20 @@ export const BUSINESS = Object.freeze({
     houseNumbers: Object.freeze([1,2,3,4,5,6,11,12,13,14,15]),
     source: "Tulajdonosi döntés, 2026-10-05"
   }),
+  splitPhysicalUnits: Object.freeze([
+    Object.freeze({id:'7A',physicalHouse:7,segment:'A',level:'ground',nominalGuests:2,previoPool:'splitAB',hotTub:false,individualPrevioMappingVerified:false}),
+    Object.freeze({id:'7B',physicalHouse:7,segment:'B',level:'ground',nominalGuests:2,previoPool:'splitAB',hotTub:false,individualPrevioMappingVerified:false}),
+    Object.freeze({id:'7C',physicalHouse:7,segment:'C',level:'upper',nominalGuests:4,previoPool:'splitC',hotTub:false,individualPrevioMappingVerified:false}),
+    Object.freeze({id:'8A',physicalHouse:8,segment:'A',level:'ground',nominalGuests:2,previoPool:'splitAB',hotTub:false,individualPrevioMappingVerified:false}),
+    Object.freeze({id:'8B',physicalHouse:8,segment:'B',level:'ground',nominalGuests:2,previoPool:'splitAB',hotTub:false,individualPrevioMappingVerified:false}),
+    Object.freeze({id:'8C',physicalHouse:8,segment:'C',level:'upper',nominalGuests:4,previoPool:'splitC',hotTub:false,individualPrevioMappingVerified:false}),
+    Object.freeze({id:'9A',physicalHouse:9,segment:'A',level:'ground',nominalGuests:2,previoPool:'splitAB',hotTub:false,individualPrevioMappingVerified:false}),
+    Object.freeze({id:'9B',physicalHouse:9,segment:'B',level:'ground',nominalGuests:2,previoPool:'splitAB',hotTub:false,individualPrevioMappingVerified:false}),
+    Object.freeze({id:'9C',physicalHouse:9,segment:'C',level:'upper',nominalGuests:4,previoPool:'splitC',hotTub:false,individualPrevioMappingVerified:false}),
+    Object.freeze({id:'10A',physicalHouse:10,segment:'A',level:'ground',nominalGuests:2,previoPool:'splitAB',hotTub:false,individualPrevioMappingVerified:false}),
+    Object.freeze({id:'10B',physicalHouse:10,segment:'B',level:'ground',nominalGuests:2,previoPool:'splitAB',hotTub:false,individualPrevioMappingVerified:false}),
+    Object.freeze({id:'10C',physicalHouse:10,segment:'C',level:'upper',nominalGuests:4,previoPool:'splitC',hotTub:false,individualPrevioMappingVerified:false})
+  ]),
   pricingRules: Object.freeze({
     extraAdultNightlyHuf: 4500,
     child0to3NightlyHuf: 0,
@@ -60,7 +74,8 @@ export const BUSINESS = Object.freeze({
       publicListedNightlyHuf:60000,
       maxAdults:6,
       maxGuests:6,
-      extraAdultPricing:'standard'
+      extraAdultPricing:'standard',
+      physicalHouseNumbers:Object.freeze([11,12,13,14])
     }),
     family: Object.freeze({
       label:'Családi',
@@ -70,7 +85,8 @@ export const BUSINESS = Object.freeze({
       publicListedNightlyHuf:52000,
       maxAdults:8,
       maxGuests:8,
-      extraAdultPricing:'standard'
+      extraAdultPricing:'standard',
+      physicalHouseNumbers:Object.freeze([2,3,4,5,6])
     }),
     vip: Object.freeze({
       label:'VIP',
@@ -80,7 +96,8 @@ export const BUSINESS = Object.freeze({
       publicListedNightlyHuf:60000,
       maxAdults:7,
       maxGuests:7,
-      extraAdultPricing:'standard'
+      extraAdultPricing:'standard',
+      physicalHouseNumbers:Object.freeze([1])
     }),
     small: Object.freeze({
       label:'Különálló 2 fős',
@@ -91,7 +108,8 @@ export const BUSINESS = Object.freeze({
       maxAdults:2,
       maxGuests:3,
       extraAdultPricing:'not-allowed',
-      childExtraBedPossible:true
+      childExtraBedPossible:true,
+      physicalHouseNumbers:Object.freeze([15])
     }),
     splitA: Object.freeze({
       label:'Osztott A',
@@ -109,6 +127,7 @@ export const BUSINESS = Object.freeze({
       maxAdults:2,
       maxGuests:2,
       splitUnit:'A',
+      physicalHouseNumbers:Object.freeze([7,8,9,10]),
       previoMappingVerified:false,
       publicPriceLabel:'2 fős apartman',
       publicPriceUrl:'https://sarberkito.hu/accomodation/',
@@ -130,6 +149,7 @@ export const BUSINESS = Object.freeze({
       maxAdults:2,
       maxGuests:2,
       splitUnit:'B',
+      physicalHouseNumbers:Object.freeze([7,8,9,10]),
       previoMappingVerified:false,
       publicPriceLabel:'2 fős apartman',
       publicPriceUrl:'https://sarberkito.hu/accomodation/',
@@ -151,6 +171,7 @@ export const BUSINESS = Object.freeze({
       maxAdults:5,
       maxGuests:5,
       splitUnit:'C',
+      physicalHouseNumbers:Object.freeze([7,8,9,10]),
       previoMappingVerified:false,
       publicPriceLabel:'4 fős apartman',
       publicPriceUrl:'https://sarberkito.hu/accomodation/',
