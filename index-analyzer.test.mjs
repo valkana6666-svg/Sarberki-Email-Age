@@ -16,7 +16,7 @@ test('Teszt Elek UI regression guards normalized transfer behavior',()=>{
  assert.match(source,/pet_requested:secondary\.includes\('pet_question'\)/u);
  assert.match(source,/price_children/u);
  assert.match(source,/price_child_ages/u);
- assert.match(source,/v\.nights\|\|'\?'\} éjszaka/u);
+ assert.match(fs.readFileSync(new URL('./case-state.mjs',import.meta.url),'utf8'),/v\.nights\|\|'\?'\} éjszaka/u);
 });
 
 

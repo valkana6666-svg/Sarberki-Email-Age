@@ -461,7 +461,7 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
 }
 
 
-function operationalTopicLines(language='hu',original='',rules=null){
+function operationalTopicLines(language='hu',original='',rules=null,caseContext=null){
   if(!rules||!original) return [];
   const lang=['hu','de','en','si'].includes(language)?language:'hu';
   const asks={
@@ -487,7 +487,7 @@ function operationalTopicLines(language='hu',original='',rules=null){
     en:'Firewood is available for an additional charge; the exact fee still needs to be confirmed by the operator.',
     si:'Drva so na voljo z doplačilom; natančno ceno mora še potrditi upravljavec.'
   }[lang]);
-  if(asks.parking&&rules.parking==='available_large_group_review') lines.push({
+  if(!caseContext&&asks.parking&&rules.parking==='available_large_group_review') lines.push({
     hu:'Parkolási lehetőség biztosított; több autó esetén a rendelkezésre álló helyet külön ellenőrizzük.',
     de:'Parkmöglichkeiten sind vorhanden; bei mehreren Fahrzeugen prüfen wir die verfügbaren Stellplätze separat.',
     en:'Parking is available; for several vehicles we will confirm the available spaces separately.',
@@ -529,7 +529,7 @@ function operationalTopicLines(language='hu',original='',rules=null){
       si:rules.petFeeVerified?'Hišni ljubljenčki so dovoljeni ob nastavljeni pristojbini.':'Hišni ljubljenčki so dovoljeni z doplačilom; natančno pristojbino mora potrditi upravljavec.'
     }[lang]);
   }
-  if(asks.hotTub&&rules.hotTubAvailabilityRequiresCheck){
+  if(!caseContext&&asks.hotTub&&rules.hotTubAvailabilityRequiresCheck){
     lines.push({
       hu:rules.hotTubFeeVerified?'A dézsa elérhetőségét külön ellenőrizzük; a beállított díj alkalmazható.':'A dézsa elérhetőségét és díját külön ellenőrizzük; pontos dézsadíjat csak hiteles ellenőrzés után adunk meg.',
       de:rules.hotTubFeeVerified?'Die Verfügbarkeit des Badefasses wird separat geprüft; die hinterlegte Gebühr kann angewendet werden.':'Verfügbarkeit und Preis des Badefasses werden separat geprüft; einen genauen Preis nennen wir erst nach bestätigter Prüfung.',
@@ -611,7 +611,7 @@ function capacityOptionText(guests,language='hu'){
   return {hu:'több ház',de:'mehrere Häuser',en:'multiple cabins',si:'več hišk'}[lang];
 }
 
-export function buildReplyDraft({language='hu',name=null,original='',arrival=null,departure=null,guests=null,adults=null,children=null,childAges=[],phone=null,cabin='? – emberi döntésre vár',pier=false,hotTub=false,dog=false,intent='booking_request',brandName='Sárberki Horgásztó',bookingRules=null,operationalRules=null,pricingRules=null,knowledgeLines=[]}={}){
+export function buildReplyDraft({language='hu',name=null,original='',arrival=null,departure=null,guests=null,adults=null,children=null,childAges=[],phone=null,cabin='? – emberi döntésre vár',pier=false,hotTub=false,dog=false,intent='booking_request',brandName='Sárberki Horgásztó',bookingRules=null,operationalRules=null,pricingRules=null,knowledgeLines=[],caseContext=null}={}){
   original=activeMessageText(original);
   const lang=['hu','de','en','si'].includes(language)?language:'hu';
   const flags=requestFlagsFromText(original);
@@ -674,9 +674,10 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
     si:'Preverimo proste kapacitete za izbrani termin.'
   }[lang]);
 
-  const operationalLines=operationalTopicLines(lang,original,operationalRules);
+  const operationalLines=operationalTopicLines(lang,original,operationalRules,caseContext);
+  if(caseContext) operationalLines.push(...caseContext.extraLines);
   const pricingLines=pricingTopicLines(lang,original,arrival,departure,pricingRules);
-  if(asksPrice) pricingLines.push({
+  if(asksPrice&&!caseContext?.priceApproved) pricingLines.push({
     hu:'A teljes árat a ténylegesen szabad lehetőség alapján adjuk meg.',
     de:'Den Gesamtpreis nennen wir anhand der tatsächlich verfügbaren Möglichkeit.',
     en:'We will quote the total price for the option that is actually available.',
@@ -685,7 +686,12 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
 
   const fishingAsked=/(?:horgász|horgasz|angeln|fish(?:ing)?|ribolov|ribe)/iu.test(original);
   const fishingLines=fishingAsked&&Array.isArray(knowledgeLines)?knowledgeLines.filter(Boolean):[];
-  const bookingLines=bookingPolicyLines(lang,original,guests,bookingRules);
+  if(caseContext) pricingLines.push(...caseContext.priceLines);
+  const bookingLines=caseContext?caseContext.bookingLines:bookingPolicyLines(lang,original,guests,bookingRules);
+  if(caseContext?.availabilityLines?.length) {
+    if(canRecommendByCapacity||asksAvailability) stayLines.pop();
+    stayLines.push(...caseContext.availabilityLines);
+  }
   const blocks=[];
   const add=(title,lines)=>{const clean=lines.filter(Boolean);if(clean.length)blocks.push([title,...clean].join('\n'));};
   add(titles.stay,stayLines);

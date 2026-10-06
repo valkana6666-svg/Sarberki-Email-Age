@@ -30,6 +30,14 @@ export const BUSINESS = Object.freeze({
     hotTubAvailabilityRequiresCheck: true,
     hotTubFeeVerified: false
   }),
+  hotTubRentalRules: Object.freeze({
+    separateRental: true,
+    baseHufPer24Hours: 30000,
+    includedPeople: 6,
+    extraPersonHufPer24Hours: 4000,
+    houseNumbers: Object.freeze([1,2,3,4,5,6,11,12,13,14,15]),
+    source: "Tulajdonosi döntés, 2026-10-05"
+  }),
   pricingRules: Object.freeze({
     extraAdultNightlyHuf: 4500,
     child0to3NightlyHuf: 0,

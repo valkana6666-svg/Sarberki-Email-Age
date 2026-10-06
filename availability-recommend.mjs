@@ -125,6 +125,8 @@ async function enrich(){
   if(!arrival||!departure||!Number.isInteger(guests)||guests<1||hasSpecificCabin(cabin))return;
   const fingerprint=()=>[ $('f_arrival')?.value||'', $('f_departure')?.value||'', $('f_guests')?.value||'', $('f_unit')?.value||'', $('message')?.value||'', $('gmail_original')?.textContent||'', $('f_language')?.value||'' ].join('|');
   const key=fingerprint();
+  const caseState=window.SarberkiCaseController?.snapshot();
+  const caseKey=caseState&&window.SarberkiCaseState?.caseFingerprint(caseState.values);
   if(inflightKey===key)return;
   inflightKey=key;
   const status=$('status'), draft=$('draft');
@@ -138,6 +140,7 @@ async function enrich(){
     const rawLang=($('f_language')?.value||'HU').toLowerCase();
     const lang=rawLang==='sl'?'si':rawLang;
     const sentence=availabilitySentence(data,lang), manual=splitReviewSentence(data,lang);
+    if(caseState){window.SarberkiCaseController.apply({type:'availability',fingerprint:caseKey,lines:[sentence,manual].filter(Boolean)});if(status){status.className='warning';status.textContent='Kapacitás ellenőrizve; további feltételek kezelői ellenőrzésre várnak.';}return;}
     const fresh=currentReplyBase();
     draft.value=replaceCapacityPlaceholder(fresh,sentence,manual);
     const gmailDraft=$('gmail_draft');

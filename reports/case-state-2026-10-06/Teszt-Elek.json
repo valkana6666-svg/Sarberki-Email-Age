@@ -1,0 +1,103 @@
+{
+  "mode": "offline replay; no Gmail, Pushover or Previo calls",
+  "state": {
+    "version": 1,
+    "revision": 1,
+    "original": "Kedves Sárberki Horgásztó!\n2026. október 16–18. között, két éjszakára szeretnénk Deluxe faházat foglalni 2 felnőtt és 2 gyermek részére. A gyermekek 7 és 11 évesek. Dézsát is szeretnénk kérni, és egy autóval érkeznénk.\nKérjük, jelezzék, van-e szabad Deluxe faház, mennyi lenne a teljes ár, és milyen előleg- és lemondási feltételek érvényesek. Horgászni is szeretnénk: milyen jegyre és felszerelésre van szükség?\nÜdvözlettel: Teszt Elek",
+    "intent": "booking_request",
+    "now": "2026-10-05T18:13:41Z",
+    "unresolvedQuestions": [],
+    "values": {
+      "name": "Teszt Elek",
+      "arrival": "2026-10-16",
+      "departure": "2026-10-18",
+      "nights": "2",
+      "guests": "4",
+      "adults": "2",
+      "children": "2",
+      "child_ages": "7, 11",
+      "unit": "Deluxe",
+      "language": "HU",
+      "request": "dézsa",
+      "phone": "",
+      "cars": 1
+    },
+    "quote": {
+      "total": 122200,
+      "accommodation": 120000,
+      "tourismTax": 2200,
+      "eurTotal": 332.31,
+      "eurRate": 367.73,
+      "eurRateDate": "2026-10-05",
+      "source": "Offline replay of recorded test price",
+      "approved": true,
+      "fingerprint": "[\"2026-10-16\",\"2026-10-18\",\"2\",\"2\",\"7, 11\",\"Deluxe\",\"\"]"
+    },
+    "availability": null,
+    "hotTub": {
+      "requested": true,
+      "atHouse": true,
+      "available": null,
+      "fee": null,
+      "included": null
+    },
+    "terms": {
+      "depositBasis": null,
+      "depositVerified": false,
+      "cancellationVerified": false,
+      "depositAmount": null,
+      "depositDeadline": null,
+      "cancellationDeadline": null
+    },
+    "approval": "pending"
+  },
+  "view": {
+    "draft": "Kedves Elek!\n\nKöszönjük érdeklődését.\n\nSzállás\n16.10.2026 és 18.10.2026 között 4 fő (2 felnőtt és 2 gyermek, 7 és 11 évesek) részére keresnek szállást. Dézsát is szeretnének.\nA kért háztípus: Deluxe.\nA megadott időszak szabad kapacitását megnézzük.\n\nKiegészítő információk\nEgy autó részére a parkolás biztosított.\nA dézsa külön bérelhető, nem jár automatikusan a házhoz. Díja 30 000 Ft/24 óra 6 főig, felette +4000 Ft/fő/24 óra. A kért időszak elérhetőségét, a bérlés időtartamát és az ajánlatba foglalását külön visszaigazoljuk; a feltüntetett szállásárból a dézsahasználat díja nem állapítható meg.\n\nÁr és díjak\nA jóváhagyott szállásajánlat összege: 122 200 Ft / 332,31 €.\nEbből szállásdíj: 120 000 Ft, IFA: 2200 Ft.\n\nHorgászat\nA horgászathoz Magyarországra érvényes állami horgászjegy szükséges. Csak szakáll nélküli, legfeljebb 6-os méretű horog használható. Kötelező felszerelés a pontybölcső, merítőháló, sebfertőtlenítő és pontyzsák. A választott tóhoz és időtartamhoz tartozó Sárberki horgászjegyet külön kell kiválasztani. Gyermekjegy külön váltható; a pontos ár a választott tó és jegy időtartama szerint változik.\n\nFoglalási feltételek\nAz ajánlatra alkalmazható előleg összegét és fizetési határidejét külön visszaigazoljuk.\nAz erre az időpontra érvényes lemondási feltételt külön visszaigazoljuk.\nAmennyiben az ajánlat megfelel Önnek, kérjük, válaszoljon erre a levélre. A foglalás rögzítése előtt a még ellenőrzendő feltételeket is egyeztetjük.\n\nPontosítandó adatok\nMegírna egy telefonszámot, amelyen elérhetjük?\n\nÜdvözlettel:\nSárberki Horgásztó",
+    "summary": "2026-10-16 – 2026-10-18; 2 éjszaka; 4 fő; felnőtt: 2; gyermek: 2 (7, 11 éves); Deluxe; Parkolás: 1 autó – adat megadva; Ár ellenőrizve.",
+    "missing": [
+      "Telefonszám"
+    ],
+    "warnings": [
+      {
+        "code": "missing_phone",
+        "text": "Telefon hiányzik"
+      },
+      {
+        "code": "close_arrival",
+        "text": "KÖZELI ÉRKEZÉS – az előleg- és lemondási feltétel alkalmazása emberi ellenőrzést igényel."
+      },
+      {
+        "code": "deposit_review",
+        "text": "Előlegfeltétel ellenőrzendő"
+      },
+      {
+        "code": "deposit_basis_review",
+        "text": "Előleg számítási alapja tulajdonosi döntést igényel"
+      },
+      {
+        "code": "deposit_amount",
+        "text": "Előleg konkrét összege nincs ellenőrizve (nem a százalék hiányzik)"
+      },
+      {
+        "code": "cancellation_terms_review",
+        "text": "Lemondási feltétel ellenőrzendő"
+      },
+      {
+        "code": "hot_tub_availability",
+        "text": "Dézsa elérhetősége nincs ellenőrizve"
+      },
+      {
+        "code": "hot_tub_fee",
+        "text": "Dézsa bérlési időtartama és konkrét díja ellenőrzendő; tarifa: 30 000 Ft/24 óra 6 főig, felette +4000 Ft/fő/24 óra"
+      },
+      {
+        "code": "hot_tub_included",
+        "text": "Az ajánlat dézsadíj-tartalma nincs ellenőrizve"
+      }
+    ],
+    "closeArrival": true,
+    "untilArrival": 11,
+    "critical": true,
+    "priceStatus": "Ár ellenőrizve"
+  }
+}

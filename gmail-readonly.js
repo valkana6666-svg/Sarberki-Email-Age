@@ -22,6 +22,13 @@
   let currentToken = null;
   let currentMessages = [];
   let pushoverWatchTimer = null;
+  let lastGmailCheck = null;
+  let lastPushoverSend = null;
+  let watchBusy = false;
+  function watchStatus(){
+    const stamp=value=>value?new Date(value).toLocaleString('hu-HU'):'ebben a munkamenetben még nincs igazolva';
+    return 'Gmail figyelés konfigurálva · csak megnyitott oldalon, érvényes Gmail-belépéssel · tervezett ellenőrzés kb. percenként. Utolsó sikeres Gmail-ellenőrzés: '+stamp(lastGmailCheck)+'. Utolsó sikeres Pushover-küldés (API-visszaigazolás): '+stamp(lastPushoverSend)+'. A telefonos kézbesítés külön ellenőrizendő.';
+  }
 
   const say = message => { status.textContent = message; };
   function readIds() {
@@ -81,26 +88,27 @@
     }
   }
   async function pollPushoverWatch() {
-    if (!currentToken) return;
+    if (!currentToken || watchBusy) return;
+    watchBusy = true;
     try {
       const freshMessages = await readWithToken(currentToken);
+      lastGmailCheck = new Date().toISOString();
       const notified = pushoverNotifiedIds();
       const newMessages = freshMessages
         .filter(message => !notified.has(message.id))
         .sort((a,b) => Number(a.internalDate) - Number(b.internalDate));
       for (const message of newMessages) {
         await sendPushoverForMessage(message);
+        lastPushoverSend = new Date().toISOString();
         notified.add(message.id);
         savePushoverNotifiedIds(notified);
       }
       currentMessages = freshMessages;
       renderPicker(currentMessages);
-      pushoverWatchSay(newMessages.length
-        ? `Pushover figyelés aktív · ${newMessages.length} új Inbox-levélről értesítés elküldve.`
-        : 'Pushover figyelés aktív · minden új Inbox-levél · ellenőrzés kb. percenként.');
+      pushoverWatchSay(watchStatus());
     } catch (error) {
-      pushoverWatchSay(error.message || 'A Pushover Gmail-figyelés hibát jelzett.', false);
-    }
+      pushoverWatchSay(watchStatus()+' Hiba: '+(error.message || 'A Pushover Gmail-figyelés hibát jelzett.'), false);
+    } finally { watchBusy = false; }
   }
   function startPushoverWatch(messages) {
     const notified = pushoverNotifiedIds();
@@ -108,7 +116,8 @@
     savePushoverNotifiedIds(notified);
     if (pushoverWatchTimer) clearInterval(pushoverWatchTimer);
     pushoverWatchTimer = setInterval(pollPushoverWatch, PUSHOVER_WATCH_INTERVAL_MS);
-    pushoverWatchSay('Pushover figyelés aktív · minden új Inbox-levél · ellenőrzés kb. percenként.');
+    lastGmailCheck = new Date().toISOString();
+    pushoverWatchSay(watchStatus());
   }
   function messageLabel(message) {
     const headers = headerMap(message);
