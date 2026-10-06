@@ -655,14 +655,15 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const summary=mismatch?'':replySummary(lang,{arrival,departure,guests,adults,children,childAges,pier,hotTub,dog});
   const needCabin=!cabin||String(cabin).startsWith('?')||cabinFromText(String(cabin)).startsWith('?');
   const needDates=!arrival||!departure;
-  const canRecommendByCapacity=needCabin&&!needDates&&Number.isInteger(Number(guests))&&Number(guests)>0;
+  const mustClarifyCabin=needCabin&&cabinClarificationRequired(original,guests);
+  const canRecommendByCapacity=needCabin&&!mustClarifyCabin&&!needDates&&Number.isInteger(Number(guests))&&Number(guests)>0;
   const derivedAdults=(children!==null&&children!==undefined&&children!==''&&Number.isInteger(Number(guests))&&Number.isInteger(Number(children))&&Number(children)>=0&&Number(guests)>=Number(children)&&!mismatch)?Number(guests)-Number(children):null;
   const effectiveAdults=(Number.isInteger(Number(adults))&&Number(adults)>0)?Number(adults):derivedAdults;
   const needAdults=!(Number.isInteger(effectiveAdults)&&effectiveAdults>0);
   const childStatusKnown=children!==null&&children!==undefined&&children!==''&&Number.isInteger(Number(children))&&Number(children)>=0;
   const needChildStatus=!childStatusKnown;
   const needChildAge=childStatusKnown&&Number(children)>0&&childAges.length<Number(children);
-  const questions=replyQuestions(lang,{needDates,needAdults,needChildStatus,needPhone:!phone,needCabin:needCabin&&!canRecommendByCapacity,needChildAge});
+  const questions=replyQuestions(lang,{needDates,needAdults,needChildStatus,needPhone:!phone,needCabin:needCabin&&!canRecommendByCapacity,needChildAge,guests});
   if(mismatch) questions.unshift({hu:'Kérjük, pontosítsa a létszámot: az összlétszám eltér a megadott felnőttek és gyermekek összegétől.',de:'Bitte klären Sie die Personenzahl: Die Gesamtzahl stimmt nicht mit der Zahl der Erwachsenen und Kinder überein.',en:'Please clarify the party size: the total differs from the number of adults and children.',si:'Prosimo, pojasnite število gostov: skupno število se ne ujema s številom odraslih in otrok.'}[lang]);
 
   const stayLines=[];
