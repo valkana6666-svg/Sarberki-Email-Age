@@ -439,7 +439,7 @@ test('shared reply builder keeps manual and Gmail drafts identical for the same 
   }
 });
 
-test('shared reply builder asks only shared missing-data questions',()=>{
+test('shared reply builder asks child age phone and cabin type for ambiguous four-person stays',()=>{
   const draft=buildReplyDraft({
     language:'hu',
     original:'október 16-18, 4 fő, 2 gyermek',
@@ -454,7 +454,7 @@ test('shared reply builder asks only shared missing-data questions',()=>{
   });
   assert.match(draft,/gyermek életkorát/u);
   assert.match(draft,/telefonszámot/u);
-  assert.doesNotMatch(draft,/Melyik háztípust/u);
+  assert.match(draft,/Melyik háztípust/u);
 });
 
 
@@ -675,7 +675,7 @@ Phone: +44 7700 912345.`;
   assert.match(draft,/20%/u);
   assert.match(draft,/730 days/u);
   assert.match(draft,/Pets are allowed for an additional charge/u);
-  assert.match(draft,/Hot-tub availability and its charge are checked separately/u);
+  assert.match(draft,/hot tub is rented separately and is not automatically included with the house/u);
   assert.match(draft,/outside the period with the 10% high-season surcharge/u);
   assert.match(draft,/550 HUF per adult per night/u);
   assert.match(draft,/another suitable cabin type or a combination of units/u);
