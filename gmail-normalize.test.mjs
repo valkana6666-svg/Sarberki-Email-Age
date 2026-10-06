@@ -873,3 +873,17 @@ test('two explicitly requested two-person apartments are parsed as two units',()
     count:2,open:false,evidence:'kettő darab kétfős osztott apartmant'
   });
 });
+
+
+test('hot-tub questions always state separate rental when business rules say so',async()=>{
+  const {BUSINESS}=await import('./business-config.mjs');
+  const reply=buildReplyDraft({
+    language:'hu',
+    original:'Deluxe faházat szeretnénk dézsával. A dézsa mennyibe kerül?',
+    arrival:'2026-11-06',departure:'2026-11-08',guests:2,adults:2,children:0,phone:'+36 30 555 1234',
+    cabin:'Deluxe',
+    operationalRules:BUSINESS.operationalRules
+  });
+  assert.match(reply,/dézsa külön bérelhető/u);
+  assert.match(reply,/nem tartozik automatikusan a házhoz/u);
+});
