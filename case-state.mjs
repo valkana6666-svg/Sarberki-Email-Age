@@ -1,4 +1,4 @@
-import {buildReplyDraft, phoneFromText, requestFlagsFromText, activeMessageText} from './sarberki-core.mjs';
+import {buildReplyDraft, phoneFromText, requestFlagsFromText, activeMessageText, cabinFromText, cabinClarificationRequired} from './sarberki-core.mjs';
 import {BUSINESS} from './business-config.mjs';
 import {fishingQuestion} from './fishing-rules.mjs';
 
@@ -75,6 +75,9 @@ export function deriveCaseView(state, baseReview={warning_codes:[],issues:[]}) {
   const guests=number(v.guests), adults=number(v.adults), children=number(v.children);
   const ages=String(v.child_ages||'').split(',').filter(x=>x.trim()!=='').map(Number);
   const booking=['booking_request','availability_request','price_request'].includes(state.intent);
+  const reviewedCabin=cabinFromText(String(v.unit||''));
+  const cabinKnown=Boolean(reviewedCabin&&!reviewedCabin.startsWith('?'));
+  const cabinTypeRequired=booking&&!cabinKnown&&cabinClarificationRequired(state.original,guests);
   const rules=BUSINESS.bookingRules;
   const cancellationDays=guests>=15?rules.cancellationDaysFrom15Guests:rules.cancellationDaysUnder15Guests;
   const dateParts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:BUSINESS.timezone||'Europe/Budapest',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(state.now)).map(x=>[x.type,x.value]));
@@ -90,6 +93,7 @@ export function deriveCaseView(state, baseReview={warning_codes:[],issues:[]}) {
   if(booking&&!v.departure){missing.push('Távozási dátum');add('missing_departure','Távozási dátum hiányzik');}
   if(booking&&!(adults>0)){missing.push('Felnőttek száma');add('missing_adults','Felnőttek száma hiányzik');}
   if(booking&&children==null){missing.push('Érkezik-e gyermek');add('missing_children','Gyermekek száma nincs megadva');}
+  if(cabinTypeRequired){missing.push('Háztípus');add('cabin_type_required','A 2 vagy 4 fős igény önmagában nem határozza meg a háztípust; vissza kell kérdezni.');}
   for(const question of state.unresolvedQuestions||[]) if(!['deposit_amount','hot_tub_availability','hot_tub_price'].includes(question.topic)) add(question.topic,question.question||question.message||'Emberi ellenőrzés szükséges');
   if(booking&&!v.phone) {missing.push('Telefonszám');add('missing_phone','Telefon hiányzik');}
   if(booking&&children>0&&(ages.length!==children||ages.some(x=>!Number.isInteger(x)||x<0||x>17))) {missing.push('Gyermekek pontos életkora');add('missing_child_ages','Gyermekek életkora hiányzik vagy hibás');}
@@ -131,5 +135,5 @@ export function deriveCaseView(state, baseReview={warning_codes:[],issues:[]}) {
   const fishing=fishingQuestion(state.original,lang);
   const draft=buildReplyDraft({language:lang,name:v.name,original:state.original,arrival:v.arrival,departure:v.departure,guests,adults,children,childAges:ages,phone:v.phone,cabin:v.unit||'? – emberi döntésre vár',hotTub:h.requested,intent:state.intent,brandName:BUSINESS.brandName,bookingRules:rules,operationalRules:BUSINESS.operationalRules,pricingRules:BUSINESS.pricingRules,knowledgeLines:fishing?[fishing.answer]:[],caseContext:{priceLines,bookingLines,extraLines,availabilityLines,priceApproved:Boolean(q)}});
   const summary=`${v.arrival||'?'} – ${v.departure||'?'}; ${v.nights||'?'} éjszaka; ${guests??'?'} fő; felnőtt: ${adults??'?'}; gyermek: ${children??'?'}${ages.length?' ('+ages.join(', ')+' éves)':''}; ${v.unit||'háztípus nincs megadva'}${cars!=null?'; Parkolás: '+cars+' autó – adat megadva':''}${q?'; Ár ellenőrizve':''}.`;
-  return {draft,summary,missing,warnings,closeArrival,untilArrival,critical:Boolean(baseReview.critical)||warnings.some(x=>['close_arrival','deposit_review','deposit_basis_review','cancellation_terms_review','hot_tub_fee','hot_tub_included'].includes(x.code)),priceStatus:q?'Ár ellenőrizve':'Ár nincs jóváhagyva'};
+  return {draft,summary,missing,warnings,closeArrival,untilArrival,critical:Boolean(baseReview.critical)||warnings.some(x=>['close_arrival','deposit_review','deposit_basis_review','cancellation_terms_review','hot_tub_fee','hot_tub_included','cabin_type_required'].includes(x.code)),priceStatus:q?'Ár ellenőrizve':'Ár nincs jóváhagyva'};
 }
