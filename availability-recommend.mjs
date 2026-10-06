@@ -156,9 +156,22 @@ function currentReplyBase(){
   });
 }
 let inflightKey=null;
+function renderSplitInternalNote(options=[],request=null){
+  const el=$('split_internal_note');
+  if(!el)return;
+  const summary=window.SarberkiSplitUnits?.splitInternalSummary?.(options,request)||'';
+  el.textContent=summary;
+  if(el.classList?.toggle)el.classList.toggle('hidden',!summary);
+}
 async function enrich(){
   const arrival=$('f_arrival')?.value||'', departure=$('f_departure')?.value||'', guests=Number($('f_guests')?.value||0), cabin=$('f_unit')?.value||'';
-  if(!arrival||!departure||!Number.isInteger(guests)||guests<1||hasSpecificCabin(cabin))return;
+  const original=$('message')?.value||$('gmail_original')?.textContent||'';
+  const splitCabin=/^Osztott$/iu.test(cabin.trim());
+  const mustClarify=Boolean(window.SarberkiNormalize?.cabinClarificationRequired?.(original,guests));
+  if(!arrival||!departure||!Number.isInteger(guests)||guests<1||(hasSpecificCabin(cabin)&&!splitCabin)||mustClarify){
+    renderSplitInternalNote([],null);
+    return;
+  }
   const fingerprint=()=>[ $('f_arrival')?.value||'', $('f_departure')?.value||'', $('f_guests')?.value||'', $('f_unit')?.value||'', $('message')?.value||'', $('gmail_original')?.textContent||'', $('f_language')?.value||'' ].join('|');
   const key=fingerprint();
   const caseState=window.SarberkiCaseController?.snapshot();
@@ -175,7 +188,13 @@ async function enrich(){
     if(!response.ok)throw Error(data.error||'Nem sikerült a kapacitás-ellenőrzés.');
     const rawLang=($('f_language')?.value||'HU').toLowerCase();
     const lang=rawLang==='sl'?'si':rawLang;
-    const sentence=availabilitySentence(data,lang), manual=splitReviewSentence(data,lang);
+    const splitRequest=window.SarberkiSplitUnits?.splitRequestFromText?.(original)||null;
+    const planned=window.SarberkiSplitUnits?.splitCapacityOptions?.(guests,data.split_pool_checks||{},splitCabin?splitRequest:null);
+    const manualOptions=Array.isArray(planned)?planned:(data.manual_review_options||[]);
+    const manualData={...data,manual_review_options:manualOptions};
+    const sentence=splitCabin?'':availabilitySentence(data,lang);
+    const manual=splitReviewSentence(manualData,lang);
+    renderSplitInternalNote(manualOptions,splitCabin?splitRequest:null);
     if(caseState){window.SarberkiCaseController.apply({type:'availability',fingerprint:caseKey,lines:[sentence,manual].filter(Boolean)});if(status){status.className='warning';status.textContent='Kapacitás ellenőrizve; további feltételek kezelői ellenőrzésre várnak.';}return;}
     const fresh=currentReplyBase();
     draft.value=replaceCapacityPlaceholder(fresh,sentence,manual);
@@ -186,11 +205,13 @@ async function enrich(){
     if(status){status.className='ok';status.textContent='Kapacitás ellenőrizve; a tervezet frissítve.';}
   }catch(error){
     if(key!==fingerprint())return;
+    renderSplitInternalNote([],null);
     if(status){status.className='warning';status.textContent='A kapacitás nem volt hitelesen ellenőrizhető: '+error.message;}
   }finally{
     if(inflightKey===key)inflightKey=null;
   }
 }
+
 if(typeof document!=='undefined'){
   document.addEventListener('sarberki:analysis-ready',()=>{void enrich();});
   document.addEventListener('sarberki:gmail-normalized',()=>{setTimeout(()=>void enrich(),0);});
