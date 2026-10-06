@@ -64,7 +64,7 @@ export function cabinFromText(text=''){
       || /\bdružinsk\w*\s+(?:hišk\w*|koč\w*|nastanitev)\b/iu.test(text)) found.push('Családi');
   if (/\bdeluxe\b/iu.test(text)) found.push('Deluxe');
   if (/\b(?:osztott|split|geteilte[rs]?|deljen[ai]?)\b/iu.test(text)) found.push('Osztott');
-  if (/\b(?:különálló|kulonallo|külön\s+álló)\b/iu.test(text)
+  if (/(?<!\p{L})(?:különálló|kulonallo|külön\s+álló)(?!\p{L})/iu.test(text)
       || /\b(?:standalone|detached)\s+(?:cabin|house|accommodation|unit)\b/iu.test(text)
       || /\bfreistehend\w*\s+(?:hütte|haus|unterkunft)\b/iu.test(text)
       || /\bsamostojn\w*\s+(?:hišk\w*|koč\w*|nastanitev)\b/iu.test(text)) found.push('Különálló 2 fős');
