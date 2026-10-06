@@ -28,7 +28,8 @@ export const BUSINESS = Object.freeze({
     petAllowedForFee: true,
     petFeeVerified: false,
     hotTubAvailabilityRequiresCheck: true,
-    hotTubFeeVerified: false
+    hotTubFeeVerified: false,
+    hotTubSeparateRental: true
   }),
   hotTubRentalRules: Object.freeze({
     separateRental: true,
