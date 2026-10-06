@@ -89,3 +89,39 @@ test('changing an approved price revokes the old concrete deposit calculation',(
  const changed=updateCaseState(state,{type:'quote',quote:{...quote,total:130000},fingerprint:caseFingerprint(state.values)});
  assert.equal(changed.terms.depositVerified,false);assert.equal(changed.terms.depositAmount,null);assert.doesNotMatch(deriveCaseView(changed).draft,/ellenőrzött előleg összege 60/u);
 });
+
+
+test('ambiguous four-person apartment stays require a cabin type in central state',()=>{
+ const state=createCaseState({
+   original:'2026. november 6-8. között négyen jönnénk, egy négyfős apartmant szeretnénk.',
+   values:{arrival:'2026-11-06',departure:'2026-11-08',nights:'2',guests:'4',adults:'4',children:'0',child_ages:'',phone:'+36 30 555 1234',unit:'',language:'HU'}
+ });
+ const view=deriveCaseView(state);
+ assert.ok(view.missing.includes('Háztípus'));
+ assert.ok(view.warnings.some(x=>x.code==='cabin_type_required'));
+ assert.equal(view.critical,true);
+ assert.match(view.draft,/Melyik háztípust szeretné/u);
+});
+
+test('manual cabin choice resolves the ambiguous two-person cabin requirement',()=>{
+ let state=createCaseState({
+   original:'2026. november 6-8. között ketten jönnénk, egy kétfős apartmant szeretnénk.',
+   values:{arrival:'2026-11-06',departure:'2026-11-08',nights:'2',guests:'2',adults:'2',children:'0',child_ages:'',phone:'+36 30 555 1234',unit:'',language:'HU'}
+ });
+ assert.ok(deriveCaseView(state).warnings.some(x=>x.code==='cabin_type_required'));
+ state=updateCaseState(state,{type:'facts',values:{unit:'Különálló 2 fős'}});
+ const view=deriveCaseView(state);
+ assert.ok(!view.missing.includes('Háztípus'));
+ assert.ok(!view.warnings.some(x=>x.code==='cabin_type_required'));
+ assert.match(view.draft,/Különálló 2 fős/u);
+});
+
+test('physical split unit ids never imply a hot tub',()=>{
+ let state=createCaseState({
+   original:'A 7A osztott apartmant szeretnénk dézsával.',
+   values:{unit:'7A',guests:'2',adults:'2',children:'0',phone:'+36 30 555 1234',language:'HU'}
+ });
+ assert.equal(state.hotTub.atHouse,false);
+ state=updateCaseState(state,{type:'facts',values:{unit:'10C'}});
+ assert.equal(state.hotTub.atHouse,false);
+});
