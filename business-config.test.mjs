@@ -84,3 +84,24 @@ test('split Previo object-kind mapping is verified only at pooled type level',()
     assert.equal(unit.previoMappingVerified,false);
   }
 });
+
+
+test('split physical inventory is explicitly identified as 7A through 10C',()=>{
+  assert.deepEqual(BUSINESS.splitPhysicalUnits.map(x=>x.id),[
+    '7A','7B','7C','8A','8B','8C','9A','9B','9C','10A','10B','10C'
+  ]);
+  assert.equal(BUSINESS.splitPhysicalUnits.filter(x=>x.segment==='A').length,4);
+  assert.equal(BUSINESS.splitPhysicalUnits.filter(x=>x.segment==='B').length,4);
+  assert.equal(BUSINESS.splitPhysicalUnits.filter(x=>x.segment==='C').length,4);
+  assert.ok(BUSINESS.splitPhysicalUnits.every(x=>x.hotTub===false));
+  assert.ok(BUSINESS.splitPhysicalUnits.every(x=>x.individualPrevioMappingVerified===false));
+});
+
+test('physical house ranges keep tubs off split houses and retain the standalone 15th house',()=>{
+  assert.deepEqual(BUSINESS.accommodationTypes.vip.physicalHouseNumbers,[1]);
+  assert.deepEqual(BUSINESS.accommodationTypes.family.physicalHouseNumbers,[2,3,4,5,6]);
+  assert.deepEqual(BUSINESS.accommodationTypes.splitA.physicalHouseNumbers,[7,8,9,10]);
+  assert.deepEqual(BUSINESS.accommodationTypes.deluxe.physicalHouseNumbers,[11,12,13,14]);
+  assert.deepEqual(BUSINESS.accommodationTypes.small.physicalHouseNumbers,[15]);
+  assert.deepEqual(BUSINESS.hotTubRentalRules.houseNumbers,[1,2,3,4,5,6,11,12,13,14,15]);
+});
