@@ -515,7 +515,9 @@ function operationalTopicLines(language='hu',original='',rules=null,caseContext=
     en:'Parking is available; for several vehicles we will confirm the available spaces separately.',
     si:'Parkiranje je na voljo; pri več vozilih posebej preverimo razpoložljiva parkirna mesta.'
   }[lang]);
-  const arrivalMatch=original.match(/(?:érkez|check[- ]?in|arriv|ankunft|anreise|prihod)[^!?\n]{0,80}?(?<!\d)((?:[01]?\d|2[0-3])[:.][0-5]\d)(?!\d)(?:\s*(AM|PM)\b)?/iu);
+  const arrivalMatch=
+    original.match(/(?:érkez|check[- ]?in|arriv|ankunft|anreise|prihod)[^!?\n]{0,80}?(?<!\d)((?:[01]?\d|2[0-3])[:.][0-5]\d)(?!\d)(?:\s*(AM|PM)\b)?/iu)
+    || original.match(/(?<!\d)((?:[01]?\d|2[0-3])[:.][0-5]\d)(?!\d)(?:\s*(AM|PM)\b)?[^!?\n]{0,40}(?:érkez|check[- ]?in|arriv|ankunft|anreise|prihod)/iu);
   let arrivalTime=arrivalMatch?.[1];
   if(arrivalTime&&arrivalMatch[2]){
     const [h,m]=arrivalTime.split(/[:.]/u).map(Number);
