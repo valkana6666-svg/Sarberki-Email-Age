@@ -125,3 +125,25 @@ test('physical split unit ids never imply a hot tub',()=>{
  state=updateCaseState(state,{type:'facts',values:{unit:'10C'}});
  assert.equal(state.hotTub.atHouse,false);
 });
+
+
+test('six-person inquiry answers accommodation, parking and fishing before asking only for missing guest details',()=>{
+ const inquiry='Jó napot! 2026. október 9-13. között 6 fővel mennénk. Milyen szálláslehetőségek vannak? Lehet a háznál parkolni? Horgászni is szeretnénk, mik a feltételek?';
+ const state=createCaseState({
+   original:inquiry,
+   values:{arrival:'2026-10-09',departure:'2026-10-13',nights:'4',guests:'6',adults:'',children:'',child_ages:'',phone:'',unit:'',language:'HU'}
+ });
+ const view=deriveCaseView(state);
+ assert.match(view.draft,/Deluxe/u);
+ assert.match(view.draft,/Családi/u);
+ assert.match(view.draft,/VIP/u);
+ assert.match(view.draft,/A\+C vagy B\+C/u);
+ assert.match(view.draft,/Parkolási lehetőség biztosított a házaknál/u);
+ assert.match(view.draft,/állami horgászjegy/u);
+ assert.match(view.draft,/pontybölcső/u);
+ assert.match(view.draft,/felnőttek/u);
+ assert.match(view.draft,/gyermek/u);
+ assert.match(view.draft,/telefonszám/u);
+ assert.doesNotMatch(view.draft,/7C|8C|9C|10C|emberi döntésre vár/u);
+ assert.doesNotMatch(view.draft,/előleg összegét és fizetési határidejét|lemondási feltételt külön/u);
+});
