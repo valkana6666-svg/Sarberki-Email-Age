@@ -482,7 +482,7 @@ function operationalTopicLines(language='hu',original='',rules=null,caseContext=
     electricity:/(?:áram|villany|mérőóra|electricity|power\s+consumption|strom|stromverbrauch|elektrik|elektrika)/iu.test(original),
     firewood:/(?:tűzifa|tüzifa|firewood|brennholz|drva)/iu.test(original),
     parking:/(?:parkol|parking|parkplatz|parkplätze|parkiriš|parkiris|\b(?:cars?|vehicles?)\b|\bautos?\b|\bvozil\w*\b)/iu.test(original),
-    arrival:/(?:érkez|check[- ]?in|arriv|ankunft|anreise|prihod)[^.!?\n]{0,80}\d{1,2}[:.]\d{2}/iu.test(original),
+    arrival:/(?:érkez|check[- ]?in|arriv|ankunft|anreise|prihod)/iu.test(original),
     departure:/(?:távoz|kijelentkez|check[- ]?out|what\s+time[^.!?\n]{0,40}(?:leave|departure)|abreise|abreisen|odhod)/iu.test(original),
     returning:/(?:törzsvend|visszatérő|korábban[^.!?\n]{0,80}(?:száll|járt)|returning\s+guest|stayed[^.!?\n]{0,100}(?:before|ago)|previous\s+stay|stammgast|schon[^.!?\n]{0,80}(?:bei\s+ihnen|übernachtet)|povratn|že[^.!?\n]{0,80}bivali)/iu.test(original),
     pet:/(?:kuty|háziállat|dog|pet\b|hund|haustier|pes|psa)/iu.test(original),
@@ -520,6 +520,12 @@ function operationalTopicLines(language='hu',original='',rules=null,caseContext=
     en:`Arrival at around ${arrivalTime} is possible; there is 24-hour reception/porter service.`,
     si:`Prihod okoli ${arrivalTime} je mogoč; na voljo je 24-urna receptorska/portirska služba.`
   }[lang]);
+  else if(asks.arrival&&rules.checkinFrom) lines.push({
+    hu:`A szállás elfoglalása az érkezés napján ${rules.checkinFrom}-tól lehetséges.`,
+    de:`Am Anreisetag ist der Check-in ab ${rules.checkinFrom} Uhr möglich.`,
+    en:`On the day of arrival, check-in is available from ${rules.checkinFrom}.`,
+    si:`Na dan prihoda je prijava mogoča od ${rules.checkinFrom} dalje.`
+  }[lang]);
   if(asks.departure&&rules.checkoutBy) lines.push({
     hu:`A szállást a távozás napján ${rules.checkoutBy}-ig kell elhagyni.`,
     de:`Am Abreisetag ist die Unterkunft bis ${rules.checkoutBy} Uhr zu verlassen.`,
@@ -536,11 +542,14 @@ function operationalTopicLines(language='hu',original='',rules=null,caseContext=
     }[lang]);
   }
   if(asks.pet&&rules.petAllowedForFee){
+    const petFee=Number(rules.petFeeHufPerPetPerDay);
+    const hasVerifiedPetFee=rules.petFeeVerified&&Number.isFinite(petFee)&&petFee>=0;
+    const feeText=hasVerifiedPetFee?String(petFee).replace(/\B(?=(\d{3})+(?!\d))/g,' '):null;
     lines.push({
-      hu:rules.petFeeVerified?'Háziállat hozható a beállított díj mellett.':'Háziállat hozható térítés ellenében; a pontos díjat kezelői ellenőrzéssel kell megerősíteni.',
-      de:rules.petFeeVerified?'Haustiere sind gegen die hinterlegte Gebühr erlaubt.':'Haustiere sind gegen Aufpreis erlaubt; die genaue Gebühr muss vom Betreiber bestätigt werden.',
-      en:rules.petFeeVerified?'Pets are allowed for the configured fee.':'Pets are allowed for an additional charge; the exact fee must be confirmed by the operator.',
-      si:rules.petFeeVerified?'Hišni ljubljenčki so dovoljeni ob nastavljeni pristojbini.':'Hišni ljubljenčki so dovoljeni z doplačilom; natančno pristojbino mora potrditi upravljavec.'
+      hu:hasVerifiedPetFee?`Háziállat hozható, díja ${feeText} Ft/nap/állat.`:'Háziállat hozható térítés ellenében; a pontos díjat kezelői ellenőrzéssel kell megerősíteni.',
+      de:hasVerifiedPetFee?`Haustiere sind erlaubt; die Gebühr beträgt ${feeText} Ft pro Tag und Tier.`:'Haustiere sind gegen Aufpreis erlaubt; die genaue Gebühr muss vom Betreiber bestätigt werden.',
+      en:hasVerifiedPetFee?`Pets are allowed; the fee is ${feeText} Ft per pet per day.`:'Pets are allowed for an additional charge; the exact fee must be confirmed by the operator.',
+      si:hasVerifiedPetFee?`Hišni ljubljenčki so dovoljeni; pristojbina znaša ${feeText} Ft na žival na dan.`:'Hišni ljubljenčki so dovoljeni z doplačilom; natančno pristojbino mora potrditi upravljavec.'
     }[lang]);
   }
   if(!caseContext&&asks.hotTub&&rules.hotTubAvailabilityRequiresCheck){
