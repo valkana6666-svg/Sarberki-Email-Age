@@ -16,7 +16,7 @@ for(const [lang,text] of Object.entries(languages)){
  }
  for(const subject of ['', 'x', 'Számla 2020.01.02. 99 fő', 'Re: Előző levelezés']) add(`${lang}-subject-${subject.length}`,text,{...dates,guests:4,adults:2,children:2,childAges:[7,11],cabin:'Deluxe',phone:'+36 30 555 1234'},{subject},'subject');
 }
-for(const [i,t] of ['faház','dézsás faház','bungalow','superluxus faház','Deluxe vagy családi, mindegy'].entries()) add(`cabin-${i}`,`2026. október 16-18. 6 fő. ${t}.`,{...dates,cabin:unknown,adults:null,children:null},{contains:/megfelelő szabad szállástípusokat/u,absent:/Melyik háztípust|6 felnőtt/u},'ambiguous-cabin');
+for(const [i,t] of ['faház','dézsás faház','bungalow','superluxus faház','Deluxe vagy családi, mindegy'].entries()) add(`cabin-${i}`,`2026. október 16-18. 6 fő. ${t}.`,{...dates,cabin:unknown,adults:null,children:null},{contains:/Deluxe[\s\S]*Családi[\s\S]*VIP[\s\S]*A\+C vagy B\+C/u,absent:/Melyik háztípust|6 felnőtt/u},'ambiguous-cabin');
 add('accentless','2026 oktober 16tol 18ig 2 felnott es 2 gyerek, 7 es 11 evesek. csaladi haz. Telefon: +36 30 555 1234.',{...dates,guests:4,adults:2,children:2,childAges:[7,11],cabin:'Családi',phone:'+36 30 555 1234'},{},'multilingual');
 add('word-conflict','2026. október 16-18. Deluxe. 2 felnőtt és 2 gyerek, de összesen hárman mennénk.',{...dates,guests:3,adults:2,children:2},{contains:/pontosít|clarif/,absent:/1 felnőtt/},'guest-conflict');
 add('digit-conflict','2026. október 16-18. Deluxe. Összesen 3 fő: 2 felnőtt és 2 gyermek, 7 és 11 évesek.',{...dates,guests:3,adults:2,children:2},{contains:/pontosít/,absent:/1 felnőtt/},'guest-conflict');
