@@ -60,8 +60,12 @@ Forrás: business-config.mjs:18-31
 Komment: Emiatt például a későbbi érkezés kezelhető.
 
 2.2 A kódban hitelesített késői érkezési példa: 18:30.
-Forrás: business-config.mjs:18-31; sarberki-core.mjs:386-391
+Forrás: business-config.mjs; sarberki-core.mjs
 Komment: Ha a vendég ilyen érkezési időről kérdez, a válasz jelezheti, hogy megoldható.
+
+2.2a Normál érkezés / check-in 14:00-tól.
+Forrás: business-config.mjs; sarberki-core.mjs
+Komment: Általános érkezési idő kérdésére a rendszer a 14:00-s normál check-in időt adja; explicit késői érkezésnél a hitelesített 24 órás portaszolgálati szabályt használja.
 
 2.3 Távozás legkésőbb 10:00.
 Forrás: business-config.mjs:18-31; sarberki-core.mjs:392-397
@@ -79,13 +83,13 @@ Komment: Több autó esetén a rendelkezésre álló helyet külön kell ellenő
 Forrás: business-config.mjs:18-31; sarberki-core.mjs:374-379
 Komment: A rendszer nem írhat automatikusan konkrét tűzifaárat.
 
-2.7 Háziállat hozható térítés ellenében, de a pontos díj nincs hitelesítve.
-Forrás: business-config.mjs:18-31; sarberki-core.mjs:407-413
-Komment: A rendszer csak a díjkötelességet állíthatja biztosan, a konkrét összeget nem.
+2.7 Háziállat hozható, díja 2 000 Ft / nap / állat.
+Forrás: business-config.mjs; sarberki-core.mjs; Sárberki nyilvános honlap, 2026-10-06-i ellenőrzés.
+Komment: A díj hitelesített; a rendszer kérdés esetén konkrétan megadhatja.
 
-2.8 Dézsa elérhetőségét külön ellenőrizni kell; a dézsadíj nincs hitelesítve.
-Forrás: business-config.mjs:18-31; sarberki-core.mjs:415-421
-Komment: Szabad dézsát és pontos árat csak ellenőrzés után szabad visszaigazolni.
+2.8 A dézsa külön bérelhető; alapdíja 30 000 Ft / 24 óra 6 főig, felette +4 000 Ft / fő / 24 óra.
+Forrás: business-config.mjs hotTubRentalRules; tulajdonosi döntés, 2026-10-05.
+Komment: A tarifa hitelesített, de a kért időszak konkrét elérhetőségét, a bérelt 24 órás időtartamok számát és így a teljes dézsadíjat külön ellenőrizni kell.
 
 2.9 Visszatérő vendég kedvezmény: lehetséges 20%, 730 napos visszatekintéssel.
 Forrás: business-config.mjs:25-27; sarberki-core.mjs:398-405
