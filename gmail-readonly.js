@@ -1,8 +1,9 @@
 /* Browser-only Gmail bridge. Access token stays in memory and is never stored. */
 (async () => {
   'use strict';
-  const { cabinFromText, guestCountFromText, adultCountFromText, childCountFromText, dateRangeFromText, phoneFromText, childAgesFromText, pierPreferenceFromText, languageFromText, buildReplyDraft, specialRequestsFromText, requestedUnitsFromText, activeMessageText, requestFlagsFromText } = await import('./sarberki-core.mjs?v=20261006-split6');
+  const { cabinFromText, cabinClarificationRequired, guestCountFromText, adultCountFromText, childCountFromText, dateRangeFromText, phoneFromText, childAgesFromText, pierPreferenceFromText, languageFromText, buildReplyDraft, specialRequestsFromText, requestedUnitsFromText, activeMessageText, requestFlagsFromText } = await import('./sarberki-core.mjs?v=20261006-split6');
   const { BUSINESS } = await import('./business-config.mjs?v=20261006-split6');
+  const { splitRequestFromText } = await import('./split-units.mjs?v=20261006-split7');
   const { fishingQuestion } = await import('./fishing-rules.mjs?v=20261005-stress1');
   const { INBOX_QUERY, TEST_GMAIL_ACCOUNT, assertTestGmailAccount, isTestInquiry } = await import('./gmail-policy.mjs');
 
@@ -234,6 +235,8 @@
     const hotTub = flags.hotTubRequested, dog = flags.petRequested, pier = pierPreferenceFromText(original), availability = /(?:szabad\s+hely|availab|verfügbar|prosto|razpolož)/iu.test(original);
     const specialRequests = specialRequestsFromText(original);
     const requestedUnits = requestedUnitsFromText(original);
+    const splitRequest = splitRequestFromText(original);
+    const cabin = cabinFromGuestText(original);
     const extracted = [];
     if (specialRequests.length) extracted.push({label:'Külön kérés',value:specialRequests.join('; '),evidence:'levélszöveg'});
     if (name) extracted.push({label:'Vendég neve',value:name,evidence:'aláírás'});
@@ -246,9 +249,14 @@
     if (adultCount!=null) extracted.push({label:'Felnőttek',value:`${adultCount} fő`,evidence:'levélszöveg'});
     else if (count && childCount) inferred.push({label:'Felnőttek',value:`valószínűleg ${count-childCount}, ha a fennmaradó ${count-childCount} fő felnőtt`});
     const missing = [];
-    const cabinMissing = cabinFromGuestText(original).startsWith('?');
-    const capacityRecommendationReady = Boolean(normalizedDate && count);
-    if (cabinMissing && !capacityRecommendationReady) missing.push('Kívánt háztípus (VIP, Családi, Deluxe vagy Osztott) – pontosítandó');
+    const cabinMissing = cabin.startsWith('?');
+    const mustClarifyCabin = cabinMissing && cabinClarificationRequired(original,count);
+    const capacityRecommendationReady = Boolean(normalizedDate && count && !mustClarifyCabin);
+    if (cabinMissing && !capacityRecommendationReady) {
+      missing.push(Number(count)===2
+        ? 'Kívánt háztípus (VIP, Családi, Deluxe, Osztott vagy Különálló 2 fős) – pontosítandó'
+        : 'Kívánt háztípus (VIP, Családi, Deluxe vagy Osztott) – pontosítandó');
+    }
     if (normalizedDate) extracted.push({label:normalizedDate.inferredYear ? 'Időszak, következtetett évvel' : 'Időszak',value:`${normalizedDate.arrival} – ${normalizedDate.departure}`,evidence:'levélszöveg'});
     if (!normalizedDate) missing.push('Pontos érkezési és távozási dátum');
     if (normalizedDate?.inferredYear && !inferred.some(x => x.label === 'Év')) inferred.push({label:'Év',value:`${normalizedDate.arrival.slice(0,4)}, a feldolgozás napja alapján következtetve; emberi ellenőrzés szükséges`});
@@ -260,14 +268,16 @@
     const reviewYear = normalizedDate?.inferredYear ? Number(normalizedDate.arrival.slice(0,4)) : null;
     const humanReview = [];
     if (reviewYear) humanReview.push(`A ${reviewYear}-os év következtetését hagyja jóvá a kezelő`);
-    if (cabinMissing && !capacityRecommendationReady) humanReview.push('A vendég háztípust nem választott; a választást pontosítani kell');
+    if (cabinMissing && !capacityRecommendationReady) humanReview.push(mustClarifyCabin
+      ? 'A 2 vagy 4 fős igény önmagában nem határozza meg a háztípust; vissza kell kérdezni.'
+      : 'A vendég háztípust nem választott; a választást pontosítani kell');
     if (count && adultCount!=null && childCount!=null && adultCount+childCount!==count) humanReview.push(`Ellentmondó létszámadat: összesen ${count} fő, de ${adultCount} felnőtt + ${childCount} gyermek = ${adultCount+childCount} fő`);
     const priceQuestion=/(?:mennyi|mennyibe|ár|ára|árat|price|cost|kosten|preis|cena)/iu.test(original);
     if (availability || priceQuestion) humanReview.push('A szabad kapacitás és/vagy ár hiteles ellenőrzése szükséges');
     const language = languageFromText(original);
     const fishingInfo = fishingQuestion(original,language);
-    const replyDraft = buildReplyDraft({language,name,original,arrival:normalizedDate?.arrival,departure:normalizedDate?.departure,guests:count,adults:adultCount,children:childCount,childAges,phone,cabin:cabinFromGuestText(original),pier,hotTub,dog,intent:'booking_request',brandName:BUSINESS.brandName,bookingRules:BUSINESS.bookingRules,operationalRules:BUSINESS.operationalRules,pricingRules:BUSINESS.pricingRules,knowledgeLines:fishingInfo?[fishingInfo.answer]:[]});
-    return {source:{provider:'gmail',message_id:message.id,thread_id:message.threadId,subject:headers.subject || '',from:headers.from || '',from_email:emailAddress(headers.from || ''),to:headers.to || '',received_at:received.toISOString()},original_message:rawOriginal,normalized:{language,cabin:cabinFromGuestText(original),dates:normalizedDate,guests:count,adults:adultCount,children:childCount,child_ages:childAges,phone,nights:normalizedDate?(Date.parse(normalizedDate.departure)-Date.parse(normalizedDate.arrival))/86400000:null,special_requests:specialRequests,fishing_question:Boolean(fishingInfo),parking_question:/(?:parkol|parking|parkplatz|parkplätze|parkiriš|parkiris)/iu.test(original),units_requested:requestedUnits.count||null,units_open:requestedUnits.open,pier_requested:pier,hot_tub_requested:hotTub,pet_requested:dog},extracted,inferred,missing,human_review:humanReview,reply_draft:replyDraft};
+    const replyDraft = buildReplyDraft({language,name,original,arrival:normalizedDate?.arrival,departure:normalizedDate?.departure,guests:count,adults:adultCount,children:childCount,childAges,phone,cabin,pier,hotTub,dog,intent:'booking_request',brandName:BUSINESS.brandName,bookingRules:BUSINESS.bookingRules,operationalRules:BUSINESS.operationalRules,pricingRules:BUSINESS.pricingRules,knowledgeLines:fishingInfo?[fishingInfo.answer]:[]});
+    return {source:{provider:'gmail',message_id:message.id,thread_id:message.threadId,subject:headers.subject || '',from:headers.from || '',from_email:emailAddress(headers.from || ''),to:headers.to || '',received_at:received.toISOString()},original_message:rawOriginal,normalized:{language,cabin,dates:normalizedDate,guests:count,adults:adultCount,children:childCount,child_ages:childAges,phone,nights:normalizedDate?(Date.parse(normalizedDate.departure)-Date.parse(normalizedDate.arrival))/86400000:null,special_requests:specialRequests,fishing_question:Boolean(fishingInfo),parking_question:/(?:parkol|parking|parkplatz|parkplätze|parkiriš|parkiris)/iu.test(original),units_requested:requestedUnits.count||null,units_open:requestedUnits.open,split_request:splitRequest,pier_requested:pier,hot_tub_requested:hotTub,pet_requested:dog},extracted,inferred,missing,human_review:humanReview,reply_draft:replyDraft};
   }
   async function readWithToken(token) {
     const headers = {Authorization:`Bearer ${token}`};
