@@ -39,6 +39,34 @@ for(const text of ['jövő hétvégén','október végén','next weekend','Ende 
 add('old-yearless','augusztus 10-12. Deluxe, 4 fő.',{arrival:'2027-08-10',departure:'2027-08-12',nights:2},{},'yearless');
 const current='2026. október 16-18. Családi. 2 felnőtt és 1 gyerek, 7 éves. Telefon: +36 30 555 1234.';
 for(const quoted of ['\nOn Monday, Guest wrote:\n2025. november 10-12. VIP. 8 fő. Telefon: +36 20 111 2222.', '\n-----Original Message-----\n2025. november 10-12. VIP. 8 fő.', '\n> 2025. november 10-12. VIP. 8 fő.']) add(`quote-${cases.length}`,current+quoted,{...dates,cabin:'Családi',guests:3,children:1,childAges:[7],phone:'+36 30 555 1234'},{},'quoted-history');
+
+add('outlook-quote-hu',`2026. október 16-18. Családi. 2 felnőtt és 1 gyerek, 7 éves. Telefon: +36 30 555 1234.
+Feladó: Régi Vendég <old@example.invalid>
+Elküldve: 2025. november 1., szombat 10:00
+Címzett: Sárberki Horgásztó
+Tárgy: Régi foglalás
+2025. november 10-12. VIP. 8 fő. Telefon: +36 20 111 2222.`,{...dates,cabin:'Családi',guests:3,adults:2,children:1,childAges:[7],phone:'+36 30 555 1234'},{},'outlook-quoted-history');
+
+add('outlook-quote-en',`October 16-18 2026. Family cabin. 2 adults and 1 child aged 7. Phone: +36 30 555 1234.
+From: Old Guest <old@example.invalid>
+Sent: Saturday, November 1, 2025 10:00 AM
+To: Sárberki Horgásztó
+Subject: Old booking
+November 10-12 2025. VIP. 8 guests. Phone: +36 20 111 2222.`,{...dates,cabin:'Családi',guests:3,adults:2,children:1,childAges:[7],phone:'+36 30 555 1234'},{},'outlook-quoted-history');
+
+add('outlook-quote-de',`Vom 16. bis 18. Oktober 2026. Familienhaus. 2 Erwachsene und 1 Kind im Alter von 7 Jahren. Telefon: +36 30 555 1234.
+Von: Alter Gast <old@example.invalid>
+Gesendet: Samstag, 1. November 2025 10:00
+An: Sárberki Horgásztó
+Betreff: Alte Buchung
+Vom 10. bis 12. November 2025. VIP. 8 Personen. Telefon: +36 20 111 2222.`,{...dates,cabin:'Családi',guests:3,adults:2,children:1,childAges:[7],phone:'+36 30 555 1234'},{},'outlook-quoted-history');
+
+add('outlook-quote-si',`Od 16. do 18. oktobra 2026. Družinska hiška. 2 odrasla in 1 otrok, star 7 let. Telefon: +36 30 555 1234.
+Od: Stari gost <old@example.invalid>
+Poslano: sobota, 1. november 2025 10:00
+Za: Sárberki Horgásztó
+Zadeva: Stara rezervacija
+Od 10. do 12. novembra 2025. VIP. 8 oseb. Telefon: +36 20 111 2222.`,{...dates,cabin:'Családi',guests:3,adults:2,children:1,childAges:[7],phone:'+36 30 555 1234'},{},'outlook-quoted-history');
 add('dog-retracted','2026. október 16-18. Deluxe, 4 fő. Kutyát hoznánk, de mégsem hozunk kutyát.',{...dates,petRequested:false},{absent:/Kutyát is hoznának/},'negated-addons');
 add('dog-no-en','October 16-18 2026. Deluxe, 4 guests. We will not bring a dog.',{...dates,petRequested:false},{absent:/bring a dog/},'negated-addons');
 add('tub-no','2026. október 16-18. Deluxe, 4 fő. Dézsát nem kérünk.',{...dates,hotTubRequested:false},{absent:/Dézsát is szeretnének/},'negated-addons');
