@@ -674,7 +674,7 @@ Phone: +44 7700 912345.`;
   assert.match(draft,/10:00/u);
   assert.match(draft,/20%/u);
   assert.match(draft,/730 days/u);
-  assert.match(draft,/Pets are allowed for an additional charge/u);
+  assert.match(draft,/Pets are allowed; the fee is 2 000 Ft per pet per day/u);
   assert.match(draft,/hot tub is rented separately and is not automatically included with the house/u);
   assert.match(draft,/outside the period with the 10% high-season surcharge/u);
   assert.match(draft,/550 HUF per adult per night/u);
