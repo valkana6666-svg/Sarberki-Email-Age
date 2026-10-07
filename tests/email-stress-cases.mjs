@@ -36,6 +36,11 @@ add('three-dates','Érkezés 2026-10-16 vagy 2026-10-17, távozás 2026-10-18. D
 add('two-ranges-en','October 16-18 2026 or November 20-22 2026. Deluxe, 4 guests.',{arrival:null,departure:null,nights:null},{},'multiple-dates');
 add('two-ranges-de','Vom 16. bis 18. Oktober 2026 oder vom 20. bis 22. November 2026. Deluxe, 4 Personen.',{arrival:null,departure:null,nights:null},{},'multiple-dates');
 add('two-ranges-si','Od 16. do 18. oktobra 2026 ali od 20. do 22. novembra 2026. Deluxe, 4 oseb.',{arrival:null,departure:null,nights:null},{},'multiple-dates');
+
+add('date-correction-hu','Eredetileg 2026. október 16-18. Pontosítás: 2026. október 20-22. Deluxe, 4 fő.',{arrival:null,departure:null,nights:null},{},'self-correction');
+add('date-correction-en','Originally October 16-18 2026. Correction: October 20-22 2026. Deluxe, 4 guests.',{arrival:null,departure:null,nights:null},{},'self-correction');
+add('date-correction-de','Ursprünglich vom 16. bis 18. Oktober 2026. Korrektur: vom 20. bis 22. Oktober 2026. Deluxe, 4 Personen.',{arrival:null,departure:null,nights:null},{},'self-correction');
+add('date-correction-si','Najprej od 16. do 18. oktobra 2026. Popravek: od 20. do 22. oktobra 2026. Deluxe, 4 oseb.',{arrival:null,departure:null,nights:null},{},'self-correction');
 add('next-year-de','Nächstes Jahr vom 16. bis 18. Oktober, 4 Personen. Deluxe.',{arrival:'2027-10-16',departure:'2027-10-18',nights:2},{},'next-year');
 add('next-year-si','Naslednje leto od 16. do 18. oktobra, 4 oseb. Deluxe.',{arrival:'2027-10-16',departure:'2027-10-18',nights:2},{},'next-year');
 add('next-year-natural','Jövőre október 16 és 18 között. Deluxe, 4 fő.',{arrival:'2027-10-16',departure:'2027-10-18',nights:2},{},'next-year');
