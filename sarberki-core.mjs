@@ -277,7 +277,7 @@ export function dateRangeFromText(text='',now=new Date(),timeZone='Europe/Budape
   const explicitDates=[...text.matchAll(/\b20\d{2}[./-]\d{1,2}[./-]\d{1,2}\b/gu)].map(m=>m[0]);
   if(new Set(explicitDates).size>2)return null;
   // Több külön időszakból soha ne válasszuk ki csendben az elsőt.
-  const alternativeSeparator=/\b(?:vagy|or|oder|ali)\b/iu;
+  const alternativeSeparator=/\b(?:vagy|or|oder|ali|pontosítás|pontositás|javítás|javitas|correction|korrektur|popravek)\b\s*:?[\t ]*/iu;
   const parts=alternativeSeparator.test(text)
     ? text.split(alternativeSeparator)
     : text.split(/[;\n]/u);
