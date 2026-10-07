@@ -101,7 +101,7 @@ export function guestCountFromText(text=''){
   const adultChildPairs=[
     /\b(\d{1,2})\s*(?:felnőtt|felnott)\w*\s*(?:és|es|,|\+)\s*(\d{1,2})\s*(?:gyerek|gyermek)\w*\b/iu,
     /\b(\d{1,2})\s*adults?\s*(?:and|,|\+)\s*(\d{1,2})\s*(?:children|child)\b/iu,
-    /\b(\d{1,2})\s*erwachsene\w*\s*(?:und|,|\+)\s*(\d{1,2})\s*kinder?\b/iu,
+    /\b(\d{1,2})\s*erwachsene\w*\s*(?:und|,|\+)\s*(\d{1,2})\s*kind(?:er)?\b/iu,
     /\b(\d{1,2})\s*odrasl\w*\s*(?:in|,|\+)\s*(\d{1,2})\s*(?:otrok|otroc)\w*\b/iu
   ];
   for(const pattern of adultChildPairs){
