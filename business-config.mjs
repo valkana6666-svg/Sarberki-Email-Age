@@ -18,6 +18,7 @@ export const BUSINESS = Object.freeze({
   operationalRules: Object.freeze({
     reception24h: true,
     confirmedLateArrivalExample: '18:30',
+    checkinFrom: '14:00',
     checkoutBy: '10:00',
     electricitySettlement: 'metered_separate',
     parking: 'available_large_group_review',
@@ -26,7 +27,8 @@ export const BUSINESS = Object.freeze({
     returningGuestLookbackDays: 730,
     returningGuestRequiresHistoryCheck: true,
     petAllowedForFee: true,
-    petFeeVerified: false,
+    petFeeVerified: true,
+    petFeeHufPerPetPerDay: 2000,
     hotTubAvailabilityRequiresCheck: true,
     hotTubFeeVerified: false,
     hotTubSeparateRental: true
