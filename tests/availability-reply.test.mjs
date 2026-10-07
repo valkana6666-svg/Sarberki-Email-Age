@@ -24,7 +24,7 @@ for(const [lang,expected] of Object.entries(labelCases)){
    assert.doesNotMatch(sentence,/Családi|Osztott/u);
    assert.doesNotMatch(manual,/Családi|Osztott/u);
  });
- test(`core reply does not invent a cabin choice in ${lang}`,()=>{
+ test(`core reply lists capacity-compatible options without silently selecting one in ${lang}`,()=>{
    const draft=core.buildReplyDraft({
      language:lang,
      original:'test',
@@ -36,7 +36,11 @@ for(const [lang,expected] of Object.entries(labelCases)){
      phone:'+36 30 555 1234',
      cabin:'? – emberi döntésre vár'
    });
-   assert.doesNotMatch(draft,/Családi|Osztott|Familienhaus|Family cabin|Družinska hiška/u);
+   assert.match(draft,/Deluxe/u);
+   assert.match(draft,new RegExp(expected.family,'u'));
+   assert.match(draft,/VIP/u);
+   assert.match(draft,/A\+C|B\+C/u);
+   assert.doesNotMatch(draft,/Requested cabin type|Gewünschter Haustyp|Želeni tip hiške/u);
    assert.doesNotMatch(draft,/Which cabin type|Welchen Haustyp|Kateri tip hiške/u);
  });
 }
