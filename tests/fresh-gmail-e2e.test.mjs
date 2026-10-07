@@ -6,6 +6,7 @@ import * as core from '../sarberki-core.mjs';
 import {BUSINESS} from '../business-config.mjs';
 import * as fishing from '../fishing-rules.mjs';
 import * as policy from '../gmail-policy.mjs';
+import * as splitUnits from '../split-units.mjs';
 
 const source=fs.readFileSync(new URL('../gmail-readonly.js',import.meta.url),'utf8')
   .replace(/await import\('\.\/([^']+)'\)/gu,(_,name)=>`modules[${JSON.stringify(name.split('?')[0])}]`);
@@ -23,7 +24,8 @@ async function createTransform(){
       'sarberki-core.mjs':core,
       'business-config.mjs':{BUSINESS},
       'fishing-rules.mjs':fishing,
-      'gmail-policy.mjs':policy
+      'gmail-policy.mjs':policy,
+      'split-units.mjs':splitUnits
     },
     document,window,console,URL,Date,Number,Intl,TextDecoder,Uint8Array,atob
   });
@@ -159,4 +161,77 @@ Milyen lehetőségek vannak erre az időpontra?
   assert.match(record.reply_draft,/Horgászat\n/u);
   assert.doesNotMatch(record.reply_draft,/Melyik háztípust/u);
   assert.doesNotMatch(record.human_review.join(' '),/A dátumot ellenőrizni kell|háztípust nem választott|Szabad hely és ár nincs igazolva/u);
+});
+
+
+test('fresh Gmail path asks cabin type for ambiguous two-person inquiry and includes standalone option',async()=>{
+  const transform=await createTransform();
+  const body=`Jó napot!
+
+2026. november 6-8. között ketten mennénk, egy kétfős apartmant szeretnénk.
+Gyermek nem jön. Telefonszám: +36 30 555 1234.
+
+Üdvözlettel:
+Teszt Vendég`;
+  const record=transform(message(body,'Kétfős apartman','gmail-two-ambiguous'));
+  assert.equal(record.normalized.guests,2);
+  assert.match(record.normalized.cabin,/emberi döntésre vár/u);
+  assert.match(record.missing.join(' '),/Kívánt háztípus/u);
+  assert.match(record.missing.join(' '),/Különálló 2 fős/u);
+  assert.match(record.human_review.join(' '),/2 vagy 4 fős igény/u);
+  assert.match(record.reply_draft,/Melyik háztípust szeretné/u);
+  assert.match(record.reply_draft,/Különálló 2 fős/u);
+});
+
+test('fresh Gmail path asks cabin type for ambiguous four-person inquiry instead of assuming split C',async()=>{
+  const transform=await createTransform();
+  const body=`Jó napot!
+
+2026. november 6-8. között négyen mennénk, egy négyfős apartmant szeretnénk.
+4 felnőtt, gyermek nélkül. Telefonszám: +36 30 555 1234.
+
+Üdvözlettel:
+Teszt Vendég`;
+  const record=transform(message(body,'Négyfős apartman','gmail-four-ambiguous'));
+  assert.equal(record.normalized.guests,4);
+  assert.match(record.normalized.cabin,/emberi döntésre vár/u);
+  assert.match(record.missing.join(' '),/Kívánt háztípus/u);
+  assert.match(record.reply_draft,/Melyik háztípust szeretné/u);
+  assert.doesNotMatch(record.reply_draft,/emeleti egység|Osztott C/u);
+});
+
+test('fresh Gmail path preserves explicit split-unit intent for two two-person apartments',async()=>{
+  const transform=await createTransform();
+  const body=`Jó napot!
+
+2026. november 6-8. között kettő darab kétfős osztott apartmant szeretnénk 4 felnőtt részére.
+Gyermek nem jön. Telefonszám: +36 30 555 1234.
+
+Üdvözlettel:
+Teszt Vendég`;
+  const record=transform(message(body,'Két darab kétfős osztott','gmail-split-ab'));
+  assert.equal(record.normalized.cabin,'Osztott');
+  assert.equal(record.normalized.units_requested,2);
+  assert.equal(record.normalized.split_request.isSplit,true);
+  assert.equal(record.normalized.split_request.requestedAB,2);
+  assert.equal(record.normalized.split_request.requestedC,0);
+  assert.equal(record.normalized.split_request.sameHousePreferred,true);
+  assert.equal(record.normalized.split_request.crossHouseFallbackRequiresApproval,true);
+  assert.doesNotMatch(record.missing.join(' '),/Kívánt háztípus/u);
+});
+
+test('fresh Gmail path maps explicit four-person split apartment to C intent',async()=>{
+  const transform=await createTransform();
+  const body=`Jó napot!
+
+2026. november 6-8. között egy négyfős osztott apartmant szeretnénk 4 felnőtt részére.
+Gyermek nem jön. Telefonszám: +36 30 555 1234.
+
+Üdvözlettel:
+Teszt Vendég`;
+  const record=transform(message(body,'Négyfős osztott','gmail-split-c'));
+  assert.equal(record.normalized.cabin,'Osztott');
+  assert.equal(record.normalized.split_request.requestedAB,0);
+  assert.equal(record.normalized.split_request.requestedC,1);
+  assert.equal(record.normalized.split_request.kind,'four_person');
 });
