@@ -59,7 +59,10 @@ test('group-size booking rules stay explicit',()=>{
   assert.equal(BUSINESS.bookingRules.cancellationDaysFrom15Guests,30);
   assert.equal(BUSINESS.operationalRules.returningGuestLookbackDays,730);
   assert.equal(BUSINESS.operationalRules.returningGuestDiscountPct,20);
+  assert.equal(BUSINESS.operationalRules.checkinFrom,'14:00');
   assert.equal(BUSINESS.operationalRules.checkoutBy,'10:00');
+  assert.equal(BUSINESS.operationalRules.petFeeVerified,true);
+  assert.equal(BUSINESS.operationalRules.petFeeHufPerPetPerDay,2000);
 });
 
 
