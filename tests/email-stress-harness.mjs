@@ -4,11 +4,12 @@ import * as core from '../sarberki-core.mjs';
 import { BUSINESS } from '../business-config.mjs';
 import { fishingQuestion } from '../fishing-rules.mjs';
 import { normalizeBookingInput } from '../booking-input.mjs';
+import { splitRequestFromText } from '../split-units.mjs';
 import { NOW } from './email-stress-cases.mjs';
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const gmail=fs.readFileSync(new URL('../gmail-readonly.js',import.meta.url),'utf8');
 function gmailRecord(c){
- const context=vm.createContext({...core,BUSINESS,fishingQuestion,atob,TextDecoder,Uint8Array,Date,Intl,Number,console});
+ const context=vm.createContext({...core,BUSINESS,fishingQuestion,splitRequestFromText,atob,TextDecoder,Uint8Array,Date,Intl,Number,console});
  vm.runInContext(gmail.slice(gmail.indexOf('  function headerMap('),gmail.indexOf('  const SCOPE')),context);
  vm.runInContext(gmail.slice(gmail.indexOf('  function decoded('),gmail.indexOf('  async function readWithToken(')),context);
  context.message={id:'stress-'+c.id,threadId:'stress',internalDate:String(NOW.getTime()),payload:{mimeType:'text/plain',body:{data:Buffer.from(c.text).toString('base64url')},headers:[{name:'Subject',value:c.reply.subject||''},{name:'From',value:'Test <test@example.invalid>'}]}};
