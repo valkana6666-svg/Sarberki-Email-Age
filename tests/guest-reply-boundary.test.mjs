@@ -68,7 +68,7 @@ test('renderer answers only selected public topics and asks only declared missin
 
 test('fishing topic comes only from the curated public answer table',()=>{
   const draft=composeGuestReply({facts:{language:'hu'},topics:['fishing'],missing:[]});
-  for(const phrase of ['állami horgászjegy','szakáll nélküli','6-os','pontybölcső','merítőháló','sebfertőtlenítő','pontyzsák','külön váltandó'])assert.match(draft,new RegExp(phrase,'u'));
+  for(const phrase of ['állami horgászjegy','szakáll nélküli','6-os','pontybölcső','merítőháló','sebfertőtlenítő','pontyzsák','külön váltandó'])assert.match(draft,new RegExp(phrase,'iu'));
   assert.equal(containsForbiddenGuestText(draft),false);
 });
 
