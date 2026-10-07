@@ -89,6 +89,15 @@ export function replaceCapacityPlaceholder(draft,sentence,manual){
   for(const placeholder of placeholders){
     if(draft.includes(placeholder)) return draft.replace(placeholder,combined);
   }
+  const guestFirstCapacityLines=[
+    /A megadott létszám alapján ezek az elhelyezések jöhetnek szóba:[^\n]*A ténylegesen szabad lehetőségeket a kért időszakra ellenőrizzük\./u,
+    /Für die angegebene Personenzahl kommen folgende Unterkünfte infrage:[^\n]*Die tatsächlich freien Möglichkeiten prüfen wir für den gewünschten Zeitraum\./u,
+    /For the stated party size, these accommodation options can work:[^\n]*We will check which of them are actually available for the requested dates\./u,
+    /Za navedeno število gostov pridejo v poštev naslednje možnosti:[^\n]*Za izbrani termin preverimo, katere so dejansko proste\./u
+  ];
+  for(const pattern of guestFirstCapacityLines){
+    if(pattern.test(draft)) return draft.replace(pattern,combined);
+  }
 
   const signatures=[
     '\n\nÜdvözlettel:\nSárberki Horgásztó',
