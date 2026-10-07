@@ -4,6 +4,7 @@ import * as core from '../sarberki-core.mjs';
 import { BUSINESS } from '../business-config.mjs';
 import { fishingQuestion } from '../fishing-rules.mjs';
 import { normalizeBookingInput } from '../booking-input.mjs';
+import * as splitUnits from '../split-units.mjs';
 import { splitRequestFromText } from '../split-units.mjs';
 import { NOW } from './email-stress-cases.mjs';
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
@@ -23,7 +24,7 @@ export function evaluate(c){
  const actual={arrival:b.arrival,departure:b.departure,nights:b.arrival&&b.departure?(Date.parse(b.departure)-Date.parse(b.arrival))/86400000:null,adults:b.adults,children:b.children,childAges:[...b.childAges],guests:b.guests,cabin:b.cabin,unitsRequested:core.requestedUnitsFromText(text).count||null,hotTubRequested:flags.hotTubRequested,petRequested:flags.petRequested,fishingQuestion:Boolean(fishingQuestion(text)),parking:/parkol|parking|parkpl(?:atz|ätze)|parkiri/iu.test(text),phone:b.phone,specialRequests:core.specialRequestsFromText(text)};
  const fishing=fishingQuestion(text,core.languageFromText(text));
  const draft=core.buildReplyDraft({language:core.languageFromText(text),original:text,...b,bookingRules:BUSINESS.bookingRules,operationalRules:BUSINESS.operationalRules,pricingRules:BUSINESS.pricingRules,hotTub:flags.hotTubRequested,dog:flags.petRequested,knowledgeLines:fishing?[fishing.answer]:[]});
- const context=vm.createContext({window:{addEventListener(){},SarberkiNormalize:core,SarberkiConfig:BUSINESS,SarberkiFishingQuestion:fishingQuestion},document:{getElementById:()=>({value:'',textContent:''})},console,Date,Intl,Number,JSON});
+ const context=vm.createContext({...splitUnits,window:{addEventListener(){},SarberkiNormalize:core,SarberkiConfig:BUSINESS,SarberkiFishingQuestion:fishingQuestion,SarberkiSplitUnits:splitUnits},document:{getElementById:()=>({value:'',textContent:''})},console,Date,Intl,Number,JSON});
  vm.runInContext(html.slice(html.indexOf('const $='),html.indexOf('function addEvent(')),context);
  vm.runInContext(html.slice(html.indexOf('function draft('),html.indexOf('function review(')),context);
  context.message=c.text;
