@@ -18,8 +18,16 @@ function monthNumber(raw){
 export function activeMessageText(text=''){
   const lines=String(text).replace(/\r\n?/g,'\n').split('\n');
   const current=[];
-  for(const line of lines){
-    if(/^\s*>/.test(line)||/^\s*-{2,}\s*(?:original message|eredeti üzenet|ursprüngliche nachricht|forwarded message)/iu.test(line)
+  const outlookFrom=/^\s*(?:from|feladó|felado|von|od)\s*:/iu;
+  const outlookSent=/^\s*(?:sent|elküldve|elkuldve|gesendet|poslano)\s*:/iu;
+  const outlookSubject=/^\s*(?:subject|tárgy|targy|betreff|zadeva)\s*:/iu;
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i];
+    const headerWindow=lines.slice(i+1,i+6);
+    const outlookReplyStart=outlookFrom.test(line)
+      && headerWindow.some(next=>outlookSent.test(next))
+      && headerWindow.some(next=>outlookSubject.test(next));
+    if(outlookReplyStart||/^\s*>/.test(line)||/^\s*-{2,}\s*(?:original message|eredeti üzenet|ursprüngliche nachricht|forwarded message)/iu.test(line)
       ||/^\s*On .{1,200}wrote:\s*$/iu.test(line)||/^\s*Am .{1,200}schrieb.{0,100}:\s*$/iu.test(line)
       ||/^\s*.+(?:írta|napisal(?:a)?):\s*$/iu.test(line)) break;
     current.push(line);
