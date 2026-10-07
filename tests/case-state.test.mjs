@@ -141,7 +141,7 @@ test('six-person inquiry answers accommodation, parking and fishing before askin
  assert.match(view.draft,/Parkolási lehetőség biztosított a házaknál/u);
  assert.match(view.draft,/állami horgászjegy/u);
  assert.match(view.draft,/pontybölcső/u);
- assert.match(view.draft,/felnőttek/u);
+ assert.match(view.draft,/felnőtt/u);
  assert.match(view.draft,/gyermek/u);
  assert.match(view.draft,/telefonszám/u);
  assert.doesNotMatch(view.draft,/7C|8C|9C|10C|emberi döntésre vár/u);
