@@ -35,13 +35,13 @@ test('local filter still rejects old dates, non-inbox mail and invalid timestamp
 
 test('OAuth callback verifies the designated account before requesting any messages',async()=>{
   const fs=await import('node:fs/promises'), vm=await import('node:vm');
-  const core=await import('./sarberki-core.mjs'), business=await import('./business-config.mjs'), fishing=await import('./fishing-rules.mjs'), policy=await import('./gmail-policy.mjs');
+  const core=await import('./sarberki-core.mjs'), business=await import('./business-config.mjs'), fishing=await import('./fishing-rules.mjs'), policy=await import('./gmail-policy.mjs'), splitUnits=await import('./split-units.mjs');
   const source=(await fs.readFile(new URL('./gmail-readonly.js',import.meta.url),'utf8')).replace(/await import\('\.\/([^']+)'\)/gu,(_,name)=>`modules[${JSON.stringify(name.split('?')[0])}]`);
   for(const emailAddress of ['wrong@example.invalid','sarberkiprojecttest@gmail.com']) {
     let callback; const calls=[],status={textContent:''},button={disabled:false,addEventListener(_type,fn){this.click=fn}};
     const oauth={initTokenClient(options){callback=options.callback;assert.equal(options.scope,'https://www.googleapis.com/auth/gmail.readonly');assert.equal(options.hint,'sarberkiprojecttest@gmail.com');return {requestAccessToken(){}}}};
     const context=vm.createContext({
-      modules:{'sarberki-core.mjs':core,'business-config.mjs':business,'fishing-rules.mjs':fishing,'gmail-policy.mjs':policy},
+      modules:{'sarberki-core.mjs':core,'business-config.mjs':business,'fishing-rules.mjs':fishing,'gmail-policy.mjs':policy,'split-units.mjs':splitUnits},
       document:{getElementById:id=>id==='read_gmail'?button:status,querySelector:()=>({content:'test-client'})},
       window:{google:{accounts:{oauth2:oauth}}},
       google:{accounts:{oauth2:oauth}},
