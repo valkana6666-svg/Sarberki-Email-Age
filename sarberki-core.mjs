@@ -641,10 +641,24 @@ function cabinDisplayName(cabin,language='hu'){
 
 function capacityOptionText(guests,language='hu'){
   const lang=['hu','de','en','si'].includes(language)?language:'hu';
+  const g=Number(guests);
   const family=cabinDisplayName('Családi',lang);
-  if(Number(guests)<=6)return `Deluxe, ${family}, VIP`;
-  if(Number(guests)<=7)return `${family}, VIP`;
-  if(Number(guests)<=8)return family;
+  const splitAC={
+    hu:'Osztott elhelyezés: A+C vagy B+C',
+    de:'geteilte Unterkunft: A+C oder B+C',
+    en:'split accommodation: A+C or B+C',
+    si:'deljena nastanitev: A+C ali B+C'
+  }[lang];
+  const splitABC={
+    hu:'Osztott elhelyezés: A+B+C',
+    de:'geteilte Unterkunft: A+B+C',
+    en:'split accommodation: A+B+C',
+    si:'deljena nastanitev: A+B+C'
+  }[lang];
+  if(g<=4)return `Deluxe, ${family}, VIP`;
+  if(g<=6)return `Deluxe, ${family}, VIP; ${splitAC}`;
+  if(g===7)return `${family}, VIP; ${splitABC}`;
+  if(g===8)return `${family}; ${splitABC}`;
   return {hu:'több ház',de:'mehrere Häuser',en:'multiple cabins',si:'več hišk'}[lang];
 }
 
@@ -662,7 +676,7 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const intros={hu:'Köszönjük érdeklődését.',de:'Vielen Dank für Ihre Anfrage.',en:'Thank you for your enquiry.',si:'Hvala za vaše povpraševanje.'};
   const closings={hu:'Üdvözlettel:',de:'Mit freundlichen Grüßen',en:'Kind regards,',si:'Lep pozdrav'};
   const titles={
-    hu:{stay:'Szállás',extras:'Kiegészítő információk',price:'Ár és díjak',fishing:'Horgászat',booking:'Foglalási feltételek',missing:'Pontosítandó adatok'},
+    hu:{stay:'Szállás',extras:'Kiegészítő információk',price:'Ár és díjak',fishing:'Horgászat',booking:'Foglalási feltételek',missing:'Az ajánlathoz még szükségünk van'},
     de:{stay:'Unterkunft',extras:'Weitere Informationen',price:'Preis und Gebühren',fishing:'Angeln',booking:'Buchungsbedingungen',missing:'Noch benötigte Angaben'},
     en:{stay:'Accommodation',extras:'Additional information',price:'Price and charges',fishing:'Fishing',booking:'Booking terms',missing:'Details still needed'},
     si:{stay:'Nastanitev',extras:'Dodatne informacije',price:'Cena in doplačila',fishing:'Ribolov',booking:'Pogoji rezervacije',missing:'Podatki za dopolnitev'}
@@ -695,11 +709,12 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
     const displayCabin=cabinDisplayName(cabin,lang);
     stayLines.push({hu:`A kért háztípus: ${displayCabin}.`,de:`Gewünschter Haustyp: ${displayCabin}.`,en:`Requested cabin type: ${displayCabin}.`,si:`Želeni tip hiške: ${displayCabin}.`}[lang]);
   }else if(canRecommendByCapacity){
+    const options=capacityOptionText(guests,lang);
     stayLines.push({
-      hu:'A megadott létszám alapján megkeressük a megfelelő szabad szállástípusokat.',
-      de:'Anhand der angegebenen Personenzahl suchen wir die passenden verfügbaren Unterkunftstypen.',
-      en:'Based on the stated party size, we will find the suitable available accommodation types.',
-      si:'Glede na navedeno število gostov poiščemo primerne razpoložljive vrste nastanitve.'
+      hu:`A megadott létszám alapján ezek az elhelyezések jöhetnek szóba: ${options}. A ténylegesen szabad lehetőségeket a kért időszakra ellenőrizzük.`,
+      de:`Für die angegebene Personenzahl kommen folgende Unterkünfte infrage: ${options}. Die tatsächlich freien Möglichkeiten prüfen wir für den gewünschten Zeitraum.`,
+      en:`For the stated party size, these accommodation options can work: ${options}. We will check which of them are actually available for the requested dates.`,
+      si:`Za navedeno število gostov pridejo v poštev naslednje možnosti: ${options}. Za izbrani termin preverimo, katere so dejansko proste.`
     }[lang]);
   }
 
