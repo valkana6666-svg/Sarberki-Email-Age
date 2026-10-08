@@ -1,10 +1,10 @@
-import {createCapacityClient,capacityInput,canPriceOption,stageFacts} from './booking-filter.mjs';
+import {createCapacityClient,capacityInput,canPriceOption,stageFacts,selectedCapacityOptions} from './booking-filter.mjs';
 import {createBookingCaseStore} from './booking-cases.mjs';
 export function createBookingRuntime({request,storage=null,clock=Date.now}={}){
  const client=createCapacityClient(request,{clock});
  const cases=createBookingCaseStore({storage});
- return {cases,metrics:client.metrics,input:capacityInput,
-  async check(values,text='',options={}){if(Object.values(stageFacts(values)).some(f=>f.status==='contradictory'))throw Error('Ellentmondásos vendéglétszám; kapacitás nem igazolható.');return client.check(capacityInput(values,text),options);},
+ return {cases,metrics:client.metrics,input:capacityInput,selected:selectedCapacityOptions,
+  async check(values,text='',options={}){if(Object.entries(stageFacts(values)).some(([k,f])=>['arrival','departure','guests','adults','children','units_requested'].includes(k)&&f.status==='contradictory'))throw Error('Ellentmondásos vendéglétszám; kapacitás nem igazolható.');return client.check(capacityInput(values,text),options);},
   async beforePrice(input){
    const key=input.cabin==='splitA'||input.cabin==='splitB'?'splitAB':input.cabin;
    const placement=key==='splitAB'?{ab:input.units||1,c:0,adjacent:false,exactIds:[]}:key==='splitC'?{ab:0,c:input.units||1,adjacent:false,exactIds:[]}:undefined;
@@ -15,8 +15,7 @@ export function createBookingRuntime({request,storage=null,clock=Date.now}={}){
   async beforeApproval(values,text=''){
    if(Object.values(stageFacts(values)).some(f=>f.status==='contradictory'))throw Error('Ellentmondásos vendéglétszám.');
    const data=await client.check(capacityInput(values,text),{force:true});
-   const input=capacityInput(values,text),key=input.cabin;
-   const selected=key==='split'||key?.startsWith('split')?data.available_options.filter(x=>x.key.startsWith('split')):key?data.available_options.filter(x=>x.key===key):data.available_options;
+   const selected=selectedCapacityOptions(data,capacityInput(values,text));
    return {data,allowed:selected.some(x=>x.availability_verified===true&&x.availability==='available')};
   }
  };

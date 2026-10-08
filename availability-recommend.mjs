@@ -18,6 +18,7 @@ function localizedOptionLabel(label,language='hu'){
   return text;
 }
 function unitText(option,language='hu'){
+  if(option.components?.length)return option.components.map(part=>{const count=Number(part.units)||1;const label=localizedOptionLabel(part.label,language);return count===1?label:`${count} × ${label}`;}).join(' + ');
   const count=Number(option.units)||1;
   const label=localizedOptionLabel(option.label,language);
   return count===1?label:`${count} × ${label}`;
@@ -208,19 +209,19 @@ function renderSplitInternalNote(options=[],request=null){
 }
 async function enrich(provided=null){
   const arrival=$('f_arrival')?.value||'', departure=$('f_departure')?.value||'', guests=Number($('f_guests')?.value||0), cabin=$('f_unit')?.value||'';
-  const original=$('message')?.value||$('gmail_original')?.textContent||'';
-  const splitCabin=/^Osztott$/iu.test(cabin.trim());
+  const caseState=window.SarberkiCaseController?.snapshot();
+  const original=caseState?.original||$('message')?.value||$('gmail_original')?.textContent||'';
+  const splitCabin=/osztott|split/iu.test(cabin);
   const mustClarify=Boolean(window.SarberkiNormalize?.cabinClarificationRequired?.(original,guests));
   const initialSplitRequest=splitCabin?(window.SarberkiSplitUnits?.splitRequestFromText?.(original)||null):null;
-  const initialSplitPlan=splitCabin?(window.SarberkiSplitUnits?.splitCapacityOptions?.(guests,{},initialSplitRequest)||[]):[];
+  const initialSplitPlan=splitCabin&&!window.SarberkiBookingRuntime?(window.SarberkiSplitUnits?.splitCapacityOptions?.(guests,{},initialSplitRequest)||[]):[];
   if(splitCabin)renderSplitInternalNote(initialSplitPlan,initialSplitRequest);
-  if(!arrival||!departure||!Number.isInteger(guests)||guests<1||mustClarify){
+  if(!arrival||!departure||!Number.isInteger(guests)||guests<1||(mustClarify&&!window.SarberkiBookingRuntime)){
     if(!splitCabin)renderSplitInternalNote([],null);
     return;
   }
   const fingerprint=()=>[ $('f_arrival')?.value||'', $('f_departure')?.value||'', $('f_guests')?.value||'', $('f_unit')?.value||'', $('f_adults')?.value||'', $('f_children')?.value||'', $('f_units_requested')?.value||'', $('f_request')?.value||'', $('message')?.value||'', $('gmail_original')?.textContent||'', $('f_language')?.value||'' ].join('|');
   const key=fingerprint();
-  const caseState=window.SarberkiCaseController?.snapshot();
   const caseKey=caseState&&window.SarberkiCaseState?.caseFingerprint(caseState.values);
   if(inflightKey===key)return;
   inflightKey=key;
@@ -235,15 +236,17 @@ async function enrich(provided=null){
     if(response&&!response.ok)throw Error(data.error||'Nem sikerült a kapacitás-ellenőrzés.');
     const rawLang=($('f_language')?.value||'HU').toLowerCase();
     const lang=rawLang==='sl'?'si':rawLang;
-    const splitRequest=initialSplitRequest||(window.SarberkiSplitUnits?.splitRequestFromText?.(original)||null);
-    const planned=window.SarberkiSplitUnits?.splitCapacityOptions?.(guests,data.split_pool_checks||{},splitCabin?splitRequest:null);
-    const manualOptions=Array.isArray(planned)?planned:(data.manual_review_options||[]);
+    const splitRequest=window.SarberkiSplitUnits?.splitRequestFromText?.(caseState?.values.split_request_text||original)||initialSplitRequest;
+    const planned=runtime?null:window.SarberkiSplitUnits?.splitCapacityOptions?.(guests,data.split_pool_checks||{},splitCabin?splitRequest:null);
+    const manualOptions=runtime?[...(data.available_options||[]),...(data.manual_review_options||[])].filter(x=>x.key?.startsWith('split')||x.request_mode):(Array.isArray(planned)?planned:(data.manual_review_options||[]));
     const manualData={...data,manual_review_options:manualOptions.filter(x=>!x.availability_verified)};
-    const sentence=splitCabin?requestedSplitAvailabilitySentence(data,splitRequest,lang):[requestedAvailabilitySentence(data,cabin,lang),availabilitySentence(data,lang)].filter(Boolean).join('\n');
+    const selected=runtime?runtime.selected(data,runtime.input(caseState?.values||{arrival,departure,guests,unit:cabin},original)):null;
+    const splitSentence=runtime?(selected.length?availabilitySentence({available_options:selected},lang):((data.unverified_options||[]).length?({hu:'A kért osztott elhelyezést nem sikerült teljeskörűen igazolni; külön ellenőrzés szükséges.',de:'Die gewünschte Unterbringung ist nicht vollständig verifiziert.',en:'The requested split accommodation could not be fully verified.',si:'Zahtevane deljene nastanitve ni bilo mogoče v celoti preveriti.'})[lang]:({hu:'A kért osztott elhelyezéshez nincs elegendő igazolt szabad kapacitás.',de:'Für die gewünschte Unterbringung reicht die geprüfte Kapazität nicht aus.',en:'There is not enough verified capacity for the requested split accommodation.',si:'Za zahtevano nastanitev ni dovolj preverjene proste kapacitete.'})[lang])):requestedSplitAvailabilitySentence(data,splitRequest,lang);
+    const sentence=splitCabin?splitSentence:[requestedAvailabilitySentence(data,cabin,lang),availabilitySentence(data,lang)].filter(Boolean).join('\n');
     const manual=splitReviewSentence(manualData,lang);
     renderSplitInternalNote(manualOptions,splitCabin?splitRequest:null);
-    const verified=splitCabin?manualOptions.some(x=>x.availability_verified===true):data.available_options?.some(x=>x.availability_verified===true);
-    const requestedAvailable=splitCabin?Boolean(verified):hasSpecificCabin(cabin)?Boolean(data.available_options?.some(x=>x.availability_verified===true&&localizedOptionLabel(x.label,'hu')===cabin)):null;
+    const verified=runtime?selected.length>0:splitCabin?manualOptions.some(x=>x.availability_verified===true):data.available_options?.some(x=>x.availability_verified===true);
+    const requestedAvailable=runtime&&hasSpecificCabin(cabin)?selected.length>0:splitCabin?Boolean(verified):hasSpecificCabin(cabin)?Boolean(data.available_options?.some(x=>x.availability_verified===true&&localizedOptionLabel(x.label,'hu')===cabin)):null;
     if(caseState){window.SarberkiCaseController.apply({type:'availability',fingerprint:caseKey,verified:Boolean(verified),requestedAvailable,checkedAt:data.checkedAt,evidence:data,lines:[sentence,manual].filter(Boolean)});if(status){status.className='warning';status.textContent='Kapacitásvizsgálat kész; az eredmény és a párosítás kezelői ellenőrzésre vár.';}return;}
     const fresh=currentReplyBase();
     draft.value=replaceCapacityPlaceholder(fresh,sentence,manual);

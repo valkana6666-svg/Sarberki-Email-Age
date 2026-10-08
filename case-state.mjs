@@ -1,3 +1,4 @@
+import {stageFacts} from './booking-filter.mjs';
 import {buildReplyDraft, phoneFromText, requestFlagsFromText, activeMessageText, cabinFromText, cabinClarificationRequired} from './sarberki-core.mjs?v=20261007-e2e1';
 import {BUSINESS} from './business-config.mjs?v=20261007-e2e1';
 import {fishingQuestion} from './fishing-rules.mjs';
@@ -95,6 +96,7 @@ export function deriveCaseView(state, baseReview={warning_codes:[],issues:[]}) {
   const removed=new Set(['price_unverified','hot_tub_availability_unverified','unresolved_guest_question','missing_child_ages','missing_contact']);
   const warnings=(baseReview.warning_codes||[]).flatMap((code,i)=>removed.has(code)?[]:[{code,text:baseReview.issues[i]}]);
   const add=(code,text)=>{if(!warnings.some(x=>x.code===code))warnings.push({code,text});};
+  for(const [key,fact]of Object.entries(stageFacts(v)))if(fact.status==='contradictory')add('fact_conflict','Ellentmondásos vagy érvénytelen ügyadat: '+key);
   const missing=[];
   if(booking&&!v.arrival){missing.push('Érkezési dátum');add('missing_arrival','Érkezési dátum hiányzik');}
   if(booking&&!v.departure){missing.push('Távozási dátum');add('missing_departure','Távozási dátum hiányzik');}
@@ -149,5 +151,5 @@ export function deriveCaseView(state, baseReview={warning_codes:[],issues:[]}) {
   const fishing=fishingQuestion(state.original,lang);
   const draft=buildReplyDraft({language:lang,name:v.name,original:state.original,arrival:v.arrival,departure:v.departure,guests,adults,children,childAges:ages,phone:v.phone,cabin:v.unit||'? – emberi döntésre vár',hotTub:h.requested,intent:state.intent,brandName:BUSINESS.brandName,bookingRules:rules,operationalRules:BUSINESS.operationalRules,pricingRules:BUSINESS.pricingRules,knowledgeLines:fishing?[fishing.answer]:[],caseContext:{priceLines,bookingLines,extraLines,availabilityLines,priceApproved:Boolean(q)}});
   const summary=`${v.arrival||'?'} – ${v.departure||'?'}; ${v.nights||'?'} éjszaka; ${guests??'?'} fő; felnőtt: ${adults??'?'}; gyermek: ${children??'?'}${ages.length?' ('+ages.join(', ')+' éves)':''}; ${v.unit||'háztípus nincs megadva'}${cars!=null?'; Parkolás: '+cars+' autó – adat megadva':''}${q?'; Ár ellenőrizve':''}.`;
-  return {draft,summary,missing,warnings,closeArrival,untilArrival,critical:Boolean(baseReview.critical)||warnings.some(x=>['availability_unverified','close_arrival','deposit_review','deposit_basis_review','cancellation_terms_review','cabin_type_required'].includes(x.code)),priceStatus:q?'Ár ellenőrizve':'Ár nincs jóváhagyva'};
+  return {draft,summary,missing,warnings,closeArrival,untilArrival,critical:Boolean(baseReview.critical)||warnings.some(x=>['fact_conflict','availability_unverified','close_arrival','deposit_review','deposit_basis_review','cancellation_terms_review','cabin_type_required'].includes(x.code)),priceStatus:q?'Ár ellenőrizve':'Ár nincs jóváhagyva'};
 }

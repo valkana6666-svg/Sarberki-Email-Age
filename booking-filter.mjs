@@ -10,10 +10,21 @@ export function cabinKey(value=''){
 }
 export function capacityInput(values={},text=''){
  const guests=positive(values.guests)||(positive(values.adults)!=null&&values.children!==''&&values.children!=null?Number(values.adults)+Number(values.children):null);
- const split=splitRequestFromText((values.split_request_text||text)+' '+(values.request||''));
+ const cabin=cabinKey(values.unit);
+ const isSplit=cabin==='split'||cabin?.startsWith('split');
+ let split=isSplit?splitRequestFromText((values.split_request_text||text)+' '+(values.request||'')):{isSplit:false};
+ const units=positive(values.units_requested);
+ const reviewed=String(values.unit||'');
+ if(cabin==='splitC'||/osztott\s+(?:faház\s+)?C\b/iu.test(reviewed))split={...split,isSplit:true,requestedAB:0,requestedC:units||1};
+ else if(cabin==='splitA'||cabin==='splitB'||/osztott\s+(?:A|B)\b/iu.test(reviewed)&&!/A\s*\+\s*B/iu.test(reviewed))split={...split,isSplit:true,requestedAB:units||1,requestedC:0};
+ if(units&&split.isSplit&&!split.exactUnitIds?.length){
+  if(split.requestedAB>0&&!split.requestedC)split.requestedAB=units;
+  else if(split.requestedC>0&&!split.requestedAB)split.requestedC=units;
+ }
+
  return {arrival:values.arrival||'',departure:values.departure||'',guests,
   ...(positive(values.adults)?{adults:Number(values.adults)}:{}),
-  ...(cabinKey(values.unit)?{cabin:cabinKey(values.unit)}:{}),
+  ...(cabin?{cabin}:{}),
   ...(positive(values.units_requested)?{units:Number(values.units_requested)}:{}),
   ...(split.isSplit?{placement:{ab:split.requestedAB,c:split.requestedC,adjacent:split.requiresAdjacent===true,exactIds:split.exactUnitIds||[]}}:{})};
 }
@@ -25,11 +36,27 @@ export function capacityFresh(result,input,now=Date.now(),ttl=CAPACITY_TTL_MS){
  return result?.fingerprint===capacityKey(input)&&Number.isFinite(age)&&age>=0&&age<=ttl;
 }
 export function stageFacts(values={}){
- const keys=['arrival','departure','guests','adults','children','child_ages','unit','units_requested','phone'];
+ const keys=['arrival','departure','nights','guests','adults','children','child_ages','unit','units_requested','phone','request'];
  const facts=Object.fromEntries(keys.map(k=>[k,{value:values[k]??'',status:values[k]!==''&&values[k]!=null?'known':'missing'}]));
+ const invalid=k=>{facts[k].status='contradictory';};
+ for(const k of ['guests','adults','units_requested','nights'])if(facts[k].status==='known'&&(!Number.isSafeInteger(Number(values[k]))||Number(values[k])<1))invalid(k);
+ if(facts.children.status==='known'&&(!Number.isSafeInteger(Number(values.children))||Number(values.children)<0))invalid('children');
+ const validDate=v=>/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v;
+ for(const k of ['arrival','departure'])if(facts[k].status==='known'&&!validDate(values[k]))invalid(k);
+ if(validDate(values.arrival)&&validDate(values.departure)){
+  const nights=(Date.parse(values.departure)-Date.parse(values.arrival))/86400000;
+  if(nights<=0){invalid('arrival');invalid('departure');}
+  if(facts.nights.status==='known'&&Number(values.nights)!==nights)invalid('nights');
+ }
  const g=positive(values.guests),a=positive(values.adults),c=values.children===''||values.children==null?null:Number(values.children);
- if(g&&a&&c!=null&&g!==a+c)for(const k of ['guests','adults','children'])facts[k].status='contradictory';
+ if(g&&a&&c!=null&&g!==a+c)for(const k of ['guests','adults','children'])invalid(k);
+ if(facts.child_ages.status==='known'){
+  const ages=String(values.child_ages).split(',').map(x=>x.trim());
+  if(ages.some(x=>!/^\d{1,2}$/.test(x)||Number(x)>17)||c!=null&&ages.length>c)invalid('child_ages');
+  else if(c!=null&&ages.length<c)facts.child_ages.status='clarify';
+ }
  if(values.unit&&String(values.unit).startsWith('?'))facts.unit.status='clarify';
+
  return facts;
 }
 export function validateCapacityResult(result,input){
@@ -67,4 +94,13 @@ export function createCapacityClient(request,{clock=Date.now,ttl=CAPACITY_TTL_MS
    const bound={...result,fingerprint:key,checkedAt:result.checkedAt||new Date(clock()).toISOString()};cache.set(key,bound);return bound;
   })();pending.set(key,operation);try{return await operation;}finally{pending.delete(key);}
  }};
+}
+
+// Shared selector: the UI and approval consume the server decision, never recompute pools.
+export function selectedCapacityOptions(result,input={}){
+ const rows=(result?.available_options||[]).filter(x=>x.availability==='available'&&x.availability_verified===true);
+ if(!input.cabin)return rows;
+ if(input.cabin==='split')return rows.filter(x=>x.key?.startsWith('split'));
+ if(['splitA','splitB'].includes(input.cabin))return rows.filter(x=>x.key==='splitAB');
+ return rows.filter(x=>x.key===input.cabin);
 }

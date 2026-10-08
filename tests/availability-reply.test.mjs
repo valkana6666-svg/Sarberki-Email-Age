@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import {availabilitySentence,splitReviewSentence,replaceCapacityPlaceholder,requestedSplitAvailabilitySentence} from '../availability-recommend.mjs';
 import * as core from '../sarberki-core.mjs';
 import * as splitUnits from '../split-units.mjs';
+import {capacityInput,selectedCapacityOptions} from '../booking-filter.mjs';
 const available={available_options:[{label:'Deluxe',units:1},{label:'Családi',units:2}],manual_review_options:[{label:'Osztott A + C'}]};
 for(const [lang,word] of [['hu','szabad'],['de','verfügbare'],['en','available'],['si','proste']]){
  test(`availability reply ${lang} uses the guest language`,()=>assert.ok(availabilitySentence(available,lang).includes(word)));
@@ -71,7 +72,7 @@ function harness(){
  const context=vm.createContext({document:{getElementById:node,addEventListener(){},dispatchEvent(){}},window:{SarberkiNormalize:core,SarberkiSplitUnits:splitUnits},Event,console,Number,JSON,setTimeout(){},fetch:()=>new Promise(resolve=>pending.push(resolve))});
  node('f_arrival').value='2026-10-16';node('f_departure').value='2026-10-18';node('f_guests').value='6';node('f_language').value='HU';node('message').value='6 fő';node('draft').value='eredeti';
  vm.runInContext(source,context);
- return {node,pending,run:()=>vm.runInContext('enrich()',context)};
+ return {node,pending,window:context.window,run:(data)=>{context.provided=data;return vm.runInContext('enrich(provided)',context);}};
 }
 test('late availability response cannot overwrite a changed inquiry',async()=>{
  const h=harness(),p=h.run();h.node('f_arrival').value='2026-11-20';h.node('draft').value='új érdeklődés';
@@ -184,4 +185,25 @@ test('pool counts never confirm an exact C unit or an A+B pair',()=>{
  assert.match(requestedSplitAvailabilitySentence(result,splitUnits.splitRequestFromText('Osztott faház C'),'hu'),/ellenőrzött, szabad/u);
  result.split_pool_checks.splitAB.availableUnits=0;
  assert.match(requestedSplitAvailabilitySentence(result,splitUnits.splitRequestFromText('Osztott A+B'),'hu'),/nincs elegendő/u);
+});
+
+// The deployed central runtime must consume the server decision, not reconstruct pools.
+test('central reply preserves three requested AB apartments without recalculating a pair',async()=>{
+ const h=harness(),values={arrival:'2026-10-16',departure:'2026-10-18',guests:6,adults:6,unit:'Osztott',units_requested:3,split_request_text:'Osztott A+B'};
+ h.node('f_unit').value='Osztott';h.node('message').value='Osztott A+B';let applied;
+ h.window.SarberkiBookingRuntime={input:capacityInput,selected:selectedCapacityOptions};
+ h.window.SarberkiCaseState={caseFingerprint:()=> 'key'};
+ h.window.SarberkiCaseController={snapshot:()=>({values,original:'Osztott A+B'}),apply:a=>{applied=a;}};
+ h.window.SarberkiSplitUnits={...splitUnits,splitCapacityOptions:()=>{throw Error('Browser must not decide placement');}};
+ await h.run({checkedAt:'2026-10-08T19:00:00Z',available_options:[{key:'splitAB',label:'Osztott A/B',units:3,availability:'available',availability_verified:true,components:[{label:'Osztott A/B',units:3}]}],unverified_options:[],manual_review_options:[],split_pool_checks:{splitAB:{verified:true,availableUnits:3}}});
+ assert.equal(applied.verified,true);assert.match(applied.lines.join(' '),/3 × Osztott A\/B/u);assert.doesNotMatch(applied.lines.join(' '),/Két 2 fős/u);
+});
+test('central reply distinguishes failed capacity evidence from insufficient inventory',async()=>{
+ const h=harness(),values={arrival:'2026-10-16',departure:'2026-10-18',guests:6,unit:'Osztott',split_request_text:'Osztott A+B'};h.node('f_unit').value='Osztott';let applied;
+ h.window.SarberkiBookingRuntime={input:capacityInput,selected:selectedCapacityOptions};h.window.SarberkiCaseState={caseFingerprint:()=> 'key'};h.window.SarberkiCaseController={snapshot:()=>({values}),apply:a=>{applied=a;}};
+ await h.run({available_options:[],unverified_options:[{key:'splitAB',availability:'unverified'}],manual_review_options:[],split_pool_checks:{}});
+ assert.equal(applied.verified,false);assert.match(applied.lines.join(' '),/nem sikerült.*igazolni/u);assert.doesNotMatch(applied.lines.join(' '),/nincs elegendő/u);
+});
+test('mixed repeated inventory displays component counts independently',()=>{
+ const text=availabilitySentence({available_options:[{units:4,components:[{label:'Osztott A/B',units:2},{label:'Osztott C',units:2}]}]},'hu');assert.match(text,/2 × Osztott A\/B \+ 2 × Osztott C/u);
 });

@@ -10,7 +10,7 @@ const COUNT_WORDS=Object.freeze({
 export const SPLIT_UNIT_IDS=Object.freeze(PHYSICAL_UNITS.map(x=>x.id));
 
 function unique(values){return [...new Set(values)];}
-function countValue(raw=''){return COUNT_WORDS[String(raw).toLocaleLowerCase('hu-HU')]||0;}
+function countValue(raw=''){return COUNT_WORDS[String(raw).toLocaleLowerCase('hu-HU')]||(/^[1-8]$/.test(String(raw))?Number(raw):0);}
 function exactIds(text=''){
   return unique([...String(text).matchAll(/\b(7|8|9|10)\s*[-/]?\s*([ABC])\b/giu)].map(m=>m[1]+m[2].toUpperCase()));
 }
@@ -24,13 +24,16 @@ function countBeforeSizedUnit(text='',size=2){
   const sizeToken=size===2?'(?:2|két|ket|kettő|ketto)':'(?:4|négy|negy)';
   const pattern=new RegExp('\\b(egy|1|két|ket|kettő|ketto|2|három|harom|3|négy|negy|4)\\s*(?:db|darab)\\s*'+sizeToken+'\\s*[- ]?fős\\s+(?:osztott\\s+)?apartman\\w*','iu');
   const match=String(text).match(pattern);
-  return match?countValue(match[1]):0;
+  if(match)return countValue(match[1]);
+  const foreign=new RegExp('\\b(one|two|three|four|ein|eine|zwei|drei|vier|en|ena|dva|dve|tri|štiri|stiri|[1-8])\\s+(?:' + size + ')[ -]?(?:person(?:en)?|oseb\\p{L}*)\\s+(?:(?:split|geteilte[rs]?|deljen[ai]?)\\s+)?(?:apartments?|apartma\\p{L}*)','iu');
+  return countValue(String(text).match(foreign)?.[1]);
 }
 
 export function splitRequestFromText(text=''){
   const source=String(text||'');
   const ids=exactIds(source);
-  const requiresAdjacent=/(?:egymás\s*mellett|egymás\s*melletti|szomszéd|azonos\s+(?:faház|ház)|ugyan(?:azon|abban)\s+(?:a\s+)?(?:faház|ház)|közös\s+(?:faház|ház)|teljes\s+osztott\s+faház|next to|adjacent|same\s+(?:house|cabin)|nebeneinander|benachbart|selben\s+haus|ista\s+hiš|sosednj)/iu.test(source);
+  let requiresAdjacent=/(?:egymás\s*mellett|egymás\s*melletti|szomszéd|azonos\s+(?:faház|ház)|ugyan(?:azon|abban)\s+(?:a\s+)?(?:faház|ház)|közös\s+(?:faház|ház)|teljes\s+osztott\s+faház|next to|adjacent|same\s+(?:house|cabin)|nebeneinander|benachbart|selben\s+haus|ista\s+hiš|sosednj)/iu.test(source);
+  if(/(?:nem\s+(?:szükséges|kell|kérjük)|not\s+(?:required|necessary)|do not need|nicht\s+(?:erforderlich|nötig)|ni\s+potrebno)[^.!?]{0,65}(?:egymás\s*mellett|szomszéd|adjacent|next to|nebeneinander|sosed)/iu.test(source))requiresAdjacent=false;
   const explicitSplit=ids.length>0||/\b(?:osztott|split|geteilte[rs]?|deljen[ai]?)\b/iu.test(source);
   if(!explicitSplit)return {
     isSplit:false,kind:'not_split',requestedAB:0,requestedC:0,unitCount:0,exactUnitIds:[],
@@ -101,6 +104,7 @@ function decorate({label,units,capacity,candidateCombinations,needAB,needC,reque
     availability:pool.pooledAvailabilityVerified?(!requiresAdjacent&&requestMode!=='exact'?'available':'unverified'):'unverified',
     verification_scope:'type_pool',
     requiredAB:needAB,requiredC:needC,requires_adjacent:requiresAdjacent,
+    components:[...(needAB?[{key:'splitAB',label:'Osztott A/B',units:needAB}]:[]),...(needC?[{key:'splitC',label:'Osztott C (emeleti apartman)',units:needC}]:[])],
     pooled_availability_verified:pool.pooledAvailabilityVerified,
     individual_unit_mapping_verified:false,
     same_house_pairing_verified:false,
@@ -186,7 +190,15 @@ export function splitCapacityOptions(guests,poolChecks={},request=null){
   }
   combos.sort((a,b)=>a.excess-b.excess||a.count-b.count||a.selected.map(x=>x.label).join().localeCompare(b.selected.map(x=>x.label).join()));
   const best=combos[0];
-  if(!best)return [];
+  const repeated=[];
+  for(let ab=0;ab<=8;ab++)for(let c=0;c<=4;c++){
+    if(ab+c===0||ab*2+c*4<guests||ab<=2&&c<=1)continue;
+    if(ab>0&&!poolStatus(ab,0,poolChecks).pooledAvailabilityVerified||c>0&&!poolStatus(0,c,poolChecks).pooledAvailabilityVerified)continue;
+    if(ab>0&&(ab-1)*2+c*4>=guests||c>0&&ab*2+(c-1)*4>=guests)continue;
+    const option=specifiedOptions({kind:'mixed',requestedAB:ab,requestedC:c,requiresAdjacent:false},poolChecks)[0];
+    repeated.push({...option,request_mode:'generic_capacity'});
+  }
+  if(!best)return repeated;
   return combos.filter(x=>x.excess===best.excess&&(x.count===best.count||guests===4&&x.selected.every(y=>y.segment!=='C'))).map(x=>{
     const segments=x.selected.map(y=>y.segment);
     const needAB=segments.filter(s=>s==='A'||s==='B').length, needC=segments.filter(s=>s==='C').length;
@@ -197,7 +209,7 @@ export function splitCapacityOptions(guests,poolChecks={},request=null){
       candidateCombinations:sameHouseCombos(segments),
       needAB,needC,requestMode:'generic_capacity',poolChecks
     });
-  });
+  }).concat(repeated);
 }
 
 export function splitInternalSummary(options=[],request=null){

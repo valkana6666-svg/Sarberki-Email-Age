@@ -24,6 +24,11 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
   if(input.adults!=null&&(!Number.isInteger(input.adults)||input.adults<1||input.adults>guests))throw Error('Érvénytelen felnőttlétszám.');
   if(input.units!=null&&(!Number.isInteger(input.units)||input.units<1||input.units>10))throw Error('Érvénytelen egységszám.');
   if(input.cabin!=null&&!['vip','family','deluxe','small','split','splitA','splitB','splitC'].includes(input.cabin))throw Error('Ismeretlen háztípus.');
+  if(input.placement!=null){
+    const p=input.placement;
+    if(!p||!Number.isInteger(p.ab)||p.ab<0||p.ab>8||!Number.isInteger(p.c)||p.c<0||p.c>4||typeof p.adjacent!=='boolean'||!Array.isArray(p.exactIds)||p.exactIds.some(id=>! /^(?:7|8|9|10)[ABC]$/.test(id))||new Set(p.exactIds).size!==p.exactIds.length)throw Error('Érvénytelen osztott elhelyezési igény.');
+    if(input.units!=null&&p.ab+p.c>0&&input.units!==p.ab+p.c)throw Error('Az apartmanszám és az elhelyezési kombináció ellentmondásos.');
+  }
   const {candidates,rejected}=wholeCabinCandidates(input);
   const mapped=input.cabin?candidates.filter(x=>x.key===input.cabin):candidates;
 
