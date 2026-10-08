@@ -165,9 +165,9 @@
   function unreadCount(messages=currentMessages) {
     return messages.filter(m => !isLocallyRead(m.id)).length;
   }
-  function displayMessage(message) {
+  async function displayMessage(message) {
     const record = transform(message);
-    displayGmailRecord(record);
+    try{if(await displayGmailRecord(record)===false){say('A levél központi feldolgozása nem sikerült; nem jelöltük helyileg olvasottnak.');return false;}}catch(error){say('A levél feldolgozása sikertelen: '+error.message);return false;}
     markRead(message.id);
     renderPicker(currentMessages);
     const left = unreadCount();
@@ -175,7 +175,7 @@
       ? `Beolvasva. Még ${left} olvasatlan érdeklődés van. Bármelyik korábban olvasott levél újra megnyitható a listából.`
       : 'Beolvasva. Nincs több olvasatlan érdeklődés; a listából bármelyik korábbi levél újra megnyitható.');
   }
-  function openSelected(nextUnreadOnly=false) {
+  async function openSelected(nextUnreadOnly=false) {
     if (!currentMessages.length) { say('Előbb töltse be a Gmail-leveleket.'); return; }
     let message;
     if (nextUnreadOnly) message = currentMessages.find(m => !isLocallyRead(m.id));
@@ -187,7 +187,7 @@
       say(nextUnreadOnly ? 'Nincs több olvasatlan érdeklődés.' : 'Nem található a kiválasztott levél.');
       return;
     }
-    displayMessage(message);
+    await displayMessage(message);
   }
   function decoded(data) {
     if (!data) return '';
@@ -323,7 +323,7 @@
         startPushoverWatch(currentMessages);
         const nextUnread = currentMessages.find(message => !isLocallyRead(message.id));
         if (nextUnread) {
-          displayMessage(nextUnread);
+          await displayMessage(nextUnread);
         } else {
           say(`Összesen ${currentMessages.length} érdeklődés található, és mindegyik már be lett olvasva. A listából bármelyik újra megnyitható.`);
         }

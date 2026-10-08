@@ -83,6 +83,8 @@ export function canPriceOption(result,key,units=1){
 export function createCapacityClient(request,{clock=Date.now,ttl=CAPACITY_TTL_MS}={}){
  const cache=new Map(),pending=new Map();const metrics={requests:0,reused:0,coalesced:0};
  return {metrics,clear(){cache.clear();},async check(input,{force=false}={}){
+  const facts=stageFacts({arrival:input.arrival,departure:input.departure,guests:input.guests});
+  if(['arrival','departure','guests'].some(k=>facts[k].status!=='known'))throw Error('Pontos, érvényes időszak és létszám szükséges a kapacitásellenőrzéshez.');
   const key=capacityKey(input),old=cache.get(key);
   if(!force&&capacityFresh(old,input,clock(),ttl)){metrics.reused++;return old;}
   if(pending.has(key)){metrics.coalesced++;return pending.get(key);}

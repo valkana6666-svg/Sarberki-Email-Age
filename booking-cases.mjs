@@ -1,12 +1,13 @@
 import {createCaseState,updateCaseState} from './case-state.mjs';
 import {childAgesFromText} from './sarberki-core.mjs';
 import {stageFacts} from './booking-filter.mjs';
+import {followupDateUpdate} from './booking-followup.mjs';
 const copy=v=>JSON.parse(JSON.stringify(v));
 const list=v=>String(v||'').match(/<[^>]+>/g)||[];
 const sender=v=>String(v||'').trim().toLowerCase();
 const present=v=>v!==''&&v!=null;
 export function resolveBookingCase(cases,envelope,values={}){
- const from=sender(envelope.sender),refs=[envelope.in_reply_to,...(Array.isArray(envelope.references)?envelope.references:list(envelope.references))].filter(Boolean);
+ const from=sender(envelope.sender),refs=[...list(envelope.in_reply_to),...(Array.isArray(envelope.references)?envelope.references:list(envelope.references))].filter(Boolean);
  const owned=cases.filter(c=>c.sender===from&&from);
  const direct=owned.filter(c=>envelope.case_id===c.id||(envelope.thread_id&&c.messages.some(m=>m.thread_id===envelope.thread_id))||c.messages.some(m=>m.rfc_message_id&&refs.includes(m.rfc_message_id)));
  if(direct.length&&/(?:\b(?:új|másik|külön)\s+(?:önálló\s+)?foglalá|\b(?:new|separate|another)\s+(?:booking|inquiry)|\b(?:neue|separate)\s+(?:Buchung|Anfrage)|\b(?:nova|ločena)\s+rezervacija)/iu.test(envelope.text||''))return {status:'ambiguous',candidates:direct.map(c=>c.id),evidence:'explicit_independent_request'};
@@ -55,9 +56,14 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
    if(target&&Number(target.state.values.children)>String(target.state.values.child_ages||'').split(',').filter(x=>x.trim()).length&&!incoming.child_ages){
     const ages=childAgesFromText('gyermek '+envelope.text);if(ages.length)incoming={...incoming,child_ages:ages.join(', ')};
    }
+   const dateUpdate=target?followupDateUpdate(envelope.text,target.state.values):{status:'none'};
+   if(dateUpdate.status==='updated')incoming={...incoming,...dateUpdate.values,nights:String((Date.parse(dateUpdate.values.departure)-Date.parse(dateUpdate.values.arrival))/86400000)};
    const values=target?mergeBookingFacts(target.state.values,incoming,envelope.text):incoming;
+   if(dateUpdate.status==='unverified'){values.arrival='';values.departure='';values.nights='';}
+   const previousDates=target?{arrival:target.state.values.arrival,departure:target.state.values.departure}:null;
    const c=target||{id:id(),sender:sender(envelope.sender),messages:[],drafts:[],createdAt:clock(),state:createCaseState({original:envelope.text,values,intent,now:clock()})};
    if(target)c.state=updateCaseState(c.state,{type:'facts',values});
+   if(dateUpdate.status!=='none')c.dateReview={...dateUpdate,previousDates,at:clock()};
    c.state.original=envelope.text;c.state.now=clock();
    c.state.intent=target&&['other','general_question'].includes(intent)?target.state.intent:intent;c.facts=stageFacts(values);
    c.messages.push({...envelope,received_at:envelope.received_at||clock()});c.updatedAt=clock();

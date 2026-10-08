@@ -111,3 +111,41 @@ test('linked Hungarian phone followup does not retain an unrelated foreign-langu
  h.node('booking_case_link').value=id;h.analyze('A telefonszámunk: +36 30 555 1234. Köszönjük!');
  assert.equal(h.node('f_language').value,'HU');assert.doesNotMatch(h.node('issues').textContent,/Idegen nyelvű/u);
 });
+
+function gmailFixture(id,text,{thread='gmail-thread',received='2026-10-08T19:40:30.500Z',reply=null,refs=[]}={}){
+ return {source:{provider:'gmail',message_id:id,thread_id:thread,rfc_message_id:`<${id}@example.invalid>`,in_reply_to:reply,references:refs,from_email:'gmail-flow@example.invalid',received_at:received,subject:'Szállás érdeklődés'},original_message:text,extracted:[],inferred:[],missing:[],human_review:[],reply_draft:'IMPORTÁLT, NEM ELLENŐRZÖTT POZITÍV VÁLASZ',normalized:{}};
+}
+async function importGmail(h,data){h.node('gmail_json').value=JSON.stringify(data);return await h.node('load_gmail_record').onclick();}
+const gmailFirst='2026. október 23–25. között Deluxe faházat szeretnénk 2 felnőtt és 2 gyermek részére. Az egyik gyermek 7 éves.';
+test('manual Gmail JSON import runs the central analyzer and clears stale manual case linking',async()=>{
+ const runtime=createBookingRuntime({request:()=>{throw Error('network unused');}}),h=harness(runtime);h.node('booking_case_link').value=runtime.cases.list()[0].id;
+ assert.equal(await importGmail(h,gmailFixture('gmail-one',gmailFirst)),true);
+ const c=runtime.cases.list().find(c=>c.sender==='gmail-flow@example.invalid');assert.ok(c);assert.equal(c.state.values.arrival,'2026-10-23');assert.equal(c.state.values.adults,'2');assert.equal(c.state.values.child_ages,'7');assert.equal(h.node('booking_case_link').value,'');assert.doesNotMatch(h.node('draft').value,/IMPORTÁLT/u);assert.equal(h.node('draft').value,h.node('gmail_draft').value);
+});
+test('Gmail RFC reply in a new thread fills the remaining child age in the same case',async()=>{
+ const runtime=createBookingRuntime({request:()=>{throw Error('network unused');}}),h=harness(runtime);await importGmail(h,gmailFixture('gmail-one',gmailFirst));
+ await importGmail(h,gmailFixture('gmail-two','A másik gyermek 11 éves.',{thread:'another-thread',reply:'<gmail-one@example.invalid>',received:'2026-10-08T19:40:31.100Z'}));
+ const cases=runtime.cases.list().filter(c=>c.sender==='gmail-flow@example.invalid');assert.equal(cases.length,1);assert.equal(cases[0].messages.length,2);assert.equal(cases[0].state.values.child_ages,'7, 11');assert.equal(cases[0].state.values.arrival,'2026-10-23');assert.doesNotMatch(h.node('draft').value,/gyermekek pontos életkorát/u);
+});
+test('Gmail source timestamps keep seconds and protect newer dates inside the same minute',async()=>{
+ const runtime=createBookingRuntime({request:()=>{throw Error('network unused');}}),h=harness(runtime);
+ await importGmail(h,gmailFixture('gmail-new','2026. november 6–8. között VIP faházat szeretnénk 4 felnőtt részére, gyermek nélkül.',{received:'2026-10-08T19:40:30.500Z'}));
+ await importGmail(h,gmailFixture('gmail-old','2026. október 23–25. között Deluxe faházat szeretnénk 4 felnőtt részére, gyermek nélkül.',{received:'2026-10-08T19:40:30.100Z'}));
+ const c=runtime.cases.list().find(c=>c.sender==='gmail-flow@example.invalid');assert.equal(c.messages[0].received_at,'2026-10-08T19:40:30.500Z');assert.equal(c.state.values.arrival,'2026-11-06');assert.equal(c.state.values.unit,'VIP');assert.equal(c.messages[1].historical,true);
+});
+test('invalid Gmail import cannot replace the active central inquiry',async()=>{
+ const runtime=createBookingRuntime({request:()=>{throw Error('network unused');}}),h=harness(runtime);const before=JSON.stringify(h.window.SarberkiCaseController.snapshot());
+ assert.equal(await importGmail(h,{source:{provider:'gmail',message_id:'bad'},original_message:'Új levél'}),false);assert.equal(JSON.stringify(h.window.SarberkiCaseController.snapshot()),before);assert.match(h.node('gmail_error').textContent,/Hiányos/u);
+});
+test('same sender new Gmail thread without a reply reference does not merge cases',async()=>{
+ const runtime=createBookingRuntime({request:()=>{throw Error('network unused');}}),h=harness(runtime);await importGmail(h,gmailFixture('gmail-one',gmailFirst));await importGmail(h,gmailFixture('gmail-two','2026. november 6–8. között VIP házat szeretnénk 4 felnőtt részére.',{thread:'different-thread',received:'2026-10-08T19:40:31.100Z'}));assert.equal(runtime.cases.list().filter(c=>c.sender==='gmail-flow@example.invalid').length,2);
+});
+
+test('Gmail old/new/check-out correction changes the current UI stay, not the old stay',async()=>{
+ const runtime=createBookingRuntime({request:()=>{throw Error('network unused');}}),h=harness(runtime);await importGmail(h,gmailFixture('gmail-one',gmailFirst));
+ await importGmail(h,gmailFixture('gmail-two','Az időpontot módosítanánk: 2026.10.23 helyett 2026.10.30; távozás: 2026.11.01.',{received:'2026-10-08T19:40:31.100Z'}));assert.equal(h.node('f_arrival').value,'2026-10-30');assert.equal(h.node('f_departure').value,'2026-11-01');assert.equal(h.node('price_arrival').value,'2026-10-30');assert.equal(h.window.SarberkiCaseController.snapshot().quote,null);
+});
+test('unresolved Gmail date modification cannot bypass the fresh approval gate',async()=>{
+ let calls=0;const runtime=createBookingRuntime({request:async()=>{calls++;throw Error('unexpected source');}}),h=harness(runtime);await importGmail(h,gmailFixture('gmail-one',gmailFirst));await importGmail(h,gmailFixture('gmail-two','Új időpont: 2026.10.30 vagy 2026.11.06; távozás 2026.11.08.',{received:'2026-10-08T19:40:31.100Z'}));
+ assert.equal(h.node('f_arrival').value,'');assert.equal(h.node('f_departure').value,'');h.node('override').checked=true;await h.node('approve').onclick();assert.match(h.node('status').textContent,/Jóváhagyás tiltva/u);assert.equal(calls,0);
+});

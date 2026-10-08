@@ -19,3 +19,14 @@ for(const values of [{arrival:'2026-02-30'},{arrival:'2026-10-25',departure:'202
 
 test('contradictory mixed unit count is rejected before contacting the source',async()=>{let calls=0;await assert.rejects(buildAvailabilityOptions({...stay,units:3,cabin:'split',placement:{ab:1,c:1,adjacent:false,exactIds:[]}},async()=>{calls++;}),/ellentmondásos/u);assert.equal(calls,0);});
 test('an explicitly separate booking in the same thread is not silently merged',()=>{let n=0;const s=createBookingCaseStore({id:()=>`case-${++n}`});const e={sender:'guest@test.invalid',thread_id:'thread'};const a=s.ingest({...e,message_id:'one',text:'Deluxe érdeklődés'},stay);const b=s.ingest({...e,message_id:'two',text:'Egy külön foglalást szeretnék.'},{...stay,arrival:'2026-11-06',departure:'2026-11-08'});assert.equal(b.resolution.status,'ambiguous');assert.notEqual(b.bookingCase.id,a.bookingCase.id);assert.equal(s.get(a.bookingCase.id).state.values.arrival,stay.arrival);});
+
+test('explicit old-arrival replacement with checkout updates the linked stay and revokes the quote',()=>{
+ const s=createBookingCaseStore({id:()=> 'dates-case'}),e={sender:'guest@test.invalid',thread_id:'dates'};const a=s.ingest({...e,message_id:'one',text:'Első időpont'},stay);s.save(a.bookingCase.id,{...a.bookingCase.state,quote:{total:100},availability:{verified:true}});
+ const b=s.ingest({...e,message_id:'two',text:'Az érkezést módosítanánk: 2026.10.23 helyett 2026.10.30; távozás: 2026.11.01.'},{},{intent:'modification_request'});assert.equal(b.bookingCase.state.values.arrival,'2026-10-30');assert.equal(b.bookingCase.state.values.departure,'2026-11-01');assert.equal(b.bookingCase.state.quote,null);assert.equal(b.bookingCase.state.availability,null);assert.equal(b.bookingCase.dateReview.previousDates.arrival,stay.arrival);
+});
+test('unresolved multi-date correction does not reuse the previous capacity or dates',()=>{
+ const s=createBookingCaseStore({id:()=> 'dates-case'}),e={sender:'guest@test.invalid',thread_id:'dates'};s.ingest({...e,message_id:'one',text:'Első időpont'},stay);const b=s.ingest({...e,message_id:'two',text:'Új időpont: 2026.10.30 vagy 2026.11.06, távozás 2026.11.08.'},{},{intent:'modification_request'});assert.equal(b.bookingCase.state.values.arrival,'');assert.equal(b.bookingCase.state.values.departure,'');assert.equal(b.bookingCase.dateReview.status,'unverified');assert.equal(b.bookingCase.dateReview.previousDates.arrival,stay.arrival);
+});
+test('mismatching previous arrival is not accepted as a proven correction',()=>{
+ const s=createBookingCaseStore({id:()=> 'dates-case'}),e={sender:'guest@test.invalid',thread_id:'dates'};s.ingest({...e,message_id:'one',text:'Első időpont'},stay);const b=s.ingest({...e,message_id:'two',text:'2026.10.16 helyett 2026.10.30; távozás 2026.11.01.'},{},{intent:'modification_request'});assert.equal(b.bookingCase.dateReview.status,'unverified');assert.equal(b.bookingCase.state.values.arrival,'');
+});
