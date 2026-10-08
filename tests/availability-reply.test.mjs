@@ -46,6 +46,23 @@ for(const [lang,expected] of Object.entries(labelCases)){
 }
 
 test('empty availability does not promise accommodation',()=>assert.match(availabilitySentence({available_options:[]},'en'),/not found/u));
+
+test('full or unverified split pools are not mentioned as guest alternatives',()=>{
+  const result={
+    split_pool_checks:{splitAB:{verified:true,availableUnits:0},splitC:{verified:true,availableUnits:4}},
+    manual_review_options:[{label:'Osztott A + Osztott C',pooled_availability_verified:false}]
+  };
+  assert.equal(splitReviewSentence(result,'hu'),'');
+  assert.equal(splitReviewSentence(result,'en'),'');
+});
+test('verified split pool may be mentioned conditionally, with manual placement review',()=>{
+  const result={
+    split_pool_checks:{splitAB:{verified:true,availableUnits:2},splitC:{verified:true,availableUnits:1}},
+    manual_review_options:[{label:'Osztott A + Osztott C',pooled_availability_verified:true}]
+  };
+  assert.match(splitReviewSentence(result,'hu'),/szóba jöhet.*ellenőrizzük/u);
+});
+
 function harness(){
  const source=fs.readFileSync(new URL('../availability-recommend.mjs',import.meta.url),'utf8').replaceAll('export function','function');
  const nodes=new Map();
