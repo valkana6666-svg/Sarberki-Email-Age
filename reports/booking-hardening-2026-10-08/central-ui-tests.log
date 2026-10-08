@@ -1,0 +1,41 @@
+✔ availability reply hu uses the guest language (2.615018ms)
+✔ availability reply hu does not expose internal PMS mapping (0.495079ms)
+✔ availability reply de uses the guest language (0.198931ms)
+✔ availability reply de does not expose internal PMS mapping (0.159331ms)
+✔ availability reply en uses the guest language (0.152852ms)
+✔ availability reply en does not expose internal PMS mapping (0.0926ms)
+✔ availability reply si uses the guest language (0.140813ms)
+✔ availability reply si does not expose internal PMS mapping (0.200633ms)
+✔ availability option labels are localized for de (0.451273ms)
+✔ core reply lists capacity-compatible options without silently selecting one in de (10.006274ms)
+✔ availability option labels are localized for en (0.241345ms)
+✔ core reply lists capacity-compatible options without silently selecting one in en (5.569369ms)
+✔ availability option labels are localized for si (0.375769ms)
+✔ core reply lists capacity-compatible options without silently selecting one in si (0.590594ms)
+✔ empty availability does not promise accommodation (0.302648ms)
+✔ full or unverified split pools are not mentioned as guest alternatives (0.228266ms)
+✔ verified split pool may be mentioned conditionally, with manual placement review (0.207454ms)
+✔ late availability response cannot overwrite a changed inquiry (7.573257ms)
+✔ blank child ages never become age zero during capacity enrichment (28.666249ms)
+✔ verified availability replaces the generic capacity placeholder inside the accommodation block (1.985465ms)
+✔ exact physical split ids remain internal and are not echoed to the guest (0.140253ms)
+✔ ambiguous four-person apartment request waits for cabin type instead of calling availability (0.955516ms)
+✔ explicit four-person split request uses C logic internally without exposing physical house ids (6.518705ms)
+✔ two two-person split apartments show same-house A+B priority internally (1.903591ms)
+✔ October 23–25: explicit VIP invokes occupancy and excludes a full type (1.497507ms)
+✔ October 23–25: explicit Családi invokes occupancy and excludes a full type (1.384596ms)
+✔ October 23–25: explicit Deluxe invokes occupancy and excludes a full type (1.036559ms)
+✔ generic four adults without a cabin preference invokes occupancy (1.065302ms)
+✔ explicit A+B and C letters preserve split request meaning (1.428472ms)
+✔ pool counts never confirm an exact C unit or an A+B pair (0.514679ms)
+✔ central reply preserves three requested AB apartments without recalculating a pair (1.305015ms)
+✔ central reply distinguishes failed capacity evidence from insufficient inventory (1.099934ms)
+✔ mixed repeated inventory displays component counts independently (0.17148ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 192.441329

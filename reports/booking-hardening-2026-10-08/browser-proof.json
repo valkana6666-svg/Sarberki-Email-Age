@@ -1,0 +1,40 @@
+{
+  "url": "https://leafy-chimera-2403e5.netlify.app/",
+  "checkedAt": "2026-10-08T19:34:10.566Z",
+  "generalBuild": "eb0c7d9",
+  "general": {
+    "arrival": "2026-10-23",
+    "caseStatus": "Ügy: 3343a848-fa00-440a-b291-ec2f83ca1b8d · new",
+    "departure": "2026-10-25",
+    "draft": "Kedves Vendégünk!\n\nKöszönjük érdeklődését.\n\nSzállás\n23.10.2026 és 25.10.2026 között 4 fő (4 felnőtt) részére keresnek szállást.\nA megadott időpontban a létszám alapján ellenőrzött, szabad lehetőségek: Osztott C (emeleti apartman).\n\nÁr és díjak\nA teljes árat a ténylegesen szabad lehetőség alapján adjuk meg.\n\nHorgászat\nA horgászati kérdés tó, jegytípus és korcsoport szerint ellenőrizendő.\n\nAz ajánlathoz még szükségünk van\nMegírna egy telefonszámot, amelyen elérhetjük?\n\nÜdvözlettel:\nSárberki Horgásztó",
+    "guests": "4",
+    "status": "Kapacitásvizsgálat kész; az eredmény és a párosítás kezelői ellenőrzésre vár."
+  },
+  "deluxe": {
+    "caseStatus": "Ügy: 3adfb3b4-c368-47b0-9ea3-0cfd014a3d0e · new",
+    "draft": "Kedves Vendégünk!\n\nKöszönjük érdeklődését.\n\nSzállás\n23.10.2026 és 25.10.2026 között 4 fő (4 felnőtt) részére keresnek szállást.\nA kért háztípus: Deluxe.\nA kért Deluxe a megadott időszakra nem elérhető a szükséges kapacitással.\nA megadott időpontban a létszám alapján ellenőrzött, szabad lehetőségek: Osztott C (emeleti apartman).\n\nÁr és díjak\nA teljes árat a ténylegesen szabad lehetőség alapján adjuk meg.\n\nHorgászat\nA horgászati kérdés tó, jegytípus és korcsoport szerint ellenőrizendő.\n\nAz ajánlathoz még szükségünk van\nMegírna egy telefonszámot, amelyen elérhetjük?\n\nÜdvözlettel:\nSárberki Horgásztó",
+    "status": "Kapacitásvizsgálat kész; az eredmény és a párosítás kezelői ellenőrzésre vár.",
+    "unit": "Deluxe"
+  },
+  "blockedStatus": "Jóváhagyás tiltva: a friss kapacitás nem igazoltan elérhető. Az előző ajánlat érvénytelen.",
+  "cBuild": "4a4a5ec",
+  "c": {
+    "caseStatus": "Ügy: 70dc09b3-cb23-45b9-a570-21c853b05f9c · new",
+    "draft": "Kedves Vendégünk!\n\nKöszönjük érdeklődését.\n\nSzállás\n23.10.2026 és 25.10.2026 között 4 fő (4 felnőtt) részére keresnek szállást.\nA kért háztípus: Osztott.\nA megadott időpontban a létszám alapján ellenőrzött, szabad lehetőségek: Osztott C (emeleti apartman).\n\nÁr és díjak\nA teljes árat a ténylegesen szabad lehetőség alapján adjuk meg.\n\nHorgászat\nA horgászati kérdés tó, jegytípus és korcsoport szerint ellenőrizendő.\n\nAz ajánlathoz még szükségünk van\nMegírna egy telefonszámot, amelyen elérhetjük?\n\nÜdvözlettel:\nSárberki Horgásztó",
+    "phoneRow": "TelefonszámHiányzik · forrás: nincs",
+    "status": "Kapacitásvizsgálat kész; az eredmény és a párosítás kezelői ellenőrzésre vár."
+  },
+  "finalBuild": "ac9044e",
+  "followup": {
+    "arrival": "2026-10-23",
+    "caseStatus": "Ügy: 70dc09b3-cb23-45b9-a570-21c853b05f9c · linked",
+    "departure": "2026-10-25",
+    "draft": "Kedves Vendégünk!\n\nKöszönjük érdeklődését.\n\nSzállás\n23.10.2026 és 25.10.2026 között 4 fő (4 felnőtt) részére keresnek szállást.\nA kért háztípus: Osztott.\nA megadott időpontban a létszám alapján ellenőrzött, szabad lehetőségek: Osztott C (emeleti apartman).\n\nÜdvözlettel:\nSárberki Horgásztó",
+    "guests": "4",
+    "issues": "Ár nincs jóváhagyva • Előlegfeltétel ellenőrzendő • Előleg számítási alapja tulajdonosi döntést igényel • Előleg konkrét összege nincs ellenőrizve (nem a százalék hiányzik) • Lemondási feltétel ellenőrzendő",
+    "language": "HU",
+    "status": "Kapacitásvizsgálat kész; az eredmény és a párosítás kezelői ellenőrzésre vár."
+  },
+  "bookingCreated": false,
+  "emailSent": false
+}
