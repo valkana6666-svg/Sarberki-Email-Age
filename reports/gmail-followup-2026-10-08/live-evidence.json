@@ -1,0 +1,1018 @@
+{
+  "probeStartedFor": {
+    "arrival": "2026-10-23",
+    "departure": "2026-10-25"
+  },
+  "guests": 4,
+  "finishedAt": "2026-10-08T19:47:13.999Z",
+  "results": [
+    {
+      "cabin": "vip",
+      "result": {
+        "status": "review_required",
+        "source": "Sárberki hivatalos foglalási felület",
+        "sourceUrl": "https://sarberkito.hu/foglalas/",
+        "checkedAt": "2026-10-08T19:47:02.431Z",
+        "arrival": "2026-10-23",
+        "departure": "2026-10-25",
+        "cabin": "vip",
+        "availability": "unavailable",
+        "availableUnits": 0,
+        "bookingCompleted": false
+      },
+      "evidence": [
+        {
+          "method": "GET",
+          "path": "/index/step-1/",
+          "status": 200,
+          "sha256": "af62a88992b20e76abb6a9d86f44f827b00f461e2026c8c6444607c316b4085f",
+          "dates": {
+            "from": null,
+            "to": null
+          },
+          "hotelId": 753011,
+          "currency": "HUF",
+          "kinds": [
+            {
+              "id": 767169,
+              "name": "Dézsa",
+              "total": 1
+            },
+            {
+              "id": 766435,
+              "name": "Családi faház",
+              "total": 5
+            },
+            {
+              "id": 766439,
+              "name": "DELUXE faház",
+              "total": 4
+            },
+            {
+              "id": 766437,
+              "name": "VIP apartman",
+              "total": 1
+            },
+            {
+              "id": 766443,
+              "name": "4 fős apartman",
+              "total": 4
+            },
+            {
+              "id": 766441,
+              "name": "2 fős apartman",
+              "total": 8
+            },
+            {
+              "id": 766433,
+              "name": "Különálló 2 fős faház",
+              "total": 1
+            }
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/index/step-2/",
+          "status": 200,
+          "sha256": "decba18262482cbb82ed90e2af2e7b6f8b766cae73706074a003ef7b43239270",
+          "dates": {
+            "from": "2026-10-23",
+            "to": "2026-10-25"
+          },
+          "hotelId": 753011,
+          "currency": "HUF",
+          "kinds": [
+            {
+              "id": 767169,
+              "name": "Dézsa",
+              "total": 1
+            },
+            {
+              "id": 766435,
+              "name": "Családi faház",
+              "total": 5
+            },
+            {
+              "id": 766439,
+              "name": "DELUXE faház",
+              "total": 4
+            },
+            {
+              "id": 766437,
+              "name": "VIP apartman",
+              "total": 1
+            },
+            {
+              "id": 766443,
+              "name": "4 fős apartman",
+              "total": 4
+            },
+            {
+              "id": 766441,
+              "name": "2 fős apartman",
+              "total": 8
+            },
+            {
+              "id": 766433,
+              "name": "Különálló 2 fős faház",
+              "total": 1
+            }
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/index/get-object-kind-occupancy/",
+          "status": 200,
+          "sha256": "80fc158b25598d5c23971dbff738f746ee44dea15a6040f503188b62d334e326",
+          "success": true,
+          "freeCounts": [
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "cabin": "family",
+      "result": {
+        "status": "review_required",
+        "source": "Sárberki hivatalos foglalási felület",
+        "sourceUrl": "https://sarberkito.hu/foglalas/",
+        "checkedAt": "2026-10-08T19:46:46.989Z",
+        "arrival": "2026-10-23",
+        "departure": "2026-10-25",
+        "cabin": "family",
+        "availability": "unavailable",
+        "availableUnits": 0,
+        "bookingCompleted": false
+      },
+      "evidence": [
+        {
+          "method": "GET",
+          "path": "/index/step-1/",
+          "status": 200,
+          "sha256": "e03653e22cdb5d85c804d29d2289616e6f5b7ccbde92525ec12d66c521802db2",
+          "dates": {
+            "from": null,
+            "to": null
+          },
+          "hotelId": 753011,
+          "currency": "HUF",
+          "kinds": [
+            {
+              "id": 767169,
+              "name": "Dézsa",
+              "total": 1
+            },
+            {
+              "id": 766435,
+              "name": "Családi faház",
+              "total": 5
+            },
+            {
+              "id": 766439,
+              "name": "DELUXE faház",
+              "total": 4
+            },
+            {
+              "id": 766437,
+              "name": "VIP apartman",
+              "total": 1
+            },
+            {
+              "id": 766443,
+              "name": "4 fős apartman",
+              "total": 4
+            },
+            {
+              "id": 766441,
+              "name": "2 fős apartman",
+              "total": 8
+            },
+            {
+              "id": 766433,
+              "name": "Különálló 2 fős faház",
+              "total": 1
+            }
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/index/step-2/",
+          "status": 200,
+          "sha256": "c6b9982072f8e6ba3bec2fe68ec1d374f786146e2529cd7f1cec5019fda0a611",
+          "dates": {
+            "from": "2026-10-23",
+            "to": "2026-10-25"
+          },
+          "hotelId": 753011,
+          "currency": "HUF",
+          "kinds": [
+            {
+              "id": 767169,
+              "name": "Dézsa",
+              "total": 1
+            },
+            {
+              "id": 766435,
+              "name": "Családi faház",
+              "total": 5
+            },
+            {
+              "id": 766439,
+              "name": "DELUXE faház",
+              "total": 4
+            },
+            {
+              "id": 766437,
+              "name": "VIP apartman",
+              "total": 1
+            },
+            {
+              "id": 766443,
+              "name": "4 fős apartman",
+              "total": 4
+            },
+            {
+              "id": 766441,
+              "name": "2 fős apartman",
+              "total": 8
+            },
+            {
+              "id": 766433,
+              "name": "Különálló 2 fős faház",
+              "total": 1
+            }
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/index/get-object-kind-occupancy/",
+          "status": 200,
+          "sha256": "7c5f4ac575abe217bfc24a8236e1714991ab4710783a334d51ab8358ac2f13d5",
+          "success": true,
+          "freeCounts": [
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "cabin": "deluxe",
+      "result": {
+        "status": "review_required",
+        "source": "Sárberki hivatalos foglalási felület",
+        "sourceUrl": "https://sarberkito.hu/foglalas/",
+        "checkedAt": "2026-10-08T19:47:13.955Z",
+        "arrival": "2026-10-23",
+        "departure": "2026-10-25",
+        "cabin": "deluxe",
+        "availability": "unavailable",
+        "availableUnits": 0,
+        "bookingCompleted": false
+      },
+      "evidence": [
+        {
+          "method": "GET",
+          "path": "/index/step-1/",
+          "status": 200,
+          "sha256": "50bfbbac13153e335ac2863da839bae879fe2c9e34daf4081f070037f0a4b04b",
+          "dates": {
+            "from": null,
+            "to": null
+          },
+          "hotelId": 753011,
+          "currency": "HUF",
+          "kinds": [
+            {
+              "id": 767169,
+              "name": "Dézsa",
+              "total": 1
+            },
+            {
+              "id": 766435,
+              "name": "Családi faház",
+              "total": 5
+            },
+            {
+              "id": 766439,
+              "name": "DELUXE faház",
+              "total": 4
+            },
+            {
+              "id": 766437,
+              "name": "VIP apartman",
+              "total": 1
+            },
+            {
+              "id": 766443,
+              "name": "4 fős apartman",
+              "total": 4
+            },
+            {
+              "id": 766441,
+              "name": "2 fős apartman",
+              "total": 8
+            },
+            {
+              "id": 766433,
+              "name": "Különálló 2 fős faház",
+              "total": 1
+            }
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/index/step-2/",
+          "status": 200,
+          "sha256": "b33de031b162e4cec98bce4397bb285eea7e4aba1f5dafa0d11677fa6de8e73b",
+          "dates": {
+            "from": "2026-10-23",
+            "to": "2026-10-25"
+          },
+          "hotelId": 753011,
+          "currency": "HUF",
+          "kinds": [
+            {
+              "id": 767169,
+              "name": "Dézsa",
+              "total": 1
+            },
+            {
+              "id": 766435,
+              "name": "Családi faház",
+              "total": 5
+            },
+            {
+              "id": 766439,
+              "name": "DELUXE faház",
+              "total": 4
+            },
+            {
+              "id": 766437,
+              "name": "VIP apartman",
+              "total": 1
+            },
+            {
+              "id": 766443,
+              "name": "4 fős apartman",
+              "total": 4
+            },
+            {
+              "id": 766441,
+              "name": "2 fős apartman",
+              "total": 8
+            },
+            {
+              "id": 766433,
+              "name": "Különálló 2 fős faház",
+              "total": 1
+            }
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/index/get-object-kind-occupancy/",
+          "status": 200,
+          "sha256": "3c4ce5f5f2059ead3a14cde8957fce173399163678008a48c451b9d94f031150",
+          "success": true,
+          "freeCounts": [
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "cabin": "splitC",
+      "result": {
+        "status": "review_required",
+        "source": "Sárberki hivatalos foglalási felület",
+        "sourceUrl": "https://sarberkito.hu/foglalas/",
+        "checkedAt": "2026-10-08T19:46:47.070Z",
+        "arrival": "2026-10-23",
+        "departure": "2026-10-25",
+        "cabin": "splitC",
+        "availability": "available",
+        "availableUnits": 2,
+        "bookingCompleted": false
+      },
+      "evidence": [
+        {
+          "method": "GET",
+          "path": "/index/step-1/",
+          "status": 200,
+          "sha256": "a098523301a61733701de802efe69a94323872e1dd332b9cfec34a2cb79d85a3",
+          "dates": {
+            "from": null,
+            "to": null
+          },
+          "hotelId": 753011,
+          "currency": "HUF",
+          "kinds": [
+            {
+              "id": 767169,
+              "name": "Dézsa",
+              "total": 1
+            },
+            {
+              "id": 766435,
+              "name": "Családi faház",
+              "total": 5
+            },
+            {
+              "id": 766439,
+              "name": "DELUXE faház",
+              "total": 4
+            },
+            {
+              "id": 766437,
+              "name": "VIP apartman",
+              "total": 1
+            },
+            {
+              "id": 766443,
+              "name": "4 fős apartman",
+              "total": 4
+            },
+            {
+              "id": 766441,
+              "name": "2 fős apartman",
+              "total": 8
+            },
+            {
+              "id": 766433,
+              "name": "Különálló 2 fős faház",
+              "total": 1
+            }
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/index/step-2/",
+          "status": 200,
+          "sha256": "049dbadfcab7e50b1d071495cd051ecdecfa943a97c7f683c8fb4900cc868632",
+          "dates": {
+            "from": "2026-10-23",
+            "to": "2026-10-25"
+          },
+          "hotelId": 753011,
+          "currency": "HUF",
+          "kinds": [
+            {
+              "id": 767169,
+              "name": "Dézsa",
+              "total": 1
+            },
+            {
+              "id": 766435,
+              "name": "Családi faház",
+              "total": 5
+            },
+            {
+              "id": 766439,
+              "name": "DELUXE faház",
+              "total": 4
+            },
+            {
+              "id": 766437,
+              "name": "VIP apartman",
+              "total": 1
+            },
+            {
+              "id": 766443,
+              "name": "4 fős apartman",
+              "total": 4
+            },
+            {
+              "id": 766441,
+              "name": "2 fős apartman",
+              "total": 8
+            },
+            {
+              "id": 766433,
+              "name": "Különálló 2 fős faház",
+              "total": 1
+            }
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/index/get-object-kind-occupancy/",
+          "status": 200,
+          "sha256": "8f0cee687df8372958715b15178f9c41047c9e6bdc9e362153d40f1498f78d45",
+          "success": true,
+          "freeCounts": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "cabin": "splitA",
+      "result": {
+        "status": "review_required",
+        "source": "Sárberki hivatalos foglalási felület",
+        "sourceUrl": "https://sarberkito.hu/foglalas/",
+        "checkedAt": "2026-10-08T19:47:02.535Z",
+        "arrival": "2026-10-23",
+        "departure": "2026-10-25",
+        "cabin": "splitA",
+        "availability": "unavailable",
+        "availableUnits": 0,
+        "bookingCompleted": false
+      },
+      "evidence": [
+        {
+          "method": "GET",
+          "path": "/index/step-1/",
+          "status": 200,
+          "sha256": "bd88eee8026f0c439f9c0bde5ad938b0f87f3e7cc0ed22fb279005e6ce3b518a",
+          "dates": {
+            "from": null,
+            "to": null
+          },
+          "hotelId": 753011,
+          "currency": "HUF",
+          "kinds": [
+            {
+              "id": 767169,
+              "name": "Dézsa",
+              "total": 1
+            },
+            {
+              "id": 766435,
+              "name": "Családi faház",
+              "total": 5
+            },
+            {
+              "id": 766439,
+              "name": "DELUXE faház",
+              "total": 4
+            },
+            {
+              "id": 766437,
+              "name": "VIP apartman",
+              "total": 1
+            },
+            {
+              "id": 766443,
+              "name": "4 fős apartman",
+              "total": 4
+            },
+            {
+              "id": 766441,
+              "name": "2 fős apartman",
+              "total": 8
+            },
+            {
+              "id": 766433,
+              "name": "Különálló 2 fős faház",
+              "total": 1
+            }
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/index/step-2/",
+          "status": 200,
+          "sha256": "4be7c7b115e0a79e8c130590e6041c069ad6aa83732ae8cb0cdc04fd8917a506",
+          "dates": {
+            "from": "2026-10-23",
+            "to": "2026-10-25"
+          },
+          "hotelId": 753011,
+          "currency": "HUF",
+          "kinds": [
+            {
+              "id": 767169,
+              "name": "Dézsa",
+              "total": 1
+            },
+            {
+              "id": 766435,
+              "name": "Családi faház",
+              "total": 5
+            },
+            {
+              "id": 766439,
+              "name": "DELUXE faház",
+              "total": 4
+            },
+            {
+              "id": 766437,
+              "name": "VIP apartman",
+              "total": 1
+            },
+            {
+              "id": 766443,
+              "name": "4 fős apartman",
+              "total": 4
+            },
+            {
+              "id": 766441,
+              "name": "2 fős apartman",
+              "total": 8
+            },
+            {
+              "id": 766433,
+              "name": "Különálló 2 fős faház",
+              "total": 1
+            }
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/index/get-object-kind-occupancy/",
+          "status": 200,
+          "sha256": "53f0dcbbdc70277d6210b697c96ec3a3ed97367d3f98fa640177931655776d55",
+          "success": true,
+          "freeCounts": [
+            0
+          ]
+        }
+      ]
+    }
+  ],
+  "inquiries": [
+    {
+      "subject": "Szállásfoglalási érdeklődés",
+      "body": "Tisztelt Sárberki Horgásztó!\n\nÉrdeklődni szeretnénk, hogy 2026. október 23–25. között rendelkezésre áll-e egy VIP apartman négy felnőtt részére, gyermek nélkül.\n\nAmennyiben igen, szeretnénk érdeklődni a foglalás lehetőségéről.\n\nKöszönettel!",
+      "parsed": {
+        "dates": {
+          "arrival": "2026-10-23",
+          "departure": "2026-10-25",
+          "inferredYear": false
+        },
+        "adults": 4,
+        "guests": 4,
+        "children": 0,
+        "cabin": "VIP",
+        "split": {
+          "isSplit": false,
+          "kind": "not_split",
+          "requestedAB": 0,
+          "requestedC": 0,
+          "unitCount": 0,
+          "exactUnitIds": [],
+          "sameHousePreferred": false,
+          "crossHouseFallbackRequiresApproval": false
+        }
+      }
+    },
+    {
+      "subject": "Szállásfoglalási érdeklődés",
+      "body": "Tisztelt Sárberki Horgásztó!\n\nÉrdeklődni szeretnénk, hogy 2026. október 23–25. között rendelkezésre áll-e egy Családi faház négy felnőtt részére, gyermek nélkül.\n\nAmennyiben igen, szeretnénk érdeklődni a foglalás lehetőségéről.\n\nKöszönettel!",
+      "parsed": {
+        "dates": {
+          "arrival": "2026-10-23",
+          "departure": "2026-10-25",
+          "inferredYear": false
+        },
+        "adults": 4,
+        "guests": 4,
+        "children": 0,
+        "cabin": "Családi",
+        "split": {
+          "isSplit": false,
+          "kind": "not_split",
+          "requestedAB": 0,
+          "requestedC": 0,
+          "unitCount": 0,
+          "exactUnitIds": [],
+          "sameHousePreferred": false,
+          "crossHouseFallbackRequiresApproval": false
+        }
+      }
+    },
+    {
+      "subject": "Szállásfoglalási érdeklődés",
+      "body": "Tisztelt Sárberki Horgásztó!\n\nÉrdeklődni szeretnénk, hogy 2026. október 23–25. között rendelkezésre áll-e egy Deluxe faház négy felnőtt részére, gyermek nélkül.\n\nAmennyiben igen, szeretnénk érdeklődni a foglalás lehetőségéről.\n\nKöszönettel!",
+      "parsed": {
+        "dates": {
+          "arrival": "2026-10-23",
+          "departure": "2026-10-25",
+          "inferredYear": false
+        },
+        "adults": 4,
+        "guests": 4,
+        "children": 0,
+        "cabin": "Deluxe",
+        "split": {
+          "isSplit": false,
+          "kind": "not_split",
+          "requestedAB": 0,
+          "requestedC": 0,
+          "unitCount": 0,
+          "exactUnitIds": [],
+          "sameHousePreferred": false,
+          "crossHouseFallbackRequiresApproval": false
+        }
+      }
+    },
+    {
+      "subject": "Szállásfoglalási érdeklődés",
+      "body": "Tisztelt Sárberki Horgásztó!\n\nÉrdeklődni szeretnénk, hogy 2026. október 23–25. között rendelkezésre áll-e egy Osztott faház C, emeleti, négyszemélyes apartman négy felnőtt részére, gyermek nélkül.\n\nAmennyiben igen, szeretnénk érdeklődni a foglalás lehetőségéről.\n\nKöszönettel!",
+      "parsed": {
+        "dates": {
+          "arrival": "2026-10-23",
+          "departure": "2026-10-25",
+          "inferredYear": false
+        },
+        "adults": 4,
+        "guests": 4,
+        "children": 0,
+        "cabin": "Osztott",
+        "split": {
+          "requiresAdjacent": false,
+          "isSplit": true,
+          "kind": "four_person",
+          "requestedAB": 0,
+          "requestedC": 1,
+          "unitCount": 1,
+          "exactUnitIds": [],
+          "sameHousePreferred": false,
+          "crossHouseFallbackRequiresApproval": false
+        }
+      }
+    },
+    {
+      "subject": "Szállásfoglalási érdeklődés",
+      "body": "Tisztelt Sárberki Horgásztó!\n\nÉrdeklődni szeretnénk, hogy 2026. október 23–25. között rendelkezésre áll-e egy Osztott faház A+B, két kétszemélyes apartman négy felnőtt részére, gyermek nélkül.\n\nAmennyiben igen, szeretnénk érdeklődni a foglalás lehetőségéről.\n\nKöszönettel!",
+      "parsed": {
+        "dates": {
+          "arrival": "2026-10-23",
+          "departure": "2026-10-25",
+          "inferredYear": false
+        },
+        "adults": 4,
+        "guests": 4,
+        "children": 0,
+        "cabin": "Osztott",
+        "split": {
+          "requiresAdjacent": false,
+          "isSplit": true,
+          "kind": "two_person",
+          "requestedAB": 2,
+          "requestedC": 0,
+          "unitCount": 2,
+          "exactUnitIds": [],
+          "sameHousePreferred": true,
+          "crossHouseFallbackRequiresApproval": false
+        }
+      }
+    },
+    {
+      "subject": "Szállásfoglalási érdeklődés",
+      "body": "Tisztelt Sárberki Horgásztó!\n\nÉrdeklődni szeretnénk, hogy 2026. október 23–25. között rendelkezésre áll-e szállás négy felnőtt részére, gyermek nélkül.\n\nAmennyiben igen, szeretnénk érdeklődni a foglalás lehetőségéről.\n\nKöszönettel!",
+      "parsed": {
+        "dates": {
+          "arrival": "2026-10-23",
+          "departure": "2026-10-25",
+          "inferredYear": false
+        },
+        "adults": 4,
+        "guests": 4,
+        "children": 0,
+        "cabin": "? – emberi döntésre vár",
+        "split": {
+          "isSplit": false,
+          "kind": "not_split",
+          "requestedAB": 0,
+          "requestedC": 0,
+          "unitCount": 0,
+          "exactUnitIds": [],
+          "sameHousePreferred": false,
+          "crossHouseFallbackRequiresApproval": false
+        }
+      }
+    }
+  ],
+  "repaired": {
+    "status": "review_required",
+    "arrival": "2026-10-23",
+    "departure": "2026-10-25",
+    "guests": 4,
+    "checkedAt": "2026-10-08T19:47:13.999Z",
+    "fingerprint": "[\"2026-10-23\",\"2026-10-25\",4,null,null,null,null,true]",
+    "excluded_options": [
+      {
+        "key": "small",
+        "availability": "unavailable",
+        "reason": "capacity_incompatible",
+        "units": 2
+      }
+    ],
+    "available_options": [
+      {
+        "key": "splitC",
+        "label": "Osztott C (emeleti apartman)",
+        "capacity": 4,
+        "units": 1,
+        "availability": "available",
+        "availableUnits": 2,
+        "checkedAt": "2026-10-08T19:46:47.070Z",
+        "source": "Sárberki hivatalos foglalási felület",
+        "availability_verified": true,
+        "verification_scope": "type_pool",
+        "individual_unit_mapping_verified": false
+      }
+    ],
+    "unavailable_options": [
+      {
+        "key": "deluxe",
+        "label": "Deluxe",
+        "capacity": 6,
+        "units": 1,
+        "availability": "unavailable",
+        "availableUnits": 0,
+        "checkedAt": "2026-10-08T19:47:13.955Z",
+        "source": "Sárberki hivatalos foglalási felület",
+        "availability_verified": true
+      },
+      {
+        "key": "family",
+        "label": "Családi",
+        "capacity": 8,
+        "units": 1,
+        "availability": "unavailable",
+        "availableUnits": 0,
+        "checkedAt": "2026-10-08T19:46:46.989Z",
+        "source": "Sárberki hivatalos foglalási felület",
+        "availability_verified": true
+      },
+      {
+        "key": "vip",
+        "label": "VIP",
+        "capacity": 7,
+        "units": 1,
+        "availability": "unavailable",
+        "availableUnits": 0,
+        "checkedAt": "2026-10-08T19:47:02.431Z",
+        "source": "Sárberki hivatalos foglalási felület",
+        "availability_verified": true
+      },
+      {
+        "kind": "split_manual_review",
+        "label": "Osztott A + Osztott B",
+        "units": 2,
+        "capacity": 4,
+        "availability_verified": true,
+        "availability": "unavailable",
+        "verification_scope": "type_pool",
+        "requiredAB": 2,
+        "requiredC": 0,
+        "requires_adjacent": false,
+        "components": [
+          {
+            "key": "splitAB",
+            "label": "Osztott A/B",
+            "units": 2
+          }
+        ],
+        "pooled_availability_verified": false,
+        "individual_unit_mapping_verified": false,
+        "same_house_pairing_verified": false,
+        "business_placement_requires_human_approval": false,
+        "individual_mapping_requires_review": false,
+        "current_read_only_mapping_requires_human_approval": false,
+        "same_house_preferred": true,
+        "cross_house_fallback_allowed": true,
+        "cross_house_fallback_requires_human_approval": false,
+        "candidate_combinations": [
+          [
+            "7A",
+            "7B"
+          ],
+          [
+            "8A",
+            "8B"
+          ],
+          [
+            "9A",
+            "9B"
+          ],
+          [
+            "10A",
+            "10B"
+          ]
+        ],
+        "candidate_unit_ids": [
+          "7A",
+          "7B",
+          "8A",
+          "8B",
+          "9A",
+          "9B",
+          "10A",
+          "10B"
+        ],
+        "request_mode": "generic_capacity",
+        "pool_checks": {
+          "splitAB": {
+            "verified": true,
+            "availability": "unavailable",
+            "availableUnits": 0,
+            "checkedAt": "2026-10-08T19:47:02.535Z",
+            "source": "Sárberki hivatalos foglalási felület"
+          },
+          "splitC": null
+        },
+        "reason": "A Previo-típusmapping hitelesített (A/B = 2 fős apartman pool, C = 4 fős apartman pool), de a szükséges pooled elérhetőség, az egyedi 7A–10C egység-ID vagy a fizikai párosítás még kézi ellenőrzést igényel.",
+        "key": "splitAB",
+        "availableUnits": 0
+      }
+    ],
+    "unverified_options": [],
+    "split_pool_checks": {
+      "splitAB": {
+        "verified": true,
+        "availability": "unavailable",
+        "availableUnits": 0,
+        "checkedAt": "2026-10-08T19:47:02.535Z",
+        "source": "Sárberki hivatalos foglalási felület"
+      },
+      "splitC": {
+        "verified": true,
+        "availability": "available",
+        "availableUnits": 2,
+        "checkedAt": "2026-10-08T19:46:47.070Z",
+        "source": "Sárberki hivatalos foglalási felület"
+      }
+    },
+    "manual_review_options": [
+      {
+        "kind": "split_manual_review",
+        "label": "Osztott A + Osztott B",
+        "units": [
+          "splitA",
+          "splitB"
+        ],
+        "capacity": 4,
+        "availability_verified": false,
+        "availability": "unverified",
+        "verification_scope": "type_pool",
+        "requiredAB": 2,
+        "requiredC": 0,
+        "requires_adjacent": false,
+        "components": [
+          {
+            "key": "splitAB",
+            "label": "Osztott A/B",
+            "units": 2
+          }
+        ],
+        "pooled_availability_verified": false,
+        "individual_unit_mapping_verified": false,
+        "same_house_pairing_verified": false,
+        "business_placement_requires_human_approval": false,
+        "individual_mapping_requires_review": false,
+        "current_read_only_mapping_requires_human_approval": false,
+        "same_house_preferred": true,
+        "cross_house_fallback_allowed": true,
+        "cross_house_fallback_requires_human_approval": false,
+        "candidate_combinations": [
+          [
+            "7A",
+            "7B"
+          ],
+          [
+            "8A",
+            "8B"
+          ],
+          [
+            "9A",
+            "9B"
+          ],
+          [
+            "10A",
+            "10B"
+          ]
+        ],
+        "candidate_unit_ids": [
+          "7A",
+          "7B",
+          "8A",
+          "8B",
+          "9A",
+          "9B",
+          "10A",
+          "10B"
+        ],
+        "request_mode": "generic_capacity",
+        "pool_checks": {
+          "splitAB": {
+            "verified": true,
+            "availability": "unavailable",
+            "availableUnits": 0,
+            "checkedAt": "2026-10-08T19:47:02.535Z",
+            "source": "Sárberki hivatalos foglalási felület"
+          },
+          "splitC": null
+        },
+        "reason": "A Previo-típusmapping hitelesített (A/B = 2 fős apartman pool, C = 4 fős apartman pool), de a szükséges pooled elérhetőség, az egyedi 7A–10C egység-ID vagy a fizikai párosítás még kézi ellenőrzést igényel."
+      }
+    ],
+    "bookingCompleted": false
+  },
+  "bookingCompleted": false,
+  "emailSent": false
+}

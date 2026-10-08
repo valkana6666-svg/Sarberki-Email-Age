@@ -1,0 +1,34 @@
+{
+  "url": "https://leafy-chimera-2403e5.netlify.app/",
+  "testedBuild": "3aa619a",
+  "syntheticImport": true,
+  "authenticatedGmailRead": false,
+  "first": {
+    "caseStatus": "Ügy: f16a80e9-968f-4efe-9535-6c31079dcb67 · new",
+    "childAges": "7",
+    "draft": "Kedves Vendégünk!\n\nKöszönjük érdeklődését.\n\nSzállás\n23.10.2026 és 25.10.2026 között 4 fő (2 felnőtt és 2 gyermek, 7 évesek) részére keresnek szállást.\nA kért háztípus: Osztott.\nA megadott időpontban a létszám alapján ellenőrzött, szabad lehetőségek: Osztott C (emeleti apartman).\n\nAz ajánlathoz még szükségünk van\nA már megadott életkorokat rögzítettük. Kérjük, írja meg még a fennmaradó 1 gyermek életkorát.\nMegírna egy telefonszámot, amelyen elérhetjük?\n\nÜdvözlettel:\nSárberki Horgásztó",
+    "manualLink": "",
+    "status": "Kapacitásvizsgálat kész; az eredmény és a párosítás kezelői ellenőrzésre vár."
+  },
+  "second": {
+    "caseStatus": "Ügy: f16a80e9-968f-4efe-9535-6c31079dcb67 · linked",
+    "childAges": "7, 11",
+    "draft": "Kedves Vendégünk!\n\nKöszönjük érdeklődését.\n\nSzállás\n23.10.2026 és 25.10.2026 között 4 fő (2 felnőtt és 2 gyermek, 7 és 11 évesek) részére keresnek szállást.\nA kért háztípus: Osztott.\nA megadott időpontban a létszám alapján ellenőrzött, szabad lehetőségek: Osztott C (emeleti apartman).\n\nAz ajánlathoz még szükségünk van\nMegírna egy telefonszámot, amelyen elérhetjük?\n\nÜdvözlettel:\nSárberki Horgásztó"
+  },
+  "third": {
+    "arrival": "2026-10-30",
+    "caseStatus": "Ügy: f16a80e9-968f-4efe-9535-6c31079dcb67 · linked",
+    "childAges": "7, 11",
+    "departure": "2026-11-01",
+    "draft": "Kedves Vendégünk!\n\nMegkaptuk a foglalásmódosítási kérelmét. Hamarosan pontos visszajelzést adunk.\n\nÜdvözlettel:\nSárberki Horgásztó"
+  },
+  "fourth": {
+    "arrival": "",
+    "caseStatus": "Ügy: f16a80e9-968f-4efe-9535-6c31079dcb67 · linked",
+    "childAges": "7, 11",
+    "departure": "",
+    "status": "Jóváhagyás tiltva: Pontos, érvényes időszak és létszám szükséges a kapacitásellenőrzéshez."
+  },
+  "emailSent": false,
+  "bookingCreated": false
+}
