@@ -48,9 +48,9 @@ test('ambiguous two-person inquiry asks cabin type including standalone instead 
   const draft=buildReplyDraft({language:'hu',name:'Teszt',original:'Ketten mennénk 2026. november 6-8. között.',arrival:'2026-11-06',departure:'2026-11-08',guests:2,adults:2,children:0,phone:'+36 30 111 2222',cabin:'? – emberi döntésre vár',intent:'booking_request',brandName:'Sárberki Horgásztó',bookingRules:BUSINESS.bookingRules,operationalRules:BUSINESS.operationalRules,pricingRules:BUSINESS.pricingRules});
   assert.match(draft,/Különálló 2 fős/u);assert.doesNotMatch(draft,/Kapacitás alapján megfelelő lehet/u);
 });
-test('ambiguous four-person inquiry asks cabin type instead of auto-recommending',()=>{
+test('generic four-person inquiry discovers availability without assuming split C',()=>{
   const draft=buildReplyDraft({language:'hu',name:'Teszt',original:'Négyen mennénk 2026. november 6-8. között.',arrival:'2026-11-06',departure:'2026-11-08',guests:4,adults:4,children:0,phone:'+36 30 111 2222',cabin:'? – emberi döntésre vár',intent:'booking_request',brandName:'Sárberki Horgásztó',bookingRules:BUSINESS.bookingRules,operationalRules:BUSINESS.operationalRules,pricingRules:BUSINESS.pricingRules});
-  assert.match(draft,/Melyik háztípust szeretné/u);assert.doesNotMatch(draft,/Kapacitás alapján megfelelő lehet/u);
+  assert.doesNotMatch(draft,/Melyik háztípust szeretné/u);assert.match(draft,/ténylegesen szabad lehetőségeket/u);
 });
 test('requested unit count recognizes two two-person split apartments',()=>{
   assert.equal(requestedUnitsFromText('2 db 2 fős osztott apartmant kérünk').count,2);

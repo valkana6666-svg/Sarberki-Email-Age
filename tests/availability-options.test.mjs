@@ -89,3 +89,17 @@ test('split manual review explains the verified pooled Previo type mapping bound
     assert.equal(option.availability_verified,false);
   }
 });
+
+test('October 23–25: C pool remains an alternative when all requested whole cabins are full',async()=>{
+ const result=await buildAvailabilityOptions({arrival:'2026-10-23',departure:'2026-10-25',guests:4},async input=>({availability:input.cabin==='splitC'?'available':'unavailable',availableUnits:input.cabin==='splitC'?2:0,...input}));
+ assert.deepEqual(result.available_options.map(x=>x.key),['splitC']);
+ assert.equal(result.available_options[0].individual_unit_mapping_verified,false);
+ assert.ok(result.manual_review_options.every(x=>!x.same_house_pairing_verified&&!x.pooled_availability_verified));
+});
+for(const bad of [{availability:'unverified',availableUnits:4},{availability:'available',availableUnits:0},{availability:'available',availableUnits:1.5},{availability:'available',availableUnits:2,arrival:'2026-10-24'}]){
+ test(`invalid or mismatched capacity stays unverified: ${JSON.stringify(bad)}`,async()=>{
+  const result=await buildAvailabilityOptions({arrival:'2026-10-23',departure:'2026-10-25',guests:4},async()=>bad);
+  assert.equal(result.available_options.length,0);assert.equal(result.unavailable_options.length,0);
+  assert.equal(result.split_pool_checks.splitAB.verified,false);
+ });
+}

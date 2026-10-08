@@ -81,6 +81,31 @@ export function splitReviewSentence(result,language='hu'){
 }
 
 function hasSpecificCabin(value=''){return /vip|családi|deluxe|osztott|különálló|2 fős/iu.test(value);}
+export function requestedAvailabilitySentence(result,cabin,language='hu'){
+  const key=/deluxe/iu.test(cabin)?'deluxe':/családi/iu.test(cabin)?'family':/vip/iu.test(cabin)?'vip':/különálló/iu.test(cabin)?'small':null;
+  if(!key)return '';
+  const option=[...(result.available_options||[]),...(result.unavailable_options||[]),...(result.unverified_options||[])].find(x=>x.key===key);
+  const available=option?.availability_verified===true&&option.availability==='available';
+  const unavailable=option?.availability_verified===true&&option.availability==='unavailable';
+  const label=localizedOptionLabel(option?.label||cabin,language);
+  const state=available?'available':unavailable?'unavailable':'unverified';
+  const sentences={
+    available:{hu:`A kért ${label} a megadott időszakra ellenőrzött szabad kapacitással rendelkezik.`,de:`Für ${label} wurde freie Kapazität für den gewünschten Zeitraum geprüft.`,en:`Availability for the requested ${label} has been verified for your dates.`,si:`Razpoložljivost želene nastanitve ${label} je za vaš termin preverjena.`},
+    unavailable:{hu:`A kért ${label} a megadott időszakra nem elérhető a szükséges kapacitással.`,de:`${label} ist für den gewünschten Zeitraum nicht mit der benötigten Kapazität verfügbar.`,en:`The requested ${label} does not have the required availability for your dates.`,si:`Želena nastanitev ${label} za vaš termin nima potrebne proste kapacitete.`},
+    unverified:{hu:`A kért ${label} elérhetőségét nem sikerült hitelesen ellenőrizni.`,de:`Die Verfügbarkeit von ${label} konnte nicht verifiziert werden.`,en:`We could not verify availability for the requested ${label}.`,si:`Razpoložljivosti želene nastanitve ${label} ni bilo mogoče preveriti.`}
+  };
+  return sentences[state][language]||sentences[state].hu;
+}
+export function requestedSplitAvailabilitySentence(result,request,language='hu'){
+  const ab=Number(request?.requestedAB||0),c=Number(request?.requestedC||0);
+  if(!ab&&!c)return '';
+  const pools=result.split_pool_checks||{};
+  const needed=[...(ab?[{pool:pools.splitAB,count:ab}]:[]),...(c?[{pool:pools.splitC,count:c}]:[])];
+  if(needed.some(x=>x.pool?.verified&&x.pool.availableUnits<x.count))return ({hu:'A kért osztott elhelyezéshez nincs elegendő szabad kapacitás a megadott időszakra.',de:'Für die gewünschte geteilte Unterkunft gibt es für diesen Zeitraum nicht genügend freie Kapazität.',en:'There is not enough available capacity for the requested split accommodation on your dates.',si:'Za želeno deljeno nastanitev za vaš termin ni dovolj proste kapacitete.'})[language];
+  if(needed.some(x=>!x.pool?.verified))return ({hu:'A kért osztott elhelyezés elérhetőségét nem sikerült hitelesen ellenőrizni.',de:'Die Verfügbarkeit der gewünschten geteilten Unterkunft konnte nicht verifiziert werden.',en:'We could not verify availability for the requested split accommodation.',si:'Razpoložljivosti želene deljene nastanitve ni bilo mogoče preveriti.'})[language];
+  if(ab===0&&c===1&&request.kind!=='exact')return availabilitySentence({available_options:[{label:'Osztott C (emeleti apartman)',units:1}]},language);
+  return ''; // A positive pool count alone never proves a physical pair or exact unit.
+}
 export function replaceCapacityPlaceholder(draft,sentence,manual){
   const placeholders=[
     'A megadott létszám alapján megkeressük a megfelelő szabad szállástípusokat.',
@@ -161,7 +186,7 @@ function currentReplyBase(){
     children:childrenRaw===''||childrenRaw==null?null:Number(childrenRaw),
     childAges,
     phone:normalize.phoneFromText?.(original)||null,
-    cabin:'? – emberi döntésre vár',
+    cabin:$('f_unit')?.value||'? – emberi döntésre vár',
     pier:/(?:stég|pier)/iu.test(original),
     hotTub:/(?:dézs|hot[ -]?tub|jacuzzi|badefass)/iu.test(original),
     dog:/(?:kuty|dog|pet|hund|pes)/iu.test(original),
@@ -189,7 +214,7 @@ async function enrich(){
   const initialSplitRequest=splitCabin?(window.SarberkiSplitUnits?.splitRequestFromText?.(original)||null):null;
   const initialSplitPlan=splitCabin?(window.SarberkiSplitUnits?.splitCapacityOptions?.(guests,{},initialSplitRequest)||[]):[];
   if(splitCabin)renderSplitInternalNote(initialSplitPlan,initialSplitRequest);
-  if(!arrival||!departure||!Number.isInteger(guests)||guests<1||(hasSpecificCabin(cabin)&&!splitCabin)||mustClarify){
+  if(!arrival||!departure||!Number.isInteger(guests)||guests<1||mustClarify){
     if(!splitCabin)renderSplitInternalNote([],null);
     return;
   }
@@ -213,20 +238,24 @@ async function enrich(){
     const planned=window.SarberkiSplitUnits?.splitCapacityOptions?.(guests,data.split_pool_checks||{},splitCabin?splitRequest:null);
     const manualOptions=Array.isArray(planned)?planned:(data.manual_review_options||[]);
     const manualData={...data,manual_review_options:manualOptions};
-    const sentence=splitCabin?'':availabilitySentence(data,lang);
+    const sentence=splitCabin?requestedSplitAvailabilitySentence(data,splitRequest,lang):[requestedAvailabilitySentence(data,cabin,lang),availabilitySentence(data,lang)].filter(Boolean).join('\n');
     const manual=splitReviewSentence(manualData,lang);
     renderSplitInternalNote(manualOptions,splitCabin?splitRequest:null);
-    if(caseState){window.SarberkiCaseController.apply({type:'availability',fingerprint:caseKey,lines:[sentence,manual].filter(Boolean)});if(status){status.className='warning';status.textContent='Kapacitás ellenőrizve; további feltételek kezelői ellenőrzésre várnak.';}return;}
+    const verified=splitCabin?manualOptions.some(x=>x.request_mode!=='exact'&&x.units?.length===1&&x.pooled_availability_verified===true):data.available_options?.some(x=>x.availability_verified===true);
+    const requestedAvailable=splitCabin?Boolean(verified):hasSpecificCabin(cabin)?Boolean(data.available_options?.some(x=>x.availability_verified===true&&localizedOptionLabel(x.label,'hu')===cabin)):null;
+    if(caseState){window.SarberkiCaseController.apply({type:'availability',fingerprint:caseKey,verified:Boolean(verified),requestedAvailable,lines:[sentence,manual].filter(Boolean)});if(status){status.className='warning';status.textContent='Kapacitásvizsgálat kész; az eredmény és a párosítás kezelői ellenőrzésre vár.';}return;}
     const fresh=currentReplyBase();
     draft.value=replaceCapacityPlaceholder(fresh,sentence,manual);
     const gmailDraft=$('gmail_draft');
     if(gmailDraft) gmailDraft.value=draft.value;
     draft.dispatchEvent(new Event('input',{bubbles:true}));
     syncGmailRecordAfterAvailability();
-    if(status){status.className='ok';status.textContent='Kapacitás ellenőrizve; a tervezet frissítve.';}
+    if(status){status.className='warning';status.textContent='Kapacitásvizsgálat kész; a tervezet frissítve, kezelői ellenőrzés szükséges.';}
   }catch(error){
     if(key!==fingerprint())return;
     renderSplitInternalNote([],null);
+    if(caseState)window.SarberkiCaseController.apply({type:'availability',fingerprint:caseKey,verified:false,requestedAvailable:false,lines:[]});
+    else {draft.value=currentReplyBase();if($('gmail_draft'))$('gmail_draft').value=draft.value;}
     if(status){status.className='warning';status.textContent='A kapacitás nem volt hitelesen ellenőrizhető: '+error.message;}
   }finally{
     if(inflightKey===key)inflightKey=null;

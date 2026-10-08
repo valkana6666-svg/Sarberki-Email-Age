@@ -8,7 +8,7 @@ const ft = value => Number(value).toLocaleString('hu-HU') + ' Ft';
 const eur = value => Number(value).toLocaleString('hu-HU', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
 const choose = (lang, hu, de, en, si) => ({hu,de,en,si})[lang] || hu;
 export function caseFingerprint(values) {
-  return JSON.stringify(['arrival','departure','adults','children','child_ages','unit','units_requested'].map(key => String(values[key] ?? '')));
+  return JSON.stringify(['arrival','departure','guests','adults','children','child_ages','unit','units_requested'].map(key => String(values[key] ?? '')));
 }
 export function carsFromText(text='') {
   const words={egy:1,két:2,ket:2,három:3,négy:4,one:1,two:2,three:3,ein:1,einem:1,zwei:2,drei:3,enim:1,dva:2,dve:2};
@@ -51,7 +51,11 @@ export function updateCaseState(state, action) {
   } else if(action.type==='invalidateQuote') {next.quote=null;next.terms={...next.terms,depositVerified:false,depositAmount:null,depositDeadline:null};}
   else if(action.type==='availability') {
     if(action.fingerprint!==caseFingerprint(next.values)) return state;
-    next.availability={lines:action.lines||[],verified:true};
+    next.availability={lines:action.lines||[],verified:action.verified===true};
+    if(action.requestedAvailable===false){
+      next.quote=null;
+      next.terms={...next.terms,depositVerified:false,depositAmount:null,depositDeadline:null};
+    }
   } else if(action.type==='checks') {
     if(action.hotTub) {
       for(const key of ['atHouse','available','included'])if(action.hotTub[key]!=null&&typeof action.hotTub[key]!=='boolean')throw Error('A dézsa ellenőrzési státusza hibás.');
@@ -98,6 +102,7 @@ export function deriveCaseView(state, baseReview={warning_codes:[],issues:[]}) {
   if(booking&&!v.phone) {missing.push('Telefonszám');add('missing_phone','Telefon hiányzik');}
   if(booking&&children>0&&(ages.length!==children||ages.some(x=>!Number.isInteger(x)||x<0||x>17))) {missing.push('Gyermekek pontos életkora');add('missing_child_ages','Gyermekek életkora hiányzik vagy hibás');}
   if(booking&&!q) add('price_unverified','Ár nincs jóváhagyva');
+  if(booking&&!q?.availabilityVerified&&!state.availability?.verified) add('availability_unverified','Foglalható elhelyezés nincs igazolva; kapacitás- és szükség esetén párosításellenőrzés kell.');
   if(closeArrival&&(!t.depositVerified||!t.cancellationVerified)) add('close_arrival','KÖZELI ÉRKEZÉS – az előleg- és lemondási feltétel alkalmazása emberi ellenőrzést igényel.');
   if(booking&&!t.depositVerified) add('deposit_review','Előlegfeltétel ellenőrzendő');
   if(booking&&!t.depositBasis) add('deposit_basis_review','Előleg számítási alapja tulajdonosi döntést igényel');
@@ -141,5 +146,5 @@ export function deriveCaseView(state, baseReview={warning_codes:[],issues:[]}) {
   const fishing=fishingQuestion(state.original,lang);
   const draft=buildReplyDraft({language:lang,name:v.name,original:state.original,arrival:v.arrival,departure:v.departure,guests,adults,children,childAges:ages,phone:v.phone,cabin:v.unit||'? – emberi döntésre vár',hotTub:h.requested,intent:state.intent,brandName:BUSINESS.brandName,bookingRules:rules,operationalRules:BUSINESS.operationalRules,pricingRules:BUSINESS.pricingRules,knowledgeLines:fishing?[fishing.answer]:[],caseContext:{priceLines,bookingLines,extraLines,availabilityLines,priceApproved:Boolean(q)}});
   const summary=`${v.arrival||'?'} – ${v.departure||'?'}; ${v.nights||'?'} éjszaka; ${guests??'?'} fő; felnőtt: ${adults??'?'}; gyermek: ${children??'?'}${ages.length?' ('+ages.join(', ')+' éves)':''}; ${v.unit||'háztípus nincs megadva'}${cars!=null?'; Parkolás: '+cars+' autó – adat megadva':''}${q?'; Ár ellenőrizve':''}.`;
-  return {draft,summary,missing,warnings,closeArrival,untilArrival,critical:Boolean(baseReview.critical)||warnings.some(x=>['close_arrival','deposit_review','deposit_basis_review','cancellation_terms_review','hot_tub_fee','hot_tub_included','cabin_type_required'].includes(x.code)),priceStatus:q?'Ár ellenőrizve':'Ár nincs jóváhagyva'};
+  return {draft,summary,missing,warnings,closeArrival,untilArrival,critical:Boolean(baseReview.critical)||warnings.some(x=>['availability_unverified','close_arrival','deposit_review','deposit_basis_review','cancellation_terms_review','hot_tub_fee','hot_tub_included','cabin_type_required'].includes(x.code)),priceStatus:q?'Ár ellenőrizve':'Ár nincs jóváhagyva'};
 }

@@ -82,7 +82,7 @@ export function cabinClarificationRequired(text='',guests=null){
   const parsed=cabinFromText(text);
   if(parsed&&!parsed.startsWith('?')) return false;
   const count=Number(guests);
-  return count===2||count===4;
+  return count===2||(count===4&&/(?:apartman|apartment|appartement)/iu.test(activeMessageText(text)));
 }
 
 export function guestCountFromText(text=''){

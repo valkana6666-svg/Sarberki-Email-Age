@@ -46,9 +46,11 @@ export function splitRequestFromText(text=''){
     };
   }
 
-  const two=hasTwoPersonPhrase(source);
-  const four=hasFourPersonPhrase(source);
-  const requestedAB=two?(countBeforeSizedUnit(source,2)||1):0;
+  const explicitPair=/\bA\s*\+\s*B\b/iu.test(source);
+  const explicitC=/\bosztott\s+(?:faház\s+)?C\b/iu.test(source);
+  const two=hasTwoPersonPhrase(source)||explicitPair;
+  const four=hasFourPersonPhrase(source)||explicitC;
+  const requestedAB=two?(explicitPair?2:(countBeforeSizedUnit(source,2)||1)):0;
   const requestedC=four?(countBeforeSizedUnit(source,4)||1):0;
   const kind=two&&four?'mixed':two?'two_person':four?'four_person':'unspecified';
   const unitCount=requestedAB+requestedC;

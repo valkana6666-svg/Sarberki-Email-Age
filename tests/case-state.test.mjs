@@ -39,6 +39,13 @@ test('availability enrichment preserves the approved quote and sits before signa
  const state=approve(make());const next=updateCaseState(state,{type:'availability',fingerprint:caseFingerprint(state.values),lines:['Ellenőrzött szabad lehetőség: Deluxe.']});
  const view=deriveCaseView(next);assert.match(view.draft,/122\s*200 Ft/u);assert.ok(view.draft.indexOf('Ellenőrzött szabad')<view.draft.indexOf('Üdvözlettel:'));
 });
+test('fresh unavailable occupancy invalidates an older approved quote',()=>{
+ const state=approve(make());state.quote.availabilityVerified=true;
+ const next=updateCaseState(state,{type:'availability',fingerprint:caseFingerprint(state.values),verified:false,requestedAvailable:false,lines:['A Deluxe nem elérhető.']});
+ const view=deriveCaseView(next);
+ assert.equal(next.quote,null);assert.doesNotMatch(view.draft,/122\s*200/u);
+ assert.ok(view.warnings.some(x=>x.code==='availability_unverified'));assert.equal(view.critical,true);
+});
 test('hot-tub verification has independent dimensions and is not implied by a Deluxe price',()=>{
  let state=make();assert.equal(state.hotTub.atHouse,true);assert.equal(state.hotTub.included,null);
  state=updateCaseState(approve(state),{type:'checks',hotTub:{atHouse:true,available:true,fee:10000,included:false}});

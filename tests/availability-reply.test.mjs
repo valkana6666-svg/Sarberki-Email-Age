@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {availabilitySentence,splitReviewSentence,replaceCapacityPlaceholder} from '../availability-recommend.mjs';
+import {availabilitySentence,splitReviewSentence,replaceCapacityPlaceholder,requestedSplitAvailabilitySentence} from '../availability-recommend.mjs';
 import * as core from '../sarberki-core.mjs';
 import * as splitUnits from '../split-units.mjs';
 const available={available_options:[{label:'Deluxe',units:1},{label:'Családi',units:2}],manual_review_options:[{label:'Osztott A + C'}]};
@@ -150,4 +150,36 @@ test('two two-person split apartments show same-house A+B priority internally',a
   assert.match(h.node('split_internal_note').textContent,/emberi jóváhagyással/u);
   assert.match(h.node('draft').value,/ugyanazon faház.*A\+B/u);
   assert.doesNotMatch(h.node('draft').value,/7A|7B|8A|8B/u);
+});
+
+for(const cabin of ['VIP','Családi','Deluxe']){
+ test(`October 23–25: explicit ${cabin} invokes occupancy and excludes a full type`,async()=>{
+  const h=harness();
+  h.node('f_arrival').value='2026-10-23';h.node('f_departure').value='2026-10-25';
+  h.node('f_guests').value='4';h.node('f_adults').value='4';h.node('f_children').value='0';h.node('f_unit').value=cabin;
+  h.node('message').value=`2026. október 23–25. között egy ${cabin} faház négy felnőtt részére, gyermek nélkül.`;
+  const p=h.run();assert.equal(h.pending.length,1);
+  const key={VIP:'vip',Családi:'family',Deluxe:'deluxe'}[cabin];
+  h.pending[0]({ok:true,json:async()=>({available_options:[{key:'splitC',label:'Osztott C (emeleti apartman)',units:1,availability:'available',availability_verified:true}],unavailable_options:[{key,label:cabin,availability:'unavailable',availability_verified:true}],split_pool_checks:{splitAB:{verified:true,availableUnits:0},splitC:{verified:true,availableUnits:2}}})});
+  await p;
+  assert.match(h.node('draft').value,new RegExp(`A kért ${cabin}.*nem elérhető`,'u'));
+  assert.match(h.node('draft').value,/Osztott C/u);
+ });
+}
+test('generic four adults without a cabin preference invokes occupancy',async()=>{
+ const h=harness();h.node('f_guests').value='4';h.node('message').value='Négy felnőttnek keresünk szállást, gyermek nélkül.';
+ const p=h.run();assert.equal(h.pending.length,1);h.pending[0]({ok:false,json:async()=>({error:'offline'})});await p;
+ assert.doesNotMatch(h.node('draft').value,/ellenőrzött, szabad/u);
+});
+test('explicit A+B and C letters preserve split request meaning',()=>{
+ assert.equal(splitUnits.splitRequestFromText('Osztott faház A+B, két kétszemélyes apartman').requestedAB,2);
+ assert.equal(splitUnits.splitRequestFromText('Osztott faház C, emeleti, négyszemélyes apartman').requestedC,1);
+});
+test('pool counts never confirm an exact C unit or an A+B pair',()=>{
+ const result={split_pool_checks:{splitAB:{verified:true,availableUnits:2},splitC:{verified:true,availableUnits:2}}};
+ assert.equal(requestedSplitAvailabilitySentence(result,splitUnits.splitRequestFromText('Osztott A+B'),'hu'),'');
+ assert.equal(requestedSplitAvailabilitySentence(result,splitUnits.splitRequestFromText('Osztott 7C'),'hu'),'');
+ assert.match(requestedSplitAvailabilitySentence(result,splitUnits.splitRequestFromText('Osztott faház C'),'hu'),/ellenőrzött, szabad/u);
+ result.split_pool_checks.splitAB.availableUnits=0;
+ assert.match(requestedSplitAvailabilitySentence(result,splitUnits.splitRequestFromText('Osztott A+B'),'hu'),/nincs elegendő/u);
 });

@@ -439,7 +439,7 @@ test('shared reply builder keeps manual and Gmail drafts identical for the same 
   }
 });
 
-test('shared reply builder asks child age phone and cabin type for ambiguous four-person stays',()=>{
+test('shared reply builder asks child age and phone while discovering generic four-person availability',()=>{
   const draft=buildReplyDraft({
     language:'hu',
     original:'október 16-18, 4 fő, 2 gyermek',
@@ -454,7 +454,8 @@ test('shared reply builder asks child age phone and cabin type for ambiguous fou
   });
   assert.match(draft,/gyermek életkorát/u);
   assert.match(draft,/telefonszámot/u);
-  assert.match(draft,/Melyik háztípust/u);
+  assert.doesNotMatch(draft,/Melyik háztípust/u);
+  assert.match(draft,/ténylegesen szabad lehetőségeket/u);
 });
 
 

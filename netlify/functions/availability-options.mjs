@@ -10,6 +10,14 @@ export function isLiveAvailabilityEnabled(request){
 
 function validDate(value){return /^\d{4}-\d{2}-\d{2}$/.test(value||'')&&Number.isFinite(+new Date(value+'T00:00:00Z'));}
 
+function checkedCapacity(result,{arrival,departure,cabin}){
+  if(!result||!['available','unavailable'].includes(result.availability)||!Number.isSafeInteger(result.availableUnits)||result.availableUnits<0
+    ||(result.availability==='available')!==(result.availableUnits>0)
+    ||(result.arrival!=null&&result.arrival!==arrival)||(result.departure!=null&&result.departure!==departure)
+    ||(result.cabin!=null&&result.cabin!==cabin)) throw Error('A forrás nem adott konzisztens kapacitásbizonyítékot.');
+  return result;
+}
+
 export function splitCapacityOptions(guests,poolChecks={}){
   return buildSplitCapacityOptions(guests,poolChecks);
 }
@@ -26,7 +34,7 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
 
   const checked=await Promise.all(mapped.map(async option=>{
     try{
-      const result=await source({arrival,departure,cabin:option.key});
+      const result=checkedCapacity(await source({arrival,departure,cabin:option.key}),{arrival,departure,cabin:option.key});
       const enough=result.availability==='available'&&Number(result.availableUnits)>=option.units;
       return {...option,availability:enough?'available':'unavailable',availableUnits:Number(result.availableUnits)||0,checkedAt:result.checkedAt||null,source:result.source||null,availability_verified:true};
     }catch(error){
@@ -36,7 +44,7 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
 
   const checkPool=async cabin=>{
     try{
-      const result=await source({arrival,departure,cabin});
+      const result=checkedCapacity(await source({arrival,departure,cabin}),{arrival,departure,cabin});
       return {verified:true,availability:result.availability,availableUnits:Number(result.availableUnits)||0,checkedAt:result.checkedAt||null,source:result.source||null};
     }catch(error){
       return {verified:false,availability:'unverified',availableUnits:null,error:error.message};
@@ -44,6 +52,13 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
   };
   const [splitAB,splitC]=await Promise.all([checkPool('splitA'),checkPool('splitC')]);
   const split_pool_checks={splitAB,splitC};
+  // One upper apartment needs only a verified C pool. No physical pairing is claimed.
+  if(guests<=4){
+    checked.push({key:'splitC',label:'Osztott C (emeleti apartman)',capacity:4,units:1,
+      availability:splitC.verified?splitC.availability:'unverified',availableUnits:splitC.availableUnits,
+      checkedAt:splitC.checkedAt||null,source:splitC.source||null,availability_verified:splitC.verified,
+      verification_scope:'type_pool',individual_unit_mapping_verified:false});
+  }
 
   return {
     status:'review_required',
