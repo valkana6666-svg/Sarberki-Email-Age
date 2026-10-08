@@ -94,6 +94,7 @@ export function deriveCaseView(state, baseReview={warning_codes:[],issues:[]}) {
   // No new deadline: the configured normal policy cannot safely be applied here.
   const closeArrival=booking&&Number.isFinite(untilArrival)&&(untilArrival<cancellationDays||untilArrival<=Number(rules.depositDueDays)+1);
   const removed=new Set(['price_unverified','hot_tub_availability_unverified','unresolved_guest_question','missing_child_ages','missing_contact']);
+  if(lang==='hu')removed.add('foreign_review');
   const warnings=(baseReview.warning_codes||[]).flatMap((code,i)=>removed.has(code)?[]:[{code,text:baseReview.issues[i]}]);
   const add=(code,text)=>{if(!warnings.some(x=>x.code===code))warnings.push({code,text});};
   for(const [key,fact]of Object.entries(stageFacts(v)))if(fact.status==='contradictory')add('fact_conflict','Ellentmondásos vagy érvénytelen ügyadat: '+key);

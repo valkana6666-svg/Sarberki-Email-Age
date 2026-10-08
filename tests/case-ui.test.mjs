@@ -105,3 +105,9 @@ test('central case render never labels an empty phone as confirmed',()=>{
  const phone=h.node('fields').children.find(w=>w.children.some(n=>n.id==='f_phone'));
  assert.equal(phone.children.at(-1).textContent,'Hiányzik · forrás: nincs');
 });
+
+test('linked Hungarian phone followup does not retain an unrelated foreign-language warning',()=>{
+ const h=harness(createBookingRuntime({request:()=>{throw Error('network unused');}}));const id=h.window.SarberkiBookingRuntime.cases.list()[0].id;
+ h.node('booking_case_link').value=id;h.analyze('A telefonszámunk: +36 30 555 1234. Köszönjük!');
+ assert.equal(h.node('f_language').value,'HU');assert.doesNotMatch(h.node('issues').textContent,/Idegen nyelvű/u);
+});
