@@ -76,3 +76,9 @@ Kiinduló teljes tesztkészlet: **626/626 PASS**. Javítás utáni teljes tesztk
 A kötelező fejlesztési ellenőrzési pontot az `AGENTS.md` rögzíti. Ellenőrizetlen szállás egyik további fejlesztésnél sem jelölhető foglalhatóként.
 
 **Végső válasz:** a nyilvános lekérdezési részre korlátozott, típusszintű alapként építhetünk. A teljes rendszer általános megbízhatóságát és az egyedi osztott párosítást még nem igazoltuk; jelenleg csak emberi ellenőrzés mellett, a fenti korlátokkal használható. Az új publikus válaszoló teljes hiteles integrációjához további munka szükséges.
+
+## Tesztági rögzítés és telepített ellenőrzés
+
+A javítások tesztági commitja: `25b9fc268f83c36fdb90ee9ff212f9b0a8e450c1`. A friss JavaScript megjelent a külön tesztoldalon. A telepített backend 2026.10.08. 20:23:27 bécsi idő szerint végrehajtott új élő ellenőrzése a szabad listában kizárólag `Osztott C (emeleti apartman)` lehetőséget adott vissza, 2 szabad egységgel és `type_pool` ellenőrzési szinttel; az A/B pool 0 maradt. Bizonyíték: `deployed-after.json`. A main és a production nem módosult.
+
+A telepítés utáni backend-ellenőrzés elkészült. Mind a hat levél teljes, telepített böngészős újratesztelését nem állítom megtörténtnek: a hat levél értelmezési és felületi beillesztési regresszióját automatizált környezetben vizsgáltam, a régi telepített Deluxe megkerülést böngészőben külön reprodukáltam.
