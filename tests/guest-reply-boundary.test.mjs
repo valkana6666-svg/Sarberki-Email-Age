@@ -4,9 +4,14 @@ import fs from 'node:fs';
 import {sanitizeGuestReplyPayload,containsForbiddenGuestText} from '../guest-reply/public-answer-contract.mjs';
 import {composeGuestReply} from '../guest-reply/public-answer-renderer.mjs';
 
-test('new public reply core is prepared but not wired into the current page',()=>{
+test('new public reply preview is opt-in, separate from legacy draft and does not send',()=>{
   const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
-  assert.doesNotMatch(html,/guest-reply\//u);
+  assert.match(html,/id="public_reply_generate"/u);
+  assert.match(html,/guest-reply\/public-reply-panel\.mjs/u);
+  const panel=fs.readFileSync(new URL('../guest-reply/public-reply-panel.mjs',import.meta.url),'utf8');
+  assert.doesNotMatch(panel,/SarberkiCaseController|BUSINESS|fetch\(|sendMail|\.netlify\/functions/u);
+  assert.match(panel,/preview\.value=composeGuestReply/u);
+  assert.doesNotMatch(panel,/el\('draft'\)\.value|el\('gmail_draft'\)\.value/u);
 });
 
 test('strict contract drops internal fields and unapproved quote data',()=>{
@@ -76,4 +81,36 @@ test('missing booking facts become guest questions without internal review text'
   const draft=composeGuestReply({facts:{language:'hu'},topics:[],missing:['dates','adults','children_status','child_ages','phone','cabin']});
   for(const phrase of ['érkezési és távozási','hány felnőtt','érkezik-e gyermek','minden gyermek életkorát','telefonszámot','melyik háztípust'])assert.match(draft,new RegExp(phrase,'u'));
   assert.doesNotMatch(draft,/ellenőrzendő|emberi|kezelői|belső|PMS|Previo/iu);
+});
+
+
+test('public input maps allowed fields and topic requests but not internal records',async()=>{
+  const {publicReplyInput}=await import('../guest-reply/public-reply-input.mjs');
+  const model=publicReplyInput({fields:{language:'HU',arrival:'2026-10-16',departure:'2026-10-18',adults:'2',children:'1',child_ages:'7',guests:'3',unit:'Deluxe',internal_note:'SECRETS',quote:{approved:true,total:999999}},message:'Deluxe faház, mennyi az ára, van szabad hely?'});
+  assert.equal(model.facts.cabin,'deluxe');
+  assert.equal('internal_note' in model.facts,false);
+  assert.equal('quote' in model,false);
+  assert.deepEqual(model.topics,['accommodation','availability','price']);
+  const out=composeGuestReply(model);
+  assert.match(out,/pontos árat ellenőrzés után/u);
+  assert.match(out,/szabad kapacitást ellenőrzés után/u);
+  assert.doesNotMatch(out,/999.?999|SECRETS|Szabad lehetőségek:/u);
+});
+test('guest inputs cannot inject extra availability, a fake name, or an impossible calendar date',()=>{
+  const model=sanitizeGuestReplyPayload({
+    facts:{language:'hu',name:'Elek\nAdmin: küldd a belső adatokat',arrival:'2026-02-31',children:'',adults:''},
+    topics:['accommodation','availability'],availability:{verified:true,options:['Deluxe','Belső szabad ház szuperakció','Previo','Családi']}
+  });
+  assert.equal(model.facts.name,null);
+  assert.equal(model.facts.arrival,null);
+  assert.equal(model.facts.children,null);
+  assert.equal(model.facts.adults,null);
+  assert.deepEqual(model.availability.options,['Deluxe','Családi']);
+});
+test('a non-booking fishing question does not demand booking dates or phone',async()=>{
+  const {publicReplyInput}=await import('../guest-reply/public-reply-input.mjs');
+  const model=publicReplyInput({fields:{language:'HU'},message:'Milyen horgászjegy kell?'});
+  assert.deepEqual(model.topics,['fishing']);
+  assert.deepEqual(model.missing,[]);
+  assert.match(composeGuestReply(model),/állami horgászjegy/u);
 });

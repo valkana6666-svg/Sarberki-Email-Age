@@ -1,6 +1,6 @@
-# Publikus válaszmag – előkészítés
+# Publikus válaszmag – elkülönített próba
 
-Ez a könyvtár a vendégnek szánt válaszlogika leválasztott, **még nem bekapcsolt** új magja.
+Ez a könyvtár a vendégnek szánt válaszlogika leválasztott, a régi tervezettől **függetlenül, kézzel indítható** új magja.
 
 ## Cél
 
@@ -19,9 +19,9 @@ A `public-answer-renderer.mjs` kizárólag a szűrt modellből és a publikus ad
 
 ## Jelenlegi állapot
 
-NINCS bekötve az `index.html`, a Gmail-feldolgozó, az árlekérő vagy a jelenlegi választervezet helyére. Emiatt ennek az előkészítő commitnak nem szabad megváltoztatnia a mostani tesztoldal működését.
+Az `index.html`-ben külön, összecsukott próbanézetként elérhető, amely nem írja felül a régi tervezetet. A Gmail- és árlekérő modulba nincs bekötve; nem küld levelet. A próbanézet még nem vesz át jóváhagyott árat vagy kapacitásadatot: ezekre csak ellenőrzés utáni, nem megtévesztő tájékoztatást ad.
 
 Visszaállítási kiindulópont az előkészítés előtt:
 `9ae3159286309ed7c303226c27c22b26b27e3901`
 
-A következő lépés csak külön döntés után lehet: a jelenlegi vendégválasz útvonal mögé kapcsolható funkciókapu, majd célzott videós teszt. A régi útvonalat addig nem töröljük.
+A következő lépés: szigorúan ellenőrzött ár-/elérhetőség-adapter és célzott végponttól végpontig teszt. A régi útvonalat addig nem töröljük.

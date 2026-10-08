@@ -54,6 +54,8 @@ export function composeGuestReply(raw={}){
     blocks.push({hu:'Szabad lehetőségek: '+labels+'.',de:'Freie Möglichkeiten: '+labels+'.',en:'Available options: '+labels+'.',si:'Proste možnosti: '+labels+'.'}[lang]);
   }
 
+  if(topics.includes('availability')&&!availability)blocks.push(choose(lang,DATA.pending.availability));
+  if(topics.includes('price')&&!quote)blocks.push(choose(lang,DATA.pending.price));
   if(topics.includes('price')&&quote){
     const suffix=quote.eurTotal!==null?' / '+euro(quote.eurTotal):'';
     const lines=[{hu:'Teljes ár: '+money(quote.total)+suffix+'.',de:'Gesamtpreis: '+money(quote.total)+suffix+'.',en:'Total price: '+money(quote.total)+suffix+'.',si:'Skupna cena: '+money(quote.total)+suffix+'.'}[lang]];

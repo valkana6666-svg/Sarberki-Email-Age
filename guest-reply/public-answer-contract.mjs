@@ -11,16 +11,20 @@ function finite(value){
 function safeText(value,{allowEmpty=false}={}){
   const text=String(value??'').trim();
   if(!text&&!allowEmpty)return null;
-  if(forbidden.test(text))return null;
+  if(text.length>120||/[\r\n\x00-\x1f\x7f]/u.test(text)||forbidden.test(text))return null;
   return text;
 }
 function safeInteger(value,min=0,max=99){
+  if(value===null||value===undefined||String(value).trim()==='')return null;
   const n=Number(value);
   return Number.isInteger(n)&&n>=min&&n<=max?n:null;
 }
 function safeIso(value){
   const text=safeText(value);
-  return text&&/^\d{4}-\d{2}-\d{2}$/u.test(text)?text:null;
+  if(!text||!/^\d{4}-\d{2}-\d{2}$/u.test(text))return null;
+  const [year,month,day]=text.split('-').map(Number);
+  const date=new Date(Date.UTC(year,month-1,day));
+  return date.getUTCFullYear()===year&&date.getUTCMonth()===month-1&&date.getUTCDate()===day?text:null;
 }
 function safeMoney(value){
   const n=finite(value);
@@ -42,7 +46,7 @@ export function sanitizeGuestReplyPayload(input={}){
 
   const cleanFacts=Object.freeze({
     language,
-    name:safeText(facts.name),
+    name:(()=>{const name=safeText(facts.name);return name&&name.length<=80&&/^[\p{L}\p{M}\s.'’-]+$/u.test(name)?name:null;})(),
     arrival:safeIso(facts.arrival),
     departure:safeIso(facts.departure),
     nights:safeInteger(facts.nights,1,60),

@@ -43,6 +43,10 @@ export const PUBLIC_REPLY_DATA=Object.freeze({
     petFeeHufPerPetPerDay:2000,
     parkingAvailable:true
   }),
+  pending:Object.freeze({
+    price:Object.freeze({hu:'A pontos árat ellenőrzés után tudjuk visszaigazolni.',de:'Den genauen Preis können wir erst nach Prüfung bestätigen.',en:'We can confirm the exact price after checking.',si:'Točno ceno bomo potrdili po preverjanju.'}),
+    availability:Object.freeze({hu:'A szabad kapacitást ellenőrzés után tudjuk visszaigazolni.',de:'Die Verfügbarkeit können wir erst nach Prüfung bestätigen.',en:'We can confirm availability after checking.',si:'Razpoložljivost bomo potrdili po preverjanju.'})
+  }),
   questions:Object.freeze({
     dates:Object.freeze({hu:'Kérjük, írja meg a pontos érkezési és távozási dátumot.',de:'Bitte teilen Sie uns das genaue An- und Abreisedatum mit.',en:'Please tell us the exact arrival and departure dates.',si:'Prosimo, sporočite točen datum prihoda in odhoda.'}),
     adults:Object.freeze({hu:'Kérjük, írja meg, hány felnőtt érkezik.',de:'Bitte teilen Sie uns mit, wie viele Erwachsene anreisen.',en:'Please tell us how many adults will be staying.',si:'Prosimo, sporočite, koliko odraslih oseb bo prišlo.'}),
