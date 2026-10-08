@@ -27,6 +27,7 @@ function safeIso(value){
   return date.getUTCFullYear()===year&&date.getUTCMonth()===month-1&&date.getUTCDate()===day?text:null;
 }
 function safeMoney(value){
+  if(value===null||value===undefined||String(value).trim()==='')return null;
   const n=finite(value);
   return n!==null&&n>=0?n:null;
 }
@@ -86,7 +87,9 @@ export function sanitizeGuestReplyPayload(input={}){
 
   let availability=null;
   if(input.availability?.verified===true&&Array.isArray(input.availability.options)){
-    const options=input.availability.options.map(x=>safeText(x)).filter(Boolean);
+    // A szabadon formázott, akár belső megjegyzést tartalmazó nevek nem átadhatók.
+    const allowedOptionLabels=new Set(['VIP','VIP faház','Családi','Családi faház','Deluxe','Deluxe faház','2 fős osztott apartman','4 fős osztott apartman','Különálló 2 fős faház']);
+    const options=input.availability.options.map(x=>safeText(x)).filter(x=>x&&allowedOptionLabels.has(x));
     if(options.length) availability=Object.freeze({verified:true,options:Object.freeze(options)});
   }
 
