@@ -35,6 +35,6 @@ const inquiries=labels.map(label=>{
 const lookup=Object.fromEntries(results.map(x=>[x.cabin,x]));
 const repaired=await buildAvailabilityOptions({...stay,guests:4},async input=>{const row=lookup[input.cabin];if(!row?.result)throw Error(row?.error||'Not probed');return row.result;});
 const output={probeStartedFor:stay,guests:4,finishedAt:new Date().toISOString(),results,inquiries,repaired,bookingCompleted:false,emailSent:false};
-await fs.writeFile(new URL('../reports/central-booking-2026-10-08/live-evidence.json',import.meta.url),JSON.stringify(output,null,2)+'\n');
+await fs.writeFile(new URL(process.argv.find(x=>x.startsWith('--output='))?.slice(9)||'../reports/central-booking-2026-10-08/live-evidence.json',import.meta.url),JSON.stringify(output,null,2)+'\n');
 console.log(JSON.stringify(results.map(({cabin,result,error})=>({cabin,availableUnits:result?.availableUnits,checkedAt:result?.checkedAt,error}))));
 console.log(JSON.stringify(inquiries.map(x=>x.parsed)));
