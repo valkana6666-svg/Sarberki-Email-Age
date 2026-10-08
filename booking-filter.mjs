@@ -10,7 +10,7 @@ export function cabinKey(value=''){
 }
 export function capacityInput(values={},text=''){
  const guests=positive(values.guests)||(positive(values.adults)!=null&&values.children!==''&&values.children!=null?Number(values.adults)+Number(values.children):null);
- const split=splitRequestFromText(values.split_request_text||text);
+ const split=splitRequestFromText((values.split_request_text||text)+' '+(values.request||''));
  return {arrival:values.arrival||'',departure:values.departure||'',guests,
   ...(positive(values.adults)?{adults:Number(values.adults)}:{}),
   ...(cabinKey(values.unit)?{cabin:cabinKey(values.unit)}:{}),

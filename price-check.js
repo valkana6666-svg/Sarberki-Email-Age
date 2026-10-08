@@ -220,6 +220,16 @@
   }
 
   function prepare(message) {
+    const central=window.SarberkiBookingRuntime&&window.SarberkiCaseController?.snapshot();
+    if(central){
+      const v=central.values;
+      for(const [key,id]of Object.entries({arrival:'price_arrival',departure:'price_departure',adults:'price_adults',children:'price_children',child_ages:'price_child_ages'}))$(id).value=v[key]??'';
+      const keys=Object.entries(cabins).find(([,label])=>label===v.unit);$('price_cabin').value=keys?.[0]||'';
+      if(!central.quote)clearApprovedPrice('Az ügyhöz nincs aktuális jóváhagyott ár.');
+      $('price_status').textContent=central.quote?'Az ügy korábbi, továbbra is releváns jóváhagyott ára megmaradt.':'Az összegyűjtött ügyadatok átvéve; ár csak igazolt szabad kapacitásra kérhető.';
+      return;
+    }
+
     const analysis = typeof extract === 'function' ? extract(message,'') : null;
     const fields = analysis?.fields || {};
     const gmailRecord=gmailNormalizedRecord();
@@ -459,6 +469,14 @@
   }
 
   async function autoPrepareAndQuoteFromGmail() {
+    if(window.SarberkiBookingRuntime){
+      const central=window.SarberkiCaseController?.snapshot();if(!central)return;
+      prepare(central.original);const v=central.values;
+      if(central.quote)return;
+      if(!['booking_request','availability_request','price_request'].includes(central.intent)||!v.arrival||!v.departure||!$('price_cabin').value||!(Number(v.adults)>0)||v.children===''||v.children==null||childAgesForQuote(Number(v.children),v.child_ages)===null)return;
+      await $('check_price').onclick();return;
+    }
+
     const message=$('gmail_original')?.textContent||'';
     if(!message) return;
     prepare(message);
@@ -580,7 +598,7 @@
       refreshAvailabilityOptions(message).catch(()=>{});
     }
   });
-  document.addEventListener('sarberki:record-loaded',()=>{autoPrepareAndQuoteFromGmail().catch(e=>{$('price_status').textContent='Automatikus adatátadás nem sikerült: '+e.message;});});
+  document.addEventListener('sarberki:record-loaded',()=>{if(window.SarberkiBookingRuntime)return;autoPrepareAndQuoteFromGmail().catch(e=>{$('price_status').textContent='Automatikus adatátadás nem sikerült: '+e.message;});});
   document.addEventListener('sarberki:gmail-normalized',()=>{autoPrepareAndQuoteFromGmail().catch(e=>{$('price_status').textContent='Automatikus árlekérés nem igazolható: '+e.message;});});
   const refresh=$('refresh');
   if(refresh){

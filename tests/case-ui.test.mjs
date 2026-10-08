@@ -95,3 +95,6 @@ test('integrated approval cannot override failed fresh capacity',async()=>{
  const runtime=createBookingRuntime({request:i=>buildAvailabilityOptions(i,async()=>({availability:'unavailable',availableUnits:0}))}),h=harness(runtime);
  approve(h);h.node('override').checked=true;await h.node('approve').onclick();assert.equal(h.window.SarberkiCaseController.snapshot().quote,null);assert.match(h.node('status').textContent,/Jóváhagyás tiltva/u);
 });
+test('linked phone-only letter does not revoke the central approved price',()=>{
+ const runtime=createBookingRuntime({request:()=>{throw Error('network unused');}}),h=harness(runtime);approve(h);const first=runtime.cases.list()[0].id;h.node('booking_case_link').value=first;h.analyze('Telefonszámom +36 30 555 1234.');assert.equal(h.window.SarberkiCaseController.snapshot().quote.total,122200);assert.match(h.node('draft').value,/122\s*200 Ft/u);assert.equal(h.node('f_phone').value,'+36 30 555 1234');
+});

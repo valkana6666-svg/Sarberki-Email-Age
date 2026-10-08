@@ -218,7 +218,7 @@ async function enrich(provided=null){
     if(!splitCabin)renderSplitInternalNote([],null);
     return;
   }
-  const fingerprint=()=>[ $('f_arrival')?.value||'', $('f_departure')?.value||'', $('f_guests')?.value||'', $('f_unit')?.value||'', $('message')?.value||'', $('gmail_original')?.textContent||'', $('f_language')?.value||'' ].join('|');
+  const fingerprint=()=>[ $('f_arrival')?.value||'', $('f_departure')?.value||'', $('f_guests')?.value||'', $('f_unit')?.value||'', $('f_adults')?.value||'', $('f_children')?.value||'', $('f_units_requested')?.value||'', $('f_request')?.value||'', $('message')?.value||'', $('gmail_original')?.textContent||'', $('f_language')?.value||'' ].join('|');
   const key=fingerprint();
   const caseState=window.SarberkiCaseController?.snapshot();
   const caseKey=caseState&&window.SarberkiCaseState?.caseFingerprint(caseState.values);
