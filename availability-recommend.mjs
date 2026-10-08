@@ -29,7 +29,10 @@ export function availabilitySentence(result,language='hu'){
   return intro+available.join(', ')+'.';
 }
 export function splitReviewSentence(result,language='hu'){
-  const manual=(result?.manual_review_options||[]);
+  // A vendégnek osztott lehetőséget csak igazolt Previo pool-kapacitás esetén említsünk.
+  // Az ellenőrizetlen/foglalt kombináció a belső felülvizsgálati listában maradhat.
+  const livePoolChecked=Boolean(result?.split_pool_checks);
+  const manual=(result?.manual_review_options||[]).filter(option=>!livePoolChecked||option.pooled_availability_verified===true);
   if(!manual.length)return '';
   const lang=['hu','de','en','si'].includes(language)?language:'hu';
   const mode=manual[0]?.request_mode||'generic_capacity';
