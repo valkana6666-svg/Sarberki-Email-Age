@@ -1,3 +1,4 @@
+import {buildReplyDraft} from '../sarberki-core.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {capacityInput,stageFacts} from '../booking-filter.mjs';
@@ -30,3 +31,5 @@ test('unresolved multi-date correction does not reuse the previous capacity or d
 test('mismatching previous arrival is not accepted as a proven correction',()=>{
  const s=createBookingCaseStore({id:()=> 'dates-case'}),e={sender:'guest@test.invalid',thread_id:'dates'};s.ingest({...e,message_id:'one',text:'Első időpont'},stay);const b=s.ingest({...e,message_id:'two',text:'2026.10.16 helyett 2026.10.30; távozás 2026.11.01.'},{},{intent:'modification_request'});assert.equal(b.bookingCase.dateReview.status,'unverified');assert.equal(b.bookingCase.state.values.arrival,'');
 });
+
+for(const [language,wrong] of [['hu',/2 gyermek, 7 évesek/u],['de',/2 Kinder im Alter von 7 Jahren/u],['en',/2 children, aged 7/u],['si',/2 otroka; starost otrok: 7 let/u]])test(`partial ages do not describe all children as the same age in ${language}`,()=>{const draft=buildReplyDraft({original:'teszt',language,arrival:stay.arrival,departure:stay.departure,guests:4,adults:2,children:2,childAges:[7],cabin:'Deluxe'});assert.doesNotMatch(draft,wrong);});

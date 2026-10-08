@@ -364,7 +364,7 @@ export function replySummary(language='hu', {arrival=null,departure=null,guests=
   const fmtEnglish=iso=>{const [y,m,d]=iso.split('-');return `${Number(d)} ${enMonths[Number(m)-1]} ${y}`;};
   const adults=Number.isInteger(knownAdults)?knownAdults:Number.isFinite(children)?Math.max(0,guests-children):null;
   const ageList=(lang)=>{
-    if(!Array.isArray(childAges)||!childAges.length) return '';
+    if(!Array.isArray(childAges)||!childAges.length||childAges.length!==children) return '';
     if(childAges.length===1) return String(childAges[0]);
     const joiner={hu:' és ',de:' und ',en:' and ',si:' in '}[lang]||' and ';
     if(childAges.length===2) return childAges.join(joiner);
