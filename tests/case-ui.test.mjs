@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import * as core from '../sarberki-core.mjs';
 import * as state from '../case-state.mjs';
+import {createBookingRuntime} from '../booking-runtime.mjs';
+import {buildAvailabilityOptions} from '../netlify/functions/availability-options.mjs';
 import {BUSINESS} from '../business-config.mjs';
 import {fishingQuestion} from '../fishing-rules.mjs';
 import {normalizeBookingInput} from '../booking-input.mjs';
@@ -12,7 +14,7 @@ const price=fs.readFileSync(new URL('../price-check.js',import.meta.url),'utf8')
 const message=`Kedves Sárberki Horgásztó!
 2026. október 16–18. között, két éjszakára szeretnénk Deluxe faházat foglalni 2 felnőtt és 2 gyermek részére. A gyermekek 7 és 11 évesek. Dézsát is szeretnénk kérni, és egy autóval érkeznénk. Kérjük, jelezzék, van-e szabad Deluxe faház, mennyi lenne a teljes ár, és milyen előleg- és lemondási feltételek érvényesek. Horgászni is szeretnénk: milyen jegyre és felszerelésre van szükség?
 Üdvözlettel: Teszt Elek`;
-function harness(){
+function harness(runtime=null){
  const nodes=new Map(),tasks=[],listeners=new Map();
  class Node {
   constructor(){this.value='';this.textContent='';this.children=[];this.style={};this.listeners={};this.disabled=false;this.checked=false;const classes=new Set();this.classList={add:x=>classes.add(x),remove:x=>classes.delete(x),contains:x=>classes.has(x),toggle:(x,on)=>on?classes.add(x):classes.delete(x)};}
@@ -29,6 +31,7 @@ function harness(){
  nodes.get('gmail_record').classList.add('hidden');nodes.get('results').classList.add('hidden');
  const document={getElementById:id=>nodes.get(id)||null,createElement:()=>new Node(),body:new Node(),addEventListener:(type,fn)=>{(listeners.get(type)||listeners.set(type,[]).get(type)).push(fn);},dispatchEvent:event=>{for(const fn of listeners.get(event.type)||[])fn(event);}};
  const window={addEventListener(){},SarberkiNormalize:core,SarberkiCaseState:state,SarberkiConfig:BUSINESS,SarberkiFishingQuestion:fishingQuestion,SarberkiRulesReady:true,SarberkiBookingInput:{normalizeBookingInput}};
+ if(runtime)window.SarberkiBookingRuntime=runtime;
  const errors=[];
  const context=vm.createContext({window,document,console,Date,Intl,Number,JSON,Math,Set,URL,Blob,navigator:{},alert:x=>errors.push(x),setTimeout:fn=>tasks.push(fn),CustomEvent:class{constructor(type,options={}){this.type=type;this.detail=options.detail;}},Event:class{constructor(type){this.type=type;}},fetch:async()=>{throw Error('Unmocked network call');}});
  const inline=html.slice(html.indexOf('const $='),html.indexOf('</script>',html.indexOf('const $=')));
@@ -75,4 +78,20 @@ test('a delayed price response cannot overwrite an edited stay',async()=>{
  const h=harness();let resolve,input;h.context.fetch=async(url,options)=>{input=JSON.parse(options.body);return await new Promise(r=>{resolve=r;});};
  const pending=h.node('check_price').onclick();h.node('f_arrival').value='2026-11-16';h.node('f_arrival').dispatchEvent({type:'input'});resolve(quoteResponse(input));await pending;
  assert.equal(h.node('price_result').textContent,'');assert.equal(h.window.SarberkiCaseController.snapshot().quote,null);assert.doesNotMatch(h.node('draft').value,/122\s*200 Ft/u);
+});
+
+test('integrated analyzer preserves known facts on explicitly linked second and third letters',()=>{
+ const runtime=createBookingRuntime({request:()=>{throw Error('network unused');}}),h=harness(runtime);
+ const first=runtime.cases.list()[0].id;
+ h.node('booking_case_link').value=first;
+ h.analyze('A telefonszámom: +36 30 555 1234.');
+ assert.equal(h.node('f_arrival').value,'2026-10-16');assert.equal(h.node('f_adults').value,'2');assert.equal(h.node('f_child_ages').value,'7, 11');assert.equal(runtime.cases.list().length,1);
+});
+test('integrated price handler never invokes price endpoint after zero capacity',async()=>{
+ const runtime=createBookingRuntime({request:i=>buildAvailabilityOptions(i,async()=>({availability:'unavailable',availableUnits:0}))}),h=harness(runtime);
+ let prices=0;h.context.fetch=async()=>{prices++;throw Error('price must not run');};await h.node('check_price').onclick();assert.equal(prices,0);assert.match(h.node('price_status').textContent,/nem igazoltan/u);
+});
+test('integrated approval cannot override failed fresh capacity',async()=>{
+ const runtime=createBookingRuntime({request:i=>buildAvailabilityOptions(i,async()=>({availability:'unavailable',availableUnits:0}))}),h=harness(runtime);
+ approve(h);h.node('override').checked=true;await h.node('approve').onclick();assert.equal(h.window.SarberkiCaseController.snapshot().quote,null);assert.match(h.node('status').textContent,/Jóváhagyás tiltva/u);
 });

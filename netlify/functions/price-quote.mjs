@@ -1,3 +1,6 @@
+import {buildAvailabilityOptions} from './availability-options.mjs';
+import {fetchPublicBookingAvailability} from '../../price-source/sarberki-public-booking.mjs';
+import {canPriceOption} from '../../booking-filter.mjs';
 import {validateQuote} from '../../price-quote.mjs';
 import {previoReadOnlyAdapter} from '../../price-source/previo-adapter.mjs';
 import {fetchPublicPriceReference} from '../../price-source/public-price-fallback.mjs';
@@ -74,7 +77,7 @@ export function isLivePrevioEnabled(request) {
   }
 }
 
-export async function handlePriceQuote(request,source=previoReadOnlyAdapter.getQuote,enabled=false,fxSource=fetchMnbEurRate) {
+export async function handlePriceQuote(request,source=previoReadOnlyAdapter.getQuote,enabled=false,fxSource=fetchMnbEurRate,capacitySource=fetchPublicBookingAvailability) {
   if (request.method !== 'POST') return Response.json({error:'POST szükséges.'},{status:405});
   if (!enabled) return Response.json({status:'unverified',error:'HITELES ÁRLEKÉRÉS SZÜKSÉGES · Élő Previo-lekérés csak a külön Sárberki tesztoldalon engedélyezett; a Previo dátumkeresésének foglalásmentessége más környezetben nincs igazolva.'},{status:503,headers:{'cache-control':'no-store'}});
   try {
@@ -82,6 +85,12 @@ export async function handlePriceQuote(request,source=previoReadOnlyAdapter.getQ
     const raw=await request.text();
     if (raw.length>8192) throw Error('Túl nagy kérés.');
     const input=validateQuote(JSON.parse(raw));
+    const splitAB=['splitA','splitB'].includes(input.cabin),splitC=input.cabin==='splitC';
+    const units=input.units||1;
+    const query={arrival:input.arrival,departure:input.departure,guests:input.adults+input.children.length,adults:input.adults,cabin:input.cabin,units,fallback:false,...(splitAB||splitC?{placement:{ab:splitAB?units:0,c:splitC?units:0,adjacent:false,exactIds:[]}}:{})};
+    const capacity=await buildAvailabilityOptions(query,capacitySource);
+    const key=splitAB?'splitAB':input.cabin;
+    if(!canPriceOption(capacity,key,units)){const unavailable=capacity.unavailable_options.find(x=>x.key===key);if(unavailable)return Response.json({...input,status:'unavailable',availability:'unavailable',availableUnits:unavailable.availableUnits,bookingCompleted:false},{headers:{'cache-control':'no-store'}});throw Error('A kért kapacitás nem igazolt; árszámítás nem történt.');}
     const result=['splitA','splitB','splitC'].includes(input.cabin) ? fetchPublicPriceReference(input) : await source(input);
     if(result.status==='unavailable') return Response.json(result,{status:200,headers:{'cache-control':'no-store'}});
     if(!['review_required','public_reference'].includes(result.status)||!Number.isSafeInteger(result.total)||result.total<=0) throw Error('Nem érkezett ellenőrzött ár.');

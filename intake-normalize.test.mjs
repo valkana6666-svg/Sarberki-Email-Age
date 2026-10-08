@@ -39,6 +39,6 @@ test('split-unit intent is normalized consistently across channels',()=>{
     assert.equal(row.normalized.split_request.requestedAB,2);
     assert.equal(row.normalized.split_request.requestedC,0);
     assert.equal(row.normalized.split_request.sameHousePreferred,true);
-    assert.equal(row.normalized.split_request.crossHouseFallbackRequiresApproval,true);
+    assert.equal(row.normalized.split_request.crossHouseFallbackRequiresApproval,false);
   }
 });

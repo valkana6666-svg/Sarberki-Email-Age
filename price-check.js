@@ -144,6 +144,7 @@
   }
 
   async function refreshAvailabilityOptions(message=''){
+    if(window.SarberkiBookingRuntime){await window.SarberkiRefreshCapacity?.();return;}
     const analysis=typeof extract==='function'?extract(message,''):null;
     if(!analysis||explicitCabin(message)){availabilityOptions=null;return;}
     const requestState=window.SarberkiCaseController?.snapshot();
@@ -537,6 +538,7 @@
     if(units>1&&input.adults<units){status.textContent='KÉZI ELLENŐRZÉS SZÜKSÉGES · Több háznál minden egységhez legalább egy felnőtt szükséges az élő árlekéréshez.';return;}
     if(units>1) input.units=units;
     try {
+      if(window.SarberkiBookingRuntime)await window.SarberkiBookingRuntime.beforePrice(input);
       const response=await fetch('/api/price-quote',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input),cache:'no-store'});
       if (!response.headers.get('content-type')?.includes('application/json')) throw Error('Az árlekérő szerver nincs ehhez az oldalhoz csatlakoztatva.');
       const result=await response.json();

@@ -13,14 +13,14 @@ test('one two-person split apartment accepts any A/B unit',()=>{
   const options=splitCapacityOptions(2,{splitAB:{verified:true,availableUnits:4}},request);
   assert.equal(request.requestedAB,1);assert.equal(options[0].request_mode,'single_two_person');
   assert.deepEqual(options[0].candidate_unit_ids,['7A','7B','8A','8B','9A','9B','10A','10B']);
-  assert.equal(options[0].availability_verified,false);assert.equal(options[0].pooled_availability_verified,true);
+  assert.equal(options[0].availability_verified,true);assert.equal(options[0].pooled_availability_verified,true);
 });
-test('two two-person split apartments prefer same-house A+B and cross-house needs approval',()=>{
+test('two two-person split apartments prefer same-house A+B and permit cross-house without proximity',()=>{
   const request=splitRequestFromText('2 db 2 fős osztott apartmant kérünk');
   const options=splitCapacityOptions(4,{splitAB:{verified:true,availableUnits:3}},request);
   assert.equal(request.requestedAB,2);assert.equal(options[0].request_mode,'double_two_person');
   assert.deepEqual(options[0].candidate_combinations,[['7A','7B'],['8A','8B'],['9A','9B'],['10A','10B']]);
-  assert.equal(options[0].cross_house_fallback_requires_human_approval,true);
+  assert.equal(options[0].cross_house_fallback_requires_human_approval,false);
   assert.match(splitInternalSummary(options,request),/azonos házas A\+B/u);
 });
 test('one four-person split apartment maps to a C unit',()=>{
@@ -34,7 +34,7 @@ test('two plus four prefers A+C or B+C in the same physical house',()=>{
   const options=splitCapacityOptions(6,{splitAB:{verified:true,availableUnits:2},splitC:{verified:true,availableUnits:2}},request);
   assert.equal(options[0].request_mode,'two_plus_four');
   assert.deepEqual(options[0].candidate_combinations.slice(0,4),[['7A','7C'],['7B','7C'],['8A','8C'],['8B','8C']]);
-  assert.equal(options[0].business_placement_requires_human_approval,true);
+  assert.equal(options[0].business_placement_requires_human_approval,false);
 });
 test('exact physical unit references are parsed but remain manual mapping',()=>{
   const request=splitRequestFromText('A 9B és 9C egységet szeretnénk');

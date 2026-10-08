@@ -45,7 +45,7 @@ test('enabled handler accepts a validated mocked quote',async()=>{
     total:92200,
     currency:'HUF',
     bookingCompleted:false
-  }),true,async()=>({rate:366.31,date:'2026-09-30',source:'Magyar Nemzeti Bank'}));
+  }),true,async()=>({rate:366.31,date:'2026-09-30',source:'Magyar Nemzeti Bank'}),async()=>({availability:'available',availableUnits:1}));
   assert.equal(res.status,200);
   const json=await res.json();
   assert.equal(json.total,92200);

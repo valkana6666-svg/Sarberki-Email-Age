@@ -25,7 +25,7 @@ test('forbidden input fields make zero adapter calls even if live gate were enab
  for(const field of ['name','email','phone','payment','reservationId','unknown']) {
   const body={arrival:'2027-10-01',departure:'2027-10-02',cabin:'deluxe',adults:2,children:[],[field]:'value'};
   const request=new Request('https://example.test/api/price-quote',{method:'POST',body:JSON.stringify(body)});
-  const response=await handlePriceQuote(request,source,true);
+  const response=await handlePriceQuote(request,source,true,async()=>({rate:400,date:'2026-10-08',source:'MOCK'}),async()=>({availability:'available',availableUnits:1}));
   assert.equal(response.status,503);
   assert.equal((await response.json()).total,undefined);
  }
@@ -49,7 +49,7 @@ test('deployed quote fails closed with JSON when live source fails', async () =>
     method:'POST',headers:{'content-type':'application/json'},
     body:JSON.stringify({arrival:'2027-10-01',departure:'2027-10-02',cabin:'vip',adults:2,children:[]})
   });
-  const response = await handlePriceQuote(request,async()=>{throw Error('Previo elérhetetlen');},true);
+  const response = await handlePriceQuote(request,async()=>{throw Error('Previo elérhetetlen');},true,async()=>({rate:400,date:'2026-10-08',source:'MOCK'}),async()=>({availability:'available',availableUnits:1}));
   assert.equal(response.status,503);
   assert.match(response.headers.get('content-type'),/application\/json/u);
   const body = await response.json();
@@ -59,11 +59,11 @@ test('deployed quote fails closed with JSON when live source fails', async () =>
 
 test('Netlify endpoint returns only checked adapter data and omits price when unavailable',async()=>{
  const make=()=>new Request('https://example.test/api/price-quote',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({arrival:'2027-10-01',departure:'2027-10-02',cabin:'deluxe',adults:2,children:[]})});
- const good=await handlePriceQuote(make(),async()=>({status:'review_required',total:122200,source:'Sárberki hivatalos foglalási felület'}),true);
+ const good=await handlePriceQuote(make(),async()=>({status:'review_required',total:122200,source:'Sárberki hivatalos foglalási felület'}),true,async()=>({rate:400,date:'2026-10-08',source:'MOCK'}),async()=>({availability:'available',availableUnits:1}));
  assert.equal(good.status,200);assert.equal((await good.json()).total,122200);
- const empty=await handlePriceQuote(make(),async()=>({status:'unavailable',availability:'unavailable'}),true);
+ const empty=await handlePriceQuote(make(),async()=>({status:'unavailable',availability:'unavailable'}),true,async()=>({rate:400,date:'2026-10-08',source:'MOCK'}),async()=>({availability:'available',availableUnits:1}));
  assert.equal(empty.status,200);assert.equal((await empty.json()).total,undefined);
- const invalid=await handlePriceQuote(make(),async()=>({status:'review_required',total:0}),true);
+ const invalid=await handlePriceQuote(make(),async()=>({status:'review_required',total:0}),true,async()=>({rate:400,date:'2026-10-08',source:'MOCK'}),async()=>({availability:'available',availableUnits:1}));
  assert.equal(invalid.status,503);
 });
 

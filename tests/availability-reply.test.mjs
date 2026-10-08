@@ -129,7 +129,7 @@ test('explicit four-person split request uses C logic internally without exposin
   })});
   await p;
   assert.match(h.node('split_internal_note').textContent,/7C, 8C, 9C, 10C/u);
-  assert.match(h.node('draft').value,/emeleti egysége/u);
+  assert.match(h.node('draft').value,/emeleti apartman/u);
   assert.doesNotMatch(h.node('draft').value,/7C|8C|9C|10C/u);
 });
 
@@ -147,8 +147,9 @@ test('two two-person split apartments show same-house A+B priority internally',a
   })});
   await p;
   assert.match(h.node('split_internal_note').textContent,/7A\+7B/u);
-  assert.match(h.node('split_internal_note').textContent,/emberi jóváhagyással/u);
-  assert.match(h.node('draft').value,/ugyanazon faház.*A\+B/u);
+  assert.match(h.node('split_internal_note').textContent,/szomszédságot nem ígérünk/u);
+  assert.match(h.node('draft').value,/2 × Osztott A\/B/u);
+  assert.doesNotMatch(h.node('draft').value,/ugyanazon faház/u);
   assert.doesNotMatch(h.node('draft').value,/7A|7B|8A|8B/u);
 });
 
@@ -177,8 +178,9 @@ test('explicit A+B and C letters preserve split request meaning',()=>{
 });
 test('pool counts never confirm an exact C unit or an A+B pair',()=>{
  const result={split_pool_checks:{splitAB:{verified:true,availableUnits:2},splitC:{verified:true,availableUnits:2}}};
- assert.equal(requestedSplitAvailabilitySentence(result,splitUnits.splitRequestFromText('Osztott A+B'),'hu'),'');
- assert.equal(requestedSplitAvailabilitySentence(result,splitUnits.splitRequestFromText('Osztott 7C'),'hu'),'');
+ assert.match(requestedSplitAvailabilitySentence(result,splitUnits.splitRequestFromText('Osztott A+B'),'hu'),/ellenőrzött, szabad/u);
+ assert.doesNotMatch(requestedSplitAvailabilitySentence(result,splitUnits.splitRequestFromText('Osztott A+B'),'hu'),/egymás mellett/u);
+ assert.match(requestedSplitAvailabilitySentence(result,splitUnits.splitRequestFromText('Osztott 7C'),'hu'),/emberi ellenőrzés/u);
  assert.match(requestedSplitAvailabilitySentence(result,splitUnits.splitRequestFromText('Osztott faház C'),'hu'),/ellenőrzött, szabad/u);
  result.split_pool_checks.splitAB.availableUnits=0;
  assert.match(requestedSplitAvailabilitySentence(result,splitUnits.splitRequestFromText('Osztott A+B'),'hu'),/nincs elegendő/u);

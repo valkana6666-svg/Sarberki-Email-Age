@@ -30,6 +30,7 @@ function countBeforeSizedUnit(text='',size=2){
 export function splitRequestFromText(text=''){
   const source=String(text||'');
   const ids=exactIds(source);
+  const requiresAdjacent=/(?:egymás\s*mellett|egymás\s*melletti|szomszéd|azonos\s+(?:faház|ház)|ugyan(?:azon|abban)\s+(?:a\s+)?(?:faház|ház)|közös\s+(?:faház|ház)|teljes\s+osztott\s+faház|next to|adjacent|same\s+(?:house|cabin)|nebeneinander|benachbart|selben\s+haus|ista\s+hiš|sosednj)/iu.test(source);
   const explicitSplit=ids.length>0||/\b(?:osztott|split|geteilte[rs]?|deljen[ai]?)\b/iu.test(source);
   if(!explicitSplit)return {
     isSplit:false,kind:'not_split',requestedAB:0,requestedC:0,unitCount:0,exactUnitIds:[],
@@ -41,22 +42,23 @@ export function splitRequestFromText(text=''){
     const requestedAB=rows.filter(x=>x.segment==='A'||x.segment==='B').length;
     const requestedC=rows.filter(x=>x.segment==='C').length;
     return {
-      isSplit:true,kind:'exact',requestedAB,requestedC,unitCount:rows.length,exactUnitIds:ids,
+      requiresAdjacent:true,isSplit:true,kind:'exact',requestedAB,requestedC,unitCount:rows.length,exactUnitIds:ids,
       sameHousePreferred:rows.length>1,crossHouseFallbackRequiresApproval:false
     };
   }
 
   const explicitPair=/\bA\s*\+\s*B\b/iu.test(source);
   const explicitC=/\bosztott\s+(?:faház\s+)?C\b/iu.test(source);
-  const two=hasTwoPersonPhrase(source)||explicitPair;
-  const four=hasFourPersonPhrase(source)||explicitC;
+  const explicitMixed=/\b[AB]\s*\+\s*C\b/iu.test(source);
+  const two=hasTwoPersonPhrase(source)||explicitPair||explicitMixed;
+  const four=hasFourPersonPhrase(source)||explicitC||explicitMixed;
   const requestedAB=two?(explicitPair?2:(countBeforeSizedUnit(source,2)||1)):0;
   const requestedC=four?(countBeforeSizedUnit(source,4)||1):0;
   const kind=two&&four?'mixed':two?'two_person':four?'four_person':'unspecified';
   const unitCount=requestedAB+requestedC;
   return {
-    isSplit:true,kind,requestedAB,requestedC,unitCount,exactUnitIds:[],
-    sameHousePreferred:unitCount>1,crossHouseFallbackRequiresApproval:unitCount>1
+    requiresAdjacent,isSplit:true,kind,requestedAB,requestedC,unitCount,exactUnitIds:[],
+    sameHousePreferred:unitCount>1,crossHouseFallbackRequiresApproval:requiresAdjacent
   };
 }
 
@@ -87,7 +89,7 @@ function optionReason(pooled,totalUnits){
     ?'A Previo-típusmapping hitelesített (A/B = 2 fős apartman pool, C = 4 fős apartman pool), de a szükséges pooled elérhetőség, az egyedi 7A–10C egység-ID vagy a fizikai párosítás még kézi ellenőrzést igényel.'
     :'A Previo-típusmapping hitelesített (A/B = 2 fős apartman pool, C = 4 fős apartman pool), de a szükséges pooled elérhetőség vagy az egyedi 7A–10C egység-ID még kézi ellenőrzést igényel.';
 }
-function decorate({label,units,capacity,candidateCombinations,needAB,needC,requestMode,poolChecks}){
+function decorate({label,units,capacity,candidateCombinations,needAB,needC,requestMode,poolChecks,requiresAdjacent=false}){
   const pool=poolStatus(needAB,needC,poolChecks);
   const totalUnits=needAB+needC;
   return {
@@ -95,16 +97,19 @@ function decorate({label,units,capacity,candidateCombinations,needAB,needC,reque
     label,
     units,
     capacity,
-    availability_verified:false,
+    availability_verified:pool.pooledAvailabilityVerified&&!requiresAdjacent&&requestMode!=='exact',
+    availability:pool.pooledAvailabilityVerified?(!requiresAdjacent&&requestMode!=='exact'?'available':'unverified'):'unverified',
+    verification_scope:'type_pool',
+    requiredAB:needAB,requiredC:needC,requires_adjacent:requiresAdjacent,
     pooled_availability_verified:pool.pooledAvailabilityVerified,
     individual_unit_mapping_verified:false,
     same_house_pairing_verified:false,
-    business_placement_requires_human_approval:totalUnits>1,
-    individual_mapping_requires_review:true,
-    current_read_only_mapping_requires_human_approval:true,
+    business_placement_requires_human_approval:requiresAdjacent||requestMode==='exact',
+    individual_mapping_requires_review:requiresAdjacent||requestMode==='exact',
+    current_read_only_mapping_requires_human_approval:requiresAdjacent||requestMode==='exact',
     same_house_preferred:totalUnits>1,
-    cross_house_fallback_allowed:totalUnits>1,
-    cross_house_fallback_requires_human_approval:totalUnits>1,
+    cross_house_fallback_allowed:totalUnits>1&&!requiresAdjacent,
+    cross_house_fallback_requires_human_approval:requiresAdjacent||requestMode==='exact',
     candidate_combinations:candidateCombinations,
     candidate_unit_ids:flatten(candidateCombinations),
     request_mode:requestMode,
@@ -124,7 +129,7 @@ function specifiedOptions(request,poolChecks={}){
       candidateCombinations:[request.exactUnitIds],
       needAB:rows.filter(x=>x.segment!=='C').length,
       needC:rows.filter(x=>x.segment==='C').length,
-      requestMode:'exact',poolChecks
+      requestMode:'exact',poolChecks,requiresAdjacent:true
     })];
   }
   if(!ab&&!c)return null;
@@ -161,7 +166,7 @@ function specifiedOptions(request,poolChecks={}){
     combos=[];
     mode='multi_split_units';
   }
-  return [decorate({label,units,capacity:ab*2+c*4,candidateCombinations:combos,needAB:ab,needC:c,requestMode:mode,poolChecks})];
+  return [decorate({label,units,capacity:ab*2+c*4,candidateCombinations:combos,needAB:ab,needC:c,requestMode:mode,poolChecks,requiresAdjacent:request.requiresAdjacent===true})];
 }
 
 export function splitCapacityOptions(guests,poolChecks={},request=null){
@@ -171,7 +176,7 @@ export function splitCapacityOptions(guests,poolChecks={},request=null){
   const units=[
     {key:'splitA',label:'Osztott A',capacity:BUSINESS.accommodationTypes.splitA.maxGuests,segment:'A'},
     {key:'splitB',label:'Osztott B',capacity:BUSINESS.accommodationTypes.splitB.maxGuests,segment:'B'},
-    {key:'splitC',label:'Osztott C',capacity:BUSINESS.accommodationTypes.splitC.maxGuests,segment:'C'}
+    {key:'splitC',label:'Osztott C',capacity:4,segment:'C'}
   ];
   const combos=[];
   for(let mask=1;mask<(1<<units.length);mask++){
@@ -182,7 +187,7 @@ export function splitCapacityOptions(guests,poolChecks={},request=null){
   combos.sort((a,b)=>a.excess-b.excess||a.count-b.count||a.selected.map(x=>x.label).join().localeCompare(b.selected.map(x=>x.label).join()));
   const best=combos[0];
   if(!best)return [];
-  return combos.filter(x=>x.excess===best.excess&&x.count===best.count).map(x=>{
+  return combos.filter(x=>x.excess===best.excess&&(x.count===best.count||guests===4&&x.selected.every(y=>y.segment!=='C'))).map(x=>{
     const segments=x.selected.map(y=>y.segment);
     const needAB=segments.filter(s=>s==='A'||s==='B').length, needC=segments.filter(s=>s==='C').length;
     return decorate({
@@ -203,13 +208,13 @@ export function splitInternalSummary(options=[],request=null){
     return 'Egyetlen 2 fős osztott apartman: bármely szabad A/B egység választható (7A, 7B, 8A, 8B, 9A, 9B, 10A, 10B). '+technical;
   }
   if(first.request_mode==='double_two_person'){
-    return 'Két 2 fős osztott apartman: elsődleges az azonos házas A+B pár (7A+7B, 8A+8B, 9A+9B, 10A+10B). Eltérő házakból összeállított A/B kombináció csak emberi jóváhagyással használható. '+technical;
+    return 'Két 2 fős osztott apartman: elsődleges az azonos házas A+B pár (7A+7B, 8A+8B, 9A+9B, 10A+10B). Közelségi kikötés nélkül az igazolt közös készletből eltérő házak is használhatók; szomszédságot nem ígérünk. '+technical;
   }
   if(first.request_mode==='single_four_person'){
     return 'Egy 4 fős osztott apartman: a C, vagyis a felső/emeleti egység választható (7C, 8C, 9C, 10C). '+technical;
   }
   if(first.request_mode==='two_plus_four'){
-    return '2 fős + 4 fős osztott kombinációnál elsőként ugyanazon fizikai ház A+C vagy B+C párosát kell keresni. Más házak keverése csak emberi jóváhagyással lehetséges. '+technical;
+    return '2 fős + 4 fős osztott kombinációnál elsőként ugyanazon fizikai ház A+C vagy B+C párosát kell keresni. Közelségi kikötés nélkül az igazolt készletből eltérő házak is használhatók. '+technical;
   }
   if(first.request_mode==='full_split_house'){
     return 'Teljes osztott faház igénynél elsőként ugyanazon fizikai ház A+B+C egységeit kell együtt keresni (7A+7B+7C … 10A+10B+10C). '+technical;

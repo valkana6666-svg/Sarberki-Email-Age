@@ -701,6 +701,11 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const needChildStatus=!childStatusKnown;
   const needChildAge=childStatusKnown&&Number(children)>0&&childAges.length<Number(children);
   const questions=replyQuestions(lang,{needDates,needAdults,needChildStatus,needPhone:!phone,needCabin:needCabin&&!canRecommendByCapacity,needChildAge,guests});
+  if(needChildAge&&childAges.length){
+    const count=Number(children)-childAges.length;
+    const replacement={hu:`A már megadott életkorokat rögzítettük. Kérjük, írja meg még a fennmaradó ${count} gyermek életkorát.`,de:`Die genannten Altersangaben sind erfasst. Bitte nennen Sie noch das Alter der übrigen ${count} Kinder.`,en:`We have recorded the ages provided. Please tell us the ages of the remaining ${count} children.`,si:`Navedene starosti smo zabeležili. Prosimo, navedite še starost preostalih ${count} otrok.`}[lang];
+    const childQuestion=replyQuestions(lang,{needChildAge:true})[0];const index=questions.indexOf(childQuestion);if(index>=0)questions[index]=replacement;
+  }
   if(mismatch) questions.unshift({hu:'Kérjük, pontosítsa a létszámot: az összlétszám eltér a megadott felnőttek és gyermekek összegétől.',de:'Bitte klären Sie die Personenzahl: Die Gesamtzahl stimmt nicht mit der Zahl der Erwachsenen und Kinder überein.',en:'Please clarify the party size: the total differs from the number of adults and children.',si:'Prosimo, pojasnite število gostov: skupno število se ne ujema s številom odraslih in otrok.'}[lang]);
 
   const stayLines=[];

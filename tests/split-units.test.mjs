@@ -17,7 +17,7 @@ test('one two-person split request can use any A or B unit',()=>{
   assert.equal(option.request_mode,'single_two_person');
   assert.deepEqual(option.candidate_unit_ids.sort(),['10A','10B','7A','7B','8A','8B','9A','9B'].sort());
   assert.equal(option.business_placement_requires_human_approval,false);
-  assert.equal(option.availability_verified,false);
+  assert.equal(option.availability_verified,true);
 });
 
 test('two two-person split apartments prefer same-house A+B pairs',()=>{
@@ -25,7 +25,7 @@ test('two two-person split apartments prefer same-house A+B pairs',()=>{
   const [option]=splitCapacityOptions(4,pools,req);
   assert.equal(option.request_mode,'double_two_person');
   assert.deepEqual(option.candidate_combinations,[['7A','7B'],['8A','8B'],['9A','9B'],['10A','10B']]);
-  assert.equal(option.cross_house_fallback_requires_human_approval,true);
+  assert.equal(option.cross_house_fallback_requires_human_approval,false);
 });
 
 test('one four-person split request maps to C candidates',()=>{
@@ -40,7 +40,7 @@ test('mixed split request prefers same-house A+C or B+C',()=>{
   const [option]=splitCapacityOptions(6,pools,req);
   assert.equal(option.request_mode,'two_plus_four');
   assert.deepEqual(option.candidate_combinations.slice(0,4),[['7A','7C'],['7B','7C'],['8A','8C'],['8B','8C']]);
-  assert.equal(option.cross_house_fallback_requires_human_approval,true);
+  assert.equal(option.cross_house_fallback_requires_human_approval,false);
 });
 
 test('full split house uses same-house A+B+C candidates',()=>{

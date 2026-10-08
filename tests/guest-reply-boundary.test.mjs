@@ -7,7 +7,8 @@ import {composeGuestReply} from '../guest-reply/public-answer-renderer.mjs';
 test('new public reply preview is opt-in, separate from legacy draft and does not send',()=>{
   const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
   assert.match(html,/id="public_reply_generate"/u);
-  assert.match(html,/guest-reply\/public-reply-panel\.mjs/u);
+  assert.doesNotMatch(html,/<script[^>]+src="[^"]*public-reply-panel/u);
+  assert.match(html,/<section hidden id="public_reply_trial"/u);
   const panel=fs.readFileSync(new URL('../guest-reply/public-reply-panel.mjs',import.meta.url),'utf8');
   assert.doesNotMatch(panel,/SarberkiCaseController|BUSINESS|fetch\(|sendMail|\.netlify\/functions/u);
   assert.match(panel,/preview\.value=composeGuestReply/u);

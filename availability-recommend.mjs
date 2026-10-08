@@ -103,8 +103,8 @@ export function requestedSplitAvailabilitySentence(result,request,language='hu')
   const needed=[...(ab?[{pool:pools.splitAB,count:ab}]:[]),...(c?[{pool:pools.splitC,count:c}]:[])];
   if(needed.some(x=>x.pool?.verified&&x.pool.availableUnits<x.count))return ({hu:'A kért osztott elhelyezéshez nincs elegendő szabad kapacitás a megadott időszakra.',de:'Für die gewünschte geteilte Unterkunft gibt es für diesen Zeitraum nicht genügend freie Kapazität.',en:'There is not enough available capacity for the requested split accommodation on your dates.',si:'Za želeno deljeno nastanitev za vaš termin ni dovolj proste kapacitete.'})[language];
   if(needed.some(x=>!x.pool?.verified))return ({hu:'A kért osztott elhelyezés elérhetőségét nem sikerült hitelesen ellenőrizni.',de:'Die Verfügbarkeit der gewünschten geteilten Unterkunft konnte nicht verifiziert werden.',en:'We could not verify availability for the requested split accommodation.',si:'Razpoložljivosti želene deljene nastanitve ni bilo mogoče preveriti.'})[language];
-  if(ab===0&&c===1&&request.kind!=='exact')return availabilitySentence({available_options:[{label:'Osztott C (emeleti apartman)',units:1}]},language);
-  return ''; // A positive pool count alone never proves a physical pair or exact unit.
+  if(!request.requiresAdjacent&&request.kind!=='exact')return availabilitySentence({available_options:[{label:ab&&c?'Osztott A/B + Osztott C':ab?'Osztott A/B':'Osztott C (emeleti apartman)',units:ab+c,availability_verified:true,availability:'available'}]},language);
+  return ({hu:'A készlet elegendő lehet, de a kért konkrét vagy egymás melletti elhelyezést emberi ellenőrzés után tudjuk igazolni.',de:'Den gewünschten Standort prüfen wir vor der Bestätigung manuell.',en:'The requested exact or adjacent placement requires a separate manual check.',si:'Zahtevana konkretna ali sosednja namestitev potrebuje ročno preverjanje.'})[language];
 }
 export function replaceCapacityPlaceholder(draft,sentence,manual){
   const placeholders=[
@@ -206,7 +206,7 @@ function renderSplitInternalNote(options=[],request=null){
   el.textContent=summary;
   if(el.classList?.toggle)el.classList.toggle('hidden',!summary);
 }
-async function enrich(){
+async function enrich(provided=null){
   const arrival=$('f_arrival')?.value||'', departure=$('f_departure')?.value||'', guests=Number($('f_guests')?.value||0), cabin=$('f_unit')?.value||'';
   const original=$('message')?.value||$('gmail_original')?.textContent||'';
   const splitCabin=/^Osztott$/iu.test(cabin.trim());
@@ -228,22 +228,23 @@ async function enrich(){
   if(!draft)return;
   if(status){status.className='warning';status.textContent='Kapacitás-ellenőrzés folyamatban a teszt Previo-forrásból…';}
   try{
-    const response=await fetch('/api/availability-options',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({arrival,departure,guests})});
-    const data=await response.json();
+    const runtime=window.SarberkiBookingRuntime;
+    const response=runtime||provided?null:await fetch('/api/availability-options',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({arrival,departure,guests})});
+    const data=provided||(runtime?await runtime.check(caseState?.values||{arrival,departure,guests,unit:cabin},original):await response.json());
     if(key!==fingerprint())return;
-    if(!response.ok)throw Error(data.error||'Nem sikerült a kapacitás-ellenőrzés.');
+    if(response&&!response.ok)throw Error(data.error||'Nem sikerült a kapacitás-ellenőrzés.');
     const rawLang=($('f_language')?.value||'HU').toLowerCase();
     const lang=rawLang==='sl'?'si':rawLang;
     const splitRequest=initialSplitRequest||(window.SarberkiSplitUnits?.splitRequestFromText?.(original)||null);
     const planned=window.SarberkiSplitUnits?.splitCapacityOptions?.(guests,data.split_pool_checks||{},splitCabin?splitRequest:null);
     const manualOptions=Array.isArray(planned)?planned:(data.manual_review_options||[]);
-    const manualData={...data,manual_review_options:manualOptions};
+    const manualData={...data,manual_review_options:manualOptions.filter(x=>!x.availability_verified)};
     const sentence=splitCabin?requestedSplitAvailabilitySentence(data,splitRequest,lang):[requestedAvailabilitySentence(data,cabin,lang),availabilitySentence(data,lang)].filter(Boolean).join('\n');
     const manual=splitReviewSentence(manualData,lang);
     renderSplitInternalNote(manualOptions,splitCabin?splitRequest:null);
-    const verified=splitCabin?manualOptions.some(x=>x.request_mode!=='exact'&&x.units?.length===1&&x.pooled_availability_verified===true):data.available_options?.some(x=>x.availability_verified===true);
+    const verified=splitCabin?manualOptions.some(x=>x.availability_verified===true):data.available_options?.some(x=>x.availability_verified===true);
     const requestedAvailable=splitCabin?Boolean(verified):hasSpecificCabin(cabin)?Boolean(data.available_options?.some(x=>x.availability_verified===true&&localizedOptionLabel(x.label,'hu')===cabin)):null;
-    if(caseState){window.SarberkiCaseController.apply({type:'availability',fingerprint:caseKey,verified:Boolean(verified),requestedAvailable,lines:[sentence,manual].filter(Boolean)});if(status){status.className='warning';status.textContent='Kapacitásvizsgálat kész; az eredmény és a párosítás kezelői ellenőrzésre vár.';}return;}
+    if(caseState){window.SarberkiCaseController.apply({type:'availability',fingerprint:caseKey,verified:Boolean(verified),requestedAvailable,checkedAt:data.checkedAt,evidence:data,lines:[sentence,manual].filter(Boolean)});if(status){status.className='warning';status.textContent='Kapacitásvizsgálat kész; az eredmény és a párosítás kezelői ellenőrzésre vár.';}return;}
     const fresh=currentReplyBase();
     draft.value=replaceCapacityPlaceholder(fresh,sentence,manual);
     const gmailDraft=$('gmail_draft');
@@ -265,6 +266,7 @@ async function enrich(){
 if(typeof document!=='undefined'){
   document.addEventListener('sarberki:analysis-ready',()=>{void enrich();});
   document.addEventListener('sarberki:gmail-normalized',()=>{setTimeout(()=>void enrich(),0);});
+  window.SarberkiRefreshCapacity=enrich;
   window.SarberkiAvailabilityReady=true;
   document.dispatchEvent(new Event('sarberki:availability-ready'));
   if($('results')&&!$('results').classList.contains('hidden')) setTimeout(()=>void enrich(),0);

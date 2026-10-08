@@ -34,13 +34,16 @@ export function updateCaseState(state, action) {
   if(action.type==='facts') {
     next.values={...next.values,...action.values};
     if(caseFingerprint(state.values)!==caseFingerprint(next.values)) {
-      next.quote=null; next.availability=null;
+      next.quote=null;
+      const capacityFields=['arrival','departure','guests','adults','children','unit','units_requested','request'];
+      if(capacityFields.some(k=>String(state.values[k]??'')!==String(next.values[k]??'')))next.availability=null;
       next.hotTub={...next.hotTub,atHouse:hotTubAtHouse(next.values.unit),available:null,fee:null,included:null};
       next.terms={...next.terms,depositVerified:false,cancellationVerified:false,depositAmount:null,depositDeadline:null,cancellationDeadline:null};
     }
     if(state.values.request!==next.values.request) {
       next.hotTub={requested:/dézs|hot.?tub|badefass|whirlpool|kad/iu.test(next.values.request||''),atHouse:hotTubAtHouse(next.values.unit),available:null,fee:null,included:null};
       next.quote=null;
+      if(/egymás|szomszéd|same house|adjacent|nebeneinander|sosed/iu.test(String(state.values.request||'')+' '+String(next.values.request||'')))next.availability=null;
     }
   } else if(action.type==='quote') {
     const quote=action.quote;
@@ -51,7 +54,7 @@ export function updateCaseState(state, action) {
   } else if(action.type==='invalidateQuote') {next.quote=null;next.terms={...next.terms,depositVerified:false,depositAmount:null,depositDeadline:null};}
   else if(action.type==='availability') {
     if(action.fingerprint!==caseFingerprint(next.values)) return state;
-    next.availability={lines:action.lines||[],verified:action.verified===true};
+    next.availability={lines:action.lines||[],verified:action.verified===true,checkedAt:action.checkedAt||new Date().toISOString(),evidence:action.evidence||null};
     if(action.requestedAvailable===false){
       next.quote=null;
       next.terms={...next.terms,depositVerified:false,depositAmount:null,depositDeadline:null};
@@ -146,5 +149,5 @@ export function deriveCaseView(state, baseReview={warning_codes:[],issues:[]}) {
   const fishing=fishingQuestion(state.original,lang);
   const draft=buildReplyDraft({language:lang,name:v.name,original:state.original,arrival:v.arrival,departure:v.departure,guests,adults,children,childAges:ages,phone:v.phone,cabin:v.unit||'? – emberi döntésre vár',hotTub:h.requested,intent:state.intent,brandName:BUSINESS.brandName,bookingRules:rules,operationalRules:BUSINESS.operationalRules,pricingRules:BUSINESS.pricingRules,knowledgeLines:fishing?[fishing.answer]:[],caseContext:{priceLines,bookingLines,extraLines,availabilityLines,priceApproved:Boolean(q)}});
   const summary=`${v.arrival||'?'} – ${v.departure||'?'}; ${v.nights||'?'} éjszaka; ${guests??'?'} fő; felnőtt: ${adults??'?'}; gyermek: ${children??'?'}${ages.length?' ('+ages.join(', ')+' éves)':''}; ${v.unit||'háztípus nincs megadva'}${cars!=null?'; Parkolás: '+cars+' autó – adat megadva':''}${q?'; Ár ellenőrizve':''}.`;
-  return {draft,summary,missing,warnings,closeArrival,untilArrival,critical:Boolean(baseReview.critical)||warnings.some(x=>['availability_unverified','close_arrival','deposit_review','deposit_basis_review','cancellation_terms_review','hot_tub_fee','hot_tub_included','cabin_type_required'].includes(x.code)),priceStatus:q?'Ár ellenőrizve':'Ár nincs jóváhagyva'};
+  return {draft,summary,missing,warnings,closeArrival,untilArrival,critical:Boolean(baseReview.critical)||warnings.some(x=>['availability_unverified','close_arrival','deposit_review','deposit_basis_review','cancellation_terms_review','cabin_type_required'].includes(x.code)),priceStatus:q?'Ár ellenőrizve':'Ár nincs jóváhagyva'};
 }
