@@ -888,3 +888,31 @@ test('hot-tub questions always state separate rental when business rules say so'
   assert.match(reply,/dézsa külön bérelhető/u);
   assert.match(reply,/nem tartozik automatikusan a házhoz/u);
 });
+
+
+test('singular named cabin without a numeral is one booking unit, not one unit per guest',()=>{
+  for(const message of [
+    '2026. október 23–25. között 2 felnőtt és 2 gyermek részére Családi faházat szeretnénk.',
+    'Deluxe faházban szeretnénk megszállni.',
+    'VIP házra kérünk ajánlatot.'
+  ]){
+    const result=requestedUnitsFromText(message);
+    assert.equal(result.count,1,message);
+    assert.equal(result.open,false);
+    assert.ok(result.evidence,message);
+  }
+  assert.equal(requestedUnitsFromText('2026. október 23–25. között 4 főre melyik ház elérhető?').count,0);
+  assert.equal(requestedUnitsFromText('Családi vagy Deluxe faházat keresünk').count,0);
+  assert.equal(requestedUnitsFromText('Családi faházak érdekelnek').count,0);
+  assert.equal(requestedUnitsFromText('Két Családi faházat szeretnénk').count,2);
+  assert.equal(requestedUnitsFromText('Több Családi faházat szeretnénk').open,true);
+});
+test('signed Test Guest name is not shortened to generic Vendég in HU salutation',()=>{
+ const original='2026. október 23–25. között Családi faházat szeretnénk.\nÜdvözlettel:\nTeszt Vendég';
+ assert.equal(nameFromText(original),'Teszt Vendég');
+ const draft=buildReplyDraft({language:'hu',name:'Teszt Vendég',original,arrival:'2026-10-23',departure:'2026-10-25',cabin:'Családi',adults:2,children:2,childAges:[5,8],guests:4});
+ assert.match(draft,/^Kedves Teszt Vendég!/u);
+ assert.doesNotMatch(draft,/^Kedves Vendég!/u);
+ const ordinary=buildReplyDraft({language:'hu',name:'Kovács László',original:'Deluxe faházat szeretnék',cabin:'Deluxe'});
+ assert.match(ordinary,/^Kedves László!/u);
+});
