@@ -544,4 +544,7 @@ test('operator clicks ordinary quote button: locked Previo returns labelled refe
  h.element('approve_price').onclick();
  assert.match(h.element('draft').value,/122.200|122 200/u);
  assert.match(h.element('draft').value,/publikus árlistája/u);
+ assert.match(h.element('draft').value,/A kiválasztott szállás a kért időszakra elérhető/u);
+ assert.doesNotMatch(h.element('draft').value,/Ellenőrizzük, hogy a megadott időpontra elérhető|Az elérhetőséget külön visszaigazoljuk/u);
+ assert.match(h.element('price_approval_status').textContent,/elérhetőségét jóváhagytad/u);
 });
