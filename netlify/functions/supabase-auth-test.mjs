@@ -5,7 +5,7 @@ import { createSupabaseTransport, createSupabaseAuthority, createSupabaseCaseRep
 const origin = 'https://leafy-chimera-2403e5.netlify.app';
 const project = 'https://mojnqizbcaczstguikpv.supabase.co';
 const emails = ['writer@sarberki-test.invalid','reader@sarberki-test.invalid','operator@demo-test.invalid'];
-const headers = {'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"};
+const headers = {'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'same-origin','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"};
 const reply = (statusCode, body) => ({statusCode,headers,body});
 export function createHandler({env=process.env, fetchImpl=fetch, now=Date.now}={}) {
  return async event => {
