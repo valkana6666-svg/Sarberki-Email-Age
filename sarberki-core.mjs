@@ -621,7 +621,7 @@ function pricingTopicLines(language='hu',original='',arrival=null,departure=null
     }[lang]);
   }
   if(asksAlternative) lines.push({
-    hu:'Ha a kért háztípus nem elérhető, megfelelő másik háztípust vagy több egységből álló megoldást is ellenőrzünk; ezt csak a tényleges szabad kapacitás alapján javasoljuk.',
+    hu:'Ha a kért háztípus nem elérhető, másik megfelelő faházat vagy több apartmanból álló elhelyezést is javasolhatunk az adott időpontban elérhető lehetőségek közül.',
     de:'Falls der gewünschte Haustyp nicht verfügbar ist, prüfen wir auch einen passenden anderen Haustyp oder eine Kombination mehrerer Einheiten; einen Vorschlag machen wir erst anhand der tatsächlichen Verfügbarkeit.',
     en:'If the requested cabin type is unavailable, we will also check another suitable cabin type or a combination of units; any suggestion will be based on actual availability.',
     si:'Če želeni tip hiške ni na voljo, preverimo tudi drug primeren tip ali kombinacijo več enot; predlog podamo šele na podlagi dejanske razpoložljivosti.'
@@ -727,9 +727,9 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const asksPrice=/(?:mennyi|mennyibe|ár|ára|árat|price|cost|kosten|preis|cena)/iu.test(original);
   if(asksAvailability&&!canRecommendByCapacity) stayLines.push({
     hu:'A kért faház elérhetőségét külön visszaigazoljuk.',
-    de:'Wir prüfen die freie Kapazität für den gewünschten Zeitraum.',
-    en:'We will check availability for the requested dates.',
-    si:'Preverimo proste kapacitete za izbrani termin.'
+    de:'Wir bestätigen die Verfügbarkeit des gewünschten Hauses gesondert.',
+    en:'We will confirm availability of your requested cabin separately.',
+    si:'Razpoložljivost želene hiške bomo potrdili posebej.'
   }[lang]);
 
   const operationalLines=operationalTopicLines(lang,original,operationalRules,caseContext);
