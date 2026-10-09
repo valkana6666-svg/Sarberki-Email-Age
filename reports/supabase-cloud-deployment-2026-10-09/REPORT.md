@@ -43,7 +43,7 @@ Dátum: 2026-10-09. Állapot: részleges telepítés, aktiválás tiltott.
 - Netlify SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY és CASE_STORE_TEST_TENANTS nincs beállítva; nincs aktív felhős alkalmazáskapcsolat.
 - Netlify beépített URL futtatási környezetben nincs igazolva; a teszthely domainje megfelelő.
 - Netlify tényleges csomag/futtatási régió és kvóták teljes ellenőrzése nincs kész. A fiók felülete 75% feletti havi kreditfelhasználást jelzett; recharge vagy upgrade nem lett bekapcsolva.
-- CASE_STORE_ENABLED=synthetic-only nem lett beállítva, új deploy nem indult.
+- CASE_STORE_ENABLED=synthetic-only nem lett beállítva; új deployt kézzel nem indítottunk. A jelentés tesztági commitja kiválthat automatikus teszt-Netlify buildet; ez nem E2E-bizonyíték.
 - PREVIO_READ_SAFETY_VERIFIED nem módosult; a biztonsági gate zárva maradt.
 
 ## Tiltások és folytatás
