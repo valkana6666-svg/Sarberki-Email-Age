@@ -126,11 +126,11 @@
     const verified=(availabilityOptions.available_options||[]).filter(x=>x&&x.availability_verified!==false);
     const manual=(availabilityOptions.manual_review_options||[]).filter(x=>x&&x.pooled_availability_verified===true);
     const copy={
-      HU:{verified:'A foglalási felületen ellenőrzött szabad lehetőségek:',manual:'Az Osztott egységeknél a szükséges 2 fős és 4 fős Previo poolban van szabad kapacitás; a konkrét A/B + C fizikai párosítást kézzel kell ellenőrizni:',unit:'egység'},
-      DE:{verified:'Auf der Buchungsseite geprüfte freie Möglichkeiten:',manual:'Für die geteilten Einheiten ist in den benötigten 2-Personen- und 4-Personen-Previo-Pools freie Kapazität vorhanden; die konkrete physische Zuordnung A/B + C muss manuell geprüft werden:',unit:'Einheiten'},
-      SL:{verified:'Na rezervacijskem sistemu preverjene proste možnosti:',manual:'V potrebnih Previo skupinah za 2- in 4-osebne deljene enote je dovolj prostih kapacitet; konkretno fizično kombinacijo A/B + C je treba preveriti ročno:',unit:'enoti'},
-      EN:{verified:'Available options verified on the booking system:',manual:'The required 2-person and 4-person Previo pools have free capacity for the split units; the specific physical A/B + C pairing still requires manual verification:',unit:'units'}
-    }[lang]||{verified:'Available options verified on the booking system:',manual:'Split-unit pool capacity is available; the specific physical pairing requires manual verification:',unit:'units'};
+      HU:{verified:'A foglalási felületen ellenőrzött szabad lehetőségek:',manual:'Osztott apartmanokból álló lehetséges elhelyezések (a pontos apartmanokat külön visszaigazoljuk):',unit:'egység'},
+      DE:{verified:'Auf der Buchungsseite geprüfte freie Möglichkeiten:',manual:'Mögliche Kombinationen aus geteilten Apartments (die genaue Unterkunft bestätigen wir separat):',unit:'Einheiten'},
+      SL:{verified:'Na rezervacijskem sistemu preverjene proste možnosti:',manual:'Možne kombinacije deljenih apartmajev (natančno namestitev potrdimo posebej):',unit:'enoti'},
+      EN:{verified:'Available options verified on the booking system:',manual:'Possible split-apartment combinations (we will separately confirm the exact accommodation):',unit:'units'}
+    }[lang]||{verified:'Available options verified on the booking system:',manual:'Possible split-apartment combinations; the exact accommodation will be confirmed separately:',unit:'units'};
     const lines=[];
     if(verified.length){
       lines.push(copy.verified);
