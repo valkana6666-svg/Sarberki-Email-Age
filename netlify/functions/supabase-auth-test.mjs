@@ -1,4 +1,5 @@
 // Temporary owner-operated probe. Closed by default; never enables booking-cases.
+import { createServerCaseService } from '../../shared-core/server-case-service.mjs';
 import { randomUUID } from 'node:crypto';
 import { createSupabaseTransport, createSupabaseAuthority, createSupabaseCaseRepository } from '../../shared-core/supabase-case-repository.mjs';
 const origin = 'https://leafy-chimera-2403e5.netlify.app';
@@ -9,7 +10,8 @@ const reply = (statusCode, body) => ({statusCode,headers,body});
 export function createHandler({env=process.env, fetchImpl=fetch, now=Date.now}={}) {
  return async event => {
   const until = Date.parse(env.SUPABASE_AUTH_TEST_UNTIL || '');
-  if(env.CASE_STORE_ENABLED !== 'disabled' || env.URL !== origin || env.SUPABASE_URL !== project || !env.SUPABASE_PUBLISHABLE_KEY?.startsWith('sb_publishable_') || !Number.isFinite(until) || until <= now() || until-now()>86400000) return reply(404,'Tesztútvonal kikapcsolva.');
+  if(env.CASE_STORE_ENABLED !== 'disabled' || env.URL !== origin || env.SUPABASE_URL !== project || !env.SUPABASE_PUBLISHABLE_KEY?.startsWith('sb_publishable_')) return reply(404,'Tesztútvonal kikapcsolva.');
+  if(!Number.isFinite(until) || until <= now() || until-now()>86400000) return reply(404,'Tesztútvonal kikapcsolva. Szerveroldali konfiguráció ellenőrizve.');
   if(event.httpMethod === 'GET') return reply(200,`<!doctype html><html lang="hu"><meta charset="utf-8"><title>Sárberki ideiglenes Auth-próba</title><h1>Szintetikus Supabase Auth-próba</h1><p>A jelszavak csak a Netlify szerver és a megadott Supabase-projekt memóriájában használhatók. Token nem kerül a böngészőbe. Két új szintetikus ügy megmarad a mentési próbához.</p><form method="post">${emails.map((email,i)=>`<p><label>${email}<input type="password" name="password${i}" autocomplete="current-password" required maxlength="256"></label></p>`).join('')}<button type="submit">Auth, RLS és CAS teszt indítása</button></form></html>`);
   if(event.httpMethod !== 'POST') return reply(405,'Nem támogatott művelet.');
   if(event.headers?.origin !== origin || !(event.headers?.['content-type'] || '').startsWith('application/x-www-form-urlencoded') || event.isBase64Encoded || Buffer.byteLength(event.body || '')>8192) return reply(400,'Érvénytelen kérés.');
@@ -35,6 +37,9 @@ export function createHandler({env=process.env, fetchImpl=fetch, now=Date.now}={
    check('Író operátor új szintetikus ügyet ír',await repos[0].insert('sarberki-test',id,{data}));
    check('Olvasó operátor ügyet olvas',!!await repos[2].get('sarberki-test',id));
    const denied=async(fn)=>{try{await fn();return false;}catch{return true;}};
+   const readerService=createServerCaseService({repository:repos[2],resolveAuthority:createSupabaseAuthority(ts[2])});
+   check('Hamisított kliensszerepkör nem ad írásjogot',await denied(()=>readerService.createCase({requestContext:{userId:identities[0].subject,role:'admin'},tenantId:'sarberki-test',bookingCase:{...data,id:id+'_spoof'}})));
+   check('Végleges jóváhagyás tiltva',await denied(()=>readerService.requireApproval({tenantId:'sarberki-test',requestContext:{role:'admin'}})));
    check('Olvasó RPC írásának tiltása',await denied(()=>repos[2].compareAndSwap('sarberki-test',id,1,{data})));
    check('Második tenant nem olvashatja az első ügyét',await repos[3].get('sarberki-test',id)===null);
    check('Második tenant nem írhat az elsőbe',await denied(()=>repos[3].compareAndSwap('sarberki-test',id,1,{data})));
