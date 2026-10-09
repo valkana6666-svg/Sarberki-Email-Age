@@ -34,3 +34,7 @@ A `PREVIO_READ_SAFETY_VERIFIED` kapcsolót ez a fejlesztés nem módosítja. Az 
 ## Hosszú távú stratégia
 
 A központi ügytár alapja az e-mail, chatbot és telefonos AI közös ügyállapotának. A Sárberki az első alkalmazás, de a szerveroldali jogosultsági határt már most úgy tervezzük, hogy később több vállalkozás adata soha ne keveredhessen. A teljes többvállalkozásos üzem csak további, külön igazolt biztonsági fejlesztéssel lehetséges.
+
+## 2026-10-09 megvalósítási frissítés
+
+A SQL/RLS/CAS migráció, Supabase Auth feloldó, repository, kikapcsolt Netlify API, meglévő motor szerveres illesztése és helyi export-előnézet elkészült. A felhős aktiválás, bejelentkezési UI és teljes visszaállítható ügyimport nincs kész. A fenti eredeti lista ezekhez továbbra is követelmény; aktuális, részletes státusz és továbblépés: `reports/server-foundation-2026-10-09/REPORT.md`, `DEPLOYMENT-GUIDE.md`.

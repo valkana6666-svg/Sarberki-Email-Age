@@ -11,3 +11,7 @@
 
 - Tartós stratégia: a Sárberki a későbbi AI-vállalkozás első alkalmazása. Új fejlesztésnél moduláris, vállalkozásonként elkülönített és tesztelhető határokat alakíts ki a jelenlegi stabilitás megőrzésével. Részletek: `docs/PLATFORM-STRATEGY.md`.
 - Élő Previo-lekérdezést ne ismételj, amíg az alkalmazott műveletek készletzárolási mellékhatásának hiánya nincs dokumentáltan igazolva. A teszthost önmagában nem engedély: a szerveroldali biztonsági kapcsoló alapértelmezetten tilt.
+
+- Központi ügytár: `supabase/migrations/202610090001_case_store.sql` és `shared-core/server-booking-runtime.mjs`. A Netlify ügy-API alapértelmezetten tiltott, és jelenleg kizárólag szintetikus tesztadatokhoz készül.
+- Service role nem használható ezen a tárolási útvonalon. A definer SQL-függvény külön ellenőrzi az `auth.uid()` és a DB-tagság szerinti jogosultságot. RLS-t valódi PostgreSQL-motoron is tesztelj, ne csak mockkal.
+- Nincs automatikus localStorage-migráció. Tulajdonosi bejelentkezés, felhős RLS/E2E ellenőrzés és mentés-helyreállítás nélkül ne aktiváld és ne fogadj valódi vendégadatot.

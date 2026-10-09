@@ -28,3 +28,13 @@ A konfigurációt, adaptert és válaszforrásokat megbízható alkalmazáskód 
 Az élő Previo-kapacitás és ár végpont alapértelmezetten tiltott. A teszthost és a `PREVIO_READ_SAFETY_VERIFIED=true` szerveroldali beállítás együttesen szükséges. Ezt csak a használt műveletek mellékhatásainak dokumentált kizárása után szabad beállítani. A fejlesztés során ezt nem kapcsoltuk be. Az új adaptermetódus normalizál, önmagában nem bizonyítja a szolgáltatói lekérdezés mellékhatás-mentességét.
 
 A meglévő értelmező és árkezelő még tartalmaz Sárberki-specifikus elemeket; fokozatos kivonásuk külön feladat. A generikus ármodell bevezetése nem írja át a meglévő árjóváhagyást. Az egyedi egység- vagy szomszédságbizonyíték hiányát továbbra sem pótolja típusszintű készlet.
+
+## Központi perzisztencia – 2026. október 9.
+
+Elkészült a Supabase/PostgreSQL szerződés és a kikapcsolt Netlify `booking-cases` funkció. A szerveres import ugyanazt a `createBookingCaseStore` motort használja izolált, kérésenként betöltött állapoton; kizárólag a végső mentés kerül atomikus adatbázis-műveletbe. A böngészős runtime szinkron szerződése változatlan: az új aszinkron kliens külön, opt-in illesztés, nem automatikus átállás.
+
+A tenant/case kulcs, mailbox/message egyediség és CAS a DB-ben érvényesül. Az audit nem másolja le a teljes személyes ügyállapotot: verzió, aktor és SHA-256 ellenőrzőösszeg kerül bele. Üzenetek és tervezetek rendes mentésnél csak hozzáfűzhetők. Ez nem külső, kriptográfiailag aláírt auditarchívum; az adatbázis tulajdonosa továbbra is privilegizált.
+
+A központi új tervezetútvonal a `central-reply.mjs` ellenőrzött tenant-konfigurációját használja, kliens által állított ár/kapacitás-bizonyíték nélkül. Jelenleg csak a `sarberki-test` tenantnak van konfigurált választervezése; a demo tenant nem örökli meg a Sárberki szabályait. Ár-, kapacitás- és végleges jóváhagyási írás az új DB-útvonalon tiltott; az ezekhez szükséges megbízható bizonyítékimport külön következő fejlesztés.
+
+Felhőprojekt nem jött létre: a tulajdonosi Supabase-bejelentkezés hiányzik. A helyi PostgreSQL/PGlite teszt igazolja a policy és SQL működését, de nem igazolja a Supabase Auth vagy a telepített Netlify E2E működését. Részletek: `reports/server-foundation-2026-10-09/REPORT.md`.

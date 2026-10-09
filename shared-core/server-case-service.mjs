@@ -33,6 +33,8 @@ export function createServerCaseService({ repository, resolveAuthority, clock = 
     return authority.subject;
   }
   function validateStored(record, tenantId, caseId) {
+    if (record !== null && (!record || typeof record !== 'object' || Array.isArray(record)))
+      reject('STORAGE_FAILURE', 'Érvénytelen ügytárválasz.');
     if (record && (record.tenantId !== tenantId || (caseId && record.caseId !== caseId)))
       reject('ISOLATION_FAILURE', 'Vállalkozási vagy ügyhatár sérülése.');
     return record;
@@ -52,7 +54,7 @@ export function createServerCaseService({ repository, resolveAuthority, clock = 
     await authorize(requestContext, tenantId, 'read');
     const records = await repository.list(tenantId);
     if (!Array.isArray(records)) reject('STORAGE_FAILURE', 'Érvénytelen ügytárválasz.');
-    records.forEach(record => validateStored(record, tenantId));
+    records.forEach(record => { if (!record) reject('STORAGE_FAILURE', 'Érvénytelen ügytárválasz.'); validateStored(record, tenantId); });
     return copy(records);
   }
   async function createCase({ requestContext, tenantId, bookingCase }) {
@@ -63,6 +65,7 @@ export function createServerCaseService({ repository, resolveAuthority, clock = 
     const at = clock();
     const record = { tenantId, caseId, revision: 1, createdAt: at, updatedAt: at, updatedBy: actor, data };
     const inserted = await repository.insert(tenantId, caseId, copy(record));
+    if (typeof inserted !== 'boolean') reject('STORAGE_FAILURE', 'Érvénytelen ügytárválasz.');
     if (inserted !== true) reject('CASE_CONFLICT', 'Az ügyazonosító már létezik.');
     return copy(record);
   }
@@ -80,8 +83,10 @@ export function createServerCaseService({ repository, resolveAuthority, clock = 
       createdAt: current.createdAt, updatedAt: clock(), updatedBy: actor, data };
     // The repository MUST compare atomically (tenant, caseId, revision).
     const updated = await repository.compareAndSwap(tenantId, caseId, expectedRevision, copy(record));
+    if (typeof updated !== 'boolean') reject('STORAGE_FAILURE', 'Érvénytelen ügytárválasz.');
     if (updated !== true) reject('CASE_CONFLICT', 'Az ügyet időközben másik kezelő módosította.');
     return copy(record);
   }
-  return Object.freeze({ getCase, listCases, createCase, updateCase });
+  return Object.freeze({ getCase, listCases, createCase, updateCase,
+    requireApproval: ({requestContext,tenantId}) => authorize(requestContext,tenantId,'approve') });
 }
