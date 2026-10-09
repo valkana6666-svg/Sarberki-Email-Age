@@ -1,7 +1,14 @@
 name: Sárberki one-time read-only Previo capacity crosscheck
 
-# Manually run only after configuring matching GitHub + Netlify test secrets.
+# Only the isolated test branch triggers this job. The first run is expected to
+# fail closed if the matching GitHub + Netlify test secrets have not been set.
+# Re-run the failed job AFTER setting both secrets; never modify main/production.
 on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths:
+      - .github/workflows/previo-readonly-crosscheck-20261010.yml
+      - tests/previo-live-two-window-check-20261010.mjs
   workflow_dispatch:
 
 permissions:
