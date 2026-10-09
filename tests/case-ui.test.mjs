@@ -41,7 +41,7 @@ function harness(runtime=null){
  analyze(message);
  return {node:id=>nodes.get(id),window,context,flush,analyze};
 }
-function approve(h){h.node('approved_price_manual').value='122200';h.node('approved_price_manual').dispatchEvent({type:'input'});h.node('approve_price').click();}
+function approve(h){h.node('approved_price_manual').value='122200';h.node('approved_price_manual').dispatchEvent({type:'input'});h.node('manual_quote_confirmed').checked=true;h.node('manual_quote_confirmed').dispatchEvent({type:'change'});h.node('approve_price').click();}
 test('actual analyzer and price approval handlers render both drafts from current state',()=>{
  const h=harness();approve(h);
  assert.match(h.node('draft').value,/122\s*200 Ft/u);assert.match(h.node('draft').value,/telefonszám/u);assert.match(h.node('draft').value,/Egy autó/u);assert.match(h.node('issues').textContent,/KÖZELI ÉRKEZÉS/u);
