@@ -9,6 +9,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/manual-fx"
+  to = "/.netlify/functions/manual-fx"
+  status = 200
+
+[[redirects]]
   from = "/api/availability-options"
   to = "/.netlify/functions/availability-options"
   status = 200
