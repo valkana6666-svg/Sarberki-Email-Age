@@ -21,3 +21,23 @@ A hivatalos restore mintának megfelelően roles, schema, data ebben a sorrendbe
 Restore után: mind az öt sc_* tábla, mindhárom Auth UUID és két tenant, memberships can_approve=false, RLS és SELECT policy-k, PK/unique kulcsok, authenticated/anon írástiltás, definer auth.uid/tagságellenőrzés, audit adatok, valós lokális Auth munkamenetes tenant- és CAS-próba. Csak egyező manifest és sikeres jogosultságtesztek után TESZTELVE a restore.
 
 Forrás: https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore
+
+## 2026-10-10 végrehajtási kiegészítés
+
+**BLOKKOLVA:** a jelenlegi agent-környezetben nincs `pg_dump`, `psql` vagy Docker. Nincs tulajdonos által biztonságosan átadott libpq-kapcsolat, tulajdonosi titkosítási publikus kulcs és tartós, GitHubtól független mentési cél. A Supabase SQL-connector lekérdezési jogosultsága nem ad teljes adatbázismentési hozzáférést. Nem készült teljes felhős mentés, és nem történt annak külön visszaállítása.
+
+**TESZTELVE, helyi fixture:** a meglévő PGlite PostgreSQL-környezetben a migrációból létrehozott szintetikus adatbázis fizikai snapshotját AES-256-GCM titkosítás után külön adatbázispéldányba töltjük. A sérült ciphertext elutasítása, policy-k, tábla-RLS, jogosultságok, adathash-ek, audit, tervezetelőzmények és a visszaállítás utáni új írás is ellenőrzött. A kulcs kizárólag a teszt memóriájában van. A teszt nem állít elő tartós tulajdonosi backupot. Az `auth.uid()` és Auth-felhasználók itt fixture-ek; ez nem egy felhős GoTrue/Auth szolgáltatás helyreállítása.
+
+Új, csak olvasó ellenőrző eszköz: `scripts/case-store-recovery-manifest.sql`. A forrás- és restore-adatbázisban azonos owner sessionből futtatandó. Táblák, policy-k, constraint-ek, grantok, függvénydefiníciók checksumja, rekorddarabszámok, auditrevíziók és a legfrissebb audit adathash-e kerülnek a manifestbe. Nem olvas jelszóhash-t vagy tokent. A manifest nem adatbázismentés; nem bizonyítja a teljes Auth/Storage/Vault helyreállítását.
+
+A tulajdonosi végrehajtás konkrét feltételei és sorrendje:
+
+1. Saját, titkosított lemezzel rendelkező gépen PostgreSQL 17-kompatibilis kliens, Docker és GnuPG. Az existing Supabase Connect panelből pontos session-pooler kapcsolat; a jelszó helyi, korlátozott libpq credential fájlba kerülhet, nem chatbe, parancssori argumentumba vagy repositoryba. A kapcsolatnak a `mojnqizbcaczstguikpv` forrásra kell mutatnia.
+2. A korábbi háromrészes Supabase CLI export mellett a teljes logikai adatbázis-export lefedettségét tételesen ellenőrizni kell: `auth.users`, `auth.identities`, alkalmazási adatok, séma, függvények, grantok, policy-k, sequence-ek és szükséges custom managed-schema módosítások. Egy permission errorral részlegessé vált dump sikertelen. Platformbeállítások, API-kulcsok, Storage bináris fájlok és Vault-kulcsok külön leltárt igényelnek, ha használatban vannak. Titkos értékek nem kerülhetnek a nyilvános leltárba.
+3. A manifest és a sikeresen elkészült dumpok összecsomagolása a tulajdonos titkosított lemezén; GnuPG titkosítás a tulajdonos ellenőrzött publikus kulcsára. A titkosított csomag SHA-256 hash-ének rögzítése. A tulajdonos privát kulcsa nem adható át az agentnek.
+4. A ciphertext másolása a tulajdonos GitHubtól független, tartós mentési helyére; onnan visszaolvasás és hash-összehasonlítás. A scratch-környezet és az agent-memória nem mentési hely.
+5. Ingyenes, lokális Supabase Docker-stack, izolált hálózat, külső SMTP/webhook/Gmail/Previo kapcsolat nélkül. Kizárólag új, üres restore-adatbázisba visszatöltés az eredeti dokumentum lépéseivel. A forrásprojektben sem reset, sem DROP, sem destruktív rollback nem megengedett.
+6. Manifest-összehasonlítás, policy/grant/function és Auth-adatellenőrzés, valódi helyi Auth-munkamenetek, RLS, CAS, duplikáció, audit és új írás ellenőrzése. Az audit identity sorszámának ugrása PostgreSQL-cache miatt megengedett; az egyediség, növekedés és a case-revíziók folytonossága kötelező.
+7. Csak mindezek bizonyítása után jelölhető a felhős mentés és az izolált restore késznek. Addig `CASE_STORE_ENABLED=disabled`.
+
+Hivatalos eljárás: https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore

@@ -105,3 +105,18 @@ test('manual case linking requires separate approve permission',async()=>{
  const {runtime}=fixture();const first=await runtime.ingest(envelope(),values,{expectedRevision:0});
  await assert.rejects(runtime.ingest(envelope('m2',{thread_id:'separate'}),values,{expectedRevision:1,approvedCaseId:first.record.caseId}),e=>e.code==='FORBIDDEN');
 });
+for(const key of ['sb_secret_fixture', 'x.'+Buffer.from(JSON.stringify({role:'service_role'})).toString('base64url')+'.x'])test('application transport refuses privileged key before network',()=>{
+ assert.throws(()=>createSupabaseTransport({url:'https://synthetic.supabase.co',publishableKey:key,token:'fixture',fetchImpl:()=>assert.fail('network')}),e=>e.code==='SETUP_REQUIRED');
+});
+test('server synthetic review connects confirmed extraction, capacity, unit price and pending draft without persisting evidence',async()=>{
+ const {service,auth}=fixture();const calls=[];const at='2026-10-10T08:00:00Z';
+ const runtime=createServerBookingRuntime({service,tenantId:'sarberki-test',requestContext:auth,clock:()=>at,reviewProviders:{
+  availability:async q=>{calls.push('capacity');return {...q,source:'synthetic-fixture',checkedAt:at,availability:'available',availableUnits:1};},
+  pricing:async q=>{calls.push('price');return {tenantId:'sarberki-test',unitId:q.cabin,capacity:4,nightly:100,basis:'per_unit',verified:true,source:'synthetic-fixture'};}
+ }});
+ const first=await runtime.ingest(envelope('parsed',{text:'Please book one Deluxe cabin from 2026-11-01 to 2026-11-03 for 2 adults and no children.'}),undefined,{expectedRevision:0});
+ const preview=await runtime.previewReview(first.record.caseId,1);assert.deepEqual(calls,['capacity','price']);assert.equal(preview.quote.total,200);assert.equal(preview.approval,'pending');
+ assert.equal((await service.getCase({requestContext:auth,tenantId:'sarberki-test',caseId:first.record.caseId})).revision,1);
+ const draft=await runtime.draft(first.record.caseId,1);assert.equal(draft.data.state.approval,'pending');assert.equal(draft.data.state.quote,null);assert.equal(draft.data.drafts.length,1);
+ await assert.rejects(runtime.previewReview(first.record.caseId,1),e=>e.code==='CASE_CONFLICT');
+});

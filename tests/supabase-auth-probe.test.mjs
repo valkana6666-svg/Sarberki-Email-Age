@@ -14,3 +14,13 @@ test('authentication failure never reflects passwords or upstream bodies',async(
  const secret='do-not-return-this';const h=createHandler({env,now:()=>now,fetchImpl:async()=>({ok:false,json:async()=>({error:secret})})});
  const r=await h({...event,body:`password0=${secret}&password1=b&password2=c`});assert.equal(r.statusCode,422);assert.ok(!r.body.includes(secret));
 });
+test('gate closes exactly at deadline for POST without authenticating',async()=>{
+ const handler=createHandler({env,now:()=>Date.parse(env.SUPABASE_AUTH_TEST_UNTIL),fetchImpl:()=>assert.fail('closed gate used network')});
+ assert.equal((await handler(event)).statusCode,404);
+});
+test('gate reevaluates expiry between requests',async()=>{
+ let time=now; const handler=createHandler({env,now:()=>time,fetchImpl:()=>assert.fail('network')});
+ assert.equal((await handler({httpMethod:'GET'})).statusCode,200);
+ time=Date.parse(env.SUPABASE_AUTH_TEST_UNTIL)+1;
+ assert.equal((await handler(event)).statusCode,404);
+});

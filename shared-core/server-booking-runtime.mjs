@@ -3,6 +3,8 @@ import { CaseServiceError } from './server-case-service.mjs';
 import { buildCentralReply } from '../central-reply.mjs';
 import { SARBERKI_TENANT } from '../tenant-config.mjs';
 import { randomUUID } from 'node:crypto';
+import { extractServerMessage } from './server-message-extraction.mjs';
+import { prepareSyntheticBookingReview } from './server-synthetic-booking-review.mjs';
 const reject=code=>{throw new CaseServiceError(code,code);};
 const allowed=['sender','text','message_id','mailbox_id','thread_id','rfc_message_id','in_reply_to','references','received_at','case_id'];
 const fields=['arrival','departure','guests','adults','children','child_ages','unit','units_requested','request','split_request_text','language','name','phone','cars','nights','pier','dog'];
@@ -14,8 +16,14 @@ export function validateSyntheticMessage(envelope,values) {
  if(envelope.references!==undefined&&(!Array.isArray(envelope.references)||envelope.references.length>100||envelope.references.some(x=>typeof x!=='string'||x.length>512)))reject('INVALID_INPUT');
 }
 // Reuses the existing engine. Only persistence is asynchronous; no new booking rules.
-export function createServerBookingRuntime({service,tenantId,requestContext,clock=()=>new Date().toISOString(),id=randomUUID}){
+export function createServerBookingRuntime({service,tenantId,requestContext,clock=()=>new Date().toISOString(),id=randomUUID,reviewProviders=null}){
  return {
+  async previewReview(caseId,expectedRevision){
+   if(!reviewProviders)reject('SETUP_REQUIRED');
+   const record=await service.getCase({requestContext,tenantId,caseId});
+   if(!record)reject('CASE_NOT_FOUND');if(record.revision!==expectedRevision)reject('CASE_CONFLICT');
+   return prepareSyntheticBookingReview({...reviewProviders,record,now:Date.parse(clock())});
+  },
   async draft(caseId,expectedRevision){
    if(tenantId!=='sarberki-test')reject('FORBIDDEN'); // No borrowed Sárberki rules for another tenant.
    const current=await service.getCase({requestContext,tenantId,caseId});
@@ -31,6 +39,7 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    return service.updateCase({requestContext,tenantId,caseId,expectedRevision,bookingCase:data});
   },
   async ingest(envelope,values,{expectedRevision,approvedCaseId=null}={}){
+   if(values===undefined){validateSyntheticMessage(envelope,{});values=extractServerMessage(envelope);}
    validateSyntheticMessage(envelope,values);
    const records=await service.listCases({requestContext,tenantId});
    const duplicate=records.find(r=>r.data.messages.some(m=>m.mailbox_id===envelope.mailbox_id&&m.message_id===envelope.message_id));

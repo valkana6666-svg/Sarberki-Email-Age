@@ -1,6 +1,12 @@
 import { CaseServiceError } from './server-case-service.mjs';
 const fail = code => { throw new CaseServiceError(code, code); };
 export function createSupabaseTransport({ url, publishableKey, token, fetchImpl = fetch } = {}) {
+ // Privileged credentials must never become application transport credentials.
+ if(typeof publishableKey!=='string' || publishableKey.startsWith('sb_secret_')) fail('SETUP_REQUIRED');
+ if(publishableKey.split('.').length===3){
+  try { if(JSON.parse(Buffer.from(publishableKey.split('.')[1],'base64url').toString()).role==='service_role') fail('SETUP_REQUIRED'); }
+  catch(error){ if(error instanceof CaseServiceError)throw error; fail('SETUP_REQUIRED'); }
+ }
  let base; try { base = new URL(url); } catch { fail('SETUP_REQUIRED'); }
  if (base.protocol !== 'https:' || !/^[a-z0-9-]+\.supabase\.co$/.test(base.hostname) || base.username || base.password || base.search || base.hash || base.pathname !== '/' || !publishableKey || !token) fail('SETUP_REQUIRED');
  return async (path, { method = 'GET', body } = {}) => {

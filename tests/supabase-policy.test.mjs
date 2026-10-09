@@ -14,9 +14,12 @@ async function fixture(){
  await db.query('insert into auth.users values ($1),($2),($3)',[user1,user2,user3]);
  await db.exec("insert into sc_tenants values('sarberki-test','Synthetic Sárberki',true),('demo-test','Synthetic Demo',true)");
  await db.query("insert into sc_memberships values('sarberki-test',$1,true,true,false),('sarberki-test',$2,true,false,false),('demo-test',$3,true,true,false)",[user1,user2,user3]);
- const as=async(user,action)=>{
+ let queue=Promise.resolve();
+ const as=(user,action)=>{
+ const run=queue.then(async()=>{
   await db.exec('set role authenticated');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[user]);
   try{return await action();}finally{await db.exec('reset role');}
+ });queue=run.catch(()=>{});return run;
  };
  const write=(data,revision=0)=>db.query('select sc_write_case($1,$2,$3,$4) as ok',[data.tenantId,data.id,revision,JSON.stringify(data)]);
  return {db,as,write};
@@ -95,5 +98,90 @@ test('Netlify handler → authority → engine → repository → PostgreSQL (HT
   assert.equal((await call(token3,'GET',{tenantId:'sarberki-test',caseId})).statusCode,403);
   assert.equal((await call(token2,'POST',{...input,expectedRevision:2,envelope:{...input.envelope,message_id:'m3'}})).statusCode,403);
   const draft=await call(token1,'POST',{action:'draft',tenantId:'sarberki-test',caseId,expectedRevision:2});assert.equal(draft.statusCode,200,draft.body);assert.equal(JSON.parse(draft.body).result.data.drafts.length,1);
+  const draft2=await call(token1,'POST',{action:'draft',tenantId:'sarberki-test',caseId,expectedRevision:3});assert.equal(draft2.statusCode,200,draft2.body);
+  assert.deepEqual(JSON.parse(draft2.body).result.data.drafts[0],JSON.parse(draft.body).result.data.drafts[0]);
+  assert.equal((await call(token1,'POST',{action:'draft',tenantId:'sarberki-test',caseId,expectedRevision:2})).statusCode,409);
+  const otherBox=await call(token1,'POST',{...input,envelope:{...input.envelope,mailbox_id:'second-inbox'}});
+  assert.equal(otherBox.statusCode,200,otherBox.body);assert.notEqual(JSON.parse(otherBox.body).result.record.caseId,caseId);
+  const parsed=await call(token1,'POST',{tenantId:'sarberki-test',expectedRevision:0,envelope:{...input.envelope,sender:'parser@synthetic.invalid',message_id:'parsed',thread_id:'parsed',text:'Please book one Deluxe cabin from 2026-11-01 to 2026-11-03 for 2 adults and no children.'}});
+  assert.equal(parsed.statusCode,200,parsed.body);const auto=JSON.parse(parsed.body).result.record;
+  assert.equal(auto.data.state.values.arrival,'2026-11-01');assert.equal(auto.data.state.values.language,'en');
+  const autoDraft=await call(token1,'POST',{action:'draft',tenantId:'sarberki-test',caseId:auto.caseId,expectedRevision:1});
+  assert.equal(autoDraft.statusCode,200,autoDraft.body);assert.equal(JSON.parse(autoDraft.body).result.data.state.approval,'pending');
+  assert.equal((await db.query('select count(*)::int as n from sc_audit')).rows[0].n,7);
+ }finally{await db.close();}
+});
+
+test('encrypted isolated fixture snapshot restores policies, privileges, draft history and audit sequence',async()=>{
+ const {randomBytes,createCipheriv,createDecipheriv}=await import('node:crypto');
+ const {db,as,write}=await fixture();let restored;
+ const manifest=async conn=>({
+  counts:(await conn.query("select (select count(*) from sc_cases)::int cases,(select count(*) from sc_audit)::int audit,(select count(*) from sc_memberships)::int memberships")).rows,
+  policies:(await conn.query("select tablename,policyname,roles,cmd,qual from pg_policies where schemaname='public' order by tablename,policyname")).rows,
+  rls:(await conn.query("select relname,relrowsecurity from pg_class where relname like 'sc_%' and relkind='r' order by relname")).rows,
+  audit:(await conn.query('select revision,data_hash from sc_audit order by revision')).rows
+ });
+ try{
+  const data=record();await as(user1,()=>write(data));data.drafts.push({text:'Synthetic internal draft',revision:1});await as(user1,()=>write(data,1));
+  const sql=(await readFile(new URL('../scripts/case-store-recovery-manifest.sql',import.meta.url),'utf8')).replace('begin transaction isolation level repeatable read read only;','').replace('commit;','');
+  const fullManifest=(await db.query(sql)).rows[0].recovery_manifest;assert.equal(fullManifest.audit_gaps,0);assert.equal(fullManifest.latest_hash_mismatches,0);
+  const before=await manifest(db),snapshot=Buffer.from(await (await db.dumpDataDir()).arrayBuffer());
+  // Fixture-only encryption key stays in test memory; this is not a cloud backup.
+  const key=randomBytes(32),iv=randomBytes(12),cipher=createCipheriv('aes-256-gcm',key,iv);
+  const encrypted=Buffer.concat([cipher.update(snapshot),cipher.final()]),tag=cipher.getAuthTag();
+  snapshot.fill(0);await db.close();
+  const decrypt=bytes=>{const d=createDecipheriv('aes-256-gcm',key,iv);d.setAuthTag(tag);return Buffer.concat([d.update(bytes),d.final()]);};
+  const corrupt=Buffer.from(encrypted);corrupt[0]^=1;assert.throws(()=>decrypt(corrupt));
+  const plaintext=decrypt(encrypted);restored=new PGlite({loadDataDir:new Blob([plaintext])});await restored.waitReady;plaintext.fill(0);key.fill(0);
+  assert.deepEqual(await manifest(restored),before);assert.deepEqual((await restored.query(sql)).rows[0].recovery_manifest,fullManifest);
+  assert.equal((await restored.query("select has_table_privilege('authenticated','sc_cases','INSERT') as allowed")).rows[0].allowed,false);
+  await restored.exec('set role authenticated');await restored.query("select set_config('request.jwt.claim.sub',$1,false)",[user2]);
+  assert.equal((await restored.query('select * from sc_cases')).rows.length,1);
+  await assert.rejects(restored.query('select sc_write_case($1,$2,2,$3)',['sarberki-test',data.id,JSON.stringify(data)]),/forbidden/);
+  await restored.query("select set_config('request.jwt.claim.sub',$1,false)",[user3]);assert.equal((await restored.query('select * from sc_cases')).rows.length,0);
+  await restored.query("select set_config('request.jwt.claim.sub',$1,false)",[user1]);
+  const removed={...data,drafts:[]};await assert.rejects(restored.query('select sc_write_case($1,$2,2,$3)',['sarberki-test',data.id,JSON.stringify(removed)]),/history removal/);
+  data.drafts.push({text:'Second internal version',revision:2});
+  assert.equal((await restored.query('select sc_write_case($1,$2,2,$3) as ok',['sarberki-test',data.id,JSON.stringify(data)])).rows[0].ok,true);
+  await restored.exec('reset role');const ids=(await restored.query('select event_id from sc_audit order by revision')).rows.map(r=>r.event_id);assert.equal(ids.length,3);assert.equal(new Set(ids).size,3);assert.ok(ids[2]>ids[1]);
+ }finally{if(restored)await restored.close();else await db.close();}
+});
+
+test('expanded Auth probe reaches every assertion with PostgreSQL-backed fixture transport (Auth simulated)',async()=>{
+ const {createHandler}=await import('../netlify/functions/supabase-auth-test.mjs');
+ const {db,as}=await fixture();const sessions=new Map();let number=0;
+ const emails={'writer@sarberki-test.invalid':user1,'reader@sarberki-test.invalid':user2,'operator@demo-test.invalid':user3};
+ const respond=(status,body)=>({ok:status>=200&&status<300,status,json:async()=>body});
+ const fetchImpl=async(raw,options)=>{
+  const url=new URL(raw),body=options.body?JSON.parse(options.body):{};
+  if(url.searchParams.get('grant_type')==='password'){
+   const token='fixture-access-'+(++number),refresh='fixture-refresh-'+number; sessions.set(token,{user:emails[body.email],email:body.email,refresh,revoked:false});
+   return respond(200,{access_token:token,refresh_token:refresh,user:{email:body.email}});
+  }
+  if(url.searchParams.get('grant_type')==='refresh_token')return respond(400,{code:'refresh_token_not_found'});
+  const token=options.headers.Authorization?.slice(7),session=sessions.get(token);
+  if(!session)return respond(401,{});
+  if(url.pathname==='/auth/v1/logout'){session.revoked=true;return respond(204,{});}
+  if(url.pathname==='/auth/v1/user')return respond(200,{id:session.user});
+  if(options.method==='PATCH'||(url.pathname.endsWith('/sc_cases')&&options.method==='POST'))return respond(403,{code:'42501'});
+  try{
+   const result=await as(session.user,async()=>{
+    if(url.pathname.endsWith('/sc_memberships'))return (await db.query('select * from sc_memberships where user_id=$1',[session.user])).rows;
+    if(url.pathname.endsWith('/sc_write_case'))return (await db.query('select sc_write_case($1,$2,$3,$4) as ok',[body.p_tenant,body.p_case,body.p_expected,JSON.stringify(body.p_data)])).rows[0].ok;
+    const tenant=url.searchParams.get('tenant_id')?.slice(3),id=url.searchParams.get('case_id')?.slice(3);
+    if(url.pathname.endsWith('/sc_audit'))return (await db.query('select * from sc_audit where tenant_id=$1 and case_id=$2 order by revision',[tenant,id])).rows;
+    return (await db.query('select * from sc_cases where tenant_id=$1'+(id?' and case_id=$2':''),id?[tenant,id]:[tenant])).rows;
+   });return respond(200,result);
+  }catch(error){return respond(error.code==='42501'?403:400,{code:error.code});}
+ };
+ const env={CASE_STORE_ENABLED:'disabled',URL:'https://leafy-chimera-2403e5.netlify.app',SUPABASE_URL:'https://mojnqizbcaczstguikpv.supabase.co',SUPABASE_PUBLISHABLE_KEY:'sb_publishable_fixture',SUPABASE_AUTH_TEST_UNTIL:'2026-10-10T09:00:00Z'};
+ try{
+  const handler=createHandler({env,fetchImpl,now:()=>Date.parse('2026-10-10T08:00:00Z')});
+  const result=await handler({httpMethod:'POST',headers:{origin:env.URL,'content-type':'application/x-www-form-urlencoded'},body:'password0=fixture1&password1=fixture2&password2=fixture3'});
+  assert.equal(result.statusCode,200,result.body);assert.equal((result.body.match(/PASS —/g)||[]).length,36);
+  assert.equal(sessions.size,4);assert.ok([...sessions.values()].every(s=>s.revoked));
+  assert.doesNotMatch(result.body,/fixture-access|fixture-refresh|fixture1|fixture2|fixture3/);
+  assert.equal((await db.query('select count(*)::int as n from sc_cases')).rows[0].n,3);
+  assert.equal((await db.query('select count(*)::int as n from sc_audit')).rows[0].n,8);
  }finally{await db.close();}
 });
