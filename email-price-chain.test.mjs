@@ -523,3 +523,21 @@ test('six-adult availability reply stays complete in DE EN and SL',async()=>{
     assert.ok(signature>draft.indexOf('Deluxe'));
   }
 });
+
+test('operator clicks ordinary quote button: locked Previo returns labelled reference requiring explicit approval',async()=>{
+ const record=recorded[1];
+ const h=harness(sample(record),(input,url)=>{
+   if(String(url).includes('price-reference'))return json({...input,status:'public_reference',referenceOnly:true,source:'Sárberki publikus árlista – tájékoztató kalkuláció',checkedAt:'2026-10-09T00:00:00.000Z',availability:'not_checked',availableUnits:null,accommodation:120000,tourismTax:2200,total:122200,currency:'HUF',bookingCompleted:false,eurConversion:{status:'available',rateHufPerEur:400,rateDate:'2026-10-09',totalEur:305.5}});
+   return json({status:'unverified',code:'PREVIO_SAFETY_GATE_CLOSED',error:'read safety not yet verified'},503);
+ });
+ const r=await h.run();
+ assert.equal(h.calls,2);
+ assert.match(r.result,/TÁJÉKOZTATÓ ÁRLISTAÁR/u);
+ assert.match(r.result,/NEM ellenőrzött/u);
+ assert.match(r.result,/122.200|122 200/u);
+ assert.match(r.result,/305,50 €/u);
+ assert.doesNotMatch(r.draft,/122.200|122 200/u);
+ h.element('approve_price').onclick();
+ assert.match(h.element('draft').value,/122.200|122 200/u);
+ assert.match(h.element('draft').value,/publikus árlistája/u);
+});

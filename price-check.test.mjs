@@ -161,3 +161,10 @@ test('price preparation no longer falls back from total guests to adults',()=>{
  assert.match(source,/const knownAdults=/u);
  assert.match(source,/Előbb tisztázni kell, érkezik-e gyermek/u);
 });
+
+test('closed live safety gate can fall back to a public reference without pretending availability',()=>{
+ assert.match(source,/result\.code==='PREVIO_SAFETY_GATE_CLOSED'/u);
+ assert.match(source,/fetch\('\/api\/price-reference'/u);
+ assert.match(source,/Szabad kapacitás NEM ellenőrzött/u);
+ assert.match(source,/referenceOnly/u);
+});

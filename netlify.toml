@@ -14,6 +14,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/price-reference"
+  to = "/.netlify/functions/price-reference"
+  status = 200
+
+[[redirects]]
   from = "/api/availability-options"
   to = "/.netlify/functions/availability-options"
   status = 200

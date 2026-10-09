@@ -595,9 +595,15 @@
     if(units>1) input.units=units;
     try {
       if(window.SarberkiBookingRuntime)await window.SarberkiBookingRuntime.beforePrice(input);
-      const response=await fetch('/api/price-quote',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input),cache:'no-store'});
+      let response=await fetch('/api/price-quote',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input),cache:'no-store'});
       if (!response.headers.get('content-type')?.includes('application/json')) throw Error('Az árlekérő szerver nincs ehhez az oldalhoz csatlakoztatva.');
-      const result=await response.json();
+      let result=await response.json();
+      // Closed safety gate: request a public price-list reference, never an unverified Previo read.
+      if(response.status===503&&result.code==='PREVIO_SAFETY_GATE_CLOSED'){
+        response=await fetch('/api/price-reference',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input),cache:'no-store'});
+        if(!response.headers.get('content-type')?.includes('application/json'))throw Error('A tájékoztató árkalkulátor nem érhető el.');
+        result=await response.json();
+      }
       if(typeof requestKey!=='undefined'&&(requestKey!==quoteFingerprint()||requestCase?.original!==window.SarberkiCaseController?.snapshot()?.original))return; if(result.status==='unavailable'){const needed=Number(input.units||1);const free=Number(result.availableUnits);status.textContent=Number.isInteger(free)?`A kért ${cabins[input.cabin]||input.cabin} típusból ${needed} egység szükséges ehhez a létszámhoz, de a foglalási felület csak ${free} szabad egységet mutat erre az időszakra. Ár nem került a válaszba; kezelői ellenőrzés szükséges.`:'A kért háztípusból a foglalási felület nem mutat szabad egységet erre az időszakra. Ár nem került a válaszba; kezelői ellenőrzés szükséges.';return;} if(!response.ok || !['review_required','public_reference'].includes(result.status))throw Error(result.error||'Nem sikerült az árlekérés.');
       const referenceOnly=result.status==='public_reference';
       if(result.arrival!==input.arrival||result.departure!==input.departure||result.cabin!==input.cabin||result.adults!==input.adults||JSON.stringify(result.children)!==JSON.stringify(input.children)||(!referenceOnly&&(result.availability!=='available'||!Number.isInteger(result.availableUnits)||result.availableUnits<1))||!Number.isSafeInteger(result.total)||result.total<=0||!Number.isSafeInteger(result.accommodation)||!Number.isSafeInteger(result.tourismTax)||result.accommodation+result.tourismTax!==result.total||result.currency!=='HUF') throw Error('Az árválasz hiányos vagy eltér a kért vendégösszetételtől.');
@@ -610,11 +616,11 @@
             return `${x.unit}. egység: ${formatFt(x.total)}${eurPart} (${x.adults} felnőtt${x.children?.length?`, ${x.children.length} gyermek`:''})`;
           }).join(' | ')
         : '';
-      $('price_result').textContent=`${result.arrival}–${result.departure} · ${result.cabin}${(result.units||1)>1?` · Egységek: ${result.units}`:''} · ${result.adults} felnőtt${result.children.length?` · ${result.children.length} gyermek (${result.children.join(', ')} éves)`:''} · Szállás: ${result.accommodation.toLocaleString('hu-HU')} Ft · IFA: ${result.tourismTax.toLocaleString('hu-HU')} Ft · Teljes ár: ${result.total.toLocaleString('hu-HU')} Ft${referenceOnly?' · PUBLIKUS ÁRLISTA-REFERENCIA · Szabad kapacitás külön ellenőrzendő':eurText+unitText} · Forrás: ${result.source} · Lekérés: ${result.checkedAt} · 20% törzsvendégkedvezmény: nincs alkalmazva`;
+      $('price_result').textContent=`${result.arrival}–${result.departure} · ${result.cabin}${(result.units||1)>1?` · Egységek: ${result.units}`:''} · ${result.adults} felnőtt${result.children.length?` · ${result.children.length} gyermek (${result.children.join(', ')} éves)`:''} · Szállás: ${result.accommodation.toLocaleString('hu-HU')} Ft · IFA: ${result.tourismTax.toLocaleString('hu-HU')} Ft · Teljes ár: ${result.total.toLocaleString('hu-HU')} Ft${referenceOnly?' · TÁJÉKOZTATÓ ÁRLISTAÁR · Szabad kapacitás NEM ellenőrzött':''}${eurText}${unitText} · Forrás: ${result.source} · Lekérés: ${result.checkedAt} · 20% törzsvendégkedvezmény: nincs alkalmazva`;
       pendingQuote={total:Number(result.total),source:result.source||'foglalási oldal',fingerprint:quoteFingerprint(),raw:{...result,referenceOnly}};
       $('approved_price_manual').value=String(result.total);
       $('approve_price').disabled=false;
-      $('price_approval_status').textContent=`Lekért teljes ár: ${formatFt(result.total)} · jóváhagyásra vár. Még nincs a vendégválaszban.`;
+      $('price_approval_status').textContent=`${referenceOnly?'Tájékoztató árlistaár':'Lekért teljes ár'}: ${formatFt(result.total)} · jóváhagyásra vár. Még nincs a vendégválaszban.`;
       status.textContent=referenceOnly?'A Sárberki publikus árlistája alapján számolt referenciaár elkészült. A szabad kapacitást külön kell ellenőrizni; az összeg csak jóváhagyás után kerülhet a válaszba.':'A foglalási oldalon megjelenő ár ellenőrzésre vár. Az „Ár jóváhagyása és beépítése a levélbe” gombig nem kerül a vendégválaszba, és foglalás nem történik.';
     } catch(e) {status.textContent=`AZ AUTOMATIKUS ÁRLEKÉRÉS MÉG NEM ENGEDÉLYEZETT · ${e.message} A fenti hivatalos foglaló hivatkozásán ellenőrizheted az árat és a szabad kapacitást; utána írd be a teljes forintárat, és erősítsd meg a kézi ellenőrzést.`;}
   };
