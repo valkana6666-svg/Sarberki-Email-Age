@@ -338,7 +338,16 @@ export function requestedUnitsFromText(text=''){
   const sized=text.match(/\b(egy|1|két|kettő|2|három|3|négy|4|one|two|three|four|ein|eine|zwei|drei|vier|en|ena|dva|dve|tri|štiri|stiri)\s*(?:db|darab)\s*(?:2|két|kettő)\s*[- ]?fős\s+(?:osztott\s+)?apartman\w*/iu);
   if(sized) return {count:values[sized[1].toLocaleLowerCase()]||0,open:false,evidence:sized[0]};
   const m=text.match(/\b(egy|1|két|kettő|2|három|3|négy|4|öt|5|hat|6|one|two|three|four|five|six|ein|eine|zwei|drei|vier|fünf|funf|sechs|en|ena|eno|dva|dve|tri|štiri|stiri|pet|šest|sest)\s+(?:külön\s*)?(?:db\s*)?(?:vip|családi|deluxe|osztott|family|familien|družinsk\w*)?(?:\s*[-–]?\s*)(?:házat?|faházat?|apartmant?|egységet?|cabins?|houses?|units?|cottages?|häuser|hauser|einheiten|hišk\w*|hisk\w*|koč\w*|enot\w*)\b/iu);
-  if(!m) return {count:0,open:false,evidence:''};
+  if(!m){
+    // A single, specifically named cabin in singular form means one unit.
+    // This must not turn a generic enquiry, a plural request or split-unit
+    // combinations into an invented booking-unit count.
+    const single=text.match(/(?<!\\p{L})(?:vip|családi|csaladi|deluxe|family|familien(?:haus|hütte)?|družinsk\\p{L}*|különálló|kulonallo)\\s+(?:faház(?:at|ba|ban|ra|hoz|ról)?|ház(?:at|ba|ban|ra|hoz|ról)?|apartman(?:t|ba|ban|ra)?|cabins?|houses?|cottages?|hišk\\p{L}*|koč\\p{L}*)(?!\\p{L})/iu);
+    const cabin=single?cabinFromText(text):null;
+    if(single&&cabin&&!cabin.startsWith('?')&&cabin!=='Osztott')
+      return {count:1,open:false,evidence:single[0]};
+    return {count:0,open:false,evidence:''};
+  }
   return {count:values[m[1].toLocaleLowerCase()]||0,open:false,evidence:m[0]};
 }
 
@@ -671,7 +680,10 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
 
   const resolvedName=name?.trim()||nameFromText(original);
   const nameParts=resolvedName?.replace(/^["']|["']$/gu,'').split(/\s+/u).filter(Boolean)||[];
-  const first=nameParts.length?(lang==='hu'?nameParts.at(-1):nameParts[0]):null;
+  const lastNamePart=nameParts.at(-1)||'';
+  // A signed test name such as "Teszt Vendég" must not become "Kedves Vendég!".
+  // Preserve a meaningful full salutation when the final token is a generic label.
+  const first=nameParts.length?(lang==='hu'&&/^(?:vendég(?:ünk)?|érdeklődő)$/iu.test(lastNamePart)?nameParts.join(' '):(lang==='hu'?lastNamePart:nameParts[0])):null;
   const greetings={hu:first?`Kedves ${first}!`:'Kedves Vendégünk!',de:first?`Guten Tag, ${first}!`:'Guten Tag!',en:first?`Dear ${first},`:'Dear Guest,',si:first?`Pozdravljeni, ${first}!`:'Pozdravljeni!'};
   const intros={hu:'Köszönjük érdeklődését.',de:'Vielen Dank für Ihre Anfrage.',en:'Thank you for your enquiry.',si:'Hvala za vaše povpraševanje.'};
   const closings={hu:'Üdvözlettel:',de:'Mit freundlichen Grüßen',en:'Kind regards,',si:'Lep pozdrav'};
