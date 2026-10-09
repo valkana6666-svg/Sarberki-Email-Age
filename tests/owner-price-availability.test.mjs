@@ -21,7 +21,7 @@ test('owner-approved manually checked price clears stay availability pending wor
  const view=deriveCaseView(approved);
  assert.ok(!view.warnings.some(item=>item.code==='availability_unverified'));
  assert.match(view.draft,/A kért időszakra rendelkezésre áll megfelelő szálláslehetőség/u);
- assert.match(view.draft,/122\\s?200|122[.\\s]200/u);
+ assert.match(view.draft,/122\s200/u);
  assert.doesNotMatch(view.draft,/A kért faház elérhetőségét külön visszaigazoljuk|A ténylegesen szabad lehetőségeket a kért időszakra ellenőrizzük/u);
 });
 
