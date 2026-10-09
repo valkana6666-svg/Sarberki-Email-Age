@@ -6,7 +6,7 @@ import {availabilitySentence,splitReviewSentence,replaceCapacityPlaceholder,requ
 import * as core from '../sarberki-core.mjs';
 import * as splitUnits from '../split-units.mjs';
 import {capacityInput,selectedCapacityOptions} from '../booking-filter.mjs';
-const available={available_options:[{label:'Deluxe',units:1},{label:'Családi',units:2}],manual_review_options:[{label:'Osztott A + C'}]};
+const available={available_options:[{label:'Deluxe',units:1,availability:'available',availability_verified:true},{label:'Családi',units:2,availability:'available',availability_verified:true}],manual_review_options:[{label:'Osztott A + C'}]};
 for(const [lang,word] of [['hu','szabad'],['de','verfügbare'],['en','available'],['si','proste']]){
  test(`availability reply ${lang} uses the guest language`,()=>assert.ok(availabilitySentence(available,lang).includes(word)));
  test(`availability reply ${lang} does not expose internal PMS mapping`,()=>assert.doesNotMatch(splitReviewSentence(available,lang),/Previo|megfeleltetés|7A|10C|pool|mapping/iu));
@@ -18,7 +18,7 @@ const labelCases={
 };
 for(const [lang,expected] of Object.entries(labelCases)){
  test(`availability option labels are localized for ${lang}`,()=>{
-   const sentence=availabilitySentence({available_options:[{label:'Családi',units:1}]},lang);
+   const sentence=availabilitySentence({available_options:[{label:'Családi',units:1,availability:'available',availability_verified:true}]},lang);
    const manual=splitReviewSentence({manual_review_options:[{label:'Osztott A + Osztott C'}]},lang);
    assert.match(sentence,new RegExp(expected.family,'u'));
    assert.match(manual,new RegExp(expected.split,'u'));
@@ -205,5 +205,5 @@ test('central reply distinguishes failed capacity evidence from insufficient inv
  assert.equal(applied.verified,false);assert.match(applied.lines.join(' '),/nem sikerült.*igazolni/u);assert.doesNotMatch(applied.lines.join(' '),/nincs elegendő/u);
 });
 test('mixed repeated inventory displays component counts independently',()=>{
- const text=availabilitySentence({available_options:[{units:4,components:[{label:'Osztott A/B',units:2},{label:'Osztott C',units:2}]}]},'hu');assert.match(text,/2 × Osztott A\/B \+ 2 × Osztott C/u);
+ const text=availabilitySentence({available_options:[{availability:'available',availability_verified:true,units:4,components:[{label:'Osztott A/B',units:2},{label:'Osztott C',units:2}]}]},'hu');assert.match(text,/2 × Osztott A\/B \+ 2 × Osztott C/u);
 });

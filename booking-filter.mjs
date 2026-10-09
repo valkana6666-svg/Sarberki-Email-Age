@@ -1,3 +1,5 @@
+import {normalizeAvailability} from './shared-core/availability-model.mjs';
+import {SARBERKI_TENANT} from './tenant-config.mjs';
 import {BUSINESS} from './business-config.mjs';
 import {splitRequestFromText} from './split-units.mjs';
 
@@ -63,16 +65,19 @@ export function validateCapacityResult(result,input){
  if(!result||!['available','unavailable'].includes(result.availability)||!Number.isSafeInteger(result.availableUnits)||result.availableUnits<0
  ||(result.availability==='available')!==(result.availableUnits>0)
  ||(result.arrival!=null&&result.arrival!==input.arrival)||(result.departure!=null&&result.departure!==input.departure)||(result.cabin!=null&&result.cabin!==input.cabin))throw Error('A forrás nem adott konzisztens kapacitásbizonyítékot.');
- return result;
+ const evidence=normalizeAvailability({...input,...result},input,{tenantId:SARBERKI_TENANT.id});
+ if(!evidence.valid)throw Error('Nem aktuális kapacitásbizonyíték: '+evidence.error);
+ return {...result,evidence};
 }
 export function wholeCabinCandidates(input){
  const rejected=[],candidates=[];
  for(const [key,type]of Object.entries(BUSINESS.accommodationTypes)){
   if(!type.bookingName)continue;
-  const units=input.units||Math.max(Math.ceil(input.guests/type.maxGuests),Math.ceil((input.adults||input.guests)/type.maxAdults));
+  const verifiedCapacity=Math.min(...SARBERKI_TENANT.inventory.filter(x=>x.type===key).map(x=>x.capacity));
+  const units=input.units||Math.max(Math.ceil(input.guests/verifiedCapacity),Math.ceil((input.adults||input.guests)/verifiedCapacity));
   const stock=type.physicalHouseNumbers?.length||0;
-  if(units>stock||input.guests>units*type.maxGuests||(input.adults||input.guests)>units*type.maxAdults){rejected.push({key,availability:'unavailable',reason:'capacity_incompatible',units});continue;}
-  candidates.push({key,label:type.label,capacity:type.maxGuests,units});
+  if(units>stock||input.guests>units*verifiedCapacity||(input.adults||input.guests)>units*verifiedCapacity){rejected.push({key,availability:'unavailable',reason:'capacity_incompatible',units});continue;}
+  candidates.push({key,label:type.label,capacity:verifiedCapacity,units});
  }
  return {candidates,rejected};
 }
@@ -80,7 +85,7 @@ export function canPriceOption(result,key,units=1){
  return (result?.available_options||[]).some(x=>x.key===key&&x.availability_verified===true&&x.availability==='available'&&x.units>=units);
 }
 // One client coordinator owns coalescing and freshness; failed requests are never cached.
-export function createCapacityClient(request,{clock=Date.now,ttl=CAPACITY_TTL_MS}={}){
+export function createCapacityClient(request,{clock=Date.now,ttl=CAPACITY_TTL_MS,tenantId='sarberki'}={}){
  const cache=new Map(),pending=new Map();const metrics={requests:0,reused:0,coalesced:0};
  return {metrics,clear(){cache.clear();},async check(input,{force=false}={}){
   const facts=stageFacts({arrival:input.arrival,departure:input.departure,guests:input.guests});
@@ -91,9 +96,11 @@ export function createCapacityClient(request,{clock=Date.now,ttl=CAPACITY_TTL_MS
   metrics.requests++;
   const operation=(async()=>{
    const result=await request(input);
+   if(result.tenantId&&result.tenantId!==tenantId)throw Error('Idegen vállalkozás kapacitásválasza.');
    if(result.arrival!==input.arrival||result.departure!==input.departure||result.guests!==input.guests||!Array.isArray(result.available_options)||!Array.isArray(result.unverified_options)||!Array.isArray(result.unavailable_options))throw Error('Eltérő vagy hiányos kapacitásválasz.');
    if(result.available_options.some(x=>x.availability_verified!==true||x.availability!=='available'||!Number.isInteger(x.units)||x.units<1))throw Error('Nem igazolt lehetőség került a szabad készletbe.');
-   const bound={...result,fingerprint:key,checkedAt:result.checkedAt||new Date(clock()).toISOString()};cache.set(key,bound);return bound;
+   if(!capacityFresh({...result,fingerprint:key},input,clock(),ttl))throw Error('Lejárt vagy hiányzó kapacitásbizonyíték.');
+   const bound={...result,fingerprint:key};cache.set(key,bound);return bound;
   })();pending.set(key,operation);try{return await operation;}finally{pending.delete(key);}
  }};
 }

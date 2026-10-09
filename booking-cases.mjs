@@ -34,13 +34,15 @@ export function mergeBookingFacts(previous,incoming,text=''){
  if(!present(incoming.nights)&&next.arrival&&next.departure)next.nights=String((Date.parse(next.departure)-Date.parse(next.arrival))/86400000);
  return next;
 }
-export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOString(),id=()=>globalThis.crypto.randomUUID()}={}){
- const key='sarberki-booking-cases-v2';let cases=[];
- try{const saved=JSON.parse(storage?.getItem(key)||'[]');if(Array.isArray(saved))cases=saved;}catch{}
- const persist=()=>{storage?.setItem(key,JSON.stringify(cases));};
+export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOString(),id=()=>globalThis.crypto.randomUUID(),tenantId='sarberki'}={}){
+ if(!/^[a-z][a-z0-9-]{1,63}$/.test(tenantId))throw Error('Érvénytelen vállalkozási azonosító.');
+ const key=tenantId==='sarberki'?'sarberki-booking-cases-v2':tenantId+'-booking-cases-v2';let cases=[];
+ try{const saved=JSON.parse(storage?.getItem(key)||'[]');if(Array.isArray(saved))cases=saved.filter(c=>c.tenantId===tenantId||tenantId==='sarberki'&&!c.tenantId).map(c=>({...c,tenantId}));}catch{}
+ const persist=()=>{cases.forEach(c=>c.tenantId=tenantId);storage?.setItem(key,JSON.stringify(cases));};
  return {
   list:()=>copy(cases),get:caseId=>copy(cases.find(c=>c.id===caseId)||null),
   ingest(envelope,incoming,{intent='booking_request',approvedCaseId=null}={}){
+   if(envelope.tenantId&&envelope.tenantId!==tenantId)throw Error('Idegen vállalkozás üzenete.');
    const existing=cases.find(c=>envelope.message_id&&c.messages.some(m=>m.message_id===envelope.message_id));
    if(existing)return {resolution:{status:'duplicate',caseId:existing.id},bookingCase:copy(existing)};
    let resolution=resolveBookingCase(cases,envelope,incoming);

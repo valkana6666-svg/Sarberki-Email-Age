@@ -6,7 +6,7 @@ import {createBookingCaseStore} from '../booking-cases.mjs';
 import {buildAvailabilityOptions} from '../netlify/functions/availability-options.mjs';
 import {splitRequestFromText} from '../split-units.mjs';
 const stay={arrival:'2026-10-23',departure:'2026-10-25',guests:4,adults:4};
-const source=counts=>async input=>({...input,availability:(counts[input.cabin]||0)>0?'available':'unavailable',availableUnits:counts[input.cabin]||0});
+const source=counts=>async input=>({...input,availability:(counts[input.cabin]||0)>0?'available':'unavailable',availableUnits:counts[input.cabin]||0,source:'MOCK',checkedAt:new Date().toISOString()});
 test('switching from AB to Deluxe drops historical split placement',()=>{const i=capacityInput({...stay,unit:'Deluxe',split_request_text:'Osztott A+B egymás mellett'});assert.equal(i.placement,undefined);});
 test('reviewed split C type takes precedence over historical AB text',()=>{const i=capacityInput({...stay,unit:'Osztott C',split_request_text:'Osztott A+B'});assert.equal(i.placement.c,1);assert.equal(i.placement.ab,0);});
 test('changing number of homogeneous split units changes required inventory',()=>{const i=capacityInput({...stay,unit:'Osztott',units_requested:3},'Osztott A+B');assert.equal(i.placement.ab,3);});

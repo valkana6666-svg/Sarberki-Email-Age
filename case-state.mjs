@@ -1,5 +1,7 @@
+import {buildCentralReply} from './central-reply.mjs';
+import {SARBERKI_TENANT} from './tenant-config.mjs';
 import {stageFacts} from './booking-filter.mjs';
-import {buildReplyDraft, phoneFromText, requestFlagsFromText, activeMessageText, cabinFromText, cabinClarificationRequired} from './sarberki-core.mjs?v=20261007-e2e1';
+import {phoneFromText, requestFlagsFromText, activeMessageText, cabinFromText, cabinClarificationRequired} from './sarberki-core.mjs?v=20261007-e2e1';
 import {BUSINESS} from './business-config.mjs?v=20261007-e2e1';
 import {fishingQuestion} from './fishing-rules.mjs';
 
@@ -77,6 +79,8 @@ export function updateCaseState(state, action) {
 }
 export function deriveCaseView(state, baseReview={warning_codes:[],issues:[]}) {
   const v=state.values, q=state.quote, h=state.hotTub, t=state.terms;
+  const capacityAge=Date.now()-Date.parse(state.availability?.checkedAt||'');
+  const capacityCurrent=state.availability?.verified===true&&Number.isFinite(capacityAge)&&capacityAge>=0&&capacityAge<=120000;
   const rental=BUSINESS.hotTubRentalRules;
   const tariff=`${ft(rental.baseHufPer24Hours)}/24 óra ${rental.includedPeople} főig, felette +${ft(rental.extraPersonHufPer24Hours)}/fő/24 óra`;
   const lang=String(v.language||'HU').toLowerCase()==='sl'?'si':String(v.language||'HU').toLowerCase();
@@ -108,7 +112,7 @@ export function deriveCaseView(state, baseReview={warning_codes:[],issues:[]}) {
   if(booking&&!v.phone) {missing.push('Telefonszám');add('missing_phone','Telefon hiányzik');}
   if(booking&&children>0&&(ages.length!==children||ages.some(x=>!Number.isInteger(x)||x<0||x>17))) {missing.push('Gyermekek pontos életkora');add('missing_child_ages','Gyermekek életkora hiányzik vagy hibás');}
   if(booking&&!q) add('price_unverified','Ár nincs jóváhagyva');
-  if(booking&&!q?.availabilityVerified&&!state.availability?.verified) add('availability_unverified','Foglalható elhelyezés nincs igazolva; kapacitás- és szükség esetén párosításellenőrzés kell.');
+  if(booking&&!q?.availabilityVerified&&!capacityCurrent) add('availability_unverified','Foglalható elhelyezés nincs igazolva; kapacitás- és szükség esetén párosításellenőrzés kell.');
   if(closeArrival&&(!t.depositVerified||!t.cancellationVerified)) add('close_arrival','KÖZELI ÉRKEZÉS – az előleg- és lemondási feltétel alkalmazása emberi ellenőrzést igényel.');
   if(booking&&!t.depositVerified) add('deposit_review','Előlegfeltétel ellenőrzendő');
   if(booking&&!t.depositBasis) add('deposit_basis_review','Előleg számítási alapja tulajdonosi döntést igényel');
@@ -148,9 +152,11 @@ export function deriveCaseView(state, baseReview={warning_codes:[],issues:[]}) {
     else if(h.atHouse===true&&h.available===true&&h.fee!=null&&h.included!=null&&(!h.included||q)) extraLines.push(choose(lang,`A dézsa a kért időszakra elérhető. Díja: ${ft(h.fee)}; ${h.included?'a jóváhagyott ár tartalmazza':'a szállásajánlaton felül fizetendő'}.`,`Das Badefass ist verfügbar. Preis: ${ft(h.fee)}; ${h.included?'im freigegebenen Preis enthalten':'zusätzlich zum Unterkunftspreis'}.`,`The hot tub is available. Fee: ${ft(h.fee)}; ${h.included?'included in the approved price':'payable in addition to the accommodation quote'}.`,`Masažna kad je na voljo. Cena: ${ft(h.fee)}; ${h.included?'vključena v potrjeno ceno':'doplačilo k nastanitvi'}.`));
     else extraLines.push(choose(lang,`A dézsa külön bérelhető, nem jár automatikusan a házhoz. Díja ${tariff}. A kért időszak elérhetőségét, a bérlés időtartamát és az ajánlatba foglalását külön visszaigazoljuk; a feltüntetett szállásárból a dézsahasználat díja nem állapítható meg.`,'Das Badefass ist separat zu mieten und gehört nicht automatisch zur Unterkunft. Preis: 30 000 Ft je 24 Stunden für bis zu 6 Personen, darüber +4 000 Ft je Person/24 Stunden. Verfügbarkeit, Mietdauer und Aufnahme in das Angebot bestätigen wir separat.','The hot tub is rented separately and is not automatically included with the house. The rate is 30 000 Ft per 24 hours for up to 6 people, plus 4 000 Ft per additional person/24 hours. We separately confirm availability, rental duration and inclusion in the quote.','Masažna kad se najame posebej in ni samodejno vključena v nastanitev. Cena je 30 000 Ft/24 ur za največ 6 oseb, nato +4 000 Ft/osebo/24 ur. Razpoložljivost, trajanje najema in vključitev v ponudbo potrdimo posebej.'));
   }
-  const availabilityLines=q?.availabilityVerified?[choose(lang,'Az árlekéréskor a kért szállás szabad kapacitása ellenőrizve volt. A foglalást külön visszaigazoljuk.','Bei der Preisabfrage wurde die Verfügbarkeit der gewünschten Unterkunft geprüft. Die Buchung bestätigen wir separat.','Availability of the requested accommodation was verified when checking the price. We confirm the booking separately.','Razpoložljivost želene nastanitve je bila preverjena ob preverjanju cene. Rezervacijo potrdimo posebej.')]:state.availability?.lines||[];
+  const availabilityLines=q?.availabilityVerified?[choose(lang,'Az árlekéréskor a kért szállás szabad kapacitása ellenőrizve volt. A foglalást külön visszaigazoljuk.','Bei der Preisabfrage wurde die Verfügbarkeit der gewünschten Unterkunft geprüft. Die Buchung bestätigen wir separat.','Availability of the requested accommodation was verified when checking the price. We confirm the booking separately.','Razpoložljivost želene nastanitve je bila preverjena ob preverjanju cene. Rezervacijo potrdimo posebej.')]:capacityCurrent?state.availability.lines||[]:[];
   const fishing=fishingQuestion(state.original,lang);
-  const draft=buildReplyDraft({language:lang,name:v.name,original:state.original,arrival:v.arrival,departure:v.departure,guests,adults,children,childAges:ages,phone:v.phone,cabin:v.unit||'? – emberi döntésre vár',hotTub:h.requested,intent:state.intent,brandName:BUSINESS.brandName,bookingRules:rules,operationalRules:BUSINESS.operationalRules,pricingRules:BUSINESS.pricingRules,knowledgeLines:fishing?[fishing.answer]:[],caseContext:{priceLines,bookingLines,extraLines,availabilityLines,priceApproved:Boolean(q)}});
+  const caseId=state.id||caseFingerprint(v);
+  const records=Object.entries({price:priceLines,booking:bookingLines,extra:extraLines,availability:availabilityLines,knowledge:fishing?[fishing.answer]:[]}).map(([kind,lines])=>({kind,lines,tenantId:SARBERKI_TENANT.id,caseId,approved:true,source:kind==='knowledge'?'approved_fishing_knowledge':'central_case_verification',valid:kind!=='availability'||Boolean(q?.availabilityVerified||capacityCurrent)}));
+  const draft=buildCentralReply({caseId,language:lang,name:v.name,original:state.original,arrival:v.arrival,departure:v.departure,guests,adults,children,childAges:ages,phone:v.phone,cabin:v.unit||'? – emberi döntésre vár',hotTub:h.requested,intent:state.intent,brandName:BUSINESS.brandName,bookingRules:rules,operationalRules:BUSINESS.operationalRules,pricingRules:BUSINESS.pricingRules,knowledgeLines:fishing?[fishing.answer]:[],caseContext:{priceLines,bookingLines,extraLines,availabilityLines,priceApproved:Boolean(q)}},{records});
   const summary=`${v.arrival||'?'} – ${v.departure||'?'}; ${v.nights||'?'} éjszaka; ${guests??'?'} fő; felnőtt: ${adults??'?'}; gyermek: ${children??'?'}${ages.length?' ('+ages.join(', ')+' éves)':''}; ${v.unit||'háztípus nincs megadva'}${cars!=null?'; Parkolás: '+cars+' autó – adat megadva':''}${q?'; Ár ellenőrizve':''}.`;
   return {draft,summary,missing,warnings,closeArrival,untilArrival,critical:Boolean(baseReview.critical)||warnings.some(x=>['fact_conflict','availability_unverified','close_arrival','deposit_review','deposit_basis_review','cancellation_terms_review','cabin_type_required'].includes(x.code)),priceStatus:q?'Ár ellenőrizve':'Ár nincs jóváhagyva'};
 }

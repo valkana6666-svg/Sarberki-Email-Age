@@ -4,8 +4,8 @@ import {splitCapacityOptions as buildSplitCapacityOptions} from '../../split-uni
 
 const LIVE_TEST_HOSTS=new Set(['leafy-chimera-2403e5.netlify.app']);
 
-export function isLiveAvailabilityEnabled(request){
-  try{return LIVE_TEST_HOSTS.has(new URL(request.url).hostname);}catch{return false;}
+export function isLiveAvailabilityEnabled(request,safetyVerified=process.env.PREVIO_READ_SAFETY_VERIFIED==='true'){
+  try{return safetyVerified&&LIVE_TEST_HOSTS.has(new URL(request.url).hostname);}catch{return false;}
 }
 
 function validDate(value){return /^\d{4}-\d{2}-\d{2}$/.test(value||'')&&Number.isFinite(+new Date(value+'T00:00:00Z'))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;}
@@ -36,7 +36,7 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
     try{
       const result=checkedCapacity(await source({arrival,departure,cabin:option.key}),{arrival,departure,cabin:option.key});
       const enough=result.availability==='available'&&Number(result.availableUnits)>=option.units;
-      return {...option,availability:enough?'available':'unavailable',availableUnits:Number(result.availableUnits)||0,checkedAt:result.checkedAt||null,source:result.source||null,availability_verified:true};
+      return {...option,evidence:result.evidence,availability:enough?'available':'unavailable',availableUnits:Number(result.availableUnits)||0,checkedAt:result.checkedAt||null,source:result.source||null,availability_verified:true};
     }catch(error){
       return {...option,availability:'unverified',availableUnits:null,availability_verified:false,error:error.message};
     }
@@ -47,7 +47,7 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
   const checkPool=async cabin=>{
     try{
       const result=checkedCapacity(await source({arrival,departure,cabin}),{arrival,departure,cabin});
-      return {verified:true,availability:result.availability,availableUnits:Number(result.availableUnits)||0,checkedAt:result.checkedAt||null,source:result.source||null};
+      return {evidence:result.evidence,verified:true,availability:result.availability,availableUnits:Number(result.availableUnits)||0,checkedAt:result.checkedAt||null,source:result.source||null};
     }catch(error){
       return {verified:false,availability:'unverified',availableUnits:null,error:error.message};
     }
@@ -79,7 +79,7 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
   const checkedAt=new Date().toISOString();
 
   return {
-    status:'review_required',
+    status:'review_required',tenantId:'sarberki',
     arrival,departure,guests,checkedAt,fingerprint:capacityKey(input),excluded_options,
     available_options:checked.filter(x=>x.availability==='available'),
     unavailable_options:checked.filter(x=>x.availability==='unavailable'),

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {handlePriceQuote,isLivePrevioEnabled,fetchMnbEurRate} from '../netlify/functions/price-quote.mjs';
 
 test('live Previo is enabled only on the isolated test host',()=>{
-  assert.equal(isLivePrevioEnabled(new Request('https://leafy-chimera-2403e5.netlify.app/api/price-quote')),true);
+  assert.equal(isLivePrevioEnabled(new Request('https://leafy-chimera-2403e5.netlify.app/api/price-quote'),true),true);
 });
 
 test('live Previo stays disabled on production host by default',()=>{
@@ -45,7 +45,7 @@ test('enabled handler accepts a validated mocked quote',async()=>{
     total:92200,
     currency:'HUF',
     bookingCompleted:false
-  }),true,async()=>({rate:366.31,date:'2026-09-30',source:'Magyar Nemzeti Bank'}),async()=>({availability:'available',availableUnits:1}));
+  }),true,async()=>({rate:366.31,date:'2026-09-30',source:'Magyar Nemzeti Bank'}),async()=>({availability:'available',availableUnits:1,source:'MOCK',checkedAt:new Date().toISOString()}));
   assert.equal(res.status,200);
   const json=await res.json();
   assert.equal(json.total,92200);

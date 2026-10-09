@@ -1,3 +1,4 @@
+import {normalizeAvailability} from './availability-model.mjs';
 // Generic read-only PMS adapter contract.
 // The shared core knows only capabilities and normalized operations.
 // Provider-specific URLs, IDs, request validation and parsing live in adapter modules.
@@ -7,7 +8,7 @@ export function createReadOnlyPmsAdapter({
   label,
   fetchAvailability,
   fetchQuote,
-  capabilities={}
+  capabilities={},tenantId=null
 }={}){
   if(!id || typeof id!=='string') throw new Error('A PMS adapter azonosítója kötelező.');
   if(typeof fetchAvailability!=='function') throw new Error('A PMS adapter availability művelete hiányzik.');
@@ -30,6 +31,12 @@ export function createReadOnlyPmsAdapter({
     id,
     label:label||id,
     capabilities:normalizedCapabilities,
+    tenantId,
+    async getVerifiedAvailability(query,{tenantId:owner,now=Date.now()}={}){
+      if(!owner||tenantId&&owner!==tenantId)throw Error('Idegen vállalkozás adaptere.');
+      try{return normalizeAvailability({...query,...await fetchAvailability(query)},query,{tenantId:owner,now});}
+      catch(error){return normalizeAvailability({error:error.message},query,{tenantId:owner,now});}
+    },
     async getAvailability(input){
       return fetchAvailability(input);
     },

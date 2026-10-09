@@ -3,6 +3,7 @@ import {fetchPublicBookingAvailability,fetchPublicBookingQuote} from './sarberki
 
 export const previoReadOnlyAdapter=createReadOnlyPmsAdapter({
   id:'previo-public-booking',
+  tenantId:'sarberki',
   label:'Previo public booking',
   fetchAvailability:fetchPublicBookingAvailability,
   fetchQuote:fetchPublicBookingQuote,

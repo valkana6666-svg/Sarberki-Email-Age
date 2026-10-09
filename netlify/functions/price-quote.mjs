@@ -69,9 +69,9 @@ export async function fetchMnbEurRate(request=fetch) {
   }
 }
 
-export function isLivePrevioEnabled(request) {
+export function isLivePrevioEnabled(request,safetyVerified=process.env.PREVIO_READ_SAFETY_VERIFIED==='true') {
   try {
-    return LIVE_TEST_HOSTS.has(new URL(request.url).hostname);
+    return safetyVerified===true&&LIVE_TEST_HOSTS.has(new URL(request.url).hostname);
   } catch {
     return false;
   }

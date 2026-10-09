@@ -88,11 +88,11 @@ test('integrated analyzer preserves known facts on explicitly linked second and 
  assert.equal(h.node('f_arrival').value,'2026-10-16');assert.equal(h.node('f_adults').value,'2');assert.equal(h.node('f_child_ages').value,'7, 11');assert.equal(runtime.cases.list().length,1);
 });
 test('integrated price handler never invokes price endpoint after zero capacity',async()=>{
- const runtime=createBookingRuntime({request:i=>buildAvailabilityOptions(i,async()=>({availability:'unavailable',availableUnits:0}))}),h=harness(runtime);
+ const runtime=createBookingRuntime({request:i=>buildAvailabilityOptions(i,async()=>({availability:'unavailable',availableUnits:0,source:'MOCK',checkedAt:new Date().toISOString()}))}),h=harness(runtime);
  let prices=0;h.context.fetch=async()=>{prices++;throw Error('price must not run');};await h.node('check_price').onclick();assert.equal(prices,0);assert.match(h.node('price_status').textContent,/nem igazoltan/u);
 });
 test('integrated approval cannot override failed fresh capacity',async()=>{
- const runtime=createBookingRuntime({request:i=>buildAvailabilityOptions(i,async()=>({availability:'unavailable',availableUnits:0}))}),h=harness(runtime);
+ const runtime=createBookingRuntime({request:i=>buildAvailabilityOptions(i,async()=>({availability:'unavailable',availableUnits:0,source:'MOCK',checkedAt:new Date().toISOString()}))}),h=harness(runtime);
  approve(h);h.node('override').checked=true;await h.node('approve').onclick();assert.equal(h.window.SarberkiCaseController.snapshot().quote,null);assert.match(h.node('status').textContent,/Jóváhagyás tiltva/u);
 });
 test('linked phone-only letter does not revoke the central approved price',()=>{

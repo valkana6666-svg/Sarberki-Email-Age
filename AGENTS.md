@@ -8,3 +8,6 @@
 - A szabad egységszám pillanatfelvétel, nem foglalás vagy garancia; végleges vendégajánlat előtt a kezelő ismét ellenőrizze a rendelkezésre állást.
 - Kapacitást érintő fejlesztésnél teljes `npm test`, hibás/hiányzó forrásra vonatkozó negatív teszt és a foglalható/foglalt határ ellenőrzése kötelező. Az automatikus teszt nem helyettesíti az élő Previo-val történő összevetést.
 - Referencia: `reports/availability-audit-2026-10-08/REPORT.md`; anonim opt-in élő ellenőrzés: `node tests/live-availability-audit.mjs --live-read-only`.
+
+- Tartós stratégia: a Sárberki a későbbi AI-vállalkozás első alkalmazása. Új fejlesztésnél moduláris, vállalkozásonként elkülönített és tesztelhető határokat alakíts ki a jelenlegi stabilitás megőrzésével. Részletek: `docs/PLATFORM-STRATEGY.md`.
+- Élő Previo-lekérdezést ne ismételj, amíg az alkalmazott műveletek készletzárolási mellékhatásának hiánya nincs dokumentáltan igazolva. A teszthost önmagában nem engedély: a szerveroldali biztonsági kapcsoló alapértelmezetten tilt.
