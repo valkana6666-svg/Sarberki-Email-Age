@@ -4,3 +4,6 @@ node_modules/
 !.env.case-store.example
 *.dump
 *.bundle
+
+# Generated static deployment only
+dist/

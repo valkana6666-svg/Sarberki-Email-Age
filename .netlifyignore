@@ -1,9 +1,0 @@
-# Owner-only procedures, tests and reports must not be static frontend assets.
-reports/
-tests/
-supabase/
-.env*
-*.sql
-*.dump
-*.gpg
-*.bundle
