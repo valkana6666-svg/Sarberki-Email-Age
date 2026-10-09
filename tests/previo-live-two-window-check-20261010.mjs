@@ -43,7 +43,7 @@ async function testOne(input){
   if(!response.ok||!result){
     console.log('LIVE PREVIO CROSSCHECK BLOCKED',JSON.stringify({input,direct,
       testEndpointStatus:response.status,testEndpointError:result?.error||'Non-JSON response'}));
-    throw Error('Isolated Netlify live availability endpoint did not produce verified results.');
+    return {status:'blocked',input,direct,endpointStatus:response.status};
   }
   assert.equal(result.bookingCompleted,false);
   assert.equal(result.arrival,input.arrival);
@@ -99,16 +99,18 @@ async function testOne(input){
     'At least one direct Previo request could not be verified; no overall PASS is allowed.');
   return summary;
 }
-let pass=0;
+let pass=0,blocked=0;
 for(const input of WINDOWS){
-  await testOne(input);
-  pass++;
+  const outcome=await testOne(input);
+  if(outcome.status==='blocked')blocked++; else pass++;
 }
-console.log('LIVE PREVIO CROSSCHECK PASS',JSON.stringify({
+console.log(blocked?'LIVE PREVIO CROSSCHECK INCOMPLETE':'LIVE PREVIO CROSSCHECK PASS',JSON.stringify({
   passedWindows:pass,totalWindows:WINDOWS.length,
   typePoolChecks:pass*KINDS.length,
   scope:'anonymous type-pool stock only',
   physicalCabinIdentityVerified:false,
   independentManualBrowserComparisonCompleted:false,
+  blockedWindows:blocked,
   bookingCreated:false,emailSent:false
 }));
+if(blocked)throw Error('Live public Previo data collected, but Netlify safety gate stayed closed; comparison not confirmed.');
