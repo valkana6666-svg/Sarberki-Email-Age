@@ -14,10 +14,20 @@ Projekt: sarberki-test / mojnqizbcaczstguikpv. Netlify: kizárólag leafy-chimer
 ## BLOKKOLVA / MÉG NEM KÉSZ
 
 - A telepített zárt Auth-végpont HTTP 404 mellett visszaigazolta a szerverkonfigurációt: CASE_STORE_ENABLED=disabled, beépített URL pontosan a teszthost, SUPABASE_URL a kijelölt projekt, publishable kulcs rendelkezésre áll. Az ügy-API friss HTTP-próbája 503 CASE_STORE_DISABLED. A javított scannerrel a tesztdeploy sikeresen publikálódott. Ez még nem hitelesített Supabase kapcsolatpróba.
-- Valódi felhős Auth-próba még nem futott; operátori jelszavak biztonságos tulajdonosi bevitele szükséges. Az ideiglenes útvonal engedélyezési időpontja nincs beállítva. A felhős booking-cases E2E továbbra is 0.
+- A későbbi valódi Auth-próbák eredményét az alábbi frissítés rögzíti. A felhős booking-cases E2E továbbra is 0.
 - Titkosított külső backup és külön restore még nincs. Konkrét díjmentes, tulajdonosi gépen végrehajtható eljárás: BACKUP-RESTORE.md. A jelen környezetben hiányzik a dump/restore futtatókörnyezet és a biztonságos DB-kapcsolat; nem kértem jelszót chatben.
 - CASE_STORE_ENABLED=disabled marad; végleges jóváhagyás és Previo olvasás tiltva. Fizetős szolgáltatás, main/production módosítás, valódi adat/email nem történt.
 
 Hivatalos források:
 https://docs.netlify.com/build/functions/environment-variables/
 https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore
+
+## Friss ellenőrzés — 2026-10-09 16:32 (Europe/Vienna)
+
+- A párhuzamos munkák fast-forward átvétele után ellenőrzött HEAD: b629924bacb4cbaf677aa3ec55765d7786a2462a. Teljes friss npm test: 821 PASS / 0 FAIL / 0 skipped. A fenti 794 eredmény korábbi futás, nem a legfrissebb állapot.
+- A tulajdonos korábban egy órára engedélyezte az ideiglenes Auth-próbát. Az első űrlapbeküldésnél a no-referrer fejléc Origin:null értéket okozott; same-origin referrer policy javítás került a tesztágra. Null/idegen Origin továbbra is tiltott.
+- Két későbbi secure browserAuth beküldés eljutott a valódi Supabase Auth szolgáltatáshoz. Mindkettőnél a két writer login sikerült, majd a reader login invalid_credentials hibával leállt. A demo belépés, valódi munkamenetes RLS/CAS/audit próba nem futott le. A létrejött tesztmunkamenetek helyi logout/refresh-token visszavonása sikeres volt. Ezt nem teljes cloud E2E sikerként jelentjük.
+- A jelenlegi Auth-users utóellenőrzés szerint reader updated_at változatlan (2026-10-09 09:36:56 UTC), last_sign_in_at null; demo last_sign_in_at null. Az olvasó jelszavának cseréje még nem történt meg. A tulajdonosi dashboard GitHub-belépése sikerült, de az nem helyettesíti az operátori Auth-hitelesítést.
+- Friss élő válasz: az Auth-próbakaput a lejárat lezárta; a szerveroldali konfiguráció ellenőrzött. Booking-cases: CASE_STORE_DISABLED. Nem hosszabbítottuk meg a tesztkaput és nem aktiváltuk az ügy-API-t.
+- Elkészült egy saját gépen, tulajdonos által futtatható Python karbantartási segéd; csak szintaxisellenőrzés történt. Nincs telepítve, nincs benne titok, nem történt admin API-jelszócsere. A tulajdonos jelenleg csak telefonon dolgozik, ezért ez nem végrehajtható telefonos megoldás. Csak új jelszót kérő, működő mobil jelszócsere-link nincs előkészítve.
+- Backup/izolált restore továbbra BLOKKOLVA; az API aktiválásának feltételei nem teljesültek. Minden korábbi tiltás változatlan.
