@@ -449,8 +449,8 @@ test('six-person inquiry lists verified availability before signature',async()=>
   assert.match(draft,/sebfertőtlenítő/u);
   assert.match(draft,/pontyzsák/u);
   assert.match(draft,/Sárberki horgászjegyet külön/u);
-  assert.match(draft,/2 fős és 4 fős Previo poolban van szabad kapacitás/u);
-  assert.match(draft,/konkrét A\/B \+ C fizikai párosítást kézzel kell ellenőrizni/u);
+  assert.match(draft,/Osztott apartmanokból álló lehetséges elhelyezések/u);
+  assert.match(draft,/pontos apartmanokat külön visszaigazoljuk/u); assert.doesNotMatch(draft,/Previo|poolban|kapacitás|PMS/iu);
 });
 
 
