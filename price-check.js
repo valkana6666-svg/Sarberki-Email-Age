@@ -174,7 +174,7 @@
   function approvedPriceText(quote){
     if(!quote) return '';
     const eur=Number.isFinite(quote.eurTotal)?' (kb. '+formatEur(quote.eurTotal)+', MNB '+(quote.eurRateDate||'')+')':'';
-    const total=(quote.referenceOnly?'A Sárberki publikus árlistája alapján számolt teljes ár: ':'A foglalási felületen ellenőrzött teljes ár: ')+formatFt(quote.total)+eur+'.';
+    const total=(quote.referenceOnly?'A Sárberki publikus árlistája alapján számolt teljes ár: ':quote.operatorChecked?'A kezelő által a foglalási felületen ellenőrzött teljes ár: ':'A foglalási felületen ellenőrzött teljes ár: ')+formatFt(quote.total)+eur+'.';
     const breakdown=Array.isArray(quote.unitBreakdown)&&quote.unitBreakdown.length>1
       ? ' Házanként: '+quote.unitBreakdown.map(x=>{
           const eurPart=Number.isFinite(quote.eurRate)&&quote.eurRate>0?' (kb. '+formatEur(Math.round((x.total/quote.eurRate)*100)/100)+')':'';
@@ -195,6 +195,8 @@
     if(button) button.disabled=true;
     const input=$('approved_price_manual');
     if(input) input.value='';
+    const manualConfirm=$('manual_quote_confirmed');
+    if(manualConfirm) manualConfirm.checked=false;
     const status=$('price_approval_status');
     if(status) status.textContent=reason||'Ár nincs jóváhagyva. A vendégválaszba csak emberi jóváhagyás után kerülhet összeg.';
   }
@@ -206,15 +208,50 @@
     const panel=document.createElement('div');
     panel.id='price_approval_panel';
     panel.className='warning';
-    panel.innerHTML='<strong>Ár jóváhagyása</strong><p class="muted">A lekért vagy kézzel ellenőrzött teljes árat először itt hagyd jóvá. A jóváhagyás csak a választervezetet egészíti ki; e-mailt nem küld.</p><label for="approved_price_manual">Ellenőrzött teljes ár (Ft)</label><input id="approved_price_manual" type="number" min="1" step="1" inputmode="numeric" placeholder="pl. 128000"><button id="approve_price" type="button" disabled>Ár jóváhagyása és beépítése a levélbe</button><p id="price_approval_status" class="muted" role="status">Ár nincs jóváhagyva.</p>';
+    panel.innerHTML='<strong>Ár jóváhagyása</strong><p class="muted">A lekért vagy kézzel ellenőrzött teljes árat először itt hagyd jóvá. A jóváhagyás csak a választervezetet egészíti ki; e-mailt nem küld.</p><p><a href="https://sarberkito.hu/foglalas/" target="_blank" rel="noopener noreferrer">Hivatalos Sárberki / Previo foglaló megnyitása kézi ár- és kapacitásellenőrzéshez</a></p><label for="approved_price_manual">A foglalóban ellenőrzött teljes ár (Ft)</label><input id="approved_price_manual" type="number" min="1" step="1" inputmode="numeric" placeholder="pl. 128000"><label for="manual_quote_confirmed"><input type="checkbox" id="manual_quote_confirmed"> A kiválasztott teljes időszakot, háztípust, szükséges szabad egységszámot és vendégösszetételt a hivatalos foglalóban ellenőriztem. Nem készítettem foglalást.</label><button id="approve_price" type="button" disabled>Ár jóváhagyása és beépítése a levélbe</button><p id="price_approval_status" class="muted" role="status">Ár nincs jóváhagyva.</p>';
     result.insertAdjacentElement('afterend',panel);
     $('approved_price_manual').addEventListener('input',()=>{
-      const n=Number($('approved_price_manual').value);
-      $('approve_price').disabled=!(Number.isFinite(n)&&n>0);
-      pendingQuote=Number.isFinite(n)&&n>0?{total:Math.round(n),source:'kézi ellenőrzés',fingerprint:quoteFingerprint()}:null;
+      $('manual_quote_confirmed').checked=false;
+      $('approve_price').disabled=true;
+      pendingQuote=null;
       approvedPrice=null;
       if(window.SarberkiCaseState)window.SarberkiCaseController?.apply({type:'invalidateQuote'});
-      $('price_approval_status').textContent=pendingQuote?`Ellenőrzött ár előkészítve: ${formatFt(pendingQuote.total)} · jóváhagyásra vár.`:'Adj meg egy ellenőrzött teljes árat.';
+      $('price_approval_status').textContent='A beírt ár csak akkor jóváhagyható, ha a Previo foglalóban a teljes időszakot és a szabad kapacitást is ellenőrizted, majd bepipálod a megerősítést.';
+    });
+    $('manual_quote_confirmed').addEventListener('change',async()=>{
+      const confirmation=$('manual_quote_confirmed');
+      $('approve_price').disabled=true;
+      pendingQuote=null;
+      if(!confirmation.checked)return;
+      const n=Number($('approved_price_manual').value);
+      const arrival=$('price_arrival')?.value||'',departure=$('price_departure')?.value||'';
+      const cabin=$('price_cabin')?.value||'';
+      const adults=Number($('price_adults')?.value),children=Number($('price_children')?.value);
+      const ages=childAgesForQuote(children,$('price_child_ages')?.value);
+      const validDates=/^20\\d{2}-\\d{2}-\\d{2}$/.test(arrival)&&/^20\\d{2}-\\d{2}-\\d{2}$/.test(departure)&&departure>arrival;
+      if(!Number.isSafeInteger(n)||n<=0||!validDates||!singleCabinCapacity[cabin]||!Number.isInteger(adults)||adults<1||ages===null){
+        confirmation.checked=false;
+        $('price_approval_status').textContent='Előbb pontosítsd a dátumokat, a háztípust, a felnőtt- és gyermekszámot, az életkorokat és a teljes forintárat.';
+        return;
+      }
+      const fingerprint=quoteFingerprint();
+      pendingQuote={total:n,source:'a Previo foglalóban kézzel ellenőrzött ár',fingerprint,operatorChecked:true};
+      $('approve_price').disabled=false;
+      $('price_approval_status').textContent=`Kézzel ellenőrzött ár: ${formatFt(n)} · MNB euróárfolyam lekérése… A vendéglevél még változatlan.`;
+      try{
+        const response=await fetch('/api/manual-fx',{method:'GET',cache:'no-store'});
+        if(!response.ok)throw Error('Nincs elérhető árfolyam.');
+        const rate=await response.json();
+        if(rate.status!=='available'||!Number.isFinite(rate.rateHufPerEur)||rate.rateHufPerEur<=0||!/^20\\d{2}-\\d{2}-\\d{2}$/.test(rate.rateDate))throw Error('Az árfolyam nem hitelesíthető.');
+        if(!confirmation.checked||fingerprint!==quoteFingerprint()||Number($('approved_price_manual').value)!==n)return;
+        const totalEur=Math.round(n/rate.rateHufPerEur*100)/100;
+        pendingQuote.raw={eurConversion:{status:'available',rateHufPerEur:rate.rateHufPerEur,rateDate:rate.rateDate,totalEur}};
+        $('price_approval_status').textContent=`Kézzel ellenőrzött ár: ${formatFt(n)} (kb. ${formatEur(totalEur)}; MNB: ${rate.rateDate}). Külön jóváhagyásra vár; nem küldtünk levelet.`;
+      }catch{
+        if(confirmation.checked&&fingerprint===quoteFingerprint()){
+          $('price_approval_status').textContent=`Kézzel ellenőrzött ár: ${formatFt(n)}. Az MNB EUR-árfolyam most nem elérhető, ezért csak a forintösszeg hagyható jóvá.`;
+        }
+      }
     });
     $('approve_price').addEventListener('click',approvePriceIntoDraft);
   }
@@ -441,7 +478,7 @@
       return;
     }
     const message=currentMessage();
-    if(pendingQuote?.fingerprint&&pendingQuote.fingerprint!==quoteFingerprint()){ $('price_approval_status').textContent='Az ár alapadata megváltozott; új ellenőrzés szükséges.';return;}
+    if(!pendingQuote||pendingQuote.fingerprint!==quoteFingerprint()||(pendingQuote.operatorChecked&&!$('manual_quote_confirmed')?.checked)){ $('price_approval_status').textContent='Az ár ellenőrzése hiányzik vagy az alapadata megváltozott; új ellenőrzés szükséges.';return;}
     const analysis=typeof extract==='function'?extract(message,''):null;
     const asked=huAskedTopics(message,analysis);
     approvedPrice={
@@ -453,6 +490,7 @@
       eurRate:Number.isFinite(Number(pendingQuote?.raw?.eurConversion?.rateHufPerEur))?Number(pendingQuote.raw.eurConversion.rateHufPerEur):null,
       unitBreakdown:Array.isArray(pendingQuote?.raw?.unitBreakdown)?pendingQuote.raw.unitBreakdown:[],
       source:pendingQuote?.source||'kézi ellenőrzés',
+      operatorChecked:Boolean(pendingQuote?.operatorChecked),
       referenceOnly:Boolean(pendingQuote?.raw?.referenceOnly),
       availabilityVerified:pendingQuote?.raw?.availability==='available'&&!pendingQuote.raw.referenceOnly,
       fingerprint:quoteFingerprint(),
@@ -578,7 +616,7 @@
       $('approve_price').disabled=false;
       $('price_approval_status').textContent=`Lekért teljes ár: ${formatFt(result.total)} · jóváhagyásra vár. Még nincs a vendégválaszban.`;
       status.textContent=referenceOnly?'A Sárberki publikus árlistája alapján számolt referenciaár elkészült. A szabad kapacitást külön kell ellenőrizni; az összeg csak jóváhagyás után kerülhet a válaszba.':'A foglalási oldalon megjelenő ár ellenőrzésre vár. Az „Ár jóváhagyása és beépítése a levélbe” gombig nem kerül a vendégválaszba, és foglalás nem történik.';
-    } catch(e) {status.textContent=`HITELES ÁRLEKÉRÉS SZÜKSÉGES · ${e.message} Nyisd meg a foglalási oldalt kézi ellenőrzésre.`;}
+    } catch(e) {status.textContent=`AZ AUTOMATIKUS ÁRLEKÉRÉS MÉG NEM ENGEDÉLYEZETT · ${e.message} A fenti hivatalos foglaló hivatkozásán ellenőrizheted az árat és a szabad kapacitást; utána írd be a teljes forintárat, és erősítsd meg a kézi ellenőrzést.`;}
   };
 
   ['price_arrival','price_departure','price_cabin','price_adults','price_children','price_child_ages'].forEach(id=>{
