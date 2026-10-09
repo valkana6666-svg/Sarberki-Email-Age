@@ -25,7 +25,19 @@ function unitText(option,language='hu'){
 }
 export function availabilitySentence(result,language='hu'){
   const available=(result?.available_options||[]).filter(x=>x.availability==='available'&&x.availability_verified===true).map(option=>unitText(option,language));
-  if(!available.length)return ({hu:'A megadott időszakra a hitelesen ellenőrizhető háztípusok között jelenleg nem találtunk megfelelő szabad kapacitást.',de:'Für den gewünschten Zeitraum haben wir bei den geprüften Haustypen keine passende freie Kapazität gefunden.',en:'We have not found suitable availability among the verified cabin types for the requested dates.',si:'Za izbrani termin med preverjenimi tipi hišk nismo našli primerne proste kapacitete.'})[language]||availabilitySentence(result,'hu');
+  if(!available.length){
+    // A failed or incomplete Previo check is UNKNOWN, never evidence of sold-out inventory.
+    if(result?.status==='unverified'||(result?.unverified_options||[]).length>0) {
+      const unknown={
+        hu:'A kért időszakra a szabad kapacitást jelenleg nem sikerült hitelesen megállapítani. A foglalhatóság külön egyeztetést igényel.',
+        de:'Die Verfügbarkeit für den gewünschten Zeitraum konnte derzeit nicht zuverlässig bestätigt werden. Eine separate Prüfung ist erforderlich.',
+        en:'Availability for your requested dates could not be reliably verified at this time. Separate confirmation is required.',
+        si:'Razpoložljivosti za želeni termin trenutno ni bilo mogoče zanesljivo potrditi. Potrebno je dodatno preverjanje.'
+      };
+      return unknown[language]||unknown.hu;
+    }
+    return ({hu:'A megadott időszakra a hitelesen ellenőrizhető háztípusok között jelenleg nem találtunk megfelelő szabad kapacitást.',de:'Für den gewünschten Zeitraum haben wir bei den geprüften Haustypen keine passende freie Kapazität gefunden.',en:'We have not found suitable availability among the verified cabin types for the requested dates.',si:'Za izbrani termin med preverjenimi tipi hišk nismo našli primerne proste kapacitete.'})[language]||availabilitySentence(result,'hu');
+  }
   const intro=({hu:'A megadott időpontban a létszám alapján ellenőrzött, szabad lehetőségek: ',de:'Geprüfte verfügbare Optionen für Ihre Reisedaten und Personenzahl: ',en:'Verified available options for your dates and party size: ',si:'Preverjene proste možnosti za vaš termin in število gostov: '})[language]||'A megadott időpontban a létszám alapján ellenőrzött, szabad lehetőségek: ';
   return intro+available.join(', ')+'.';
 }
