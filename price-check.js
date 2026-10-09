@@ -419,9 +419,12 @@
     else if(!v.unit&&!availabilityLines.length) lines.push('Kérjük, írja meg, melyik háztípust szeretnék: VIP, Családi, Deluxe vagy Osztott?');
     const priceApproved=approvedPrice&&approvedPrice.fingerprint===quoteFingerprint();
     if(asked.availability&&asked.price){
-      if(priceApproved) lines.push('','Ellenőrizzük, hogy a megadott időpontra elérhető-e a kért háztípus. '+approvedPriceText(approvedPrice)+' Az elérhetőséget külön visszaigazoljuk.');
+      if(priceApproved&&approvedPrice.availabilityVerified) lines.push('','A kiválasztott szállás a kért időszakra elérhető. '+approvedPriceText(approvedPrice));
+      else if(priceApproved) lines.push('','Ellenőrizzük, hogy a megadott időpontra elérhető-e a kért háztípus. '+approvedPriceText(approvedPrice)+' Az elérhetőséget külön visszaigazoljuk.');
       else lines.push('','Ellenőrizzük, hogy a megadott időpontra elérhető-e a kért háztípus. Az aktuális teljes árról ezt követően tudunk pontos tájékoztatást adni.');
-    } else if(asked.availability&&!availabilityLines.length) lines.push('','Ellenőrizzük, hogy a megadott időpontra elérhető-e a kért háztípus, és hamarosan visszajelzünk.');
+    } else if(asked.availability&&!availabilityLines.length) {
+      lines.push('',priceApproved&&approvedPrice.availabilityVerified?'A kiválasztott szállás a kért időszakra elérhető.':'Ellenőrizzük, hogy a megadott időpontra elérhető-e a kért háztípus, és hamarosan visszajelzünk.');
+    }
     else if(asked.price){
       if(priceApproved){
         const label=selectedCabin||v.unit||'kiválasztott háztípus';
@@ -503,13 +506,15 @@
       source:pendingQuote?.source||'kézi ellenőrzés',
       operatorChecked:Boolean(pendingQuote?.operatorChecked),
       referenceOnly:Boolean(pendingQuote?.raw?.referenceOnly),
-      availabilityVerified:pendingQuote?.raw?.availability==='available'&&!pendingQuote.raw.referenceOnly,
+      // The owner attests real manual availability only through the existing confirmation checkbox.
+      // Public reference prices alone must never imply that a cabin is free.
+      availabilityVerified:Boolean(pendingQuote?.operatorChecked&&$('manual_quote_confirmed')?.checked)||(pendingQuote?.raw?.availability==='available'&&!pendingQuote.raw.referenceOnly),
       fingerprint:quoteFingerprint(),
       approvedAt:new Date().toISOString()
     };
     if(window.SarberkiCaseState){const state=window.SarberkiCaseController?.snapshot();if(state)window.SarberkiCaseController.apply({type:'quote',quote:approvedPrice,fingerprint:window.SarberkiCaseState.caseFingerprint(state.values)});}
     applyFocusedReply(message);
-    $('price_approval_status').textContent=`Jóváhagyva: ${formatFt(approvedPrice.total)}. Az összeg automatikusan bekerült a választervezetbe. E-mail nem lett elküldve.`;
+    $('price_approval_status').textContent=`Jóváhagyva: ${formatFt(approvedPrice.total)}. ${approvedPrice.availabilityVerified?'A kért szállás elérhetőségét jóváhagytad. ':'Az elérhetőség még nem igazolt. '}Az összeg bekerült a választervezetbe. E-mail nem lett elküldve.`;
     const status=$('status');
     if(status){
       status.className='warning';
