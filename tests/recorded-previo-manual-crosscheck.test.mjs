@@ -54,7 +54,7 @@ test('offline replay reproduces four-guest split-C alternative but never invents
   assert.equal(result.available_options[0].verification_scope,'type_pool');
   assert.equal(result.available_options[0].individual_unit_mapping_verified,false);
   assert.deepEqual(result.unavailable_options.map(x=>x.key).sort(),['deluxe','family','splitAB','vip']);
-  assert.ok(result.unverified_options.some(x=>x.key==='small'));
+  assert.ok(result.excluded_options.some(x=>x.key==='small')); // 2-person house cannot fit 4.
   assert.equal(result.bookingCompleted,false);
   const guestText=availabilitySentence(result,'hu');
   assert.match(guestText,/Osztott/u);
