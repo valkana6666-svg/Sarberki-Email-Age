@@ -1,0 +1,25 @@
+name: Sárberki one-time read-only Previo capacity crosscheck
+
+on:
+  push:
+    branches:
+      - gmail-test-subject-allowlist
+    paths:
+      - tests/previo-live-two-window-check-20261010.mjs
+
+permissions:
+  contents: read
+
+jobs:
+  crosscheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Compare public Previo type pools with isolated test Netlify response
+        env:
+          SARBERKI_EXPLICIT_ANONYMOUS_READ_ONLY_PROBE: "2026-10-10"
+        run: node tests/previo-live-two-window-check-20261010.mjs
