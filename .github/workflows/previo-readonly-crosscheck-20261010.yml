@@ -1,11 +1,8 @@
 name: Sárberki one-time read-only Previo capacity crosscheck
 
+# Manually run only after configuring matching GitHub + Netlify test secrets.
 on:
-  push:
-    branches:
-      - gmail-test-subject-allowlist
-    paths:
-      - tests/previo-live-two-window-check-20261010.mjs
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -22,4 +19,5 @@ jobs:
       - name: Compare public Previo type pools with isolated test Netlify response
         env:
           SARBERKI_EXPLICIT_ANONYMOUS_READ_ONLY_PROBE: "2026-10-10"
+          PREVIO_CAPACITY_TEST_TOKEN: ${{ secrets.PREVIO_CAPACITY_TEST_TOKEN }}
         run: node tests/previo-live-two-window-check-20261010.mjs

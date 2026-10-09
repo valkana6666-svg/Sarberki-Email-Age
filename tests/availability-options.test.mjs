@@ -67,9 +67,30 @@ test('availability endpoint accepts only anonymous dates and total guests',async
   assert.equal(badRes.status,503);
 });
 
-test('live availability is isolated to the test host',()=>{
-  assert.equal(isLiveAvailabilityEnabled(new Request('https://leafy-chimera-2403e5.netlify.app/api/availability-options'),true),true);
-  assert.equal(isLiveAvailabilityEnabled(new Request('https://moonlit-torrone-88b39d.netlify.app/api/availability-options')),false);
+test('capacity gate: only authenticated test-host calls with separate explicit flag',()=>{
+ const token='synthetic-test-token-for-unit-testing-only-0123456789';
+ const host='leafy-chimera-2403e5.netlify.app';
+ const req=(h,t=token)=>new Request('https://'+h+'/api/availability-options',{headers:{authorization:'Bearer '+t}});
+ assert.equal(isLiveAvailabilityEnabled(req(host),true,token),true);
+ assert.equal(isLiveAvailabilityEnabled(req(host),false,token),false);
+ assert.equal(isLiveAvailabilityEnabled(req(host,'wrong'),true,token),false);
+ assert.equal(isLiveAvailabilityEnabled(new Request('https://'+host+'/api/availability-options'),true,token),false);
+ assert.equal(isLiveAvailabilityEnabled(req(host),true,'short'),false);
+ assert.equal(isLiveAvailabilityEnabled(req(host),true,''),false);
+ assert.equal(isLiveAvailabilityEnabled(req('moonlit-torrone-88b39d.netlify.app'),true,token),false);
+ assert.equal(isLiveAvailabilityEnabled(req('another.example'),true,token),false);
+});
+
+test('closed capacity gate rejects unauthorized traffic without calling Previo',async()=>{
+ const request=new Request('https://leafy-chimera-2403e5.netlify.app/api/availability-options',{
+  method:'POST',headers:{'content-type':'application/json'},
+  body:JSON.stringify({arrival:'2026-11-09',departure:'2026-11-13',guests:6})
+ });
+ let calls=0;
+ const response=await handleAvailabilityOptions(request,async()=>{calls++;throw Error('unexpected upstream call');},
+  isLiveAvailabilityEnabled(request,true,'A'.repeat(40)));
+ assert.equal(response.status,503);
+ assert.equal(calls,0);
 });
 
 test('split planner never claims verified availability',()=>{

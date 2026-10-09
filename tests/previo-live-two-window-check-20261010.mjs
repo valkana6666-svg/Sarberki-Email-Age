@@ -7,6 +7,8 @@ import {wholeCabinCandidates} from '../booking-filter.mjs';
 
 assert.equal(process.env.SARBERKI_EXPLICIT_ANONYMOUS_READ_ONLY_PROBE,'2026-10-10',
   'An explicit owner-authorized test-only run is required.');
+const CAPACITY_TOKEN=process.env.PREVIO_CAPACITY_TEST_TOKEN||'';
+assert.ok(CAPACITY_TOKEN.length>=32,'GitHub capacity-test secret is not configured; no live requests were sent.');
 
 const HOST='https://leafy-chimera-2403e5.netlify.app';
 const WINDOWS=[
@@ -34,7 +36,7 @@ async function testOne(input){
     }
   }
   const response=await fetch(HOST+'/.netlify/functions/availability-options',{
-    method:'POST',headers:{'content-type':'application/json'},
+    method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+CAPACITY_TOKEN},
     body:JSON.stringify({...input,fallback:true}),
     signal:AbortSignal.timeout(120000)
   });

@@ -1,11 +1,24 @@
+import {timingSafeEqual} from 'node:crypto';
 import {wholeCabinCandidates,validateCapacityResult,capacityKey} from '../../booking-filter.mjs';
 import {fetchPublicBookingAvailability} from '../../price-source/sarberki-public-booking.mjs';
 import {splitCapacityOptions as buildSplitCapacityOptions} from '../../split-units.mjs';
 
 const LIVE_TEST_HOSTS=new Set(['leafy-chimera-2403e5.netlify.app']);
 
-export function isLiveAvailabilityEnabled(request,safetyVerified=process.env.PREVIO_READ_SAFETY_VERIFIED==='true'){
-  try{return safetyVerified&&LIVE_TEST_HOSTS.has(new URL(request.url).hostname);}catch{return false;}
+// Separate from PREVIO_READ_SAFETY_VERIFIED, which also controls the pricing route.
+// Never enable read-only Previo traffic on an unauthenticated public test endpoint.
+export function isLiveAvailabilityEnabled(
+  request,
+  safetyVerified=process.env.PREVIO_CAPACITY_READ_SAFETY_VERIFIED==='true',
+  expectedToken=process.env.PREVIO_CAPACITY_TEST_TOKEN
+){
+  try {
+    if(safetyVerified!==true||!LIVE_TEST_HOSTS.has(new URL(request.url).hostname))return false;
+    const secret=String(expectedToken||''),auth=request.headers.get('authorization')||'';
+    if(secret.length<32||!auth.startsWith('Bearer '))return false;
+    const actual=Buffer.from(auth.slice(7),'utf8'),expected=Buffer.from(secret,'utf8');
+    return actual.length===expected.length&&timingSafeEqual(actual,expected);
+  }catch{return false;}
 }
 
 function validDate(value){return /^\d{4}-\d{2}-\d{2}$/.test(value||'')&&Number.isFinite(+new Date(value+'T00:00:00Z'))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;}
