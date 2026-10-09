@@ -17,7 +17,7 @@ A telepített kapu és a böngészős összehasonlítás csak külön ellenőrz�
 3. GitHub repo → Settings → Secrets and variables → Actions → New repository secret:
    `PREVIO_CAPACITY_TEST_TOKEN`, **ugyanazzal a titkos értékkel**.
 4. Frissítsd a Netlify tesztprojekt telepítését, ellenőrizd a `/api/health` `deployedCommit` értékét.
-5. GitHub → Actions → `Sárberki one-time read-only Previo capacity crosscheck` → Run workflow, ág: `gmail-test-subject-allowlist`.
+5. A tesztági workflow módosítása automatikusan létrehoz egy GitHub Actions futást. A titkos kulcs hiányában ez **szándékosan hibával leáll, Previo-lekérés nélkül**. Miután a Netlify környezeti változóit és a GitHub secretet beállítottad, GitHub → Actions → `Sárberki one-time read-only Previo capacity crosscheck` → a tesztági sikertelen futás → **Re-run failed jobs**. A `workflow_dispatch` csak akkor használható a GitHub felületén, ha a workflow a GitHub alapértelmezett ágán is szerepel; a main ágat ezért nem módosítjuk.
 6. Fontos: **NE** állítsd a régi `PREVIO_READ_SAFETY_VERIFIED` kapcsolót true értékre: az a külön árlekérdezési végpontot is megnyitná.
 
 ## Összehasonlítás
