@@ -342,7 +342,7 @@ export function requestedUnitsFromText(text=''){
     // A single, specifically named cabin in singular form means one unit.
     // This must not turn a generic enquiry, a plural request or split-unit
     // combinations into an invented booking-unit count.
-    const single=text.match(/(?<!\\p{L})(?:vip|családi|csaladi|deluxe|family|familien(?:haus|hütte)?|družinsk\\p{L}*|különálló|kulonallo)\\s+(?:faház(?:at|ba|ban|ra|hoz|ról)?|ház(?:at|ba|ban|ra|hoz|ról)?|apartman(?:t|ba|ban|ra)?|cabins?|houses?|cottages?|hišk\\p{L}*|koč\\p{L}*)(?!\\p{L})/iu);
+    const single=text.match(/(?<!\p{L})(?:vip|családi|csaladi|deluxe|family|familien(?:haus|hütte)?|družinsk\p{L}*|különálló|kulonallo)\s+(?:faház(?:at|ba|ban|ra|hoz|ról)?|ház(?:at|ba|ban|ra|hoz|ról)?|apartman(?:t|ba|ban|ra)?|cabin|house|cottage|hiško|hiška|kočo|koča)(?!\p{L})/iu);
     const cabin=single?cabinFromText(text):null;
     if(single&&cabin&&!cabin.startsWith('?')&&cabin!=='Osztott')
       return {count:1,open:false,evidence:single[0]};
