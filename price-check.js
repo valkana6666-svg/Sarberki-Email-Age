@@ -220,9 +220,16 @@
     });
     $('manual_quote_confirmed').addEventListener('change',async()=>{
       const confirmation=$('manual_quote_confirmed');
+      const referencePending=pendingQuote?.raw?.referenceOnly===true&&pendingQuote?.fingerprint===quoteFingerprint()?pendingQuote:null;
       $('approve_price').disabled=true;
       pendingQuote=null;
       if(!confirmation.checked)return;
+      if(referencePending&&Number($('approved_price_manual').value)===referencePending.total){
+        pendingQuote={...referencePending,operatorChecked:true};
+        $('approve_price').disabled=false;
+        $('price_approval_status').textContent=`A tájékoztató árhoz a szabad kapacitás kézi ellenőrzése megerősítve: ${formatFt(referencePending.total)}. A levél még nem módosult.`;
+        return;
+      }
       const n=Number($('approved_price_manual').value);
       const arrival=$('price_arrival')?.value||'',departure=$('price_departure')?.value||'';
       const cabin=$('price_cabin')?.value||'';
@@ -478,6 +485,10 @@
       return;
     }
     const message=currentMessage();
+    if(pendingQuote?.raw?.referenceOnly===true&&!pendingQuote.operatorChecked){
+      $('price_approval_status').textContent='Az árlistaár beillesztéséhez előbb ellenőrizd a szabad kapacitást, és pipáld be a megerősítést.';
+      return;
+    }
     if(!pendingQuote||pendingQuote.fingerprint!==quoteFingerprint()||(pendingQuote.operatorChecked&&!$('manual_quote_confirmed')?.checked)){ $('price_approval_status').textContent='Az ár ellenőrzése hiányzik vagy az alapadata megváltozott; új ellenőrzés szükséges.';return;}
     const analysis=typeof extract==='function'?extract(message,''):null;
     const asked=huAskedTopics(message,analysis);
@@ -619,8 +630,10 @@
       $('price_result').textContent=`${result.arrival}–${result.departure} · ${result.cabin}${(result.units||1)>1?` · Egységek: ${result.units}`:''} · ${result.adults} felnőtt${result.children.length?` · ${result.children.length} gyermek (${result.children.join(', ')} éves)`:''} · Szállás: ${result.accommodation.toLocaleString('hu-HU')} Ft · IFA: ${result.tourismTax.toLocaleString('hu-HU')} Ft · Teljes ár: ${result.total.toLocaleString('hu-HU')} Ft${referenceOnly?' · TÁJÉKOZTATÓ ÁRLISTAÁR · Szabad kapacitás NEM ellenőrzött':''}${eurText}${unitText} · Forrás: ${result.source} · Lekérés: ${result.checkedAt} · 20% törzsvendégkedvezmény: nincs alkalmazva`;
       pendingQuote={total:Number(result.total),source:result.source||'foglalási oldal',fingerprint:quoteFingerprint(),raw:{...result,referenceOnly}};
       $('approved_price_manual').value=String(result.total);
-      $('approve_price').disabled=false;
-      $('price_approval_status').textContent=`${referenceOnly?'Tájékoztató árlistaár':'Lekért teljes ár'}: ${formatFt(result.total)} · jóváhagyásra vár. Még nincs a vendégválaszban.`;
+      $('approve_price').disabled=referenceOnly;
+      $('price_approval_status').textContent=referenceOnly
+        ? `Tájékoztató árlistaár: ${formatFt(result.total)}. A jóváhagyáshoz a hivatalos foglalóban a szabad kapacitást külön ellenőrizned és a jelölőnégyzetet bepipálnod kell. A vendéglevél még változatlan.`
+        : `Lekért teljes ár: ${formatFt(result.total)} · jóváhagyásra vár. Még nincs a vendégválaszban.`;
       status.textContent=referenceOnly?'A Sárberki publikus árlistája alapján számolt referenciaár elkészült. A szabad kapacitást külön kell ellenőrizni; az összeg csak jóváhagyás után kerülhet a válaszba.':'A foglalási oldalon megjelenő ár ellenőrzésre vár. Az „Ár jóváhagyása és beépítése a levélbe” gombig nem kerül a vendégválaszba, és foglalás nem történik.';
     } catch(e) {status.textContent=`AZ AUTOMATIKUS ÁRLEKÉRÉS MÉG NEM ENGEDÉLYEZETT · ${e.message} A fenti hivatalos foglaló hivatkozásán ellenőrizheted az árat és a szabad kapacitást; utána írd be a teljes forintárat, és erősítsd meg a kézi ellenőrzést.`;}
   };

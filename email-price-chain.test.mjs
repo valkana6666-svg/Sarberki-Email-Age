@@ -538,6 +538,10 @@ test('operator clicks ordinary quote button: locked Previo returns labelled refe
  assert.match(r.result,/305,50 €/u);
  assert.doesNotMatch(r.draft,/122.200|122 200/u);
  h.element('approve_price').onclick();
+ assert.doesNotMatch(h.element('draft').value,/122.200|122 200/u);
+ h.element('manual_quote_confirmed').checked=true;
+ h.element('manual_quote_confirmed').onchange();
+ h.element('approve_price').onclick();
  assert.match(h.element('draft').value,/122.200|122 200/u);
  assert.match(h.element('draft').value,/publikus árlistája/u);
 });
