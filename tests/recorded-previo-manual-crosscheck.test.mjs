@@ -58,7 +58,7 @@ test('offline replay reproduces four-guest split-C alternative but never invents
   assert.equal(result.bookingCompleted,false);
   const guestText=availabilitySentence(result,'hu');
   assert.match(guestText,/Osztott/u);
-  assert.doesNotMatch(guestText,/\\b(?:7|8|9|10)[ABC]\\b/u);
+  assert.doesNotMatch(guestText,/\b(?:7|8|9|10)[ABC]\b/u);
 });
 
 test('offline replay declines unavailable VIP and offers only independently checked alternatives',async()=>{
