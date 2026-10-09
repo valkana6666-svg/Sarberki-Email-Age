@@ -42,6 +42,12 @@ function harness(runtime=null){
  return {node:id=>nodes.get(id),window,context,flush,analyze};
 }
 function approve(h){h.node('approved_price_manual').value='122200';h.node('approved_price_manual').dispatchEvent({type:'input'});h.node('manual_quote_confirmed').checked=true;h.node('manual_quote_confirmed').dispatchEvent({type:'change'});h.node('approve_price').click();}
+test('unverified availability question uses guest-facing language without system jargon',()=>{
+ const h=harness();
+ assert.match(h.node('draft').value,/A kért faház elérhetőségét külön visszaigazoljuk/u);
+ assert.doesNotMatch(h.node('draft').value,/szabad kapacitás|Previo|PMS|poolban|párosításellenőrzés/iu);
+ assert.match(h.node('issues').textContent,/kapacitás- és szükség esetén párosításellenőrzés/u);
+});
 test('actual analyzer and price approval handlers render both drafts from current state',()=>{
  const h=harness();approve(h);
  assert.match(h.node('draft').value,/122\s*200 Ft/u);assert.match(h.node('draft').value,/telefonszám/u);assert.match(h.node('draft').value,/Egy autó/u);assert.match(h.node('issues').textContent,/KÖZELI ÉRKEZÉS/u);
@@ -72,7 +78,7 @@ function quoteResponse(input){return {ok:true,headers:{get:()=> 'application/jso
 test('actual price request and approval carry the recorded HUF and EUR quote into both full replies',async()=>{
  const h=harness();h.context.fetch=async(url,options)=>{assert.equal(url,'/api/price-quote');return quoteResponse(JSON.parse(options.body));};
  await h.node('check_price').onclick();assert.match(h.node('price_result').textContent,/332,31/u);h.node('approve_price').click();
- assert.match(h.node('draft').value,/122\s*200 Ft/u);assert.match(h.node('draft').value,/332,31 €/u);assert.doesNotMatch(h.node('draft').value,/szabad kapacitását megnézzük/u);assert.match(h.node('draft').value,/árlekéréskor/u);assert.match(h.node('draft').value,/telefonszám/u);assert.equal(h.node('draft').value,h.node('gmail_draft').value);
+ assert.match(h.node('draft').value,/122\s*200 Ft/u);assert.match(h.node('draft').value,/332,31 €/u);assert.doesNotMatch(h.node('draft').value,/szabad kapacitását megnézzük/u);assert.match(h.node('draft').value,/A kért időszakra rendelkezésre áll megfelelő szálláslehetőség/u);assert.match(h.node('draft').value,/telefonszám/u);assert.equal(h.node('draft').value,h.node('gmail_draft').value);
 });
 test('a delayed price response cannot overwrite an edited stay',async()=>{
  const h=harness();let resolve,input;h.context.fetch=async(url,options)=>{input=JSON.parse(options.body);return await new Promise(r=>{resolve=r;});};
