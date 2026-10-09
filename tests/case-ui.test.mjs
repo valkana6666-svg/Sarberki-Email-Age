@@ -149,3 +149,34 @@ test('unresolved Gmail date modification cannot bypass the fresh approval gate',
  let calls=0;const runtime=createBookingRuntime({request:async()=>{calls++;throw Error('unexpected source');}}),h=harness(runtime);await importGmail(h,gmailFixture('gmail-one',gmailFirst));await importGmail(h,gmailFixture('gmail-two','Új időpont: 2026.10.30 vagy 2026.11.06; távozás 2026.11.08.',{received:'2026-10-08T19:40:31.100Z'}));
  assert.equal(h.node('f_arrival').value,'');assert.equal(h.node('f_departure').value,'');h.node('override').checked=true;await h.node('approve').onclick();assert.match(h.node('status').textContent,/Jóváhagyás tiltva/u);assert.equal(calls,0);
 });
+
+test('central runtime uses public reference only when live availability safety gate is closed',async()=>{
+ const runtime=createBookingRuntime({request:async()=>{throw Error('Élő kapacitás-ellenőrzés csak a külön Sárberki tesztoldalon engedélyezett.');}});
+ const h=harness(runtime);
+ let calls=0;
+ h.context.fetch=async(url,options)=>{
+  calls++;assert.equal(url,'/api/price-reference');
+  const input=JSON.parse(options.body);
+  return {ok:true,status:200,headers:{get:()=> 'application/json'},json:async()=>({...input,status:'public_reference',referenceOnly:true,availability:'not_checked',availableUnits:null,bookingCompleted:false,source:'Sárberki publikus árlista – tájékoztató kalkuláció',checkedAt:'2026-10-09T00:00:00Z',accommodation:120000,tourismTax:2200,total:122200,currency:'HUF',eurConversion:{status:'available',rateHufPerEur:400,rateDate:'2026-10-09',totalEur:305.5}})};
+ };
+ await h.node('check_price').onclick();
+ assert.equal(calls,1);
+ assert.match(h.node('price_result').textContent,/TÁJÉKOZTATÓ ÁRLISTAÁR/u);
+ assert.match(h.node('price_result').textContent,/122.200|122 200/u);
+ assert.match(h.node('price_result').textContent,/305,50 €/u);
+ assert.equal(h.node('approve_price').disabled,true);
+ h.node('approve_price').click();
+ assert.doesNotMatch(h.node('draft').value,/122\s*200 Ft/u);
+ h.node('manual_quote_confirmed').checked=true;
+ h.node('manual_quote_confirmed').dispatchEvent({type:'change'});
+ assert.equal(h.node('approve_price').disabled,false);
+ h.node('approve_price').click();
+ assert.match(h.node('draft').value,/122\s*200 Ft/u);
+});
+
+test('central runtime does not offer a reference when capacity is positively unavailable',async()=>{
+ const runtime=createBookingRuntime({request:async i=>buildAvailabilityOptions(i,async()=>({availability:'unavailable',availableUnits:0,checkedAt:new Date().toISOString(),source:'mock closed'}))});
+ const h=harness(runtime);let calls=0;h.context.fetch=async()=>{calls++;throw Error('must not call quote/reference');};
+ await h.node('check_price').onclick();
+ assert.equal(calls,0);assert.equal(h.node('price_result').textContent,'');
+});

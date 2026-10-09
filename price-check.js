@@ -605,8 +605,17 @@
     if(units>1&&input.adults<units){status.textContent='KÉZI ELLENŐRZÉS SZÜKSÉGES · Több háznál minden egységhez legalább egy felnőtt szükséges az élő árlekéréshez.';return;}
     if(units>1) input.units=units;
     try {
-      if(window.SarberkiBookingRuntime)await window.SarberkiBookingRuntime.beforePrice(input);
-      let response=await fetch('/api/price-quote',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input),cache:'no-store'});
+      let referenceMode=false;
+      if(window.SarberkiBookingRuntime){
+        try{await window.SarberkiBookingRuntime.beforePrice(input);}
+        catch(error){
+          // The live availability safety gate is closed; public prices do not need Previo.
+          // A verified zero-capacity response or any other business rejection still stops here.
+          if(!String(error.message||'').includes('Élő kapacitás-ellenőrzés csak a külön Sárberki tesztoldalon engedélyezett'))throw error;
+          referenceMode=true;
+        }
+      }
+      let response=await fetch(referenceMode?'/api/price-reference':'/api/price-quote',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input),cache:'no-store'});
       if (!response.headers.get('content-type')?.includes('application/json')) throw Error('Az árlekérő szerver nincs ehhez az oldalhoz csatlakoztatva.');
       let result=await response.json();
       // Closed safety gate: request a public price-list reference, never an unverified Previo read.
