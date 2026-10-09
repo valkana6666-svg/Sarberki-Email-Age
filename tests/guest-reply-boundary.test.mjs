@@ -94,7 +94,7 @@ test('public input maps allowed fields and topic requests but not internal recor
   assert.deepEqual(model.topics,['accommodation','availability','price']);
   const out=composeGuestReply(model);
   assert.match(out,/pontos árat ellenőrzés után/u);
-  assert.match(out,/szabad kapacitást ellenőrzés után/u);
+  assert.match(out,/A kért szállás elérhetőségét külön visszaigazoljuk/u); assert.doesNotMatch(out,/kapacitás|Previo|PMS|poolban/iu);
   assert.doesNotMatch(out,/999.?999|SECRETS|Szabad lehetőségek:/u);
 });
 test('guest inputs cannot inject extra availability, a fake name, or an impossible calendar date',()=>{
