@@ -228,7 +228,7 @@
       const cabin=$('price_cabin')?.value||'';
       const adults=Number($('price_adults')?.value),children=Number($('price_children')?.value);
       const ages=childAgesForQuote(children,$('price_child_ages')?.value);
-      const validDates=/^20\\d{2}-\\d{2}-\\d{2}$/.test(arrival)&&/^20\\d{2}-\\d{2}-\\d{2}$/.test(departure)&&departure>arrival;
+      const validDates=/^20\d{2}-\d{2}-\d{2}$/.test(arrival)&&/^20\d{2}-\d{2}-\d{2}$/.test(departure)&&departure>arrival;
       if(!Number.isSafeInteger(n)||n<=0||!validDates||!singleCabinCapacity[cabin]||!Number.isInteger(adults)||adults<1||ages===null){
         confirmation.checked=false;
         $('price_approval_status').textContent='Előbb pontosítsd a dátumokat, a háztípust, a felnőtt- és gyermekszámot, az életkorokat és a teljes forintárat.';
@@ -242,7 +242,7 @@
         const response=await fetch('/api/manual-fx',{method:'GET',cache:'no-store'});
         if(!response.ok)throw Error('Nincs elérhető árfolyam.');
         const rate=await response.json();
-        if(rate.status!=='available'||!Number.isFinite(rate.rateHufPerEur)||rate.rateHufPerEur<=0||!/^20\\d{2}-\\d{2}-\\d{2}$/.test(rate.rateDate))throw Error('Az árfolyam nem hitelesíthető.');
+        if(rate.status!=='available'||!Number.isFinite(rate.rateHufPerEur)||rate.rateHufPerEur<=0||!/^20\d{2}-\d{2}-\d{2}$/.test(rate.rateDate))throw Error('Az árfolyam nem hitelesíthető.');
         if(!confirmation.checked||fingerprint!==quoteFingerprint()||Number($('approved_price_manual').value)!==n)return;
         const totalEur=Math.round(n/rate.rateHufPerEur*100)/100;
         pendingQuote.raw={eurConversion:{status:'available',rateHufPerEur:rate.rateHufPerEur,rateDate:rate.rateDate,totalEur}};
