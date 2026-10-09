@@ -21,6 +21,8 @@ jobs:
           EXPECTED_COMMIT: ${{ github.sha }}
           TEST_NETLIFY_URL: https://leafy-chimera-2403e5.netlify.app
         run: node tests/deployment-sync.mjs
+      - name: Verify deployed MNB helper without any Previo calls
+        run: node tests/deployed-manual-fx-smoke.mjs
       - name: Live Previo price smoke test on exact test deploy
         # Push validation stays offline; live smoke needs an explicit manual dispatch.
         if: ${{ github.event_name == 'workflow_dispatch' && vars.SARBERKI_PREVIO_LIVE_SMOKE_ENABLED == 'true' }}
