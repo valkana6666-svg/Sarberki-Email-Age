@@ -726,7 +726,7 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const asksAvailability=/(?:szabad|elérhető|van[- ]?e .*szállás|van.*hely|available|frei|prosto|verfügbar|razpolož)/iu.test(original);
   const asksPrice=/(?:mennyi|mennyibe|ár|ára|árat|price|cost|kosten|preis|cena)/iu.test(original);
   if(asksAvailability&&!canRecommendByCapacity) stayLines.push({
-    hu:'A megadott időszak szabad kapacitását megnézzük.',
+    hu:'A kért faház elérhetőségét külön visszaigazoljuk.',
     de:'Wir prüfen die freie Kapazität für den gewünschten Zeitraum.',
     en:'We will check availability for the requested dates.',
     si:'Preverimo proste kapacitete za izbrani termin.'
