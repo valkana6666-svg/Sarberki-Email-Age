@@ -186,3 +186,23 @@ test('central runtime does not offer a reference when capacity is positively una
  await h.node('check_price').onclick();
  assert.equal(calls,0);assert.equal(h.node('price_result').textContent,'');
 });
+
+
+test('UI extracts one requested Családi cabin and full signed guest name, retaining both on refresh',()=>{
+ const h=harness();
+ h.analyze('2026. október 23–25. között Családi faházat szeretnénk 2 felnőtt és 2 gyermek (5 és 8 évesek) részére.\nÜdvözlettel:\nTeszt Vendég');
+ assert.equal(h.node('f_units_requested').value,'1');
+ assert.equal(h.window.SarberkiCaseController.snapshot().values.units_requested,'1');
+ assert.equal(h.node('f_name').value,'Teszt Vendég');
+ assert.match(h.node('draft').value,/^Kedves Teszt Vendég!/u);
+ h.node('refresh').click();
+ assert.equal(h.node('f_units_requested').value,'1');
+ assert.match(h.node('draft').value,/^Kedves Teszt Vendég!/u);
+});
+test('UI never fabricates a single unit from generic availability and preserves explicit two-unit requests',()=>{
+ const h=harness();
+ h.analyze('2026. október 23–25. között 4 főre milyen szálláslehetőségek vannak?');
+ assert.equal(h.node('f_units_requested').value,'');
+ h.analyze('2026. október 23–25. között két Családi faházat szeretnénk 8 felnőtt részére.');
+ assert.equal(h.node('f_units_requested').value,'2');
+});
