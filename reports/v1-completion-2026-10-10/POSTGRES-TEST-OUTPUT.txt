@@ -1,0 +1,15 @@
+✔ PostgreSQL RLS: separate tenants, anonymous denial and reader cannot write (1835.450966ms)
+✔ PostgreSQL CAS, audit, history and cross-case Gmail uniqueness are atomic (1281.7615ms)
+✔ PostgreSQL physical snapshot restores memberships, cases and audit checksum (2217.985153ms)
+✔ Netlify handler → authority → engine → repository → PostgreSQL (HTTP/Auth simulated) (1327.120617ms)
+✔ encrypted isolated fixture snapshot restores policies, privileges, draft history and audit sequence (2223.009216ms)
+✔ expanded Auth probe reaches every assertion with PostgreSQL-backed fixture transport (Auth simulated) (1280.771398ms)
+✔ reviewed synthetic drafts pass deployed PostgreSQL policy, append history and audit atomically (1270.242044ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11576.635524

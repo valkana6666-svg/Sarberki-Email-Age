@@ -36,3 +36,7 @@ A Windows PowerShell 5 bináris csővezetékét nem használja: átmeneti, titko
 Hivatalos referencia: https://supabase.com/docs/guides/self-hosting/restore-from-platform
 
 **Jelenlegi állapot: teljes mentés és izolált visszaállítás NEM KÉSZ. `CASE_STORE_ENABLED=disabled` marad.**
+
+## Összevezetés utáni megjegyzés
+
+A PowerShell-helper TLS-ellenőrzése most verify-full, rendszer CA-készlettel; egy hiteles helyi CA PEM -CaFile paraméterrel megadható. Tanúsítványellenőrzési hiba esetén állj meg, ne kapcsold ki az ellenőrzést. Az alternatív owner-encrypted-backup.py közvetlen titkosítási pipe-ot használ, nyílt dump-fájl nélkül; részletes lépései az OWNER-BACKUP-STEPS.md-ben. Egy kiválasztott helperrel készíts exportot, ne ismételd mindkettővel indokolatlanul. Egyik helper Windows-futtatása vagy független restore-ja sincs itt igazolva.

@@ -1,7 +1,7 @@
 # Owner-run Windows helper; PostgreSQL 17 and Gpg4win must already be installed.
 # No source writes, no password reset, no automatic restore or service activation.
 [CmdletBinding()]
-param([string]$BackupRoot = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Sarberki\Biztonsagi-mentesek'))
+param([string]$BackupRoot = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Sarberki\Biztonsagi-mentesek'), [string]$CaFile = '')
 $ErrorActionPreference = 'Stop'
 function Find-Tool([string]$Name) {
     $command = Get-Command ($Name + '.exe') -ErrorAction SilentlyContinue
@@ -55,8 +55,12 @@ try {
     if ($dbUser -cne 'postgres.mojnqizbcaczstguikpv') { throw 'Csak a kijelolt tesztprojekt engedelyezett.' }
     $configuration = @{
         PGHOST=$poolHost; PGPORT='5432'; PGUSER=$dbUser; PGDATABASE='postgres';
-        PGSSLMODE='require'; PGCONNECT_TIMEOUT='20'; PGOPTIONS='-c default_transaction_read_only=on'; PGPASSWORD='';
+        PGSSLMODE='verify-full'; PGSSLROOTCERT='system'; PGCONNECT_TIMEOUT='20'; PGOPTIONS='-c default_transaction_read_only=on'; PGPASSWORD='';
         PGSERVICE=$null; PGSERVICEFILE=$null
+    }
+    if ($CaFile) {
+        if (!(Test-Path -LiteralPath $CaFile -PathType Leaf)) { throw 'Hianyzo helyi CA tanusitvany.' }
+        $configuration.PGSSLROOTCERT = [IO.Path]::GetFullPath($CaFile)
     }
     foreach ($key in $configuration.Keys) { $savedEnvironment[$key] = [Environment]::GetEnvironmentVariable($key, 'Process') }
     $securePassword = Read-Host 'Adatbazis-jelszo (csak helyben, rejtve)' -AsSecureString
@@ -90,7 +94,7 @@ try {
         if ($toc -notmatch ('\bTABLE DATA auth ' + $table + '\s')) { throw 'Hiannyos Auth-adatmentes.' }
     }
     $roles = Join-Path $temporary 'roles.sql'
-    Invoke-Private $pgdumpall @('-w', '--roles-only', '--no-role-passwords', '--file', $roles) | Out-Null
+    Invoke-Private $pgdumpall @('-w', '--database=postgres', '--roles-only', '--no-role-passwords', '--file', $roles) | Out-Null
     $after = (Invoke-Private $psql @('-X', '-w', '-qAt', '-v', 'ON_ERROR_STOP=1', '-f', $manifest)) -join "`n"
     if (!$before -or $before -cne $after) { throw 'Az ugytar valtozott az export alatt. Nincs stabil recovery manifest.' }
     [IO.File]::WriteAllText((Join-Path $temporary 'manifest.json'), $before, [Text.UTF8Encoding]::new($false))

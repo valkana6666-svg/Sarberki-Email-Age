@@ -88,5 +88,6 @@ export function createServerCaseService({ repository, resolveAuthority, clock = 
     return copy(record);
   }
   return Object.freeze({ getCase, listCases, createCase, updateCase,
+    requireWrite: ({requestContext,tenantId}) => authorize(requestContext,tenantId,'write'),
     requireApproval: ({requestContext,tenantId}) => authorize(requestContext,tenantId,'approve') });
 }

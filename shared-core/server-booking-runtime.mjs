@@ -33,7 +33,20 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    if(!reviewProviders)reject('SETUP_REQUIRED');
    const record=await service.getCase({requestContext,tenantId,caseId});
    if(!record)reject('CASE_NOT_FOUND');if(record.revision!==expectedRevision)reject('CASE_CONFLICT');
-   return prepareSyntheticBookingReview({...reviewProviders,record,now:Date.parse(clock()),currentNow:()=>Date.parse(clock())});
+   return prepareSyntheticBookingReview({...reviewProviders,record,now:()=>Date.parse(clock())});
+  },
+  async reviewAndDraft(caseId,expectedRevision){
+   if(tenantId!=='sarberki-test')reject('FORBIDDEN');
+   if(!reviewProviders)reject('SETUP_REQUIRED');
+   await service.requireWrite({requestContext,tenantId});
+   const current=await service.getCase({requestContext,tenantId,caseId});
+   if(!current)reject('CASE_NOT_FOUND');if(current.revision!==expectedRevision)reject('CASE_CONFLICT');
+   const review=await prepareSyntheticBookingReview({...reviewProviders,record:current,now:()=>Date.parse(clock())});
+   const data=structuredClone(current.data);
+   data.drafts.push({text:review.draft,at:clock(),revision:data.state.revision,synthetic:true,reviewStatus:review.status});
+   // Recheck authority and CAS after provider calls. Evidence/quotes stay internal.
+   const record=await service.updateCase({requestContext,tenantId,caseId,expectedRevision,bookingCase:data});
+   return {review,record};
   },
   async draft(caseId,expectedRevision){
    if(tenantId!=='sarberki-test')reject('FORBIDDEN'); // No borrowed Sárberki rules for another tenant.

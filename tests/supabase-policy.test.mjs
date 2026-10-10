@@ -185,3 +185,36 @@ test('expanded Auth probe reaches every assertion with PostgreSQL-backed fixture
   assert.equal((await db.query('select count(*)::int as n from sc_audit')).rows[0].n,8);
  }finally{await db.close();}
 });
+
+test('reviewed synthetic drafts pass deployed PostgreSQL policy, append history and audit atomically',async()=>{
+ const {createServerCaseService}=await import('../shared-core/server-case-service.mjs');
+ const {createServerBookingRuntime}=await import('../shared-core/server-booking-runtime.mjs');
+ const {db,as,write}=await fixture();
+ try{
+  const map=r=>r?{tenantId:r.tenant_id,caseId:r.case_id,revision:r.revision,createdAt:r.created_at,data:r.data}:null;
+  const repository={
+   get:async(t,c)=>map((await as(user1,()=>db.query('select * from sc_cases where tenant_id=$1 and case_id=$2',[t,c]))).rows[0]),
+   list:async t=>(await as(user1,()=>db.query('select * from sc_cases where tenant_id=$1',[t]))).rows.map(map),
+   insert:async(t,c,r)=>(await as(user1,()=>write(r.data))).rows[0].ok,
+   compareAndSwap:async(t,c,v,r)=>(await as(user1,()=>write(r.data,v))).rows[0].ok
+  };
+  const service=createServerCaseService({repository,resolveAuthority:async()=>({subject:user1,tenants:{'sarberki-test':['read','write']}})});
+  const at='2026-10-10T08:00:00Z';
+  const runtime=createServerBookingRuntime({service,tenantId:'sarberki-test',requestContext:{},clock:()=>at,reviewProviders:{
+   availability:async q=>({...q,source:'synthetic-fixture',checkedAt:at,availability:'available',availableUnits:1}),
+   pricing:async q=>({...q,source:'synthetic-fixture',checkedAt:at,tenantId:'sarberki-test',unitId:q.cabin,capacity:4,nightly:100,basis:'per_unit',verified:true})
+  }});
+  const first=await runtime.ingest({sender:'review@fixture.invalid',text:'Please book one Deluxe cabin from 2026-11-01 to 2026-11-03 for 2 adults and no children.',mailbox_id:'fixture',message_id:'review',received_at:at},undefined,{expectedRevision:0});
+  const one=await runtime.reviewAndDraft(first.record.caseId,1);
+  const results=await Promise.allSettled([runtime.reviewAndDraft(first.record.caseId,2),runtime.reviewAndDraft(first.record.caseId,2)]);
+  assert.equal(results.filter(x=>x.status==='fulfilled').length,1);
+  assert.equal(results.find(x=>x.status==='rejected').reason.code,'CASE_CONFLICT');
+  const stored=(await db.query('select * from sc_cases')).rows[0];
+  assert.equal(stored.revision,3);assert.equal(stored.data.state.quote,null);assert.equal(stored.data.state.approval,'pending');
+  assert.deepEqual(stored.data.drafts[0],one.record.data.drafts[0]);assert.equal(stored.data.drafts.length,2);
+  const audit=(await db.query('select revision,data_hash from sc_audit order by revision')).rows;
+  assert.deepEqual(audit.map(a=>a.revision),[1,2,3]);
+  const hash=(await db.query("select encode(sha256(convert_to(data::text,'UTF8')),'hex') as hash from sc_cases")).rows[0].hash;
+  assert.equal(audit.at(-1).data_hash,hash);
+ }finally{await db.close();}
+});
