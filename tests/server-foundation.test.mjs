@@ -139,3 +139,41 @@ test('review and pending draft persist together with append-only versions and no
 test('reader cannot trigger review providers or create a draft',async()=>{const f=fixture(),first=await f.runtime.ingest(envelope(),values,{expectedRevision:0});const r=reviewFixture(f,{requestContext:{subject:'reader',tenants:{'sarberki-test':['read']}},reviewProviders:{availability:()=>assert.fail('reader provider call'),pricing:()=>assert.fail('reader price call')}});await assert.rejects(r.reviewAndDraft(first.record.caseId,1),e=>e.code==='FORBIDDEN');assert.equal(f.rows.get('sarberki-test:'+first.record.caseId).revision,1);});
 test('two concurrent reviewed drafts produce one CAS success',async()=>{const f=fixture(),first=await f.runtime.ingest(envelope(),values,{expectedRevision:0});const outcomes=await Promise.allSettled([reviewFixture(f).reviewAndDraft(first.record.caseId,1),reviewFixture(f,{requestContext:{...f.auth,subject:'operator-two'}}).reviewAndDraft(first.record.caseId,1)]);assert.equal(outcomes.filter(r=>r.status==='fulfilled').length,1);assert.equal(outcomes.find(r=>r.status==='rejected').reason.code,'CASE_CONFLICT');assert.equal(f.rows.get('sarberki-test:'+first.record.caseId).data.drafts.length,1);});
 test('membership revoked during review prevents persistence',async()=>{const f=fixture(),first=await f.runtime.ingest(envelope(),values,{expectedRevision:0});const r=reviewFixture(f,{reviewProviders:{availability:async q=>{f.auth.tenants['sarberki-test']=['read'];return {...q,source:'synthetic-fixture',checkedAt:'2026-10-10T08:00:00Z',availability:'available',availableUnits:1};},pricing:async()=>{throw Error('offline');}}});await assert.rejects(r.reviewAndDraft(first.record.caseId,1),e=>e.code==='FORBIDDEN');assert.equal(f.rows.get('sarberki-test:'+first.record.caseId).data.drafts.length,0);});
+
+
+test('read-only reply preview returns same central draft without changing revision or draft history',async()=>{
+ const f=fixture();
+ const first=await f.runtime.ingest(envelope('preview'),values,{expectedRevision:0});
+ const reader=createServerBookingRuntime({service:f.service,tenantId:'sarberki-test',
+  requestContext:{subject:'read-only',tenants:{'sarberki-test':['read']}}});
+ const preview=await reader.previewDraft(first.record.caseId,1);
+ assert.equal(preview.caseId,first.record.caseId);
+ assert.equal(preview.revision,1);
+ assert.equal(preview.persisted,false);
+ assert.equal(preview.approval,'pending');
+ assert.ok(preview.text.length>20);
+ const unchanged=await f.service.getCase({requestContext:f.auth,tenantId:'sarberki-test',caseId:first.record.caseId});
+ assert.equal(unchanged.revision,1);
+ assert.equal(unchanged.data.drafts.length,0);
+ const saved=await f.runtime.draft(first.record.caseId,1);
+ assert.equal(saved.revision,2);
+ assert.equal(saved.data.drafts[0].text,preview.text);
+ await assert.rejects(reader.draft(first.record.caseId,2),e=>e.code==='FORBIDDEN');
+ await assert.rejects(reader.previewDraft(first.record.caseId,1),e=>e.code==='CASE_CONFLICT');
+});
+test('draft preview never borrows Sárberki reply rules for a second tenant',async()=>{
+ const f=fixture();const first=await f.runtime.ingest(envelope('preview2'),values,{expectedRevision:0});
+ const foreign=createServerBookingRuntime({service:f.service,tenantId:'demo-test',
+  requestContext:{subject:'demo-reader',tenants:{'demo-test':['read']}}});
+ await assert.rejects(foreign.previewDraft(first.record.caseId,1),e=>e.code==='FORBIDDEN');
+});
+test('preview API remains disabled by default and rejects unapproved tenants without any requests',async()=>{
+ let calls=0;const fetchImpl=async()=>{calls++;throw Error('no network');};
+ const disabled=createCaseHandler({env:{},fetchImpl});
+ assert.equal((await disabled({httpMethod:'GET',queryStringParameters:{tenantId:'sarberki-test',caseId:'case-1234',expectedRevision:'1',action:'preview-draft'}})).statusCode,503);
+ const guarded=createCaseHandler({env,fetchImpl});
+ const unauthorized=await guarded({httpMethod:'GET',queryStringParameters:{tenantId:'sarberki-test',caseId:'case-1234',expectedRevision:'1',action:'preview-draft'}});
+ assert.equal(unauthorized.statusCode,401);
+ const other=await guarded({httpMethod:'GET',headers:{authorization:'Bearer '+'x'.repeat(40)},queryStringParameters:{tenantId:'production',action:'preview-draft'}});
+ assert.equal(other.statusCode,403);assert.equal(calls,0);
+});
