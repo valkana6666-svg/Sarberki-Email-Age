@@ -105,6 +105,20 @@ test('manual case linking requires separate approve permission',async()=>{
  const {runtime}=fixture();const first=await runtime.ingest(envelope(),values,{expectedRevision:0});
  await assert.rejects(runtime.ingest(envelope('m2',{thread_id:'separate'}),values,{expectedRevision:1,approvedCaseId:first.record.caseId}),e=>e.code==='FORBIDDEN');
 });
+test('RFC reply references cannot automatically link different mailboxes',async()=>{
+ const {runtime}=fixture();
+ const first=await runtime.ingest(envelope('m1',{rfc_message_id:'<original@example.invalid>'}),values,{expectedRevision:0});
+ const other=await runtime.ingest(envelope('m2',{mailbox_id:'other-inbox',thread_id:'other',in_reply_to:'<original@example.invalid>',references:['<original@example.invalid>']}),values,{expectedRevision:0});
+ assert.equal(other.resolution.status,'ambiguous');assert.notEqual(other.record.caseId,first.record.caseId);
+ assert.deepEqual(other.record.data.messages[0].references,['<original@example.invalid>']);
+ const reply=await runtime.ingest(envelope('m3',{thread_id:'new-provider-thread',in_reply_to:'<original@example.invalid>'}),{phone:'123'},{expectedRevision:1});
+ assert.equal(reply.resolution.status,'linked');assert.equal(reply.record.caseId,first.record.caseId);
+ assert.equal(reply.record.data.messages[0].rfc_message_id,'<original@example.invalid>');
+});
+test('a supplied case ID cannot bypass separate human linking permission',async()=>{
+ const {runtime}=fixture();const first=await runtime.ingest(envelope(),values,{expectedRevision:0});
+ await assert.rejects(runtime.ingest(envelope('m2',{case_id:first.record.caseId,mailbox_id:'other-inbox'}),values,{expectedRevision:1}),e=>e.code==='FORBIDDEN');
+});
 for(const key of ['sb_secret_fixture', 'x.'+Buffer.from(JSON.stringify({role:'service_role'})).toString('base64url')+'.x'])test('application transport refuses privileged key before network',()=>{
  assert.throws(()=>createSupabaseTransport({url:'https://synthetic.supabase.co',publishableKey:key,token:'fixture',fetchImpl:()=>assert.fail('network')}),e=>e.code==='SETUP_REQUIRED');
 });
@@ -112,7 +126,7 @@ test('server synthetic review connects confirmed extraction, capacity, unit pric
  const {service,auth}=fixture();const calls=[];const at='2026-10-10T08:00:00Z';
  const runtime=createServerBookingRuntime({service,tenantId:'sarberki-test',requestContext:auth,clock:()=>at,reviewProviders:{
   availability:async q=>{calls.push('capacity');return {...q,source:'synthetic-fixture',checkedAt:at,availability:'available',availableUnits:1};},
-  pricing:async q=>{calls.push('price');return {tenantId:'sarberki-test',unitId:q.cabin,capacity:4,nightly:100,basis:'per_unit',verified:true,source:'synthetic-fixture'};}
+  pricing:async q=>{calls.push('price');return {...q,checkedAt:at,tenantId:'sarberki-test',unitId:q.cabin,capacity:4,nightly:100,basis:'per_unit',verified:true,source:'synthetic-fixture'};}
  }});
  const first=await runtime.ingest(envelope('parsed',{text:'Please book one Deluxe cabin from 2026-11-01 to 2026-11-03 for 2 adults and no children.'}),undefined,{expectedRevision:0});
  const preview=await runtime.previewReview(first.record.caseId,1);assert.deepEqual(calls,['capacity','price']);assert.equal(preview.quote.total,200);assert.equal(preview.approval,'pending');

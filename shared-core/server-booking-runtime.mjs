@@ -15,6 +15,17 @@ export function validateSyntheticMessage(envelope,values) {
  if(Object.entries(envelope).some(([k,v])=>k!=='references'&&(typeof v!=='string'||v.length>20000)))reject('INVALID_INPUT');
  if(envelope.references!==undefined&&(!Array.isArray(envelope.references)||envelope.references.length>100||envelope.references.some(x=>typeof x!=='string'||x.length>512)))reject('INVALID_INPUT');
 }
+// Scope RFC references as well as provider IDs, preserving angle-bracket syntax.
+function scopeMessage(message, reverse=false){
+ const box=message.mailbox_id, prefix=box+':';
+ const change=value=>reverse?value.slice(prefix.length):prefix+value;
+ const refs=value=>String(value).replace(/<([^>]+)>/g,(_,id)=>'<'+change(id)+'>');
+ return {...message,message_id:change(message.message_id),
+  ...(message.thread_id?{thread_id:change(message.thread_id)}:{}),
+  ...(message.rfc_message_id?{rfc_message_id:refs(message.rfc_message_id)}:{}),
+  ...(message.in_reply_to?{in_reply_to:refs(message.in_reply_to)}:{}),
+  ...(message.references?{references:message.references.map(refs)}:{})};
+}
 // Reuses the existing engine. Only persistence is asynchronous; no new booking rules.
 export function createServerBookingRuntime({service,tenantId,requestContext,clock=()=>new Date().toISOString(),id=randomUUID,reviewProviders=null}){
  return {
@@ -22,7 +33,7 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    if(!reviewProviders)reject('SETUP_REQUIRED');
    const record=await service.getCase({requestContext,tenantId,caseId});
    if(!record)reject('CASE_NOT_FOUND');if(record.revision!==expectedRevision)reject('CASE_CONFLICT');
-   return prepareSyntheticBookingReview({...reviewProviders,record,now:Date.parse(clock())});
+   return prepareSyntheticBookingReview({...reviewProviders,record,now:Date.parse(clock()),currentNow:()=>Date.parse(clock())});
   },
   async draft(caseId,expectedRevision){
    if(tenantId!=='sarberki-test')reject('FORBIDDEN'); // No borrowed Sárberki rules for another tenant.
@@ -45,14 +56,14 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    const duplicate=records.find(r=>r.data.messages.some(m=>m.mailbox_id===envelope.mailbox_id&&m.message_id===envelope.message_id));
    if(duplicate)return {resolution:{status:'duplicate',caseId:duplicate.caseId},record:duplicate};
    // Namespace provider IDs before passing to the existing engine's dedup logic.
-   const scoped=records.map(r=>({...r.data,messages:r.data.messages.map(m=>({...m,message_id:m.mailbox_id+':'+m.message_id,...(m.thread_id?{thread_id:m.mailbox_id+':'+m.thread_id}:{})}))}));
+   const scoped=records.map(r=>({...r.data,messages:r.data.messages.map(m=>scopeMessage(m))}));
    let saved;
    const storage={getItem:()=>JSON.stringify(scoped),setItem:(_,value)=>{saved=JSON.parse(value);}};
    const store=createBookingCaseStore({storage,tenantId,clock,id});
-   if(approvedCaseId)await service.requireApproval({requestContext,tenantId});
-   const result=store.ingest({...envelope,message_id:envelope.mailbox_id+':'+envelope.message_id,...(envelope.thread_id?{thread_id:envelope.mailbox_id+':'+envelope.thread_id}:{})},values,{approvedCaseId});
+   if(approvedCaseId||envelope.case_id)await service.requireApproval({requestContext,tenantId});
+   const result=store.ingest(scopeMessage(envelope),values,{approvedCaseId});
    const data=saved.find(c=>c.id===result.bookingCase.id);
-   data.messages=data.messages.map(m=>({...m,message_id:m.message_id.slice(m.mailbox_id.length+1),...(m.thread_id?{thread_id:m.thread_id.slice(m.mailbox_id.length+1)}:{})}));
+   data.messages=data.messages.map(m=>scopeMessage(m,true));
    const previous=records.find(r=>r.caseId===data.id);
    let record;
    if(previous){
