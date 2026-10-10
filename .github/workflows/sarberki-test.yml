@@ -29,3 +29,12 @@ jobs:
         # Push validation stays offline; live smoke needs an explicit manual dispatch.
         if: ${{ github.event_name == 'workflow_dispatch' && vars.SARBERKI_PREVIO_LIVE_SMOKE_ENABLED == 'true' }}
         run: node tests/live-price-smoke.mjs
+
+  backup-copy-offline:
+    name: Offline Windows encrypted-backup copy checks
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run synthetic backup copy safety regression
+        shell: pwsh
+        run: ./scripts/test-copy-owner-encrypted-backup.ps1
