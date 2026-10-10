@@ -33,8 +33,12 @@ export function initBilingualClone({doc=document,translate=null}={}){
  };
  const first=insert(incoming,'foreign_incoming_hu','Magyar fordítás – beérkező üzenet');
  const second=insert(draft,'foreign_reply_hu','Magyar fordítás – választervezet (belső ellenőrzés)');
+ const gmailIncoming=get('gmail_original'),gmailDraft=get('gmail_draft');
+ const gmailFirst=gmailIncoming?insert(gmailIncoming,'gmail_foreign_incoming_hu','Magyar fordítás – beérkezett Gmail-levél'):null;
+ const gmailSecond=gmailDraft?insert(gmailDraft,'gmail_foreign_reply_hu','Magyar fordítás – Gmail-választervezet'):null;
+ const all=[first,second,gmailFirst,gmailSecond].filter(Boolean);
  let generation=0,activeLanguage=null,lastDraft='';
- const clear=()=>{generation++;activeLanguage=null;lastDraft='';for(const x of [first,second]){x.wrap.hidden=true;x.area.value='';x.status.textContent='';}};
+ const clear=()=>{generation++;activeLanguage=null;lastDraft='';for(const x of all){x.wrap.hidden=true;x.area.value='';x.status.textContent='';}};
  async function translateOne(view,text,lang,kind,version){
   view.area.value='';view.status.textContent='Fordítás ellenőrzése…';
   const demo=fixtureTranslation(text,lang,kind);
@@ -62,6 +66,12 @@ export function initBilingualClone({doc=document,translate=null}={}){
   const current=draft.value;
   if(force||lastDraft!==current){
    lastDraft=current;await translateOne(second,current,lang,'reply',version);
+  }
+  if(version!==generation)return;
+  if(gmailFirst&&gmailSecond){
+   const visible=!!gmailIncoming?.closest('#gmail_record')&&!gmailIncoming.closest('#gmail_record').classList.contains('hidden');
+   gmailFirst.wrap.hidden=!visible;gmailSecond.wrap.hidden=!visible;
+   if(visible){gmailFirst.area.value=first.area.value;gmailFirst.status.textContent=first.status.textContent;gmailSecond.area.value=second.area.value;gmailSecond.status.textContent=second.status.textContent;}
   }
  }
  // Only update on explicit processing or text revisions; never transmit the text to a third-party service by default.
