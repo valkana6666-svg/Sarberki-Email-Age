@@ -54,3 +54,7 @@ Módosult: shared-core/server-booking-runtime.mjs, server-case-service.mjs, serv
 A GitHub commit kizárólag a gmail-test-subject-allowlist ágra kerül, a pontos commitazonosító a záró chatjelentésben szerepel. A telepített SQL-fájl, main és üzemi production változatlan. Nincs valódi e-mail, foglalásmódosítás, vendégadat, fizetős erőforrás, jelszócsere, localStorage-migráció vagy CASE_STORE_ENABLED aktiválás.
 
 A távoli ág ezután 1a6d234e6664aef1ffecbd908f39d76a0cdfeea9 dokumentációs commitot kapott; csak a korábbi 872-es CI/deploy igazolásának két sora változott. Ezt a PREVIOUS-REPORT.md megőrzi. A 890-es teljes ellenőrzés forráskódja ettől nem változott; a végleges commit szülője a friss 1a6d234.
+
+## Telepítés utáni friss ellenőrzés
+
+A tényleges fejlesztési GitHub commit 606b915a9dc3c182270325a356adc450c4cc3a47 a kizárólagos tesztágra került. A git fetch a távoli SHA-t és a 508451a5a06c6ab26077948c4ea1bd6e93cd8b4c tree-t visszaigazolta; a helyi változat diffje a távoli commithoz üres. A Netlify teszt health végpontja ugyanezt a deployedCommit értéket adta. A telepítés után booking-cases HTTP 503 CASE_STORE_DISABLED és supabase-auth-test HTTP 404 kikapcsolva. autoSend/autoBookingModification false. Az új GitHub Actions push-futás állapotát a rendelkezésre álló lekérdezés nem tudta visszaigazolni, ezért a 890-es eredmény a helyi teljes regresszió bizonyítéka; nem állítunk új CI PASS-t vagy felhős Auth/E2E-t. Ez a záró dokumentációs módosítás nem változtat alkalmazási kódot.

@@ -20,3 +20,5 @@ Felhős readonly: 5 RLS-es tábla; 2 ügy, 3 audit; audit gaps/hash mismatches =
 A teljes végső kimenet az AUTOMATED-TEST-OUTPUT.txt, a PostgreSQL-részhalmaz a POSTGRES-TEST-OUTPUT.txt fájlban. A részhalmazokat nem adjuk újra a teljes tesztszámhoz.
 
 A két változat egyesítése után 890 PASS / 0 FAIL; az ea31859 alapon futtatott 873-as és a párhuzamos 872-es eredmény külön előzmény, nem külön új tesztösszeg. A végső 70-es célzott kimenet TARGETED-TEST-OUTPUT.txt-ben. A PowerShell-helper futása ebben a Linux agentkörnyezetben nem tesztelt.
+
+Telepítés után a Netlify health a 606b915a9dc3c182270325a356adc450c4cc3a47 fejlesztési SHA-t jelentette; ügy-API 503 CASE_STORE_DISABLED, Auth-kapu 404 kikapcsolva. Ez exact tesztdeploy és lezárás igazolása; új felhős Auth/E2E és új push-CI PASS nincs igazolva.
