@@ -1,5 +1,6 @@
 // Read-only bilingual preview for the isolated TEST interface.
 // Translation never changes the source, approved reply, or Gmail state.
+import {sameProtectedTokens} from './bilingual-preview.mjs';
 export const LANGS={de:'Német',en:'Angol',si:'Szlovén',sl:'Szlovén'};
 const TEST_FIXTURES={
  de:{incoming:'Guten Tag! Wir möchten vom 16. bis 18. Oktober 2026 für zwei Erwachsene ein Deluxe-Ferienhaus buchen. Ist es verfügbar?',huIncoming:'Jó napot! 2026. október 16–18. között két felnőtt részére szeretnénk egy Deluxe faházat foglalni. Szabad a szállás?',
@@ -32,13 +33,36 @@ export function initBilingualClone({doc=document,translate=null}={}){
   return {wrap,area,status};
  };
  const first=insert(incoming,'foreign_incoming_hu','Magyar fordítás – beérkező üzenet');
- const second=insert(draft,'foreign_reply_hu','Magyar fordítás – választervezet (belső ellenőrzés)');
+ const second=insert(draft,'foreign_reply_hu','Magyar munkaváltozat – választervezet (szerkeszthető)',false);
  const gmailIncoming=get('gmail_original'),gmailDraft=get('gmail_draft');
  const gmailFirst=gmailIncoming?insert(gmailIncoming,'gmail_foreign_incoming_hu','Magyar fordítás – beérkezett Gmail-levél'):null;
- const gmailSecond=gmailDraft?insert(gmailDraft,'gmail_foreign_reply_hu','Magyar fordítás – Gmail-választervezet'):null;
+ const gmailSecond=gmailDraft?insert(gmailDraft,'gmail_foreign_reply_hu','Magyar munkaváltozat – Gmail-választervezet',false):null;
  const all=[first,second,gmailFirst,gmailSecond].filter(Boolean);
- let generation=0,activeLanguage=null,lastDraft='';
- const clear=()=>{generation++;activeLanguage=null;lastDraft='';for(const x of all){x.wrap.hidden=true;x.area.value='';x.status.textContent='';}};
+ let generation=0,activeLanguage=null,lastDraft='',manualRevision=0,locked=false;
+ const approval=get('approve');
+ function invalidate(message){manualRevision++;locked=true;if(approval)approval.disabled=true;second.status.textContent=message;}
+ function unlock(){locked=false;/* Never force-enable approval: original case safety rules decide. */}
+ async function applyHungarianEdit(sourceView){
+  if(!activeLanguage)return;
+  invalidate('Magyar módosítás: az idegen nyelvű válasz még NEM frissült. Jóváhagyás tiltva.');
+  if(sourceView===gmailSecond)second.area.value=gmailSecond.area.value;
+  else if(gmailSecond)gmailSecond.area.value=second.area.value;
+  const version=manualRevision,hu=second.area.value;
+  if(!hu.trim()||typeof translate!=='function'){
+   second.status.textContent='Biztonságos visszafordító nincs bekötve. Az eredeti idegen nyelvű tervezet változatlan; jóváhagyás tiltva.';return;
+  }
+  const original=draft.value;
+  try{
+   const foreign=await translate({text:hu,sourceLanguage:'hu',targetLanguage:activeLanguage,purpose:'edited_reply'});
+   if(version!==manualRevision||!activeLanguage)return;
+   if(typeof foreign!=='string'||!foreign.trim()||!sameProtectedTokens(original,foreign))throw Error('MISMATCH');
+   // Allow a human to inspect first. Never overwrite the guest-language reply automatically.
+   second.status.textContent='Visszafordítás előkészítve. Kézi ellenőrzés és külön jóváhagyás szükséges; az eredeti tervezet nem módosult.';
+   pendingForeign=foreign;
+  }catch{if(version===manualRevision)second.status.textContent='Visszafordítás vagy számellenőrzés sikertelen. Jóváhagyás tiltva.';}
+ }
+ let pendingForeign=null;
+ const clear=()=>{generation++;manualRevision++;pendingForeign=null;activeLanguage=null;lastDraft='';unlock();for(const x of all){x.wrap.hidden=true;x.area.value='';x.status.textContent='';}};
  async function translateOne(view,text,lang,kind,version){
   view.area.value='';view.status.textContent='Fordítás ellenőrzése…';
   const demo=fixtureTranslation(text,lang,kind);
@@ -57,7 +81,7 @@ export function initBilingualClone({doc=document,translate=null}={}){
  async function sync({force=false}={}){
   const lang=detectForeign(incoming.value,globalThis.window?.SarberkiNormalize);
   if(!lang){clear();return;}
-  const version=++generation;activeLanguage=lang;
+  const version=++generation;activeLanguage=lang;pendingForeign=null;unlock();
   first.wrap.hidden=false;second.wrap.hidden=false;
   if(force||first.area.dataset.original!==incoming.value){
    first.area.dataset.original=incoming.value;await translateOne(first,incoming.value,lang,'incoming',version);
@@ -75,6 +99,14 @@ export function initBilingualClone({doc=document,translate=null}={}){
   }
  }
  // Only update on explicit processing or text revisions; never transmit the text to a third-party service by default.
+ second.area.addEventListener('input',()=>{void applyHungarianEdit(second);});
+ gmailSecond?.area.addEventListener('input',()=>{void applyHungarianEdit(gmailSecond);});
+ // Explicit human action to copy a checked back-translation; never automatic guest communication.
+ const accept=doc.createElement('button');accept.type='button';accept.textContent='Ellenőrzött idegen nyelvű változat átvétele';accept.disabled=true;
+ second.wrap.append(accept);
+ const originalEdit=applyHungarianEdit;
+ applyHungarianEdit=async function(view){accept.disabled=true;await originalEdit(view);if(pendingForeign&&locked)accept.disabled=false;};
+ accept.addEventListener('click',()=>{if(!pendingForeign||!locked)return;draft.value=pendingForeign;if(gmailDraft)gmailDraft.value=pendingForeign;pendingForeign=null;accept.disabled=true;second.status.textContent='Az idegen nyelvű tervezet frissült, de külön ellenőrzés és új jóváhagyás szükséges.';draft.dispatchEvent(new Event('input',{bubbles:true}));});
  doc.addEventListener('sarberki:analysis-ready',()=>{void sync({force:true});});
  doc.addEventListener('sarberki:gmail-normalized',()=>{void sync({force:true});});
  draft.addEventListener('input',()=>{if(activeLanguage)void sync();});
