@@ -48,18 +48,27 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    const record=await service.updateCase({requestContext,tenantId,caseId,expectedRevision,bookingCase:data});
    return {review,record};
   },
-  async draft(caseId,expectedRevision){
-   if(tenantId!=='sarberki-test')reject('FORBIDDEN'); // No borrowed Sárberki rules for another tenant.
+  async previewDraft(caseId,expectedRevision){
+   if(tenantId!=='sarberki-test')reject('FORBIDDEN');
    const current=await service.getCase({requestContext,tenantId,caseId});
    if(!current)reject('CASE_NOT_FOUND');if(current.revision!==expectedRevision)reject('CASE_CONFLICT');
-   const data=structuredClone(current.data),v=data.state.values;
-   // No supplied price or availability proofs: only a data-collection draft.
+   const data=current.data,v=data.state.values;
+   // Non-persisted, read-only preview; never treats user-supplied availability or price as evidence.
    const tenant={...SARBERKI_TENANT,id:tenantId};
    const text=buildCentralReply({caseId,language:v.language||'hu',name:v.name,original:data.state.original,
     arrival:v.arrival,departure:v.departure,guests:v.guests,adults:v.adults,children:v.children,
     childAges:String(v.child_ages||'').split(',').filter(Boolean).map(Number),phone:v.phone,cabin:v.unit,
     intent:data.state.intent},{tenant,records:[]});
-   data.drafts.push({text,at:clock(),revision:data.state.revision});
+   return {caseId,revision:current.revision,text,approval:'pending',persisted:false};
+  },
+  async draft(caseId,expectedRevision){
+   // Save only after separate server-side write authorization and optimistic concurrency check.
+   await service.requireWrite({requestContext,tenantId});
+   const preview=await this.previewDraft(caseId,expectedRevision);
+   const current=await service.getCase({requestContext,tenantId,caseId});
+   if(!current)reject('CASE_NOT_FOUND');if(current.revision!==expectedRevision)reject('CASE_CONFLICT');
+   const data=structuredClone(current.data);
+   data.drafts.push({text:preview.text,at:clock(),revision:data.state.revision});
    return service.updateCase({requestContext,tenantId,caseId,expectedRevision,bookingCase:data});
   },
   async ingest(envelope,values,{expectedRevision,approvedCaseId=null}={}){
