@@ -6,5 +6,5 @@ export function createCaseStoreClient({getAccessToken,request=fetch}={}){
   const response=await request('/.netlify/functions/booking-cases'+(method==='GET'?'?'+new URLSearchParams(input):''),{method,cache:'no-store',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},...(method==='POST'?{body:JSON.stringify(input)}:{})});
   const body=await response.json();if(!response.ok)throw Error(body.error||'SERVICE_UNAVAILABLE');return body.result;
  };
- return {get:(tenantId,caseId)=>call('GET',{tenantId,caseId}),list:tenantId=>call('GET',{tenantId}),ingest:input=>call('POST',input),draft:(tenantId,caseId,expectedRevision)=>call('POST',{action:'draft',tenantId,caseId,expectedRevision})};
+ return {get:(tenantId,caseId)=>call('GET',{tenantId,caseId}),list:tenantId=>call('GET',{tenantId}),ingest:input=>call('POST',input),previewDraft:(tenantId,caseId,expectedRevision)=>call('GET',{action:'preview-draft',tenantId,caseId,expectedRevision}),draft:(tenantId,caseId,expectedRevision)=>call('POST',{action:'draft',tenantId,caseId,expectedRevision})};
 }
