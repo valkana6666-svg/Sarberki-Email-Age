@@ -16,5 +16,5 @@ test('edit safeguard checks protected numbers and defers approval',()=>{
 test('synthetic examples and unknown translation are clearly distinct',()=>{
  assert.equal(fixtureTranslation('not a fixture','en','reply'),null);
  assert.equal(detectForeign('HU',{languageFromText:()=> 'hu'}),null);
- assert.match(source,/biztonságos visszafordító nincs bekötve/);
+ assert.match(source,/biztonságos visszafordító nincs bekötve/i);
 });
