@@ -18,7 +18,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch}={}){
    const transport=createSupabaseTransport({url:env.SUPABASE_URL,publishableKey:env.SUPABASE_PUBLISHABLE_KEY,token:authorization.slice(7),fetchImpl});
    const service=createServerCaseService({repository:createSupabaseCaseRepository(transport),resolveAuthority:createSupabaseAuthority(transport)});
    let result;
-   if(event.httpMethod==='GET')result=input.caseId?await service.getCase({tenantId:input.tenantId,caseId:input.caseId}):await service.listCases({tenantId:input.tenantId});
+   if(event.httpMethod==='GET'){if(input.action==='preview-draft'){const runtime=createServerBookingRuntime({service,tenantId:input.tenantId});result=await runtime.previewDraft(input.caseId,Number(input.expectedRevision));}else if(input.action===undefined)result=input.caseId?await service.getCase({tenantId:input.tenantId,caseId:input.caseId}):await service.listCases({tenantId:input.tenantId});else return response(400,{error:'INVALID_INPUT'});}
    else {
     const runtime=createServerBookingRuntime({service,tenantId:input.tenantId});
     if(input.action==='draft')result=await runtime.draft(input.caseId,input.expectedRevision);
