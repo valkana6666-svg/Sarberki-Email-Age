@@ -10,7 +10,7 @@ export function detectForeignLanguage(text=''){
  return 'unknown'; // Heuristics must never be treated as authoritative translation.
 }
 export function protectedTokens(text=''){
- return [...String(text).matchAll(/\b\d{1,4}(?:[.,\s]\d{3})*(?:[.,]\d+)?\s*(?:Ft|EUR|€|fő|éj|%)?\b/giu)].map(x=>x[0].replace(/\s+/g,' ').trim());
+ return [...String(text).matchAll(/\b\d{1,4}(?:[.,\s]\d{3})*(?:[.,]\d+)?(?:\s*(?:Ft|EUR|fő|éj|%|€))?(?![\p{L}\d])/giu)].map(x=>x[0].replace(/\s+/g,' ').trim());
 }
 export function sameProtectedTokens(a,b){
  const x=protectedTokens(a),y=protectedTokens(b);
