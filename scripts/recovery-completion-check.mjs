@@ -24,7 +24,7 @@ await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const origin='http://127.0.0.1:'+server.address().port;
 let browser;
 let stage='chromium';
-const body='Jó napot! 2026. október 23–25. között Deluxe faházat kérünk 4 felnőtt részére, gyermek nélkül. Telefonszám: +36 30 555 0123. Üdvözlettel: Teszt Vendég';
+const body='Jó napot! 2026. október 23–25. között Deluxe faházat szeretnénk foglalni 4 felnőtt részére, gyermek nélkül. Telefonszám: +36 30 555 0123. Üdvözlettel: Teszt Vendég';
 const fixture={id:'recovery-synthetic-message',threadId:'recovery-synthetic-thread',labelIds:['INBOX'],internalDate:String(Date.parse('2026-10-11T10:00:00Z')),payload:{mimeType:'text/plain',body:{data:Buffer.from(body).toString('base64url')},headers:[{name:'From',value:'Recovery Fixture <recovery@synthetic.invalid>'},{name:'Subject',value:'Recovery fixture'},{name:'Message-ID',value:'<recovery@synthetic.invalid>'}]}};
 async function session(mode='correct'){
  const context=await browser.newContext();const calls=[];let capacity='available';
@@ -58,6 +58,31 @@ async function session(mode='correct'){
 try{
  if(process.env.SARBERKI_RECOVERY_STAGE!=='previo-only'){
  browser=await chromium.launch({headless:true});
+ if(process.env.SARBERKI_RECOVERY_STAGE==='ui-unknown-only'){
+  stage='ui-unknown-capacity-approval-block';
+  const s=await session();
+  await s.page.locator('#read_gmail').click();
+  await s.page.waitForFunction(()=>localStorage.getItem('sarberki-booking-cases-v2'));
+  await s.page.reload();await s.page.waitForFunction(()=>window.SarberkiBookingRuntime);
+  s.setCapacity('unknown');
+  await s.page.locator('#read_gmail').click();
+  await s.page.waitForFunction(()=>!document.getElementById('read_gmail').disabled);
+  await s.page.locator('#gmail_open_selected').click();
+  const before=await s.page.evaluate(()=>window.SarberkiBookingRuntime.cases.list());
+  assert.equal(before[0].state.intent,'booking_request','Fixture must enter the capacity-checked booking approval path');
+  assert.notEqual(before[0].state.approval,'internally_approved');
+  if(await s.page.locator('#approve').isDisabled())await s.page.locator('#override').check();
+  await s.page.locator('#approve').click();
+  await s.page.waitForFunction(()=>document.getElementById('status').textContent.includes('Jóváhagyás tiltva'));
+  assert.match(await s.page.locator('#status').innerText(),/friss kapacitás nem igazoltan elérhető/);
+  const after=await s.page.evaluate(()=>window.SarberkiBookingRuntime.cases.list());
+  assert.notEqual(after[0].state.approval,'internally_approved');
+  assert.equal(after[0].events.some(e=>e.type.includes('Belső jóváhagyás')),false);
+  report.ui_unknown_capacity_approval_blocked='PASS_REAL_CHROMIUM_SYNTHETIC_GMAIL';
+  report.ui_unknown_capacity_never_persisted_as_approved='PASS';
+  report.successful_suites_repeated=false;
+  await s.context.close();
+ }else{
  stage='gmail-isolated-read-only';
  for(const mode of ['wrong','expired']){
   const s=await session(mode);await s.page.locator('#read_gmail').click();await s.page.waitForFunction(()=>!document.getElementById('read_gmail').disabled);
@@ -108,6 +133,8 @@ try{
  await s.page.locator('#approve').click();await s.page.waitForTimeout(250);assert.match(await s.page.locator('#status').innerText(),/Jóváhagyás tiltva/);
  report.ui_unknown_capacity_approval_blocked='PASS';await s.context.close();
  }
+ }
+ if(process.env.SARBERKI_RECOVERY_STAGE!=='ui-unknown-only'){
  stage='previo-restored-adapter-offline';
  const query={arrival:'2026-10-23',departure:'2026-10-25',cabin:'deluxe'};
  const rootPms=SARBERKI_PROFILE.bookingProvider.root, hotelId=SARBERKI_PROFILE.bookingProvider.hotelId;
@@ -126,6 +153,7 @@ try{
  free=null;const unknown=await adapter.getVerifiedAvailability(query,{tenantId:'sarberki'});assert.equal(unknown.status,'UNKNOWN');assert.equal(unknown.availableUnits,null);
  assert.ok(network.every(x=>['/','/index/get-object-kind-occupancy/'].includes(x.path)));assert.equal(adapter.capabilities.createBooking,false);
  report.previo_restored_http_parser_and_unknown_not_zero='PASS_SYNTHETIC_HTTP_ONLY';report.previo_live='NOT_RUN_SIDE_EFFECT_SAFETY_NOT_VERIFIED';
+ }
  report.completed=true;
 }catch(error){report.completed=false;report.failed_stage=stage;report.failure_class=error.name;report.failure_detail=error.message;process.exitCode=1;}
 finally{await browser?.close();await new Promise(r=>server.close(r));await mkdir(out,{recursive:true});await writeFile(resolve(out,'NEW-CHECKS.json'),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));}
