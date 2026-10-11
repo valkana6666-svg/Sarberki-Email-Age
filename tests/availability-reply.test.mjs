@@ -46,7 +46,8 @@ for(const [lang,expected] of Object.entries(labelCases)){
  });
 }
 
-test('empty availability does not promise accommodation',()=>assert.match(availabilitySentence({available_options:[]},'en'),/not found/u));
+test('empty availability evidence is unknown, not sold out',()=>assert.match(availabilitySentence({available_options:[]},'en'),/could not be reliably verified/u));
+test('fully checked unavailable options can be reported as unavailable',()=>assert.match(availabilitySentence({available_options:[],unavailable_options:[{availability:'unavailable',availability_verified:true}]},'en'),/not found/u));
 
 test('full or unverified split pools are not mentioned as guest alternatives',()=>{
   const result={
