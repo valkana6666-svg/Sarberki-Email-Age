@@ -8,6 +8,7 @@ on:
       - docs/SARBERKI-CLOUD-BACKUP.md
       - scripts/cloud-encrypted-backup.py
       - scripts/test_cloud_encrypted_backup.py
+      - scripts/certs/supabase-prod-ca-2021.crt
 
 permissions:
   contents: read
@@ -33,8 +34,7 @@ jobs:
     needs: offline-safety
     if: >-
       github.ref == 'refs/heads/gmail-test-subject-allowlist' &&
-      (vars.SARBERKI_BACKUP_ENABLED == 'yes' ||
-      contains(github.event.head_commit.message, '[sarberki-backup-once-approved-20261011]')) &&
+      vars.SARBERKI_BACKUP_ENABLED == 'yes' &&
       contains(github.event.head_commit.message, '[sarberki-backup-run]')
     runs-on: ubuntu-24.04
     container: postgres:17-bookworm

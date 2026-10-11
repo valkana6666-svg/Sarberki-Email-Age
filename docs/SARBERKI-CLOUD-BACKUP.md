@@ -1,6 +1,6 @@
 # Sárberki – laptop nélkül futtatható titkosított adatbázismentés
 
-Állapot: felhős futtató előkészítve; valódi mentési fájl még nem igazolt.
+Állapot 2026-10-11: valódi titkosított adatbázis-export és ciphertext-visszafejtés igazolt; teljes izolált helyreállítás még nem igazolt.
 Kizárólag sarberki-test / mojnqizbcaczstguikpv / London eu-west-2 / gmail-test-subject-allowlist.
 
 ## Meglévő tulajdonosi beállítások – a neveket megőrizzük
@@ -56,3 +56,17 @@ A közvetlen URI feldolgozása sikeres volt, de az Actions futtató a projekt IP
 A Session pooler a Supabase saját CA-láncát használja; a rendszer CA-tárával a kapcsolat `SOURCE_TLS_VERIFICATION_FAILED` hibával leállt. A projekt Database Settings / SSL configuration felületéről azonosított hivatalos nyilvános tanúsítvány: https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt . A nyilvános CA bekerült a scripts/certs könyvtárba, fájl-SHA256: 700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7. A program rögzített hash-sel ellenőrzi és PGSSLROOTCERT-ként használja; verify-full továbbra is kötelező. A CA érvényességének vége 2031-04-26; a forrásprojekt SSL-beállítása nem módosult.
 
 A CA-ellenőrzés után a TLS-kapcsolat már sikerült. A pooler a startup PGOPTIONS read-only alapbeállítását nem érvényesítette. A program ezért kötelező explicit `BEGIN TRANSACTION READ ONLY` tranzakcióban ellenőrzi a kapcsolatot és olvassa a szerververziót. A két manifest-lekérdezés már saját read-only tranzakciót használ. A PostgreSQL 17 hivatalos pg_dump forráskódja igazolja a dump kötelező `REPEATABLE READ, READ ONLY` tranzakcióját: https://github.com/postgres/postgres/blob/REL_17_STABLE/src/bin/pg_dump/pg_dump.c . A roles-only pg_dumpall csak szerepkör-definíciókat olvas, role-jelszavak nélkül. A program nem küld adatot módosító vagy forrásba helyreállító parancsot.
+
+## Igazolt export – 2026-10-11
+
+- Sikeres futás: https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/38127744637
+- Export forráscommit: 58d258908c588cb25f00be79723d2b592e5efd4b.
+- Artifact: sarberki-test-encrypted-38127744637; ID 11696899607; 75 689 bájt.
+- Artifact ZIP SHA256: 75eb4b354f1d6357e6561c418ada053d149195bd74db1688764f0d76984d005a.
+- database.dump.gpg: 72 032 bájt; roles.sql.gpg: 1 124 bájt; manifest.json.gpg: 1 391 bájt.
+- A teljes pg_dump parancs hibamentesen lefutott; az öt ügytártábla és az Auth adatok archívumjelenléte, az ügytár export előtti/utáni manifest-egyezése, AES256 titkosítás és mindhárom fájl visszafejtés utáni SHA256-egyezése sikeres.
+- A letöltött ZIP SHA256-ja és a három titkosított fájl belső SHA256-ja külön is ellenőrizve.
+- Az egyszeri engedélyezési marker kivételét a sikeres export után eltávolítjuk; visszaáll a tesztág + engedélyező változó + célzott indító marker együttes feltétele.
+- Teljes izolált SQL/Auth/RLS/CAS visszaállítás: NEM IGAZOLT. Platform/API/JWT/OAuth/Netlify/GitHub titkok és beállítások teljes helyreállítása: NEM IGAZOLT.
+
+Csak olvasható kiegészítő leltár: Storage bucket=0, Storage object=0, Vault secret=0. Egy Edge Function létezik: reader-password-reset, v9, verify_jwt=true; kódja 410 választ ad, jelszót nem módosít. A letölthető csomag ezt a forrás-pillanatképet és leltárt külön tartalmazza. A leltár a mentési munkamenetben külön olvasás, nem a pg_dump snapshot része.
