@@ -1,0 +1,32 @@
+name: Sarberki new offline recovery checks
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths:
+      - scripts/recovery-completion-check.mjs
+      - .github/workflows/sarberki-recovery-completion.yml
+permissions:
+  contents: read
+jobs:
+  new-checks:
+    if: github.ref == 'refs/heads/gmail-test-subject-allowlist' && contains(github.event.head_commit.message, '[sarberki-recovery-completion-once-20261011]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Only new offline recovery checks
+        run: node scripts/recovery-completion-check.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sarberki-new-recovery-checks-${{ github.run_id }}
+          path: reports/recovery-final-2026-10-11/NEW-CHECKS.json
+          if-no-files-found: error
+          retention-days: 7
