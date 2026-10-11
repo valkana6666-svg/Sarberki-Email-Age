@@ -5,3 +5,7 @@ test('same Gmail thread matches',()=>assert.equal(sameBookingConversation({threa
 test('different threads do not match',()=>assert.equal(sameBookingConversation({threadId:'abc'},{threadId:'xyz'}).matched,false));
 test('reply reference matches a known message',()=>assert.equal(sameBookingConversation({messageId:'<a@b>'},{inReplyTo:'<a@b>'}).matched,true));
 test('sender and subject alone cannot match',()=>assert.equal(sameBookingConversation({from:'x@y',subject:'Foglalás'},{from:'x@y',subject:'Foglalás'}).matched,false));
+
+test('real Gmail snake_case thread_id matches',()=>assert.equal(sameBookingConversation({thread_id:'gmail-t1'},{thread_id:'gmail-t1'}).matched,true));
+test('real Gmail RFC headers match when thread ID is missing',()=>assert.equal(sameBookingConversation({rfc_message_id:'<old@example.test>'},{in_reply_to:'<old@example.test>'}).matched,true));
+test('different Gmail thread_id cannot be overridden by matching references',()=>assert.equal(sameBookingConversation({thread_id:'first',rfc_message_id:'<old@example.test>'},{thread_id:'second',in_reply_to:'<old@example.test>'}).matched,false));
