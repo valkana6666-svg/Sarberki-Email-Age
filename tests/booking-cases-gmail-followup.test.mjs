@@ -1,0 +1,22 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createBookingCaseStore} from '../booking-cases.mjs';
+const make=()=>{
+ let n=0;
+ return createBookingCaseStore({tenantId:'sarberki',storage:null,id:()=>`synthetic-${++n}`,clock:()=> '2026-10-11T12:00:00Z'});
+};
+const msg=(id,thread,text,extra={})=>({message_id:id,thread_id:thread,sender:'guest@example.test',text,received_at:'2026-10-11T10:00:00Z',...extra});
+test('actual case store keeps original dates when guest selects cabin in Gmail reply',()=>{
+ const store=make();
+ const first=store.ingest(msg('m1','thread-1','4 főre szeretnénk szállást'),{arrival:'2026-11-13',departure:'2026-11-15',guests:'4',adults:'4',children:'0'},{intent:'booking_request'});
+ const second=store.ingest(msg('m2','thread-1','A Deluxe faházat választjuk',{received_at:'2026-10-11T11:00:00Z'}),{unit:'Deluxe'},{intent:'booking_request'});
+ assert.equal(second.bookingCase.id,first.bookingCase.id);
+ assert.equal(second.bookingCase.state.values.arrival,'2026-11-13');
+ assert.equal(second.bookingCase.state.values.unit,'Deluxe');
+});
+test('actual case store does not merge same sender with different Gmail thread',()=>{
+ const store=make();
+ const a=store.ingest(msg('m1','thread-1','Első érdeklődés'),{arrival:'2026-11-13',departure:'2026-11-15'},{intent:'booking_request'});
+ const b=store.ingest(msg('m2','thread-2','Másik érdeklődés'),{arrival:'2026-12-01',departure:'2026-12-03'},{intent:'booking_request'});
+ assert.notEqual(a.bookingCase.id,b.bookingCase.id);
+});
