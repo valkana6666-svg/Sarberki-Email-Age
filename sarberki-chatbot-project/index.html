@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Sárberki Chatbot Project – helyi teszt</title>
+<style>
+body{font-family:system-ui,sans-serif;background:#f3f6f4;color:#182c23;margin:0;padding:24px}
+main{max-width:700px;margin:auto;background:white;border-radius:16px;padding:24px;box-shadow:0 3px 16px #0001}
+h1{font-size:1.45rem}label{display:block;margin:16px 0 6px}
+textarea,select,button{font:inherit;border-radius:8px;padding:10px}textarea,select{width:100%;box-sizing:border-box;border:1px solid #9ea9a2}
+button{background:#205b42;color:white;border:0;margin-top:12px;cursor:pointer}
+#conversation{min-height:140px;max-height:55vh;overflow:auto;border:1px solid #ddd;border-radius:8px;padding:12px;white-space:pre-wrap}
+.entry{margin:0 0 14px}.sender{font-weight:700;margin-bottom:3px}
+small{color:#53645a}
+</style>
+</head>
+<body>
+<main>
+<h1>Sárberki Chatbot Project</h1>
+<p><strong>Helyi tesztfelület – nem éles vendégchat.</strong></p>
+<p><small>Nem végez foglalást, kapacitáslekérdezést vagy e-mail-küldést. Ne írj be valódi vendégadatokat.</small></p>
+<label for="language">Nyelv / Language</label>
+<select id="language"><option value="hu">Magyar</option><option value="de">Deutsch</option><option value="en">English</option><option value="si">Slovenščina</option></select>
+<label for="conversation">Beszélgetés</label>
+<div id="conversation" role="log" aria-live="polite"></div>
+<form id="chatForm">
+<label for="question">Kérdés / Question</label>
+<textarea id="question" rows="3" maxlength="1000" required placeholder="Például: Van dézsa?"></textarea>
+<button type="submit">Válasz tesztelése</button>
+</form>
+</main>
+<script type="module">
+import {chatbotReply} from '../chatbot-v1.mjs';
+const log=document.getElementById('conversation');
+const input=document.getElementById('question');
+const language=document.getElementById('language');
+function append(who,text){
+ const item=document.createElement('div');item.className='entry';
+ const name=document.createElement('div');name.className='sender';name.textContent=who;
+ const message=document.createElement('div');message.textContent=text;
+ item.append(name,message);log.append(item);log.scrollTop=log.scrollHeight;
+}
+append('Sárberki',chatbotReply({language:language.value}).reply);
+document.getElementById('chatForm').addEventListener('submit',event=>{
+ event.preventDefault();
+ const question=input.value.trim();if(!question)return;
+ append('Tesztkérdés',question);
+ const result=chatbotReply({message:question,language:language.value});
+ append('Sárberki',result.reply);input.value='';
+});
+language.addEventListener('change',()=>append('Sárberki',chatbotReply({language:language.value}).reply));
+</script>
+</body>
+</html>
