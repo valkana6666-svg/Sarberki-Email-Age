@@ -12,7 +12,16 @@ report = {'snapshot_run':38127744637, 'source_connection':'NEVER_OPENED',
           'case_manifest':'NOT_RUN', 'auth_api_login':'NOT_RUN', 'rls_behavior':'NOT_RUN'}
 def run(args, data=None, required=True):
     p = subprocess.run(args, input=data, capture_output=True)
-    if required and p.returncode: raise RuntimeError('ISOLATED_OPERATION_FAILED')
+    if required and p.returncode:
+        diag=p.stderr.decode(errors='replace')
+        # Only PostgreSQL ERROR headline, constrained to safe identifier text.
+        for line in diag.splitlines():
+            if 'ERROR:' in line:
+                safe=line.split('ERROR:',1)[1].strip()
+                if re.fullmatch(r'[A-Za-z0-9_ \"().:-]{1,220}',safe):
+                    report['operation_error']=safe
+                break
+        raise RuntimeError('ISOLATED_OPERATION_FAILED')
     return p
 def sql(text):
     return run(['psql','-X','-w','-qAt','-v','ON_ERROR_STOP=1'], text.encode()).stdout
