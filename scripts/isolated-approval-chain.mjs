@@ -83,6 +83,7 @@ try{
 }catch(error){
  report.completed=false;report.failed_stage=stage;report.failure_class=error.name;
  const redact=s=>String(s).replace(/postgres(?:ql)?:\/\/[^\s"']+/g,'[redacted-db-url]').replace(/[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g,'[redacted-jwt]').replace(/[a-f0-9]{64}/g,'[redacted-key]');
+ report.failure_message=redact(error.message).slice(0,1000);
  if(error.stderr)report.sql_diagnostic=redact(error.stderr).slice(0,1000);
  if(stage==='prepare-new-services'){
   try{const captured=spawnSync('docker',['logs','--tail','30',process.env.ISOLATED_APPROVAL_AUTH],{encoding:'utf8'});const logs=(captured.stdout||'')+(captured.stderr||'');report.auth_start_diagnostic=logs.split('\n').filter(x=>/fatal|error|panic/i.test(x)).map(x=>redact(x).slice(-1000)).slice(-4);}catch{}

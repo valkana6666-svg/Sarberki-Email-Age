@@ -60,7 +60,7 @@ export async function runBrowserApprovalChain({handlerFactory,auth,rest,sql,sign
   await restrict(context);page=await context.newPage();
   await step('browser_unauthenticated_access_denied',async()=>{
    await page.goto(origin+'/isolated-approval.html');assert.equal(await page.locator('#workspace').isDisabled(),true);
-   assert.equal(await page.evaluate(async id=>(await fetch('/.netlify/functions/booking-cases?'+new URLSearchParams({tenantId:'sarberki-test',caseId:id}))).status,id),403);unchanged(2);
+   assert.equal(await page.evaluate(async id=>(await fetch('/.netlify/functions/booking-cases?'+new URLSearchParams({tenantId:'sarberki-test',caseId:id}))).status,id),401);unchanged(2);
   });
   await step('browser_writer_cannot_approve',async()=>{await signIn('writer');await load();await approve('FORBIDDEN');unchanged(2);});
   await step('browser_foreign_tenant_cannot_read',async()=>{await signIn('foreign');await page.locator('#isolated_approval_case_id').fill(id);await page.locator('#isolated_approval_load').click();await status().filter({hasText:'FORBIDDEN'}).waitFor();unchanged(2);});
