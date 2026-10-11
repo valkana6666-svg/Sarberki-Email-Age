@@ -1,7 +1,7 @@
 // New approval chain only, against a fresh disposable DB. No backup/source/cloud credentials.
 import {createHash,createHmac,randomBytes} from 'node:crypto';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
-import {execFileSync} from 'node:child_process';
+import {execFileSync,spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {createCaseHandler} from '../netlify/functions/booking-cases.mjs';
 const report={scope:'NEW_ISOLATED_AUTH_APPROVAL_ONLY',source_connection:'NEVER_OPENED',production:'NEVER_CONNECTED',email:'NEVER_SENT_OR_MODIFIED',booking:'NEVER_CREATED_OR_MODIFIED',prior_successful_suites_repeated:false};
@@ -76,7 +76,7 @@ try{
  const redact=s=>String(s).replace(/postgres(?:ql)?:\/\/[^\s"']+/g,'[redacted-db-url]').replace(/[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g,'[redacted-jwt]').replace(/[a-f0-9]{64}/g,'[redacted-key]');
  if(error.stderr)report.sql_diagnostic=redact(error.stderr).slice(0,1000);
  if(stage==='prepare-new-services'){
-  try{const logs=execFileSync('docker',['logs','--tail','30',process.env.ISOLATED_APPROVAL_AUTH],{stdio:['ignore','pipe','pipe']}).toString();report.auth_start_diagnostic=logs.split('\n').filter(x=>/fatal|error|panic/i.test(x)).map(redact).slice(-4);}catch{}
+  try{const captured=spawnSync('docker',['logs','--tail','30',process.env.ISOLATED_APPROVAL_AUTH],{encoding:'utf8'});const logs=(captured.stdout||'')+(captured.stderr||'');report.auth_start_diagnostic=logs.split('\n').filter(x=>/fatal|error|panic/i.test(x)).map(redact).slice(-4);}catch{}
  }
  process.exitCode=1;
 }
