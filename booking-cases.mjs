@@ -65,10 +65,15 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
    const previousDates=target?{arrival:target.state.values.arrival,departure:target.state.values.departure}:null;
    const c=target||{id:id(),sender:sender(envelope.sender),messages:[],drafts:[],createdAt:clock(),state:createCaseState({original:envelope.text,values,intent,now:clock()})};
    if(target){
+    const previousApproval=c.state.approval;
     c.state=updateCaseState(c.state,{type:'facts',values});
     // Every new message requires a fresh operator review, even if extracted facts are unchanged.
     // Do not carry an earlier draft approval into a newly received guest reply.
     c.state.approval='pending';
+    if(previousApproval==='internally_approved'){
+     c.events??=[];
+     c.events.push({time:clock(),type:'Jóváhagyás érvénytelenítve; új vendégválasz érkezett',approval:'pending',previousApproval,revision:c.state.revision,scope:'local_unverified_operator'});
+    }
    }
    if(dateUpdate.status!=='none')c.dateReview={...dateUpdate,previousDates,at:clock()};
    c.state.original=envelope.text;c.state.now=clock();
