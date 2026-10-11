@@ -208,9 +208,12 @@ def export(output):
         raise RuntimeError('PostgreSQL 17 client required.')
     psql = ['psql', '-X', '-w', '-qAt', '-v', 'ON_ERROR_STOP=1']
     print('BACKUP_STAGE: test read-only TLS database connection', flush=True)
-    if source_probe(psql + ['-c', 'show transaction_read_only'], env).strip() != b'on':
-        raise RuntimeError('Source connection is not read-only.')
-    version = owner.checked(psql + ['-c', 'show server_version_num'], env).strip()
+    default_read_only = source_probe(psql + ['-c', 'show transaction_read_only'], env).strip()
+    if default_read_only != b'on':
+        print('BACKUP_CONFIG: pooler does not propagate startup read-only option; enforcing explicit read-only transactions', flush=True)
+    if source_probe(psql + ['-c', 'begin transaction read only; show transaction_read_only; rollback;'], env).strip() != b'on':
+        raise BackupConfigurationError('SOURCE_EXPLICIT_READ_ONLY_TRANSACTION_FAILED')
+    version = source_probe(psql + ['-c', 'begin transaction read only; show server_version_num; rollback;'], env).strip()
     if not version.isdigit() or int(version) // 10000 != 17:
         raise RuntimeError('Unexpected source server version.')
     manifest_path = Path(__file__).with_name('case-store-recovery-manifest.sql')
@@ -218,6 +221,8 @@ def export(output):
     before = owner.checked(psql + ['-f', str(manifest_path)], env).strip()
     json.loads(before)
     print('BACKUP_STAGE: export PostgreSQL 17 database', flush=True)
+    # PostgreSQL 17 pg_dump itself starts REPEATABLE READ, READ ONLY.
+    # This is mandatory even when a pooler ignores startup PGOPTIONS.
     dump = bounded(['pg_dump', '-w', '--format=custom'], env)
     toc = owner.checked(['pg_restore', '--list'], input_bytes=dump).decode()
     owner.validate_toc(toc)
