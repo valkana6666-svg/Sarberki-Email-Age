@@ -54,6 +54,10 @@ export function createSupabaseCaseRepository(transport) {
    fail('STORAGE_FAILURE'); // Never silently return a truncated list for case linking.
   },
   insert:(tenant,caseId,record)=>write(tenant,caseId,0,record),
-  compareAndSwap:(tenant,caseId,expected,record)=>write(tenant,caseId,expected,record)
+  compareAndSwap:(tenant,caseId,expected,record)=>write(tenant,caseId,expected,record),
+  async approve(tenant,caseId,expected,draftHash,evidence){
+   const row=await transport('/rest/v1/rpc/sc_approve_case',{method:'POST',body:{p_tenant:tenant,p_case:caseId,p_expected:expected,p_draft_hash:draftHash,p_evidence:evidence}});
+   return row===null?null:mapRecord(row);
+  }
  };
 }

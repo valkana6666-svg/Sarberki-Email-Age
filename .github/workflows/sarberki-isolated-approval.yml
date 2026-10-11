@@ -1,0 +1,67 @@
+name: Sarberki new isolated server approval
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths:
+      - .github/workflows/sarberki-isolated-approval.yml
+      - scripts/isolated-approval-chain.mjs
+permissions:
+  contents: read
+jobs:
+  approval:
+    if: github.ref == 'refs/heads/gmail-test-subject-allowlist' && contains(github.event.head_commit.message, '[sarberki-approval-once-20261011]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: New empty PostgreSQL and Auth only; no source or backup secrets
+        run: |
+          docker network create "sarberki-approval-$GITHUB_RUN_ID"
+          docker run -d --name "sarberki-approval-pg-$GITHUB_RUN_ID" --network "sarberki-approval-$GITHUB_RUN_ID" --network-alias postgres -e POSTGRES_USER=restore_admin -e POSTGRES_PASSWORD=ephemeral-isolated-only -e POSTGRES_DB=sc_approval_test postgres:17-bookworm
+          for i in $(seq 1 40); do docker exec "sarberki-approval-pg-$GITHUB_RUN_ID" pg_isready -U restore_admin && break || sleep 1; done
+          docker exec -i "sarberki-approval-pg-$GITHUB_RUN_ID" psql -U restore_admin -d sc_approval_test -v ON_ERROR_STOP=1 <<'SQL'
+          create role anon nologin;
+          create role authenticated nologin;
+          create role service_role nologin bypassrls;
+          create role supabase_auth_admin login password 'ephemeral-isolated-only';
+          create schema auth authorization supabase_auth_admin;
+          create function auth.uid() returns uuid language sql stable as $$select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;
+          grant usage on schema auth to anon,authenticated;
+          grant execute on function auth.uid() to anon,authenticated;
+          SQL
+          python3 - <<'PY'
+          import secrets,os
+          from pathlib import Path
+          os.umask(0o077)
+          secret=secrets.token_hex(32)
+          Path('/tmp/approval-jwt-secret').write_text(secret)
+          auth={'GOTRUE_API_HOST':'0.0.0.0','GOTRUE_API_PORT':'9999','API_EXTERNAL_URL':'http://localhost:18999','GOTRUE_SITE_URL':'http://localhost:3000','GOTRUE_DB_DRIVER':'postgres','GOTRUE_DB_DATABASE_URL':'postgres://supabase_auth_admin:ephemeral-isolated-only@postgres:5432/sc_approval_test?search_path=auth','GOTRUE_DB_NAMESPACE':'auth','GOTRUE_JWT_SECRET':secret,'GOTRUE_JWT_EXP':'3600','GOTRUE_JWT_AUD':'authenticated','GOTRUE_JWT_DEFAULT_GROUP_NAME':'authenticated','GOTRUE_JWT_ADMIN_ROLES':'service_role','GOTRUE_EXTERNAL_EMAIL_ENABLED':'true','GOTRUE_MAILER_AUTOCONFIRM':'true','GOTRUE_DISABLE_SIGNUP':'true'}
+          rest={'PGRST_DB_URI':'postgres://restore_admin:ephemeral-isolated-only@postgres:5432/sc_approval_test','PGRST_DB_SCHEMAS':'public','PGRST_DB_ANON_ROLE':'anon','PGRST_JWT_SECRET':secret,'PGRST_DB_EXTRA_SEARCH_PATH':'public'}
+          for name,values in [('auth',auth),('rest',rest)]:Path('/tmp/approval-'+name+'.env').write_text(''.join(k+'='+v+'\n' for k,v in values.items()))
+          PY
+          docker run -d --name "sarberki-approval-auth-$GITHUB_RUN_ID" --network "sarberki-approval-$GITHUB_RUN_ID" -p 127.0.0.1:18999:9999 --env-file /tmp/approval-auth.env supabase/gotrue:v2.196.0
+          docker run -d --name "sarberki-approval-rest-$GITHUB_RUN_ID" --network "sarberki-approval-$GITHUB_RUN_ID" -p 127.0.0.1:18300:3000 --env-file /tmp/approval-rest.env postgrest/postgrest:v14.17
+      - name: Only new actual Auth approval and restart checks
+        env:
+          ISOLATED_APPROVAL_POSTGRES: sarberki-approval-pg-${{ github.run_id }}
+          ISOLATED_APPROVAL_AUTH: sarberki-approval-auth-${{ github.run_id }}
+          ISOLATED_APPROVAL_REST: sarberki-approval-rest-${{ github.run_id }}
+        run: node scripts/isolated-approval-chain.mjs
+      - name: Destroy isolated services
+        if: always()
+        run: |
+          docker rm -f "sarberki-approval-auth-$GITHUB_RUN_ID" "sarberki-approval-rest-$GITHUB_RUN_ID" "sarberki-approval-pg-$GITHUB_RUN_ID" >/dev/null 2>&1 || true
+          docker network rm "sarberki-approval-$GITHUB_RUN_ID" >/dev/null 2>&1 || true
+          rm -f /tmp/approval-jwt-secret /tmp/approval-auth.env /tmp/approval-rest.env
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sarberki-server-approval-${{ github.run_id }}
+          path: /tmp/approval-evidence/SERVER-APPROVAL.json
+          if-no-files-found: error
+          retention-days: 7

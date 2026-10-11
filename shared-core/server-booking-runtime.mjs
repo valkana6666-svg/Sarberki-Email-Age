@@ -2,7 +2,7 @@ import { createBookingCaseStore } from '../booking-cases.mjs';
 import { CaseServiceError } from './server-case-service.mjs';
 import { buildCentralReply } from '../central-reply.mjs';
 import { SARBERKI_TENANT } from '../tenant-config.mjs';
-import { randomUUID } from 'node:crypto';
+import { randomUUID,createHash } from 'node:crypto';
 import { extractServerMessage } from './server-message-extraction.mjs';
 import { prepareSyntheticBookingReview } from './server-synthetic-booking-review.mjs';
 const reject=code=>{throw new CaseServiceError(code,code);};
@@ -27,8 +27,22 @@ function scopeMessage(message, reverse=false){
   ...(message.references?{references:message.references.map(refs)}:{})};
 }
 // Reuses the existing engine. Only persistence is asynchronous; no new booking rules.
-export function createServerBookingRuntime({service,tenantId,requestContext,clock=()=>new Date().toISOString(),id=randomUUID,reviewProviders=null}){
+export function createServerBookingRuntime({service,tenantId,requestContext,clock=()=>new Date().toISOString(),id=randomUUID,reviewProviders=null,isolatedApproval=false}){
  return {
+  async approve(caseId,expectedRevision,draftHash){
+   if(!isolatedApproval||tenantId!=='sarberki-test'||!reviewProviders)reject('SETUP_REQUIRED');
+   await service.requireApproval({requestContext,tenantId});
+   const current=await service.getCase({requestContext,tenantId,caseId});
+   if(!current)reject('CASE_NOT_FOUND');if(current.revision!==expectedRevision)reject('CASE_CONFLICT');
+   const draft=current.data.drafts.at(-1);
+   if(!draft?.synthetic||draft.reviewStatus!=='internal_review_required'||current.data.state.approval!=='pending')reject('INVALID_DRAFT');
+   if(createHash('sha256').update(draft.text,'utf8').digest('hex')!==draftHash)reject('INVALID_DRAFT');
+   const review=await prepareSyntheticBookingReview({...reviewProviders,record:current,now:()=>Date.parse(clock())});
+   if(review.status!=='internal_review_required')reject('REVIEW_NOT_READY');
+   if(review.draft!==draft.text)reject('REVIEW_CHANGED');
+   // No caller-supplied actor/evidence is accepted. Authority and DB session are rechecked after providers.
+   return service.approveCase({requestContext,tenantId,caseId,expectedRevision,draftHash,evidence:review.evidence});
+  },
   async previewReview(caseId,expectedRevision){
    if(!reviewProviders)reject('SETUP_REQUIRED');
    const record=await service.getCase({requestContext,tenantId,caseId});

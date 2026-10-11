@@ -87,7 +87,20 @@ export function createServerCaseService({ repository, resolveAuthority, clock = 
     if (updated !== true) reject('CASE_CONFLICT', 'Az ügyet időközben másik kezelő módosította.');
     return copy(record);
   }
-  return Object.freeze({ getCase, listCases, createCase, updateCase,
+  async function approveCase({requestContext,tenantId,caseId,expectedRevision,draftHash,evidence}) {
+    const actor=await authorize(requestContext,tenantId,'approve');
+    if(!validCaseId(caseId))reject('INVALID_CASE','Érvénytelen ügyazonosító.');
+    if(!Number.isSafeInteger(expectedRevision)||expectedRevision<1)reject('INVALID_REVISION','Érvényes várt ügyverzió szükséges.');
+    if(typeof draftHash!=='string'||!/^[a-f0-9]{64}$/.test(draftHash))reject('INVALID_DRAFT','Ellenőrzött tervezetazonosító szükséges.');
+    if(typeof repository.approve!=='function')reject('SETUP_REQUIRED','Elkülönített jóváhagyási ügytár szükséges.');
+    // The RPC derives actor from auth.uid(), locks the exact revision, and writes audit atomically.
+    const record=validateStored(await repository.approve(tenantId,caseId,expectedRevision,draftHash,copy(evidence)),tenantId,caseId);
+    if(!record)reject('CASE_CONFLICT','Az ügyet időközben módosították.');
+    if(record.revision!==expectedRevision+1||record.updatedBy!==actor||record.data?.state?.approval!=='internally_approved'||record.data?.serverApproval?.draftHash!==draftHash)
+      reject('STORAGE_FAILURE','Érvénytelen jóváhagyási ügytárválasz.');
+    return copy(record);
+  }
+  return Object.freeze({ getCase, listCases, createCase, updateCase, approveCase,
     requireWrite: ({requestContext,tenantId}) => authorize(requestContext,tenantId,'write'),
     requireApproval: ({requestContext,tenantId}) => authorize(requestContext,tenantId,'approve') });
 }
