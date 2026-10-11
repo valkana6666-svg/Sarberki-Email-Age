@@ -64,7 +64,12 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
    if(dateUpdate.status==='unverified'){values.arrival='';values.departure='';values.nights='';}
    const previousDates=target?{arrival:target.state.values.arrival,departure:target.state.values.departure}:null;
    const c=target||{id:id(),sender:sender(envelope.sender),messages:[],drafts:[],createdAt:clock(),state:createCaseState({original:envelope.text,values,intent,now:clock()})};
-   if(target)c.state=updateCaseState(c.state,{type:'facts',values});
+   if(target){
+    c.state=updateCaseState(c.state,{type:'facts',values});
+    // Every new message requires a fresh operator review, even if extracted facts are unchanged.
+    // Do not carry an earlier draft approval into a newly received guest reply.
+    c.state.approval='pending';
+   }
    if(dateUpdate.status!=='none')c.dateReview={...dateUpdate,previousDates,at:clock()};
    c.state.original=envelope.text;c.state.now=clock();
    c.state.intent=target&&['other','general_question'].includes(intent)?target.state.intent:intent;c.facts=stageFacts(values);
