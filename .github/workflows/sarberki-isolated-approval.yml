@@ -23,7 +23,14 @@ jobs:
         run: |
           docker network create "sarberki-approval-$GITHUB_RUN_ID"
           docker run -d --name "sarberki-approval-pg-$GITHUB_RUN_ID" --network "sarberki-approval-$GITHUB_RUN_ID" --network-alias postgres -e POSTGRES_USER=restore_admin -e POSTGRES_PASSWORD=ephemeral-isolated-only -e POSTGRES_DB=sc_approval_test postgres:17-bookworm
-          for i in $(seq 1 40); do docker exec "sarberki-approval-pg-$GITHUB_RUN_ID" pg_isready -U restore_admin && break || sleep 1; done
+          # The image's temporary init server accepts Unix sockets before POSTGRES_DB exists.
+          # Wait for the final TCP server and the exact new database, not pg_isready alone.
+          approval_ready=no
+          for i in $(seq 1 40); do
+            if docker exec "sarberki-approval-pg-$GITHUB_RUN_ID" psql -h 127.0.0.1 -U restore_admin -d sc_approval_test -Atc 'select 1' >/dev/null 2>&1; then approval_ready=yes; break; fi
+            sleep 1
+          done
+          test "$approval_ready" = yes
           docker exec -i "sarberki-approval-pg-$GITHUB_RUN_ID" psql -U restore_admin -d sc_approval_test -v ON_ERROR_STOP=1 <<'SQL'
           create role anon nologin;
           create role authenticated nologin;
