@@ -152,7 +152,7 @@ finally:
     (out/'ISOLATED-RESTORE.json').write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps({k:v for k,v in report.items() if k in ('portable_decryption','full_restore','restore_without_vault','case_manifest','tables_compared','verification_completed','full_restore_failure')}))
     # Destination is the disposable job service, not the source project.
-    if os.environ.get('PGHOST')=='postgres':
+    if os.environ.get('PGHOST')=='postgres' and not (report.get('verification_completed') and os.environ.get('SARBERKI_KEEP_ISOLATED_DB')=='runtime-test'):
         os.environ['PGDATABASE']='postgres'
         run(['psql','-X','-w','-qAt','-c','DROP DATABASE IF EXISTS sc_restore WITH (FORCE);'],required=False)
 if not report.get('verification_completed'):

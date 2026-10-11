@@ -1,0 +1,12 @@
+<!doctype html><html lang="hu"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Sárberki – helyi ügytár mentése</title>
+<style>body{font:18px system-ui;max-width:720px;margin:30px auto;padding:20px;line-height:1.55}input,button{font:inherit;width:100%;box-sizing:border-box;padding:12px;margin:8px 0}button{background:#a14408;color:white;border:0;border-radius:8px}output{display:block;white-space:pre-wrap;margin-top:20px}small{display:block}</style>
+<h1>Helyi ügytár biztonsági mentése</h1>
+<p>Ezt azon a laptopon, abban a böngészőben nyisd meg, ahol a Sárberkit használod. A mentés az adott webhely ügytárát és Gmail-feldolgozási előzményeit tartalmazza.</p>
+<p>A fájl helyben titkosítva készül. Sem adat, sem jelmondat nem kerül szerverre. Az eredeti ügytárat a program csak olvassa.</p>
+<label for="phrase">Külön megőrzött mentési jelmondat, legalább 16 karakter</label><input id="phrase" type="password" autocomplete="new-password">
+<label for="repeat">Jelmondat ismét</label><input id="repeat" type="password" autocomplete="new-password">
+<button id="export">Titkosított helyi mentés letöltése</button>
+<small>A jelmondatot másik gépről is elérhető jelszókezelőben őrizd meg. Ne írd chatbe. Ez a helyi mentés külön AES-256-GCM formátumú; nem a meglévő GPG-adatbázismentés.</small>
+<output id="result" aria-live="polite"></output><script type="module" src="local-backup-ui.mjs"></script></html>
