@@ -49,7 +49,19 @@ def main():
         report['required_archive_coverage']='PASS'
         sql('CREATE DATABASE sc_restore;')
         os.environ['PGDATABASE']='sc_restore'
-        sql(plain['roles.sql.gpg'].decode())
+        roles=plain['roles.sql.gpg'].decode()
+        grantors=sorted(set(re.findall(r'GRANTED BY ([a-z_][a-z0-9_]*)',roles)))
+        first=re.search(r'(?m)^GRANT ',roles)
+        if first and grantors:
+            source_attributes=[]
+            for role in grantors:
+                source_attributes.extend(re.findall(r'(?m)^ALTER ROLE '+re.escape(role)+r' WITH [^\n]+;',roles))
+            if len(source_attributes)!=len(grantors): raise RuntimeError('GRANTOR_ATTRIBUTES_MISSING')
+            # Hosted grantor privileges need temporary bootstrap elevation on
+            # this isolated stock engine; restore original attributes at once.
+            roles=roles[:first.start()]+''.join('ALTER ROLE '+r+' SUPERUSER;\n' for r in grantors)+roles[first.start():]+'\n'+'\n'.join(source_attributes)
+            report['role_bootstrap_adaptation']='temporary grantor SUPERUSER; original attributes reapplied'
+        sql(roles)
         report['roles_restore']='PASS_NO_ROLE_PASSWORDS'
         result = run(['pg_restore','--exit-on-error','--dbname=sc_restore',str(dump)],required=False)
         report['full_restore']='PASS' if result.returncode==0 else 'FAILED'
@@ -90,6 +102,11 @@ def main():
         report['all_table_copy_payloads_equal']=bool(matched) and all(matched.values())
         report['tables_compared']=len(matched)
         report['table_payload_comparison']=matched
+        policy=ROOT.parent/'reports/supabase-connection-verification-2026-10-09/CLOUD-POLICY-TEST.sql'
+        sql(policy.read_text())
+        report['rls_behavior']='PASS_RESTORED_DB_SIMULATED_JWT_CLAIMS'
+        report['cas_history_uniqueness_audit']='PASS_RESTORED_DB_ROLLBACK_FIXTURE'
+        report['manifest_after_rollback_equal']=json.loads(sql((ROOT/'case-store-recovery-manifest.sql').read_text()))==restored
         # All roles must exist with identical attributes, as roles SQL restored
         # with ON_ERROR_STOP and without replacing source role passwords.
         report['role_passwords']='NOT_INCLUDED_MUST_REPROVISION'
@@ -111,3 +128,5 @@ finally:
     if os.environ.get('PGHOST')=='postgres':
         os.environ['PGDATABASE']='postgres'
         run(['psql','-X','-w','-qAt','-c','DROP DATABASE IF EXISTS sc_restore WITH (FORCE);'],required=False)
+if not report.get('verification_completed'):
+    raise SystemExit(1)
