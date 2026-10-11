@@ -18,7 +18,7 @@ test('verified availability replaces provisional capacity text but retains stay 
   }});
   assert.match(draft,/Igazoltan elérhető faházak: Családi, VIP, Deluxe/);
   assert.doesNotMatch(draft,/A ténylegesen szabad lehetőségeket a kért időszakra ellenőrizzük/);
-  assert.match(draft,/2026-11-13/);
+  assert.match(draft,/13\.11\.2026/);
   assert.match(draft,/melyik felajánlott faháztípust választja/);
 });
 
