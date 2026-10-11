@@ -1,5 +1,6 @@
 import {initIsolatedApprovalPanel} from './isolated-approval-panel.mjs';
 import {createCaseStoreClient} from './shared-core/case-store-client.mjs';
+import {isIsolatedReviewCaseId} from './shared-core/isolated-review-case-id.mjs';
 
 // This shell is usable only on an explicitly configured disposable loopback server.
 // Tokens remain in memory; the API independently validates Auth and DB membership.
@@ -39,7 +40,7 @@ async function start(){
   const generation=epoch,id=el('isolated_approval_case_id').value.trim();
   el('readback_status').textContent='';
   try{
-   if(!/^case-[A-Za-z0-9_-]{1,120}$/.test(id))throw Error();
+   if(!isIsolatedReviewCaseId(id))throw Error();
    const record=await client.get('sarberki-test',id);
    const r=await fetch('/isolated-audit?'+new URLSearchParams({caseId:id}),{cache:'no-store',headers:{Authorization:'Bearer '+token}});
    if(!r.ok)throw Error();const audit=await r.json();

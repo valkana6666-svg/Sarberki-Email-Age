@@ -2,9 +2,9 @@
 // The only write is a server-authorized approval of a freshly loaded, persisted synthetic draft.
 import {createCaseStoreClient} from './shared-core/case-store-client.mjs';
 import {createIsolatedApprovalReview} from './shared-core/isolated-approval-review.mjs';
+import {isIsolatedReviewCaseId} from './shared-core/isolated-review-case-id.mjs';
 
 const allowedTarget='https://isolated-approval.supabase.co';
-const caseIdPattern=/^case-[A-Za-z0-9_-]{1,120}$/;
 const safeCode=error=>['AUTH_REQUIRED','FORBIDDEN','CASE_CONFLICT','REVIEW_CHANGED',
  'REVIEW_NOT_READY','INVALID_DRAFT','INVALID_INPUT','REVIEW_REQUIRED',
  'REVIEW_BUSY','REVIEW_CANCELLED','SERVICE_UNAVAILABLE','CASE_STORE_DISABLED'].includes(error?.message)
@@ -63,7 +63,7 @@ export function initIsolatedApprovalPanel({
   if(busy)return;
   reset();
   const id=caseInput.value.trim();
-  if(!caseIdPattern.test(id)){message('Csak case- kezdetű szintetikus ügyazonosító engedélyezett.');return;}
+  if(!isIsolatedReviewCaseId(id)){message('Érvényes tárolt tesztügy-azonosító szükséges.');return;}
   busy=true;locked();const generation=epoch;
   message('Tárolt szintetikus tervezet hitelesített lekérése…');
   try{

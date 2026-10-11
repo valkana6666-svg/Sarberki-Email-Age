@@ -3,9 +3,10 @@ import {readFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
+import {isIsolatedReviewCaseId} from '../shared-core/isolated-review-case-id.mjs';
 
 export async function runBrowserApprovalChain({handlerFactory,auth,rest,sql,sign,password,id,approver,call,wt,at,evidence,hash,setCapacity,ready,step}){
- const assets=new Map(['isolated-approval.html','isolated-approval-session.mjs','isolated-approval-panel.mjs','shared-core/case-store-client.mjs','shared-core/isolated-approval-review.mjs'].map(p=>['/'+p,readFileSync(p)]));
+ const assets=new Map(['isolated-approval.html','isolated-approval-session.mjs','isolated-approval-panel.mjs','shared-core/case-store-client.mjs','shared-core/isolated-approval-review.mjs','shared-core/isolated-review-case-id.mjs'].map(p=>['/'+p,readFileSync(p)]));
  let expiredLogin=false,server,browser,page,origin;
  const unchanged=revision=>{
   assert.equal(sql(`select revision from sc_cases where case_id='${id}';`),String(revision));
@@ -36,7 +37,7 @@ export async function runBrowserApprovalChain({handlerFactory,auth,rest,sql,sign
      const r=await handler({httpMethod:req.method,headers:req.headers,body,queryStringParameters:Object.fromEntries(u.searchParams)});return send(r.statusCode,r.body);
     }
     if(req.method==='GET'&&u.pathname==='/isolated-audit'){
-     const caseId=u.searchParams.get('caseId');if(!/^case-[A-Za-z0-9_-]{1,120}$/.test(caseId||''))return send(400,{error:'INVALID_INPUT'});
+     const caseId=u.searchParams.get('caseId');if(!isIsolatedReviewCaseId(caseId))return send(400,{error:'INVALID_INPUT'});
      const r=await fetch(rest+'/sc_audit?'+new URLSearchParams({tenant_id:'eq.sarberki-test',case_id:'eq.'+caseId,kind:'eq.approve_isolated_synthetic',select:'revision,actor,kind,data_hash'}),{headers:{Authorization:req.headers.authorization||''}});
      return send(r.status,await r.text());
     }

@@ -105,7 +105,8 @@ try{
    ['/isolated-approval-rehearsal.html',['text/html; charset=utf-8','isolated-approval-rehearsal.html']],
    ['/isolated-approval-panel.mjs',['text/javascript; charset=utf-8','isolated-approval-panel.mjs']],
    ['/shared-core/case-store-client.mjs',['text/javascript; charset=utf-8','shared-core/case-store-client.mjs']],
-   ['/shared-core/isolated-approval-review.mjs',['text/javascript; charset=utf-8','shared-core/isolated-approval-review.mjs']]
+   ['/shared-core/isolated-approval-review.mjs',['text/javascript; charset=utf-8','shared-core/isolated-approval-review.mjs']],
+   ['/shared-core/isolated-review-case-id.mjs',['text/javascript; charset=utf-8','shared-core/isolated-review-case-id.mjs']]
   ]);
   const local=createServer(async(req,res)=>{
    try{

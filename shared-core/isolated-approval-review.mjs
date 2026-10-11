@@ -1,5 +1,6 @@
 // Browser-compatible review bridge. Never auto-initialized by the application.
 // Only the persisted synthetic draft may be approved; a preview is insufficient.
+import {isIsolatedReviewCaseId} from './isolated-review-case-id.mjs';
 export function createIsolatedApprovalReview({client,enabled=false,cryptoProvider=globalThis.crypto}={}){
  let review=null,busy=false,generation=0;
  const requireEnabled=()=>{if(enabled!==true)throw Error('SETUP_REQUIRED');};
@@ -8,7 +9,7 @@ export function createIsolatedApprovalReview({client,enabled=false,cryptoProvide
   clear(){review=null;generation++;},
   async load(caseId){
    requireEnabled();if(busy)throw Error('REVIEW_BUSY');
-   if(typeof caseId!=='string'||!/^case-[A-Za-z0-9_-]{1,120}$/.test(caseId))throw Error('INVALID_INPUT');
+   if(!isIsolatedReviewCaseId(caseId))throw Error('INVALID_INPUT');
    busy=true;review=null;const currentGeneration=++generation;
    try{
     const record=await client.get('sarberki-test',caseId),draft=record?.data?.drafts?.at(-1);
