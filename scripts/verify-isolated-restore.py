@@ -25,6 +25,12 @@ def run(args, data=None, required=True):
     return p
 def sql(text):
     return run(['psql','-X','-w','-qAt','-v','ON_ERROR_STOP=1'], text.encode()).stdout
+def restore_diag(p):
+    for line in p.stderr.decode(errors='replace').splitlines():
+        if 'ERROR:' in line:
+            safe=line.split('ERROR:',1)[1].strip()
+            if re.fullmatch(r'[A-Za-z0-9_ \"().:/-]{1,250}',safe): report['restore_error']=safe
+            break
 def main():
     if os.environ.get('PGHOST') != 'postgres' or os.environ.get('PGUSER') != 'restore_admin':
         raise RuntimeError('DESTINATION_NOT_ISOLATED')
@@ -49,6 +55,7 @@ def main():
         report['required_archive_coverage']='PASS'
         sql('CREATE DATABASE sc_restore;')
         os.environ['PGDATABASE']='sc_restore'
+        if ' SCHEMA - public ' in toc: sql('DROP SCHEMA public;')
         roles=plain['roles.sql.gpg'].decode()
         grantors=sorted(set(re.findall(r'GRANTED BY ([a-z_][a-z0-9_]*)',roles)))
         if grantors:
@@ -63,12 +70,14 @@ def main():
         result = run(['pg_restore','--exit-on-error','--dbname=sc_restore',str(dump)],required=False)
         report['full_restore']='PASS' if result.returncode==0 else 'FAILED'
         if result.returncode:
+            restore_diag(result)
             # Supabase Vault extension is not installed in vanilla PostgreSQL.
             # Preserve exact failure category, never publish SQL/data/stderr.
             diag=result.stderr.lower()
             report['full_restore_failure']='MISSING_SUPABASE_VAULT_EXTENSION' if b'supabase_vault' in diag else 'OTHER_RESTORE_ERROR'
             os.environ['PGDATABASE']='postgres'; sql('DROP DATABASE sc_restore; CREATE DATABASE sc_restore;')
             os.environ['PGDATABASE']='sc_restore'
+            if ' SCHEMA - public ' in toc: sql('DROP SCHEMA public;')
             omitted=[]; selected=[]
             for line in toc.splitlines():
                 if line.startswith(';') or not line.strip(): selected.append(line); continue
@@ -78,7 +87,9 @@ def main():
             report['excluded_toc_objects']=omitted
             result=run(['pg_restore','--exit-on-error','--use-list='+str(listing),'--dbname=sc_restore',str(dump)],required=False)
             report['restore_without_vault']='PASS' if not result.returncode else 'FAILED'
-            if result.returncode: raise RuntimeError('SCOPED_RESTORE_FAILED')
+            if result.returncode:
+                restore_diag(result)
+                raise RuntimeError('SCOPED_RESTORE_FAILED')
         restored=json.loads(sql((ROOT/'case-store-recovery-manifest.sql').read_text()))
         comparisons={k:restored.get(k)==v for k,v in baseline.items()}
         report['case_manifest_fields']=comparisons
