@@ -29,9 +29,9 @@ for(const [name,change]of [['date',{arrival:'2026-11-06',departure:'2026-11-08'}
  const s=store(),a=s.ingest(env('one'),values);const state={...a.bookingCase.state,quote:{total:100},availability:{verified:true}};s.save(a.bookingCase.id,state);
  const b=s.ingest(env('two'),change);assert.equal(b.bookingCase.id,a.bookingCase.id);assert.equal(b.bookingCase.state.quote,null);assert.equal(b.bookingCase.state.availability,null);
 });
-test('ages on second and third messages preserve known facts and capacity',()=>{
+test('ages on second and third messages preserve known facts but invalidate capacity',()=>{
  const s=store(),a=s.ingest(env('one'),values);s.save(a.bookingCase.id,{...a.bookingCase.state,availability:{verified:true},quote:{total:100}});
- const b=s.ingest(env('two'),{child_ages:'7'}),c=s.ingest(env('three'),{child_ages:'11'});assert.equal(c.bookingCase.state.values.child_ages,'7, 11');assert.equal(c.bookingCase.state.values.arrival,stay.arrival);assert.equal(b.bookingCase.state.quote,null);assert.equal(c.bookingCase.state.availability.verified,true);
+ const b=s.ingest(env('two'),{child_ages:'7'}),c=s.ingest(env('three'),{child_ages:'11'});assert.equal(c.bookingCase.state.values.child_ages,'7, 11');assert.equal(c.bookingCase.state.values.arrival,stay.arrival);assert.equal(b.bookingCase.state.quote,null);assert.equal(c.bookingCase.state.availability,null);
 });
 test('same Gmail thread links without sender-only inference',()=>{const s=store(),a=s.ingest(env('one'),values),b=s.ingest(env('two'),{phone:'123'});assert.equal(a.bookingCase.id,b.bookingCase.id);});
 test('RFC references link a separate thread',()=>{const s=store(),a=s.ingest(env('one'),values),b=s.ingest(env('two',{thread_id:'new',in_reply_to:'<one>'}),{phone:'123'});assert.equal(a.bookingCase.id,b.bookingCase.id);});
