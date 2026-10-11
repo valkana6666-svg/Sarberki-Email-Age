@@ -57,4 +57,5 @@ test('new linked guest reply revokes earlier internal approval even without chan
  const reply=store.ingest(msg('m2','thread-1','Köszönöm, rendben.',{received_at:'2026-10-11T11:00:00Z'}),{},{intent:'other'});
  assert.equal(reply.bookingCase.id,first.bookingCase.id);
  assert.equal(reply.bookingCase.state.approval,'pending');
+ assert.ok(reply.bookingCase.events.some(event=>event.type==='Jóváhagyás érvénytelenítve; új vendégválasz érkezett'));
 });
