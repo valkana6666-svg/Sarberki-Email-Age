@@ -1,0 +1,31 @@
+{
+  "source_connection": "NEVER_OPENED",
+  "gmail_oauth_in_isolated_app": "NOT_RUN",
+  "live_previo": "NOT_RUN_SAFETY_GATE",
+  "full_ui_approval_transition": "NOT_IMPLEMENTED_ON_SERVER_RUNTIME",
+  "network": "ephemeral Docker bridge; HTTP local transport adapter; source HTTPS transport unchanged",
+  "auth_service_ready": "PASS",
+  "rest_service_ready": "PASS",
+  "isolated_auth_user_provision": "PASS",
+  "real_auth_password_login": "PASS",
+  "parse_identify_authorized_api_sql_save": "PASS",
+  "synthetic_capacity_business_rules_and_draft_persist": "PASS",
+  "writer_cannot_approve": "PASS",
+  "approver_permission_checked_by_auth_and_db": "PASS",
+  "cross_tenant_access_denied": "PASS",
+  "duplicate_message_keeps_single_case": "PASS",
+  "restart_new_login_case_and_draft_preserved": "PASS",
+  "send_email": "NEVER_CALLED",
+  "booking_creation": "NEVER_CALLED",
+  "completed": true,
+  "provenance": {
+    "run_id": 38134400747,
+    "job_id": 114455194847,
+    "head_sha": "11c89acdd312475cc8d1b7bdc5012562bac5bf7d",
+    "branch": "gmail-test-subject-allowlist",
+    "artifact_id": 11700257631,
+    "artifact_digest": "sha256:471fa4b885b4b1925adba9e5212cfdfb707d0ec9936446e57414df7d6d9808ef",
+    "prior_verified_restore_run": 38129512850,
+    "successful_suites_repeated": false
+  }
+}
