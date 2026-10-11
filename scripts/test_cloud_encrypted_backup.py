@@ -96,6 +96,16 @@ class CloudBackupSafety(unittest.TestCase):
         with self.assertRaises(ValueError):
             cloud.source_environment(values)
 
+    def test_bundled_ca_pin_rejects_tampering_and_inherited_override(self):
+        from unittest.mock import patch
+        values = {'SARBERKI_BACKUP_HOST': 'aws-0-eu-west-2.pooler.supabase.com',
+                  'SARBERKI_BACKUP_DB_PASSWORD': 'fixture', 'PGSSLROOTCERT': '/untrusted/ca'}
+        env = cloud.source_environment(values)
+        self.assertTrue(env['PGSSLROOTCERT'].endswith('/certs/supabase-prod-ca-2021.crt'))
+        with patch.object(Path, 'read_bytes', return_value=b'changed certificate'):
+            with self.assertRaises(cloud.BackupConfigurationError):
+                cloud.source_environment(values)
+
     def test_failed_and_oversized_export_rejected(self):
         with self.assertRaises(RuntimeError):
             cloud.bounded([sys.executable, '-c', "print('partial');raise SystemExit(1)"], dict(os.environ))

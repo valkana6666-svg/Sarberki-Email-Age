@@ -123,6 +123,11 @@ def source_environment(values):
     # Do not inherit a libpq service, alternate endpoint or TLS override.
     env = {k: v for k, v in values.items() if not k.startswith('PG') and not k.startswith('SARBERKI_')}
     env.update(config)
+    certificate = Path(__file__).with_name('certs') / 'supabase-prod-ca-2021.crt'
+    if (not certificate.is_file() or hashlib.sha256(certificate.read_bytes()).hexdigest() !=
+            '700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7'):
+        raise BackupConfigurationError('SOURCE_CA_CERTIFICATE_MISSING_OR_CHANGED')
+    env['PGSSLROOTCERT'] = str(certificate.resolve())
     env['PGPASSWORD'] = password
     env['PGOPTIONS'] = '-c default_transaction_read_only=on -c statement_timeout=600000'
     return env
