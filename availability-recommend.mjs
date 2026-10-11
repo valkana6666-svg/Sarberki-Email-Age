@@ -27,7 +27,7 @@ export function availabilitySentence(result,language='hu'){
   const available=(result?.available_options||[]).filter(x=>x.availability==='available'&&x.availability_verified===true).map(option=>unitText(option,language));
   if(!available.length){
     // A failed or incomplete Previo check is UNKNOWN, never evidence of sold-out inventory.
-    if(!result || result.status==='unverified'||(result.unverified_options||[]).length>0 || !Array.isArray(result.available_options) || !Array.isArray(result.unavailable_options) || (result.available_options.length===0 && result.unavailable_options.length===0)) {
+    if(!result || result.status==='unverified'||(result.unverified_options||[]).length>0 || !Array.isArray(result.available_options) || !Array.isArray(result.unavailable_options) || (result.available_options.length===0 && (result.unavailable_options.length===0 || result.unavailable_options.some(x=>x.availability!=='unavailable'||x.availability_verified!==true)))) {
       const unknown={
         hu:'A kért időszakra a szabad kapacitást jelenleg nem sikerült hitelesen megállapítani. A foglalhatóság külön egyeztetést igényel.',
         de:'Die Verfügbarkeit für den gewünschten Zeitraum konnte derzeit nicht zuverlässig bestätigt werden. Eine separate Prüfung ist erforderlich.',
