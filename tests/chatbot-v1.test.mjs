@@ -49,3 +49,24 @@ test('Hungarian fishing rules and no fabricated availability',()=>{
  assert.match(cabins.reply,/Családi, VIP, Deluxe/u);
  assert.match(cabins.reply,/külön ellenőrizzük/u);
 });
+
+test('dated Deluxe stay is availability inquiry rather than general cabin FAQ',()=>{
+ const r=chatbotReply({message:'2026.11.13-15 között szabad Deluxe faház 2 felnőttnek és 2 gyereknek?',language:'hu'});
+ assert.equal(r.intent,'availability');
+ assert.equal(r.availabilityVerified,false);
+ assert.doesNotMatch(r.reply,/szabad Deluxe faház van/u);
+});
+test('dated booking inquiry cannot confirm availability or create booking',()=>{
+ const r=chatbotReply({message:'Szeretnék Deluxe faházat foglalni 2026-11-13 és 2026-11-15 között',language:'hu'});
+ assert.equal(r.intent,'availability');
+ assert.equal(r.bookingCreated,false);
+ assert.equal(r.emailSent,false);
+});
+test('plain accommodation question remains general FAQ',()=>{
+ assert.equal(chatbotReply({message:'Milyen faházak vannak?',language:'hu'}).intent,'cabins');
+});
+test('hot tub question retains its separate rental answer even when mentioning cabin',()=>{
+ const r=chatbotReply({message:'A Deluxe faházhoz jár dézsa?',language:'hu'});
+ assert.equal(r.intent,'hotTub');
+ assert.match(r.reply,/külön bérelhető/u);
+});
