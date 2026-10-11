@@ -35,6 +35,8 @@ jobs:
           create role anon nologin;
           create role authenticated nologin;
           create role service_role nologin bypassrls;
+          -- GoTrue's current migrations grant Auth table access to the postgres role.
+          create role postgres nologin;
           create role supabase_auth_admin login password 'ephemeral-isolated-only';
           grant create on database sc_approval_test to supabase_auth_admin;
           create extension if not exists pgcrypto;
