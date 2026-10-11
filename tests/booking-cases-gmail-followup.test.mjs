@@ -47,3 +47,14 @@ test('older Gmail reply cannot overwrite a later confirmed cabin choice',()=>{
  assert.equal(older.resolution.status,'historical');
  assert.equal(store.get(first.bookingCase.id).state.values.unit,'Deluxe');
 });
+
+test('new linked guest reply revokes earlier internal approval even without changed facts',()=>{
+ const store=make();
+ const first=store.ingest(msg('m1','thread-1','Első érdeklődés'),{arrival:'2026-11-13',departure:'2026-11-15'},{intent:'booking_request'});
+ const approved={...first.bookingCase.state,approval:'internally_approved'};
+ store.save(first.bookingCase.id,approved,'Korábbi jóváhagyott tervezet');
+ assert.equal(store.get(first.bookingCase.id).state.approval,'internally_approved');
+ const reply=store.ingest(msg('m2','thread-1','Köszönöm, rendben.',{received_at:'2026-10-11T11:00:00Z'}),{},{intent:'other'});
+ assert.equal(reply.bookingCase.id,first.bookingCase.id);
+ assert.equal(reply.bookingCase.state.approval,'pending');
+});
