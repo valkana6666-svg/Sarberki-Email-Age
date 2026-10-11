@@ -4,7 +4,7 @@ import {execFileSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 
-export async function runBrowserApprovalChain({handlerFactory,auth,rest,sql,sign,password,id,approver,call,wt,setCapacity,ready,step}){
+export async function runBrowserApprovalChain({handlerFactory,auth,rest,sql,sign,password,id,approver,call,wt,at,evidence,hash,setCapacity,ready,step}){
  const assets=new Map(['isolated-approval.html','isolated-approval-session.mjs','isolated-approval-panel.mjs','shared-core/case-store-client.mjs','shared-core/isolated-approval-review.mjs'].map(p=>['/'+p,readFileSync(p)]));
  let expiredLogin=false,server,browser,page,origin;
  const unchanged=revision=>{
@@ -59,8 +59,14 @@ export async function runBrowserApprovalChain({handlerFactory,auth,rest,sql,sign
   const restrict=async ctx=>{await ctx.route('**/*',route=>new URL(route.request().url()).origin===origin?route.continue():route.abort());};
   await restrict(context);page=await context.newPage();
   await step('browser_unauthenticated_access_denied',async()=>{
-   await page.goto(origin+'/isolated-approval.html');assert.equal(await page.locator('#workspace').isDisabled(),true);
+   await page.goto(origin+'/isolated-approval.html');assert.equal(await page.locator('#isolated_approval_load').isDisabled(),true);
    assert.equal(await page.evaluate(async id=>(await fetch('/.netlify/functions/booking-cases?'+new URLSearchParams({tenantId:'sarberki-test',caseId:id}))).status,id),401);unchanged(2);
+  });
+  await step('direct_operator_rpc_cannot_forge_capacity_or_read_key',async()=>{
+   const headers={Authorization:'Bearer '+at,'Content-Type':'application/json'};
+   const keyRead=await fetch(rest+'/sc_isolated_approval_key?select=key_hex',{headers});assert.ok([403,404].includes(keyRead.status));
+   for(const proof of [evidence,{...evidence,attestation:'0'.repeat(64)}]){const r=await fetch(rest+'/rpc/sc_approve_case',{method:'POST',headers,body:JSON.stringify({p_tenant:'sarberki-test',p_case:id,p_expected:2,p_draft_hash:hash,p_evidence:proof})});assert.equal(r.status,403);}
+   unchanged(2);
   });
   await step('browser_writer_cannot_approve',async()=>{await signIn('writer');await load();await approve('FORBIDDEN');unchanged(2);});
   await step('browser_foreign_tenant_cannot_read',async()=>{await signIn('foreign');await page.locator('#isolated_approval_case_id').fill(id);await page.locator('#isolated_approval_load').click();await status().filter({hasText:'FORBIDDEN'}).waitFor();unchanged(2);});

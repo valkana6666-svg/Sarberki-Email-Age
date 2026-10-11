@@ -21,3 +21,15 @@ test('session replacement invalidates loaded review without approval',async()=>{
 test('failed server approval does not claim success and requires reload',async()=>{
  const d=setup(async(url,options)=>options.method==='GET'?{ok:true,json:async()=>({result:record})}:{ok:false,json:async()=>({error:'CASE_CONFLICT'})});await load(d);node(d,'confirm').checked=true;await node(d,'submit').fire('click');assert.match(node(d,'status').textContent,/Nincs igazolt jóváhagyás: CASE_CONFLICT/);assert.equal(node(d,'submit').disabled,true);
 });
+test('late approval response cannot overwrite status after session replacement',async()=>{
+ let release;
+ const d=setup(async(url,options)=>{
+  if(options.method==='GET')return {ok:true,json:async()=>({result:record})};
+  const input=JSON.parse(options.body);
+  return new Promise(resolve=>{release=()=>resolve({ok:true,json:async()=>({result:{...record,revision:3,data:{state:{approval:'internally_approved'},serverApproval:{reviewedRevision:2,draftHash:input.reviewedDraftHash}}}})});});
+ });
+ await load(d);node(d,'confirm').checked=true;const pending=node(d,'submit').fire('click');
+ while(!release)await new Promise(resolve=>setImmediate(resolve));
+ d.fire('isolated-approval-session-changed');const message=node(d,'status').textContent;release();await pending;
+ assert.equal(node(d,'status').textContent,message);assert.equal(node(d,'submit').disabled,true);
+});

@@ -84,7 +84,7 @@ export function initIsolatedApprovalPanel({
    reset();message('REVIEW_REQUIRED: újra kell olvasni és meg kell erősíteni a tárolt tervezetet.');return;
   }
   busy=true;locked();
-  const selected=loaded;
+  const selected=loaded,generation=epoch;
   // Invalidate only the rendered UI. bridge.approve consumes the persisted review itself.
   // Calling bridge.clear here would discard the required server-loaded hash and revision.
   loaded=null;confirmation.checked=false;reviewText.value='';revisionField.value='';locked();
@@ -93,8 +93,8 @@ export function initIsolatedApprovalPanel({
    const approved=await bridge.approve({
     caseId:selected.caseId,revision:selected.revision,reviewedText:selected.text,confirmed:true
    });
-   message('Izolált szintetikus jóváhagyás mentve; új verzió: '+approved.revision+'. Nem foglalás és nem elküldött levél.');
-  }catch(error){message('Nincs igazolt jóváhagyás: '+safeCode(error)+'. Az ügyet újra be kell tölteni.');}
+   if(epoch===generation)message('Izolált szintetikus jóváhagyás mentve; új verzió: '+approved.revision+'. Nem foglalás és nem elküldött levél.');
+  }catch(error){if(epoch===generation)message('Nincs igazolt jóváhagyás: '+safeCode(error)+'. Az ügyet újra be kell tölteni.');}
   finally{busy=false;locked();}
  });
  message('Elkülönített tesztkezelői munkamenet szükséges. Jóváhagyás még nincs.');

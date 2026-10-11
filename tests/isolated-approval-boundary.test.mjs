@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+import {createIsolatedApprovalAttestor} from '../shared-core/isolated-approval-attestation.mjs';
 import {PGlite} from '@electric-sql/pglite';
 test('direct SQL RPC rejects forged or revoked authority even when API is bypassed',async()=>{
  const db=new PGlite(),writer='11111111-1111-4111-8111-111111111111',operator='22222222-2222-4222-8222-222222222222',sid='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -9,6 +10,9 @@ test('direct SQL RPC rejects forged or revoked authority even when API is bypass
   await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create table auth.sessions(id uuid primary key,user_id uuid,not_after timestamptz);create function auth.uid() returns uuid language sql stable as $$select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;`);
   await db.exec(await readFile(new URL('../supabase/migrations/202610090001_case_store.sql',import.meta.url),'utf8'));
   await db.exec((await readFile(new URL('../recovery/sql/isolated-approval.sql',import.meta.url),'utf8')).replaceAll('current_database()',"'sc_approval_test'"));
+  const key='a1'.repeat(32),attest=createIsolatedApprovalAttestor(key);
+  await db.query('insert into sc_isolated_approval_key(key_hex) values($1)',[key]);
+  assert.equal((await db.query('select sc_isolated_approval_mac($1,$2) mac',['Hi There','0b'.repeat(20)+'00'.repeat(12)])).rows[0].mac,'b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7');
   await db.query('insert into auth.users values($1),($2)',[writer,operator]);await db.query('insert into auth.sessions values($1,$2,null)',[sid,operator]);await db.exec("insert into sc_tenants values('sarberki-test','Fixture',true)");await db.query("insert into sc_memberships values('sarberki-test',$1,true,true,false),('sarberki-test',$2,true,true,true)",[writer,operator]);
   const text='Synthetic review only',hash=createHash('sha256').update(text).digest('hex'),values={arrival:'2026-10-23',departure:'2026-10-25',unit:'Deluxe',units_requested:'1'};
   const data={id:'case-boundary',tenantId:'sarberki-test',sender:'fixture@synthetic.invalid',state:{values,approval:'pending'},messages:[],drafts:[{text,synthetic:true,reviewStatus:'internal_review_required'}]};
@@ -16,8 +20,14 @@ test('direct SQL RPC rejects forged or revoked authority even when API is bypass
   const evidence={tenantId:'sarberki-test',source:'synthetic-fixture',status:'AVAILABLE',unit:values.unit,arrival:values.arrival,departure:values.departure,availableUnits:1,checkedAt:new Date().toISOString()};
   const denied=async(user,claims,body=evidence)=>{
    await db.exec('set role authenticated');await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({sub:user,role:'authenticated',session_id:sid,exp:Math.floor(Date.now()/1000)+3600,...claims})]);
-   try{await assert.rejects(db.query('select sc_approve_case($1,$2,1,$3,$4)',['sarberki-test',data.id,hash,JSON.stringify(body)]));}finally{await db.exec('reset role');}
+   try{await assert.rejects(db.query('select sc_approve_case($1,$2,1,$3,$4)',['sarberki-test',data.id,hash,JSON.stringify(attest('sarberki-test',data.id,1,hash,body))]));}finally{await db.exec('reset role');}
   };
+  await db.exec('set role authenticated');await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({sub:operator,role:'authenticated',session_id:sid,exp:Math.floor(Date.now()/1000)+3600})]);
+  try{
+   await assert.rejects(db.query('select * from sc_isolated_approval_key'));
+   await assert.rejects(db.query('select sc_isolated_approval_mac($1,$2)',['Hi There',key]));
+   for(const body of [evidence,{...evidence,attestation:'0'.repeat(64)}])await assert.rejects(db.query('select sc_approve_case($1,$2,1,$3,$4)',['sarberki-test',data.id,hash,JSON.stringify(body)]),/server-attested/);
+  }finally{await db.exec('reset role');}
   await denied(writer,{}); // Raw RPC cannot bypass DB membership checks.
   await denied(operator,{exp:Math.floor(Date.now()/1000)-1});
   await denied(operator,{role:'service_role'});

@@ -35,7 +35,7 @@ const mapRecord = row => {
  if (!row || !Number.isSafeInteger(row.revision) || row.revision < 1 || !row.data || row.data.id !== row.case_id || row.data.tenantId !== row.tenant_id || !row.created_at || !row.updated_at || !row.updated_by) fail('STORAGE_FAILURE');
  return {tenantId:row.tenant_id,caseId:row.case_id,revision:row.revision,data:row.data,createdAt:row.created_at,updatedAt:row.updated_at,updatedBy:row.updated_by};
 };
-export function createSupabaseCaseRepository(transport) {
+export function createSupabaseCaseRepository(transport,{approvalAttestor=null}={}) {
  const query = tenant => '/rest/v1/sc_cases?select=*&tenant_id=eq.' + encodeURIComponent(tenant);
  const write = async (tenant,caseId,expected,record) => {
   const result = await transport('/rest/v1/rpc/sc_write_case',{method:'POST',body:{p_tenant:tenant,p_case:caseId,p_expected:expected,p_data:record.data}});
@@ -56,7 +56,9 @@ export function createSupabaseCaseRepository(transport) {
   insert:(tenant,caseId,record)=>write(tenant,caseId,0,record),
   compareAndSwap:(tenant,caseId,expected,record)=>write(tenant,caseId,expected,record),
   async approve(tenant,caseId,expected,draftHash,evidence){
-   const row=await transport('/rest/v1/rpc/sc_approve_case',{method:'POST',body:{p_tenant:tenant,p_case:caseId,p_expected:expected,p_draft_hash:draftHash,p_evidence:evidence}});
+   if(typeof approvalAttestor!=='function')fail('SETUP_REQUIRED');
+   const signedEvidence=approvalAttestor(tenant,caseId,expected,draftHash,evidence);
+   const row=await transport('/rest/v1/rpc/sc_approve_case',{method:'POST',body:{p_tenant:tenant,p_case:caseId,p_expected:expected,p_draft_hash:draftHash,p_evidence:signedEvidence}});
    return row===null?null:mapRecord(row);
   }
  };

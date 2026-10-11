@@ -24,6 +24,8 @@ try{
  sql("create or replace function auth.uid() returns uuid language sql stable as $$select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;grant execute on function auth.uid() to authenticated,anon;");
  sql(readFileSync('supabase/migrations/202610090001_case_store.sql','utf8'));
  sql(readFileSync('recovery/sql/isolated-approval.sql','utf8'));
+ const attestationKey=randomBytes(32).toString('hex');
+ sql(`insert into sc_isolated_approval_key(key_hex) values('${attestationKey}');`);
  sql("insert into sc_tenants values('sarberki-test','Synthetic rehearsal',true),('demo-test','Synthetic foreign',true);");
  sql("notify pgrst,'reload schema';");
  await ready(rest+'/');
@@ -34,7 +36,7 @@ try{
  async function login(email){const r=await fetch(auth+'/token?grant_type=password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});assert.equal(r.status,200);return (await r.json()).access_token;}
  const wt=await login('approval-writer@synthetic.invalid'),at=await login('approval-operator@synthetic.invalid'),ft=await login('approval-foreign@synthetic.invalid');
  const isolatedFetch=(url,options)=>{const u=new URL(url);assert.equal(u.origin,'https://isolated-approval.supabase.co');if(u.pathname.startsWith('/auth/v1/'))return fetch(auth+'/'+u.pathname.slice(9)+u.search,options);if(u.pathname.startsWith('/rest/v1/'))return fetch(rest+'/'+u.pathname.slice(9)+u.search,options);throw Error('unexpected external route');};
- const env={CASE_STORE_ENABLED:'synthetic-only',CASE_STORE_TEST_TENANTS:'sarberki-test,demo-test',URL:'https://leafy-chimera-2403e5.netlify.app',SUPABASE_URL:'https://isolated-approval.supabase.co',SUPABASE_PUBLISHABLE_KEY:anon};
+ const env={CASE_STORE_ENABLED:'synthetic-only',CASE_STORE_TEST_TENANTS:'sarberki-test,demo-test',URL:'https://leafy-chimera-2403e5.netlify.app',SUPABASE_URL:'https://isolated-approval.supabase.co',SUPABASE_PUBLISHABLE_KEY:anon,ISOLATED_APPROVAL_ATTESTATION_KEY:attestationKey};
  let capacity='available';
  const reviewProviders={availability:async q=>({...q,source:'synthetic-fixture',checkedAt:new Date().toISOString(),availability:capacity,availableUnits:capacity==='available'?1:0}),pricing:async q=>({...q,source:'synthetic-fixture',checkedAt:new Date().toISOString(),tenantId:'sarberki-test',unitId:q.cabin,capacity:6,nightly:100,basis:'per_unit',verified:true})};
  const handler=createCaseHandler({env,fetchImpl:isolatedFetch,isolatedApproval:true,reviewProviders});
@@ -46,7 +48,7 @@ try{
  const input={action:'approve',caseId:id,expectedRevision:2,reviewedDraftHash:hash};
  if(process.env.ISOLATED_APPROVAL_MODE==='browser'){
   const {runBrowserApprovalChain}=await import('./isolated-browser-approval.mjs');
-  await runBrowserApprovalChain({handlerFactory:()=>createCaseHandler({env,fetchImpl:isolatedFetch,isolatedApproval:true,reviewProviders}),auth,rest,sql,sign,password,id,approver,call,wt,setCapacity:value=>{capacity=value;},ready,step});
+  await runBrowserApprovalChain({handlerFactory:()=>createCaseHandler({env,fetchImpl:isolatedFetch,isolatedApproval:true,reviewProviders}),auth,rest,sql,sign,password,id,approver,call,wt,at,evidence:drafted.review.evidence,hash,setCapacity:value=>{capacity=value;},ready,step});
  }else{
  const unchanged=()=>{assert.equal(sql(`select revision from sc_cases where case_id='${id}';`),'2');assert.equal(sql("select count(*) from sc_audit where kind='approve_isolated_synthetic';"),'0');};
  await step('real_auth_writer_and_cross_tenant_denied',async()=>{await call(wt,input,403);await call(ft,input,403);unchanged();});
@@ -80,6 +82,9 @@ try{
   const newToken=await login('approval-operator@synthetic.invalid');const r=await handler({httpMethod:'GET',headers:{authorization:'Bearer '+newToken},queryStringParameters:{tenantId:'sarberki-test',caseId:id}});assert.equal(r.statusCode,200);const restored=JSON.parse(r.body).result;assert.equal(restored.revision,3);assert.deepEqual(restored.data,approved.data);assert.equal(sql("select count(*) from sc_audit where kind='approve_isolated_synthetic';"),'1');
  });
  }
+ // Preserve the parallel injected-session rehearsal as a separate opt-in; the
+ // browser mode above exercises the real login UI without repeating this suite.
+ if(process.env.ISOLATED_APPROVAL_LEGACY_BROWSER==='true'){
  await step('real_chromium_ui_auth_api_postgres_audit',async()=>{
   // The runner serves only a self-contained synthetic page and four local files.
   // Browser requests are loopback-only; no Supabase source, Netlify, Previo, Gmail or Pushover.
@@ -117,7 +122,7 @@ try{
     if(req.method!=='GET'||!allowed.has(u.pathname)){res.writeHead(404);res.end();return;}
     const [type,path]=allowed.get(u.pathname);
     res.writeHead(200,{'Content-Type':type,'Cache-Control':'no-store'});
-    res.end(readFileSync(path)); 
+    res.end(readFileSync(path));
    }catch{
     res.writeHead(503,{'Content-Type':'application/json'});res.end('{"error":"SERVICE_UNAVAILABLE"}');
    }
@@ -222,6 +227,7 @@ try{
    await new Promise(resolve=>local.close(()=>resolve()));
   }
  });
+ }
  report.approval_scope='ISOLATED_SYNTHETIC_REVIEW_NOT_LIVE_GUEST_OFFER';report.completed=true;
 }catch(error){
  report.completed=false;report.failed_stage=stage;report.failure_class=error.name;

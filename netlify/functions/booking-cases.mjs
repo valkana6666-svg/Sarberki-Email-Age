@@ -1,6 +1,7 @@
 import {createServerCaseService} from '../../shared-core/server-case-service.mjs';
 import {createSupabaseTransport,createSupabaseAuthority,createSupabaseCaseRepository} from '../../shared-core/supabase-case-repository.mjs';
 import {createServerBookingRuntime} from '../../shared-core/server-booking-runtime.mjs';
+import {createIsolatedApprovalAttestor} from '../../shared-core/isolated-approval-attestation.mjs';
 const headers={'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 const response=(statusCode,body)=>({statusCode,headers,body:JSON.stringify(body)});
 export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedApproval=false,reviewProviders=null}={}){
@@ -16,11 +17,12 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    if(Object.keys(input).some(k=>!['tenantId','caseId','envelope','values','expectedRevision','approvedCaseId','action','reviewedDraftHash'].includes(k)))return response(400,{error:'INVALID_INPUT'});
    if(!env.CASE_STORE_TEST_TENANTS.split(',').includes(input.tenantId))return response(403,{error:'FORBIDDEN'});
    const transport=createSupabaseTransport({url:env.SUPABASE_URL,publishableKey:env.SUPABASE_PUBLISHABLE_KEY,token:authorization.slice(7),fetchImpl});
-   const service=createServerCaseService({repository:createSupabaseCaseRepository(transport),resolveAuthority:createSupabaseAuthority(transport)});
+   const approvalEnabled=isolatedApproval===true&&env.SUPABASE_URL==='https://isolated-approval.supabase.co';
+   const approvalAttestor=approvalEnabled&&/^[a-f0-9]{64}$/.test(env.ISOLATED_APPROVAL_ATTESTATION_KEY||'')?createIsolatedApprovalAttestor(env.ISOLATED_APPROVAL_ATTESTATION_KEY):null;
+   const service=createServerCaseService({repository:createSupabaseCaseRepository(transport,{approvalAttestor}),resolveAuthority:createSupabaseAuthority(transport)});
    let result;
    if(event.httpMethod==='GET'){if(input.action==='preview-draft'){const runtime=createServerBookingRuntime({service,tenantId:input.tenantId});result=await runtime.previewDraft(input.caseId,Number(input.expectedRevision));}else if(input.action===undefined)result=input.caseId?await service.getCase({tenantId:input.tenantId,caseId:input.caseId}):await service.listCases({tenantId:input.tenantId});else return response(400,{error:'INVALID_INPUT'});}
    else {
-    const approvalEnabled=isolatedApproval===true&&env.SUPABASE_URL==='https://isolated-approval.supabase.co';
     const runtime=createServerBookingRuntime({service,tenantId:input.tenantId,isolatedApproval:approvalEnabled,reviewProviders:approvalEnabled?reviewProviders:null});
     if(input.action==='draft')result=await runtime.draft(input.caseId,input.expectedRevision);
     else if(input.action==='review-draft'&&approvalEnabled)result=await runtime.reviewAndDraft(input.caseId,input.expectedRevision);

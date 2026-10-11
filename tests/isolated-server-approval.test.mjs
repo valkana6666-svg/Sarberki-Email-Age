@@ -7,7 +7,7 @@ import {createCaseHandler} from '../netlify/functions/booking-cases.mjs';
 const writer='11111111-1111-4111-8111-111111111111',approver='22222222-2222-4222-8222-222222222222',foreign='33333333-3333-4333-8333-333333333333';
 const session='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const tokens={[writer]:'synthetic-writer-token-0001',[approver]:'synthetic-approver-token-0002',[foreign]:'synthetic-foreign-token-0003'};
-const env={CASE_STORE_ENABLED:'synthetic-only',CASE_STORE_TEST_TENANTS:'sarberki-test,demo-test',URL:'https://leafy-chimera-2403e5.netlify.app',SUPABASE_URL:'https://isolated-approval.supabase.co',SUPABASE_PUBLISHABLE_KEY:'synthetic-public-key'};
+const env={CASE_STORE_ENABLED:'synthetic-only',CASE_STORE_TEST_TENANTS:'sarberki-test,demo-test',URL:'https://leafy-chimera-2403e5.netlify.app',SUPABASE_URL:'https://isolated-approval.supabase.co',SUPABASE_PUBLISHABLE_KEY:'synthetic-public-key',ISOLATED_APPROVAL_ATTESTATION_KEY:'a1'.repeat(32)};
 const fixtureProviders={availability:async q=>({...q,source:'synthetic-fixture',checkedAt:new Date().toISOString(),availability:'available',availableUnits:1}),pricing:async q=>({...q,source:'synthetic-fixture',checkedAt:new Date().toISOString(),tenantId:'sarberki-test',unitId:q.cabin,capacity:6,nightly:100,basis:'per_unit',verified:true})};
 test('new isolated approval SQL/API checks only; Auth HTTP simulated, PostgreSQL real',async t=>{
  let db=new PGlite();
@@ -18,6 +18,7 @@ test('new isolated approval SQL/API checks only; Auth HTTP simulated, PostgreSQL
  // PGlite has a fixed database name. Only the database-name expressions are replaced;
  // the separate Docker/Postgres rehearsal executes the original guard unchanged.
  await db.exec(originalSql.replaceAll('current_database()',"'sc_approval_test'"));
+ await db.query('insert into sc_isolated_approval_key(key_hex) values($1)',[env.ISOLATED_APPROVAL_ATTESTATION_KEY]);
  await db.query('insert into auth.users values ($1),($2),($3)',[writer,approver,foreign]);
  await db.query('insert into auth.sessions values ($1,$2,null)',[session,approver]);
  await db.exec("insert into sc_tenants values('sarberki-test','Synthetic',true),('demo-test','Foreign synthetic',true)");
