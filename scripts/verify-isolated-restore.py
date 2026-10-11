@@ -123,9 +123,11 @@ def main():
                 chunks[m[1].decode()]=hashlib.sha256(b'\n'.join(sorted(m[2].splitlines()))).hexdigest()
             return chunks
         before,after=copies(original),copies(actual)
-        matched={k:after.get(k)==v for k,v in before.items() if not k.startswith('vault.')}
+        matched={k:after.get(k)==v for k,v in before.items() if report['full_restore']=='PASS' or not k.startswith('vault.')}
+        report['all_archive_tables_compared']=set(before)==set(after)
         report['all_table_copy_payloads_equal']=bool(matched) and all(matched.values())
         report['tables_compared']=len(matched)
+        report['vault_counts']=json.loads(sql("select json_build_object('secrets',(select count(*) from vault.secrets));")) if report['full_restore']=='PASS' else 'NOT_RESTORED'
         report['table_payload_comparison']=matched
         policy=ROOT.parent/'reports/supabase-connection-verification-2026-10-09/CLOUD-POLICY-TEST.sql'
         sql(policy.read_text())
