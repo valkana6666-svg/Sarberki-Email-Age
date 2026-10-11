@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sárberki – izolált, szintetikus jóváhagyási próba</title>
+<style>
+:root{font-family:system-ui,sans-serif;color-scheme:light}body{max-width:720px;margin:2rem auto;padding:0 1rem;background:#f7f7f6;color:#1b1b1b}
+section{background:white;border:1px solid #ddd;border-radius:12px;padding:1.25rem}label{display:block;font-weight:600;margin:1rem 0 .25rem}
+input,textarea,button{font:inherit;box-sizing:border-box}input:not([type=checkbox]),textarea{width:100%;padding:.7rem;border:1px solid #bbb;border-radius:6px}
+textarea{min-height:200px}button{padding:.65rem 1rem;margin:.5rem .5rem .5rem 0;border-radius:7px;border:1px solid #aaa}
+button:disabled{opacity:.5}#isolated_approval_status{font-weight:600;background:#f2f2f2;padding:1rem}small{color:#555}
+</style></head><body>
+<main><h1>Sárberki – külön szintetikus kezelői próba</h1>
+<p>Nem a normál kezelőfelület. Csak elkülönített, ideiglenes Auth/API/PostgreSQL
+tesztkörnyezetben használható. Nincs Gmail, Previo, Pushover, e-mail-küldés vagy foglalás.</p>
+<section id="isolated_approval_panel">
+<label for="isolated_approval_case_id">Tárolt szintetikus ügyazonosító</label>
+<input id="isolated_approval_case_id" autocomplete="off" placeholder="case-...">
+<button type="button" id="isolated_approval_load">Tárolt tervezet hitelesített betöltése</button>
+<label for="isolated_approval_revision">Visszaolvasott ügyverzió</label>
+<input id="isolated_approval_revision" readonly autocomplete="off">
+<label for="isolated_approval_text">Változatlan, tárolt tervezet – csak olvasás</label>
+<textarea id="isolated_approval_text" readonly></textarea>
+<label><input type="checkbox" id="isolated_approval_confirm">
+A fent látható, ténylegesen tárolt tervezetet elolvastam, és ezt az adott verziót külön jóváhagyom.</label>
+<button type="button" id="isolated_approval_submit" disabled>Izolált belső jóváhagyás</button>
+<p id="isolated_approval_status" role="status" aria-live="polite">Alapértelmezetten kikapcsolva.</p>
+<small>Jóváhagyás csak külön hitelesített kezelővel és szerveroldali kapuval lehetséges.</small>
+</section></main>
+</body></html>
