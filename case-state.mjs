@@ -126,9 +126,9 @@ export function deriveCaseView(state, baseReview={warning_codes:[],issues:[]}) {
   }
   const priceLines=[];
   if(q) {
-    priceLines.push(choose(lang,`A jóváhagyott szállásajánlat összege: ${ft(q.total)}${Number.isFinite(q.eurTotal)?' / '+eur(q.eurTotal):''}.`,`Der freigegebene Unterkunftspreis beträgt ${ft(q.total)}${Number.isFinite(q.eurTotal)?' / '+eur(q.eurTotal):''}.`,`The approved accommodation quote is ${ft(q.total)}${Number.isFinite(q.eurTotal)?' / '+eur(q.eurTotal):''}.`,`Potrjena cena nastanitve znaša ${ft(q.total)}${Number.isFinite(q.eurTotal)?' / '+eur(q.eurTotal):''}.`));
+    priceLines.push(choose(lang,`A jóváhagyott szállásajánlat összege: ${ft(q.total)}${lang!=='hu'&&Number.isFinite(q.eurTotal)?' / '+eur(q.eurTotal):''}.`,`Der freigegebene Unterkunftspreis beträgt ${ft(q.total)}${lang!=='hu'&&Number.isFinite(q.eurTotal)?' / '+eur(q.eurTotal):''}.`,`The approved accommodation quote is ${ft(q.total)}${lang!=='hu'&&Number.isFinite(q.eurTotal)?' / '+eur(q.eurTotal):''}.`,`Potrjena cena nastanitve znaša ${ft(q.total)}${lang!=='hu'&&Number.isFinite(q.eurTotal)?' / '+eur(q.eurTotal):''}.`));
     if(Number.isFinite(q.accommodation)&&Number.isFinite(q.tourismTax))priceLines.push(choose(lang,`Ebből szállásdíj: ${ft(q.accommodation)}, IFA: ${ft(q.tourismTax)}.`,`Unterkunft: ${ft(q.accommodation)}, Ortstaxe: ${ft(q.tourismTax)}.`,`Accommodation: ${ft(q.accommodation)}, tourist tax: ${ft(q.tourismTax)}.`,`Nastanitev: ${ft(q.accommodation)}, turistična taksa: ${ft(q.tourismTax)}.`));
-    if(q.unitBreakdown?.length>1) priceLines.push(...q.unitBreakdown.map(x=>`${x.unit}. ${choose(lang,'egység','Einheit','unit','enota')}: ${ft(x.total)}${q.eurRate>0?' / '+eur(Math.round(x.total/q.eurRate*100)/100):''}`));
+    if(q.unitBreakdown?.length>1) priceLines.push(...q.unitBreakdown.map(x=>`${x.unit}. ${choose(lang,'egység','Einheit','unit','enota')}: ${ft(x.total)}${lang!=='hu'&&q.eurRate>0?' / '+eur(Math.round(x.total/q.eurRate*100)/100):''}`));
   }
   const bookingLines=[];
   const asksDeposit=/(?:előleg|foglaló|deposit|anzahlung|predplačil)/iu.test(state.original);
