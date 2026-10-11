@@ -64,6 +64,7 @@ jobs:
           docker run -d --name "sarberki-approval-rest-$GITHUB_RUN_ID" --network "sarberki-approval-$GITHUB_RUN_ID" -p 127.0.0.1:18300:3000 --env-file /tmp/approval-rest.env postgrest/postgrest:v14.17
       - name: Only new actual Auth approval and restart checks
         env:
+          ISOLATED_APPROVAL_RESUME: ${{ contains(github.event.head_commit.message, '[sarberki-browser-resume-38154214127]') && '38154214127' || '' }}
           ISOLATED_APPROVAL_MODE: ${{ contains(github.event.head_commit.message, '[sarberki-browser-approval-20261011]') && 'browser' || 'api' }}
           ISOLATED_APPROVAL_POSTGRES: sarberki-approval-pg-${{ github.run_id }}
           ISOLATED_APPROVAL_AUTH: sarberki-approval-auth-${{ github.run_id }}

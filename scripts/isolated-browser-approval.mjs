@@ -52,7 +52,11 @@ export async function runBrowserApprovalChain({handlerFactory,auth,rest,sql,sign
   await page.locator('#email').fill('approval-'+role+'@synthetic.invalid');await page.locator('#password').fill(password);await page.locator('#signin').click();
   await page.locator('#auth_status').filter({hasText:'Hitelesített tesztmunkamenet'}).waitFor();
  }
- async function load(){await page.locator('#isolated_approval_case_id').fill(id);await page.locator('#isolated_approval_load').click();await status().filter({hasText:'Tárolt tervezet betöltve'}).waitFor();}
+ async function load(){
+  await page.locator('#isolated_approval_case_id').fill(id);await page.locator('#isolated_approval_load').click();
+  await page.waitForFunction(()=>/Tárolt tervezet betöltve|A tervezet nem tölthető be/.test(document.getElementById('isolated_approval_status').textContent));
+  assert.match(await status().innerText(),/Tárolt tervezet betöltve/);
+ }
  async function approve(expected){await page.locator('#isolated_approval_confirm').check();await page.locator('#isolated_approval_submit').click();await status().filter({hasText:expected}).waitFor();}
  try{
   await host();browser=await chromium.launch({headless:true});let context=await browser.newContext();
