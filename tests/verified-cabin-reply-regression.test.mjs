@@ -37,3 +37,21 @@ test('verified cabin options request a guest choice even when cabin clarificatio
  assert.match(draft,/Ellenőrzött elérhető lehetőségek: Családi, VIP/u);
  assert.match(draft,/melyik felajánlott faháztípust választja/u);
 });
+
+test('synthetic capacity result feeds only verified cabin types into the guest reply',async()=>{
+ const {buildAvailabilityOptions}=await import('../netlify/functions/availability-options.mjs');
+ const {availabilitySentence}=await import('../availability-recommend.mjs');
+ const result=await buildAvailabilityOptions({arrival:'2026-11-13',departure:'2026-11-15',guests:4},async ({cabin})=>({
+   availability:cabin==='family'?'available':'unavailable',
+   availableUnits:cabin==='family'?1:0,
+   checkedAt:new Date().toISOString(),source:'synthetic-test'
+ }));
+ const sentence=availabilitySentence(result,'hu');
+ const draft=buildReplyDraft({...request,caseContext:{
+   extraLines:[],priceLines:[],bookingLines:[],availabilityLines:[sentence],priceApproved:false
+ }});
+ assert.match(draft,/szabad lehetőségek: Családi/u);
+ assert.doesNotMatch(sentence,/VIP|Deluxe/u);
+ assert.match(draft,/melyik felajánlott faháztípust választja/u);
+ assert.doesNotMatch(draft,/A ténylegesen szabad lehetőségeket a kért időszakra ellenőrizzük/u);
+});
