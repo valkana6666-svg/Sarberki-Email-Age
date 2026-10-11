@@ -44,7 +44,10 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
   ingest(envelope,incoming,{intent='booking_request',approvedCaseId=null}={}){
    if(envelope.tenantId&&envelope.tenantId!==tenantId)throw Error('Idegen vállalkozás üzenete.');
    const existing=cases.find(c=>envelope.message_id&&c.messages.some(m=>m.message_id===envelope.message_id));
-   if(existing)return {resolution:{status:'duplicate',caseId:existing.id},bookingCase:copy(existing)};
+   if(existing){
+    if(existing.sender!==sender(envelope.sender))throw Error('Üzenetazonosító ütközés: eltérő feladó.');
+    return {resolution:{status:'duplicate',caseId:existing.id},bookingCase:copy(existing)};
+   }
    let resolution=resolveBookingCase(cases,envelope,incoming);
    if(approvedCaseId){const found=cases.find(c=>c.id===approvedCaseId&&c.sender===sender(envelope.sender));if(!found)throw Error('Az ügyösszekapcsolás nem igazolható.');resolution={status:'linked',caseId:found.id,evidence:'human_approved'};}
    const target=resolution.status==='linked'?cases.find(c=>c.id===resolution.caseId):null;
