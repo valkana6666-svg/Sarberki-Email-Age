@@ -54,7 +54,7 @@ def parse_protected_uri(value):
     if len(value) >= 2 and value[0] == value[-1] and value[0] in ('\"', "'"):
         value = value[1:-1]
     match = re.fullmatch(r'(postgresql|postgres)://([^:]+):(.+)@'
-                         r'(aws-\d+-eu-west-2\.pooler\.supabase\.com):5432/postgres'
+                         rf'(aws-\d+-eu-west-2\.pooler\.supabase\.com|db\.{owner.PROJECT}\.supabase\.co):5432/postgres'
                          r'(?:\?sslmode=(?:require|verify-full))?', value, re.DOTALL)
     if not match:
         if not value.startswith(('postgresql://', 'postgres://')):
@@ -64,7 +64,7 @@ def parse_protected_uri(value):
         else:
             endpoint = value.rsplit('@', 1)[1]
             if endpoint.startswith('db.'):
-                reason = 'DIRECT_ENDPOINT_INSTEAD_OF_SESSION_POOLER'
+                reason = 'DIRECT_SOURCE_PROJECT_OR_PORT_INVALID'
             elif ':6543/' in endpoint:
                 reason = 'TRANSACTION_POOLER_PORT_INSTEAD_OF_SESSION_PORT'
             elif '.pooler.supabase.com' in endpoint and '-eu-west-2.' not in endpoint:
@@ -78,7 +78,8 @@ def parse_protected_uri(value):
         raise BackupConfigurationError('CONNECTION_FORMAT_INVALID: ' + reason)
 
     username = unquote(match[2])
-    if username != 'postgres.' + owner.PROJECT:
+    expected_user = 'postgres' if match[4] == 'db.' + owner.PROJECT + '.supabase.co' else 'postgres.' + owner.PROJECT
+    if username != expected_user:
         raise BackupConfigurationError('CONNECTION_PROJECT_INVALID: protected URI is not for the pinned test project.')
     password = unquote(match[3])
     if password == '[YOUR-PASSWORD]' or not password or any(c in password for c in ('\x00', '\n', '\r')):
@@ -101,8 +102,15 @@ def source_environment(values):
         host, password = parse_protected_uri(values['SARBERKI_BACKUP_DB_URL'])
         values['SARBERKI_BACKUP_HOST'] = host
         values['SARBERKI_BACKUP_DB_PASSWORD'] = password
-    print('BACKUP_STAGE: validate pinned London pooler host', flush=True)
-    config = owner.connection(values.get('SARBERKI_BACKUP_HOST', ''), 'postgres.' + owner.PROJECT)
+    print('BACKUP_STAGE: validate pinned source endpoint', flush=True)
+    host = values.get('SARBERKI_BACKUP_HOST', '')
+    if host == 'db.' + owner.PROJECT + '.supabase.co':
+        config = {'PGHOST': host, 'PGPORT': '5432', 'PGUSER': 'postgres',
+                  'PGDATABASE': 'postgres', 'PGSSLMODE': 'verify-full',
+                  'PGSSLROOTCERT': 'system', 'PGCONNECT_TIMEOUT': '20'}
+        print('BACKUP_CONFIG: pinned direct project endpoint', flush=True)
+    else:
+        config = owner.connection(host, 'postgres.' + owner.PROJECT)
     password = values.get('SARBERKI_BACKUP_DB_PASSWORD', '')
     if not password:
         raise BackupConfigurationError('CONNECTION_PASSWORD_MISSING: protected credential absent.')
@@ -112,6 +120,24 @@ def source_environment(values):
     env['PGPASSWORD'] = password
     env['PGOPTIONS'] = '-c default_transaction_read_only=on -c statement_timeout=600000'
     return env
+
+
+def source_probe(command, env):
+    result = subprocess.run(command, env=env, capture_output=True, check=False)
+    if result.returncode:
+        # Classify known failures locally; never print upstream stderr.
+        diagnostic = result.stderr.lower()
+        reason = 'SOURCE_CONNECTION_FAILED'
+        for marker, code in [(b'network is unreachable', 'SOURCE_NETWORK_UNREACHABLE'),
+                             (b'could not translate host name', 'SOURCE_DNS_FAILED'),
+                             (b'password authentication failed', 'SOURCE_AUTHENTICATION_FAILED'),
+                             (b'certificate verify failed', 'SOURCE_TLS_VERIFICATION_FAILED'),
+                             (b'timeout expired', 'SOURCE_CONNECTION_TIMEOUT')]:
+            if marker in diagnostic:
+                reason = code
+                break
+        raise BackupConfigurationError(reason)
+    return result.stdout
 
 
 def encrypt(data, target, env, fingerprint):
@@ -171,7 +197,7 @@ def export(output):
         raise RuntimeError('PostgreSQL 17 client required.')
     psql = ['psql', '-X', '-w', '-qAt', '-v', 'ON_ERROR_STOP=1']
     print('BACKUP_STAGE: test read-only TLS database connection', flush=True)
-    if owner.checked(psql + ['-c', 'show transaction_read_only'], env).strip() != b'on':
+    if source_probe(psql + ['-c', 'show transaction_read_only'], env).strip() != b'on':
         raise RuntimeError('Source connection is not read-only.')
     version = owner.checked(psql + ['-c', 'show server_version_num'], env).strip()
     if not version.isdigit() or int(version) // 10000 != 17:

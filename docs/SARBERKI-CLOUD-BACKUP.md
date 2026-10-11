@@ -40,3 +40,13 @@ Hivatalos forrás: https://supabase.com/docs/guides/platform/migrating-within-su
 ## Egyszeri futási kérelem
 
 2026-10-11: a felhős offline mentési tesztek 7/7 sikeresek, a tesztági CI sikeres. A projektgazda kérésére egyszeri exportindítás következik; ha a védett beállítások vagy a SARBERKI_BACKUP_ENABLED=yes hiányzik, mentés nem készül. A kérelem nem bizonyít mentési fájlt vagy visszaállítást.
+
+## 2026-10-11 – kapcsolati formátum javítása
+
+Az eredeti futás a URI-feldolgozásnál leállt. A titkot felfedés nélkül vizsgáló új futás bizonyította: közvetlen adatbázis-végpont volt megadva, miközben a kód csak Session poolert fogadott el. A projekt Supabase-metaadatai megerősítik a sarberki-test azonosítót, London régiót és PostgreSQL 17.11 verziót.
+
+A felhős mentőprogram a kizárólag erre a projektre rögzített db.mojnqizbcaczstguikpv.supabase.co:5432/postgres közvetlen végpontot is elfogadja postgres felhasználóval. A London Session pooler továbbra is támogatott. A TLS verify-full, csak olvasható tranzakciók és a forrásba visszaállítás tilalma változatlan. Idegen projekt, más port vagy alternatív host nem elfogadott.
+
+A dashboard psql-parancsának külső burkolatát végrehajtás nélkül eltávolítja. A helyettesített jelszó fenntartott URI-karaktereit a forrásvégpont külön rögzítésével kezeli. A hibák csak állandó diagnosztikai kódokat naplóznak, titkos értékek vagy a PostgreSQL teljes hibaszövege nélkül.
+
+Ez a javítás és a sikeres offline teszt önmagában nem igazol adatbázismentést. A tényleges export, titkosítás és visszaolvasás eredményét külön kell ellenőrizni.

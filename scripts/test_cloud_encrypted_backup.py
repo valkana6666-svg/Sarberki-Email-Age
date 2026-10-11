@@ -64,12 +64,24 @@ class CloudBackupSafety(unittest.TestCase):
             self.assertEqual(cloud.parse_protected_uri(value)[1], 'fixture')
         examples = [('fixture', 'SCHEME_MISSING_OR_INVALID'),
                     (uri.replace('5432', '6543'), 'TRANSACTION_POOLER_PORT_INSTEAD_OF_SESSION_PORT'),
-                    (uri.replace('aws-0-eu-west-2.pooler.supabase.com', 'db.mojnqizbcaczstguikpv.supabase.co'), 'DIRECT_ENDPOINT_INSTEAD_OF_SESSION_POOLER')]
+                    (uri.replace('aws-0-eu-west-2.pooler.supabase.com', 'db.other.supabase.co'), 'DIRECT_SOURCE_PROJECT_OR_PORT_INVALID')]
         for value, reason in examples:
             with self.assertRaises(cloud.BackupConfigurationError) as caught:
                 cloud.parse_protected_uri(value)
             self.assertIn(reason, str(caught.exception))
             self.assertNotIn('fixture', str(caught.exception))
+
+    def test_pinned_direct_project_and_tls(self):
+        uri = 'postgresql://postgres:fixture#password@db.mojnqizbcaczstguikpv.supabase.co:5432/postgres'
+        env = cloud.source_environment({'SARBERKI_BACKUP_DB_URL': uri, 'PGSSLMODE': 'disable'})
+        self.assertEqual(env['PGUSER'], 'postgres')
+        self.assertEqual(env['PGPASSWORD'], 'fixture#password')
+        self.assertEqual(env['PGSSLMODE'], 'verify-full')
+        self.assertIn('default_transaction_read_only=on', env['PGOPTIONS'])
+        for bad in [uri.replace('mojnqizbcaczstguikpv', 'other'), uri.replace('5432', '6543'),
+                    uri.replace('://postgres:', '://attacker:')]:
+            with self.assertRaises(cloud.BackupConfigurationError):
+                cloud.source_environment({'SARBERKI_BACKUP_DB_URL': bad})
 
     def test_failed_and_oversized_export_rejected(self):
         with self.assertRaises(RuntimeError):
