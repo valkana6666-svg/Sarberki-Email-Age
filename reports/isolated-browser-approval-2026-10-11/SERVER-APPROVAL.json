@@ -1,0 +1,21 @@
+{
+  "scope": "NEW_ISOLATED_AUTH_APPROVAL_ONLY",
+  "source_connection": "NEVER_OPENED",
+  "production": "NEVER_CONNECTED",
+  "email": "NEVER_SENT_OR_MODIFIED",
+  "booking": "NEVER_CREATED_OR_MODIFIED",
+  "prior_successful_suites_repeated": false,
+  "browser_unauthenticated_access_denied": "PASS_REUSED_38154214127",
+  "direct_operator_rpc_cannot_forge_capacity_or_read_key": "PASS_REUSED_38154214127",
+  "browser_writer_cannot_approve": "PASS",
+  "browser_foreign_tenant_cannot_read": "PASS",
+  "browser_expired_signed_token_denied": "PASS",
+  "browser_confirmation_and_session_reset": "PASS",
+  "browser_stale_stored_revision_conflict": "PASS",
+  "browser_unknown_capacity_blocks_without_audit": "PASS",
+  "browser_audit_failure_rolls_back_approval": "PASS",
+  "browser_operator_approval_and_authenticated_audit": "PASS",
+  "browser_api_auth_database_restart_and_readback": "PASS",
+  "approval_scope": "ISOLATED_SYNTHETIC_REVIEW_NOT_LIVE_GUEST_OFFER",
+  "completed": true
+}

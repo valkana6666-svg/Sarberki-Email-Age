@@ -1,0 +1,17 @@
+✔ default production path stays completely disabled with no session lookup or transport (1.301106ms)
+✔ missing authenticated operator session refuses all network calls (0.75692ms)
+✔ review reads persisted version, checks exact text and requires explicit consent (4.682871ms)
+✔ a preview, wrong tenant, non-synthetic draft and already approved draft cannot enable write (0.749197ms)
+✔ tampered read-only text, case ID and revision must not reach POST (2.217788ms)
+✔ changed case input cancels loaded proof without another read (0.475953ms)
+✔ a server rejection clears approval instead of using a local fallback (1.562313ms)
+✔ concurrent clicks cannot double POST (0.73746ms)
+✔ invalid case id blocks network before attempting session (0.238993ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 85.0439

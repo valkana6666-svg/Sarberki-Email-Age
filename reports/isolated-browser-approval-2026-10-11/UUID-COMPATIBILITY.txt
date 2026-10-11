@@ -1,0 +1,20 @@
+✔ default production path stays completely disabled with no session lookup or transport (1.73865ms)
+✔ missing authenticated operator session refuses all network calls (1.080087ms)
+✔ review reads persisted version, checks exact text and requires explicit consent (8.973975ms)
+✔ a preview, wrong tenant, non-synthetic draft and already approved draft cannot enable write (2.42848ms)
+✔ tampered read-only text, case ID and revision must not reach POST (2.541858ms)
+✔ changed case input cancels loaded proof without another read (0.816347ms)
+✔ a server rejection clears approval instead of using a local fallback (3.070219ms)
+✔ concurrent clicks cannot double POST (1.057523ms)
+✔ invalid case id blocks network before attempting session (0.3379ms)
+✔ server-generated UUID uses the existing authenticated persisted-draft approval chain (6.979939ms)
+✔ UUID syntax cannot substitute for a stored synthetic draft or tenant authority (1.206353ms)
+✔ email and malformed UUID never trigger a draft fetch (0.43264ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 197.36764

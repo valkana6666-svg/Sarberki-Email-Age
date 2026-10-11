@@ -1,0 +1,20 @@
+✔ direct SQL RPC rejects forged or revoked authority even when API is bypassed (1809.356549ms)
+▶ new isolated approval SQL/API checks only; Auth HTTP simulated, PostgreSQL real
+  ✔ installer rejects the default database (10.88591ms)
+  ✔ writer, foreign tenant, expired or malformed identities are denied (5.0232ms)
+  ✔ wrong revision and changed draft cannot approve (12.003874ms)
+  ✔ unknown fresh capacity blocks approval (10.089473ms)
+  ✔ revoked DB session is rejected (17.309492ms)
+  ✔ audit failure rolls back the state and revision (21.499589ms)
+  ✔ approval commits exact draft, actor, revision and audit atomically (21.947081ms)
+  ✔ fresh PostgreSQL instance restores approval, RLS and audit (843.407315ms)
+  ✔ default handler remains closed for approval even with test store enabled (0.775026ms)
+✔ new isolated approval SQL/API checks only; Auth HTTP simulated, PostgreSQL real (2723.600884ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2856.009386

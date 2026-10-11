@@ -1,0 +1,57 @@
+[
+  {
+    "run": 38153528580,
+    "scope": "NEW_ISOLATED_AUTH_APPROVAL_ONLY",
+    "source_connection": "NEVER_OPENED",
+    "production": "NEVER_CONNECTED",
+    "email": "NEVER_SENT_OR_MODIFIED",
+    "booking": "NEVER_CREATED_OR_MODIFIED",
+    "prior_successful_suites_repeated": false,
+    "completed": false,
+    "failed_stage": "browser_unauthenticated_access_denied",
+    "failure_class": "AssertionError"
+  },
+  {
+    "run": 38153680859,
+    "scope": "NEW_ISOLATED_AUTH_APPROVAL_ONLY",
+    "source_connection": "NEVER_OPENED",
+    "production": "NEVER_CONNECTED",
+    "email": "NEVER_SENT_OR_MODIFIED",
+    "booking": "NEVER_CREATED_OR_MODIFIED",
+    "prior_successful_suites_repeated": false,
+    "completed": false,
+    "failed_stage": "browser_unauthenticated_access_denied",
+    "failure_class": "AssertionError",
+    "failure_message": "Expected values to be strictly equal:\n\nfalse !== true\n"
+  },
+  {
+    "run": 38154214127,
+    "scope": "NEW_ISOLATED_AUTH_APPROVAL_ONLY",
+    "source_connection": "NEVER_OPENED",
+    "production": "NEVER_CONNECTED",
+    "email": "NEVER_SENT_OR_MODIFIED",
+    "booking": "NEVER_CREATED_OR_MODIFIED",
+    "prior_successful_suites_repeated": false,
+    "browser_unauthenticated_access_denied": "PASS",
+    "direct_operator_rpc_cannot_forge_capacity_or_read_key": "PASS",
+    "completed": false,
+    "failed_stage": "browser_writer_cannot_approve",
+    "failure_class": "TimeoutError",
+    "failure_message": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('#isolated_approval_status').filter({ hasText: 'Tárolt tervezet betöltve' }) to be visible\n"
+  },
+  {
+    "run": 38154459407,
+    "scope": "NEW_ISOLATED_AUTH_APPROVAL_ONLY",
+    "source_connection": "NEVER_OPENED",
+    "production": "NEVER_CONNECTED",
+    "email": "NEVER_SENT_OR_MODIFIED",
+    "booking": "NEVER_CREATED_OR_MODIFIED",
+    "prior_successful_suites_repeated": false,
+    "browser_unauthenticated_access_denied": "PASS_REUSED_38154214127",
+    "direct_operator_rpc_cannot_forge_capacity_or_read_key": "PASS_REUSED_38154214127",
+    "completed": false,
+    "failed_stage": "browser_writer_cannot_approve",
+    "failure_class": "TimeoutError",
+    "failure_message": "page.waitForFunction: Timeout 30000ms exceeded."
+  }
+]

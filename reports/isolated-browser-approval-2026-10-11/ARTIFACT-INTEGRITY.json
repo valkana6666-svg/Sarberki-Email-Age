@@ -1,0 +1,8 @@
+{
+  "run": 38154710516,
+  "artifact_id": 11707887506,
+  "artifact_archive_sha256": "b6fce140448094f0b9618d3aaf477a70972ff0b90cbe8410453d728530b7efa4",
+  "download_matches_github_digest": true,
+  "server_approval_json_matches_job_log": true,
+  "source_commit": "c8ba033b85288a61f503d03f8c35173a530c2338"
+}
