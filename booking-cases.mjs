@@ -38,7 +38,7 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
  if(!/^[a-z][a-z0-9-]{1,63}$/.test(tenantId))throw Error('Érvénytelen vállalkozási azonosító.');
  const key=tenantId==='sarberki'?'sarberki-booking-cases-v2':tenantId+'-booking-cases-v2';let cases=[];
  try{const saved=JSON.parse(storage?.getItem(key)||'[]');if(Array.isArray(saved))cases=saved.filter(c=>c.tenantId===tenantId||tenantId==='sarberki'&&!c.tenantId).map(c=>({...c,tenantId}));}catch{}
- const persist=()=>{cases.forEach(c=>c.tenantId=tenantId);storage?.setItem(key,JSON.stringify(cases));};
+ const persist=(next=cases)=>{next.forEach(c=>c.tenantId=tenantId);storage?.setItem(key,JSON.stringify(next));cases=next;};
  return {
   list:()=>copy(cases),get:caseId=>copy(cases.find(c=>c.id===caseId)||null),
   ingest(envelope,incoming,{intent='booking_request',approvedCaseId=null}={}){
@@ -72,9 +72,20 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
    c.status=resolution.status==='ambiguous'?'link_review_required':'preparing';c.linkReview=resolution.status==='ambiguous'?resolution:null;
    if(!target)cases.push(c);persist();return {resolution,bookingCase:copy(c)};
   },
-  save(caseId,state,draft=''){
-   const c=cases.find(c=>c.id===caseId);if(!c)throw Error('Ismeretlen foglalási ügy.');c.state=copy(state);c.facts=stageFacts(state.values);c.updatedAt=clock();
-   if(draft&&c.drafts.at(-1)?.text!==draft)c.drafts.push({text:draft,at:clock(),revision:state.revision});persist();
+  save(caseId,state,draft='',{event=null,requirePersistent=false}={}){
+   if(requirePersistent&&typeof storage?.setItem!=='function')throw Error('Tartós helyi ügytár nem érhető el.');
+   if(event!==null&&(typeof event.type!=='string'||!event.type.trim()||event.type.length>1000))throw Error('Érvénytelen helyi auditesemény.');
+   // Commit the complete case only after storage succeeds; a quota failure must not
+   // leave an approved case in memory while the disk still contains pending state.
+   const next=copy(cases),c=next.find(c=>c.id===caseId);if(!c)throw Error('Ismeretlen foglalási ügy.');
+   const previousApproval=c.state.approval,draftChanged=Boolean(draft&&c.drafts.at(-1)?.text!==draft);
+   c.state=copy(state);c.facts=stageFacts(state.values);c.updatedAt=clock();c.events??=[];
+   if(previousApproval==='internally_approved'&&draftChanged)c.state.approval='pending';
+   if(draftChanged)c.drafts.push({text:draft,at:clock(),revision:c.state.revision});
+   const append=type=>c.events.push({time:clock(),type,approval:c.state.approval,previousApproval,revision:c.state.revision,scope:'local_unverified_operator'});
+   if(previousApproval==='internally_approved'&&c.state.approval==='pending')append('Jóváhagyás érvénytelenítve; ügy vagy tervezet módosult');
+   if(event)append(event.type);
+   persist(next);return copy(c);
   }
  };
 }

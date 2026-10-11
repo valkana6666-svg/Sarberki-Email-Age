@@ -1,0 +1,28 @@
+{
+  "scope": "LOCAL_APPROVAL_PERSISTENCE_ONLY",
+  "base_commit": "770f2b6a89de436c15d10a26d9403edf6b490ed0",
+  "test_file": "tests/local-approval-recovery.test.mjs",
+  "reproduction_before_fix": {"pass": 1, "fail": 4},
+  "verification_after_fix": {"pass": 5, "fail": 0},
+  "additional_encrypted_approval_export_test": {"pass": 1, "fail": 0},
+  "total_new_checks_passed": 6,
+  "execution": "local Node VM executing actual HTML handlers; synthetic capacity prerequisite and in-memory Storage implementation",
+  "checks": [
+    "approval_and_local_audit_survive_new_runtime",
+    "storage_failure_leaves_memory_and_disk_unapproved",
+    "no_storage_blocks_approval",
+    "draft_edit_invalidates_approval_preserving_history",
+    "explicit_booking_intent_unknown_capacity_blocks_approval",
+    "encrypted_export_restores_approved_case_and_local_events_into_empty_new_origin"
+  ],
+  "real_external_calls": 0,
+  "source_database_modified": false,
+  "email_sent_or_modified": false,
+  "booking_created_or_modified": false,
+  "prior_successful_suites_repeated": false,
+  "authenticated_operator_approval": "NOT_IMPLEMENTED",
+  "server_approval_gate": "UNCHANGED_DISABLED",
+  "audit_scope": "LOCAL_UNVERIFIED_OPERATOR_NOT_TAMPER_PROOF",
+  "full_chromium_e2e_after_fix": "NOT_RUN",
+  "whole_system_restore_verified": false
+}

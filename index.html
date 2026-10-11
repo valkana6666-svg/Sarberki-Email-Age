@@ -207,7 +207,12 @@ function extract(s,sender){
  if(intent==='other')warn('intent_uncertain','Nem egyértelmű a levél szándéka');if(language!=='HU')warn('foreign_review','Idegen nyelvű válasz külön emberi ellenőrzést igényel');
  if(topics.requested_addon_details?.hot_tub_nights&&f.nights.value&&+f.nights.value!==topics.requested_addon_details.hot_tub_nights)warn('addon_duration_differs','A dézsát eltérő időtartamra kérik, mint a szállást; külön kezelendő');if(topics.requested_addons.length)warn('hot_tub_availability_unverified','Dézsaigény: elérhetőség és házhoz rendelés ellenőrzendő; szabad dézsát nem ígérhetünk');if(topics.secondary_intents.includes('electricity_question'))warn('electricity_settlement_review','Az áramdíj a távozáskori óraállás után számolható; végszámla nem véglegesíthető előbb');if(topics.secondary_intents.includes('firewood_question'))warn('firewood_price_unverified','A tűzifa feláras, a pontos ár nincs hitelesítve');if(topics.unresolved_questions.length)warn('unresolved_guest_question','Ismeretlen ár vagy elérhetőség: emberi válasz szükséges');let accommodation=accommodationPlan({guests:f.guests.value,unit:f.unit.value});if(accommodation&&!accommodation.specific&&!capacityRecommendationReady)warn('accommodation_choice_review','A kívánt háztípust a vendégtől kell pontosítani.');let modification=detectModification(t,ds,intent);if(modification){warn('existing_booking_status_unknown','Nem ismert, hogy a korábbi foglalás a PMS-ben szerepel-e: kezelői ellenőrzés szükséges');warn('previous_state_review','A régi foglalási állapotot a kért új állapot előtt embernek kell ellenőriznie');}return{fields:f,intent,issues,warning_codes:warnings,modification,topics,accommodation,secondary_intents:[...(modification?.secondary_intents||[]),...topics.secondary_intents]};
 }
-function addEvent(type){record.events.push({time:new Date().toISOString(),type});$('events').textContent=record.events.map(x=>`${x.time} · ${x.type}`).join('\n')}
+function displayEvents(){$('events').textContent=record.events.map(x=>`${x.time} · ${x.type}`).join('\n')}
+function addEvent(type){
+ try{if(record.booking_case_id&&window.SarberkiBookingRuntime){const saved=window.SarberkiBookingRuntime.cases.save(record.booking_case_id,record.case_state,$('draft').value,{event:{type}});record.events=saved.events;}else record.events.push({time:new Date().toISOString(),type});}
+ catch(e){$('status').className='warning';$('status').textContent='Helyi eseménynapló nem menthető: '+e.message;}
+ displayEvents();
+}
 function getValues(){let o={};for(let k of Object.keys(labels))o[k]=$('f_'+k).value.trim();return o}
 function draft(v,intent='booking_request',analysis=null){
  if(window.SarberkiCaseState&&record){syncCaseState(v);return window.SarberkiCaseState.deriveCaseView(record.case_state,review(v,analysis||record.analysis)).draft;}
@@ -322,7 +327,7 @@ function updateReview(regenerate=true){
   const current=record.case_state.values;for(const [key,id]of Object.entries({arrival:'price_arrival',departure:'price_departure',adults:'price_adults',children:'price_children',child_ages:'price_child_ages'})){if($(id))$(id).value=current[key]??'';}
   const cabinKeys={Deluxe:'deluxe',Családi:'family',VIP:'vip','Osztott A':'splitA','Osztott B':'splitB','Osztott C':'splitC','Különálló 2 fős':'small'};if($('price_cabin'))$('price_cabin').value=cabinKeys[current.unit]||'';
   $('summary').textContent=view.summary;
-  if(regenerate){$('draft').value=view.draft;$('gmail_draft').value=view.draft;record.draft=view.draft;record.approval='pending';}
+  if(regenerate){$('draft').value=view.draft;$('gmail_draft').value=view.draft;record.draft=view.draft;record.approval='pending';record.case_state.approval='pending';}
   if(!$('gmail_record').classList.contains('hidden')){
    $('gmail_cabin').textContent=current.unit||'? – emberi döntésre vár';
    bridgeItems('gmail_missing',view.missing);bridgeItems('gmail_review',view.warnings.map(x=>x.text));
@@ -336,7 +341,7 @@ function updateReview(regenerate=true){
   const topicBox=$('topics');topicBox.replaceChildren();
   for(const name of ['Szállás',record.case_state.hotTub.requested?'Dézsa – ellenőrzendő':null,v.cars!==''?'Parkolás: '+v.cars+' autó – adat megadva':null,view.priceStatus,...view.warnings.map(x=>x.text)].filter(Boolean)){const row=document.createElement('div');row.textContent=name;topicBox.append(row);}
  }
- if(record.booking_case_id&&window.SarberkiBookingRuntime){try{window.SarberkiBookingRuntime.cases.save(record.booking_case_id,record.case_state,$('draft').value);}catch(e){$('status').textContent='Ügymentési hiba: '+e.message;}}
+ if(record.booking_case_id&&window.SarberkiBookingRuntime){try{const saved=window.SarberkiBookingRuntime.cases.save(record.booking_case_id,record.case_state,$('draft').value);record.events=saved.events;displayEvents();}catch(e){$('status').textContent='Ügymentési hiba: '+e.message;}}
  const critical=record.review.critical;$('notice').className=critical?'warning':'ok';
  $('notice').textContent=critical?'Emberi ellenőrzés szükséges; a felsorolt feltételek még nem jóváhagyottak.':'A feldolgozás kész; a felsorolt hiányokat kell pontosítani.';
  $('approve').disabled=critical;$('overridebox').classList.toggle('hidden',!critical);$('override').checked=false;
@@ -397,6 +402,7 @@ function attachBookingCase(){
  const selected=$('booking_case_link')?.value.trim()||null;
  const result=runtime.cases.ingest(envelope,values,{intent:record.analysis.intent,approvedCaseId:selected});
  record.booking_case_id=result.bookingCase.id;record.case_link=result.resolution;record.case_state=result.bookingCase.state;record.analysis.intent=record.case_state.intent;
+ record.events=result.bookingCase.events||[];displayEvents();
  if(['historical','duplicate'].includes(result.resolution.status))record.original=record.case_state.original;
  for(const [key,value]of Object.entries(record.case_state.values))if(record.analysis.fields[key]){const missing=value===''||value==null;record.analysis.fields[key]={value,evidence:missing?'nincs':'foglalási ügy adata',status:missing?'missing':result.bookingCase.facts[key]?.status==='contradictory'?'contradictory':result.bookingCase.facts[key]?.status==='clarify'?'uncertain':'confirmed'};}
  if($('booking_case_status'))$('booking_case_status').textContent='Ügy: '+record.booking_case_id+' · '+(result.resolution.status==='ambiguous'?'Nem összevont ügy; lehetséges kapcsolatok emberi ellenőrzésre: '+result.resolution.candidates.join(', '):result.resolution.status);
@@ -412,7 +418,15 @@ $('analyze').onclick=()=>{try{if(!window.SarberkiRulesReady){setRuntimeStatus('a
  if($('draft').value!==target.approvalDraft){target.approvalDraft=$('draft').value;$('status').textContent='Kapacitás frissen ellenőrizve. Ellenőrizze a frissített tervezetet, majd ismét hagyja jóvá.';return;}
  }catch(e){window.SarberkiCaseController.apply({type:'availability',fingerprint:key,verified:false,requestedAvailable:false,lines:[]});$('status').textContent='Jóváhagyás tiltva: '+e.message;return;}
  }
- record.approval='internally_approved';if(record.case_state)record.case_state.approval=record.approval;record.reviewed=getValues();record.modification_review={booking_status_verified:false,old_state_checked:false,actions_executed:[]};record.draft=$('draft').value;addEvent('Belső jóváhagyás; tényleges küldés nem történt');$('status').className='ok';$('status').textContent='Belső jóváhagyás rögzítve. A vendégnek semmi nem lett elküldve.'};$('export').onclick=()=>{if(!record)return;let data={...record,reviewed:getValues(),draft:$('draft').value};addEvent('JSON export');data.events=record.events;let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download=`sarberki-inquiry-${record.id}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),30000)};
+ try{
+  if(!record.booking_case_id||!record.case_state||!window.SarberkiBookingRuntime)throw Error('Tartós helyi ügytár nem érhető el.');
+  const nextState={...record.case_state,approval:'internally_approved',revision:record.case_state.revision+1};
+  const saved=window.SarberkiBookingRuntime.cases.save(record.booking_case_id,nextState,$('draft').value,{requirePersistent:true,event:{type:'Belső jóváhagyás; tényleges küldés nem történt'}});
+  record.case_state=saved.state;record.approval=saved.state.approval;record.events=saved.events;displayEvents();
+  record.reviewed=getValues();record.modification_review={booking_status_verified:false,old_state_checked:false,actions_executed:[]};record.draft=$('draft').value;
+  $('status').className='ok';$('status').textContent='Belső jóváhagyás rögzítve a helyi ügytárban. A vendégnek semmi nem lett elküldve.';
+ }catch(e){$('status').className='warning';$('status').textContent='Jóváhagyás nem menthető: '+e.message;}
+};$('export').onclick=()=>{if(!record)return;let data={...record,reviewed:getValues(),draft:$('draft').value};addEvent('JSON export');data.events=record.events;let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download=`sarberki-inquiry-${record.id}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),30000)};
 
 
 function bridgeItems(id,items){const ul=$(id);ul.replaceChildren();for(const item of items){const li=document.createElement('li');li.textContent=typeof item==='string'?item:String(item.label)+': '+String(item.value)+(item.evidence?' · forrás: '+String(item.evidence):'');ul.append(li)}if(!items.length){const li=document.createElement('li');li.textContent='Nincs megadva';ul.append(li)}}

@@ -22,7 +22,7 @@ A bejelentkezett oldal értesítési figyelőt is indíthat. A mostani ellenőrz
 
 Szintetikus érdeklődésből értelmezett dátumok/létszám, ügy és tervezet létrejött. Ügy és tervezet böngészőújraindításkor megmaradt. A helyi ügytár titkosított exportja ellenőrizhető, és üres, más originű böngészőkörnyezetbe visszaállítható.
 
-**Hiány:** a belső jóváhagyás gomb a felületen jóváhagyott állapotot mutat, de a mentett ügyben az állapot `pending`, és a jóváhagyási esemény nem került tartós auditba. A felülethez nincs bekötött hitelesített kezelői jóváhagyási út. A szerveres engedélyvizsgálat korábban igazolt, de ez nem egyenlő a teljes végrehajtott jóváhagyással. Az API csak ingest/draft műveletet enged; a forrás SQL `sc_write_case` jóváhagyási útja kifejezetten tiltott. Ezt nem oldottuk fel és az eredeti adatbázist nem módosítottuk.
+**Korábban reprodukált hiba:** a belső jóváhagyás gomb jóváhagyott állapotot mutatott, de a mentett ügyben az állapot `pending` maradt, és az esemény nem került tartós naplóba. A következő tesztági javítás ezt a helyi ügytárban megoldja; részletek az alábbi folytatásban. **Továbbra is hiányzik** a hitelesített kezelői szerveres jóváhagyási út. A szerveres engedélyvizsgálat korábban igazolt, de ez nem egyenlő a teljes végrehajtott jóváhagyással. Az API csak ingest/draft műveletet enged; a forrás SQL `sc_write_case` jóváhagyási útja kifejezetten tiltott. Ezt nem oldottuk fel és az eredeti adatbázist nem módosítottuk.
 
 Az ismeretlen kapacitás UI státuszára vonatkozó utolsó böngészőassertion nem teljesült; ez a rész nem igazolt. A megelőző helyi export és újraindítás sikeres. A teljes jóváhagyási munkafolyamat befejezéséhez külön megvalósítás és elkülönített szerver/UI-vizsgálat kell.
 
@@ -46,7 +46,7 @@ A korábbi szintetikus adapter-bizonyíték időbélyegét 1 másodperccel múlt
 | Previo | Típusmapping, parser, adapter és szintetikus HTTP-teszt | Jóváhagyott élő, mellékhatásmentes ellenőrzési lehetőség; aktuális mapping és időbélyegkezelés igazolása |
 | GPG-hozzáférés | Korábbi elkülönített visszaállítás a védett titokkal sikeres | Ugyanazon jelmondat külön, felhasználó által hozzáférhető biztonságos példánya; fiókvesztés esetére is elérhető |
 | Teljes csomag titkosítása | Az adatbázis-payloadok GPG-titkosítottak; a helyi export külön titkosított | A külső ZIP önmagában nem titkosított. A teljes csomag titkosításához külön hozzáférhető kulcs/jelmondat és azzal végzett független readback kell |
-| Kezelői jóváhagyás | Jogosultság-ellenőrzés külön runtime-ban | Tartós approval transition, állapot/audit mentése, hitelesített UI-integráció; teljes újraindítási teszt csak a javítás után |
+| Kezelői jóváhagyás | Jogosultság-ellenőrzés külön runtime-ban; helyi approval és eseménynapló mentési javítása 6 új célzott ellenőrzéssel | Hitelesített szerveres approval transition és audit, UI-integráció, teljes újraindítási E2E; a helyi napló nem hitelesített vagy módosíthatatlan audit |
 
 ## Új számítógépes helyreállítás sorrendje
 
@@ -68,3 +68,12 @@ Az eredeti laptop titkosított exportja, a szolgáltatói adminisztrációs konf
 - Csak a két új, szintetikus, hálózatmentes ellenőrzés futott. A korábban sikeres suite-ok nem ismétlődtek; teljes regressziót és deploy-ellenőrzést ebben a folytatásban nem állítunk.
 - A korábbi ZIP ettől nem frissült. A javítás tesztágon megőrzött forrás; új csomag vagy teljes csomagtitkosítás ebben a folytatásban nem készült.
 - Teljes visszaállítás továbbra sem igazolt: a hitelesített UI jóváhagyás tartós állapot/audit útja, az eredeti laptop exportja, szolgáltatói konfigurációk és a külön megőrzött jelmondat igazolása még hiányzik.
+
+## Folytatás: helyi jóváhagyás és eseménynapló mentése
+
+- Az új `tests/local-approval-recovery.test.mjs` az eredeti kódon 1 PASS / 4 FAIL eredménnyel reprodukálta a mentési hibát. A javítás után az öt érintett teszt PASS; a később hozzáadott titkosított approval/audit export-import teszt külön futott, szintén PASS. Összesen 6 új ellenőrzés sikeres.
+- A tényleges oldal jóváhagyáskezelője most egyetlen helyi mentésben tárolja az állapotot, tervezetet és jóváhagyási eseményt. Sikeres státuszt csak ezután mutat. Hiányzó storage vagy quota hiba esetén a mentett és memóriabeli ügy sem válik jóváhagyottá.
+- Tervezetmódosításkor a jóváhagyás érvénytelenítése naplózott; a korábbi esemény megmarad. Új runtime példányból a mentett állapot/napló visszaolvasható, és titkosított exportból új, üres originre helyreállítható.
+- A teszt a tényleges HTML-kezelőt Node VM DOM-harnessben futtatja, hálózat nélkül. A foglalási szándékot kifejezetten ellenőrzi. Az ismeretlen kapacitást mesterséges `allowed=false` előfeltétellel teszteli; nem bizonyít új élő Previo-kapcsolatot vagy teljes Chromium E2E-t. A korábbi böngészőteszt „faházat kérünk” fixture-e nem bizonyította ezt a foglalási szándékot, ezért az ottani teljes lánc továbbra sem PASS.
+- A helyi esemény `scope=local_unverified_operator` jelölést kap. Ez nem igazol kezelői személyazonosságot, szerveres jogosultságot vagy módosíthatatlan auditot. Supabase Auth/API/SQL jóváhagyási kaput nem aktiváltunk.
+- A korábbi 910-es suite, 43-táblás restore, RLS/CAS, runtime- és PMS-időtesztek nem ismétlődtek. A forrás a tesztágon megőrzött; a következő csomag a PMS- és helyi approval-javítást is tartalmazza, változatlan adatbázis-ciphertext mellett.
