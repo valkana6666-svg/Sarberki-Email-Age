@@ -71,5 +71,13 @@ try{
   const newToken=await login('approval-operator@synthetic.invalid');const r=await handler({httpMethod:'GET',headers:{authorization:'Bearer '+newToken},queryStringParameters:{tenantId:'sarberki-test',caseId:id}});assert.equal(r.statusCode,200);const restored=JSON.parse(r.body).result;assert.equal(restored.revision,3);assert.deepEqual(restored.data,approved.data);assert.equal(sql("select count(*) from sc_audit where kind='approve_isolated_synthetic';"),'1');
  });
  report.approval_scope='ISOLATED_SYNTHETIC_REVIEW_NOT_LIVE_GUEST_OFFER';report.completed=true;
-}catch(error){report.completed=false;report.failed_stage=stage;report.failure_class=error.name;process.exitCode=1;}
+}catch(error){
+ report.completed=false;report.failed_stage=stage;report.failure_class=error.name;
+ const redact=s=>String(s).replace(/postgres(?:ql)?:\/\/[^\s"']+/g,'[redacted-db-url]').replace(/[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g,'[redacted-jwt]').replace(/[a-f0-9]{64}/g,'[redacted-key]');
+ if(error.stderr)report.sql_diagnostic=redact(error.stderr).slice(0,1000);
+ if(stage==='prepare-new-services'){
+  try{const logs=execFileSync('docker',['logs','--tail','30',process.env.ISOLATED_APPROVAL_AUTH],{stdio:['ignore','pipe','pipe']}).toString();report.auth_start_diagnostic=logs.split('\n').filter(x=>/fatal|error|panic/i.test(x)).map(redact).slice(-4);}catch{}
+ }
+ process.exitCode=1;
+}
 finally{mkdirSync('/tmp/approval-evidence',{recursive:true});writeFileSync('/tmp/approval-evidence/SERVER-APPROVAL.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));}
