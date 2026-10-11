@@ -28,3 +28,22 @@ test('actual case store refuses same Gmail thread from a different sender',()=>{
  assert.notEqual(a.bookingCase.id,b.bookingCase.id);
  assert.equal(store.get(a.bookingCase.id).state.values.unit,undefined);
 });
+
+test('duplicate Gmail message is idempotent',()=>{
+ const store=make();
+ const envelope=msg('m1','thread-1','Első érdeklődés');
+ const first=store.ingest(envelope,{arrival:'2026-11-13'},{intent:'booking_request'});
+ const duplicate=store.ingest(envelope,{arrival:'2026-12-01'},{intent:'booking_request'});
+ assert.equal(duplicate.resolution.status,'duplicate');
+ assert.equal(duplicate.bookingCase.id,first.bookingCase.id);
+ assert.equal(store.get(first.bookingCase.id).state.values.arrival,'2026-11-13');
+ assert.equal(store.list().length,1);
+});
+test('older Gmail reply cannot overwrite a later confirmed cabin choice',()=>{
+ const store=make();
+ const first=store.ingest(msg('m1','thread-1','Kezdeti érdeklődés'),{arrival:'2026-11-13',departure:'2026-11-15'},{intent:'booking_request'});
+ store.ingest(msg('m3','thread-1','Deluxe választás',{received_at:'2026-10-11T11:00:00Z'}),{unit:'Deluxe'},{intent:'booking_request'});
+ const older=store.ingest(msg('m2','thread-1','Régebbi VIP kérés',{received_at:'2026-10-11T10:30:00Z'}),{unit:'VIP'},{intent:'booking_request'});
+ assert.equal(older.resolution.status,'historical');
+ assert.equal(store.get(first.bookingCase.id).state.values.unit,'Deluxe');
+});
