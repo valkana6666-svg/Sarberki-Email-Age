@@ -93,6 +93,7 @@ def symmetric_command(command, env, passphrase, data=None):
 
 
 def export(output):
+    print('BACKUP_STAGE: parse protected connection settings', flush=True)
     values = dict(os.environ)
     env = source_environment(values)
     fingerprint = values.get('SARBERKI_BACKUP_GPG_FINGERPRINT', '').upper()
@@ -109,28 +110,35 @@ def export(output):
         raise ValueError('A fresh output directory is required.')
     if any((p / '.git').exists() for p in (output.resolve(), *output.resolve().parents)):
         raise ValueError('Backup cannot be placed inside a Git checkout.')
+    print('BACKUP_STAGE: check required PostgreSQL and encryption tools', flush=True)
     for name in ('pg_dump', 'pg_dumpall', 'pg_restore', 'psql', 'gpg'):
         owner.tool(name)
     if not re.search(rb'\b17\.', owner.checked(['pg_dump', '--version'])):
         raise RuntimeError('PostgreSQL 17 client required.')
     psql = ['psql', '-X', '-w', '-qAt', '-v', 'ON_ERROR_STOP=1']
+    print('BACKUP_STAGE: test read-only TLS database connection', flush=True)
     if owner.checked(psql + ['-c', 'show transaction_read_only'], env).strip() != b'on':
         raise RuntimeError('Source connection is not read-only.')
     version = owner.checked(psql + ['-c', 'show server_version_num'], env).strip()
     if not version.isdigit() or int(version) // 10000 != 17:
         raise RuntimeError('Unexpected source server version.')
     manifest_path = Path(__file__).with_name('case-store-recovery-manifest.sql')
+    print('BACKUP_STAGE: read baseline manifest', flush=True)
     before = owner.checked(psql + ['-f', str(manifest_path)], env).strip()
     json.loads(before)
+    print('BACKUP_STAGE: export PostgreSQL 17 database', flush=True)
     dump = bounded(['pg_dump', '-w', '--format=custom'], env)
     toc = owner.checked(['pg_restore', '--list'], input_bytes=dump).decode()
     owner.validate_toc(toc)
+    print('BACKUP_STAGE: export role definitions without passwords', flush=True)
     roles = bounded(['pg_dumpall', '-w', '--database=postgres', '--roles-only', '--no-role-passwords'], env)
+    print('BACKUP_STAGE: verify source manifest unchanged', flush=True)
     after = owner.checked(psql + ['-f', str(manifest_path)], env).strip()
     if before != after:
         raise RuntimeError('Case-store manifest changed during export.')
     # Ciphertext can live on disk; the GPG homedir holds only the public key.
     output.mkdir(mode=0o700, parents=True)
+    print('BACKUP_STAGE: encrypt and verify ciphertext', flush=True)
     with tempfile.TemporaryDirectory(prefix='sarberki-public-gpg-') as home:
         crypto_env = {k: v for k, v in env.items() if not k.startswith('PG')}
         crypto_env['GNUPGHOME'] = home
@@ -151,6 +159,7 @@ def export(output):
                     partial.unlink(missing_ok=True)
         else:
             public_key_export(dump, roles, before, output, crypto_env, public_key, fingerprint)
+    print('BACKUP_STAGE: write ciphertext integrity manifest', flush=True)
     hashes = []
     for path in sorted(output.glob('*.gpg')):
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
