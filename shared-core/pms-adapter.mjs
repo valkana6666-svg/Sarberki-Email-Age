@@ -32,10 +32,13 @@ export function createReadOnlyPmsAdapter({
     label:label||id,
     capabilities:normalizedCapabilities,
     tenantId,
-    async getVerifiedAvailability(query,{tenantId:owner,now=Date.now()}={}){
+    async getVerifiedAvailability(query,{tenantId:owner,now}={}){
       if(!owner||tenantId&&owner!==tenantId)throw Error('Idegen vállalkozás adaptere.');
-      try{return normalizeAvailability({...query,...await fetchAvailability(query)},query,{tenantId:owner,now});}
-      catch(error){return normalizeAvailability({error:error.message},query,{tenantId:owner,now});}
+      try{
+        const raw=await fetchAvailability(query);
+        return normalizeAvailability({...query,...raw},query,{tenantId:owner,now:now??Date.now()});
+      }
+      catch(error){return normalizeAvailability({error:error.message},query,{tenantId:owner,now:now??Date.now()});}
     },
     async getAvailability(input){
       return fetchAvailability(input);
