@@ -2,6 +2,7 @@
 import {createHash,createHmac,randomBytes} from 'node:crypto';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 import {execFileSync,spawnSync} from 'node:child_process';
+import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 import {createCaseHandler} from '../netlify/functions/booking-cases.mjs';
 const report={scope:'NEW_ISOLATED_AUTH_APPROVAL_ONLY',source_connection:'NEVER_OPENED',production:'NEVER_CONNECTED',email:'NEVER_SENT_OR_MODIFIED',booking:'NEVER_CREATED_OR_MODIFIED',prior_successful_suites_repeated:false};
@@ -79,6 +80,148 @@ try{
   const newToken=await login('approval-operator@synthetic.invalid');const r=await handler({httpMethod:'GET',headers:{authorization:'Bearer '+newToken},queryStringParameters:{tenantId:'sarberki-test',caseId:id}});assert.equal(r.statusCode,200);const restored=JSON.parse(r.body).result;assert.equal(restored.revision,3);assert.deepEqual(restored.data,approved.data);assert.equal(sql("select count(*) from sc_audit where kind='approve_isolated_synthetic';"),'1');
  });
  }
+ await step('real_chromium_ui_auth_api_postgres_audit',async()=>{
+  // The runner serves only a self-contained synthetic page and four local files.
+  // Browser requests are loopback-only; no Supabase source, Netlify, Previo, Gmail or Pushover.
+  const {chromium}=await import('playwright');
+  const fixture=await call(await login('approval-writer@synthetic.invalid'),{
+   action:'ingest',expectedRevision:0,envelope:{
+    sender:'browser-guest@synthetic.invalid',text:'Please book one Deluxe cabin from 2026-10-23 to 2026-10-25 for 4 adults and no children.',
+    mailbox_id:'browser-approval',message_id:'approval-browser-fixture',received_at:new Date().toISOString()
+   }
+  });
+  const browserId=fixture.record.caseId;
+  const persisted=await call(await login('approval-writer@synthetic.invalid'),{action:'review-draft',caseId:browserId,expectedRevision:1});
+  assert.equal(persisted.record.revision,2);
+  assert.equal(persisted.review.status,'internal_review_required');
+  const storedText=persisted.record.data.drafts.at(-1).text,storedHash=createHash('sha256').update(storedText).digest('hex');
+  const expectedAuditCount=()=>assert.equal(sql("select count(*) from sc_audit where kind='approve_isolated_synthetic' and case_id='"+browserId+"';"),'0');
+  const allowed=new Map([
+   ['/isolated-approval-rehearsal.html',['text/html; charset=utf-8','isolated-approval-rehearsal.html']],
+   ['/isolated-approval-panel.mjs',['text/javascript; charset=utf-8','isolated-approval-panel.mjs']],
+   ['/shared-core/case-store-client.mjs',['text/javascript; charset=utf-8','shared-core/case-store-client.mjs']],
+   ['/shared-core/isolated-approval-review.mjs',['text/javascript; charset=utf-8','shared-core/isolated-approval-review.mjs']]
+  ]);
+  const local=createServer(async(req,res)=>{
+   try{
+    const u=new URL(req.url,'http://127.0.0.1');
+    if(u.pathname==='/.netlify/functions/booking-cases'){
+     let body='';
+     for await(const piece of req){body+=piece;if(body.length>32768)throw Error('oversized');}
+     const reply=await handler({
+      httpMethod:req.method,headers:req.headers,
+      body,queryStringParameters:Object.fromEntries(u.searchParams)
+     });
+     res.writeHead(reply.statusCode,reply.headers);res.end(reply.body);return;
+    }
+    if(req.method!=='GET'||!allowed.has(u.pathname)){res.writeHead(404);res.end();return;}
+    const [type,path]=allowed.get(u.pathname);
+    res.writeHead(200,{'Content-Type':type,'Cache-Control':'no-store'});
+    res.end(readFileSync(path)); 
+   }catch{
+    res.writeHead(503,{'Content-Type':'application/json'});res.end('{"error":"SERVICE_UNAVAILABLE"}');
+   }
+  });
+  let browser;
+  try{
+   await new Promise((resolve,reject)=>{local.once('error',reject);local.listen(0,'127.0.0.1',resolve);});
+   const origin='http://127.0.0.1:'+local.address().port;
+   browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+   const context=await browser.newContext();
+   // Absolutely forbid any off-runner traffic from Chromium.
+   await context.route('**/*',route=>{
+    const u=new URL(route.request().url());
+    if(u.origin===origin)return route.continue();
+    return route.abort();
+   });
+   const page=await context.newPage();
+   const sel='#isolated_approval_';
+   const status=async token=>{
+    await page.goto(origin+'/isolated-approval-rehearsal.html');
+    await page.evaluate(async({token})=>{
+     const {initIsolatedApprovalPanel}=await import('/isolated-approval-panel.mjs');
+     const ok=initIsolatedApprovalPanel({
+      documentRef:document,enabled:true,
+      approvalTarget:'https://isolated-approval.supabase.co',
+      sessionProvider:()=>({getAccessToken:async()=>token}),
+      request:(url,options)=>fetch(url,options)
+     });
+     if(!ok)throw Error('isolated UI refused initialization');
+    },{token});
+    await page.locator(sel+'case_id').fill(browserId);
+    await page.locator(sel+'load').click();
+    await page.waitForFunction(()=>/Tárolt tervezet betöltve|A tervezet nem tölthető be/.test(document.getElementById('isolated_approval_status').textContent));
+    return page.locator(sel+'status').textContent();
+   };
+   const submit=async()=>{
+    await page.locator(sel+'confirm').check();
+    await page.locator(sel+'submit').click();
+    await page.waitForFunction(()=>/Nincs igazolt jóváhagyás|jóváhagyás mentve|REVIEW_REQUIRED/.test(document.getElementById('isolated_approval_status').textContent));
+    return page.locator(sel+'status').textContent();
+   };
+   let summary=await status('invalid-synthetic-browser-token-00000');
+   assert.match(summary,/nem tölthető be/);
+   expectedAuditCount();
+   const writerToken=await login('approval-writer@synthetic.invalid');
+   summary=await status(writerToken);
+   assert.match(summary,/Tárolt tervezet betöltve/);
+   summary=await submit();
+   assert.match(summary,/FORBIDDEN/);
+   expectedAuditCount();
+   const operatorToken=await login('approval-operator@synthetic.invalid');
+   summary=await status(operatorToken);
+   assert.match(summary,/Tárolt tervezet betöltve/);
+   assert.equal(await page.locator(sel+'text').inputValue(),storedText);
+   assert.equal(await page.locator(sel+'revision').inputValue(),'2');
+   assert.equal(await page.locator(sel+'submit').isDisabled(),true);
+   // Bypass the readonly DOM flag to ensure edited text still cannot reach the API.
+   await page.locator(sel+'confirm').check();
+   await page.locator(sel+'text').evaluate(el=>{el.value+=' edited';});
+   await page.locator(sel+'submit').click();
+   assert.match(await page.locator(sel+'status').textContent(),/REVIEW_REQUIRED/);
+   expectedAuditCount();
+   capacity='unknown';
+   summary=await status(operatorToken);assert.match(summary,/Tárolt tervezet betöltve/);
+   summary=await submit();assert.match(summary,/REVIEW_NOT_READY/);
+   capacity='available';expectedAuditCount();
+   // Revoked Auth session must be rejected by the protected DB RPC.
+   sql("update auth.sessions set not_after=now()-interval '1 second' where user_id='"+approver+"';");
+   summary=await status(operatorToken);assert.match(summary,/Tárolt tervezet betöltve/);
+   summary=await submit();assert.match(summary,/FORBIDDEN/);
+   sql("update auth.sessions set not_after=null where user_id='"+approver+"';");
+   expectedAuditCount();
+   sql("create function block_browser_audit() returns trigger language plpgsql as $begin if new.kind='approve_isolated_synthetic' then raise exception 'synthetic browser audit failure';end if;return new;end$;create trigger block_browser_audit before insert on sc_audit for each row execute function block_browser_audit();");
+   summary=await status(operatorToken);assert.match(summary,/Tárolt tervezet betöltve/);
+   summary=await submit();assert.match(summary,/SERVICE_UNAVAILABLE/);
+   expectedAuditCount();assert.equal(sql("select revision from sc_cases where case_id='"+browserId+"';"),'2');
+   sql("drop trigger block_browser_audit on sc_audit;drop function block_browser_audit();");
+   summary=await status(operatorToken);assert.match(summary,/Tárolt tervezet betöltve/);
+   await page.locator(sel+'confirm').check();
+   // A real double-click generates at most one server POST due to the disabled button.
+   await page.locator(sel+'submit').dblclick();
+   await page.waitForFunction(()=>/jóváhagyás mentve/.test(document.getElementById('isolated_approval_status').textContent));
+   assert.equal(await page.locator(sel+'submit').isDisabled(),true);
+   const saved=JSON.parse(sql("select to_jsonb(c) from sc_cases c where case_id='"+browserId+"';"));
+   assert.equal(saved.revision,3);
+   assert.equal(saved.data.serverApproval.draftHash,storedHash);
+   assert.equal(sql("select count(*) from sc_audit where kind='approve_isolated_synthetic' and case_id='"+browserId+"';"),'1');
+   // Browser check includes a real service restart and authenticated persistent readback.
+   await page.close();await browser.close();browser=null;
+   execFileSync('docker',['restart',container,process.env.ISOLATED_APPROVAL_AUTH,process.env.ISOLATED_APPROVAL_REST],{stdio:['ignore','pipe','pipe']});
+   await ready(auth+'/health');await ready(rest+'/');
+   const reauthenticated=await login('approval-operator@synthetic.invalid');
+   const restored=await handler({httpMethod:'GET',headers:{authorization:'Bearer '+reauthenticated},
+    queryStringParameters:{tenantId:'sarberki-test',caseId:browserId}});
+   assert.equal(restored.statusCode,200);
+   const found=JSON.parse(restored.body).result;
+   assert.equal(found.revision,3);assert.equal(found.data.serverApproval.draftHash,storedHash);
+   assert.equal(sql("select count(*) from sc_audit where kind='approve_isolated_synthetic' and case_id='"+browserId+"';"),'1');
+   report.browser_integration='CHROMIUM_LOCAL_ONLY_REAL_AUTH_REST_POSTGRES_ATOMIC_APPROVAL_RESTART';
+  }finally{
+   if(browser)await browser.close();
+   await new Promise(resolve=>local.close(()=>resolve()));
+  }
+ });
  report.approval_scope='ISOLATED_SYNTHETIC_REVIEW_NOT_LIVE_GUEST_OFFER';report.completed=true;
 }catch(error){
  report.completed=false;report.failed_stage=stage;report.failure_class=error.name;
