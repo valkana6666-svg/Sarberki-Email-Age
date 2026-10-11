@@ -59,3 +59,19 @@ test('Hungarian conjunction before a party count cannot manufacture departure da
  const result=chat.reply('Van szabad Deluxe faház 2026-11-01 és 2 felnőtt részére?');
  assert.ok(result.decision.missing.includes('dates'));assert.equal(result.decision.capacity.verified,false);
 });
+for(const [language,question] of Object.entries({hu:'Van dézsa?',de:'Kann ich einen Badezuber mieten?',en:'Can I rent a hot tub?',si:'Ali je masažna kad na voljo?'}))test('FAQ detour retains the stay and returns the existing FAQ in '+language,()=>{
+ const chat=createChatInquirySession({language,clock:()=>now});
+ chat.reply(cases[language]);const before=chat.snapshot();
+ const result=chat.reply(question);
+ assert.equal(result.response.intent,'hotTub');assert.equal(result.text,result.response.reply);
+ assert.equal(result.decision,null);assert.match(result.operatorReviewText,/külön bérelhető/);
+ assert.deepEqual(chat.snapshot(),before);
+ const next=chat.reply(cases[language]);
+ assert.equal(next.decision.facts.dates.arrival,'2026-11-13');assert.equal(next.decision.facts.adults,2);
+ assert.deepEqual(next.decision.missing,[]);assert.equal(next.decision.capacity.verified,false);
+});
+test('empty greeting during an active inquiry does not discard facts or normalize empty input',()=>{
+ const chat=createChatInquirySession({clock:()=>now});chat.reply(cases.hu);
+ const before=chat.snapshot(),result=chat.reply('');
+ assert.equal(result.response.intent,'welcome');assert.deepEqual(chat.snapshot(),before);
+});

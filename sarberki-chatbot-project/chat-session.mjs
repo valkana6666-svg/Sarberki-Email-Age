@@ -14,6 +14,9 @@ export function createChatInquirySession({language='hu',clock=()=>new Date()}={}
    language=nextLanguage;const now=clock(),faq=chatbotReply({message,language});
    if(faq.intent==='availability')bookingContext=true;
    if(!bookingContext)return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};
+   // Informational detours do not replace the active stay or its missing facts.
+   if(['welcome','hotTub','deposit','fishing','booking','cabins'].includes(faq.intent))
+    return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};
    const n=normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized;
    const next={...facts};
    for(const key of ['dates','phone','units_requested'])if(n[key]!==null&&n[key]!==undefined&&n[key]!=='')next[key]=structuredClone(n[key]);
