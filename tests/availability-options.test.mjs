@@ -124,3 +124,20 @@ for(const bad of [{availability:'unverified',availableUnits:4},{availability:'av
   assert.equal(result.split_pool_checks.splitAB.verified,false);
  });
 }
+
+test('split A/B pool does not prove two adjacent units in one physical cabin',async()=>{
+ const free={splitA:2,splitC:0};
+ const result=await buildAvailabilityOptions({
+   arrival:'2026-11-13',departure:'2026-11-15',guests:4,
+   cabin:'split',units:2,
+   placement:{ab:2,c:0,adjacent:true,exactIds:[]}
+ },async ({cabin})=>({
+   availability:(free[cabin]||0)>0?'available':'unavailable',
+   availableUnits:free[cabin]||0,source:'synthetic-test',
+   checkedAt:new Date().toISOString()
+ }));
+ assert.equal(result.split_pool_checks.splitAB.verified,true);
+ assert.equal(result.split_pool_checks.splitAB.availableUnits,2);
+ assert.equal(result.available_options.some(x=>x.key==='splitCombination'&&x.availability_verified===true),false);
+ assert.equal(result.available_options.some(x=>x.individual_unit_mapping_verified===true),false);
+});
