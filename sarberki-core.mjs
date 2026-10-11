@@ -722,6 +722,7 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   if(mismatch) questions.unshift({hu:'Kérjük, pontosítsa a létszámot: az összlétszám eltér a megadott felnőttek és gyermekek összegétől.',de:'Bitte klären Sie die Personenzahl: Die Gesamtzahl stimmt nicht mit der Zahl der Erwachsenen und Kinder überein.',en:'Please clarify the party size: the total differs from the number of adults and children.',si:'Prosimo, pojasnite število gostov: skupno število se ne ujema s številom odraslih in otrok.'}[lang]);
 
   const stayLines=[];
+  let provisionalStayLine=null;
   if(summary) stayLines.push(summary);
   if(!needCabin){
     const displayCabin=cabinDisplayName(cabin,lang);
@@ -734,6 +735,7 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
       en:`For the stated party size, these accommodation options can work: ${options}. We will check which of them are actually available for the requested dates.`,
       si:`Za navedeno število gostov pridejo v poštev naslednje možnosti: ${options}. Za izbrani termin preverimo, katere so dejansko proste.`
     }[lang]);
+    provisionalStayLine=stayLines.at(-1);
   }
 
   const asksAvailability=/(?:szabad|elérhető|van[- ]?e .*szállás|van.*hely|available|frei|prosto|verfügbar|razpolož)/iu.test(original);
@@ -744,6 +746,7 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
     en:'We will confirm availability of your requested cabin separately.',
     si:'Razpoložljivost želene hiške bomo potrdili posebej.'
   }[lang]);
+  if(asksAvailability&&!canRecommendByCapacity) provisionalStayLine=stayLines.at(-1);
 
   const operationalLines=operationalTopicLines(lang,original,operationalRules,caseContext);
   if(caseContext) operationalLines.push(...caseContext.extraLines);
@@ -760,7 +763,11 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   if(caseContext) pricingLines.push(...caseContext.priceLines);
   const bookingLines=caseContext?caseContext.bookingLines:bookingPolicyLines(lang,original,guests,bookingRules);
   if(caseContext?.availabilityLines?.length) {
-    if(canRecommendByCapacity||asksAvailability) stayLines.pop();
+    // Remove only the provisional statement, never an unrelated stay detail.
+    if(provisionalStayLine!==null){
+      const index=stayLines.indexOf(provisionalStayLine);
+      if(index>=0)stayLines.splice(index,1);
+    }
     stayLines.push(...caseContext.availabilityLines);
   }
   const blocks=[];
