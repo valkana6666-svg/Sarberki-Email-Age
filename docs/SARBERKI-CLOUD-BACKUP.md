@@ -50,3 +50,5 @@ A felhős mentőprogram a kizárólag erre a projektre rögzített db.mojnqizbca
 A dashboard psql-parancsának külső burkolatát végrehajtás nélkül eltávolítja. A helyettesített jelszó fenntartott URI-karaktereit a forrásvégpont külön rögzítésével kezeli. A hibák csak állandó diagnosztikai kódokat naplóznak, titkos értékek vagy a PostgreSQL teljes hibaszövege nélkül.
 
 Ez a javítás és a sikeres offline teszt önmagában nem igazol adatbázismentést. A tényleges export, titkosítás és visszaolvasás eredményét külön kell ellenőrizni.
+
+A közvetlen URI feldolgozása sikeres volt, de az Actions futtató a projekt IPv6 címét nem érte el (`SOURCE_NETWORK_UNREACHABLE`). Biztonságos bejelentkezés után a sarberki-test Connect paneljén kiolvasott tényleges Session pooler host: aws-0-eu-west-2.pooler.supabase.com, port 5432, postgres.mojnqizbcaczstguikpv felhasználó. A workflow ezt a nem titkos, ellenőrzött végpontot adja át. A meglévő direct-URI secretből a program csak a jelszót használja újra memóriában; a secret és a forrásjelszó változatlan. Idegen projektre utaló direct-URI nem alakítható át.

@@ -83,6 +83,19 @@ class CloudBackupSafety(unittest.TestCase):
             with self.assertRaises(cloud.BackupConfigurationError):
                 cloud.source_environment({'SARBERKI_BACKUP_DB_URL': bad})
 
+    def test_direct_credentials_reused_only_with_verified_session_host(self):
+        uri = 'postgresql://postgres:fixture@db.mojnqizbcaczstguikpv.supabase.co:5432/postgres'
+        values = {'SARBERKI_BACKUP_DB_URL': uri, 'SARBERKI_BACKUP_SESSION_HOST': 'aws-0-eu-west-2.pooler.supabase.com'}
+        env = cloud.source_environment(values)
+        self.assertEqual(env['PGHOST'], values['SARBERKI_BACKUP_SESSION_HOST'])
+        self.assertEqual(env['PGUSER'], 'postgres.mojnqizbcaczstguikpv')
+        self.assertEqual(env['PGPASSWORD'], 'fixture')
+        self.assertEqual(env['PGSSLMODE'], 'verify-full')
+        self.assertFalse(any(k.startswith('SARBERKI_') for k in env))
+        values['SARBERKI_BACKUP_SESSION_HOST'] = 'attacker.invalid'
+        with self.assertRaises(ValueError):
+            cloud.source_environment(values)
+
     def test_failed_and_oversized_export_rejected(self):
         with self.assertRaises(RuntimeError):
             cloud.bounded([sys.executable, '-c', "print('partial');raise SystemExit(1)"], dict(os.environ))

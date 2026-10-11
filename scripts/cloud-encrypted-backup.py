@@ -104,7 +104,13 @@ def source_environment(values):
         values['SARBERKI_BACKUP_DB_PASSWORD'] = password
     print('BACKUP_STAGE: validate pinned source endpoint', flush=True)
     host = values.get('SARBERKI_BACKUP_HOST', '')
-    if host == 'db.' + owner.PROJECT + '.supabase.co':
+    session_host = values.get('SARBERKI_BACKUP_SESSION_HOST', '')
+    if host == 'db.' + owner.PROJECT + '.supabase.co' and session_host:
+        # The workflow host was read from this project's Connect panel.
+        # Reuse only the password in memory; never rewrite or reveal the secret.
+        config = owner.connection(session_host, 'postgres.' + owner.PROJECT)
+        print('BACKUP_CONFIG: pinned direct credentials routed through verified session pooler', flush=True)
+    elif host == 'db.' + owner.PROJECT + '.supabase.co':
         config = {'PGHOST': host, 'PGPORT': '5432', 'PGUSER': 'postgres',
                   'PGDATABASE': 'postgres', 'PGSSLMODE': 'verify-full',
                   'PGSSLROOTCERT': 'system', 'PGCONNECT_TIMEOUT': '20'}
