@@ -1,0 +1,52 @@
+name: Sarberki existing backup isolated restore
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths:
+      - .github/workflows/sarberki-isolated-restore.yml
+      - scripts/verify-isolated-restore.py
+permissions:
+  contents: read
+  actions: read
+jobs:
+  restore:
+    if: github.ref == 'refs/heads/gmail-test-subject-allowlist' && contains(github.event.head_commit.message, '[sarberki-isolated-restore-once-20261011]')
+    runs-on: ubuntu-24.04
+    container: postgres:17-bookworm
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_USER: restore_admin
+          POSTGRES_PASSWORD: ephemeral-isolated-test-only
+        options: >-
+          --health-cmd "pg_isready -U restore_admin"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      PGHOST: postgres
+      PGUSER: restore_admin
+      PGPASSWORD: ephemeral-isolated-test-only
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 gnupg ca-certificates
+      - uses: actions/download-artifact@v4
+        with:
+          name: sarberki-test-encrypted-38127744637
+          path: /tmp/original-backup
+          run-id: 38127744637
+          github-token: ${{ github.token }}
+      - name: Restore existing ciphertext into isolated database only
+        env:
+          SARBERKI_BACKUP_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_PASSPHRASE }}
+        run: python3 scripts/verify-isolated-restore.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sarberki-isolated-restore-${{ github.run_id }}
+          path: /tmp/restore-evidence/ISOLATED-RESTORE.json
+          retention-days: 7
+          if-no-files-found: error
