@@ -11,7 +11,7 @@ const quote={total:122200,accommodation:120000,tourismTax:2200,eurTotal:332.31,e
 const approve=state=>updateCaseState(state,{type:'quote',quote,fingerprint:caseFingerprint(state.values)});
 test('video Teszt Elek: approved price, missing phone, one car, close arrival and clear hot-tub scope agree',()=>{
  const state=approve(make()), view=deriveCaseView(state);
- assert.match(view.draft,/122\s*200 Ft/u);assert.match(view.draft,/332,31 €/u);
+ assert.match(view.draft,/122\s*200 Ft/u);assert.doesNotMatch(view.draft,/332,31 €/u);
  assert.match(view.draft,/telefonszám/u);assert.match(view.draft,/Egy autó/u);
  assert.doesNotMatch(view.draft,/Ha több autó|50%|10 napon|14\. napig|teljes árat.*adjuk meg/u);
  assert.match(view.draft,/dézsahasználat díja nem állapítható meg/u);
