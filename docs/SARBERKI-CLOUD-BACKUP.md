@@ -1,44 +1,38 @@
-# Sárberki – titkosított felhős adatbázismentés (tesztág)
+# Sárberki – laptop nélkül futtatható titkosított adatbázismentés
 
-**Állapot: előkészítve; valódi mentés még nem készült.** Forrás: kizárólag `sarberki-test` (`mojnqizbcaczstguikpv`). Az éles / main környezethez nem kapcsolódik.
+Állapot: felhős futtató előkészítve; valódi mentési fájl még nem igazolt.
+Kizárólag sarberki-test / mojnqizbcaczstguikpv / London eu-west-2 / gmail-test-subject-allowlist.
 
-A mentési workflow: `.github/workflows/sarberki-cloud-backup.yml` (csak `gmail-test-subject-allowlist` ág).
-A Windows számítógép nem szükséges a futtatáshoz. A GH-hosted Linux runner a Supabase CLI három részes `roles.sql`, `schema.sql`, `data.sql` exportját használja.
+## Meglévő tulajdonosi beállítások – a neveket megőrizzük
 
-## Tulajdonosi konfiguráció a GitHub felületén (soha nem chatben)
+A GitHub repó Settings → Secrets and variables → Actions felületén:
 
-1. Supabase Dashboard, **sarberki-test → Connect → Session pooler**, port **5432**. A teljes PostgreSQL kapcsolati URI-ban pontosan a projekt saját adatbázisjelszavának kell szerepelnie. Ne használd a transaction poolert (6543), ne hozz létre új adatbázist; jelszót ne tegyél kódba vagy képernyőképre.
-2. A GitHub repository **Settings → Secrets and variables → Actions → Repository secrets** részén add hozzá:
-   - `SARBERKI_BACKUP_DB_URL`: a teljes Session-pooler `postgresql://...` kapcsolati URI, amely csak `postgres.mojnqizbcaczstguikpv` felhasználóval, `*.pooler.supabase.com` hosttal, 5432 porttal és `/postgres` útvonallal fogadható el. A jelszó speciális karaktereit URL-kódolni kell az URI-ban.
-   - `SARBERKI_BACKUP_PASSPHRASE`: **külön, erős, legalább 24 karakteres** mentési titkosítási jelmondat. Ezt a tulajdonos tartósan, a GitHubtól független jelszókezelőben őrizze meg. A jelmondat nélkül a mentés nem állítható vissza. Ne használd az adatbázis jelszavát jelmondatként.
-3. A **Repository variables** között hozz létre `SARBERKI_BACKUP_ENABLED` néven `yes` értéket kizárólag akkor, ha már mindkét secret készen áll, és a workflow ellenőrzése megtörtént. A változó önmagában **nem** indít mentést.
+- Secret `SARBERKI_BACKUP_DB_URL`: a Supabase Connect panelen ellenőrzött London Session pooler teljes kapcsolati URI-ja. A felhasználó `postgres.mojnqizbcaczstguikpv`, port 5432, adatbázis postgres. Speciális jelszókaraktereket URL-kódolni kell. Kizárólag a védett mezőbe kerüljön; chatben, képernyőképen és repóban tilos. Ne reseteld a jelszót a mentés kedvéért.
+- Secret `SARBERKI_BACKUP_PASSPHRASE`: külön, jelszókezelővel generált erős titkosítási jelmondat. A megerősített segéd legalább 32, legfeljebb 1024 karaktert kér, sortörés nélkül. Nem lehet azonos az adatbázisjelszóval. A tulajdonos őrizze meg külön jelszókezelőjében is; GitHub-secretből nem olvasható ki később.
+- Variable `SARBERKI_BACKUP_ENABLED`: `yes`, ha a két secret elkészült és a workflow át van nézve. A változó önmagában nem indít adatbázis-exportot.
 
-## Indítás kizárólag célzott tesztági commitból
+Ezek telefonról is beállíthatók. Kulcspár létrehozása nem szükséges. A Windows DPAPI CurrentUser felhős Linux környezetben nem alkalmazható; a hordozható GPG AES-256 fájl később M:\Sarberki_Backup alá másolható.
 
-A `workflow_dispatch` esemény a GitHubon csak akkor használható, ha a workflow fájl a repository alapértelmezett ágában is létezik; a `main` módosítása jelenleg tiltott. Ezért a workflow csak a tesztágon történt **push** esetén indulhat, és akkor is csak e három együttes feltétellel:
+## Indítás és védelem
 
-- a repository variable `SARBERKI_BACKUP_ENABLED=yes`
-- a commit üzenete tartalmazza ezt a pontos jelölést: `[sarberki-backup-run]`
-- a commit módosítja a mentési workflow-t vagy ezt a dokumentumot a `gmail-test-subject-allowlist` ágon.
+A workflow csak a tesztágon fut. Saját kódja/dokumentációja módosításakor szintetikus biztonsági és valódi GPG titkosítási teszteket futtat, adatbázis-kapcsolat nélkül.
 
-A tulajdonosi beállítások után Work / Codex hozza létre **kizárólag a tesztágon** a célzott indító dokumentációs commitot; ne módosítsa a `main` ágat. A mentő workflow-n kívül más rendszer működése nem változhat.
+Tényleges export csak akkor indul, ha egyszerre a tesztágon vagyunk, `SARBERKI_BACKUP_ENABLED=yes`, és az indító commit üzenete tartalmazza a `[sarberki-backup-run]` jelölést. Ehhez a Work célzott dokumentációs commitot készít ezen az ágon. Main, production, automatikus ütemezés vagy PR-trigger nem szükséges.
 
-## Mi történik futáskor?
+## A megerősített export
 
-- A futtató a **megadott, szigorúan ellenőrzött tesztprojekt** Session-pooler adatbázisát olvassa; `supabase db dump` nem ír vissza az adatbázisba.
-- Három export készül, majd ellenőrzi a minimális méretet, az `auth.users`, `auth.identities` és mind az öt `sc_*` tábla COPY-szekcióját. Hiány vagy hiba esetén **nem tölt fel részleges mentést**.
-- SHA-256 fájlellenőrző jegyzék és forrásazonosító kerül az archívumba. A helyi futtató ideiglenes lemezén készülő tömörített archívumot **GnuPG AES-256** módszerrel titkosítja a külön GitHub Secret jelmondatával.
-- Sikeres visszafejtés- és tar-olvashatósági ellenőrzés után GitHub Actions artifactként **csak** a `.tar.gz.gpg` fájlt és annak SHA-256 ellenőrzőösszegét tölti fel, **7 napos** lejárattal. SQL, jelszó, titkosítatlan dump vagy decryptáló kulcs nem része az artifactnak.
-- A titkosítatlan átmeneti fájlokat a futtató eltávolítja. Ez ideiglenes GH-hosted futtató; a titkosítatlan adat a művelet alatt csak a futtató ephemeral lemezén van jelen.
+A `scripts/cloud-encrypted-backup.py` a meglévő `owner-encrypted-backup.py` kapcsolati és tartalomjegyzék-ellenőrzését használja. A titkos URI-t a folyamat memóriájában bontja libpq-környezeti változókra; nem adja tovább parancssori argumentumban, és nem örököl alternatív PG service/TLS beállításokat. A kapcsolaton verify-full TLS és default_transaction_read_only=on kötelező, ezt psql-lel ellenőrzi.
 
-## Kötelező záróellenőrzés
+PostgreSQL 17 custom pg_dump készül az egész adatbázisról, role-jelszavak nélküli szerepkör-exporttal és ügytár-manifesttel. Mind az öt sc_* tábla és az auth.users/auth.identities adatobjektumok jelenlétét ellenőrzi. Permission error vagy részleges export hibának számít. Az ügytár-manifest export előtt/után egyezzen; ez az ügytár változatlanságát ellenőrzi, a pg_dump adatbázis-snapshotjának konzisztenciáját nem helyettesíti.
 
-1. Az Actions futásnak **success** állapotban kell lennie; az Artifactot az owner mentse le a GitHubtól független, tulajdonosi tárolóra, mert **7 nap után lejár**, nem tartós mentési hely.
-2. A letöltött titkosított fájl SHA-256 értéke egyezzen a jegyzékkel. Szükséges a saját GPG-jelmondat; ezt ne oszd meg agenttel.
-3. Független, izolált **helyreállítási teszt** is kötelező a Supabase hivatalos restore eljárásával, csak új üres célba, **soha a forrás `sarberki-test` projektre**. Ellenőrizni kell az Auth rekordokat, öt ügykezelő táblát, funkciókat, RLS-policykat és jogosultságokat.
-4. A GitHub Actions munkafolyamatban szereplő archive-open / TAR ellenőrzés **nem adatbázis-restore**; sikeres futás esetén is `RESTORE_NOT_VERIFIED` az állapot az izolált tesztig. A Storage bináris objektumok és konfigurációs/secret adatok nincsenek ebben a SQL exportban.
+A nyílt export csak memóriában van, legfeljebb 256 MiB mérettel. A lemezre három titkosított GPG fájl kerül, melyeket visszafejt és SHA-256 szerint összevet az eredetivel, továbbá SHA256SUMS.txt és STATUS.txt keletkezik. A titkosítási jelszó privát fájlleírón jut a GPG-hez; nem kerül fájlba, artifactba vagy argumentumba. Hiányzó konfiguráció vagy hiba esetén részleges állomány nem tölthető fel.
 
-A háttérben lévő GitGuardian-riasztás miatt a jelenleg nyilvános GitHub repository-t és a titok-hozzáféréseket külön biztonsági felülvizsgálat alatt kell tartani. Ne add ki sem az archívum titkosító jelmondatát, sem a DB URL-t, sem a nyers mentést.
+## Letöltés és a fennmaradó ellenőrzések
 
-Hivatalos Supabase eljárás: https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore
-GitHub Actions: https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch
+Az Actions futás alatt `sarberki-test-encrypted-<run_id>` nevű csomag várható. Csak három .gpg fájl és két titok nélküli kísérőfájl kerül bele, 7 napos lejárattal. GitHub átmeneti átadás, nem tartós független mentési hely. A ciphertextet GitHubtól független tulajdonosi tárhelyre kell menteni, visszatölteni és ellenőrizni a SHA256SUMS alapján.
+
+A felhős visszafejtés-ellenőrzés még nem SQL restore. Külön, izolált Supabase/Auth környezetben kell helyreállítani és ellenőrizni az Auth adatokat, tenant-izolációt, RLS-policykat, grantokat, függvényeket, CAS-t és auditot. Soha nem a forrásprojektbe. API/JWT-kulcsok, platformbeállítások, Storage bináris objektumok és Vault kulcsfüggőségek külön leltárt/helyreállítást igényelnek. A CASE_STORE_ENABLED marad disabled.
+
+Ha az offline-safety job zöld és az export job skipped, nem készült mentés. A teljes mentés/visszaállítás csak konkrét fájl, bájtméret, checksum, tartós visszaolvasás és izolált restore bizonyítékával jelenthető késznek.
+
+Hivatalos forrás: https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore
