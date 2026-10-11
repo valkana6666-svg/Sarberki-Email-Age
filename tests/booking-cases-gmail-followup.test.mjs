@@ -20,3 +20,11 @@ test('actual case store does not merge same sender with different Gmail thread',
  const b=store.ingest(msg('m2','thread-2','Másik érdeklődés'),{arrival:'2026-12-01',departure:'2026-12-03'},{intent:'booking_request'});
  assert.notEqual(a.bookingCase.id,b.bookingCase.id);
 });
+
+test('actual case store refuses same Gmail thread from a different sender',()=>{
+ const store=make();
+ const a=store.ingest(msg('m1','thread-1','Első vendég'),{arrival:'2026-11-13',departure:'2026-11-15'},{intent:'booking_request'});
+ const b=store.ingest(msg('m2','thread-1','Másik feladó',{sender:'another@example.test',received_at:'2026-10-11T11:00:00Z'}),{unit:'Deluxe'},{intent:'booking_request'});
+ assert.notEqual(a.bookingCase.id,b.bookingCase.id);
+ assert.equal(store.get(a.bookingCase.id).state.values.unit,undefined);
+});
