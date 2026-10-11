@@ -51,16 +51,13 @@ def main():
         os.environ['PGDATABASE']='sc_restore'
         roles=plain['roles.sql.gpg'].decode()
         grantors=sorted(set(re.findall(r'GRANTED BY ([a-z_][a-z0-9_]*)',roles)))
-        first=re.search(r'(?m)^GRANT ',roles)
-        if first and grantors:
-            source_attributes=[]
-            for role in grantors:
-                source_attributes.extend(re.findall(r'(?m)^ALTER ROLE '+re.escape(role)+r' WITH [^\n]+;',roles))
-            if len(source_attributes)!=len(grantors): raise RuntimeError('GRANTOR_ATTRIBUTES_MISSING')
-            # Hosted grantor privileges need temporary bootstrap elevation on
-            # this isolated stock engine; restore original attributes at once.
-            roles=roles[:first.start()]+''.join('ALTER ROLE '+r+' SUPERUSER;\n' for r in grantors)+roles[first.start():]+'\n'+'\n'.join(source_attributes)
-            report['role_bootstrap_adaptation']='temporary grantor SUPERUSER; original attributes reapplied'
+        if grantors:
+            # PG17 rejects hosted explicit grantors in a fresh stock cluster.
+            # Apply the same membership/ADMIN/INHERIT/SET permissions using
+            # the isolated bootstrap grantor; record metadata difference.
+            roles=re.sub(r' GRANTED BY [a-z_][a-z0-9_]*','',roles)
+            report['role_bootstrap_adaptation']='membership grantor changed to restore_admin; role attributes and membership options preserved'
+            report['original_membership_grantor_identity']='NOT_REPRODUCED_ON_STOCK_POSTGRESQL'
         sql(roles)
         report['roles_restore']='PASS_NO_ROLE_PASSWORDS'
         result = run(['pg_restore','--exit-on-error','--dbname=sc_restore',str(dump)],required=False)
