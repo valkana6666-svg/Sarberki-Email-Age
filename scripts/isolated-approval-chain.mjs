@@ -18,9 +18,13 @@ try{
  const auth='http://127.0.0.1:18999',rest='http://127.0.0.1:18300';
  async function ready(url){for(let i=0;i<45;i++){try{if((await fetch(url,{signal:AbortSignal.timeout(1000)})).ok)return;}catch{}await new Promise(r=>setTimeout(r,1000));}throw Error('isolated readiness');}
  stage='prepare-new-services';await ready(auth+'/health');
+ // GoTrue's initial migration creates auth.uid() as the Auth schema owner.
+ // Install the PostgREST v14 claims adapter only AFTER that migration has completed.
+ sql("create or replace function auth.uid() returns uuid language sql stable as $$select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;grant execute on function auth.uid() to authenticated,anon;");
  sql(readFileSync('supabase/migrations/202610090001_case_store.sql','utf8'));
  sql(readFileSync('recovery/sql/isolated-approval.sql','utf8'));
  sql("insert into sc_tenants values('sarberki-test','Synthetic rehearsal',true),('demo-test','Synthetic foreign',true);");
+ sql("notify pgrst,'reload schema';");
  await ready(rest+'/');
  async function provision(email){const r=await fetch(auth+'/admin/users',{method:'POST',headers:{Authorization:'Bearer '+admin,'Content-Type':'application/json'},body:JSON.stringify({email,password,email_confirm:true})});assert.equal(r.status,200);return (await r.json()).id;}
  const writer=await provision('approval-writer@synthetic.invalid'),approver=await provision('approval-operator@synthetic.invalid'),foreign=await provision('approval-foreign@synthetic.invalid');
@@ -76,7 +80,7 @@ try{
  const redact=s=>String(s).replace(/postgres(?:ql)?:\/\/[^\s"']+/g,'[redacted-db-url]').replace(/[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g,'[redacted-jwt]').replace(/[a-f0-9]{64}/g,'[redacted-key]');
  if(error.stderr)report.sql_diagnostic=redact(error.stderr).slice(0,1000);
  if(stage==='prepare-new-services'){
-  try{const captured=spawnSync('docker',['logs','--tail','30',process.env.ISOLATED_APPROVAL_AUTH],{encoding:'utf8'});const logs=(captured.stdout||'')+(captured.stderr||'');report.auth_start_diagnostic=logs.split('\n').filter(x=>/fatal|error|panic/i.test(x)).map(redact).slice(-4);}catch{}
+  try{const captured=spawnSync('docker',['logs','--tail','30',process.env.ISOLATED_APPROVAL_AUTH],{encoding:'utf8'});const logs=(captured.stdout||'')+(captured.stderr||'');report.auth_start_diagnostic=logs.split('\n').filter(x=>/fatal|error|panic/i.test(x)).map(x=>redact(x).slice(-1000)).slice(-4);}catch{}
  }
  process.exitCode=1;
 }

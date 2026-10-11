@@ -40,9 +40,7 @@ jobs:
           create extension if not exists pgcrypto;
           create extension if not exists "uuid-ossp";
           create schema auth authorization supabase_auth_admin;
-          create function auth.uid() returns uuid language sql stable as $$select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;
           grant usage on schema auth to anon,authenticated;
-          grant execute on function auth.uid() to anon,authenticated;
           SQL
           python3 - <<'PY'
           import secrets,os
