@@ -9,7 +9,7 @@ permissions:
   contents: read
 jobs:
   new-checks:
-    if: github.ref == 'refs/heads/gmail-test-subject-allowlist' && contains(github.event.head_commit.message, '[sarberki-recovery-completion-once-20261011]')
+    if: github.ref == 'refs/heads/gmail-test-subject-allowlist' && vars.SARBERKI_OFFLINE_RECOVERY_ENABLED == 'yes' && contains(github.event.head_commit.message, '[sarberki-offline-recovery]')
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:

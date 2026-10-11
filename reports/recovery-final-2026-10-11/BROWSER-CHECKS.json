@@ -1,0 +1,29 @@
+{
+  "scope": "NEW_OFFLINE_RECOVERY_CHECKS_ONLY",
+  "real_service_mutations": 0,
+  "real_oauth": "NOT_RUN",
+  "original_database": "NOT_CONNECTED",
+  "production": "NOT_CONNECTED",
+  "gmail_wrong_blocked": "PASS",
+  "gmail_expired_blocked": "PASS",
+  "gmail_read_only_oauth_contract_and_memory_only_token": "PASS_SYNTHETIC_GOOGLE_API",
+  "ui_inquiry_interpretation_case_draft": "PASS_REAL_CHROMIUM_SYNTHETIC_GMAIL",
+  "ui_internal_approval": "PASS_LOCAL_BUTTON_NO_AUTHENTICATED_OPERATOR",
+  "ui_saved_approval": "pending",
+  "ui_approval_persisted": false,
+  "ui_persistent_event_audit": false,
+  "synthetic_ui_local_export_encrypt_and_readback": "PASS_NOT_ACTUAL_LAPTOP_DATA",
+  "synthetic_encrypted_local_state_restored_into_new_browser_origin": "PASS_NOT_ACTUAL_LAPTOP_DATA",
+  "ui_case_draft_survives_page_restart": "PASS",
+  "gmail_new_session_requires_new_oauth": "PASS_SYNTHETIC",
+  "completed": false,
+  "failed_stage": "portable-synthetic-local-export",
+  "failure_class": "AssertionError",
+  "provenance": {
+    "run_id": 38135068778,
+    "job_id": 114457151888,
+    "commit": "c166eac565092051fc270e6fb981a0b4b119b58d",
+    "workflow_conclusion": "failure",
+    "failure_scope": "unknown-capacity UI status assertion; previous reported assertions passed"
+  }
+}

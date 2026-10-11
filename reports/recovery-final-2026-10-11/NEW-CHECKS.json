@@ -1,0 +1,16 @@
+{
+  "scope": "NEW_OFFLINE_RECOVERY_CHECKS_ONLY",
+  "real_service_mutations": 0,
+  "real_oauth": "NOT_RUN",
+  "original_database": "NOT_CONNECTED",
+  "production": "NOT_CONNECTED",
+  "previo_restored_http_parser_and_unknown_not_zero": "PASS_SYNTHETIC_HTTP_ONLY",
+  "previo_live": "NOT_RUN_SIDE_EFFECT_SAFETY_NOT_VERIFIED",
+  "completed": true,
+  "provenance": {
+    "execution": "local offline, previo-only",
+    "generated_at": "2026-10-11T11:26:24.398007+00:00",
+    "script_sha256": "46fa7179ec049aaf5f165438bbecfe3a87bf85b1dbb418387d4c1631221e4e7f",
+    "successful_suites_repeated": false
+  }
+}

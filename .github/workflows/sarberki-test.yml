@@ -8,7 +8,6 @@ on:
 
 jobs:
   test:
-    if: ${{ !contains(github.event.head_commit.message, '[sarberki-recovery-completion-once-20261011]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +31,6 @@ jobs:
         run: node tests/live-price-smoke.mjs
 
   backup-copy-offline:
-    if: ${{ !contains(github.event.head_commit.message, '[sarberki-recovery-completion-once-20261011]') }}
     name: Offline Windows encrypted-backup copy checks
     runs-on: windows-latest
     steps:

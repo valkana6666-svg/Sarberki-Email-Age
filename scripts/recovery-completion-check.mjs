@@ -56,6 +56,7 @@ async function session(mode='correct'){
  return {context,page,calls,setCapacity:x=>{capacity=x;}};
 }
 try{
+ if(process.env.SARBERKI_RECOVERY_STAGE!=='previo-only'){
  browser=await chromium.launch({headless:true});
  stage='gmail-isolated-read-only';
  for(const mode of ['wrong','expired']){
@@ -99,12 +100,14 @@ try{
  await s.page.reload();await s.page.waitForFunction(()=>window.SarberkiBookingRuntime);
  const after=await s.page.evaluate(()=>window.SarberkiBookingRuntime.cases.list());assert.deepEqual(after,saved);assert.equal(await s.page.evaluate(()=>window.__oauthConfigs.length),0);
  report.ui_case_draft_survives_page_restart='PASS';report.gmail_new_session_requires_new_oauth='PASS_SYNTHETIC';
+ stage='ui-unknown-capacity-approval-block';
  s.setCapacity('unknown');await s.page.locator('#read_gmail').click();await s.page.waitForFunction(()=>!document.getElementById('read_gmail').disabled);
  // The stored locally-read ID requires explicit reopening after restart.
  await s.page.locator('#gmail_open_selected').click();
  if(await s.page.locator('#approve').isDisabled())await s.page.locator('#override').check();
  await s.page.locator('#approve').click();await s.page.waitForTimeout(250);assert.match(await s.page.locator('#status').innerText(),/Jóváhagyás tiltva/);
  report.ui_unknown_capacity_approval_blocked='PASS';await s.context.close();
+ }
  stage='previo-restored-adapter-offline';
  const query={arrival:'2026-10-23',departure:'2026-10-25',cabin:'deluxe'};
  const rootPms=SARBERKI_PROFILE.bookingProvider.root, hotelId=SARBERKI_PROFILE.bookingProvider.hotelId;
@@ -117,12 +120,12 @@ try{
   else json={success:true,html:free===null?'missing count':'<div data-numOfFreeRooms="'+free+'">'};
   return {ok:true,status:200,url:String(url),headers:new Headers(),text:async()=>text,json:async()=>json};
  };
- const adapter=createReadOnlyPmsAdapter({id:'previo-recovery-fixture',tenantId:'sarberki',fetchAvailability:q=>fetchPublicBookingAvailability(q,fake),fetchQuote:()=>{throw Error('not used');}});
+ const adapter=createReadOnlyPmsAdapter({id:'previo-recovery-fixture',tenantId:'sarberki',fetchAvailability:async q=>({...await fetchPublicBookingAvailability(q,fake),checkedAt:new Date(Date.now()-1000).toISOString()}),fetchQuote:()=>{throw Error('not used');}});
  const good=await adapter.getVerifiedAvailability(query,{tenantId:'sarberki'});assert.equal(good.status,'AVAILABLE');assert.equal(good.availableUnits,2);
  free=0;assert.equal((await adapter.getVerifiedAvailability(query,{tenantId:'sarberki'})).status,'UNAVAILABLE');
  free=null;const unknown=await adapter.getVerifiedAvailability(query,{tenantId:'sarberki'});assert.equal(unknown.status,'UNKNOWN');assert.equal(unknown.availableUnits,null);
  assert.ok(network.every(x=>['/','/index/get-object-kind-occupancy/'].includes(x.path)));assert.equal(adapter.capabilities.createBooking,false);
  report.previo_restored_http_parser_and_unknown_not_zero='PASS_SYNTHETIC_HTTP_ONLY';report.previo_live='NOT_RUN_SIDE_EFFECT_SAFETY_NOT_VERIFIED';
  report.completed=true;
-}catch(error){report.completed=false;report.failed_stage=stage;report.failure_class=error.name;process.exitCode=1;}
+}catch(error){report.completed=false;report.failed_stage=stage;report.failure_class=error.name;report.failure_detail=error.message;process.exitCode=1;}
 finally{await browser?.close();await new Promise(r=>server.close(r));await mkdir(out,{recursive:true});await writeFile(resolve(out,'NEW-CHECKS.json'),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));}
