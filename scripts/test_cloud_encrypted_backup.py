@@ -58,6 +58,19 @@ class CloudBackupSafety(unittest.TestCase):
             self.assertNotIn('fixture', str(caught.exception))
             self.assertNotIn(supplied, str(caught.exception))
 
+    def test_dashboard_psql_wrapper_and_safe_format_errors(self):
+        uri = 'postgresql://postgres.mojnqizbcaczstguikpv:fixture@aws-0-eu-west-2.pooler.supabase.com:5432/postgres'
+        for value in [uri, "psql '" + uri + "'", '"' + uri + '"', '  ' + uri + '\n']:
+            self.assertEqual(cloud.parse_protected_uri(value)[1], 'fixture')
+        examples = [('fixture', 'SCHEME_MISSING_OR_INVALID'),
+                    (uri.replace('5432', '6543'), 'TRANSACTION_POOLER_PORT_INSTEAD_OF_SESSION_PORT'),
+                    (uri.replace('aws-0-eu-west-2.pooler.supabase.com', 'db.mojnqizbcaczstguikpv.supabase.co'), 'DIRECT_ENDPOINT_INSTEAD_OF_SESSION_POOLER')]
+        for value, reason in examples:
+            with self.assertRaises(cloud.BackupConfigurationError) as caught:
+                cloud.parse_protected_uri(value)
+            self.assertIn(reason, str(caught.exception))
+            self.assertNotIn('fixture', str(caught.exception))
+
     def test_failed_and_oversized_export_rejected(self):
         with self.assertRaises(RuntimeError):
             cloud.bounded([sys.executable, '-c', "print('partial');raise SystemExit(1)"], dict(os.environ))

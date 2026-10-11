@@ -48,11 +48,35 @@ def parse_protected_uri(value):
     # Split userinfo before URL parsing: raw #/? in a substituted password
     # otherwise become URI delimiters. Pin the entire endpoint independently.
     value = value.strip()
+    # Accept only the exact psql wrapper produced by the dashboard, never run it.
+    if value.startswith('psql '):
+        value = value[5:].strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ('\"', "'"):
+        value = value[1:-1]
     match = re.fullmatch(r'(postgresql|postgres)://([^:]+):(.+)@'
                          r'(aws-\d+-eu-west-2\.pooler\.supabase\.com):5432/postgres'
                          r'(?:\?sslmode=(?:require|verify-full))?', value, re.DOTALL)
     if not match:
-        raise BackupConfigurationError('CONNECTION_FORMAT_INVALID: expected London session pooler URI, port 5432, database postgres.')
+        if not value.startswith(('postgresql://', 'postgres://')):
+            reason = 'SCHEME_MISSING_OR_INVALID'
+        elif '@' not in value:
+            reason = 'CREDENTIAL_OR_ENDPOINT_SEPARATOR_MISSING'
+        else:
+            endpoint = value.rsplit('@', 1)[1]
+            if endpoint.startswith('db.'):
+                reason = 'DIRECT_ENDPOINT_INSTEAD_OF_SESSION_POOLER'
+            elif ':6543/' in endpoint:
+                reason = 'TRANSACTION_POOLER_PORT_INSTEAD_OF_SESSION_PORT'
+            elif '.pooler.supabase.com' in endpoint and '-eu-west-2.' not in endpoint:
+                reason = 'POOLER_REGION_NOT_LONDON'
+            elif not re.match(r'aws-\d+-eu-west-2\.pooler\.supabase\.com:', endpoint):
+                reason = 'POOLER_HOST_FORMAT_INVALID'
+            elif not re.match(r'aws-\d+-eu-west-2\.pooler\.supabase\.com:5432/', endpoint):
+                reason = 'SESSION_PORT_MISSING_OR_INVALID'
+            else:
+                reason = 'DATABASE_PATH_OR_URI_SUFFIX_INVALID'
+        raise BackupConfigurationError('CONNECTION_FORMAT_INVALID: ' + reason)
+
     username = unquote(match[2])
     if username != 'postgres.' + owner.PROJECT:
         raise BackupConfigurationError('CONNECTION_PROJECT_INVALID: protected URI is not for the pinned test project.')
