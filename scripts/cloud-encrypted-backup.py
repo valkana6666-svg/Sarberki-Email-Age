@@ -43,13 +43,19 @@ def bounded(command, env, maximum=LIMIT):
 def source_environment(values):
     values = dict(values)
     if values.get('SARBERKI_BACKUP_DB_URL'):
-        uri = urlsplit(values['SARBERKI_BACKUP_DB_URL'])
-        if uri.scheme not in ('postgres', 'postgresql') or uri.port != 5432 or uri.path != '/postgres':
+        print('BACKUP_STAGE: validate protected URI syntax', flush=True)
+        try:
+            uri = urlsplit(values['SARBERKI_BACKUP_DB_URL'])
+            port = uri.port
+        except ValueError:
+            raise ValueError('Protected connection URI syntax is invalid.') from None
+        if uri.scheme not in ('postgres', 'postgresql') or port != 5432 or uri.path != '/postgres':
             raise ValueError('Expected session-pooler connection.')
         if unquote(uri.username or '') != 'postgres.' + owner.PROJECT:
             raise ValueError('Wrong source project.')
         values['SARBERKI_BACKUP_HOST'] = uri.hostname or ''
         values['SARBERKI_BACKUP_DB_PASSWORD'] = unquote(uri.password or '')
+    print('BACKUP_STAGE: validate pinned London pooler host', flush=True)
     config = owner.connection(values.get('SARBERKI_BACKUP_HOST', ''), 'postgres.' + owner.PROJECT)
     password = values.get('SARBERKI_BACKUP_DB_PASSWORD', '')
     if not password:
@@ -96,6 +102,7 @@ def export(output):
     print('BACKUP_STAGE: parse protected connection settings', flush=True)
     values = dict(os.environ)
     env = source_environment(values)
+    print('BACKUP_STAGE: validate protected encryption configuration', flush=True)
     fingerprint = values.get('SARBERKI_BACKUP_GPG_FINGERPRINT', '').upper()
     public_key = values.get('SARBERKI_BACKUP_GPG_PUBLIC_KEY', '')
     passphrase = values.get('SARBERKI_BACKUP_ENCRYPTION_PASSPHRASE', '') or values.get('SARBERKI_BACKUP_PASSPHRASE', '')
@@ -106,6 +113,7 @@ def export(output):
         raise ValueError('Missing verified full public-key fingerprint.')
     if not passphrase and ('-----BEGIN PGP PUBLIC KEY BLOCK-----' not in public_key or 'PRIVATE KEY' in public_key):
         raise ValueError('An armored public key is required; private keys are forbidden.')
+    print('BACKUP_STAGE: validate output location', flush=True)
     if output.exists():
         raise ValueError('A fresh output directory is required.')
     if any((p / '.git').exists() for p in (output.resolve(), *output.resolve().parents)):
