@@ -1,4 +1,5 @@
 import {buildCentralReply} from './central-reply.mjs';
+import {reconcileIncomingReply} from './shared-core/case-reply-reconcile.mjs';
 import {SARBERKI_TENANT} from './tenant-config.mjs';
 import {stageFacts} from './booking-filter.mjs';
 import {phoneFromText, requestFlagsFromText, activeMessageText, cabinFromText, cabinClarificationRequired} from './sarberki-core.mjs?v=20261007-e2e1';
@@ -159,4 +160,13 @@ export function deriveCaseView(state, baseReview={warning_codes:[],issues:[]}) {
   const draft=buildCentralReply({caseId,language:lang,name:v.name,original:state.original,arrival:v.arrival,departure:v.departure,guests,adults,children,childAges:ages,phone:v.phone,cabin:v.unit||'? – emberi döntésre vár',hotTub:h.requested,intent:state.intent,brandName:BUSINESS.brandName,bookingRules:rules,operationalRules:BUSINESS.operationalRules,pricingRules:BUSINESS.pricingRules,knowledgeLines:fishing?[fishing.answer]:[],caseContext:{priceLines,bookingLines,extraLines,availabilityLines,priceApproved:Boolean(q)}},{records});
   const summary=`${v.arrival||'?'} – ${v.departure||'?'}; ${v.nights||'?'} éjszaka; ${guests??'?'} fő; felnőtt: ${adults??'?'}; gyermek: ${children??'?'}${ages.length?' ('+ages.join(', ')+' éves)':''}; ${v.unit||'háztípus nincs megadva'}${cars!=null?'; Parkolás: '+cars+' autó – adat megadva':''}${q?'; Ár ellenőrizve':''}.`;
   return {draft,summary,missing,warnings,closeArrival,untilArrival,critical:Boolean(baseReview.critical)||warnings.some(x=>['fact_conflict','availability_unverified','close_arrival','deposit_review','deposit_basis_review','cancellation_terms_review','cabin_type_required'].includes(x.code)),priceStatus:q?'Ár ellenőrizve':'Ár nincs jóváhagyva'};
+}
+
+// Optional, fail-closed bridge from a verified reply to the existing case state.
+// The caller must extract facts from the current message, not quoted history.
+export function applyIncomingCaseReply(state,{conversation={},incoming={},incomingFacts={}}={}){
+  const result=reconcileIncomingReply({conversation,incoming,previousFacts:state.values,incomingFacts});
+  if(result.requiresHumanReview)return {state,result,applied:false};
+  if(!Object.keys(result.updates).length)return {state,result,applied:false};
+  return {state:updateCaseState(state,{type:'facts',values:result.updates}),result,applied:true};
 }
