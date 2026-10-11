@@ -30,7 +30,7 @@ Az ismeretlen kapacitás UI státuszára vonatkozó utolsó böngészőassertion
 
 Élő Previo-t nem hívtunk: a keresési POST kérések mellékhatás-mentességéhez nincs új, külső igazolás. Szintetikus HTTP-válaszokkal a tényleges visszaállított Previo-parser és adapter működött: 2 szabad egység AVAILABLE, 0 UNAVAILABLE, hiányzó kapacitás UNKNOWN és `availableUnits=null`. Az adapter foglaláslétrehozást/módosítást/törlést nem enged.
 
-A szintetikus adapter-bizonyíték időbélyegét 1 másodperccel múltba állítottuk, hogy a rögzített ellenőrzési időhöz tartozzon. A jelenlegi adapter alapértelmezett `now` értéke a hálózati válasz előtt készül; a későbbi friss időbélyeg ezért UNKNOWN eredményt is okozhat. Ez nem téves szabad kapacitást ad, de élő használat előtt külön javítás/vizsgálat szükséges. Vendégajánlat csak friss, egyértelmű és megfelelő típusra/dátumra érvényes AVAILABLE bizonyíték alapján engedhető.
+A korábbi szintetikus adapter-bizonyíték időbélyegét 1 másodperccel múltba állítottuk. A folytatásban az időbélyeg-regressziót célzott teszttel reprodukáltuk: a válasz előtt rögzített alapértelmezett `now` miatt a később érkező friss bizonyíték UNKNOWN lett. A `40d206b60417e5b558bd64658b613d2406d1b52d` javítás a provider válasza után rögzíti az alapértelmezett ellenőrzési időt. Az explicit `now` változatlanul pontos referencia. A két új offline teszt sikeres; jövőbeli, lejárt és hibás adat UNKNOWN marad, az igazolt nulla UNAVAILABLE. Élő Previo-ellenőrzés továbbra sem történt. Vendégajánlat csak friss, egyértelmű és megfelelő típusra/dátumra érvényes AVAILABLE bizonyíték alapján engedhető.
 
 ## Pontos hiányleltár
 
@@ -60,3 +60,11 @@ A szintetikus adapter-bizonyíték időbélyegét 1 másodperccel múltba állí
 ## Felhasználói közreműködés
 
 Az eredeti laptop titkosított exportja, a szolgáltatói adminisztrációs konfigurációk biztonságos exportja/olvasási hozzáférése és a külön őrzött mentési jelmondat meglétének ellenőrzése szükséges. Jelmondatot, tokent vagy kulcsot ne küldj beszélgetésben. Jelen munkához nincs további jóváhagyási kérés; a hiányzó hozzáféréseket nem lehet a forrásból kikövetkeztetni.
+
+## Folytatás: PMS-időbélyeg javítása
+
+- Tesztági javítás: `40d206b60417e5b558bd64658b613d2406d1b52d`.
+- Új célzott teszt: `tests/pms-response-clock.test.mjs`; eredeti kódon 1 PASS / 1 FAIL, javítás után 2 PASS / 0 FAIL.
+- Csak a két új, szintetikus, hálózatmentes ellenőrzés futott. A korábban sikeres suite-ok nem ismétlődtek; teljes regressziót és deploy-ellenőrzést ebben a folytatásban nem állítunk.
+- A korábbi ZIP ettől nem frissült. A javítás tesztágon megőrzött forrás; új csomag vagy teljes csomagtitkosítás ebben a folytatásban nem készült.
+- Teljes visszaállítás továbbra sem igazolt: a hitelesített UI jóváhagyás tartós állapot/audit útja, az eredeti laptop exportja, szolgáltatói konfigurációk és a külön megőrzött jelmondat igazolása még hiányzik.
