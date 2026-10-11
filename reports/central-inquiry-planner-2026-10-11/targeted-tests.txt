@@ -1,0 +1,32 @@
+✔ Gmail and chat envelopes yield identical central facts and decisions in four languages (57.997127ms)
+✔ missing accommodation, inferred year, adults zero and party contradiction never become ready (2.627302ms)
+✔ current exact selected capacity permits internal decision; missing, stale, wrong tenant/party/units do not (5.750209ms)
+✔ split pool rules stay shared: A+C allowed without adjacency, exact physical pairing not inferred (24.485221ms)
+✔ only approved, full-stay party-bound components are totalled after selected capacity (3.12538ms)
+✔ evaluation never mutates caller facts, capacity or price proof (0.483836ms)
+✔ chatbot inquiry preview extracts a dated synthetic family inquiry safely (37.684598ms)
+✔ chatbot preview does not invent a date or availability for undated request (20.089144ms)
+✔ general informational FAQ does not become a capacity request (2.349886ms)
+✔ empty chat input remains safe and unparsed (0.130296ms)
+✔ email/chat decision and pending safety are identical in hu (54.06111ms)
+✔ email/chat decision and pending safety are identical in de (10.078924ms)
+✔ email/chat decision and pending safety are identical in en (1.144768ms)
+✔ email/chat decision and pending safety are identical in si (16.053248ms)
+✔ chat remembers known dates and cabin without asking again, reset clears isolated memory (8.355769ms)
+✔ two chats cannot leak retained facts and input bounds fail closed (1.101283ms)
+✔ Hungarian ISO dates and separate child-age turn preserve all already known data (4.165059ms)
+✔ separate sibling-age turns fill outstanding ages using the existing booking merge (2.050767ms)
+✔ changed child count clears stale ages and recalculates known total, while explicit contradictory total remains flagged (3.168073ms)
+✔ Hungarian conjunction before a party count cannot manufacture departure date (0.71269ms)
+✔ planner has no default provider and missing data never calls supplied providers (14.51506ms)
+✔ source failure or unknown evidence prevents pricing; verified source enables bound price (4.994585ms)
+✔ capacity expiring while awaiting either provider fails closed (1.316045ms)
+✔ actual email and chat adapters preserve verified capacity and price decisions in all languages (16.505578ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 200.360363

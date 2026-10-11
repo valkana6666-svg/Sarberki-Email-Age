@@ -17,8 +17,12 @@ Négy nyelvű (HU, DE, EN, SI) tájékoztató chatbot a Sárberki Horgásztó ve
 - A dézsa külön bérelhető, külön díj ellenében.
 - A fejlesztés kizárólag a `gmail-test-subject-allowlist` ágon történhet; main/production érintetlen.
 
+## Közös választervező és beszélgetési teszt
+
+A helyi `index.html` a `chat-session.mjs` adaptert használja, amely a már megadott adatokat memóriában megőrzi. Az „Új tesztbeszélgetés” törli a munkamenetet. Az `inquiry-preview.mjs` is a közös döntési modulból dolgozik. A közös e-mail/chat adapterek és korlátok: [CENTRAL-INQUIRY-PLANNER.md](../docs/CENTRAL-INQUIRY-PLANNER.md).
+
 ## Következő feladatok
-1. Elkülönített, nem publikus chatbot tesztfelület.
+1. Tartós, hitelesített HTTPS tesztfelület és valódi böngészős ellenőrzés. A helyi felület nem igazol publikus vagy iPhone-os használhatóságot.
 2. Közös tudásforrás és pontos kérdés-válasz szándékfelismerés bővítése.
 3. Külön tesztadatokkal végponttól végpontig történő ellenőrzés.
 4. Csak később: kapacitáslekérdezés biztonságos integrációja, kezelői jóváhagyás, éles bevezetés.

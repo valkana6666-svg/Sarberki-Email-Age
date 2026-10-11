@@ -29,10 +29,13 @@ small{color:#53645a}
 <label for="question">Kérdés / Question</label>
 <textarea id="question" rows="3" maxlength="1000" required placeholder="Például: Van dézsa?"></textarea>
 <button type="submit">Válasz tesztelése</button>
+<button type="button" id="resetChat">Új tesztbeszélgetés</button>
 </form>
 </main>
 <script type="module">
 import {chatbotReply} from '../chatbot-v1.mjs';
+import {createChatInquirySession} from './chat-session.mjs';
+const session=createChatInquirySession();
 const log=document.getElementById('conversation');
 const input=document.getElementById('question');
 const language=document.getElementById('language');
@@ -47,9 +50,11 @@ document.getElementById('chatForm').addEventListener('submit',event=>{
  event.preventDefault();
  const question=input.value.trim();if(!question)return;
  append('Tesztkérdés',question);
- const result=chatbotReply({message:question,language:language.value});
- append('Sárberki',result.reply);input.value='';
+ try{const result=session.reply(question,{language:language.value});append('Sárberki',result.text);}
+ catch{append('Sárberki','A tesztbeszélgetés korlátját elérte. Indítson új tesztbeszélgetést.');}
+ input.value='';
 });
+document.getElementById('resetChat').addEventListener('click',()=>{session.reset();log.replaceChildren();append('Sárberki',chatbotReply({language:language.value}).reply);});
 language.addEventListener('change',()=>append('Sárberki',chatbotReply({language:language.value}).reply));
 </script>
 </body>

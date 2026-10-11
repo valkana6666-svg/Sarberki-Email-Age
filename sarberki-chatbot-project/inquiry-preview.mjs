@@ -1,23 +1,18 @@
 // Chatbot inquiry extraction reuses the existing central normalization rules.
 // This module never checks capacity, prices, PMS data, or sends messages.
-import {normalizeInquiryInput} from '../intake-normalize.mjs';
+import {buildChatInquiryReply} from '../shared-core/inquiry-channel-adapters.mjs';
 import {chatbotReply} from '../chatbot-v1.mjs';
 
 export function chatbotInquiryPreview({message='',language='hu',now=new Date()}={}){
  const response=chatbotReply({message,language});
  const raw=String(message||'').trim();
  if(!raw)return {response,extracted:null,missing:[],readyForCapacityCheck:false};
- const envelope=normalizeInquiryInput({sourceChannel:'web_form',rawText:raw,now});
- const n=envelope.normalized;
+ const {decision,text}=buildChatInquiryReply({message:raw,language,now});
+ const n=decision.facts;
  const dates=n.dates||null;
- const adults=Number.isInteger(n.adults)&&n.adults>=0?n.adults:null;
- const children=Number.isInteger(n.children)&&n.children>=0?n.children:null;
- const missing=[];
- if(response.intent==='availability'){
-  if(!dates?.arrival||!dates?.departure)missing.push('dates');
-  if(adults===null||children===null)missing.push('adult_child_breakdown');
-  if(children>0&&(!Array.isArray(n.child_ages)||n.child_ages.length!==children))missing.push('child_ages');
- }
+ const adults=n.adults,children=n.children;
+ const missing=response.intent==='availability'?[...decision.missing]:[];
+ if(response.intent==='availability')response.reply=text;
  return {
   response,
   extracted:{
@@ -28,7 +23,8 @@ export function chatbotInquiryPreview({message='',language='hu',now=new Date()}=
    splitRequest:n.split_request||null
   },
   missing,
-  readyForCapacityCheck:response.intent==='availability'&&missing.length===0,
+  readyForCapacityCheck:response.intent==='availability'&&decision.readyForCapacityCheck,
+  decision,
   capacityChecked:false,
   bookingCreated:false
  };
