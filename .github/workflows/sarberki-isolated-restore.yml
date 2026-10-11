@@ -33,6 +33,19 @@ jobs:
         with:
           persist-credentials: false
       - run: apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 gnupg ca-certificates
+      - name: Install matching public Vault extension in isolated service
+        env:
+          ISOLATED_SERVICE_ID: ${{ job.services.postgres.id }}
+        run: |
+          apt-get install -y -qq --no-install-recommends docker.io
+          docker exec "$ISOLATED_SERVICE_ID" sh -ec '
+            apt-get update -qq
+            apt-get install -y -qq --no-install-recommends ca-certificates curl make gcc postgresql-server-dev-17 libsodium-dev
+            mkdir /tmp/vault-build
+            curl -fsSL https://github.com/supabase/vault/archive/6e0cd916242d922a646e4d611cc215e09dd429f4.tar.gz | tar -xz --strip-components=1 -C /tmp/vault-build
+            cd /tmp/vault-build
+            make && make install
+          '
       - uses: actions/download-artifact@v4
         with:
           name: sarberki-test-encrypted-38127744637
