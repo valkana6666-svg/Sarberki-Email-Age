@@ -99,6 +99,15 @@ def main():
             if len(attrs)!=1: raise RuntimeError('OWNER_ATTRIBUTES_MISSING')
             sql(attrs[0])
         report['event_owner_original_attributes_reapplied']='PASS'
+        if os.environ.get('SARBERKI_RESTORE_SETUP_ONLY') == 'runtime-resume-20261011':
+            if report['full_restore'] != 'PASS':
+                raise RuntimeError('RUNTIME_REQUIRES_COMPLETE_RESTORE')
+            # Required disposable environment setup, not a repeat of the
+            # successful 43-table/RLS/CAS verification in run 38129512850.
+            report['verified_scope']='setup only; earlier full verification not repeated'
+            report['prior_verified_restore_run']=38129512850
+            report['successful_tests_repeated']=False
+            return
         restored=json.loads(sql((ROOT/'case-store-recovery-manifest.sql').read_text()))
         comparisons={k:restored.get(k)==v for k,v in baseline.items()}
         report['case_manifest_fields']=comparisons

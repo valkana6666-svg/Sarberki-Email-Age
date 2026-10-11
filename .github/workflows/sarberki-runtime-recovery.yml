@@ -10,7 +10,7 @@ permissions:
   actions: read
 jobs:
   restore:
-    if: github.ref == 'refs/heads/gmail-test-subject-allowlist' && contains(github.event.head_commit.message, '[sarberki-runtime-once-20261011]')
+    if: github.ref == 'refs/heads/gmail-test-subject-allowlist' && contains(github.event.head_commit.message, '[sarberki-runtime-resume-20261011]')
     runs-on: ubuntu-24.04
     container: postgres:17-bookworm
     timeout-minutes: 20
@@ -58,6 +58,7 @@ jobs:
       - name: Restore existing ciphertext into isolated database only
         env:
           SARBERKI_KEEP_ISOLATED_DB: runtime-test
+          SARBERKI_RESTORE_SETUP_ONLY: runtime-resume-20261011
           SARBERKI_BACKUP_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_PASSPHRASE }}
         run: python3 scripts/verify-isolated-restore.py
       - name: Start isolated Auth and REST API services
@@ -69,8 +70,11 @@ jobs:
           from pathlib import Path
           os.umask(0o077)
           key=secrets.token_hex(32)
+          # Restore-only login credentials: never connected to the source project.
+          import subprocess
+          subprocess.run(['psql','-X','-w','-qAt','-v','ON_ERROR_STOP=1','-d','sc_restore','-c',"ALTER ROLE supabase_auth_admin PASSWORD 'ephemeral-isolated-test-only';"],check=True,capture_output=True)
           Path('/tmp/runtime-jwt-secret').write_text(key)
-          auth={'GOTRUE_API_HOST':'0.0.0.0','GOTRUE_API_PORT':'9999','API_EXTERNAL_URL':'http://auth:9999','GOTRUE_SITE_URL':'http://localhost:3000','GOTRUE_DB_DRIVER':'postgres','GOTRUE_DB_DATABASE_URL':'postgres://restore_admin:ephemeral-isolated-test-only@postgres:5432/sc_restore','GOTRUE_JWT_SECRET':key,'GOTRUE_JWT_EXP':'3600','GOTRUE_JWT_AUD':'authenticated','GOTRUE_JWT_DEFAULT_GROUP_NAME':'authenticated','GOTRUE_JWT_ADMIN_ROLES':'service_role','GOTRUE_EXTERNAL_EMAIL_ENABLED':'true','GOTRUE_MAILER_AUTOCONFIRM':'true','GOTRUE_DISABLE_SIGNUP':'true'}
+          auth={'GOTRUE_API_HOST':'0.0.0.0','GOTRUE_API_PORT':'9999','API_EXTERNAL_URL':'http://auth:9999','GOTRUE_SITE_URL':'http://localhost:3000','GOTRUE_DB_DRIVER':'postgres','GOTRUE_DB_DATABASE_URL':'postgres://supabase_auth_admin:ephemeral-isolated-test-only@postgres:5432/sc_restore?search_path=auth','GOTRUE_DB_NAMESPACE':'auth','GOTRUE_JWT_SECRET':key,'GOTRUE_JWT_EXP':'3600','GOTRUE_JWT_AUD':'authenticated','GOTRUE_JWT_DEFAULT_GROUP_NAME':'authenticated','GOTRUE_JWT_ADMIN_ROLES':'service_role','GOTRUE_EXTERNAL_EMAIL_ENABLED':'true','GOTRUE_MAILER_AUTOCONFIRM':'true','GOTRUE_DISABLE_SIGNUP':'true'}
           rest={'PGRST_DB_URI':'postgres://restore_admin:ephemeral-isolated-test-only@postgres:5432/sc_restore','PGRST_DB_SCHEMAS':'public','PGRST_DB_ANON_ROLE':'anon','PGRST_JWT_SECRET':key,'PGRST_DB_EXTRA_SEARCH_PATH':'public,extensions'}
           for name,values in [('auth',auth),('rest',rest)]: Path('/tmp/runtime-'+name+'.env').write_text(''.join(k+'='+v+'\n' for k,v in values.items()))
           PYENV

@@ -15,8 +15,14 @@ try{
  const secret=readFileSync('/tmp/runtime-jwt-secret','utf8');
  const jwt=role=>{const header=Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url'),body=Buffer.from(JSON.stringify({role,aud:'authenticated',iss:'supabase',iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+3600})).toString('base64url');return header+'.'+body+'.'+createHmac('sha256',secret).update(header+'.'+body).digest('base64url');};
  const admin=jwt('service_role'),anon=jwt('anon'),password=randomBytes(32).toString('base64url');
- for(let i=0;i<60;i++){try{const r=await fetch('http://auth:9999/health');if(r.ok)break;}catch{}await new Promise(r=>setTimeout(r,1000));}
- async function user(email){const r=await fetch('http://auth:9999/admin/users',{method:'POST',headers:{Authorization:'Bearer '+admin,'Content-Type':'application/json'},body:JSON.stringify({email,password,email_confirm:true})});if(!r.ok)throw Error('provision');const u=await r.json();assert.match(u.id,/^[a-f0-9-]{36}$/);return u.id;}
+ async function ready(url,label){
+  stage=label;
+  for(let i=0;i<40;i++){try{const r=await fetch(url,{signal:AbortSignal.timeout(1500)});if(r.ok)return;}catch{}await new Promise(r=>setTimeout(r,1000));}
+  throw Error('ISOLATED_SERVICE_NOT_READY');
+ }
+ await step('auth_service_ready',()=>ready('http://auth:9999/health','auth_service_ready'));
+ await step('rest_service_ready',()=>ready('http://rest:3000/','rest_service_ready'));
+ async function user(email){const r=await fetch('http://auth:9999/admin/users',{method:'POST',headers:{Authorization:'Bearer '+admin,'Content-Type':'application/json'},body:JSON.stringify({email,password,email_confirm:true})});if(!r.ok){report.provision_http_status=r.status;throw Error('provision');}const u=await r.json();assert.match(u.id,/^[a-f0-9-]{36}$/);return u.id;}
  const writer=await step('isolated_auth_user_provision',()=>user('restore-writer@synthetic.invalid'));
  const approver=await user('restore-approver@synthetic.invalid');
  sql(`insert into public.sc_memberships(tenant_id,user_id,can_read,can_write,can_approve) values ('sarberki-test','${writer}',true,true,false),('sarberki-test','${approver}',true,true,true);`);
@@ -41,7 +47,7 @@ try{
  await step('cross_tenant_access_denied',()=>assert.rejects(service.listCases({requestContext:{},tenantId:'demo-test'}),e=>e.code==='FORBIDDEN'));
  await step('duplicate_message_keeps_single_case',async()=>{const duplicate=await runtime.ingest(envelope,undefined,{expectedRevision:0});assert.equal(duplicate.resolution.status,'duplicate');assert.equal(duplicate.record.caseId,first.record.caseId);});
  stage='restart';execFileSync('docker',['restart',process.env.ISOLATED_AUTH_CONTAINER,process.env.ISOLATED_REST_CONTAINER],{stdio:['ignore','pipe','pipe']});
- for(let i=0;i<40;i++){try{const r=await fetch('http://auth:9999/health');if(r.ok)break;}catch{}await new Promise(r=>setTimeout(r,1000));}
+ await ready('http://auth:9999/health','restart_auth_ready');await ready('http://rest:3000/','restart_rest_ready');
  const refreshed=await login('restore-writer@synthetic.invalid');
  await step('restart_new_login_case_and_draft_preserved',async()=>{const restarted=await client(refreshed).getCase({requestContext:{},tenantId:'sarberki-test',caseId:first.record.caseId});assert.equal(restarted.revision,2);assert.deepEqual(restarted.data,reviewed.record.data);});
  report.send_email='NEVER_CALLED';report.booking_creation='NEVER_CALLED';report.completed=true;
