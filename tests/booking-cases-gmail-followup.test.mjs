@@ -59,3 +59,11 @@ test('new linked guest reply revokes earlier internal approval even without chan
  assert.equal(reply.bookingCase.state.approval,'pending');
  assert.ok(reply.bookingCase.events.some(event=>event.type==='Jóváhagyás érvénytelenítve; új vendégválasz érkezett'));
 });
+
+test('same message ID from another sender is rejected without leaking the first case',()=>{
+ const store=make();
+ store.ingest(msg('collision','thread-1','Első vendég'),{arrival:'2026-11-13'},{intent:'booking_request'});
+ assert.throws(()=>store.ingest(msg('collision','thread-2','Második vendég',{sender:'other@example.test'}),{unit:'VIP'},{intent:'booking_request'}),/eltérő feladó/);
+ assert.equal(store.list().length,1);
+ assert.equal(store.list()[0].state.values.unit,undefined);
+});
