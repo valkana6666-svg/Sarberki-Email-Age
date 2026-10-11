@@ -43,6 +43,10 @@ try{
  const drafted=await call(wt,{action:'review-draft',caseId:first.record.caseId,expectedRevision:1});assert.equal(drafted.review.status,'internal_review_required');
  const id=first.record.caseId,hash=createHash('sha256').update(drafted.record.data.drafts.at(-1).text).digest('hex');
  const input={action:'approve',caseId:id,expectedRevision:2,reviewedDraftHash:hash};
+ if(process.env.ISOLATED_APPROVAL_MODE==='browser'){
+  const {runBrowserApprovalChain}=await import('./isolated-browser-approval.mjs');
+  await runBrowserApprovalChain({handlerFactory:()=>createCaseHandler({env,fetchImpl:isolatedFetch,isolatedApproval:true,reviewProviders}),auth,rest,sql,sign,password,id,approver,call,wt,setCapacity:value=>{capacity=value;},ready,step});
+ }else{
  const unchanged=()=>{assert.equal(sql(`select revision from sc_cases where case_id='${id}';`),'2');assert.equal(sql("select count(*) from sc_audit where kind='approve_isolated_synthetic';"),'0');};
  await step('real_auth_writer_and_cross_tenant_denied',async()=>{await call(wt,input,403);await call(ft,input,403);unchanged();});
  await step('real_auth_expired_and_tampered_jwt_denied',async()=>{
@@ -74,6 +78,7 @@ try{
   execFileSync('docker',['restart',container,process.env.ISOLATED_APPROVAL_AUTH,process.env.ISOLATED_APPROVAL_REST],{stdio:['ignore','pipe','pipe']});await ready(auth+'/health');await ready(rest+'/');
   const newToken=await login('approval-operator@synthetic.invalid');const r=await handler({httpMethod:'GET',headers:{authorization:'Bearer '+newToken},queryStringParameters:{tenantId:'sarberki-test',caseId:id}});assert.equal(r.statusCode,200);const restored=JSON.parse(r.body).result;assert.equal(restored.revision,3);assert.deepEqual(restored.data,approved.data);assert.equal(sql("select count(*) from sc_audit where kind='approve_isolated_synthetic';"),'1');
  });
+ }
  report.approval_scope='ISOLATED_SYNTHETIC_REVIEW_NOT_LIVE_GUEST_OFFER';report.completed=true;
 }catch(error){
  report.completed=false;report.failed_stage=stage;report.failure_class=error.name;

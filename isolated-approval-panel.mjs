@@ -51,6 +51,9 @@ export function initIsolatedApprovalPanel({
   request,isolatedApproval:true,approvalTarget
  });
  const bridge=createIsolatedApprovalReview({client,enabled:true,cryptoProvider});
+ documentRef.addEventListener?.('isolated-approval-session-changed',()=>{
+  reset();message('Munkamenet változott. Új hitelesített betöltés szükséges.');
+ });
  const clearOnChange=()=>{
   if(!busy){reset();message('Az ügyazonosító megváltozott. Új betöltés szükséges.');}
  };

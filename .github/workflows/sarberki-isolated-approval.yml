@@ -5,11 +5,12 @@ on:
     paths:
       - .github/workflows/sarberki-isolated-approval.yml
       - scripts/isolated-approval-chain.mjs
+      - scripts/isolated-browser-approval.mjs
 permissions:
   contents: read
 jobs:
   approval:
-    if: github.ref == 'refs/heads/gmail-test-subject-allowlist' && contains(github.event.head_commit.message, '[sarberki-approval-once-20261011]')
+    if: github.ref == 'refs/heads/gmail-test-subject-allowlist' && (contains(github.event.head_commit.message, '[sarberki-approval-once-20261011]') || contains(github.event.head_commit.message, '[sarberki-browser-approval-20261011]'))
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
@@ -19,6 +20,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install browser for new integration only
+        if: contains(github.event.head_commit.message, '[sarberki-browser-approval-20261011]')
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
       - name: New empty PostgreSQL and Auth only; no source or backup secrets
         run: |
           docker network create "sarberki-approval-$GITHUB_RUN_ID"
@@ -58,6 +64,7 @@ jobs:
           docker run -d --name "sarberki-approval-rest-$GITHUB_RUN_ID" --network "sarberki-approval-$GITHUB_RUN_ID" -p 127.0.0.1:18300:3000 --env-file /tmp/approval-rest.env postgrest/postgrest:v14.17
       - name: Only new actual Auth approval and restart checks
         env:
+          ISOLATED_APPROVAL_MODE: ${{ contains(github.event.head_commit.message, '[sarberki-browser-approval-20261011]') && 'browser' || 'api' }}
           ISOLATED_APPROVAL_POSTGRES: sarberki-approval-pg-${{ github.run_id }}
           ISOLATED_APPROVAL_AUTH: sarberki-approval-auth-${{ github.run_id }}
           ISOLATED_APPROVAL_REST: sarberki-approval-rest-${{ github.run_id }}

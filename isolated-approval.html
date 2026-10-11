@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="hu"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sárberki – elkülönített jóváhagyási próba</title>
+<body><main>
+<h1>Elkülönített szintetikus jóváhagyás</h1>
+<p>Csak tesztügyek belső jóváhagyása. A művelet nem küld levelet és nem hoz létre foglalást.</p>
+<form id="login"><label>Operátor e-mail <input id="email" type="email" required autocomplete="off"></label>
+<label>Jelszó <input id="password" type="password" required autocomplete="off"></label>
+<button id="signin">Bejelentkezés</button></form><button id="logout" disabled>Kijelentkezés</button>
+<p id="auth_status" role="status">Kikapcsolva.</p>
+<fieldset id="workspace" disabled><legend>Tárolt tervezet</legend>
+<label>Ügyazonosító <input id="isolated_approval_case_id"></label>
+<button id="isolated_approval_load">Tervezet betöltése</button>
+<label>Aktuális tárolt verzió <input id="isolated_approval_revision" readonly></label>
+<label>Átnézendő tervezet <textarea id="isolated_approval_text" rows="14" cols="80" readonly></textarea></label>
+<label><input id="isolated_approval_confirm" type="checkbox">Ezt a tárolt tervezetet elolvastam és jóváhagyom.</label>
+<button id="isolated_approval_submit" disabled>Belső jóváhagyás mentése</button>
+<p id="isolated_approval_status" role="status"></p>
+<button id="readback">Tárolt állapot és audit visszaolvasása</button><pre id="readback_status" role="status"></pre>
+</fieldset></main><script type="module" src="./isolated-approval-session.mjs"></script></body></html>
