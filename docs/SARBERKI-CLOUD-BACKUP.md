@@ -36,3 +36,7 @@ A felhős visszafejtés-ellenőrzés még nem SQL restore. Külön, izolált Sup
 Ha az offline-safety job zöld és az export job skipped, nem készült mentés. A teljes mentés/visszaállítás csak konkrét fájl, bájtméret, checksum, tartós visszaolvasás és izolált restore bizonyítékával jelenthető késznek.
 
 Hivatalos forrás: https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore
+
+## Egyszeri futási kérelem
+
+2026-10-11: a felhős offline mentési tesztek 7/7 sikeresek, a tesztági CI sikeres. A projektgazda kérésére egyszeri exportindítás következik; ha a védett beállítások vagy a SARBERKI_BACKUP_ENABLED=yes hiányzik, mentés nem készül. A kérelem nem bizonyít mentési fájlt vagy visszaállítást.
