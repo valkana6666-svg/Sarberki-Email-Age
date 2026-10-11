@@ -109,6 +109,14 @@ def main():
         # canonicalized in memory; no tokens/password hashes reach output.
         original=run(['pg_restore','--data-only','--file=-',str(dump)]).stdout
         actual=run(['pg_dump','--data-only','--format=plain','--dbname=sc_restore']).stdout
+        report['restored_server_version']=sql('show server_version;').decode().strip()
+        report['extensions']=json.loads(sql("select json_agg(x order by extname) from (select extname,extversion from pg_extension) x;"))
+        def sequences(data):
+            return sorted(re.findall(rb'(?m)^SELECT pg_catalog.setval\([^\n]+;',data))
+        report['sequence_values_equal']=sequences(original)==sequences(actual)
+        current_roles=run(['pg_dumpall','--roles-only','--no-role-passwords']).stdout.decode()
+        source_attrs=re.findall(r'(?m)^ALTER ROLE \S+ WITH [^\n]+;',plain['roles.sql.gpg'].decode())
+        report['all_source_role_attributes_equal']=all(line in current_roles.splitlines() for line in source_attrs)
         def copies(data):
             chunks={}
             for m in re.finditer(rb'(?m)^COPY ([^\n]+) FROM stdin;\n(.*?)^\\\.\n',data,re.S|re.M):
@@ -127,7 +135,7 @@ def main():
         # All roles must exist with identical attributes, as roles SQL restored
         # with ON_ERROR_STOP and without replacing source role passwords.
         report['role_passwords']='NOT_INCLUDED_MUST_REPROVISION'
-        if report['case_manifest']!='PASS' or not report['all_table_copy_payloads_equal']:
+        if report['case_manifest']!='PASS' or not report['all_table_copy_payloads_equal'] or not report['sequence_values_equal'] or not report['all_source_role_attributes_equal'] or not report['manifest_after_rollback_equal']:
             raise RuntimeError('RESTORED_CONTENT_MISMATCH')
         report['verified_scope']='actual SQL restore; table data; case schema/RLS definitions/grants/functions/audit hashes'
 try:
