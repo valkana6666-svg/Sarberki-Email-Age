@@ -787,7 +787,7 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
       de:'Diese Anfrage ist noch keine bestätigte Buchung. Erst nach Klärung der erforderlichen Angaben und des gewählten Hauses sowie erneuter Verfügbarkeitsprüfung können wir die Buchung bestätigen.',
       en:'This enquiry is not a confirmed booking. We can confirm a booking only after clarifying the required details and selected cabin and rechecking availability.',
       si:'To povpraševanje še ni potrjena rezervacija. Rezervacijo lahko potrdimo šele po uskladitvi potrebnih podatkov in izbrane hiške ter ponovnem preverjanju razpoložljivosti.'
-    }[lang]].join('\\n'));
+    }[lang]].join('\n'));
   }
 
   return `${greetings[lang]}\n\n${intros[lang]}${blocks.length?'\n\n'+blocks.join('\n\n'):''}\n\n${closings[lang]}\n${brandName}`;
