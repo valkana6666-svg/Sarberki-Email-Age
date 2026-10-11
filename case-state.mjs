@@ -39,7 +39,7 @@ export function updateCaseState(state, action) {
     next.values={...next.values,...action.values};
     if(caseFingerprint(state.values)!==caseFingerprint(next.values)) {
       next.quote=null;
-      const capacityFields=['arrival','departure','guests','adults','children','unit','units_requested','request','split_request_text'];
+      const capacityFields=['arrival','departure','guests','adults','children','child_ages','unit','units_requested','request','split_request_text'];
       if(capacityFields.some(k=>String(state.values[k]??'')!==String(next.values[k]??'')))next.availability=null;
       next.hotTub={...next.hotTub,atHouse:hotTubAtHouse(next.values.unit),available:null,fee:null,included:null};
       next.terms={...next.terms,depositVerified:false,cancellationVerified:false,depositAmount:null,depositDeadline:null,cancellationDeadline:null};
