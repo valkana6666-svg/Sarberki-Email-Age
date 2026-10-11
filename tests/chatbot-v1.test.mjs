@@ -28,3 +28,24 @@ test('Slovenian locale alias and unknown language fallback',()=>{
  assert.equal(chatbotReply({language:'sl'}).language,'si');
  assert.equal(chatbotReply({language:'xx'}).language,'hu');
 });
+
+for(const language of ['hu','de','en','si']){
+ test('chatbot fishing and accommodation FAQ in '+language,()=>{
+  const fishing=chatbotReply({message:'fishing',language});
+  assert.equal(fishing.intent,'fishing');
+  assert.ok(fishing.reply.length>40);
+  assert.equal(fishing.bookingCreated,false);
+  const cabins=chatbotReply({message:'Deluxe cabin',language});
+  assert.equal(cabins.intent,'cabins');
+  assert.equal(cabins.availabilityVerified,false);
+  assert.ok(cabins.reply.length>30);
+ });
+}
+test('Hungarian fishing rules and no fabricated availability',()=>{
+ const fishing=chatbotReply({message:'Mik a horgászszabályok?',language:'hu'});
+ assert.match(fishing.reply,/állami horgászjegy/u);
+ assert.match(fishing.reply,/szakáll nélküli/u);
+ const cabins=chatbotReply({message:'Milyen faházak vannak?',language:'hu'});
+ assert.match(cabins.reply,/Családi, VIP, Deluxe/u);
+ assert.match(cabins.reply,/külön ellenőrizzük/u);
+});
