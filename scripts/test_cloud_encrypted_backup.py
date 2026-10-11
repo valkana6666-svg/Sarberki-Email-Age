@@ -38,6 +38,26 @@ class CloudBackupSafety(unittest.TestCase):
             with self.assertRaises(ValueError):
                 cloud.source_environment({'SARBERKI_BACKUP_DB_URL': uri})
 
+    def test_reserved_password_delimiters_and_endpoint_pinning(self):
+        from urllib.parse import quote
+        base = 'postgresql://postgres.mojnqizbcaczstguikpv:'
+        endpoint = '@aws-0-eu-west-2.pooler.supabase.com:5432/postgres'
+        for password in ['fixture#password', 'fixture?password', 'fixture/password',
+                         'fixture@password', 'fixture:password', 'fixture[password]', 'fixture password']:
+            for supplied in [password, quote(password, safe='')]:
+                self.assertEqual(cloud.source_environment({'SARBERKI_BACKUP_DB_URL':
+                    base + supplied + endpoint})['PGPASSWORD'], password)
+        for supplied in [base + 'fixture@attacker.invalid:5432/postgres',
+                         base + 'fixture' + endpoint + '?host=attacker.invalid',
+                         base + '[YOUR-PASSWORD]' + endpoint,
+                         base + 'fixture' + endpoint.replace(':5432/', ':6543/'),
+                         base + 'fixture' + endpoint.replace('eu-west-2', 'eu-west-1'),
+                         base + 'fixture' + endpoint + '#fragment']:
+            with self.assertRaises(cloud.BackupConfigurationError) as caught:
+                cloud.source_environment({'SARBERKI_BACKUP_DB_URL': supplied})
+            self.assertNotIn('fixture', str(caught.exception))
+            self.assertNotIn(supplied, str(caught.exception))
+
     def test_failed_and_oversized_export_rejected(self):
         with self.assertRaises(RuntimeError):
             cloud.bounded([sys.executable, '-c', "print('partial');raise SystemExit(1)"], dict(os.environ))

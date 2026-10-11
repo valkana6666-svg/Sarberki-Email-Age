@@ -40,26 +40,48 @@ def bounded(command, env, maximum=LIMIT):
             process.wait()
 
 
+class BackupConfigurationError(ValueError):
+    """Only fixed, non-secret diagnostic codes may reach the log."""
+
+
+def parse_protected_uri(value):
+    # Split userinfo before URL parsing: raw #/? in a substituted password
+    # otherwise become URI delimiters. Pin the entire endpoint independently.
+    value = value.strip()
+    match = re.fullmatch(r'(postgresql|postgres)://([^:]+):(.+)@'
+                         r'(aws-\d+-eu-west-2\.pooler\.supabase\.com):5432/postgres'
+                         r'(?:\?sslmode=(?:require|verify-full))?', value, re.DOTALL)
+    if not match:
+        raise BackupConfigurationError('CONNECTION_FORMAT_INVALID: expected London session pooler URI, port 5432, database postgres.')
+    username = unquote(match[2])
+    if username != 'postgres.' + owner.PROJECT:
+        raise BackupConfigurationError('CONNECTION_PROJECT_INVALID: protected URI is not for the pinned test project.')
+    password = unquote(match[3])
+    if password == '[YOUR-PASSWORD]' or not password or any(c in password for c in ('\x00', '\n', '\r')):
+        raise BackupConfigurationError('CONNECTION_PASSWORD_INVALID: missing, placeholder or multiline credential.')
+    # Record only whether generic URL parsing misread the original. No values.
+    try:
+        original = urlsplit(value)
+        delimiter_issue = original.port != 5432 or original.path != '/postgres'
+    except ValueError:
+        delimiter_issue = True
+    if delimiter_issue:
+        print('BACKUP_CONFIG: corrected reserved password delimiter parsing', flush=True)
+    return match[4], password
+
+
 def source_environment(values):
     values = dict(values)
     if values.get('SARBERKI_BACKUP_DB_URL'):
         print('BACKUP_STAGE: validate protected URI syntax', flush=True)
-        try:
-            uri = urlsplit(values['SARBERKI_BACKUP_DB_URL'])
-            port = uri.port
-        except ValueError:
-            raise ValueError('Protected connection URI syntax is invalid.') from None
-        if uri.scheme not in ('postgres', 'postgresql') or port != 5432 or uri.path != '/postgres':
-            raise ValueError('Expected session-pooler connection.')
-        if unquote(uri.username or '') != 'postgres.' + owner.PROJECT:
-            raise ValueError('Wrong source project.')
-        values['SARBERKI_BACKUP_HOST'] = uri.hostname or ''
-        values['SARBERKI_BACKUP_DB_PASSWORD'] = unquote(uri.password or '')
+        host, password = parse_protected_uri(values['SARBERKI_BACKUP_DB_URL'])
+        values['SARBERKI_BACKUP_HOST'] = host
+        values['SARBERKI_BACKUP_DB_PASSWORD'] = password
     print('BACKUP_STAGE: validate pinned London pooler host', flush=True)
     config = owner.connection(values.get('SARBERKI_BACKUP_HOST', ''), 'postgres.' + owner.PROJECT)
     password = values.get('SARBERKI_BACKUP_DB_PASSWORD', '')
     if not password:
-        raise ValueError('Missing protected database credential.')
+        raise BackupConfigurationError('CONNECTION_PASSWORD_MISSING: protected credential absent.')
     # Do not inherit a libpq service, alternate endpoint or TLS override.
     env = {k: v for k, v in values.items() if not k.startswith('PG') and not k.startswith('SARBERKI_')}
     env.update(config)
@@ -108,7 +130,7 @@ def export(output):
     passphrase = values.get('SARBERKI_BACKUP_ENCRYPTION_PASSPHRASE', '') or values.get('SARBERKI_BACKUP_PASSPHRASE', '')
     if passphrase and (len(passphrase) < 32 or len(passphrase) > 1024 or '\n' in passphrase or '\r' in passphrase
                        or passphrase == env['PGPASSWORD']):
-        raise ValueError('Use a separate strong encryption passphrase of 32 to 1024 characters.')
+        raise BackupConfigurationError('ENCRYPTION_PASSPHRASE_INVALID: separate 32 to 1024 character single-line passphrase required.')
     if not passphrase and not re.fullmatch(r'[A-F0-9]{40}|[A-F0-9]{64}', fingerprint):
         raise ValueError('Missing verified full public-key fingerprint.')
     if not passphrase and ('-----BEGIN PGP PUBLIC KEY BLOCK-----' not in public_key or 'PRIVATE KEY' in public_key):
@@ -209,6 +231,9 @@ if __name__ == '__main__':
     import sys
     try:
         export(Path(os.environ.get('SARBERKI_BACKUP_OUTPUT', '/tmp/sarberki-cloud-backup')))
+    except BackupConfigurationError as error:
+        print(str(error), file=sys.stderr)
+        sys.exit(1)
     except Exception:
         # No traceback or secrets; partial output must never be uploaded on failure.
         print('BLOCKED: no verified backup; prerequisite or export failed.', file=sys.stderr)
