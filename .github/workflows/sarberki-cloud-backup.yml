@@ -29,7 +29,6 @@ jobs:
           persist-credentials: false
       - name: Verify synthetic safety and real encryption only
         run: python3 -m unittest discover -s scripts -p 'test*encrypted_backup.py' -v
-          fi
   export:
     needs: offline-safety
     if: >-
