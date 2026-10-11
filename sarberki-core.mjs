@@ -779,7 +779,7 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   add(titles.booking,bookingLines);
   // An offered set of types is not a guest selection. Ask for the decision
   // in the same reply, even when the guest did not explicitly ask for prices.
-  if(canRecommendByCapacity && !caseContext?.selectedCabinConfirmed){
+  if((canRecommendByCapacity || (needCabin && caseContext?.availabilityLines?.length > 0)) && !caseContext?.selectedCabinConfirmed){
     questions.push({
       hu:'Kérjük, válaszoljon erre az e-mailre, és írja meg, melyik felajánlott faháztípust választja.',
       de:'Bitte antworten Sie auf diese E-Mail und teilen Sie uns mit, welchen der angebotenen Haustypen Sie wählen.',
