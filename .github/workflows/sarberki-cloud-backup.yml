@@ -1,0 +1,134 @@
+name: Sarberki encrypted cloud database backup (test only)
+
+on:
+  push:
+    branches:
+      - gmail-test-subject-allowlist
+    paths:
+      - .github/workflows/sarberki-cloud-backup.yml
+      - docs/SARBERKI-CLOUD-BACKUP.md
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sarberki-test-cloud-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    if: >-
+      github.ref == 'refs/heads/gmail-test-subject-allowlist' &&
+      vars.SARBERKI_BACKUP_ENABLED == 'yes' &&
+      contains(github.event.head_commit.message, '[sarberki-backup-run]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Install official Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Create encrypted backup and verify archive
+        shell: bash
+        env:
+          SARBERKI_DB_URL: ${{ secrets.SARBERKI_BACKUP_DB_URL }}
+          SARBERKI_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_PASSPHRASE }}
+        run: |
+          set -Eeuo pipefail
+          umask 077
+          if [[ -z "${SARBERKI_DB_URL:-}" || -z "${SARBERKI_PASSPHRASE:-}" ]]; then
+            echo "Missing encrypted backup GitHub Actions secrets; no database contacted." >&2
+            exit 1
+          fi
+          if (( ${#SARBERKI_PASSPHRASE} < 24 )); then
+            echo "Backup passphrase must contain at least 24 characters." >&2
+            exit 1
+          fi
+          python3 - <<'PY'
+          import os
+          from urllib.parse import urlsplit
+          try:
+              u = urlsplit(os.environ["SARBERKI_DB_URL"])
+              valid = (
+                  u.scheme in ("postgres", "postgresql")
+                  and u.username == "postgres.mojnqizbcaczstguikpv"
+                  and bool(u.password)
+                  and u.hostname is not None
+                  and u.hostname.endswith(".pooler.supabase.com")
+                  and u.port == 5432
+                  and u.path == "/postgres"
+              )
+          except (ValueError, TypeError):
+              valid = False
+          if not valid:
+              raise SystemExit("Connection must be the sarberki-test SESSION pooler on port 5432; no database contacted.")
+          PY
+
+          scratch="$(mktemp -d "${RUNNER_TEMP}/sarberki-plain.XXXXXXXX")"
+          dist="${RUNNER_TEMP}/sarberki-encrypted"
+          mkdir -m 700 -p "$dist"
+          trap 'rm -rf "$scratch"' EXIT
+
+          if ! supabase db dump --db-url "$SARBERKI_DB_URL" --role-only -f "$scratch/roles.sql" > /dev/null 2> "$scratch/error.log"; then
+            echo "Roles export failed; details suppressed to protect credentials." >&2
+            exit 1
+          fi
+          if ! supabase db dump --db-url "$SARBERKI_DB_URL" -f "$scratch/schema.sql" > /dev/null 2> "$scratch/error.log"; then
+            echo "Schema export failed; details suppressed to protect credentials." >&2
+            exit 1
+          fi
+          if ! supabase db dump --db-url "$SARBERKI_DB_URL" --data-only --use-copy -x storage.buckets_vectors -x storage.vector_indexes -f "$scratch/data.sql" > /dev/null 2> "$scratch/error.log"; then
+            echo "Data export failed; details suppressed to protect credentials." >&2
+            exit 1
+          fi
+          test -s "$scratch/roles.sql"
+          test -s "$scratch/schema.sql"
+          test -s "$scratch/data.sql"
+
+          BACKUP_SCRATCH="$scratch" python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+          txt = (Path(os.environ["BACKUP_SCRATCH"]) / "data.sql").read_text(errors="replace")
+          required = ["auth.users", "auth.identities"] + ["public." + t for t in
+              ("sc_tenants", "sc_memberships", "sc_cases", "sc_message_keys", "sc_audit")]
+          absent = []
+          for item in required:
+              schema, table = item.split(".")
+              pattern = rf'(?im)^\s*COPY\s+"?{re.escape(schema)}"?\."?{re.escape(table)}"?\s*\('
+              if not re.search(pattern, txt):
+                  absent.append(item)
+          if absent:
+              raise SystemExit("Dump incomplete: missing COPY sections for " + ", ".join(absent))
+          print("Required Auth and five application tables are present in the export.")
+          PY
+
+          (
+            cd "$scratch"
+            sha256sum roles.sql schema.sql data.sql > SHA256SUMS
+            printf 'source=mojnqizbcaczstguikpv\nbranch=gmail-test-subject-allowlist\nrun_id=%s\ncreated_utc=%s\n' "$GITHUB_RUN_ID" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > META.txt
+            tar -czf payload.tar.gz roles.sql schema.sql data.sql SHA256SUMS META.txt
+          )
+          printf %s "$SARBERKI_PASSPHRASE" > "$scratch/passphrase"
+          encrypted="sarberki-test-${GITHUB_RUN_ID}.tar.gz.gpg"
+          gpg --batch --yes --no-tty --pinentry-mode loopback --cipher-algo AES256 \
+              --s2k-digest-algo SHA512 --s2k-mode 3 --s2k-count 65011712 \
+              --passphrase-file "$scratch/passphrase" \
+              --output "$dist/$encrypted" --symmetric "$scratch/payload.tar.gz" 2>/dev/null
+          gpg --batch --yes --no-tty --pinentry-mode loopback \
+              --passphrase-file "$scratch/passphrase" \
+              --decrypt "$dist/$encrypted" 2>/dev/null | tar -tzf - >/dev/null
+          (cd "$dist" && sha256sum "$encrypted" > "$encrypted.sha256")
+          echo "Encrypted archive created; decryption and TAR validation succeeded."
+          echo "This is NOT an isolated database restore. Transfer the artifact to separate owner-controlled storage."
+      - name: Upload encrypted artifact ONLY
+        uses: actions/upload-artifact@v4
+        with:
+          name: sarberki-test-encrypted-db-${{ github.run_id }}
+          path: ${{ runner.temp }}/sarberki-encrypted/*
+          if-no-files-found: error
+          retention-days: 7
+      - name: Remove encrypted runner copies
+        if: always()
+        shell: bash
+        run: rm -rf "${RUNNER_TEMP}/sarberki-encrypted"
