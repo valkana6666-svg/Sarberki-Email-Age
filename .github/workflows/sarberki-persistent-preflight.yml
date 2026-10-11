@@ -1,0 +1,23 @@
+name: Sarberki isolated persistent configuration checks
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths:
+      - shared-core/isolated-persistent-config.mjs
+      - scripts/isolated-persistent-preflight.mjs
+      - tests/isolated-persistent-config.test.mjs
+      - tests/isolated-persistent-preflight.test.mjs
+      - .github/workflows/sarberki-persistent-preflight.yml
+permissions:
+  contents: read
+jobs:
+  configuration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Offline configuration and secret-safe preflight tests
+        run: node --test tests/isolated-persistent-config.test.mjs tests/isolated-persistent-preflight.test.mjs

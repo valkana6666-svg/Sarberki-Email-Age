@@ -1,0 +1,17 @@
+✔ explicit isolated configuration yields frozen secret-free syntax validation (1.8867ms)
+✔ every missing gate and unknown configuration field fails closed (0.642419ms)
+✔ operator origin must be exact pinned canonical HTTPS and isolated (0.534711ms)
+✔ database permits only dedicated isolated host and exact disposable database (0.675138ms)
+✔ missing or malformed attestation secret is rejected without disclosure (0.336668ms)
+✔ preflight requires explicit config and does not attempt reads without it (0.998226ms)
+✔ invalid secret-bearing JSON does not leak input or filesystem errors (0.242128ms)
+✔ missing isolation configuration is blocked and does not activate runtime (0.25658ms)
+✔ valid preflight reports preparation only and does not disclose the signing key (0.440191ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 97.397322
