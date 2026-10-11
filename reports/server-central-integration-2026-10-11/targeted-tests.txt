@@ -1,0 +1,37 @@
+✔ same frozen decision supplies guest and Hungarian operator review: hu (80.229797ms)
+✔ same frozen decision supplies guest and Hungarian operator review: de (13.116946ms)
+✔ same frozen decision supplies guest and Hungarian operator review: en (2.987752ms)
+✔ same frozen decision supplies guest and Hungarian operator review: si (14.809497ms)
+✔ Hungarian review preserves the same missing-data decision across later turns (9.064769ms)
+✔ Hungarian FAQ renderer uses existing intent without reclassifying foreign message (0.303648ms)
+▶ new isolated approval SQL/API checks only; Auth HTTP simulated, PostgreSQL real
+  ✔ installer rejects the default database (6.328867ms)
+  ✔ writer, foreign tenant, expired or malformed identities are denied (4.539691ms)
+  ✔ wrong revision and changed draft cannot approve (10.274693ms)
+  ✔ unknown fresh capacity blocks approval (5.92594ms)
+  ✔ revoked DB session is rejected (15.886839ms)
+  ✔ audit failure rolls back the state and revision (20.171736ms)
+  ✔ approval commits exact draft, actor, revision and audit atomically (23.918522ms)
+  ✔ fresh PostgreSQL instance restores approval, RLS and audit (839.143791ms)
+  ✔ default handler remains closed for approval even with test store enabled (0.786244ms)
+✔ new isolated approval SQL/API checks only; Auth HTTP simulated, PostgreSQL real (2495.798136ms)
+✔ server review uses common facts/readiness, correct tenant evidence and internal pricing (50.623794ms)
+✔ new guest draft accurately renders stored facts and Hungarian operator review uses the same decision (9.178792ms)
+✔ common missing/contradictory/past-date checks block both fixture transports (5.360077ms)
+✔ capacity tenant/date/freshness failures cannot be repaired by adapter translation (7.273951ms)
+✔ unknown, zero and insufficient stock remain distinct and never call pricing (7.463857ms)
+✔ capacity is re-evaluated after awaited pricing and cannot promote a stale result (1.736447ms)
+✔ known stored child ages and contact fields survive guest and Hungarian rendering (8.267778ms)
+✔ Gmail thread follow-up keeps stay and ages; preview uses common decision and Hungarian operator text (65.330415ms)
+✔ split requests keep explicit placement constraints in persisted server facts (16.931794ms)
+✔ changed state or newer message prevents approval of the older stored draft before provider calls (5.29531ms)
+✔ no default source or other tenant can borrow the test case or approval privileges (2.895654ms)
+✔ persisted projection keeps case tenant, zero children and incomplete party without inventing evidence (0.296707ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2658.558893

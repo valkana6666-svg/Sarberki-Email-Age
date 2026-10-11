@@ -22,12 +22,13 @@ export function initIsolatedApprovalPanel({
  const found=ids.map(element);
  if(found.some(x=>!x))return false;
  const [caseInput,loadButton,reviewText,revisionField,confirmation,submit,status]=found;
+ const translation=element('isolated_approval_hu');
  let loaded=null,busy=false,epoch=0;
  const message=text=>{status.textContent=text;};
  const locked=()=>{submit.disabled=busy||!loaded||confirmation.checked!==true;loadButton.disabled=busy;};
  const reset=()=>{
   epoch++;loaded=null;confirmation.checked=false;
-  reviewText.value='';revisionField.value='';submit.disabled=true;
+  reviewText.value='';if(translation)translation.value='';revisionField.value='';submit.disabled=true;
   bridge?.clear();
  };
  reviewText.readOnly=true;
@@ -71,6 +72,7 @@ export function initIsolatedApprovalPanel({
    if(epoch!==generation)throw Error('REVIEW_CANCELLED');
    loaded=value;
    reviewText.value=value.text;
+   if(translation)translation.value=value.operatorReviewText||'Magyar ellenőrző szöveg: NEM IGAZOLT ehhez a korábbi tervezethez.';
    revisionField.value=String(value.revision);
    message('Tárolt tervezet betöltve. Olvasd el, majd külön erősítsd meg. Nincs e-mail-küldés.');
   }catch(error){

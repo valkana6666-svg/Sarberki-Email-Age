@@ -44,6 +44,15 @@ try{
  stage='prepare-synthetic-case-and-reviewed-draft';
  const first=await call(wt,{action:'ingest',expectedRevision:0,envelope:{sender:'approval-guest@synthetic.invalid',text:'Please book one Deluxe cabin from 2026-10-23 to 2026-10-25 for 4 adults and no children.',mailbox_id:'new-approval',message_id:'approval-one',received_at:new Date().toISOString()}});
  const drafted=await call(wt,{action:'review-draft',caseId:first.record.caseId,expectedRevision:1});assert.equal(drafted.review.status,'internal_review_required');
+ await step('common_planner_and_hungarian_review_bound_to_stored_case',async()=>{
+  assert.equal(drafted.review.decision.capacity.status,'AVAILABLE');
+  assert.equal(drafted.review.decision.pricing.verified,true);
+  assert.equal(drafted.review.decision.safety.emailSent,false);
+  assert.equal(drafted.review.decision.safety.bookingCreated,false);
+  assert.equal(drafted.review.decision.facts.guests,4);
+  assert.match(drafted.record.data.drafts.at(-1).operatorReviewText,/Kedves|Köszönjük/);
+  assert.equal(drafted.record.data.drafts.at(-1).operatorReviewText,drafted.review.operatorReviewText);
+ });
  const id=first.record.caseId,hash=createHash('sha256').update(drafted.record.data.drafts.at(-1).text).digest('hex');
  const input={action:'approve',caseId:id,expectedRevision:2,reviewedDraftHash:hash};
  if(process.env.ISOLATED_APPROVAL_MODE==='browser'){

@@ -7,7 +7,7 @@ export async function planCentralInquiry(options={}, {availabilitySource=null,pr
  let decision=evaluateCentralInquiry(current());
  if(!decision.readyForCapacityCheck||typeof availabilitySource!=='function')return decision;
  let capacity;
- try{capacity=await buildAvailabilityOptions(decision.capacity.input,availabilitySource);}
+ try{capacity=await buildAvailabilityOptions(decision.capacity.input,availabilitySource,{tenantId:options.tenantId||'sarberki',now:()=>+clock()});}
  catch{return decision;}
  decision=evaluateCentralInquiry({...current(),capacity});
  if(!decision.capacity.verified||decision.capacity.status!=='AVAILABLE'||typeof priceSource!=='function')return decision;

@@ -34,3 +34,7 @@ Az ár öt összetevője ugyanahhoz az időszakhoz, háztípushoz, egységszámh
 A tesztek e-mail/chat döntésegyezést, HU/DE/EN/SI adatértelmezést, hiányokat, hibás életkorokat, osztott elhelyezést, lejárt és rosszul kötött kapacitásadatokat, árkomponenseket, providerhibákat és beszélgetési izolációt ellenőriznek.
 
 Következő integráció: a meglévő szerveres, hitelesített tesztügy-folyamatból a közös tervező meghívása, a meglévő jóváhagyási és auditkapuk megtartásával. Ehhez előbb ténylegesen elkülönített tartós HTTPS tesztcél és szolgáltatói jogosultságok igazolása szükséges. Élő Previo-készletzárolás-mentesség nélkül nincs szolgáltatói hívás.
+
+## Szerveres bekötés – 2026-10-11
+
+A `server-booking-runtime` szintetikus szerveres előnézete és a `server-synthetic-booking-review` már a közös döntésre épül. A `server-inquiry-options` kizárólag a tárolt adatok projekciója. Az Auth/RLS/CAS/audit kapuk és a default tiltás megmaradtak. A külföldi tervezet mellett magyar kezelői szöveg is készül. Az új tervezet állapotrevíziója és üzenetszáma kötelező jóváhagyási kötés; régi pending tervezethez új review szükséges. A szintetikus szolgáltatói szerződés továbbra sem igazol élő tarifát vagy Previo-kapacitást. Lásd `reports/server-central-integration-2026-10-11/REPORT.md`.

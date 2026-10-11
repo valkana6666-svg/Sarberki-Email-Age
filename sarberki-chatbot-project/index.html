@@ -12,14 +12,16 @@ h1{font-size:1.45rem}label{display:block;margin:16px 0 6px}
 textarea,select,button{font:inherit;border-radius:8px;padding:10px}textarea,select{width:100%;box-sizing:border-box;border:1px solid #9ea9a2}
 button{background:#205b42;color:white;border:0;margin-top:12px;cursor:pointer}
 #conversation{min-height:140px;max-height:55vh;overflow:auto;border:1px solid #ddd;border-radius:8px;padding:12px;white-space:pre-wrap}
-.entry{margin:0 0 14px}.sender{font-weight:700;margin-bottom:3px}
+.entry{margin:0 0 14px;overflow-wrap:anywhere}.sender{font-weight:700;margin-bottom:3px}
+.operator-review{margin-top:8px;padding:10px;border-left:3px solid #205b42;background:#f3f6f4;font-size:.9rem}
+@media(max-width:480px){body{padding:12px}main{padding:16px}h1{font-size:1.2rem}}
 small{color:#53645a}
 </style>
 </head>
 <body>
 <main>
 <h1>Sárberki Chatbot Project</h1>
-<p><strong>Helyi tesztfelület – nem éles vendégchat.</strong></p>
+<p><strong>Kezelői tesztfelület – nem éles vendégchat.</strong></p>
 <p><small>Nem végez foglalást, kapacitáslekérdezést vagy e-mail-küldést. Ne írj be valódi vendégadatokat.</small></p>
 <label for="language">Nyelv / Language</label>
 <select id="language"><option value="hu">Magyar</option><option value="de">Deutsch</option><option value="en">English</option><option value="si">Slovenščina</option></select>
@@ -39,18 +41,25 @@ const session=createChatInquirySession();
 const log=document.getElementById('conversation');
 const input=document.getElementById('question');
 const language=document.getElementById('language');
-function append(who,text){
+function append(who,text,operatorReviewText=''){
  const item=document.createElement('div');item.className='entry';
  const name=document.createElement('div');name.className='sender';name.textContent=who;
  const message=document.createElement('div');message.textContent=text;
- item.append(name,message);log.append(item);log.scrollTop=log.scrollHeight;
+ item.append(name,message);
+ if(operatorReviewText){
+  const review=document.createElement('div');review.className='operator-review';review.lang='hu';
+  const title=document.createElement('strong');title.textContent='Magyar kezelői ellenőrző szöveg';
+  const translated=document.createElement('div');translated.textContent=operatorReviewText;
+  review.append(title,translated);item.append(review);
+ }
+ log.append(item);log.scrollTop=log.scrollHeight;
 }
 append('Sárberki',chatbotReply({language:language.value}).reply);
 document.getElementById('chatForm').addEventListener('submit',event=>{
  event.preventDefault();
  const question=input.value.trim();if(!question)return;
  append('Tesztkérdés',question);
- try{const result=session.reply(question,{language:language.value});append('Sárberki',result.text);}
+ try{const result=session.reply(question,{language:language.value});append('Sárberki',result.text,language.value!=='hu'?result.operatorReviewText:'');}
  catch{append('Sárberki','A tesztbeszélgetés korlátját elérte. Indítson új tesztbeszélgetést.');}
  input.value='';
 });

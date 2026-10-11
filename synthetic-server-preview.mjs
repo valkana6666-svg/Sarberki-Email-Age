@@ -7,7 +7,7 @@ export function initSyntheticPreviewPanel({documentRef=document,sessionProvider=
  const action=get('server_preview_action'),status=get('server_preview_status'),output=get('server_preview_text');
  if(!action||!status||!output)return false;
  action.addEventListener('click',async()=>{
-  output.value='';
+  output.value='';const translation=get('server_preview_hu');if(translation)translation.value='';
   const id=get('server_preview_case_id').value.trim();
   const revision=Number(get('server_preview_revision').value);
   if(!/^case-[A-Za-z0-9_-]{1,120}$/.test(id)||!Number.isSafeInteger(revision)||revision<1){
@@ -26,6 +26,7 @@ export function initSyntheticPreviewPanel({documentRef=document,sessionProvider=
     throw Error('INVALID_PREVIEW');
    }
    output.value=result.text;
+   if(translation)translation.value=typeof result.operatorReviewText==='string'?result.operatorReviewText:'Magyar ellenőrző szöveg: NEM IGAZOLT.';
    status.textContent='Belső előnézet kész. Nincs mentés, jóváhagyás vagy e-mail-küldés.';
   }catch(e){
    status.textContent='Az előnézet nem kérhető le: '+(['AUTH_REQUIRED','FORBIDDEN','CASE_CONFLICT','CASE_STORE_DISABLED','SERVICE_UNAVAILABLE'].includes(e?.message)?e.message:'ellenőrzés szükséges')+'. Semmi nem lett elküldve.';

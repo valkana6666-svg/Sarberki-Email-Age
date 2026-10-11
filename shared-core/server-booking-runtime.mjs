@@ -1,7 +1,7 @@
 import { createBookingCaseStore } from '../booking-cases.mjs';
 import { CaseServiceError } from './server-case-service.mjs';
-import { buildCentralReply } from '../central-reply.mjs';
-import { SARBERKI_TENANT } from '../tenant-config.mjs';
+import { buildEmailInquiryDraft } from './inquiry-channel-adapters.mjs';
+import {serverInquiryOptions} from './server-inquiry-options.mjs';
 import { randomUUID,createHash } from 'node:crypto';
 import { extractServerMessage } from './server-message-extraction.mjs';
 import { prepareSyntheticBookingReview } from './server-synthetic-booking-review.mjs';
@@ -35,7 +35,8 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    const current=await service.getCase({requestContext,tenantId,caseId});
    if(!current)reject('CASE_NOT_FOUND');if(current.revision!==expectedRevision)reject('CASE_CONFLICT');
    const draft=current.data.drafts.at(-1);
-   if(!draft?.synthetic||draft.reviewStatus!=='internal_review_required'||current.data.state.approval!=='pending')reject('INVALID_DRAFT');
+   if(!draft?.synthetic||draft.reviewStatus!=='internal_review_required'||current.data.state.approval!=='pending'||draft.revision!==current.data.state.revision||
+    draft.basedOnMessageCount!==current.data.messages.length)reject('INVALID_DRAFT');
    if(createHash('sha256').update(draft.text,'utf8').digest('hex')!==draftHash)reject('INVALID_DRAFT');
    const review=await prepareSyntheticBookingReview({...reviewProviders,record:current,now:()=>Date.parse(clock())});
    if(review.status!=='internal_review_required')reject('REVIEW_NOT_READY');
@@ -57,7 +58,7 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    if(!current)reject('CASE_NOT_FOUND');if(current.revision!==expectedRevision)reject('CASE_CONFLICT');
    const review=await prepareSyntheticBookingReview({...reviewProviders,record:current,now:()=>Date.parse(clock())});
    const data=structuredClone(current.data);
-   data.drafts.push({text:review.draft,at:clock(),revision:data.state.revision,synthetic:true,reviewStatus:review.status});
+   data.drafts.push({text:review.draft,operatorReviewText:review.operatorReviewText,at:clock(),revision:data.state.revision,basedOnMessageCount:data.messages.length,synthetic:true,reviewStatus:review.status});
    // Recheck authority and CAS after provider calls. Evidence/quotes stay internal.
    const record=await service.updateCase({requestContext,tenantId,caseId,expectedRevision,bookingCase:data});
    return {review,record};
@@ -66,14 +67,9 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    if(tenantId!=='sarberki-test')reject('FORBIDDEN');
    const current=await service.getCase({requestContext,tenantId,caseId});
    if(!current)reject('CASE_NOT_FOUND');if(current.revision!==expectedRevision)reject('CASE_CONFLICT');
-   const data=current.data,v=data.state.values;
-   // Non-persisted, read-only preview; never treats user-supplied availability or price as evidence.
-   const tenant={...SARBERKI_TENANT,id:tenantId};
-   const text=buildCentralReply({caseId,language:v.language||'hu',name:v.name,original:data.state.original,
-    arrival:v.arrival,departure:v.departure,guests:v.guests,adults:v.adults,children:v.children,
-    childAges:String(v.child_ages||'').split(',').filter(Boolean).map(Number),phone:v.phone,cabin:v.unit,
-    intent:data.state.intent},{tenant,records:[]});
-   return {caseId,revision:current.revision,text,approval:'pending',persisted:false};
+   // Read-only common planner preview; client facts are never evidence.
+   const planned=buildEmailInquiryDraft(serverInquiryOptions(current,new Date(clock())));
+   return {caseId,revision:current.revision,text:planned.text,operatorReviewText:planned.operatorReviewText,decision:planned.decision,approval:'pending',persisted:false};
   },
   async draft(caseId,expectedRevision){
    // Save only after separate server-side write authorization and optimistic concurrency check.
@@ -82,7 +78,7 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    const current=await service.getCase({requestContext,tenantId,caseId});
    if(!current)reject('CASE_NOT_FOUND');if(current.revision!==expectedRevision)reject('CASE_CONFLICT');
    const data=structuredClone(current.data);
-   data.drafts.push({text:preview.text,at:clock(),revision:data.state.revision});
+   data.drafts.push({text:preview.text,operatorReviewText:preview.operatorReviewText,at:clock(),revision:data.state.revision,basedOnMessageCount:data.messages.length});
    return service.updateCase({requestContext,tenantId,caseId,expectedRevision,bookingCase:data});
   },
   async ingest(envelope,values,{expectedRevision,approvedCaseId=null}={}){

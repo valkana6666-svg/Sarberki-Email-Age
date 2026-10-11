@@ -29,7 +29,9 @@ export function splitCapacityOptions(guests,poolChecks={}){
   return buildSplitCapacityOptions(guests,poolChecks);
 }
 
-export async function buildAvailabilityOptions(input,source=fetchPublicBookingAvailability){
+export async function buildAvailabilityOptions(input,source=fetchPublicBookingAvailability,{tenantId='sarberki',now=Date.now}={}){
+  // Trusted server verification context; never accepted from the HTTP body.
+  const currentNow=()=>typeof now==='function'?now():now;
   const {arrival,departure,guests}=input||{};
   if(!validDate(arrival)||!validDate(departure)||new Date(departure+'T00:00:00Z')<=new Date(arrival+'T00:00:00Z')) throw Error('Pontos, érvényes érkezési és távozási dátum szükséges.');
   if(!Number.isInteger(guests)||guests<1||guests>40) throw Error('Érvényes összlétszám szükséges.');
@@ -47,7 +49,7 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
 
   const checkOption=async option=>{
     try{
-      const result=checkedCapacity(await source({arrival,departure,cabin:option.key}),{arrival,departure,cabin:option.key});
+      const result=checkedCapacity(await source({arrival,departure,cabin:option.key}),{arrival,departure,cabin:option.key},{tenantId,now:currentNow()});
       const enough=result.availability==='available'&&Number(result.availableUnits)>=option.units;
       return {...option,evidence:result.evidence,availability:enough?'available':'unavailable',availableUnits:Number(result.availableUnits)||0,checkedAt:result.checkedAt||null,source:result.source||null,availability_verified:true};
     }catch(error){
@@ -59,7 +61,7 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
 
   const checkPool=async cabin=>{
     try{
-      const result=checkedCapacity(await source({arrival,departure,cabin}),{arrival,departure,cabin});
+      const result=checkedCapacity(await source({arrival,departure,cabin}),{arrival,departure,cabin},{tenantId,now:currentNow()});
       return {evidence:result.evidence,verified:true,availability:result.availability,availableUnits:Number(result.availableUnits)||0,checkedAt:result.checkedAt||null,source:result.source||null};
     }catch(error){
       return {verified:false,availability:'unverified',availableUnits:null,error:error.message};
@@ -89,10 +91,10 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
     checked.push({...plan,key:plan.requiredC&&!plan.requiredAB?'splitC':plan.requiredAB&&!plan.requiredC?'splitAB':'splitCombination',units:plan.units.length,availability,availability_verified:availability!=='unverified',availableUnits:plan.requiredAB&&!plan.requiredC?splitAB.availableUnits:plan.requiredC&&!plan.requiredAB?splitC.availableUnits:null});
   }
   const excluded_options=rejected.filter(x=>!input.cabin||x.key===input.cabin);
-  const checkedAt=new Date().toISOString();
+  const checkedAt=new Date(currentNow()).toISOString();
 
   return {
-    status:'review_required',tenantId:'sarberki',
+    status:'review_required',tenantId,
     arrival,departure,guests,checkedAt,fingerprint:capacityKey(input),excluded_options,
     available_options:checked.filter(x=>x.availability==='available'),
     unavailable_options:checked.filter(x=>x.availability==='unavailable'),

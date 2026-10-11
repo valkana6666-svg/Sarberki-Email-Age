@@ -6,10 +6,9 @@ import {stageFacts,capacityInput,capacityFresh,selectedCapacityOptions,wholeCabi
 import {normalizeAvailability,EVIDENCE_TTL_MS} from './availability-model.mjs';
 import {verifiedPriceBreakdown} from './verified-pricing.mjs';
 import {splitCapacityOptions} from '../split-units.mjs';
-const tenant='sarberki';
 const freeze=value=>{if(value&&typeof value==='object'){Object.values(value).forEach(freeze);Object.freeze(value);}return value;};
 const number=value=>Number.isSafeInteger(value)?value:null;
-const currentEvidence=(evidence,cabin,input,now)=>{
+const currentEvidence=(evidence,cabin,input,now,tenant)=>{
  if(evidence?.valid!==true||evidence.tenantId!==tenant)return null;
  const normalized=normalizeAvailability({tenantId:evidence.tenantId,cabin:evidence.unit,
   arrival:evidence.arrival,departure:evidence.departure,source:evidence.source,
@@ -18,7 +17,7 @@ const currentEvidence=(evidence,cabin,input,now)=>{
  {arrival:input.arrival,departure:input.departure,cabin},{tenantId:tenant,now});
  return normalized.valid?normalized:null;
 };
-function decideCapacity(result,input,ready,now){
+function decideCapacity(result,input,ready,now,tenant){
  const unknown={status:'UNKNOWN',verified:false,selectedOptions:[],input};
  if(!ready||result?.tenantId!==tenant||result.arrival!==input.arrival||
   result.departure!==input.departure||result.guests!==input.guests||
@@ -28,7 +27,7 @@ function decideCapacity(result,input,ready,now){
  if(split){
   const pools={};
   for(const [key,cabin] of [['splitAB','splitA'],['splitC','splitC']]){
-   const evidence=currentEvidence(result.split_pool_checks?.[key]?.evidence,cabin,input,now);
+   const evidence=currentEvidence(result.split_pool_checks?.[key]?.evidence,cabin,input,now,tenant);
    pools[key]={verified:Boolean(evidence),availability:evidence?.status.toLowerCase()||'unverified',availableUnits:evidence?.availableUnits??null};
   }
   const p=input.placement;
@@ -45,25 +44,25 @@ function decideCapacity(result,input,ready,now){
    return plan?[plan]:[];
   }
   const expected=candidates.find(c=>c.key===row.key&&c.units===row.units&&c.capacity===row.capacity);
-  const evidence=currentEvidence(row.evidence,row.key,input,now);
+  const evidence=currentEvidence(row.evidence,row.key,input,now,tenant);
   return expected&&evidence?.status==='AVAILABLE'&&evidence.availableUnits>=expected.units?
    [{...expected,evidence,availability:'available',availability_verified:true}]:[];
  });
  if(selected.length)return {status:'AVAILABLE',verified:true,selectedOptions:selected,input};
  // Explicit zero is distinct from missing/failed evidence, never inferred from
  // an empty list. Other unverified placements retain UNKNOWN.
- if(!split&&result.unverified_options.length===0){
+ if(!split&&!result.unverified_options.some(row=>row.key===input.cabin)){
   const zero=result.unavailable_options.some(row=>{
    if(row.key!==input.cabin)return false;
    const expected=candidates.find(c=>c.key===row.key&&c.units===row.units&&c.capacity===row.capacity);
-   const evidence=currentEvidence(row.evidence,row.key,input,now);
+   const evidence=currentEvidence(row.evidence,row.key,input,now,tenant);
    return expected&&evidence&&(evidence.status==='UNAVAILABLE'||evidence.availableUnits<expected.units);
   });
   if(zero)return {status:'UNAVAILABLE',verified:true,selectedOptions:[],input};
  }
  return unknown;
 }
-function decidePrice(proof,capacity,now,facts){
+function decidePrice(proof,capacity,now,facts,tenant){
  const unknown={status:'UNKNOWN',verified:false,breakdown:null,guestPriceApproved:false};
  if(!capacity.verified||capacity.status!=='AVAILABLE'||proof?.approved!==true||proof.tenantId!==tenant)return unknown;
  const i=capacity.input,selected=capacity.selectedOptions.find(x=>x.key===proof.unitId&&x.units===proof.units);
@@ -86,7 +85,9 @@ function decidePrice(proof,capacity,now,facts){
  }catch{return unknown;}
 }
 export function evaluateCentralInquiry({message='',language='hu',now=new Date(),facts=null,
- datesConfirmed=false,capacity=null,priceComponents=null}={}){
+ datesConfirmed=false,capacity=null,priceComponents=null,tenantId='sarberki',fallback=true}={}){
+ // Trusted server context only; this is not an authentication or tenancy grant.
+ if(!['sarberki','sarberki-test'].includes(tenantId))throw Error('UNSUPPORTED_INQUIRY_TENANT');
  const time=now instanceof Date?now:new Date(now),timestamp=time.getTime();
  const parsed=String(message).trim()&&Number.isFinite(timestamp)?normalizeInquiryInput({sourceChannel:'manual',rawText:message,now:time}).normalized:{};
  const n={...parsed,...structuredClone(facts||{}),language,originalText:String(message)};
@@ -99,7 +100,7 @@ export function evaluateCentralInquiry({message='',language='hu',now=new Date(),
  const missing=[...assessment.missing],contradictions=[...assessment.contradictions];
  const values={arrival:dates.arrival||'',departure:dates.departure||'',guests:n.guests,
   adults:n.adults,children:n.children,child_ages:n.child_ages.join(','),unit:n.cabin||'',
-  units_requested:n.units_requested,split_request_text:n.split_request_text||n.originalText};
+  units_requested:n.units_requested,nights:n.nights,split_request_text:n.split_request_text||n.originalText};
  const staged=stageFacts(values);
  for(const [field,value] of Object.entries(staged)){
   if(value.status==='contradictory')contradictions.push({code:'invalid_'+field,message:'Ellentmondásos adat: '+field});
@@ -114,6 +115,7 @@ export function evaluateCentralInquiry({message='',language='hu',now=new Date(),
  else missing.push('current_date');
  if(staged.arrival.status==='known'&&today&&dates.arrival<today)contradictions.push({code:'past_arrival',message:'Az érkezés múltbeli; kezelői pontosítás szükséges.'});
  const input=capacityInput(values,n.originalText);
+ if(fallback===false)input.fallback=false;
  // A follow-up may only contain a phone number or child age. Preserve the
  // already normalized split request instead of re-parsing that latest turn.
  // Reviewed specific A/B/C cabin choices retain capacityInput's precedence.
@@ -134,9 +136,11 @@ export function evaluateCentralInquiry({message='',language='hu',now=new Date(),
  if(!input.cabin)missing.push('accommodation');
  const uniqueMissing=[...new Set(missing)],uniqueContradictions=[...new Map(contradictions.map(c=>[c.code,c])).values()];
  const ready=uniqueMissing.length===0&&uniqueContradictions.length===0;
- const decidedCapacity=decideCapacity(capacity,input,ready,timestamp);
+ const decidedCapacity=decideCapacity(capacity,input,ready,timestamp,tenantId);
+ if(ready&&!input.cabin?.startsWith('split')&&wholeCabinCandidates(input).rejected.some(r=>r.key===input.cabin))
+  decidedCapacity.incompatible=true;
  return freeze({facts:n,missing:uniqueMissing,contradictions:uniqueContradictions,
   requiresHumanReview:uniqueContradictions.length>0||uniqueMissing.includes('dates_confirmation'),
-  readyForCapacityCheck:ready,capacity:decidedCapacity,pricing:decidePrice(priceComponents,decidedCapacity,timestamp,n),
+  readyForCapacityCheck:ready,capacity:decidedCapacity,pricing:decidePrice(priceComponents,decidedCapacity,timestamp,n,tenantId),
   safety:{emailSent:false,bookingCreated:false,approval:'pending',guestPriceApproved:false}});
 }

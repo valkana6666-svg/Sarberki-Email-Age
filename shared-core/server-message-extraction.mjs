@@ -1,18 +1,17 @@
-import {dateRangeFromText,guestCountFromText,adultCountFromText,childCountFromText,
- childAgesFromText,cabinFromText,requestedUnitsFromText,languageFromText} from '../sarberki-core.mjs';
+import {normalizeInquiryInput} from '../intake-normalize.mjs';
 
-// Reuse the established parser; absent or ambiguous facts never clear known facts.
+// The Gmail/server ingestion path uses the same normalizer as the chatbot.
+// Missing or ambiguous values remain absent, preserving existing thread facts.
 export function extractServerMessage(envelope){
- const text=envelope.text, values={};
- const dates=dateRangeFromText(text,new Date(envelope.received_at));
- // An inferred year needs operator review; it is not a confirmed booking date.
- if(dates&&!dates.inferredYear){values.arrival=dates.arrival;values.departure=dates.departure;}
- for(const [key,parse] of [['guests',guestCountFromText],['adults',adultCountFromText],['children',childCountFromText]]){
-  const number=parse(text);if(Number.isSafeInteger(number)&&number>=0)values[key]=String(number);
- }
- const ages=childAgesFromText(text);if(ages.length)values.child_ages=ages.join(',');
- const cabin=cabinFromText(text);if(!cabin.startsWith('?'))values.unit=cabin;
- const units=requestedUnitsFromText(text);if(units.count>0&&!units.open)values.units_requested=String(units.count);
- const language=languageFromText(text);if(language!=='unknown')values.language=language;
+ const inquiry=normalizeInquiryInput({sourceChannel:'gmail',rawText:envelope.text,now:new Date(envelope.received_at)});
+ const n=inquiry.normalized,values={};
+ if(n.dates&&!n.dates.inferred_year){values.arrival=n.dates.arrival;values.departure=n.dates.departure;}
+ for(const key of ['guests','adults','children'])if(Number.isSafeInteger(n[key])&&n[key]>=0)values[key]=String(n[key]);
+ if(n.child_ages.length)values.child_ages=n.child_ages.join(',');
+ if(n.cabin&&!n.cabin.startsWith('?'))values.unit=n.cabin;
+ if(n.units_requested>0&&!n.units_open_request)values.units_requested=String(n.units_requested);
+ if(n.language!=='unknown')values.language=n.language;
+ if(n.split_request?.isSplit)values.split_request_text=inquiry.rawText||envelope.text;
+ if(n.units_open_request||n.hotTubRequested||n.petRequested)values.request=inquiry.rawText||envelope.text;
  return values;
 }

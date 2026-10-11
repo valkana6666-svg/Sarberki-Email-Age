@@ -57,6 +57,7 @@ export async function runBrowserApprovalChain({handlerFactory,auth,rest,sql,sign
   await page.locator('#isolated_approval_case_id').fill(id);await page.locator('#isolated_approval_load').click();
   await page.waitForFunction(()=>/Tárolt tervezet betöltve|A tervezet nem tölthető be/.test(document.getElementById('isolated_approval_status').textContent));
   assert.match(await status().innerText(),/Tárolt tervezet betöltve/);
+  assert.match(await page.locator('#isolated_approval_hu').inputValue(),/Kedves|Köszönjük/);
  }
  async function approve(expected){await page.locator('#isolated_approval_confirm').check();await page.locator('#isolated_approval_submit').click();await status().filter({hasText:expected}).waitFor();}
  try{

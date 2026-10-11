@@ -61,11 +61,11 @@ export function stageFacts(values={}){
 
  return facts;
 }
-export function validateCapacityResult(result,input){
+export function validateCapacityResult(result,input,{tenantId=SARBERKI_TENANT.id,now=Date.now()}={}){
  if(!result||!['available','unavailable'].includes(result.availability)||!Number.isSafeInteger(result.availableUnits)||result.availableUnits<0
  ||(result.availability==='available')!==(result.availableUnits>0)
  ||(result.arrival!=null&&result.arrival!==input.arrival)||(result.departure!=null&&result.departure!==input.departure)||(result.cabin!=null&&result.cabin!==input.cabin))throw Error('A forrás nem adott konzisztens kapacitásbizonyítékot.');
- const evidence=normalizeAvailability({...input,...result},input,{tenantId:SARBERKI_TENANT.id});
+ const evidence=normalizeAvailability({...input,...result},input,{tenantId,now});
  if(!evidence.valid)throw Error('Nem aktuális kapacitásbizonyíték: '+evidence.error);
  return {...result,evidence};
 }

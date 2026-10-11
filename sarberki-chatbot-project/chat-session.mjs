@@ -1,6 +1,6 @@
 import {normalizeInquiryInput} from '../intake-normalize.mjs';
 import {buildChatInquiryReply} from '../shared-core/inquiry-channel-adapters.mjs';
-import {chatbotReply} from '../chatbot-v1.mjs';
+import {chatbotReply,renderChatbotIntent} from '../chatbot-v1.mjs';
 import {mergeBookingFacts} from '../booking-cases.mjs';
 import {childAgesFromText} from '../sarberki-core.mjs';
 // Explicit in-memory conversation, no cross-session or browser storage. Each
@@ -13,7 +13,7 @@ export function createChatInquirySession({language='hu',clock=()=>new Date()}={}
    if(typeof message!=='string'||message.length>1000||++turns>100)throw Error('CHAT_INPUT_LIMIT');
    language=nextLanguage;const now=clock(),faq=chatbotReply({message,language});
    if(faq.intent==='availability')bookingContext=true;
-   if(!bookingContext)return {response:faq,text:faq.reply,decision:null};
+   if(!bookingContext)return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};
    const n=normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized;
    const next={...facts};
    for(const key of ['dates','phone','units_requested'])if(n[key]!==null&&n[key]!==undefined&&n[key]!=='')next[key]=structuredClone(n[key]);
