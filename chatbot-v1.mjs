@@ -11,13 +11,17 @@ export function chatbotReply({message='',language='hu'}={}){
  const t=WORDS[lang]||WORDS.hu;
  const text=String(message).slice(0,1000).toLowerCase();
  let intent='unknown';
+ const asksAvailability=/(?:szabad|kapacit|elérhető|van[- ]?e\s+hely|available|availability|vacan|frei|verfüg|prosto|razpoložljiv|termin|időpont)/u.test(text);
+ const mentionsStay=/(?:faház|fahaz|apartman|cabin|accommodat|ferienhaus|hišk|apartma|deluxe|vip|családi|family|familien|družinsk)/u.test(text);
+ const hasStayDates=/(?:20\d{2}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}[./]\s*\d{1,2}[./](?:\s*20\d{2})?|\b(?:november|október|december|január|február|március|április|május|június|július|augusztus|szeptember|january|february|march|april|may|june|july|august|september|october|november|december)\b)/u.test(text);
+ const asksBooking=/(?:foglal|reserv|buch|booking|potrditev|confirmation)/u.test(text);
  if(!text.trim())intent='welcome';
- else if(/horgász|horgasz|angeln|fishing|ribolov|ribišk/u.test(text))intent='fishing';
- else if(/faház|fahaz|apartman|háztyp|szállástípus|cabin|accommodat|familienhaus|ferienhaus|hišk|apartma|deluxe|vip/u.test(text))intent='cabins';
- else if(/foglal|reserv|buch|booking|potrditev|confirmation/u.test(text))intent='booking';
- else if(/szabad|kapacit|available|availability|frei|verfüg|prosto|termin|időpont/u.test(text))intent='availability';
+ else if(asksAvailability||(mentionsStay&&(hasStayDates||asksBooking)))intent='availability';
  else if(/dézsa|dezsa|hot tub|badezuber|masažna kad|masazna kad/u.test(text))intent='hotTub';
  else if(/előleg|eloleg|deposit|anzahlung|akontacij/u.test(text))intent='deposit';
+ else if(/horgász|horgasz|angeln|fishing|ribolov|ribišk/u.test(text))intent='fishing';
+ else if(asksBooking)intent='booking';
+ else if(mentionsStay||/háztyp|szállástípus/u.test(text))intent='cabins';
  else if(/érkez|távoz|check.?in|check.?out|anreise|abreise|prijava|odjava/u.test(text))intent='checkin';
  return {intent,language:WORDS[lang]?lang:'hu',reply:t[intent],bookingCreated:false,emailSent:false,availabilityVerified:false,brand:BUSINESS.brandName};
 }
