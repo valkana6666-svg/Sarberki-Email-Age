@@ -5,6 +5,9 @@ const messageId = value => norm(value).replace(/^<|>$/g, '').toLowerCase();
 const refs = value => (Array.isArray(value) ? value : norm(value).split(/\s+/))
   .map(messageId).filter(Boolean);
 export function sameBookingConversation(existing={}, incoming={}){
+  const previousSender=norm(existing.sender||existing.from_email).toLowerCase();
+  const replySender=norm(incoming.sender||incoming.from_email).toLowerCase();
+  if(previousSender && replySender && previousSender!==replySender) return {matched:false,reason:'SENDER_MISMATCH'};
   const a=norm(existing.threadId||existing.thread_id), b=norm(incoming.threadId||incoming.thread_id);
   if(a && b && a===b) return {matched:true,reason:'THREAD_ID'};
   if(a && b && a!==b) return {matched:false,reason:'THREAD_MISMATCH'};
