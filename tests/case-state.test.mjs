@@ -154,3 +154,27 @@ test('six-person inquiry answers accommodation, parking and fishing before askin
  assert.doesNotMatch(view.draft,/7C|8C|9C|10C|emberi döntésre vár/u);
  assert.doesNotMatch(view.draft,/előleg összegét és fizetési határidejét|lemondási feltételt külön/u);
 });
+
+test('fresh verified cabin choices take priority over generic approved quote availability',()=>{
+ const state=approve(make());
+ state.quote.availabilityVerified=true;
+ const next=updateCaseState(state,{
+   type:'availability',fingerprint:caseFingerprint(state.values),
+   verified:true,checkedAt:new Date().toISOString(),
+   lines:['A kért időszakban igazoltan elérhető faházak: Deluxe.']
+ });
+ const draft=deriveCaseView(next).draft;
+ assert.match(draft,/igazoltan elérhető faházak: Deluxe/u);
+ assert.doesNotMatch(draft,/A kért időszakra rendelkezésre áll megfelelő szálláslehetőség/u);
+});
+
+test('stale cabin availability is not presented as a verified choice',()=>{
+ const state=approve(make());
+ state.quote.availabilityVerified=true;
+ const next=updateCaseState(state,{
+   type:'availability',fingerprint:caseFingerprint(state.values),
+   verified:true,checkedAt:'2020-01-01T00:00:00Z',
+   lines:['A kért időszakban igazoltan elérhető faházak: Deluxe.']
+ });
+ assert.doesNotMatch(deriveCaseView(next).draft,/igazoltan elérhető faházak: Deluxe/u);
+});
