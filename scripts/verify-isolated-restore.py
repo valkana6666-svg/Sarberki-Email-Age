@@ -67,6 +67,10 @@ def main():
             report['original_membership_grantor_identity']='NOT_REPRODUCED_ON_STOCK_POSTGRESQL'
         sql(roles)
         report['roles_restore']='PASS_NO_ROLE_PASSWORDS'
+        event_owners=sorted(set(re.findall(r'(?m)^.* EVENT TRIGGER - \S+ ([a-z_][a-z0-9_]*)$',toc)))
+        for role in event_owners: sql('ALTER ROLE '+role+' SUPERUSER;')
+        if event_owners:
+            report['event_trigger_bootstrap']='temporary superuser for event trigger owners; restore original attributes after pg_restore'
         result = run(['pg_restore','--exit-on-error','--dbname=sc_restore',str(dump)],required=False)
         report['full_restore']='PASS' if result.returncode==0 else 'FAILED'
         if result.returncode:
@@ -90,6 +94,11 @@ def main():
             if result.returncode:
                 restore_diag(result)
                 raise RuntimeError('SCOPED_RESTORE_FAILED')
+        for role in event_owners:
+            attrs=re.findall(r'(?m)^ALTER ROLE '+re.escape(role)+r' WITH [^\n]+;',plain['roles.sql.gpg'].decode())
+            if len(attrs)!=1: raise RuntimeError('OWNER_ATTRIBUTES_MISSING')
+            sql(attrs[0])
+        report['event_owner_original_attributes_reapplied']='PASS'
         restored=json.loads(sql((ROOT/'case-store-recovery-manifest.sql').read_text()))
         comparisons={k:restored.get(k)==v for k,v in baseline.items()}
         report['case_manifest_fields']=comparisons
