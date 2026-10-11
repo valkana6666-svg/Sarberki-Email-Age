@@ -82,8 +82,9 @@ export function initIsolatedApprovalPanel({
   }
   busy=true;locked();
   const selected=loaded;
-  // The reviewed hash and CAS revision come only from bridge.load, never the preview.
-  reset();
+  // Invalidate only the rendered UI. bridge.approve consumes the persisted review itself.
+  // Calling bridge.clear here would discard the required server-loaded hash and revision.
+  loaded=null;confirmation.checked=false;reviewText.value='';revisionField.value='';locked();
   message('Hitelesített szerveres jóváhagyás ellenőrzése…');
   try{
    const approved=await bridge.approve({
