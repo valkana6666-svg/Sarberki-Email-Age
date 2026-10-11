@@ -770,7 +770,25 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   add(titles.price,pricingLines);
   add(titles.fishing,fishingLines);
   add(titles.booking,bookingLines);
+  // An offered set of types is not a guest selection. Ask for the decision
+  // in the same reply, even when the guest did not explicitly ask for prices.
+  if(canRecommendByCapacity && !caseContext?.selectedCabinConfirmed){
+    questions.push({
+      hu:'Kérjük, válaszoljon erre az e-mailre, és írja meg, melyik felajánlott faháztípust választja.',
+      de:'Bitte antworten Sie auf diese E-Mail und teilen Sie uns mit, welchen der angebotenen Haustypen Sie wählen.',
+      en:'Please reply to this email and tell us which of the offered cabin types you would like to choose.',
+      si:'Prosimo, odgovorite na to e-pošto in nam sporočite, katero od ponujenih vrst hišk izberete.'
+    }[lang]);
+  }
   add(titles.missing,questions);
+  if(['booking_request','availability_request','price_request'].includes(intent)){
+    blocks.push([{hu:'Foglalás állapota',de:'Reservierungsstatus',en:'Booking status',si:'Status rezervacije'}[lang],{
+      hu:'Ez az érdeklődés még nem visszaigazolt foglalás. A szükséges adatok és a választott faház egyeztetése, valamint az aktuális elérhetőség ellenőrzése után tudjuk a foglalást visszaigazolni.',
+      de:'Diese Anfrage ist noch keine bestätigte Buchung. Erst nach Klärung der erforderlichen Angaben und des gewählten Hauses sowie erneuter Verfügbarkeitsprüfung können wir die Buchung bestätigen.',
+      en:'This enquiry is not a confirmed booking. We can confirm a booking only after clarifying the required details and selected cabin and rechecking availability.',
+      si:'To povpraševanje še ni potrjena rezervacija. Rezervacijo lahko potrdimo šele po uskladitvi potrebnih podatkov in izbrane hiške ter ponovnem preverjanju razpoložljivosti.'
+    }[lang]].join('\\n'));
+  }
 
   return `${greetings[lang]}\n\n${intros[lang]}${blocks.length?'\n\n'+blocks.join('\n\n'):''}\n\n${closings[lang]}\n${brandName}`;
 }
