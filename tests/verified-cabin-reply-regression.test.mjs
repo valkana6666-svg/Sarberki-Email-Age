@@ -27,3 +27,13 @@ test('unverified capacity is never described as confirmed availability',()=>{
   assert.match(draft,/A ténylegesen szabad lehetőségeket a kért időszakra ellenőrizzük/);
   assert.doesNotMatch(draft,/Igazoltan elérhető faházak/);
 });
+
+test('verified cabin options request a guest choice even when cabin clarification is otherwise required',()=>{
+ const draft=buildReplyDraft({...request,original:'Négy főre szeretnénk szabad faházat.',caseContext:{
+   extraLines:[],priceLines:[],bookingLines:[],
+   availabilityLines:['Ellenőrzött elérhető lehetőségek: Családi, VIP.'],
+   priceApproved:false
+ }});
+ assert.match(draft,/Ellenőrzött elérhető lehetőségek: Családi, VIP/u);
+ assert.match(draft,/melyik felajánlott faháztípust választja/u);
+});
