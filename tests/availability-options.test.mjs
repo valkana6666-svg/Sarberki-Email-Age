@@ -141,3 +141,22 @@ test('split A/B pool does not prove two adjacent units in one physical cabin',as
  assert.equal(result.available_options.some(x=>x.key==='splitCombination'&&x.availability_verified===true),false);
  assert.equal(result.available_options.some(x=>x.individual_unit_mapping_verified===true),false);
 });
+
+test('two split A/B units without adjacency can use verified pooled capacity without promising a same-house pair',async()=>{
+ const result=await buildAvailabilityOptions({
+   arrival:'2026-11-13',departure:'2026-11-15',guests:4,
+   cabin:'split',units:2,
+   placement:{ab:2,c:0,adjacent:false,exactIds:[]}
+ },async ({cabin})=>({
+   availability:cabin==='splitA'?'available':'unavailable',
+   availableUnits:cabin==='splitA'?2:0,
+   source:'synthetic-test',checkedAt:new Date().toISOString()
+ }));
+ const candidate=result.available_options.find(x=>x.requiredAB===2&&x.requiredC===0);
+ assert.ok(candidate,'verified A/B pooled capacity should yield a type-level option');
+ assert.equal(candidate.availability_verified,true);
+ assert.equal(candidate.verification_scope,'type_pool');
+ assert.equal(candidate.individual_unit_mapping_verified,false);
+ assert.equal(candidate.same_house_pairing_verified,false);
+ assert.equal(candidate.cross_house_fallback_allowed,true);
+});
