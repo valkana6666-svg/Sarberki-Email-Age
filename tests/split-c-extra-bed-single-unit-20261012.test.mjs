@@ -70,3 +70,13 @@ test('two adults can still query A/B single apartment pool',async()=>{
  await buildAvailabilityOptions({arrival:'2026-11-20',departure:'2026-11-22',guests:2,adults:2},source(calls),{now:()=>now.getTime()});
  assert.ok(calls.includes('splitA'));
 });
+
+for(const guests of [1,2]){
+ test(`${guests} adult request skips unnecessary C pool and does not expose unverified C`,async()=>{
+  const calls=[];
+  const result=await buildAvailabilityOptions({arrival:'2026-11-20',departure:'2026-11-22',guests,adults:guests},source(calls),{now:()=>now.getTime()});
+  assert.equal(calls.includes('splitC'),false);
+  assert.ok(calls.includes('splitA'));
+  assert.equal(result.unverified_options.some(x=>x.key==='splitC'),false);
+ });
+}
