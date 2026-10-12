@@ -375,7 +375,7 @@ export function languageFromText(text='',{conservative=false}={}){
     de:(text.match(/\b(?:hallo|guten tag|möchte|möchten|würde|würden|hätte|hätten|anfrage|unterkunft|buchung|gäste|personen|erwachsene|kinder|verfügbar|übernacht|preis|nächte|telefon|freundlichen grüßen|für|wäre|eigenem|möglich)\w*/giu)||[]).length
        + ((text.match(/[äöüß]/giu)||[]).length ? 2 : 0),
     en:(text.match(/\b(?:would|booking|reservation|accommodation|guests|adults|children|available|availability|cabin|stay|nights?|price|please|phone|total price|thank you|aged)\w*/giu)||[]).length,
-    si:(text.match(/\b(?:pozdravljeni|pozdrav|nastanitev|rezervacij|oseb|odrasl|otrok|prosto|koča|hiška|ribolov|želimo|želeli|prosimo|sporočite|lahko|bivali|prihod|odhod|cena|noči|telefon|lastnim|pomolom|hvala|lep pozdrav)\w*/giu)||[]).length
+    si:(text.match(/\b(?:pozdravljeni|pozdrav|slovenščin|nadaljev|družinsk|hišk|masažn|nastanitev|rezervacij|oseb|odrasl|otrok|prosto|koča|ribolov|želimo|želeli|prosimo|sporočite|lahko|bivali|prihod|odhod|cena|noči|telefon|lastnim|pomolom|hvala|lep pozdrav)\w*/giu)||[]).length
        + ((text.match(/[čšž]/giu)||[]).length ? 2 : 0)
   };
   const best=Object.entries(scores).sort((a,b)=>b[1]-a[1]);

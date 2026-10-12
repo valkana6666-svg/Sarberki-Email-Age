@@ -55,3 +55,19 @@ test('foreign FAQ replies have the exact approved Hungarian operator text',()=>{
  assert.equal(result.response.language,'si');assert.equal(result.response.intent,'hotTub');
  assert.equal(result.operatorReviewText,renderChatbotIntent('hotTub','hu'));
 });
+
+test('real iPhone: German booking to Slovenian hot-tub question switches language and keeps facts',()=>{
+ const chat=createChatInquirySession({clock});chat.reply(messages.de);
+ const before=chat.snapshot();assert.equal(chat.language,'de');
+ const question='Pozdravljeni! Zdaj bi radi nadaljevali v slovenščini. Ali je za družinsko hiško na voljo masažna kad?';
+ assert.equal(languageFromText(question,{conservative:true}),'si');
+ const result=chat.reply(question);
+ assert.equal(chat.language,'si');assert.equal(result.response.language,'si');
+ assert.equal(result.response.intent,'hotTub');
+ assert.match(result.text,/Masažna kad|masažna kad/iu);
+ assert.doesNotMatch(result.text,/Badezuber|Verfügbarkeit|Willkommen/u);
+ assert.equal(result.operatorReviewText,renderChatbotIntent('hotTub','hu'));
+ assert.deepEqual(chat.snapshot(),before);
+ assert.equal(result.response.bookingCreated,false);
+ assert.equal(result.response.emailSent,false);
+});
