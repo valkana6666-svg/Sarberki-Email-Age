@@ -43,6 +43,15 @@ function decideCapacity(result,input,ready,now,tenant){
     (row.requiredAB===undefined||row.requiredAB===p.requiredAB)&&(row.requiredC===undefined||row.requiredC===p.requiredC));
    return plan?[plan]:[];
   }
+  // Unspecified cabin inquiries also accept verified split type-pool evidence.
+  // Pool verification does not prove a specific physical apartment or pairing.
+  if(!input.cabin&&row.units===1&&['splitAB','splitC'].includes(row.key)){
+   if(row.key==='splitC'&&input.guests>4)return [];
+   const poolKey=row.key==='splitAB'?'splitAB':'splitC';
+   const evidence=currentEvidence(result.split_pool_checks?.[poolKey]?.evidence,poolKey==='splitAB'?'splitA':'splitC',input,now,tenant);
+   return evidence?.status==='AVAILABLE'&&evidence.availableUnits>=1?
+    [{...row,evidence,availability:'available',availability_verified:true}]:[];
+  }
   const expected=candidates.find(c=>c.key===row.key&&c.units===row.units&&c.capacity===row.capacity);
   const evidence=currentEvidence(row.evidence,row.key,input,now,tenant);
   return expected&&evidence?.status==='AVAILABLE'&&evidence.availableUnits>=expected.units?
@@ -97,7 +106,9 @@ export function evaluateCentralInquiry({message='',language='hu',now=new Date(),
  const dates=n.dates||{};
  const assessment=assessAccommodationInquiry({arrival:dates.arrival,departure:dates.departure,
   accommodation:n.cabin,guests:n.guests,adults:n.adults,children:n.children,childAges:n.child_ages});
- const missing=[...assessment.missing],contradictions=[...assessment.contradictions];
+ // A cabin type is optional for a general availability inquiry. An explicitly
+ // unresolved/invalid type ('? ...') still requires clarification.
+ const missing=assessment.missing.filter(x=>x!=='accommodation'||Boolean(n.cabin)),contradictions=[...assessment.contradictions];
  const values={arrival:dates.arrival||'',departure:dates.departure||'',guests:n.guests,
   adults:n.adults,children:n.children,child_ages:n.child_ages.join(','),unit:n.cabin||'',
   units_requested:n.units_requested,nights:n.nights,split_request_text:n.split_request_text||n.originalText};
@@ -133,7 +144,7 @@ export function evaluateCentralInquiry({message='',language='hu',now=new Date(),
     contradictions.push({code:'split_units_mismatch',message:'Az apartmanszám és az elhelyezési igény nem egyezik.'});
   }
  }
- if(!input.cabin)missing.push('accommodation');
+ // No named cabin means search all physically suitable one-unit types.
  const uniqueMissing=[...new Set(missing)],uniqueContradictions=[...new Map(contradictions.map(c=>[c.code,c])).values()];
  const ready=uniqueMissing.length===0&&uniqueContradictions.length===0;
  const decidedCapacity=decideCapacity(capacity,input,ready,timestamp,tenantId);
