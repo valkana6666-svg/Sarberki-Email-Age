@@ -54,6 +54,16 @@ try{
   assert.equal(drafted.record.data.drafts.at(-1).operatorReviewText,drafted.review.operatorReviewText);
  });
  const id=first.record.caseId,hash=createHash('sha256').update(drafted.record.data.drafts.at(-1).text).digest('hex');
+ await step('authenticated_case_freshness_never_implies_capacity',async()=>{
+  const queryStringParameters={tenantId:'sarberki-test',caseId:id,expectedRevision:'2',action:'preview-draft'};
+  const response=await handler({httpMethod:'GET',headers:{authorization:'Bearer '+at},queryStringParameters});
+  assert.equal(response.statusCode,200);const preview=JSON.parse(response.body).result;
+  assert.equal(preview.readOnlyFreshness.tenantId,'sarberki-test');assert.equal(preview.readOnlyFreshness.caseId,id);
+  assert.equal(preview.readOnlyFreshness.revision,2);assert.equal(preview.readOnlyFreshness.syntheticOnly,true);
+  assert.equal(preview.readOnlyFreshness.source,'stored-synthetic-case');assert.ok(Math.abs(Date.now()-Date.parse(preview.readOnlyFreshness.checkedAt))<10000);
+  assert.equal(preview.decision.capacity.status,'UNKNOWN');assert.equal(preview.decision.capacity.verified,false);assert.equal(preview.decision.pricing.verified,false);
+  const denied=await handler({httpMethod:'GET',headers:{},queryStringParameters});assert.equal(denied.statusCode,401);
+ });
  const input={action:'approve',caseId:id,expectedRevision:2,reviewedDraftHash:hash};
  if(process.env.ISOLATED_APPROVAL_MODE==='browser'){
   const {runBrowserApprovalChain}=await import('./isolated-browser-approval.mjs');

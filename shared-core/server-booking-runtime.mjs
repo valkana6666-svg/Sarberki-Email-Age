@@ -75,7 +75,9 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
     latestDraftMessageCount:latestDraft?.basedOnMessageCount??null,
     messageCount:current.data.messages.length,storedApproval:current.data.state.approval,
     auditStatus:'not_verified'};
-   return {caseId,revision:current.revision,text:planned.text,operatorReviewText:planned.operatorReviewText,decision:planned.decision,reviewState,approval:'pending',persisted:false};
+   const readOnlyFreshness={verified:true,checkedAt:clock(),source:'stored-synthetic-case',
+    tenantId,caseId,revision:current.revision,syntheticOnly:true};
+   return {caseId,revision:current.revision,text:planned.text,operatorReviewText:planned.operatorReviewText,decision:planned.decision,reviewState,readOnlyFreshness,approval:'pending',persisted:false};
   },
   async draft(caseId,expectedRevision){
    // Save only after separate server-side write authorization and optimistic concurrency check.

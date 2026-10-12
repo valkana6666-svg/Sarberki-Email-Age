@@ -20,6 +20,8 @@ test('Gmail thread follow-up keeps stay and ages; preview uses common decision a
  assert.equal(p.decision.facts.dates.arrival,'2026-11-01');assert.deepEqual(p.decision.facts.child_ages,[7,10]);assert.equal(p.decision.facts.guests,4);
  assert.equal(p.decision.capacity.status,'UNKNOWN');assert.equal(p.persisted,false);assert.match(p.operatorReviewText,/Kedves|Köszönjük/);
  assert.equal(follow.record.data.drafts.length,0);
+ assert.deepEqual(p.readOnlyFreshness,{verified:true,checkedAt:clock(),source:'stored-synthetic-case',tenantId:'sarberki-test',caseId:first.record.caseId,revision:2,syntheticOnly:true});
+ assert.equal(p.decision.capacity.verified,false); // Fresh case retrieval is never capacity evidence.
  assert.deepEqual(p.reviewState,{caseRevision:2,factsRevision:follow.record.data.state.revision,
   latestDraftRevision:null,latestDraftMessageCount:null,messageCount:2,storedApproval:'pending',auditStatus:'not_verified'});
 });

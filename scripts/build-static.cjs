@@ -6,17 +6,19 @@ const output = path.resolve('dist');
 fs.rmSync(output, {recursive:true, force:true});
 fs.mkdirSync(output);
 const allowedDirectories = new Set(['business','guest-reply','shared-core','price-source','sarberki-chatbot-project']);
-const chatbotAssets = new Set(['index.html','chat-session.mjs','inquiry-preview.mjs']);
+const chatbotAssets = new Set(['index.html','chat-session.mjs','inquiry-preview.mjs','operator-session.mjs','version-status.mjs','manifest.webmanifest','icons']);
 function copyDirectory(source, relative='') {
  for (const entry of fs.readdirSync(source,{withFileTypes:true})) {
   const rel=path.join(relative,entry.name);
   if(relative==='sarberki-chatbot-project'&&!chatbotAssets.has(entry.name))continue;
+  if(relative==='sarberki-chatbot-project/icons'&&!['icon-192.png','icon-512.png','apple-touch-icon.png'].includes(entry.name))continue;
+  if(/\.(?:png|webmanifest)$/.test(entry.name)&&!relative.startsWith('sarberki-chatbot-project'))continue;
   if(entry.isSymbolicLink()) continue;
   if(entry.isDirectory()) {
    if(relative==='' && !allowedDirectories.has(entry.name))continue;
    if(entry.name==='fixtures')continue;
    copyDirectory(path.join(source,entry.name),rel);
-  } else if(entry.isFile() && /\.(?:html|m?js|css|svg|txt)$/.test(entry.name) && !/\.test\./.test(entry.name) && !/(?:^server-|^supabase-case-repository|^price-server|^recorded-previo-test)/.test(entry.name)) {
+  } else if(entry.isFile() && /\.(?:html|m?js|css|svg|txt|webmanifest|png)$/.test(entry.name) && !/\.test\./.test(entry.name) && !/(?:^server-|^supabase-case-repository|^price-server|^recorded-previo-test)/.test(entry.name)) {
    if(/^isolated-persistent-(?:runtime|http)\.mjs$/.test(entry.name))continue;
    fs.mkdirSync(path.dirname(path.join(output,rel)),{recursive:true});
    fs.copyFileSync(path.join(source,entry.name),path.join(output,rel));
