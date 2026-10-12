@@ -4,14 +4,15 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {resolve,sep} from 'node:path';
 import assert from 'node:assert/strict';
 import {chromium,webkit} from 'playwright';
+import {runOperatorCookieBrowserProof} from './operator-cookie-browser-proof.mjs';
 const root=resolve(process.env.CHATBOT_PROOF_ROOT||'.'),report={syntheticOnly:true,externalRequests:0,emailSent:false,pushoverSent:false,bookingCreated:false,actualIPhoneVerified:false,homeScreenInstallationVerified:false,checks:[]};
 let unavailableConfigReads=0,servedVersionOverride=null;
 const messages={hu:'Van szabad Deluxe faház 2026.11.13-15 között 2 felnőtt részére, gyermek nélkül?',de:'Ist ein Deluxe Haus vom 2026-11-13 bis 2026-11-15 für 2 Erwachsene ohne Kinder frei?',en:'Is a Deluxe cabin available from 2026-11-13 to 2026-11-15 for 2 adults and no children?',si:'Ali je Deluxe hiška prosta od 2026-11-13 do 2026-11-15 za 2 odrasli osebi brez otrok?'};
 const server=createServer((req,res)=>{
  try{
   const path=new URL(req.url,'http://127.0.0.1').pathname;
-  if(req.method==='GET'&&path==='/.netlify/functions/chatbot-test-config'){
-   unavailableConfigReads++;res.writeHead(503,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end('{"error":"SETUP_REQUIRED"}');return;
+  if(['GET','POST'].includes(req.method)&&path==='/.netlify/functions/operator-session'){
+   if(req.method==='POST')unavailableConfigReads++;req.resume();res.writeHead(503,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end('{"error":"SESSION_SETUP_REQUIRED"}');return;
   }
   if(req.method!=='GET'||!/^\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_.-]+\.(?:mjs|html|webmanifest|png|json)$/.test(path))throw Error('PATH');
   const file=resolve(root,'.'+path);
@@ -87,7 +88,7 @@ try{
   const configBefore=unavailableConfigReads;
   await page.locator('#operator_email').fill('mobile-operator@synthetic.invalid');await page.locator('#operator_password').fill('synthetic-password-for-offline-proof');
   await page.locator('#operator_login button[type=submit]').click();
-  await page.locator('#operator_status').filter({hasText:'Belépés nem igazolt'}).waitFor();assert.equal(unavailableConfigReads,configBefore+1);
+  await page.locator('#operator_status').filter({hasText:'munkamenet jelenleg nem ellenőrizhető'}).waitFor();assert.equal(unavailableConfigReads,configBefore+1);
   assert.equal((await page.locator('#operator_password').inputValue())==='',true);
   await page.locator('#server_case_id').fill('case-synthetic');await page.locator('#server_case_load').click();
   await page.locator('#server_data_status').filter({hasText:'Szerveres adat nem igazolt'}).waitFor();
@@ -110,6 +111,8 @@ try{
   assert.equal(await page.locator('#conversation img').count(),0);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   assert.deepEqual(errors,[]);report.checks.push({engine,test:'textContent-no-script-no-overflow-no-pageerrors',result:'PASS'});
+  await context.close();
+  await runOperatorCookieBrowserProof({browser,engine,root,report});
   await browser.close();browser=null;
  }
  assert.equal(report.externalRequests,0);report.result='PASS';

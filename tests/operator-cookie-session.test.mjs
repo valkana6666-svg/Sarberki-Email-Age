@@ -1,0 +1,149 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createDecipheriv} from 'node:crypto';
+import {createOperatorCookieSession,clearOperatorCookie} from '../shared-core/operator-cookie-session.mjs';
+import {createOperatorSessionHandler} from '../netlify/functions/operator-session.mjs';
+import {createCaseHandler} from '../netlify/functions/booking-cases.mjs';
+const origin='https://leafy-chimera-2403e5.netlify.app',project='https://mojnqizbcaczstguikpv.supabase.co';
+const name='__Host-sarberki-operator';
+const cookieHeader=setCookie=>setCookie.split(';')[0];
+const json=body=>new Response(JSON.stringify(body),{status:200,headers:{'content-type':'application/json'}});
+function event({method='GET',cookie,csrf,body,headers={},query={}}={}){
+ return {httpMethod:method,headers:{host:new URL(origin).host,'x-sarberki-operator':'1','sec-fetch-site':'same-origin',origin,'content-type':'application/json',...(cookie?{cookie}:{}),...(csrf?{'x-csrf-token':csrf}:{}),...headers},...(body===undefined?{}:{body:JSON.stringify(body)}),queryStringParameters:query};
+}
+function fixture(){
+ const env={URL:origin,CASE_STORE_ENABLED:'synthetic-only',CASE_STORE_TEST_TENANTS:'sarberki-test,demo-test',SUPABASE_URL:project,SUPABASE_PUBLISHABLE_KEY:'sb_publishable_SYNTHETIC_PUBLIC_KEY_12345',SARBERKI_OPERATOR_SESSION_KEY:'ab'.repeat(32)};
+ const state={time:Date.now(),calls:[],refreshCount:0,revoked:false,membershipRead:true,userAnonymous:false,authStatus:null,networkFailure:false,logoutStatus:204,malformedAuth:false};
+ const jwt=()=> 'eyJhbGciOiJIUzI1NiJ9.'+Buffer.from(JSON.stringify({role:'authenticated',sub:'synthetic-operator',exp:Math.floor(state.time/1000)+3600})).toString('base64url')+'.synthetic_signature';
+ const fetchImpl=async(url,options={})=>{
+  state.calls.push({url,options});assert.ok(url.startsWith(project+'/'),url);
+  if(url.includes('/auth/v1/token')){
+   if(state.networkFailure)throw Error('SYNTHETIC_NETWORK_FAILURE');
+   if(state.authStatus||state.revoked)return new Response('{}',{status:state.authStatus||401});
+   if(state.malformedAuth)return json({access_token:'INVALID_SYNTHETIC_TOKEN',refresh_token:'short',user:{id:'other'}});
+   const refreshing=url.includes('refresh_token');if(refreshing)state.refreshCount++;
+   return json({access_token:jwt(),refresh_token:'synthetic_refresh_token_'+state.refreshCount,user:{id:'synthetic-operator'}});
+  }
+  if(url.includes('/auth/v1/logout'))return new Response(state.logoutStatus===204?null:'{}',{status:state.logoutStatus});
+  if(url.endsWith('/auth/v1/user'))return json({id:'synthetic-operator',is_anonymous:state.userAnonymous});
+  if(url.includes('/rest/v1/sc_memberships'))return json([{tenant_id:'sarberki-test',user_id:'synthetic-operator',can_read:state.membershipRead,can_write:false,can_approve:false}]);
+  if(url.includes('/rest/v1/sc_cases'))return json([{tenant_id:'sarberki-test',case_id:'case-synthetic',revision:1,data:{id:'case-synthetic',tenantId:'sarberki-test',sender:'guest@synthetic.invalid'},created_at:new Date(state.time).toISOString(),updated_at:new Date(state.time).toISOString(),updated_by:'synthetic-operator'}]);
+  throw Error('Unexpected synthetic transport');
+ };
+ const now=()=>state.time,session=createOperatorCookieSession({env,fetchImpl,now}),handler=createOperatorSessionHandler({env,fetchImpl,now});
+ const login=()=>session.login(event({method:'POST'}),{action:'login',email:'operator@synthetic.invalid',password:'SYNTHETIC_NOT_A_REAL_PASSWORD'});
+ return {env,state,fetchImpl,now,session,handler,login};
+}
+function decode(setCookie,key){
+ const [version,iv,encrypted,tag]=cookieHeader(setCookie).slice(name.length+1).split('.');assert.equal(version,'v1');
+ const decrypt=createDecipheriv('aes-256-gcm',Buffer.from(key,'hex'),Buffer.from(iv,'base64url'));decrypt.setAAD(Buffer.from(name+'|'+origin+'|'+project+'|v1'));decrypt.setAuthTag(Buffer.from(tag,'base64url'));
+ return JSON.parse(Buffer.concat([decrypt.update(Buffer.from(encrypted,'base64url')),decrypt.final()]).toString());
+}
+test('real AEAD cookie has only refresh/CSRF/absolute expiry and is never disclosed in metadata',async()=>{
+ const f=fixture(),logged=await f.login(),payload=decode(logged.setCookie,f.env.SARBERKI_OPERATOR_SESSION_KEY);
+ assert.deepEqual(Object.keys(payload).sort(),['csrfToken','expiresAt','refreshToken']);assert.equal(payload.expiresAt,f.state.time+7*86400000);
+ assert.match(logged.setCookie,/^__Host-sarberki-operator=/);for(const flag of ['Path=/','HttpOnly','Secure','SameSite=Strict','Max-Age=604800'])assert.ok(logged.setCookie.includes(flag));assert.doesNotMatch(logged.setCookie,/Domain=/);
+ assert.deepEqual(Object.keys(logged.metadata).sort(),['authenticated','csrfToken','expiresAt','tenantId']);assert.match(logged.metadata.csrfToken,/^[a-f0-9]{64}$/);assert.equal(logged.metadata.tenantId,'sarberki-test');
+ assert.doesNotMatch(JSON.stringify(logged.metadata),/synthetic_refresh_token|synthetic_signature|SYNTHETIC_NOT_A_REAL_PASSWORD/);assert.doesNotMatch(logged.setCookie,/synthetic_refresh_token|synthetic_signature/);
+});
+test('restore refreshes even an unexpired access session, preserves CSRF/absolute expiry and rotates encrypted cookie',async()=>{
+ const f=fixture(),logged=await f.login();f.state.calls=[];
+ const first=await f.session.restore(event({cookie:cookieHeader(logged.setCookie)}));assert.equal(f.state.refreshCount,1);assert.equal(first.metadata.csrfToken,logged.metadata.csrfToken);assert.equal(first.metadata.expiresAt,logged.metadata.expiresAt);assert.notEqual(first.setCookie,logged.setCookie);
+ assert.equal(decode(first.setCookie,f.env.SARBERKI_OPERATOR_SESSION_KEY).refreshToken,'synthetic_refresh_token_1');
+ assert.equal(f.state.calls[0].url,project+'/auth/v1/token?grant_type=refresh_token');assert.deepEqual(f.state.calls.map(x=>new URL(x.url).pathname),['/auth/v1/token','/auth/v1/user','/rest/v1/sc_memberships']);
+ f.state.time+=1000;const next=await f.session.restore(event({cookie:cookieHeader(first.setCookie)}));assert.equal(next.metadata.expiresAt,logged.metadata.expiresAt);assert.ok(next.setCookie.includes('Max-Age=604799'));
+});
+test('missing, duplicate, malformed, tampered or expired cookie fails closed before any Auth/DB call',async()=>{
+ const f=fixture(),logged=await f.login(),header=cookieHeader(logged.setCookie);f.state.calls=[];
+ for(const cookie of [undefined,name+'=broken',header+'; '+header,header.replace('v1.','v2.'),header.slice(0,-10)+'AAAAAAAAAA']){
+  await assert.rejects(f.session.restore(event({cookie})),error=>error.status===401&&error.setCookie===clearOperatorCookie);assert.equal(f.state.calls.length,0);
+ }
+ f.state.time+=7*86400000;await assert.rejects(f.session.restore(event({cookie:header})),error=>error.status===401);assert.equal(f.state.calls.length,0);
+});
+test('wrong encryption key cannot restore a valid cookie',async()=>{
+ const f=fixture(),logged=await f.login();f.state.calls=[];f.env.SARBERKI_OPERATOR_SESSION_KEY='cd'.repeat(32);await assert.rejects(f.session.restore(event({cookie:cookieHeader(logged.setCookie)})),error=>error.status===401);assert.equal(f.state.calls.length,0);
+});
+test('origin/host/Fetch Metadata/custom header and duplicate-sensitive headers block access before refresh',async()=>{
+ const f=fixture(),logged=await f.login();f.state.calls=[];
+ for(const headers of [{host:'foreign.netlify.app'},{origin:'https://foreign.example'},{'sec-fetch-site':'cross-site'},{'sec-fetch-site':undefined},{'x-sarberki-operator':'0'},{Origin:origin}]){
+  await assert.rejects(f.session.restore(event({cookie:cookieHeader(logged.setCookie),headers})),error=>error.status===403);assert.equal(f.state.calls.length,0);
+ }
+});
+test('cookie-bound CSRF required on protected GET/logout; restore permits nonce recovery with same-origin header',async()=>{
+ const f=fixture(),logged=await f.login();f.state.calls=[];
+ for(const csrf of [undefined,'00'.repeat(32),'invalid']){
+  await assert.rejects(f.session.protectedRead(event({cookie:cookieHeader(logged.setCookie),csrf})),error=>error.status===403);await assert.rejects(f.session.logout(event({method:'POST',cookie:cookieHeader(logged.setCookie),csrf})),error=>error.status===403);assert.equal(f.state.calls.length,0);
+ }
+ const current=await f.session.protectedRead(event({cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken}));assert.equal(current.metadata.authenticated,true);assert.equal(f.state.refreshCount,1);
+});
+test('all setup gates reject wrong target, missing/invalid key or privileged credentials before Auth',async()=>{
+ for(const change of [{URL:'https://foreign.netlify.app'},{CASE_STORE_ENABLED:'true'},{CASE_STORE_TEST_TENANTS:'sarberki-test'},{SUPABASE_URL:'https://other.supabase.co'},{SUPABASE_PUBLISHABLE_KEY:'sb_secret_SYNTHETIC_PRIVATE'},{SARBERKI_OPERATOR_SESSION_KEY:undefined},{SARBERKI_OPERATOR_SESSION_KEY:'short'}]){
+  const f=fixture();Object.assign(f.env,change);await assert.rejects(f.login(),error=>error.status===503&&error.code==='SESSION_SETUP_REQUIRED');assert.equal(f.state.calls.length,0);
+ }
+});
+test('invalid credentials and malformed Auth tokens cannot create a cookie; anonymous/wrong authority cannot login',async()=>{
+ for(const change of [{authStatus:400},{authStatus:401},{authStatus:403},{malformedAuth:true},{membershipRead:false},{userAnonymous:true}]){
+  const f=fixture();Object.assign(f.state,change);await assert.rejects(f.login(),error=>[401,403].includes(error.status));assert.equal(f.state.calls.some(x=>x.url.includes('/sc_cases')),false);
+ }
+});
+test('revoked session rejects refresh and clears cookie despite originally unexpired access token',async()=>{
+ const f=fixture(),logged=await f.login();f.state.revoked=true;f.state.calls=[];
+ await assert.rejects(f.session.protectedRead(event({cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken})),error=>error.status===401&&error.setCookie===clearOperatorCookie);
+ assert.equal(f.state.calls.length,1);assert.ok(f.state.calls[0].url.includes('grant_type=refresh_token'));
+});
+test('transient refresh failure preserves cookie but denies data, and removed read membership clears cookie',async()=>{
+ for(const change of [{networkFailure:true},{authStatus:500}]){
+  const f=fixture(),logged=await f.login();Object.assign(f.state,change);f.state.calls=[];
+  await assert.rejects(f.session.restore(event({cookie:cookieHeader(logged.setCookie)})),error=>error.status===503&&!error.setCookie);assert.equal(f.state.calls.length,1);
+ }
+ const f=fixture(),logged=await f.login();f.state.membershipRead=false;await assert.rejects(f.session.restore(event({cookie:cookieHeader(logged.setCookie)})),error=>error.status===403&&error.setCookie===clearOperatorCookie);
+});
+test('logout refreshes and revokes only current session, always clears local cookie on upstream failure',async()=>{
+ for(const logoutStatus of [204,500]){
+  const f=fixture(),logged=await f.login();f.state.logoutStatus=logoutStatus;f.state.calls=[];
+  if(logoutStatus===204){const result=await f.session.logout(event({method:'POST',cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken}));assert.deepEqual(result.metadata,{authenticated:false});assert.equal(result.setCookie,clearOperatorCookie);}
+  else await assert.rejects(f.session.logout(event({method:'POST',cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken})),error=>error.status===503&&error.setCookie===clearOperatorCookie);
+  assert.ok(f.state.calls.some(x=>x.url===project+'/auth/v1/logout?scope=local'));assert.equal(f.state.calls.some(x=>x.url.includes('/sc_cases')),false);
+ }
+});
+test('HTTP endpoint has private no-store responses, no tokens and bounded input/method validation',async()=>{
+ const f=fixture();const missing=await f.handler(event());assert.equal(missing.statusCode,401);assert.equal(JSON.parse(missing.body).error,'AUTH_REQUIRED');
+ const response=await f.handler(event({method:'POST',body:{action:'login',email:'operator@synthetic.invalid',password:'SYNTHETIC_NOT_A_REAL_PASSWORD'}}));assert.equal(response.statusCode,200);assert.equal(response.headers['Cache-Control'],'private, no-store');assert.ok(response.headers['Set-Cookie']);assert.doesNotMatch(response.body,/access_token|refresh_token|synthetic_refresh|synthetic_signature/);
+ for(const e of [{...event(),httpMethod:'DELETE'},event({method:'POST',body:{action:'login',email:'operator@synthetic.invalid',password:'x',role:'admin'}}),{...event({method:'POST'}),body:'not json'}, {...event({method:'POST'}),body:'x'.repeat(4097)}, {...event({method:'POST'}),isBase64Encoded:true,body:'e30='}]){assert.ok([400,405].includes((await f.handler(e)).statusCode));}
+});
+test('booking cookie GET refreshes first, reuses verified authority once, forwards rotation; cannot write or change tenant',async()=>{
+ const f=fixture(),logged=await f.login(),handler=createCaseHandler({env:f.env,fetchImpl:f.fetchImpl});f.state.calls=[];
+ const e=event({cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken,query:{tenantId:'sarberki-test',caseId:'case-synthetic'}}),result=await handler(e);
+ assert.equal(result.statusCode,200);assert.equal(JSON.parse(result.body).result.caseId,'case-synthetic');assert.equal(result.headers['Cache-Control'],'private, no-store');assert.ok(result.headers['Set-Cookie']);
+ assert.deepEqual(f.state.calls.map(x=>new URL(x.url).pathname),['/auth/v1/token','/auth/v1/user','/rest/v1/sc_memberships','/rest/v1/sc_cases']);
+ f.state.calls=[];assert.equal((await handler({...e,httpMethod:'POST',body:'{"action":"draft"}'})).statusCode,401);assert.equal((await handler({...e,queryStringParameters:{tenantId:'demo-test'}})).statusCode,403);assert.equal(f.state.calls.length,0);
+});
+test('cookie case API CSRF, revoked, malformed and transient errors never reach case storage',async()=>{
+ for(const mode of ['csrf','revoked','malformed','transient']){
+  const f=fixture(),logged=await f.login(),handler=createCaseHandler({env:f.env,fetchImpl:f.fetchImpl});f.state.calls=[];
+  if(mode==='revoked')f.state.revoked=true;if(mode==='malformed')f.state.malformedAuth=true;if(mode==='transient')f.state.networkFailure=true;
+  const result=await handler(event({cookie:cookieHeader(logged.setCookie),csrf:mode==='csrf'?'00'.repeat(32):logged.metadata.csrfToken,query:{tenantId:'sarberki-test',caseId:'case-synthetic'}}));
+  assert.equal(result.statusCode,mode==='csrf'?403:mode==='transient'?503:401);assert.equal(f.state.calls.some(x=>x.url.includes('/rest/v1/sc_cases')),false);if(mode==='transient')assert.equal(result.headers['Set-Cookie'],undefined);
+ }
+});
+test('existing bearer GET remains independent of cookie key and cookie CSRF requirements',async()=>{
+ const f=fixture();delete f.env.SARBERKI_OPERATOR_SESSION_KEY;const handler=createCaseHandler({env:f.env,fetchImpl:f.fetchImpl});
+ const result=await handler(event({headers:{authorization:'Bearer SYNTHETIC_EXISTING_BEARER_12345'},query:{tenantId:'sarberki-test',caseId:'case-synthetic'}}));assert.equal(result.statusCode,200);assert.equal(result.headers['Set-Cookie'],undefined);assert.equal(f.state.refreshCount,0);
+});
+
+test('removal of DB read membership does not prevent explicit current-session Auth logout',async()=>{
+ const f=fixture(),logged=await f.login();f.state.membershipRead=false;f.state.calls=[];const result=await f.session.logout(event({method:'POST',cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken}));assert.equal(result.metadata.authenticated,false);assert.equal(result.setCookie,clearOperatorCookie);assert.deepEqual(f.state.calls.map(c=>new URL(c.url).pathname),['/auth/v1/token','/auth/v1/logout']);
+});
+test('cookie read refuses ignored write-like fields and duplicate header inputs before any upstream call',async()=>{
+ const f=fixture(),logged=await f.login(),handler=createCaseHandler({env:f.env,fetchImpl:f.fetchImpl});f.state.calls=[];
+ const response=await handler(event({cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken,query:{tenantId:'sarberki-test',envelope:'ignored'}}));assert.equal(response.statusCode,403);assert.equal(f.state.calls.length,0);
+ const e=event({cookie:cookieHeader(logged.setCookie)});e.multiValueHeaders={'Cookie':[e.headers.cookie,e.headers.cookie]};await assert.rejects(f.session.restore(e),error=>error.status===403);assert.equal(f.state.calls.length,0);
+});
+
+test('conflicting or malformed primary/multivalue header maps fail before any Auth request',async()=>{
+ const f=fixture(),logged=await f.login();f.state.calls=[];
+ for(const multiValueHeaders of [{host:['foreign.example']},{'x-csrf-token':['00'.repeat(32)]},{host:origin},{host:[123]},{host:[{}]},{host:['x'.repeat(8193)]}]){
+  const e=event({cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken});e.multiValueHeaders=multiValueHeaders;await assert.rejects(f.session.protectedRead(e),error=>error.status===403);assert.equal(f.state.calls.length,0);
+ }
+ const valid=event({cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken});valid.multiValueHeaders={host:[valid.headers.host],'x-csrf-token':[valid.headers['x-csrf-token']]};assert.equal((await f.session.protectedRead(valid)).metadata.authenticated,true);
+});

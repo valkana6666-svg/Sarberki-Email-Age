@@ -12,7 +12,7 @@ function buildFixture(){
  for(const dir of ['tests','reports','sarberki-chatbot-project/private','sarberki-chatbot-project/fixtures'])mkdirSync(join(root,dir),{recursive:true});
  for(const file of ['sarberki-chatbot-project/private-key.txt','sarberki-chatbot-project/server-admin.mjs','sarberki-chatbot-project/private/secret.mjs','sarberki-chatbot-project/fixtures/guest.json','tests/private-fixture.mjs','reports/private-report.html'])writeFileSync(join(root,file),'SYNTHETIC_PRIVATE_CANARY');
  symlinkSync(join(root,'sarberki-chatbot-project/private-key.txt'),join(root,'sarberki-chatbot-project/linked-secret.txt'));
- const execution=spawnSync(process.execPath,['scripts/build-static.cjs'],{cwd:root,env:{...process.env,COMMIT_REF:sha,SUPABASE_SERVICE_ROLE_KEY:'SYNTHETIC_ENV_SECRET_CANARY'},encoding:'utf8'});
+ const execution=spawnSync(process.execPath,['scripts/build-static.cjs'],{cwd:root,env:{...process.env,COMMIT_REF:sha,SUPABASE_SERVICE_ROLE_KEY:'SYNTHETIC_ENV_SECRET_CANARY',SARBERKI_OPERATOR_SESSION_KEY:'SYNTHETIC_ENV_SECRET_CANARY'},encoding:'utf8'});
  assert.equal(execution.status,0,execution.stderr);
  return {root,dist:join(root,'dist')};
 }
@@ -36,7 +36,7 @@ test('static build publishes existing chatbot and its complete browser module cl
    }
   }
   for(const required of ['chatbot-v1.mjs','sarberki-chatbot-project/chat-session.mjs','shared-core/central-inquiry-decision.mjs','shared-core/inquiry-channel-adapters.mjs','booking-cases.mjs'])assert.ok(visited.has(join(dist,required)),required);
-  for(const forbidden of ['tests','reports','scripts','deployment','recovery','supabase','shared-core/isolated-persistent-http.mjs','shared-core/isolated-persistent-runtime.mjs','shared-core/server-booking-runtime.mjs','sarberki-chatbot-project/private-key.txt','sarberki-chatbot-project/server-admin.mjs','sarberki-chatbot-project/private','sarberki-chatbot-project/fixtures','sarberki-chatbot-project/linked-secret.txt'])assert.equal(existsSync(join(dist,forbidden)),false,forbidden);
+  for(const forbidden of ['tests','reports','scripts','deployment','recovery','supabase','shared-core/isolated-persistent-http.mjs','shared-core/isolated-persistent-runtime.mjs','shared-core/server-booking-runtime.mjs','shared-core/operator-cookie-session.mjs','sarberki-chatbot-project/private-key.txt','sarberki-chatbot-project/server-admin.mjs','sarberki-chatbot-project/private','sarberki-chatbot-project/fixtures','sarberki-chatbot-project/linked-secret.txt'])assert.equal(existsSync(join(dist,forbidden)),false,forbidden);
   function scan(dir){for(const item of readdirSync(dir,{withFileTypes:true})){const file=join(dir,item.name);if(item.isDirectory())scan(file);else assert.doesNotMatch(readFileSync(file,'utf8'),/SYNTHETIC_(?:PRIVATE|ENV_SECRET)_CANARY/);}}scan(dist);
   const {createChatInquirySession}=await import(pathToFileURL(join(dist,'sarberki-chatbot-project/chat-session.mjs')));
   for(const language of ['hu','de','en','si']){

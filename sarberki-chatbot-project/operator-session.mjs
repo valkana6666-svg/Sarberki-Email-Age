@@ -2,33 +2,39 @@ import {createCaseStoreClient} from '../shared-core/case-store-client.mjs';
 import {isIsolatedReviewCaseId} from '../shared-core/isolated-review-case-id.mjs';
 import {assertCurrentEvidence} from '../shared-core/availability-model.mjs';
 import {renderCentralConversation} from '../shared-core/inquiry-channel-adapters.mjs';
-const project='https://mojnqizbcaczstguikpv.supabase.co',tenant='sarberki-test';
-const claims=value=>{try{return JSON.parse(atob(value.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));}catch{return null;}};
-function publicKey(key){return typeof key==='string'&&( /^sb_publishable_[A-Za-z0-9_-]{10,200}$/.test(key)||claims(key)?.role==='anon');}
+const tenant='sarberki-test',endpoint='/.netlify/functions/operator-session';
 export function createOperatorSession({request=fetch,now=()=>Date.now()}={}){
- let token='',expiry=0,epoch=0;
- const logout=()=>{epoch++;token='';expiry=0;};
- const getAccessToken=()=>{if(!token||now()>=expiry){logout();throw Error('AUTH_REQUIRED');}return token;};
- return Object.freeze({logout,
+ let metadata=null,revocationCsrf=null,epoch=0,queue=Promise.resolve(),restorePending=null;
+ const enqueue=job=>{const next=queue.then(job,job);queue=next.catch(()=>{});return next;};
+ const invalidate=()=>{epoch++;metadata=null;};
+ const current=()=>{if(!metadata||now()>=Date.parse(metadata.expiresAt)){invalidate();throw Error('AUTH_REQUIRED');}return metadata;};
+ const parse=async response=>{
+  if(!response.ok){const error=Error(response.status===401||response.status===403?'AUTH_REQUIRED':response.status===503?'SESSION_SETUP_REQUIRED':'SERVICE_UNAVAILABLE');error.status=response.status;throw error;}
+  const body=await response.json();
+  if(body?.authenticated!==true||body.tenantId!==tenant||!/^[a-f0-9]{64}$/.test(body.csrfToken)||!Number.isFinite(Date.parse(body.expiresAt))||Date.parse(body.expiresAt)<=now()||Date.parse(body.expiresAt)>now()+7*86400000+60000||'access_token' in body||'refresh_token' in body)throw Error('INVALID_SESSION');
+  revocationCsrf=body.csrfToken;return {authenticated:true,tenantId:tenant,expiresAt:body.expiresAt,csrfToken:body.csrfToken};
+ };
+ const options=(method,body,csrf)=>({method,cache:'no-store',credentials:'same-origin',redirect:'error',headers:{'X-Sarberki-Operator':'1',...(body?{'Content-Type':'application/json'}:{}),...(csrf?{'X-CSRF-Token':csrf}:{})},...(body?{body:JSON.stringify(body)}:{})});
+ const restore=()=>{
+  if(restorePending)return restorePending;const turn=epoch;
+  const pending=enqueue(async()=>{try{const value=await parse(await request(endpoint,options('GET')));if(turn!==epoch)throw Error('SESSION_CHANGED');metadata=value;return {...value};}catch(error){if(turn===epoch)metadata=null;throw error;}});
+  restorePending=pending;pending.finally(()=>{if(restorePending===pending)restorePending=null;}).catch(()=>{});return pending;
+ };
+ const logout=()=>{invalidate();return enqueue(async()=>{const response=await request(endpoint,options('POST',{action:'logout'},revocationCsrf));if(!response.ok)throw Error('LOGOUT_NOT_VERIFIED');revocationCsrf=null;return {authenticated:false};});};
+ return Object.freeze({logout,restore,clear:invalidate,
   async login(email,password){
-   logout();const turn=epoch;
+   invalidate();const turn=epoch;
    if(typeof email!=='string'||!email.includes('@')||email.length>254||typeof password!=='string'||!password||password.length>1024)throw Error('INVALID_INPUT');
-   const response=await request('/.netlify/functions/chatbot-test-config',{method:'GET',cache:'no-store',credentials:'omit',redirect:'error'});
-   if(!response.ok)throw Error('SETUP_REQUIRED');const config=await response.json();
-   if(config?.enabled!==true||config.syntheticOnly!==true||config.tenantId!==tenant||config.supabaseUrl!==project||!publicKey(config.publishableKey))throw Error('SETUP_REQUIRED');
-   if(turn!==epoch)throw Error('SESSION_CHANGED');
-   const auth=await request(project+'/auth/v1/token?grant_type=password',{method:'POST',cache:'no-store',credentials:'omit',redirect:'error',headers:{apikey:config.publishableKey,'Content-Type':'application/json'},body:JSON.stringify({email,password})});
-   if(!auth.ok)throw Error('AUTH_REQUIRED');const body=await auth.json(),jwt=claims(body?.access_token);
-   if(turn!==epoch)throw Error('SESSION_CHANGED');
-   if(typeof body.access_token!=='string'||jwt?.role!=='authenticated'||!jwt.sub||jwt.sub!==body.user?.id||!Number.isFinite(jwt.exp)||jwt.exp*1000<=now())throw Error('AUTH_REQUIRED');
-   token=body.access_token;expiry=jwt.exp*1000;return {authenticated:true,tenantId:tenant};
+   return enqueue(async()=>{const value=await parse(await request(endpoint,options('POST',{action:'login',email,password})));if(turn!==epoch)throw Error('SESSION_CHANGED');metadata=value;return {...value};});
   },
-  async loadCase(caseId){
-   const turn=++epoch;if(!isIsolatedReviewCaseId(caseId))throw Error('INVALID_INPUT');getAccessToken();
-   const client=createCaseStoreClient({getAccessToken,request:(url,options)=>request(url,{...options,credentials:'omit',redirect:'error'})});
+  loadCase(caseId){
+   const turn=epoch;if(!isIsolatedReviewCaseId(caseId))return Promise.reject(Error('INVALID_INPUT'));
+   return enqueue(async()=>{
+   current();const assertSession=()=>{if(turn!==epoch)throw Error('SESSION_CHANGED');return current().csrfToken;};
+   const client=createCaseStoreClient({cookieReadOnly:true,getCsrfToken:assertSession,request:async(url,options)=>{const response=await request(url,options);if(response.status===401||response.status===403){if(turn===epoch)invalidate();throw Error('AUTH_REQUIRED');}return response;}});
    const record=await client.get(tenant,caseId);if(turn!==epoch)throw Error('SESSION_CHANGED');
    if(record?.tenantId!==tenant||record.caseId!==caseId||record.data?.tenantId!==tenant||record.data.id!==caseId||!Number.isSafeInteger(record.revision)||record.revision<1||!record.data.sender?.endsWith('.invalid'))throw Error('INVALID_DATA');
-   const preview=await client.previewDraft(tenant,caseId,record.revision);getAccessToken();if(turn!==epoch)throw Error('SESSION_CHANGED');
+   const preview=await client.previewDraft(tenant,caseId,record.revision);assertSession();if(turn!==epoch)throw Error('SESSION_CHANGED');
    if(preview?.caseId!==caseId||preview.revision!==record.revision||preview.persisted!==false||preview.approval!=='pending'||typeof preview.text!=='string')throw Error('INVALID_DATA');
    const d=preview.decision;
    if(!d?.facts||!Array.isArray(d.missing)||!Array.isArray(d.contradictions)||!d.capacity||!d.pricing||d.safety?.emailSent!==false||d.safety.bookingCreated!==false||d.safety.approval!=='pending')throw Error('INVALID_DATA');
@@ -55,20 +61,28 @@ export function createOperatorSession({request=fetch,now=()=>Date.now()}={}){
    return {caseId,revision:record.revision,fresh,text:renderCentralConversation(safe),operatorReviewText:capacityFresh&&pricingFresh&&typeof preview.operatorReviewText==='string'?preview.operatorReviewText:renderCentralConversation(safe,{language:'hu'}),draft:capacityFresh&&pricingFresh?preview.text:'',
     status:fresh?'Friss ügyolvasás: Supabase tesztügytár · szintetikus. Ellenőrzés: '+f.checkedAt:'Ügyadatfrissesség NEM IGAZOLT; nincs jóváhagyás.',
     capacity:capacityFresh?'Kapacitásforrás: '+evidence.map(e=>e.source+' · '+e.checkedAt).join('; ')+' · szintetikus, nem valós foglalhatóság.':'Kapacitásforrás és kapacitásellenőrzési idő: NEM IGAZOLT.',price:pricingFresh?'Árforrás: '+priceEvidence.source+' · '+priceEvidence.checkedAt+' · szintetikus belső számítás; nem jóváhagyott vendégár.':'Árforrás és árellenőrzési idő: NEM IGAZOLT.',audit:'Audit nincs külön visszaolvasva; NEM IGAZOLT.'};
+   }).catch(error=>{if(turn===epoch)metadata=null;throw error;});
   }
  });
 }
-export function initOperatorPanel({documentRef=document,windowRef=typeof window==='undefined'?null:window,request=fetch,now=()=>Date.now()}={}){
+export function initOperatorPanel({documentRef=document,windowRef=typeof window==='undefined'?null:window,request=fetch,now=()=>Date.now(),setTimer=typeof setTimeout==='undefined'?null:setTimeout,clearTimer=typeof clearTimeout==='undefined'?null:clearTimeout}={}){
  const get=id=>documentRef.getElementById(id),form=get('operator_login');if(!form)return false;
- const session=createOperatorSession({request,now});let epoch=0;
+ const session=createOperatorSession({request,now});let epoch=0,timer=null,active=documentRef.visibilityState!=='hidden';
  const clear=()=>{for(const id of ['server_chat_reply','server_operator_hu','server_guest_draft'])get(id).value='';get('server_data_status').textContent='Nincs hitelesített szerveres adat.';};
- const reset=()=>{epoch++;session.logout();clear();get('operator_password').value='';get('operator_status').textContent='Kijelentkezve. A token törölve.';};
- form.addEventListener('submit',async event=>{event.preventDefault();const turn=++epoch;clear();const password=get('operator_password').value;get('operator_password').value='';get('operator_status').textContent='Belépés ellenőrzése…';try{await session.login(get('operator_email').value.trim(),password);if(turn===epoch)get('operator_status').textContent='Hitelesített tesztmunkamenet; a szerver külön ellenőrzi az ügyhozzáférést.';}catch{if(turn===epoch){session.logout();get('operator_status').textContent='Belépés nem igazolt. Ellenőrizze a tesztbeállítást és hozzáférést.';}}});
+ const stop=()=>{if(timer!==null)clearTimer?.(timer);timer=null;};
+ const schedule=()=>{stop();if(active&&setTimer){timer=setTimer(()=>restore(),300000);timer?.unref?.();}};
+ const status=()=>{get('operator_status').textContent='Hitelesített tartós tesztmunkamenet; az ügyhozzáférést a szerver ellenőrzi.';};
+ const failed=error=>{clear();get('operator_status').textContent=error.message==='AUTH_REQUIRED'?'Új bejelentkezés szükséges: a munkamenet lejárt vagy nem érvényes.':'A munkamenet jelenleg nem ellenőrizhető. Újrapróbálható; a szerveres sütit nem töröltük.';};
+ const restore=async()=>{if(!active)return;const turn=epoch;let retry=true;clear();try{await session.restore();if(turn===epoch&&active)status();}catch(error){if(error.message==='AUTH_REQUIRED')retry=false;if(turn===epoch&&active)failed(error);}finally{if(turn===epoch&&retry)schedule();}};
+ const reset=async()=>{epoch++;stop();clear();get('operator_password').value='';get('operator_status').textContent='Kijelentkezés ellenőrzése…';try{await session.logout();get('operator_status').textContent='Kijelentkezve.';}catch{get('operator_status').textContent='A helyi nézet törölve; a szerveres kijelentkezés NEM IGAZOLT. Próbálja újra.';}};
+ form.addEventListener('submit',async event=>{event.preventDefault();const turn=++epoch;stop();clear();const password=get('operator_password').value;get('operator_password').value='';get('operator_status').textContent='Belépés ellenőrzése…';try{await session.login(get('operator_email').value.trim(),password);if(turn===epoch){status();schedule();}}catch(error){if(turn===epoch)failed(error);}});
  get('operator_logout').addEventListener('click',reset);
- get('server_case_id').addEventListener('input',()=>{epoch++;clear();});
- get('server_case_load').addEventListener('click',async()=>{const turn=++epoch;clear();get('server_data_status').textContent='Szintetikus ügy ellenőrzése…';try{const result=await session.loadCase(get('server_case_id').value.trim());if(turn!==epoch)return;get('server_chat_reply').value=result.text;get('server_operator_hu').value=result.operatorReviewText;get('server_guest_draft').value=result.draft;get('server_data_status').textContent=[result.status,'Ügyverzió: '+result.revision,result.capacity,result.price,result.audit,'Csak olvasás; nincs küldés, mentés vagy jóváhagyás.'].join('\n');}catch{if(turn===epoch){clear();get('server_data_status').textContent='Szerveres adat nem igazolt: jogosultság, munkamenet vagy ügyverzió ellenőrzése szükséges.';}}});
- windowRef?.addEventListener('pagehide',reset);
- for(const event of ['isolated-approval-session-changed','sarberki:session-changed'])documentRef.addEventListener?.(event,reset);
- clear();return true;
+ get('server_case_id').addEventListener('input',()=>{epoch++;clear();schedule();});
+ get('server_case_load').addEventListener('click',async()=>{const turn=++epoch;clear();get('server_data_status').textContent='Szintetikus ügy ellenőrzése…';try{const result=await session.loadCase(get('server_case_id').value.trim());if(turn!==epoch||!active)return;get('server_chat_reply').value=result.text;get('server_operator_hu').value=result.operatorReviewText;get('server_guest_draft').value=result.draft;get('server_data_status').textContent=[result.status,'Ügyverzió: '+result.revision,result.capacity,result.price,result.audit,'Csak olvasás; nincs küldés, mentés vagy jóváhagyás.'].join('\n');}catch(error){if(turn===epoch){failed(error);get('server_data_status').textContent='Szerveres adat nem igazolt: jogosultság, munkamenet vagy ügyverzió ellenőrzése szükséges.';}}});
+ windowRef?.addEventListener('pagehide',()=>{active=false;epoch++;stop();clear();get('operator_password').value='';});
+ windowRef?.addEventListener('pageshow',()=>{active=true;restore();});
+ documentRef.addEventListener?.('visibilitychange',()=>{if(documentRef.visibilityState==='hidden'){active=false;epoch++;stop();clear();}else{active=true;restore();}});
+ for(const event of ['isolated-approval-session-changed','sarberki:session-changed'])documentRef.addEventListener?.(event,()=>{epoch++;session.clear();clear();restore();});
+ clear();restore();return true;
 }
 if(typeof document!=='undefined')initOperatorPanel();

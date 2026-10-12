@@ -49,3 +49,12 @@
 - 10-12: szabályok, hívásminimalizálás, aktuális commit/CI és hibák; 10-13: kapacitás/ár és bizonytalan források; 10-14: csatornaparitás, jogosultság/jóváhagyás; 10-15: HU/DE/EN/SI és foglalási feltételek; 10-16: HTTPS, tényleges iPhone és vendég-/e-mail-folyamat; 10-17: regresszió, integráció, biztonság, audit, mentés/restore; 10-18: kiadásra jelölési ellenőrzés.
 - A már igazolt feladatokat eredményük alapján lezártnak kezeld; a dátum nem indokol újrafuttatást. Eltérésnél a függőséget és akadályt dokumentáld, majd térj vissza az elsődleges célhoz.
 - GitHub #3 AI-hatékonyság-/hibaaránymérés halasztott; a dokumentált későbbi feladat nem blokkolhatja a V1-et, és most nem fejlesztendő.
+
+## V2/V3-kompatibilitás – 2026-10-12
+
+- A V1 meglévő közös magját fejleszd tovább: determinisztikus üzleti döntés, külön AI-/kommunikációs adapter, hitelesített tenant és külön olvasási/írási/jóváhagyási jog. Csatornaadat vagy AI-kimenet soha nem ad műveleti jogosultságot.
+- Először a V1 blokkolóit javítsd. Csak bizonyított későbbi újraírást elkerülő modulhatárt készíts elő; új válaszmotor, előre megépített SaaS/voice funkció vagy általános keretrendszer tilos indokolt feladat nélkül.
+- A későbbi külső végrehajtás külön képesség legyen: tenant- és műveletjog, aktuális üzleti feltételek, feature flag, idempotenciakulcs, tartós műveleti audit, korlátozott retry/timeout és emberi visszaesési út szükséges. Tervezet vagy belső jóváhagyás önmagában nem küldési/foglalási engedély.
+- Most nem implementálunk vagy aktiválunk automatikus vendégküldést, Previo-írást/foglalást vagy telefonos V3-at. A Previo írási API megvalósíthatóságát és mellékhatásait külön kell igazolni.
+- A szerveres hitelesítési segéd, sessionkulcs és szolgáltatói token nem publikálható statikus kliensmodulként. Tartós belépés mellett minden védett olvasásnál megmarad a tényleges Auth- és jogosultságellenőrzés.
+- Minden jelentés jelölje a V2/V3 értéket és a bizonyíték korlátját. Technikai leltár: `docs/V2-V3-ARCHITECTURE-GAPS-2026-10-12.md`.
