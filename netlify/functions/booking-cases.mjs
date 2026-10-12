@@ -12,7 +12,7 @@ export function syntheticCaseSummaries(records){
  return records.filter(row=>row?.tenantId==='sarberki-test'&&
   isIsolatedReviewCaseId(row.caseId)&&Number.isSafeInteger(row.revision)&&row.revision>=1&&
   typeof row.data?.sender==='string'&&
-  /^[^\\s@]+@[^\\s@]+\\.invalid$/iu.test(row.data.sender))
+  /^[^\s@]+@[^\s@]+\.invalid$/iu.test(row.data.sender))
   .map(row=>({tenantId:'sarberki-test',caseId:row.caseId,revision:row.revision})).slice(0,100);
 }
 export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedApproval=false,reviewProviders=null}={}){
@@ -53,7 +53,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
       if(!isIsolatedReviewCaseId(input.caseId))return cookieResponse(403,{error:'FORBIDDEN'});
       const candidate=await service.getCase({tenantId:input.tenantId,caseId:input.caseId});
       if(candidate?.tenantId!=='sarberki-test'||typeof candidate.data?.sender!=='string'||
-         !/^[^\\s@]+@[^\\s@]+\\.invalid$/iu.test(candidate.data.sender))
+         !/^[^\s@]+@[^\s@]+\.invalid$/iu.test(candidate.data.sender))
        return cookieResponse(403,{error:'FORBIDDEN'});
      }
      const runtime=createServerBookingRuntime({service,tenantId:input.tenantId});
