@@ -41,6 +41,79 @@ try{
   report.checks.push({engine,test:'390px-touch-target-no-panel-overflow',result:'PASS'});
   await page.locator('#server_preview_revision').fill('3');assert.equal(await page.locator('#server_preview_text').inputValue(),'');assert.equal(await page.locator('#server_preview_hu').inputValue(),'');
   assert.match(await page.locator('#server_preview_capacity').innerText(),/NEM IGAZOLT/);report.checks.push({engine,test:'revision-edit-invalidates-preview',result:'PASS'});
+  // Full Gmail manager login -> synthetic case picker -> stored draft preview -> logout,
+  // exercised in both 390px Chromium and WebKit; only an intercepted mock transport.
+  const mock={authenticated:false,calls:[]},csrf='ab'.repeat(32),caseId='case-synthetic-mobile';
+  await context.route('**/.netlify/functions/**',async route=>{
+   const req=route.request(),url=new URL(req.url()),method=req.method();
+   const body=method==='POST'?JSON.parse(req.postData()||'{}'):null;
+   const record={method,path:url.pathname,action:body?.action||url.searchParams.get('action')||'list'};
+   mock.calls.push(record);
+   let code=200,payload;
+   if(url.pathname.endsWith('/operator-session')){
+    if(method==='POST'&&body?.action==='login'){
+     assert.equal(body.email,'reader@synthetic.invalid');
+     assert.equal(body.password,'SYNTHETIC_BROWSER_PASSWORD_NOT_REAL');
+     mock.authenticated=true;
+     payload={authenticated:true,tenantId:'sarberki-test',csrfToken:csrf,expiresAt:new Date(Date.now()+3600000).toISOString()};
+    }else if(method==='POST'&&body?.action==='logout'){
+     assert.equal(req.headers()['x-csrf-token'],csrf);
+     mock.authenticated=false;payload={authenticated:false};
+    }else{code=401;payload={error:'AUTH_REQUIRED'};}
+   }else if(url.pathname.endsWith('/booking-cases')){
+    if(method!=='GET'){code=403;payload={error:'FORBIDDEN'};}
+    else if(!mock.authenticated){code=401;payload={error:'AUTH_REQUIRED'};}
+    else if(url.searchParams.get('action')==='preview-draft'){
+     assert.equal(url.searchParams.get('tenantId'),'sarberki-test');
+     assert.equal(url.searchParams.get('caseId'),caseId);
+     assert.equal(url.searchParams.get('expectedRevision'),'2');
+     payload={result:{caseId,revision:2,persisted:false,approval:'pending',
+      text:'SYNTHETIC read-only reply – NEVER SENT',
+      operatorReviewText:'Magyar ellenőrzés – NEM IGAZOLT kapacitás.',
+      storedDraft:{text:'SYNTHETIC stored draft – internal only',caseRevision:2,edited:false,status:'manual_review_required'},
+      reviewState:{caseRevision:2,factsRevision:1,latestDraftRevision:1,latestDraftMessageCount:1,messageCount:1,storedApproval:'pending',auditStatus:'not_verified'},
+      decision:{facts:{language:'hu',guests:2},missing:['dates'],contradictions:[],
+       capacity:{status:'UNKNOWN',verified:false},pricing:{verified:false}}}};
+    }else{
+     assert.equal(url.searchParams.get('tenantId'),'sarberki-test');
+     payload={result:[{tenantId:'sarberki-test',caseId,revision:2}]};
+    }
+   }else{code=404;payload={error:'UNKNOWN_ROUTE'};}
+   await route.fulfill({status:code,contentType:'application/json',headers:{'Cache-Control':'no-store'},body:JSON.stringify(payload)});
+  });
+  await page.locator('#operator_login_panel summary').click();
+  assert.equal(await page.locator('#operator_list_cases').isDisabled(),true);
+  await page.locator('#operator_login_email').fill('reader@synthetic.invalid');
+  await page.locator('#operator_login_password').fill('SYNTHETIC_BROWSER_PASSWORD_NOT_REAL');
+  await page.locator('#operator_login').click();
+  await page.locator('#operator_login_status').filter({hasText:'olvasás aktív'}).waitFor();
+  assert.equal(await page.locator('#operator_login_password').inputValue(),'');
+  assert.equal(await page.evaluate(()=>window.SarberkiCaseStoreSession?.cookieReadOnly===true&&
+    window.SarberkiCaseStoreSession?.canEditDraft===false&&
+    !window.SarberkiCaseStoreSession?.getAccessToken),true);
+  await page.locator('#operator_list_cases').click();
+  await page.locator('#operator_case_status').filter({hasText:'1 ellenőrzött tesztügy'}).waitFor();
+  await page.locator('#operator_case_select').selectOption(caseId);
+  await page.locator('#operator_open_case').click();
+  assert.equal(await page.locator('#server_preview_case_id').inputValue(),caseId);
+  assert.equal(await page.locator('#server_preview_revision').inputValue(),'2');
+  await page.locator('#server_preview_action').click();
+  await page.locator('#server_preview_status').filter({hasText:'Belső előnézet kész'}).waitFor();
+  assert.match(await page.locator('#server_preview_text').inputValue(),/SYNTHETIC read-only reply/);
+  assert.match(await page.locator('#server_edit_text').inputValue(),/SYNTHETIC stored draft/);
+  assert.equal(await page.locator('#server_edit_action').isDisabled(),true);
+  assert.match(await page.locator('#server_preview_capacity').innerText(),/NEM IGAZOLT/);
+  report.checks.push({engine,test:'mock-operator-login-case-list-and-pending-draft-preview-read-only',result:'PASS',auth:'synthetic'});
+  await page.locator('#operator_logout').click();
+  await page.locator('#operator_login_status').filter({hasText:'kijelentkeztetve'}).waitFor();
+  assert.equal(await page.locator('#server_preview_text').inputValue(),'');
+  assert.equal(await page.locator('#server_edit_text').inputValue(),'');
+  assert.equal(await page.locator('#operator_case_select').isDisabled(),true);
+  assert.equal(await page.evaluate(()=>window.SarberkiCaseStoreSession===null),true);
+  assert.deepEqual(mock.calls.map(x=>x.method),['POST','GET','GET','POST']);
+  assert.deepEqual(mock.calls.map(x=>x.action),['login','list','preview-draft','logout']);
+  report.apiMethods.push(...mock.calls.map(x=>x.method));
+  report.checks.push({engine,test:'mock-logout-clears-preview-and-prevents-write',result:'PASS',auth:'synthetic'});
   await browser.close();browser=null;
  }
  report.result='PASS';
