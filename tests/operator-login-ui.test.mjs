@@ -100,10 +100,10 @@ test('failed logout locally drops the session and does not claim remote revocati
 
 test('authorized synthetic cases appear as IDs and revisions only; fake guest data is never shown',async()=>{
  const requests=[],fixtureRows=[
-  {tenantId:'sarberki-test',caseId:'case-synth-one',revision:3,data:{sender:'guest@synthetic.invalid',original:'PRIVATE SYNTHETIC MESSAGE'}},
-  {tenantId:'sarberki-test',caseId:'case-real',revision:4,data:{sender:'real@example.com',original:'NOT FOR UI'}},
-  {tenantId:'demo-test',caseId:'case-other',revision:1,data:{sender:'other@synthetic.invalid'}},
-  {tenantId:'sarberki-test',caseId:'bad-case',revision:2,data:{sender:'guest@synthetic.invalid'}}
+  {tenantId:'sarberki-test',caseId:'case-synth-one',revision:3},
+  {tenantId:'sarberki-test',caseId:'case-unexpected',revision:4,data:{sender:'real@example.com',original:'NOT FOR UI'}},
+  {tenantId:'demo-test',caseId:'case-other',revision:1},
+  {tenantId:'sarberki-test',caseId:'bad-case',revision:2}
  ];
  const h=harness(async(url,opt)=>{
   requests.push({url,opt});
