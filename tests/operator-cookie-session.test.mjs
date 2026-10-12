@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createDecipheriv} from 'node:crypto';
 import {createOperatorCookieSession,clearOperatorCookie} from '../shared-core/operator-cookie-session.mjs';
 import {createOperatorSessionHandler} from '../netlify/functions/operator-session.mjs';
-import {createCaseHandler} from '../netlify/functions/booking-cases.mjs';
+import {createCaseHandler,syntheticCaseSummaries} from '../netlify/functions/booking-cases.mjs';
 const origin='https://leafy-chimera-2403e5.netlify.app',project='https://mojnqizbcaczstguikpv.supabase.co';
 const name='__Host-sarberki-operator';
 const cookieHeader=setCookie=>setCookie.split(';')[0];
@@ -113,18 +113,46 @@ test('HTTP endpoint has private no-store responses, no tokens and bounded input/
 });
 test('booking cookie GET refreshes first, reuses verified authority once, forwards rotation; cannot write or change tenant',async()=>{
  const f=fixture(),logged=await f.login(),handler=createCaseHandler({env:f.env,fetchImpl:f.fetchImpl});f.state.calls=[];
- const e=event({cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken,query:{tenantId:'sarberki-test',caseId:'case-synthetic'}}),result=await handler(e);
- assert.equal(result.statusCode,200);assert.equal(JSON.parse(result.body).result.caseId,'case-synthetic');assert.equal(result.headers['Cache-Control'],'private, no-store');assert.ok(result.headers['Set-Cookie']);
+ const e=event({cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken,query:{tenantId:'sarberki-test'}}),result=await handler(e);
+ assert.equal(result.statusCode,200);
+ assert.deepEqual(JSON.parse(result.body).result,[{tenantId:'sarberki-test',caseId:'case-synthetic',revision:1}]);
+ assert.doesNotMatch(result.body,/synthetic-operator|guest@synthetic|updated_by|\/auth\/|original/);
+ assert.equal(result.headers['Cache-Control'],'private, no-store');assert.ok(result.headers['Set-Cookie']);
  assert.deepEqual(f.state.calls.map(x=>new URL(x.url).pathname),['/auth/v1/token','/auth/v1/user','/rest/v1/sc_memberships','/rest/v1/sc_cases']);
- f.state.calls=[];assert.equal((await handler({...e,httpMethod:'POST',body:'{"action":"draft"}'})).statusCode,401);assert.equal((await handler({...e,queryStringParameters:{tenantId:'demo-test'}})).statusCode,403);assert.equal(f.state.calls.length,0);
+ f.state.calls=[];assert.equal((await handler({...e,httpMethod:'POST',body:'{"action":"draft"}'})).statusCode,401);
+ assert.equal((await handler({...e,queryStringParameters:{tenantId:'demo-test'}})).statusCode,403);
+ assert.equal((await handler({...e,queryStringParameters:{tenantId:'sarberki-test',caseId:'case-synthetic'}})).statusCode,403);
+ assert.equal(f.state.calls.length,0);
 });
 test('cookie case API CSRF, revoked, malformed and transient errors never reach case storage',async()=>{
  for(const mode of ['csrf','revoked','malformed','transient']){
   const f=fixture(),logged=await f.login(),handler=createCaseHandler({env:f.env,fetchImpl:f.fetchImpl});f.state.calls=[];
   if(mode==='revoked')f.state.revoked=true;if(mode==='malformed')f.state.malformedAuth=true;if(mode==='transient')f.state.networkFailure=true;
-  const result=await handler(event({cookie:cookieHeader(logged.setCookie),csrf:mode==='csrf'?'00'.repeat(32):logged.metadata.csrfToken,query:{tenantId:'sarberki-test',caseId:'case-synthetic'}}));
+  const result=await handler(event({cookie:cookieHeader(logged.setCookie),csrf:mode==='csrf'?'00'.repeat(32):logged.metadata.csrfToken,query:{tenantId:'sarberki-test'}}));
   assert.equal(result.statusCode,mode==='csrf'?403:mode==='transient'?503:401);assert.equal(f.state.calls.some(x=>x.url.includes('/rest/v1/sc_cases')),false);if(mode==='transient')assert.equal(result.headers['Set-Cookie'],undefined);
  }
+});
+test('synthetic case picker projects only tenant, id and revision, never stored guest fields',()=>{
+ const privateValues='DO_NOT_SHARE_RECORD_CONTENT';
+ const records=[
+  {tenantId:'sarberki-test',caseId:'case-fake123',revision:9,data:{sender:'guest@synthetic.invalid',original:privateValues,drafts:[{text:privateValues}],state:{quote:{total:12500}}}},
+  {tenantId:'sarberki-test',caseId:'case-real123',revision:4,data:{sender:'guest@example.com',original:'real guest'}},
+  {tenantId:'sarberki-test',caseId:'case-fake456',revision:5,data:{sender:'guest@notinvalid',original:'invalid sender'}},
+  {tenantId:'demo-test',caseId:'case-demo123',revision:3,data:{sender:'guest@synthetic.invalid'}},
+  {tenantId:'sarberki-test',caseId:'case-fake789',revision:0,data:{sender:'guest@synthetic.invalid'}},
+  {tenantId:'sarberki-test',caseId:'bad-ID',revision:2,data:{sender:'guest@synthetic.invalid'}}
+ ];
+ const actual=syntheticCaseSummaries(records);
+ assert.deepEqual(actual,[{tenantId:'sarberki-test',caseId:'case-fake123',revision:9}]);
+ assert.doesNotMatch(JSON.stringify(actual),/DO_NOT_SHARE_RECORD_CONTENT|guest@|drafts|quote|state/);
+ assert.throws(()=>syntheticCaseSummaries({}),/INVALID_CASE_LIST/);
+});
+test('cookie reader cannot retrieve a raw case by ID even with valid cookie',async()=>{
+ const f=fixture(),logged=await f.login(),handler=createCaseHandler({env:f.env,fetchImpl:f.fetchImpl});f.state.calls=[];
+ const r=await handler(event({cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken,
+  query:{tenantId:'sarberki-test',caseId:'case-synthetic'}}));
+ assert.equal(r.statusCode,403);assert.equal(JSON.parse(r.body).error,'FORBIDDEN');
+ assert.equal(f.state.calls.length,0);
 });
 test('existing bearer GET remains independent of cookie key and cookie CSRF requirements',async()=>{
  const f=fixture();delete f.env.SARBERKI_OPERATOR_SESSION_KEY;const handler=createCaseHandler({env:f.env,fetchImpl:f.fetchImpl});
