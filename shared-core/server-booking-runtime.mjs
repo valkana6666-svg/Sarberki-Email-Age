@@ -120,6 +120,10 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    if(persistDraft){
     if(tenantId!=='sarberki-test'||approvedCaseId||envelope?.case_id)reject('FORBIDDEN');
     await service.requireWrite({requestContext,tenantId});
+    // Never persist client-asserted booking facts in the atomic synthetic mail path.
+    // Even if a browser supplies parsed values, the server extracts its own facts from the message.
+    validateSyntheticMessage(envelope,{});
+    values=extractServerMessage(envelope);
    }
    if(values===undefined){validateSyntheticMessage(envelope,{});values=extractServerMessage(envelope);}
    validateSyntheticMessage(envelope,values);
