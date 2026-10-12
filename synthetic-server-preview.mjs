@@ -30,10 +30,12 @@ export function initSyntheticPreviewPanel({documentRef=document,sessionProvider=
   const id=get('server_preview_case_id').value.trim(),revision=Number(get('server_preview_revision').value);
   if(!isIsolatedReviewCaseId(id)||!Number.isSafeInteger(revision)||revision<1){status.textContent='Csak szintetikus tesztügy-azonosító és pozitív egész verzió engedélyezett.';return;}
   const session=sessionProvider();
-  if(typeof session?.getAccessToken!=='function'){status.textContent='A tesztügytárhoz hitelesített kezelői bejelentkezés még nincs bekötve. Nincs adatlekérés vagy mentés.';return;}
+  const cookieRead=Boolean(session?.cookieReadOnly===true&&typeof session?.getCsrfToken==='function');
+  if(!cookieRead&&typeof session?.getAccessToken!=='function'){status.textContent='A tesztügytárhoz hitelesített kezelői bejelentkezés szükséges. Nincs adatlekérés vagy mentés.';return;}
   action.disabled=true;status.textContent='Előnézet betöltése hitelesített tesztügyből…';
   try{
-   const client=createCaseStoreClient({getAccessToken:()=>session.getAccessToken(),request:session.request||fetch});
+   const client=cookieRead?createCaseStoreClient({cookieReadOnly:true,getCsrfToken:()=>session.getCsrfToken(),request:session.request||fetch}):
+    createCaseStoreClient({getAccessToken:()=>session.getAccessToken(),request:session.request||fetch});
    const result=await client.previewDraft('sarberki-test',id,revision);
    if(attempt!==epoch)return;
    if(result?.persisted!==false||result?.caseId!==id||result?.revision!==revision||result?.approval!=='pending'||typeof result?.text!=='string')throw Error('INVALID_PREVIEW');
@@ -43,7 +45,7 @@ export function initSyntheticPreviewPanel({documentRef=document,sessionProvider=
     const stored=result.storedDraft;
     if(stored&&stored.caseRevision===revision&&typeof stored.text==='string'&&stored.text.length<=20000&&stored.text.trim()&&result.reviewState?.storedApproval==='pending'){
      editText.value=stored.text;
-     const permitted=session.canEditDraft===true;
+     const permitted=!cookieRead&&session.canEditDraft===true;
      editText.disabled=!permitted;editAction.disabled=!permitted;
      editableCase=permitted?{id,revision,epoch:attempt,text:stored.text}:null;
      editStatus.textContent=permitted?'A mentett tervezet szerkeszthető, a változtatás nem jóváhagyás.':'Mentett tervezet betöltve – szerkesztéshez külön írási jogosultság szükséges.';
@@ -58,7 +60,7 @@ export function initSyntheticPreviewPanel({documentRef=document,sessionProvider=
  if(editText&&editAction&&editStatus)editAction.addEventListener('click',async()=>{
   const active=editableCase;
   const session=sessionProvider();
-  if(!active||active.epoch!==epoch||session?.canEditDraft!==true||typeof session.getAccessToken!=='function'){
+  if(!active||active.epoch!==epoch||session?.cookieReadOnly===true||session?.canEditDraft!==true||typeof session.getAccessToken!=='function'){
    editStatus.textContent='Nincs hitelesített és engedélyezett szerkesztési munkamenet.';return;
   }
   const edited=editText.value;
