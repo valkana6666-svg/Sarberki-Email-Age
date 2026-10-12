@@ -21,12 +21,14 @@ export function initSyntheticPreviewPanel({documentRef=document,sessionProvider=
  const editText=get('server_edit_text'),editAction=get('server_edit_action'),editStatus=get('server_edit_status');
  if(!action||!status||!output)return false;
  let epoch=0,editableCase=null;
+ const selectionKey=()=>JSON.stringify([get('server_preview_case_id')?.value.trim()||'',Number(get('server_preview_revision')?.value)]);
+ let selection=selectionKey();
  const clear=()=>{editableCase=null;if(editText){editText.value='';editText.disabled=true;}if(editAction)editAction.disabled=true;if(editStatus)editStatus.textContent='Nincs aktív, szerkeszthető szerveres tervezet.';output.value='';if(get('server_preview_hu'))get('server_preview_hu').value='';for(const field of ['details','capacity','price','revision','approval','audit'])if(get('server_preview_'+(field==='revision'?'revision_state':field)))get('server_preview_'+(field==='revision'?'revision_state':field)).textContent='NEM IGAZOLT.';};
- const invalidate=()=>{epoch++;clear();action.disabled=false;status.textContent='A tesztügy vagy munkamenet megváltozott. Új előnézet szükséges.';};
- for(const id of ['server_preview_case_id','server_preview_revision'])get(id)?.addEventListener('input',invalidate);
+ const invalidate=()=>{epoch++;selection=selectionKey();clear();action.disabled=false;status.textContent='A tesztügy vagy munkamenet megváltozott. Új előnézet szükséges.';};
+ for(const id of ['server_preview_case_id','server_preview_revision'])get(id)?.addEventListener('input',()=>{if(selectionKey()!==selection)invalidate();});
  for(const event of ['sarberki:session-changed','isolated-approval-session-changed'])documentRef.addEventListener?.(event,invalidate);
  action.addEventListener('click',async()=>{
-  const attempt=++epoch;clear();
+  const attempt=++epoch;selection=selectionKey();clear();
   const id=get('server_preview_case_id').value.trim(),revision=Number(get('server_preview_revision').value);
   if(!isIsolatedReviewCaseId(id)||!Number.isSafeInteger(revision)||revision<1){status.textContent='Csak szintetikus tesztügy-azonosító és pozitív egész verzió engedélyezett.';return;}
   const session=sessionProvider();

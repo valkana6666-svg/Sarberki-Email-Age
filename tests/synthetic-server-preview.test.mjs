@@ -180,7 +180,7 @@ test('changing case or session suppresses late responses and clears prior output
   const documentRef=elements();let finish;
   initSyntheticPreviewPanel({documentRef,sessionProvider:()=>({getAccessToken:async()=> 'fixture',request:()=>new Promise(resolve=>finish=resolve)})});
   const pending=documentRef.data.get('server_preview_action').click();await new Promise(resolve=>setImmediate(resolve));
-  if(mode==='input')documentRef.data.get('server_preview_case_id').listeners.input();else documentRef.listeners[mode==='session'?'sarberki:session-changed':'isolated-approval-session-changed']();
+  if(mode==='input'){documentRef.data.get('server_preview_case_id').value='case-other';documentRef.data.get('server_preview_case_id').listeners.input();}else documentRef.listeners[mode==='session'?'sarberki:session-changed':'isolated-approval-session-changed']();
   finish({ok:true,json:async()=>({result:{caseId:'case-1234',revision:2,persisted:false,approval:'pending',text:'LATE'}})});await pending;
   assert.equal(documentRef.data.get('server_preview_text').value,'');assert.match(documentRef.data.get('server_preview_status').textContent,/Új előnézet/);
  }
@@ -202,4 +202,17 @@ test('full panel renders server-bound current revision without touching the revi
  await documentRef.data.get('server_preview_action').click();
  assert.equal(documentRef.data.get('server_preview_revision').value,'2');assert.match(documentRef.data.get('server_preview_revision_state').textContent,/verziója egyezik/);
  assert.equal(documentRef.data.get('server_preview_hu').value,'Magyar szöveg');assert.match(documentRef.data.get('server_preview_capacity').textContent,/NEM IGAZOLT/);
+});
+test('reselecting unchanged case and revision preserves the Reader preview without false invalidation',async()=>{
+ const documentRef=elements();
+ initSyntheticPreviewPanel({documentRef,sessionProvider:()=>({cookieReadOnly:true,getCsrfToken:async()=> 'ab'.repeat(32),request:async()=>({ok:true,json:async()=>({result:{caseId:'case-1234',revision:2,persisted:false,approval:'pending',text:'SAVED READER PREVIEW'}})})})});
+ await documentRef.data.get('server_preview_action').click();
+ const status=documentRef.data.get('server_preview_status').textContent;
+ for(const id of ['server_preview_case_id','server_preview_revision'])documentRef.data.get(id).listeners.input();
+ assert.equal(documentRef.data.get('server_preview_text').value,'SAVED READER PREVIEW');
+ assert.equal(documentRef.data.get('server_preview_status').textContent,status);
+ assert.doesNotMatch(status,/megváltozott/);
+ documentRef.data.get('server_preview_revision').value='3';documentRef.data.get('server_preview_revision').listeners.input();
+ assert.equal(documentRef.data.get('server_preview_text').value,'');
+ assert.match(documentRef.data.get('server_preview_status').textContent,/megváltozott/);
 });
