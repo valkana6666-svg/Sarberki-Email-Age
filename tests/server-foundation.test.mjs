@@ -157,7 +157,7 @@ test('atomic synthetic mail ignores forged browser facts, even with an apparentl
  assert.equal(stored.guests,'2');
  assert.equal(stored.unit,'Deluxe');
  assert.equal(stored.language,'en');
- assert.equal(stored.phone,undefined);
+ assert.ok(!stored.phone,'A böngészőből hamisított telefonszám nem kerülhet az ügyadatok közé.');
  assert.equal(result.record.data.state.quote,null);
  assert.equal(result.record.data.state.availability,null);
  assert.equal(result.record.data.state.approval,'pending');
