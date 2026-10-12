@@ -37,7 +37,19 @@ function decideCapacity(result,input,ready,now,tenant){
    .map(x=>({...x,key:x.requiredC&&!x.requiredAB?'splitC':x.requiredAB&&!x.requiredC?'splitAB':'splitCombination',units:x.units.length}));
  }
  const candidates=wholeCabinCandidates(input).candidates;
- const selected=selectedCapacityOptions(result,input).flatMap(row=>{
+ // Fallback is permitted only after fresh, verified UNAVAILABLE evidence for
+ // the requested type. UNKNOWN must never be interpreted as sold out.
+ const requestedUnavailable=Boolean(input.cabin&&!split&&
+  !result.available_options.some(row=>row.key===input.cabin)&&
+  !result.unverified_options.some(row=>row.key===input.cabin)&&
+  result.unavailable_options.some(row=>{
+   if(row.key!==input.cabin)return false;
+   const expected=candidates.find(c=>c.key===row.key&&c.units===row.units&&c.capacity===row.capacity);
+   const evidence=currentEvidence(row.evidence,row.key,input,now,tenant);
+   return expected&&evidence&&(evidence.status==='UNAVAILABLE'||evidence.availableUnits<expected.units);
+  }));
+ const selectedRows=requestedUnavailable?result.available_options.filter(row=>row.availability==='available'&&row.availability_verified===true):selectedCapacityOptions(result,input);
+ const selected=selectedRows.flatMap(row=>{
   if(split){
    const plan=permitted.find(p=>p.key===row.key&&p.units===row.units&&
     (row.requiredAB===undefined||row.requiredAB===p.requiredAB)&&(row.requiredC===undefined||row.requiredC===p.requiredC));
@@ -45,7 +57,7 @@ function decideCapacity(result,input,ready,now,tenant){
   }
   // Unspecified cabin inquiries also accept verified split type-pool evidence.
   // Pool verification does not prove a specific physical apartment or pairing.
-  if(!input.cabin&&row.units===1&&['splitAB','splitC'].includes(row.key)){
+  if((!input.cabin||requestedUnavailable)&&row.units===1&&['splitAB','splitC'].includes(row.key)){
    if(row.key==='splitC'&&input.guests>4)return [];
    const poolKey=row.key==='splitAB'?'splitAB':'splitC';
    const evidence=currentEvidence(result.split_pool_checks?.[poolKey]?.evidence,poolKey==='splitAB'?'splitA':'splitC',input,now,tenant);
