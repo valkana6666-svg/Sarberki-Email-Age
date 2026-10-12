@@ -67,7 +67,7 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
       return {verified:false,availability:'unverified',availableUnits:null,error:error.message};
     }
   };
-  const splitNeeded=(!input.cabin&&guests<=5)||input.cabin?.startsWith('split')||input.fallback!==false&&checked.some(x=>x.key===input.cabin&&x.availability==='unavailable'&&x.availability_verified===true)&&!checked.some(x=>x.key===input.cabin&&x.availability==='unverified');
+  const splitNeeded=(!input.cabin&&guests<=5)||input.cabin?.startsWith('split')||((guests<=5||input.units>1)&&input.fallback!==false&&checked.some(x=>x.key===input.cabin&&x.availability==='unavailable'&&x.availability_verified===true)&&!checked.some(x=>x.key===input.cabin&&x.availability==='unverified'));
   const unknown={verified:false,availability:'unverified',availableUnits:null,reason:'not_requested'};
   const placement=input.placement||null;
   const [splitAB,splitC]=await Promise.all([splitNeeded&&(!placement||placement.ab>0)?checkPool('splitA'):unknown,splitNeeded&&(!placement||placement.c>0)?checkPool('splitC'):unknown]);
