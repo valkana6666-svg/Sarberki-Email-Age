@@ -6,12 +6,14 @@ on:
       - index.html
       - synthetic-server-preview.mjs
       - scripts/gmail-server-mobile-proof.mjs
+      - operator-login-ui.mjs
+      - shared-core/case-store-client.mjs
       - .github/workflows/sarberki-gmail-mobile.yml
 permissions:
   contents: read
 jobs:
   mobile:
-    if: github.ref == 'refs/heads/gmail-test-subject-allowlist' && contains(github.event.head_commit.message, '[sarberki-persistent-package-20261011]')
+    if: github.ref == 'refs/heads/gmail-test-subject-allowlist'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
