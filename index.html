@@ -343,7 +343,7 @@ function updateReview(regenerate=true){
   const topicBox=$('topics');topicBox.replaceChildren();
   for(const name of ['Szállás',record.case_state.hotTub.requested?'Dézsa – ellenőrzendő':null,v.cars!==''?'Parkolás: '+v.cars+' autó – adat megadva':null,view.priceStatus,...view.warnings.map(x=>x.text)].filter(Boolean)){const row=document.createElement('div');row.textContent=name;topicBox.append(row);}
  }
- if(record.booking_case_id&&window.SarberkiBookingRuntime){try{const saved=window.SarberkiBookingRuntime.cases.save(record.booking_case_id,record.case_state,$('draft').value);record.events=saved.events;displayEvents();}catch(e){$('status').textContent='Ügymentési hiba: '+e.message;}}
+ if(record.booking_case_id&&window.SarberkiBookingRuntime){try{const saved=window.SarberkiBookingRuntime.cases.save(record.booking_case_id,record.case_state,$('draft').value);gmailLocalDraftSaved=true;record.events=saved.events;displayEvents();}catch(e){gmailLocalDraftSaved=false;$('status').textContent='Ügymentési hiba: '+e.message;}}
  const critical=record.review.critical;$('notice').className=critical?'warning':'ok';
  $('notice').textContent=critical?'Emberi ellenőrzés szükséges; a felsorolt feltételek még nem jóváhagyottak.':'A feldolgozás kész; a felsorolt hiányokat kell pontosítani.';
  $('approve').disabled=critical;$('overridebox').classList.toggle('hidden',!critical);$('override').checked=false;
@@ -396,6 +396,7 @@ function downloadText(contents,name){let a=document.createElement('a');a.href=UR
 $('copy_result').onclick=async()=>{if(!record)return;let value=humanReport();try{if(!navigator.clipboard?.writeText)throw Error('clipboard unavailable');await navigator.clipboard.writeText(value);$('status').textContent='Az eredmény másolva; a vendégnek nem lett elküldve.'}catch(e){let box=document.createElement('textarea');box.value=value;box.style.position='fixed';box.style.opacity='0';document.body.appendChild(box);box.select();let copied=document.execCommand('copy');box.remove();$('status').textContent=copied?'Az eredmény másolva; a vendégnek nem lett elküldve.':'A böngésző nem engedte a másolást. Használd a TXT letöltést.'}addEvent('Emberi olvasható eredmény másolási kísérlet')};
 $('download_txt').onclick=()=>{if(!record)return;downloadText(humanReport(),`Sarberki_Email_MVP_v0.3_eredmeny_${record.id}.txt`);addEvent('Emberi olvasható TXT letöltés')};
 let nextGmailEnvelope=null;
+let gmailLocalDraftSaved=false;
 function attachBookingCase(){
  const runtime=window.SarberkiBookingRuntime;if(!runtime)return;
  const values=Object.fromEntries(Object.entries(record.analysis.fields).filter(([,f])=>f.status==='confirmed'&&f.value!==''&&f.value!=null).map(([k,f])=>[k,f.value]));
@@ -452,12 +453,13 @@ async function displayGmailRecord(data){
     }
   }
   nextGmailEnvelope=data.source||null;
+  gmailLocalDraftSaved=false;
   $('analyze').click();
   if(record?.booking_case_id&&nextGmailEnvelope===null&&window.SarberkiBookingRuntime){
     // A Gmail-levél csak sikeresen tárolt választervezet után lehet feldolgozott.
     // Ez helyi tesztmentés, nem felhős szerveroldali ügytár.
     const saved=window.SarberkiBookingRuntime.cases.get(record.booking_case_id);
-    if(!saved?.drafts?.length||saved.drafts.at(-1).text!==$('draft').value||saved.state?.approval!=='pending'){
+    if(!gmailLocalDraftSaved||!saved?.drafts?.length||saved.drafts.at(-1).text!==$('draft').value||saved.state?.approval!=='pending'){
       $('gmail_error').textContent='A választervezet helyi mentése nem igazolt. A Gmail-levél nem lett feldolgozottnak jelölve. Ellenőrizd a helyi tárhelyet, majd próbáld újra.';
       $('gmail_error').classList.remove('hidden');return false;
     }
