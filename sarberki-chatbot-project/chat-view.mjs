@@ -48,14 +48,16 @@ export function mountChatView(root,{audience='guest',language='auto',clock}={}){
 // Opt-in embedding preparation only. The production website does not load this.
 export function mountGuestChat(container,options={}){
  const panel=document.createElement('details');panel.className='sarberki-guest-chat';
- const launcher=document.createElement('summary');launcher.textContent='Sárberki chat';panel.append(launcher);
+ const launcher=document.createElement('summary');
+ const brandImage=document.createElement('img');brandImage.src=new URL('../sarberki-logo-orange.svg',import.meta.url).href;brandImage.alt='';brandImage.width=80;brandImage.height=56;
+ launcher.append(brandImage,document.createTextNode('Sárberki chat'));panel.append(launcher);
  const log=document.createElement('div');log.dataset.chatLog='';log.setAttribute('role','log');log.setAttribute('aria-live','polite');
  const form=document.createElement('form');form.dataset.chatForm='';
  const input=document.createElement('textarea');input.dataset.chatInput='';input.maxLength=1000;input.rows=3;input.required=true;input.setAttribute('aria-label','Chat');
  const send=document.createElement('button');send.type='submit';send.textContent='➤';send.setAttribute('aria-label','Send');
  const reset=document.createElement('button');reset.type='button';reset.dataset.chatReset='';reset.textContent='↺';reset.setAttribute('aria-label','New chat');
  form.append(input,send,reset);panel.append(log,form);container.append(panel);
- const style=document.createElement('style');style.textContent='.sarberki-guest-chat{position:fixed;right:12px;bottom:12px;z-index:1000;background:white;color:#182c23;border:1px solid #9ea9a2;border-radius:12px;padding:12px;font:16px system-ui;max-width:calc(100vw - 48px)}.sarberki-guest-chat[open]{width:340px}.sarberki-guest-chat summary{cursor:pointer;min-height:32px}.sarberki-guest-chat [data-chat-log]{max-height:45dvh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}.sarberki-guest-chat textarea{width:100%;box-sizing:border-box;font:inherit}.sarberki-guest-chat button{min-width:44px;min-height:44px}.sarberki-guest-chat .entry{margin:12px 0}.sarberki-guest-chat .sender{font-weight:bold}';panel.append(style);
+ const style=document.createElement('style');style.textContent='.sarberki-guest-chat{position:fixed;right:12px;bottom:12px;z-index:1000;background:#171717;color:#f5f5f5;border:1px solid #ff7a00;border-radius:12px;padding:12px;font:16px system-ui;max-width:calc(100vw - 24px);box-shadow:0 6px 24px #0008}.sarberki-guest-chat[open]{width:340px}.sarberki-guest-chat summary{cursor:pointer;min-height:44px;display:flex;align-items:center;gap:8px;color:#ff9d3d;font-weight:800}.sarberki-guest-chat summary img{display:block;width:80px;height:56px;object-fit:contain}.sarberki-guest-chat [data-chat-log]{max-height:45dvh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#101010;padding:8px;border-radius:8px}.sarberki-guest-chat textarea{width:100%;box-sizing:border-box;font:inherit;background:#0f0f0f;color:#f5f5f5;border:1px solid #555;border-radius:6px;padding:8px}.sarberki-guest-chat textarea:focus{outline:2px solid #ff7a00}.sarberki-guest-chat button{min-width:44px;min-height:44px;background:#ff7a00;color:#111;border:0;border-radius:6px;font-weight:800;cursor:pointer}.sarberki-guest-chat .entry{margin:12px 0}.sarberki-guest-chat .sender{font-weight:bold;color:#ff9d3d}';panel.append(style);
  const view=mountChatView(panel,{language:options.language||'auto',clock:options.clock,audience:'guest'});
  return {destroy(){view.destroy();panel.remove();}};
 }
