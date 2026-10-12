@@ -453,8 +453,16 @@ async function displayGmailRecord(data){
   }
   nextGmailEnvelope=data.source||null;
   $('analyze').click();
-  if(record?.booking_case_id&&nextGmailEnvelope===null){record.source='gmail';record.received=data.source?.received_at||record.received;}
-  else if(window.SarberkiBookingRuntime)return false;
+  if(record?.booking_case_id&&nextGmailEnvelope===null&&window.SarberkiBookingRuntime){
+    // A Gmail-levél csak sikeresen tárolt választervezet után lehet feldolgozott.
+    // Ez helyi tesztmentés, nem felhős szerveroldali ügytár.
+    const saved=window.SarberkiBookingRuntime.cases.get(record.booking_case_id);
+    if(!saved?.drafts?.length||saved.drafts.at(-1).text!==$('draft').value||saved.state?.approval!=='pending'){
+      $('gmail_error').textContent='A választervezet helyi mentése nem igazolt. A Gmail-levél nem lett feldolgozottnak jelölve. Ellenőrizd a helyi tárhelyet, majd próbáld újra.';
+      $('gmail_error').classList.remove('hidden');return false;
+    }
+    record.source='gmail';record.received=data.source?.received_at||record.received;
+  }else return false;
   if($('draft')&&$('gmail_draft')) $('gmail_draft').value=$('draft').value;
   document.dispatchEvent(new CustomEvent('sarberki:gmail-normalized',{detail:{message_id:data.source?.message_id||null}}));
   return true;
