@@ -20,7 +20,7 @@ try{
  for(const [engine,launcher]of [['chromium',chromium],['webkit',webkit]]){
   browser=await launcher.launch({headless:true});const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
   await context.route('**/*',route=>{if(new URL(route.request().url()).origin===origin)return route.continue();report.blockedExternalRequests++;return route.abort();});
-  const page=await context.newPage();await page.goto(origin+'/index.html');await page.locator('#server_preview_panel summary').click();
+  const page=await context.newPage();await page.goto(origin+'/index.html');await page.locator('#server_preview_panel > details > summary').click();
   await page.locator('#server_preview_case_id').fill('case-synthetic-mobile');await page.locator('#server_preview_revision').fill('2');
   await page.locator('#server_preview_action').click();await page.locator('#server_preview_status').filter({hasText:'bejelentkezés'}).waitFor();
   report.checks.push({engine,test:'missing-auth-no-preview',result:'PASS'});
