@@ -8,6 +8,14 @@ Dátum: 2026-10-12. Kizárólag `gmail-test-subject-allowlist`, Netlify: `https:
 - Szintetikus ügyválasztó: csak `sarberki-test` tenant, `.invalid` feladók és szabályos tesztügy-azonosítók listázhatók. Az előnézeti űrlap a kiválasztott ügy verzióját kapja.
 - A külön Bearer/Auth írási funkció továbbra is csak explicit külső, megbízható sessionnel és `synthetic-only` szerveres kapuval használható; a cookie-bejelentkezés nem kapcsolja be.
 
+## 1/A. Szintetikus levélből szerveres ügy és választervezet – 2026-10-12
+- Az opt-in szerver API `action=ingest-and-draft` végpontja ugyanazt a közös üzenetértelmező és választervező magot használja, mint a meglévő rendszer.
+- Kizárólag `sarberki-test` tenanten, hitelesített `write` jogosultsággal, `.invalid` végű szintetikus feladónál használható. Manuálisan megadott ügyazonosítóval vagy emberi linkelési kérés megkerülésével nem használható.
+- A beolvasott tesztlevél, értelmezett adatok és ellenőrzést igénylő választervezet ugyanabban az egyetlen `insert` vagy atomikus `compareAndSwap` műveletben mentődik; nincs automatikus küldés vagy foglalás.
+- Azonos `mailbox_id` és `message_id` ismétlése nem hoz létre második ügyet vagy újabb piszkozatverziót. Változott tényadat esetén a következő tervezet új ügy- és tényverzióhoz kötött.
+- A felület meglévő cookie-s Reader bejelentkezése `read-only`: **nem** kap ilyen importálási vagy szerkesztési jogosultságot. A szerver API alapértelmezésben továbbra is letiltott.
+- Bizonyíték: szintetikus, izolált unit/integrációs tesztek és az adott commit GitHub CI-je; nem élő Gmail-import, nem valós iPhone Auth/E2E. A Gmail OAuth → tényleges vendéglevél → szerveres ügy migrációja továbbra is tiltott és nem megvalósult.
+
 ## 2. Mi nincs igazolva, és mi blokkol?
 - A Netlify tesztkörnyezet `CASE_STORE_ENABLED=synthetic-only`, `CASE_STORE_TEST_TENANTS`, `SUPABASE_URL`, publikus Supabase kulcs és titkos `SARBERKI_OPERATOR_SESSION_KEY` együttes konfigurációja nem igazolt a jelenlegi kiadásra. Nem szabad ezeket GitHubba vagy ügyféloldali fájlba írni.
 - A Reader Supabase Auth-fiók helyes jelszava és a valós telefonos bejelentkezés nem igazolt. A projekt-/adatbázis-/Gmail-jelszó nem azonos a Reader Auth-jelszóval.
