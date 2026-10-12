@@ -17,6 +17,28 @@ Dátum: 2026-10-12. Kizárólag `gmail-test-subject-allowlist`, Netlify: `https:
 - A felület meglévő cookie-s Reader bejelentkezése `read-only`: **nem** kap ilyen importálási vagy szerkesztési jogosultságot. A szerver API alapértelmezésben továbbra is letiltott.
 - Bizonyíték: szintetikus, izolált unit/integrációs tesztek és az adott commit GitHub CI-je; nem élő Gmail-import, nem valós iPhone Auth/E2E. A Gmail OAuth → tényleges vendéglevél → szerveres ügy migrációja továbbra is tiltott és nem megvalósult.
 
+## 1/B. Valódi felhős kapuellenőrzés – 2026-10-12
+
+A tesztoldal aktuális, `ef9edefae285afeb50363b1da3d21261fe4365a7` kiadásán a GitHub Actions titok nélküli, bejelentkezés nélküli GET-próbát végzett.
+
+- Tesztkezelői session: `HTTP 503 SESSION_SETUP_REQUIRED` – **BLOKKOLT: Netlify sessionkörnyezet nincs teljesen konfigurálva**.
+- Szintetikus ügytár: `HTTP 401 AUTH_REQUIRED` – az ügytár tesztkapuja be van kapcsolva, és anonim olvasást megtagad; valós Auth/adatolvasás ezzel még nem igazolt.
+- Művelet: kizárólag GET, nincs jelszó, cookie, ügyadat-olvasás, levélküldés, Pushover vagy foglalás.
+- A Netlify/GitHub SHA-egyezés `DEPLOY SYNC PASS`, regresszió `1418 PASS, 0 FAIL, 0 SKIP`; CI: https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/38301274950.
+- Supabase `sarberki-test` (projekt `mojnqizbcaczstguikpv`) `ACTIVE_HEALTHY`, az 5 `sc_*` tábla RLS-védett; 3 megerősített Auth-fiók, 1 kizárólag Reader-tagság; egy `.invalid` feladójú ügy, valódi feladójú ügyek nélkül (összesítő, csak olvasó ellenőrzés).
+
+### Kizárólag Netlify test site – szükséges külső adminisztratív lépés
+
+A `leafy-chimera-2403e5` **tesztwebhely** Functions futtatási környezetében ellenőrizendő:
+
+1. `CASE_STORE_ENABLED=synthetic-only`, `CASE_STORE_TEST_TENANTS=sarberki-test,demo-test`, `URL=https://leafy-chimera-2403e5.netlify.app` – az anonim ügy-API válasza alapján ezek a kapufeltételek teljesülnek.
+2. `SUPABASE_URL=https://mojnqizbcaczstguikpv.supabase.co`, megfelelő aktív `SUPABASE_PUBLISHABLE_KEY` (publishable; lehet nyilvános, de ne változtasd indokolatlanul).
+3. `SARBERKI_OPERATOR_SESSION_KEY` = 32 bájtnyi kriptográfiai véletlen **64 lowercase hex karakterként**, csak Netlify Functions környezeti titokban. Új érték esetén a korábbi tesztkezelői cookie-k érvénytelenednek. Titkot nem szabad GitHubba, chatbe, jelentésbe, frontendbe vagy logba másolni.
+4. A Netlify tesztkontextus beállításai után csak az érintett tesztfunkciók újratelepítése; main/production ne módosuljon.
+5. A titok nélküli `node scripts/operator-cloud-preflight.mjs` próba ismétlése. Sikeres session-setup esetén cookie nélküli GET-re `401 AUTH_REQUIRED` várható, nem `503 SESSION_SETUP_REQUIRED`. **Ez sem helyettesíti a valódi Reader Auth/iPhone belépést.**
+
+Netlify hozzáférés nélkül a változókat a GitHub-kódból **nem lehet ellenőrizni vagy biztonságosan beállítani**. A kezelői bejelentkezés, a fizikai iPhone Safari/PWA és a teljes Gmail E2E ettől még NEM IGAZOLT. Semmilyen éles üzem nem aktiválható.
+
 ## 2. Mi nincs igazolva, és mi blokkol?
 - A Netlify tesztkörnyezet `CASE_STORE_ENABLED=synthetic-only`, `CASE_STORE_TEST_TENANTS`, `SUPABASE_URL`, publikus Supabase kulcs és titkos `SARBERKI_OPERATOR_SESSION_KEY` együttes konfigurációja nem igazolt a jelenlegi kiadásra. Nem szabad ezeket GitHubba vagy ügyféloldali fájlba írni.
 - A Reader Supabase Auth-fiók helyes jelszava és a valós telefonos bejelentkezés nem igazolt. A projekt-/adatbázis-/Gmail-jelszó nem azonos a Reader Auth-jelszóval.
