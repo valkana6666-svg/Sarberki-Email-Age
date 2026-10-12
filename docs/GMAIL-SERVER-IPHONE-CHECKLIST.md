@@ -12,6 +12,7 @@ Dátum: 2026-10-12. Kizárólag `gmail-test-subject-allowlist`, Netlify: `https:
 - Az opt-in szerver API `action=ingest-and-draft` végpontja ugyanazt a közös üzenetértelmező és választervező magot használja, mint a meglévő rendszer.
 - Kizárólag `sarberki-test` tenanten, hitelesített `write` jogosultsággal, `.invalid` végű szintetikus feladónál használható. Manuálisan megadott ügyazonosítóval vagy emberi linkelési kérés megkerülésével nem használható.
 - A beolvasott tesztlevél, értelmezett adatok és ellenőrzést igénylő választervezet ugyanabban az egyetlen `insert` vagy atomikus `compareAndSwap` műveletben mentődik; nincs automatikus küldés vagy foglalás.
+- A szintetikus importnál a szerver a levél szövegéből **saját maga újraértelmezi a foglalási adatokat**. A böngészőből beküldött `values` mező nem számít hitelesnek, és nem írhatja felül az érkezést, létszámot, szállástípust vagy más ügytényt; az ismeretlen adat hiányos marad.
 - Azonos `mailbox_id` és `message_id` ismétlése nem hoz létre második ügyet vagy újabb piszkozatverziót. Változott tényadat esetén a következő tervezet új ügy- és tényverzióhoz kötött.
 - A felület meglévő cookie-s Reader bejelentkezése `read-only`: **nem** kap ilyen importálási vagy szerkesztési jogosultságot. A szerver API alapértelmezésben továbbra is letiltott.
 - Bizonyíték: szintetikus, izolált unit/integrációs tesztek és az adott commit GitHub CI-je; nem élő Gmail-import, nem valós iPhone Auth/E2E. A Gmail OAuth → tényleges vendéglevél → szerveres ügy migrációja továbbra is tiltott és nem megvalósult.
