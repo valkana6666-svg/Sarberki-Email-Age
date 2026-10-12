@@ -101,6 +101,56 @@ test('server draft is versioned, internal and carries no invented price/capacity
  const draft=await runtime.draft(first.record.caseId,1);assert.equal(draft.revision,2);assert.equal(draft.data.drafts.length,1);assert.equal(draft.data.state.quote,null);assert.equal(draft.data.state.availability,null);assert.equal(draft.data.state.approval,'pending');assert.ok(draft.data.drafts[0].text.length>20);
  await assert.rejects(runtime.draft(first.record.caseId,1),e=>e.code==='CASE_CONFLICT');
 });
+test('synthetic email draft edits append immutable pending revisions without implying approval',async()=>{
+ const f=fixture(),first=await f.runtime.ingest(envelope(),values,{expectedRevision:0});
+ const created=await f.runtime.draft(first.record.caseId,1),original=created.data.drafts[0].text;
+ const edited=await f.runtime.editDraft(first.record.caseId,2,'Kezelő által szerkesztett TESZT válasz – nincs elküldve.');
+ assert.equal(edited.revision,3);
+ assert.equal(edited.data.drafts.length,2);
+ assert.equal(edited.data.drafts[0].text,original);
+ assert.equal(edited.data.drafts[1].text,'Kezelő által szerkesztett TESZT válasz – nincs elküldve.');
+ assert.equal(edited.data.drafts[1].edited,true);
+ assert.equal(edited.data.drafts[1].reviewStatus,'manual_edit_requires_review');
+ assert.equal(edited.data.drafts[1].synthetic,undefined);
+ assert.equal(edited.data.state.approval,'pending');
+ assert.equal(edited.data.state.quote,null);
+ assert.equal(edited.data.state.availability,null);
+ assert.equal(edited.data.messages.length,1);
+ const persisted=await f.service.getCase({requestContext:f.auth,tenantId:'sarberki-test',caseId:first.record.caseId});
+ assert.deepEqual(persisted,edited);
+ await assert.rejects(f.runtime.editDraft(first.record.caseId,2,'Elavult szerkesztés'),e=>e.code==='CASE_CONFLICT');
+ await assert.rejects(f.runtime.editDraft(first.record.caseId,3,edited.data.drafts.at(-1).text),e=>e.code==='INVALID_DRAFT');
+});
+test('synthetic edit blocks empty, huge, untrusted roles and stale facts or messages',async()=>{
+ const f=fixture(),first=await f.runtime.ingest(envelope(),values,{expectedRevision:0});
+ await f.runtime.draft(first.record.caseId,1);
+ const caseId=first.record.caseId;
+ for(const value of ['', '   ',null,42,'x'.repeat(20001)]){
+  await assert.rejects(f.runtime.editDraft(caseId,2,value),e=>e.code==='INVALID_DRAFT');
+ }
+ const reader=createServerBookingRuntime({service:f.service,tenantId:'sarberki-test',requestContext:{subject:'reader',tenants:{'sarberki-test':['read']}}});
+ await assert.rejects(reader.editDraft(caseId,2,'Reader edits'),e=>e.code==='FORBIDDEN');
+ const other=createServerBookingRuntime({service:f.service,tenantId:'demo-test',requestContext:{subject:'operator',tenants:{'demo-test':['read','write']}}});
+ await assert.rejects(other.editDraft(caseId,2,'Wrong tenant'),e=>e.code==='FORBIDDEN');
+ const saved=f.rows.get('sarberki-test:'+caseId);
+ assert.equal(saved.data.drafts.length,1);
+ saved.data.messages.push(envelope('unreviewed'));
+ await assert.rejects(f.runtime.editDraft(caseId,2,'Outdated message review'),e=>e.code==='INVALID_DRAFT');
+ saved.data.messages.pop();saved.data.state.revision++;
+ await assert.rejects(f.runtime.editDraft(caseId,2,'Outdated facts'),e=>e.code==='INVALID_DRAFT');
+ saved.data.state.revision--;saved.data.state.approval='internally_approved';
+ await assert.rejects(f.runtime.editDraft(caseId,2,'Already approved'),e=>e.code==='INVALID_DRAFT');
+ assert.equal(f.rows.get('sarberki-test:'+caseId).revision,2);
+ assert.equal(f.rows.get('sarberki-test:'+caseId).data.drafts.length,1);
+});
+test('default closed server case handler rejects draft edit without network or send',async()=>{
+ let network=0;
+ const disabled=createCaseHandler({env:{},fetchImpl:async()=>{network++;throw Error('Unexpected external call')}});
+ const result=await disabled({httpMethod:'POST',headers:{authorization:'Bearer '+'x'.repeat(40)},body:JSON.stringify({
+  tenantId:'sarberki-test',action:'edit-draft',caseId:'case-1000',expectedRevision:2,editedDraftText:'Szintetikus módosítás'
+ })});
+ assert.equal(result.statusCode,503);assert.match(result.body,/CASE_STORE_DISABLED/u);assert.equal(network,0);
+});
 test('manual case linking requires separate approve permission',async()=>{
  const {runtime}=fixture();const first=await runtime.ingest(envelope(),values,{expectedRevision:0});
  await assert.rejects(runtime.ingest(envelope('m2',{thread_id:'separate'}),values,{expectedRevision:1,approvedCaseId:first.record.caseId}),e=>e.code==='FORBIDDEN');
