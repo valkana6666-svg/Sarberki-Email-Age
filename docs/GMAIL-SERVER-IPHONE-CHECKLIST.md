@@ -1,6 +1,18 @@
 # Sárberki V1 – Gmail és szerveres tesztügyek iPhone-os ellenőrzése
 Dátum: 2026-10-12. Kizárólag `gmail-test-subject-allowlist`, Netlify: `https://leafy-chimera-2403e5.netlify.app/`.
 
+## 0. Legfrissebb állapot (korábbi blokkolók feloldva, 2026-10-12)
+
+- A Reader belépés, automatikus munkamenet-visszaállítás és kijelentkezés **valós Work felhőböngészős ellenőrzése a felhasználó beszámolója szerint sikeres**. Ez nem fizikai iPhone/Safari-teszt. Ellenőrzött megvalósítás: `2546d88042edd291ae27cac85b510b146e2d9efa`; 1420 PASS, 0 FAIL, 0 SKIP és 12 szintetikus Chromium/WebKit mobilpróba. Netlify azonos commitot futtatott.
+- Reader továbbra is csak olvasó; írás és jóváhagyás tiltott. A korábbi `SESSION_SETUP_REQUIRED` megállapítás történeti, **nem aktuális feladat**.
+- Supabase `sarberki-test` ügytárban az utolsó read-only ellenőrzés egy `auth_probe_...` azonosítójú, 0 tervezetet tartalmazó ellenőrző ügyet mutatott. Ez a Reader biztonsági ügyazonosító-szűrőjéhez és a mentett választervezet próbájához **nem alkalmas**; meglévő sort ne nevezd át és ne írd át SQL-lel.
+- Elkészült a `shared-core/synthetic-reader-fixture.mjs` idempotens, kizárólag `.invalid` feladójú mintája és a `tests/synthetic-reader-fixture.test.mjs` Writer→tárolás→Reader lista/előnézet negatív tesztje. Ezek nem hoznak létre felhős ügyet maguktól, és nem nyújtanak új hozzáférést.
+- **Következő valódi felhős lépés:** hitelesített, `sarberki-test` tenanton `write` jogosultságú meglévő Writer-munkamenettel hívd a `booking-cases` API `ingest-and-draft` műveletét a `syntheticReaderFixtureRequest()` adataival (kézzel ne add meg az ügyazonosítót). Utána az eredmény `caseId`/`revision` mezőit és a Reader cookie-s lista + előnézet sikerét igazold. Az API maga ellenőrzi a szerepet, a tenantot, a `.invalid` feladót, az atomikus mentést és a duplikációt. **Reader cookie, projektadmin SQL, service role vagy titok chatbe másolása nem helyettesítheti a Writer-hitelesítést.**
+- Ha nincs biztonságosan elérhető Writer Auth-munkamenet, ezt konkrét akadályként jelezd; ne kérj vagy jeleníts meg jelszót a chatben. A Work csak valódi támogatott felületen vagy védett auth-folyamatban kérjen belépést.
+- Valódi Gmail→felhő útvonal és fizikai iPhone Safari-próba külön ellenőrizendő. Az új mintán sem történhet email-küldés, foglalás vagy Previo-írás.
+
+
+
 ## 1. Mi készült el kód- és CI-szinten?
 - Gmail readonly → adatkinyerés → helyi szerkeszthető és ténylegesen tárolt tervezet: mockolt/izolált tesztekkel ellenőrzött.
 - A szintetikus Supabase-ügytár előnézeti GET útvonala, jogosultsági kapu és CAS/verziózott tervezet mentés: tesztelt.
@@ -40,8 +52,8 @@ A `leafy-chimera-2403e5` **tesztwebhely** Functions futtatási környezetében e
 Netlify hozzáférés nélkül a változókat a GitHub-kódból **nem lehet ellenőrizni vagy biztonságosan beállítani**. A kezelői bejelentkezés, a fizikai iPhone Safari/PWA és a teljes Gmail E2E ettől még NEM IGAZOLT. Semmilyen éles üzem nem aktiválható.
 
 ## 2. Mi nincs igazolva, és mi blokkol?
-- A Netlify tesztkörnyezet `CASE_STORE_ENABLED=synthetic-only`, `CASE_STORE_TEST_TENANTS`, `SUPABASE_URL`, publikus Supabase kulcs és titkos `SARBERKI_OPERATOR_SESSION_KEY` együttes konfigurációja nem igazolt a jelenlegi kiadásra. Nem szabad ezeket GitHubba vagy ügyféloldali fájlba írni.
-- A Reader Supabase Auth-fiók helyes jelszava és a valós telefonos bejelentkezés nem igazolt. A projekt-/adatbázis-/Gmail-jelszó nem azonos a Reader Auth-jelszóval.
+- A korábbi Netlify session-konfigurációs probléma a Work ellenőrzése szerint megszűnt. Ezután a tényleges Reader-belépés és visszaállítás sikeres volt; új belépés/konfiguráció-vizsgálatot csak új hiba esetén indíts.
+- A felhős Writer Auth-mal, jogosult `ingest-and-draft` hívással létrehozott **szabályos szintetikus ügy és tárolt tervezet** még nincs igazolva. A meglévő `auth_probe_...` ügy 0 tervezettel nem alkalmas. A fizikai iPhone Safari és PWA továbbra sem igazolt.
 - A böngészőből beolvasott valódi Gmail-levél nem kerül fel a szintetikus felhős ügytárba. Valódi e-mail vagy vendégadat feltöltése TILOS ebben a tesztkörben. Az éles Gmail→szerver végponttól végpontig folyamat még külön, megfelelő adatvédelmi és jogosultsági jóváhagyással készülhet el.
 - A CI szintetikus teszt és a Playwright/WebKit emuláció nem valós iPhone-bizonyíték.
 
