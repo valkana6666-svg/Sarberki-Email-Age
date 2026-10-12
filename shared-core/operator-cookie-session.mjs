@@ -107,6 +107,16 @@ export function createOperatorCookieSession({env=process.env,fetchImpl=fetch,now
   },
   async restore(event){boundary(event);return refreshed(read(event));},
   async protectedRead(event){boundary(event);const payload=read(event);csrf(event,payload);return refreshed(payload);},
+  async protectedWrite(event){
+   boundary(event,{post:true});
+   if(event.httpMethod!=='POST')fail(405,'METHOD_NOT_ALLOWED');
+   const payload=read(event);csrf(event,payload);
+   const verified=await refreshed(payload);
+   // Fresh Auth + DB membership, never a browser role or cookie claim.
+   // Preserve the rotated Reader cookie even when this write is denied.
+   if(!verified.authority.tenants?.['sarberki-test']?.includes('write'))fail(403,'FORBIDDEN',verified.setCookie);
+   return verified;
+  },
   async logout(event){
    boundary(event,{post:true});const payload=read(event);csrf(event,payload);
    // Losing DB membership must not prevent revoking one's own Auth session.

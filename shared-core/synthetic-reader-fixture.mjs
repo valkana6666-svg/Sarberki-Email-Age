@@ -22,7 +22,7 @@ export function syntheticReaderFixtureRequest(){
  };
 }
 
-// Requires an actual Supabase Writer bearer session in the existing case client.
+// Requires actual Supabase Writer authority in the case client or protected server route.
 // It must never be called with the Reader's read-only cookie session.
 // The response deliberately contains metadata only: no guest text or credentials.
 export async function ensureSyntheticReaderFixture(writerClient){

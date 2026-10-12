@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {initOperatorLoginPanel} from '../operator-login-ui.mjs';
 const ui=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-const names=['operator_login_form','operator_login_email','operator_login_password','operator_login','operator_restore','operator_logout','operator_login_status','operator_list_cases','operator_case_select','operator_open_case','operator_case_status','server_preview_case_id','server_preview_revision'];
+const names=['operator_login_form','operator_login_email','operator_login_password','operator_login','operator_restore','operator_logout','operator_login_status','operator_list_cases','operator_case_select','operator_open_case','operator_case_status','server_preview_case_id','server_preview_revision','operator_create_fixture','operator_fixture_status'];
 const valid=()=>({authenticated:true,tenantId:'sarberki-test',csrfToken:'ab'.repeat(32),expiresAt:new Date(Date.now()+3600_000).toISOString()});
 async function harness(request){
  const map=new Map(),events=[];
@@ -193,4 +193,29 @@ test('case-list errors clear choices without changing a real booking',async()=>{
  assert.match(h.get('operator_case_status').textContent,/CASE_STORE_DISABLED/);
  assert.equal(h.get('operator_case_select').disabled,true);
  assert.equal(h.get('operator_open_case').disabled,true);
+});
+test('Writer fixture button sends fixed CSRF-protected request without granting editable browser access',async()=>{
+ const calls=[],id='11111111-1111-4111-8111-111111111111';
+ const h=await harness(async(url,opt)=>{
+  calls.push({url,opt});
+  if(url.endsWith('/writer-reader-fixture'))return {ok:true,json:async()=>({result:{tenantId:'sarberki-test',caseId:id,revision:1,duplicate:false,readyForReaderPreview:true}})};
+  return {ok:true,json:async()=>valid()};
+ });
+ calls.length=0;await h.get('operator_create_fixture').click();
+ assert.equal(calls.length,1);assert.equal(calls[0].url,'/.netlify/functions/writer-reader-fixture');
+ assert.deepEqual(JSON.parse(calls[0].opt.body),{action:'create-reader-fixture'});
+ assert.equal(calls[0].opt.credentials,'same-origin');assert.equal(calls[0].opt.redirect,'error');
+ assert.equal(calls[0].opt.headers['X-CSRF-Token'],'ab'.repeat(32));assert.equal(calls[0].opt.headers.Authorization,undefined);
+ assert.equal(h.get('server_preview_case_id').value,id);assert.equal(h.get('server_preview_revision').value,'1');
+ assert.match(h.get('operator_fixture_status').textContent,/Mentett/);
+ assert.equal(h.globalRef.SarberkiCaseStoreSession.cookieReadOnly,true);assert.equal(h.globalRef.SarberkiCaseStoreSession.canEditDraft,false);
+ await h.get('operator_logout').click();assert.equal(h.get('operator_create_fixture').disabled,true);
+ assert.doesNotMatch(h.get('operator_fixture_status').textContent,new RegExp(id));
+});
+test('Reader fixture denial preserves read-only session and never claims creation',async()=>{
+ const h=await harness(async url=>url.endsWith('/writer-reader-fixture')?{ok:false,json:async()=>({error:'FORBIDDEN'})}:{ok:true,json:async()=>valid()});
+ const before=h.globalRef.SarberkiCaseStoreSession;await h.get('operator_create_fixture').click();
+ assert.equal(h.globalRef.SarberkiCaseStoreSession,before);assert.equal(before.cookieReadOnly,true);
+ assert.match(h.get('operator_fixture_status').textContent,/Writer-jogosultság szükséges/);
+ assert.equal(h.get('server_preview_case_id').value,'');
 });

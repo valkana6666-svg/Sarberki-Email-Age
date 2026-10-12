@@ -4,6 +4,7 @@ import {createDecipheriv} from 'node:crypto';
 import {createOperatorCookieSession,clearOperatorCookie} from '../shared-core/operator-cookie-session.mjs';
 import {createOperatorSessionHandler} from '../netlify/functions/operator-session.mjs';
 import {createCaseHandler,syntheticCaseSummaries} from '../netlify/functions/booking-cases.mjs';
+import {createWriterReaderFixtureHandler} from '../netlify/functions/writer-reader-fixture.mjs';
 const origin='https://leafy-chimera-2403e5.netlify.app',project='https://mojnqizbcaczstguikpv.supabase.co';
 const name='__Host-sarberki-operator';
 const cookieHeader=setCookie=>setCookie.split(';')[0];
@@ -26,7 +27,17 @@ function fixture(){
   }
   if(url.includes('/auth/v1/logout'))return new Response(state.logoutStatus===204?null:'{}',{status:state.logoutStatus});
   if(url.endsWith('/auth/v1/user'))return json({id:'synthetic-operator',is_anonymous:state.userAnonymous});
-  if(url.includes('/rest/v1/sc_memberships'))return json([{tenant_id:'sarberki-test',user_id:'synthetic-operator',can_read:state.membershipRead,can_write:false,can_approve:false}]);
+  if(url.includes('/rest/v1/sc_memberships'))return json([{tenant_id:'sarberki-test',user_id:'synthetic-operator',can_read:state.membershipRead,can_write:state.membershipWrite===true,can_approve:false}]);
+  if(state.fixtureRows&&url.includes('/rest/v1/rpc/sc_write_case')){
+   if(!state.membershipWrite)return new Response('{}',{status:403});
+   const input=JSON.parse(options.body),prior=state.fixtureRows.get(input.p_case);
+   if((prior?.revision||0)!==input.p_expected)return json(false);
+   state.fixtureRows.set(input.p_case,{tenant_id:input.p_tenant,case_id:input.p_case,revision:input.p_expected+1,data:input.p_data,created_at:new Date(state.time).toISOString(),updated_at:new Date(state.time).toISOString(),updated_by:'synthetic-operator'});return json(true);
+  }
+  if(state.fixtureRows&&url.includes('/rest/v1/sc_cases')){
+   const id=new URL(url).searchParams.get('case_id')?.slice(3);
+   return json([...state.fixtureRows.values()].filter(row=>!id||row.case_id===id));
+  }
   if(url.includes('/rest/v1/sc_cases'))return json([{tenant_id:'sarberki-test',case_id:'case-synthetic',revision:1,data:{id:'case-synthetic',tenantId:'sarberki-test',sender:state.caseSender},created_at:new Date(state.time).toISOString(),updated_at:new Date(state.time).toISOString(),updated_by:'synthetic-operator'}]);
   throw Error('Unexpected synthetic transport');
  };
@@ -39,6 +50,50 @@ function decode(setCookie,key){
  const decrypt=createDecipheriv('aes-256-gcm',Buffer.from(key,'hex'),Buffer.from(iv,'base64url'));decrypt.setAAD(Buffer.from(name+'|'+origin+'|'+project+'|v1'));decrypt.setAuthTag(Buffer.from(tag,'base64url'));
  return JSON.parse(Buffer.concat([decrypt.update(Buffer.from(encrypted,'base64url')),decrypt.final()]).toString());
 }
+test('protected Writer fixture stores one pending draft; Reader reads it but cannot create/edit/approve',async()=>{
+ const f=fixture();f.state.membershipWrite=true;f.state.fixtureRows=new Map();
+ const logged=await f.login(),handler=createWriterReaderFixtureHandler({env:f.env,fetchImpl:f.fetchImpl,now:f.now});
+ let cookie=cookieHeader(logged.setCookie);const csrf=logged.metadata.csrfToken;
+ const create=()=>handler(event({method:'POST',cookie,csrf,body:{action:'create-reader-fixture'}}));
+ const first=await create();assert.equal(first.statusCode,200);
+ const result=JSON.parse(first.body).result;cookie=cookieHeader(first.headers['Set-Cookie']);
+ assert.equal(result.readyForReaderPreview,true);assert.equal(result.duplicate,false);assert.equal(result.revision,1);
+ assert.match(result.caseId,/^[a-f0-9-]{36}$/);
+ assert.doesNotMatch(first.body,/access_token|refresh_token|Bearer|guest@|Please book/);
+ const stored=f.state.fixtureRows.get(result.caseId);
+ assert.equal(stored.data.state.approval,'pending');assert.equal(stored.data.drafts.length,1);
+ assert.ok(stored.data.drafts[0].text.length>20);
+ const duplicate=await create();assert.equal(duplicate.statusCode,200);assert.equal(JSON.parse(duplicate.body).result.duplicate,true);
+ cookie=cookieHeader(duplicate.headers['Set-Cookie']);assert.equal(f.state.fixtureRows.size,1);
+ f.state.membershipWrite=false;
+ const denied=await create();assert.equal(denied.statusCode,403);assert.equal(JSON.parse(denied.body).error,'FORBIDDEN');
+ cookie=cookieHeader(denied.headers['Set-Cookie']); // Reader remains able to refresh/read.
+ const cases=createCaseHandler({env:f.env,fetchImpl:f.fetchImpl});
+ const list=await cases(event({cookie,csrf,query:{tenantId:'sarberki-test'}}));assert.equal(list.statusCode,200);
+ assert.deepEqual(JSON.parse(list.body).result,[{tenantId:'sarberki-test',caseId:result.caseId,revision:1}]);
+ cookie=cookieHeader(list.headers['Set-Cookie']);
+ const preview=await cases(event({cookie,csrf,query:{tenantId:'sarberki-test',caseId:result.caseId,expectedRevision:'1',action:'preview-draft'}}));
+ assert.equal(preview.statusCode,200);const p=JSON.parse(preview.body).result;
+ assert.equal(p.storedDraft.text,stored.data.drafts[0].text);assert.equal(p.approval,'pending');assert.equal(p.persisted,false);
+ assert.equal(p.decision.capacity.verified,false);assert.equal(p.decision.pricing.verified,false);
+ for(const action of ['ingest-and-draft','edit-draft','approve']){
+  const response=await cases(event({method:'POST',cookie,csrf,body:{tenantId:'sarberki-test',caseId:result.caseId,action}}));
+  assert.equal(response.statusCode,401);
+ }
+ assert.equal(f.state.fixtureRows.get(result.caseId).revision,1);
+});
+test('Writer fixture rejects cross-origin, missing CSRF, custom data, revoked sessions and production',async()=>{
+ const f=fixture();f.state.membershipWrite=true;const logged=await f.login();
+ const handler=createWriterReaderFixtureHandler({env:f.env,fetchImpl:f.fetchImpl,now:f.now});
+ const base={method:'POST',cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken,body:{action:'create-reader-fixture'}};
+ for(const [change,status] of [[{headers:{origin:'https://example.com'}},403],[{headers:{'sec-fetch-site':'cross-site'}},403],[{csrf:undefined},403],
+  [{body:{action:'create-reader-fixture',envelope:{sender:'real@example.com'}}},400],[{body:{action:'approve'}},400],[{method:'GET'},405]]){
+  f.state.calls=[];const response=await handler(event({...base,...change}));assert.equal(response.statusCode,status);assert.equal(f.state.calls.length,0);
+ }
+ f.state.revoked=true;assert.equal((await handler(event(base))).statusCode,401);
+ f.state.revoked=false;f.env.URL='https://moonlit-torrone-88b39d.netlify.app';f.state.calls=[];
+ assert.equal((await handler(event(base))).statusCode,503);assert.equal(f.state.calls.length,0);
+});
 test('real AEAD cookie has only refresh/CSRF/absolute expiry and is never disclosed in metadata',async()=>{
  const f=fixture(),logged=await f.login(),payload=decode(logged.setCookie,f.env.SARBERKI_OPERATOR_SESSION_KEY);
  assert.deepEqual(Object.keys(payload).sort(),['csrfToken','expiresAt','refreshToken']);assert.equal(payload.expiresAt,f.state.time+7*86400000);

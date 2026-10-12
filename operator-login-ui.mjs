@@ -10,11 +10,12 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
   status=get('operator_login_status'),restore=get('operator_restore'),logout=get('operator_logout'),
   login=get('operator_login'),listCases=get('operator_list_cases'),caseSelect=get('operator_case_select'),
   openCase=get('operator_open_case'),caseStatus=get('operator_case_status');
+ const createFixture=get('operator_create_fixture'),fixtureStatus=get('operator_fixture_status');
  if(!form||!email||!password||!status||!restore||!logout||!login||!listCases||!caseSelect||!openCase||!caseStatus)return false;
  let active=false,busy=false,listed=[];
  const emit=()=>documentRef.dispatchEvent?.(new Event('sarberki:session-changed'));
  const resetCases=()=>{listed=[];caseSelect.replaceChildren();caseSelect.disabled=true;openCase.disabled=true;caseStatus.textContent='Csak hitelesített, szintetikus tesztügyek jelenhetnek meg.';};
- const clear=()=>{active=false;globalRef.SarberkiCaseStoreSession=null;logout.disabled=true;listCases.disabled=true;resetCases();emit();};
+ const clear=()=>{active=false;globalRef.SarberkiCaseStoreSession=null;logout.disabled=true;listCases.disabled=true;if(createFixture)createFixture.disabled=true;if(fixtureStatus)fixtureStatus.textContent='Writer-belépés szükséges. Reader nem hozhat létre ügyet.';resetCases();emit();};
  const enable=metadata=>{
   const exp=Date.parse(metadata?.expiresAt);
   if(metadata?.authenticated!==true||metadata?.tenantId!=='sarberki-test'||
@@ -28,9 +29,9 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
   active=true;logout.disabled=false;listCases.disabled=false;resetCases();emit();
   status.textContent='Hitelesített tesztkezelői olvasás aktív. Szintetikus ügyek ellenőrizhetők; szerkesztés, jóváhagyás és küldés nem engedélyezett.';
  };
- const waiting=on=>{busy=on;login.disabled=on;restore.disabled=on;logout.disabled=on||!active;listCases.disabled=on||!active;openCase.disabled=on||listed.length===0;};
- async function call(method,body,csrf){
-  const response=await request(endpoint,{
+ const waiting=on=>{busy=on;login.disabled=on;restore.disabled=on;logout.disabled=on||!active;listCases.disabled=on||!active;openCase.disabled=on||listed.length===0;if(createFixture)createFixture.disabled=on||!active;};
+ async function call(method,body,csrf,path=endpoint){
+  const response=await request(path,{
    method,cache:'no-store',credentials:'same-origin',redirect:'error',
    headers:{'X-Sarberki-Operator':'1',...(body?{'Content-Type':'application/json'}:{}),
     ...(csrf?{'X-CSRF-Token':csrf}:{})},
@@ -39,6 +40,25 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
   const data=await response.json();
   if(!response.ok)throw Error(['AUTH_REQUIRED','FORBIDDEN','SESSION_SETUP_REQUIRED','SESSION_SERVICE_UNAVAILABLE'].includes(data?.error)?data.error:'SESSION_UNAVAILABLE');
   return data;
+ }
+ async function createReaderFixture(){
+  if(!active||busy)return;
+  const session=globalRef.SarberkiCaseStoreSession;waiting(true);
+  fixtureStatus.textContent='Writer-jogosultság és szintetikus minta ellenőrzése…';
+  try{
+   const csrf=await session?.getCsrfToken?.();
+   if(!tokenPattern.test(csrf||''))throw Error('AUTH_REQUIRED');
+   const body=await call('POST',{action:'create-reader-fixture'},csrf,'/.netlify/functions/writer-reader-fixture');
+   if(globalRef.SarberkiCaseStoreSession!==session)return;
+   const r=body?.result;
+   if(!r||Object.keys(r).sort().join(',')!=='caseId,duplicate,readyForReaderPreview,revision,tenantId'||r.tenantId!=='sarberki-test'||
+    !isIsolatedReviewCaseId(r.caseId)||!Number.isSafeInteger(r.revision)||r.revision<1||r.readyForReaderPreview!==true||typeof r.duplicate!=='boolean')throw Error('INVALID_FIXTURE');
+   fixtureStatus.textContent=(r.duplicate?'Meglévő':'Létrehozott')+' szintetikus ügy: '+r.caseId+' · v'+r.revision+'. Mentett, ellenőrzésre váró tervezet; nincs küldés vagy foglalás.';
+   get('server_preview_case_id').value=r.caseId;get('server_preview_case_id').dispatchEvent(new Event('input'));
+   get('server_preview_revision').value=String(r.revision);get('server_preview_revision').dispatchEvent(new Event('input'));
+  }catch(e){
+   if(globalRef.SarberkiCaseStoreSession===session)fixtureStatus.textContent=e.message==='FORBIDDEN'?'Writer-jogosultság szükséges. Reader hozzáférése változatlan, csak olvasás.':'A szintetikus ügy létrehozása NEM IGAZOLT. Ellenőrizd a Writer-belépést; titkot ne másolj a chatbe.';
+  }finally{waiting(false);}
  }
  const problem=e=>{
   const code=String(e?.message||'');
@@ -117,6 +137,7 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
  logout.addEventListener('click',()=>perform('logout'));
  listCases.addEventListener('click',loadCases);
  openCase.addEventListener('click',openSelectedCase);
+ createFixture?.addEventListener('click',createReaderFixture);
  // A normal load restores once below. Only a bfcache return needs pageshow
  // revalidation; the existing busy gate prevents concurrent cookie rotation.
  globalRef.addEventListener?.('pageshow',event=>{

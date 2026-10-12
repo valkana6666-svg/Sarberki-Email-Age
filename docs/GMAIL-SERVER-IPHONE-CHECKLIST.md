@@ -3,6 +3,43 @@ Dátum: 2026-10-12. Kizárólag `gmail-test-subject-allowlist`, Netlify: `https:
 
 ## 0. Legfrissebb állapot (korábbi blokkolók feloldva, 2026-10-12)
 
+### Writer-hitelesítés bekötése – védett, rögzített szintetikus minta
+
+A védett bejelentkezőűrlap változatlan Supabase Auth belépést használ. A tesztoldal
+„Writer · rögzített szintetikus Reader-tesztügy” részében külön, explicit gomb hívja
+a `writer-reader-fixture` POST végpontot. Ez a frissített Auth-munkamenet és a DB-ben
+ellenőrzött `sarberki-test` **read + write** tagság után, szerveroldalon használja a
+`syntheticReaderFixtureRequest()` mintát a meglévő ingest-and-draft runtime-on.
+Nem fogad vendégadatot, ügyazonosítót, tenantot, szerepet vagy szabad műveletet a
+böngészőtől. Idempotens mentést végez; csak ügyazonosítót/verziót és igazolási
+metaadatokat ad vissza. Jelszó és Bearer-token nem kerül a válaszba vagy naplóba.
+Nincs új SQL, service role, jogosultságmódosítás vagy külső küldés.
+
+A meglévő Reader cookie-s ügy-API és kliens továbbra is kizárólag GET/olvasás;
+a Writer-mintavégpont **nem** enged általános cookie-s szerkesztést vagy jóváhagyást.
+Reader hívás 403; a frissített Reader-cookie visszakerül, így olvasása megmarad.
+Hiányzó CSRF, hibás Origin, lejárt/visszavont Auth vagy eltávolított write-tagság
+nem hoz létre ügyet. A production hoston a kapu zárt.
+
+Védett élő ellenőrzés a teszt-Netlify commitazonosságának igazolása után:
+
+1. A meglévő Readerből kijelentkezés, majd a **meglévő Writer Auth-fiókkal** belépés
+   a tesztoldal védett űrlapján. Jelszót vagy tokent ne másolj chatbe/DevToolsba.
+2. A Writer-rész mintalétrehozó gombja. A kijelzett `caseId` és verzió nem titok;
+   második kattintás ugyanazt a mentett mintát adja vissza.
+3. Writer kijelentkezés, Reader belépés. Ügylista → azonos `caseId` kiválasztása →
+   mentett tervezet előnézete. UNKNOWN kapacitás/ár, pending állapot; nincs küldés.
+4. Readerrel a mintalétrehozás megtagadva; szerkesztés és jóváhagyás továbbra tiltott.
+
+Bizonyítékhatár: a célzott Auth/HTTP integráció szimulált; a meglévő PostgreSQL
+RLS-tesztek helyi valódi motoron futnak. Célzott teszt: 45 PASS / 0 FAIL / 0 SKIP;
+teljes helyi regresszió: 1428 PASS / 0 FAIL / 0 SKIP. Élő Writer Auth és felhős ügymentés csak
+a fenti emberi belépés után igazolható. A végrehajtó környezetben nincs Writer
+hitelesítő adat vagy támogatott, már bejelentkezett felhőböngésző. Ezért a valódi
+lépéshez védett felületi emberi közreműködés kell; Reader vagy admin SQL nem pótlás.
+V2/V3 érték: a meglévő hitelesítés, közös runtime és atomi tárolás megmarad;
+ez a rögzített tesztminta nem általános külső végrehajtási engedély.
+
 - A Reader belépés, automatikus munkamenet-visszaállítás és kijelentkezés **valós Work felhőböngészős ellenőrzése a felhasználó beszámolója szerint sikeres**. Ez nem fizikai iPhone/Safari-teszt. Ellenőrzött megvalósítás: `2546d88042edd291ae27cac85b510b146e2d9efa`; 1420 PASS, 0 FAIL, 0 SKIP és 12 szintetikus Chromium/WebKit mobilpróba. Netlify azonos commitot futtatott.
 - Reader továbbra is csak olvasó; írás és jóváhagyás tiltott. A korábbi `SESSION_SETUP_REQUIRED` megállapítás történeti, **nem aktuális feladat**.
 - Supabase `sarberki-test` ügytárban az utolsó read-only ellenőrzés egy `auth_probe_...` azonosítójú, 0 tervezetet tartalmazó ellenőrző ügyet mutatott. Ez a Reader biztonsági ügyazonosító-szűrőjéhez és a mentett választervezet próbájához **nem alkalmas**; meglévő sort ne nevezd át és ne írd át SQL-lel.
