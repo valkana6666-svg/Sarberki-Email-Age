@@ -75,3 +75,47 @@ test('empty greeting during an active inquiry does not discard facts or normaliz
  const before=chat.snapshot(),result=chat.reply('');
  assert.equal(result.response.intent,'welcome');assert.deepEqual(chat.snapshot(),before);
 });
+
+const iphoneInquiry='Jó napot! November 26-tól 28-ig szeretnénk egy Deluxe faházat foglalni 2 felnőtt részére. Van szabad hely?';
+test('Hungarian booking date confirmation continues the active iPhone inquiry',()=>{
+ const chat=createChatInquirySession({clock:()=>now});
+ const first=chat.reply(iphoneInquiry);
+ assert.ok(first.decision.missing.includes('dates_confirmation'));
+ const result=chat.reply('2026. november 26-tól 28-ig szeretnénk foglalni.');
+ assert.ok(result.decision);
+ assert.deepEqual(result.decision.facts.dates,{arrival:'2026-11-26',departure:'2026-11-28',inferred_year:false});
+ assert.equal(result.decision.facts.adults,2);
+ assert.equal(result.decision.facts.cabin,'Deluxe');
+ assert.equal(result.decision.facts.units_requested,1);
+ assert.deepEqual(result.decision.missing,[]);
+ assert.equal(result.decision.capacity.status,'UNKNOWN');
+ assert.equal(result.decision.pricing.verified,false);
+ assert.match(result.text,/kapacitás ellenőrzése még nem igazolt/u);
+ assert.equal(result.decision.safety.bookingCreated,false);
+ assert.equal(result.decision.safety.emailSent,false);
+});
+test('booking party correction retains the confirmed stay and one Deluxe unit',()=>{
+ const chat=createChatInquirySession({clock:()=>now});
+ chat.reply('Van szabad egy Deluxe faház 2026. november 26-tól 28-ig 2 felnőtt részére?');
+ const result=chat.reply('3 felnőtt részére szeretnénk foglalni.');
+ assert.ok(result.decision);
+ assert.equal(result.decision.facts.adults,3);
+ assert.equal(result.decision.facts.guests,3);
+ assert.equal(result.decision.facts.dates.arrival,'2026-11-26');
+ assert.equal(result.decision.facts.cabin,'Deluxe');
+ assert.equal(result.decision.facts.units_requested,1);
+ assert.equal(result.decision.capacity.status,'UNKNOWN');
+});
+test('booking FAQ without new stay facts remains informational in an active inquiry',()=>{
+ const chat=createChatInquirySession({clock:()=>now});chat.reply(iphoneInquiry);
+ const before=chat.snapshot(),result=chat.reply('Hogyan válik érvényessé a foglalás?');
+ assert.equal(result.response.intent,'booking');assert.equal(result.decision,null);
+ assert.match(result.text,/külön visszaigazolás/u);assert.deepEqual(chat.snapshot(),before);
+});
+test('standalone booking FAQ and date message do not create an active inquiry',()=>{
+ for(const message of ['Hogyan válik érvényessé a foglalás?','2026. november 26-tól 28-ig szeretnénk foglalni.']){
+  const chat=createChatInquirySession({clock:()=>now}),result=chat.reply(message);
+  assert.equal(result.response.intent,'booking');assert.equal(result.decision,null);
+  assert.deepEqual(chat.snapshot(),{});
+ }
+});

@@ -15,9 +15,11 @@ export function createChatInquirySession({language='hu',clock=()=>new Date()}={}
    if(faq.intent==='availability')bookingContext=true;
    if(!bookingContext)return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};
    // Informational detours do not replace the active stay or its missing facts.
-   if(['welcome','hotTub','deposit','fishing','booking','cabins'].includes(faq.intent))
+   const bookingUpdate=faq.intent==='booking'?normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized:null;
+   const hasBookingUpdate=bookingUpdate&&['dates','adults','children','guests','units_requested'].some(key=>bookingUpdate[key]!=null);
+   if(['welcome','hotTub','deposit','fishing','booking','cabins'].includes(faq.intent)&&!hasBookingUpdate)
     return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};
-   const n=normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized;
+   const n=bookingUpdate||normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized;
    const next={...facts};
    for(const key of ['dates','phone','units_requested'])if(n[key]!==null&&n[key]!==undefined&&n[key]!=='')next[key]=structuredClone(n[key]);
    const priorParty={},incomingParty={};
