@@ -123,6 +123,33 @@ function gmailFixture(id,text,{thread='gmail-thread',received='2026-10-08T19:40:
 }
 async function importGmail(h,data){h.node('gmail_json').value=JSON.stringify(data);return await h.node('load_gmail_record').onclick();}
 const gmailFirst='2026. október 23–25. között Deluxe faházat szeretnénk 2 felnőtt és 2 gyermek részére. Az egyik gyermek 7 éves.';
+test('Gmail and main reply editors persist the same manually edited pending draft',async()=>{
+ const runtime=createBookingRuntime({request:()=>{throw Error('network unused');}}),h=harness(runtime);
+ assert.equal(await importGmail(h,gmailFixture('gmail-editor',gmailFirst)),true);
+ const cid=runtime.cases.list().find(c=>c.sender==='gmail-flow@example.invalid')?.id;
+ assert.ok(cid);assert.equal(h.node('gmail_record').classList.contains('hidden'),false);
+ const gmailEdit='Kézzel javított Gmail-válasz, még nincs elküldve.';
+ h.node('gmail_draft').value=gmailEdit;h.node('gmail_draft').dispatchEvent({type:'input'});
+ assert.equal(h.node('draft').value,gmailEdit);
+ assert.equal(runtime.cases.get(cid).drafts.at(-1).text,gmailEdit);
+ assert.equal(runtime.cases.get(cid).state.approval,'pending');
+ assert.match(h.node('status').textContent,/újbóli jóváhagyás/u);
+ const mainEdit='Másodszor módosított közös válasz, szintén nem elküldve.';
+ h.node('draft').value=mainEdit;h.node('draft').dispatchEvent({type:'input'});
+ assert.equal(h.node('gmail_draft').value,mainEdit);
+ assert.equal(runtime.cases.get(cid).drafts.at(-1).text,mainEdit);
+ assert.equal(runtime.cases.get(cid).state.approval,'pending');
+});
+test('switching to a new manual inquiry hides stale Gmail editor and ignores its edits',async()=>{
+ const runtime=createBookingRuntime({request:()=>{throw Error('network unused');}}),h=harness(runtime);
+ assert.equal(await importGmail(h,gmailFixture('gmail-editor-old',gmailFirst)),true);
+ h.analyze('2026. november 6–8. között 2 felnőtt részére VIP házat keresünk.');
+ assert.equal(h.node('gmail_record').classList.contains('hidden'),true);
+ const currentDraft=h.node('draft').value;
+ h.node('gmail_draft').value='RÉGI GMAIL SZÖVEG';h.node('gmail_draft').dispatchEvent({type:'input'});
+ assert.equal(h.node('draft').value,currentDraft);
+ assert.notEqual(runtime.cases.list().at(-1).drafts.at(-1)?.text,'RÉGI GMAIL SZÖVEG');
+});
 test('manual Gmail JSON import runs the central analyzer and clears stale manual case linking',async()=>{
  const runtime=createBookingRuntime({request:()=>{throw Error('network unused');}}),h=harness(runtime);h.node('booking_case_link').value=runtime.cases.list()[0].id;
  assert.equal(await importGmail(h,gmailFixture('gmail-one',gmailFirst)),true);
