@@ -125,6 +125,14 @@ export function guestCountFromText(text=''){
 }
 export function adultCountFromText(text=''){
   text=activeMessageText(text);
+  const deWords={ein:1,eine:1,einen:1,einem:1,einer:1,eines:1,eins:1,zwei:2,drei:3,vier:4,fünf:5,fuenf:5,sechs:6,sieben:7,acht:8,neun:9,zehn:10,elf:11,zwölf:12,zwoelf:12};
+  const deNumber='(?:\\d{1,2}|'+Object.keys(deWords).join('|')+')';
+  const deAdult='erwachsene(?:[rnms])?\\b';
+  // Alternatives/ranges are not an exact party count; never choose one end.
+  if(new RegExp('\\b'+deNumber+'\\s*(?:oder|bis|[-–/])\\s*'+deNumber+'\\s+'+deAdult,'iu').test(text))return null;
+  const deCounts=[...text.matchAll(new RegExp('\\b('+deNumber+')\\s*'+deAdult,'giu'))]
+    .map(match=>deWords[match[1].toLowerCase()]??Number(match[1]));
+  if(deCounts.length)return new Set(deCounts).size===1?deCounts[0]:null;
   const m=text.match(/\b(\d{1,2})\s*(?:felnőtt\w*|felnott\w*|adults?|erwachsene\w*|odrasl\w*)\b/iu);
   if(m) return Number(m[1]);
   const huWords={egy:1,két:2,ket:2,kettő:2,ketto:2,három:3,harom:3,négy:4,negy:4,öt:5,ot:5,hat:6,hét:7,het:7,nyolc:8};
