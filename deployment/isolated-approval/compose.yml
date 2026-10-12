@@ -58,7 +58,7 @@ services:
       isolated_backend: {}
       isolated_proxy_link: {ipv4_address: 172.29.86.3}
     read_only: true
-    tmpfs: [/tmp:size=16m,mode=1777]
+    tmpfs: ['/tmp:size=16m,mode=1777']
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
     logging: {driver: none}
