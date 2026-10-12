@@ -57,7 +57,7 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
     }
   };
   const checked=await Promise.all(mapped.map(checkOption));
-  if(input.cabin&&!input.cabin.startsWith('split')&&input.fallback!==false&&!checked.some(x=>x.availability==='available'))checked.push(...await Promise.all(candidates.filter(x=>x.key!==input.cabin).map(checkOption)));
+  if(input.cabin&&!input.cabin.startsWith('split')&&input.fallback!==false&&checked.some(x=>x.key===input.cabin&&x.availability==='unavailable'&&x.availability_verified===true)&&!checked.some(x=>x.key===input.cabin&&x.availability==='unverified'))checked.push(...await Promise.all(candidates.filter(x=>x.key!==input.cabin).map(checkOption)));
 
   const checkPool=async cabin=>{
     try{
@@ -67,7 +67,7 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
       return {verified:false,availability:'unverified',availableUnits:null,error:error.message};
     }
   };
-  const splitNeeded=!input.cabin||input.cabin.startsWith('split')||input.fallback!==false&&!checked.some(x=>x.key===input.cabin&&x.availability==='available');
+  const splitNeeded=!input.cabin||input.cabin.startsWith('split')||input.fallback!==false&&checked.some(x=>x.key===input.cabin&&x.availability==='unavailable'&&x.availability_verified===true)&&!checked.some(x=>x.key===input.cabin&&x.availability==='unverified');
   const unknown={verified:false,availability:'unverified',availableUnits:null,reason:'not_requested'};
   const placement=input.placement||null;
   const [splitAB,splitC]=await Promise.all([splitNeeded&&(!placement||placement.ab>0)?checkPool('splitA'):unknown,splitNeeded&&(!placement||placement.c>0)?checkPool('splitC'):unknown]);
