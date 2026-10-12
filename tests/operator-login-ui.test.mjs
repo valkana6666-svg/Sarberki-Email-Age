@@ -128,7 +128,7 @@ test('authorized synthetic cases appear as IDs and revisions only; fake guest da
  await h.get('operator_open_case').click();
  assert.equal(h.get('server_preview_case_id').value,'case-synth-one');
  assert.equal(h.get('server_preview_revision').value,'3');
- assert.match(h.get('operator_case_status').textContent,/1 ellenőrzött tesztügy/u);
+ assert.match(h.get('operator_case_status').textContent,/szintetikus ügy kiválasztva/u);
  await h.get('operator_logout').click();
  assert.equal(h.get('operator_case_select').children.length,0);
  assert.equal(h.get('operator_case_select').disabled,true);
