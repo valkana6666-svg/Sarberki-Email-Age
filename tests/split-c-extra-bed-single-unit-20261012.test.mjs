@@ -80,3 +80,11 @@ for(const guests of [1,2]){
   assert.equal(result.unverified_options.some(x=>x.key==='splitC'),false);
  });
 }
+
+test('explicit single C apartment for two guests checks C pool despite default query minimization',async()=>{
+ const calls=[];
+ const result=await buildAvailabilityOptions({arrival:'2026-11-20',departure:'2026-11-22',guests:2,adults:2,cabin:'splitC'},source(calls),{now:()=>now.getTime()});
+ assert.ok(calls.includes('splitC'));
+ assert.equal(calls.includes('splitA'),false);
+ assert.ok(result.available_options.some(x=>x.key==='splitC'&&x.units===1));
+});
