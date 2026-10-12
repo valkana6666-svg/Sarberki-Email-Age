@@ -70,6 +70,12 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    // Read-only common planner preview; client facts are never evidence.
    const planned=buildEmailInquiryDraft(serverInquiryOptions(current,new Date(clock())));
    const latestDraft=current.data.drafts.at(-1);
+   const savedDraftCurrent=Boolean(current.data.state?.approval==='pending' &&
+     latestDraft && typeof latestDraft.text==='string' &&
+     latestDraft.revision===current.data.state.revision &&
+     latestDraft.basedOnMessageCount===current.data.messages.length);
+   const storedDraft=savedDraftCurrent?{text:latestDraft.text,edited:latestDraft.edited===true,
+     status:latestDraft.reviewStatus||'pending',caseRevision:current.revision}:null;
    const reviewState={caseRevision:current.revision,factsRevision:current.data.state.revision,
     latestDraftRevision:latestDraft?.revision??null,
     latestDraftMessageCount:latestDraft?.basedOnMessageCount??null,
@@ -77,12 +83,12 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
     auditStatus:'not_verified'};
    const readOnlyFreshness={verified:true,checkedAt:clock(),source:'stored-synthetic-case',
     tenantId,caseId,revision:current.revision,syntheticOnly:true};
-   return {caseId,revision:current.revision,text:planned.text,operatorReviewText:planned.operatorReviewText,decision:planned.decision,reviewState,readOnlyFreshness,approval:'pending',persisted:false};
+   return {caseId,revision:current.revision,text:planned.text,operatorReviewText:planned.operatorReviewText,decision:planned.decision,reviewState,readOnlyFreshness,storedDraft,approval:'pending',persisted:false};
   },
   async editDraft(caseId,expectedRevision,editedText){
    // Synthetic-only, operator-authenticated edit; append a pending version, never authorize a guest send.
    if(tenantId!=='sarberki-test')reject('FORBIDDEN');
-   if(typeof editedText!=='string'||!editedText.trim()||editedText.length>20000||editedText.includes('\\0'))reject('INVALID_DRAFT');
+   if(typeof editedText!=='string'||!editedText.trim()||editedText.length>20000||/\u0000/u.test(editedText))reject('INVALID_DRAFT');
    await service.requireWrite({requestContext,tenantId});
    const current=await service.getCase({requestContext,tenantId,caseId});
    if(!current)reject('CASE_NOT_FOUND');
