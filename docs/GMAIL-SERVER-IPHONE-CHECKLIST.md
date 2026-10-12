@@ -1,16 +1,30 @@
-# Gmail szerverelőnézet: valódi iPhone ellenőrzés
+# Sárberki V1 – Gmail és szerveres tesztügyek iPhone-os ellenőrzése
+Dátum: 2026-10-12. Kizárólag `gmail-test-subject-allowlist`, Netlify: `https://leafy-chimera-2403e5.netlify.app/`.
 
-A Chromium/WebKit 390×844-es helyi próba böngészőmotoros emuláció. Nem igazol valódi iPhone-t, felhős bejelentkezést, Gmail OAuth-ot, tartós mentést vagy audit-visszaolvasást.
+## 1. Mi készült el kód- és CI-szinten?
+- Gmail readonly → adatkinyerés → helyi szerkeszthető és ténylegesen tárolt tervezet: mockolt/izolált tesztekkel ellenőrzött.
+- A szintetikus Supabase-ügytár előnézeti GET útvonala, jogosultsági kapu és CAS/verziózott tervezet mentés: tesztelt.
+- Új `operator-login-ui.mjs`: explicit Supabase Auth tesztoperátori belépés, visszaállítás, kijelentkezés, HttpOnly cookie, kliensoldalon csak CSRF nonce és lejárat. A cookie-s munkamenet kizárólag olvasásra használható; írás, jóváhagyás, e-mail-küldés tilos.
+- Szintetikus ügyválasztó: csak `sarberki-test` tenant, `.invalid` feladók és szabályos tesztügy-azonosítók listázhatók. Az előnézeti űrlap a kiválasztott ügy verzióját kapja.
+- A külön Bearer/Auth írási funkció továbbra is csak explicit külső, megbízható sessionnel és `synthetic-only` szerveres kapuval használható; a cookie-bejelentkezés nem kapcsolja be.
 
-Csak a `gmail-test-subject-allowlist` tesztfelületet és előre létrehozott, `.invalid` feladójú szintetikus ügyet használj. Eredeti Gmail-üzenetet vagy vendégadatot ne tölts fel. Üzenetküldés, foglalás és production hozzáférés nem része ennek a próbának.
+## 2. Mi nincs igazolva, és mi blokkol?
+- A Netlify tesztkörnyezet `CASE_STORE_ENABLED=synthetic-only`, `CASE_STORE_TEST_TENANTS`, `SUPABASE_URL`, publikus Supabase kulcs és titkos `SARBERKI_OPERATOR_SESSION_KEY` együttes konfigurációja nem igazolt a jelenlegi kiadásra. Nem szabad ezeket GitHubba vagy ügyféloldali fájlba írni.
+- A Reader Supabase Auth-fiók helyes jelszava és a valós telefonos bejelentkezés nem igazolt. A projekt-/adatbázis-/Gmail-jelszó nem azonos a Reader Auth-jelszóval.
+- A böngészőből beolvasott valódi Gmail-levél nem kerül fel a szintetikus felhős ügytárba. Valódi e-mail vagy vendégadat feltöltése TILOS ebben a tesztkörben. Az éles Gmail→szerver végponttól végpontig folyamat még külön, megfelelő adatvédelmi és jogosultsági jóváhagyással készülhet el.
+- A CI szintetikus teszt és a Playwright/WebKit emuláció nem valós iPhone-bizonyíték.
 
-1. Safari iPhone-on: nyisd meg a meglévő Gmail felület „Központi szerveres választervezet” szakaszát. Jegyezd fel az iOS/Safari verziót és a tesztági commitot.
-2. Bejelentkezés nélkül az előnézet maradjon tiltott; a szöveg ne állítson sikeres adatlekérést.
-3. Külön hitelesített tesztmunkamenettel kérd le az előre tárolt szintetikus ügy pontos verzióját. A vendégtervezet és magyar ellenőrző szöveg csak olvasható legyen.
-4. Ellenőrizd a hiányokat, kapacitás- és árjelzést. Ismeretlen kapacitás/ár nem jelenhet meg igazoltként. Az előnézet nem jóváhagyás és nem vendégajánlat.
-5. Nézd meg az ügy- és tényverziót: elavult vagy üzenetszámhoz nem kötött tervezet új ellenőrzést igényel. Az audit „NEM IGAZOLT”, amíg külön hitelesített szerveres visszaolvasás nem történt.
-6. Módosítsd az ügyazonosítót/verziót, vagy zárd le a munkamenetet: minden korábbi előnézet törlődjön. Későn érkező régi kérés ne töltse vissza.
-7. Ellenőrizd álló/fekvő nézetben, billentyűzettel és nagyított szöveggel: mezők ne lógjanak ki, gombok érinthetők legyenek, magyar szöveg olvasható legyen.
-8. Hibás/lejárt munkamenet és verzióütközés után ne maradjon sikeres állapot. Ne készíts tokent vagy vendégadatot tartalmazó képernyőképet.
+## 3. Valódi iPhone – minimális biztonságos teszt
+1. Safari → `https://leafy-chimera-2403e5.netlify.app/` → „Tesztkezelői bejelentkezés – kizárólag szintetikus ügyek olvasása”.
+2. Először „Korábbi tesztbelépés ellenőrzése”. Érvényes session nélkül elutasítást kell kapni, és az előnézet nem férhet hozzá az adatokhoz.
+3. Ha az adminisztrátor korábban **külön, a tesztoldalhoz** aktiválta a biztonságos session-kulcsot és a szintetikus ügytárat, csak a meglévő Supabase Auth Reader tesztoperátori e-mail/jelszóval jelentkezz be a helyi űrlapon. Titkot soha ne küldj chatben, GitHubon, képernyőképen.
+4. „Szintetikus tesztügyek betöltése” → válassz megfelelő azonosítót → „Kiválasztott ügy megnyitása az előnézetben” → „Szerveres tervezet előnézete (nem ment)”.
+5. Ellenőrizd a hiányokat, a magyar kezelői szöveget, az UNKNOWN kapacitás/ár jelzését. A szerkesztési és mentési gombnak az olvasó munkamenetben tiltva kell maradnia.
+6. „Kijelentkezés”: az előnézet és a szerkeszthető tartalom azonnal törlődjön. Válassz másik ügyet vagy változtasd a verziót: régi válasz ne jelenjen meg újra.
+7. Jelöld külön a Safari vs. főképernyős PWA eredményeket; cookie-/munkamenet-megosztást ne feltételezz. Ellenőrizd álló/fekvő nézetben és billentyűzettel.
+8. Sikertelen belépésnél csak a hibakódot és nem titkos képernyőképet jegyezd fel. `SESSION_SETUP_REQUIRED` vagy `CASE_STORE_DISABLED`: admin beállítás még hiányzik. `AUTH_REQUIRED`: külön Auth-azonosság/jelszó probléma lehet.
 
-A jelenlegi panel kizárólag GET-előnézetet kér; nem ír ügyet, nem aktivál jóváhagyást, és nem ellenőriz auditot vagy újraindítás utáni tartósságot. A checklist elvégzése még nem igazolt.
+## 4. V1 átadási kritérium
+A munka akkor tekinthető teljesnek, ha külön igazolható a hitelesített, tartós, jogosultságvédett Gmail→ügy→tervezet→szerkesztés→újraolvasás folyamat és az emberi jóváhagyás kezelői lépése. A cookie-s olvasási próba fontos részteszt, **nem igazolja** ezt a teljes élő láncot.
+
+Nincs automatikus vendéglevelezés, foglalás, Pushover-küldés vagy Previo-írás. Main/production tiltott.
