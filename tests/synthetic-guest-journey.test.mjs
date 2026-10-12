@@ -19,18 +19,17 @@ const envelope = (message_id,text,received_at) => ({
   thread_id:'synthetic_thread',message_id,text,received_at
 });
 
-test('six-person inquiry offers only verified A/B plus C, never physical unit numbers',async()=>{
+test('six-person single-unit inquiry does not offer unsolicited A/B plus C',async()=>{
   const store=createBookingCaseStore({id:()=> 'six-guests-case'});
   const initial=store.ingest(envelope('m1','Hat felnőttnek keresünk szállást november 9–13-ig. Horgásznánk és autóval jövünk.','2026-10-10T08:00:00Z'),dates);
   assert.equal(initial.resolution.status,'new');
   const input=capacityInput(initial.bookingCase.state.values,initial.bookingCase.state.original);
   const capacity=await buildAvailabilityOptions(input,makeSource({splitA:1,splitC:1}));
   assert.equal(capacity.bookingCompleted,false);
-  assert.ok(capacity.available_options.some(o=>o.key==='splitCombination'&&o.availability_verified===true&&o.requiredAB===1&&o.requiredC===1));
-  assert.ok(capacity.available_options.every(o=>o.key==='splitCombination'));
+  assert.equal(capacity.available_options.some(o=>o.key==='splitCombination'),false);
+  assert.equal(capacity.available_options.length,0);
   const guestText=availabilitySentence(capacity,'hu');
-  assert.match(guestText,/ellenőrzött, szabad lehetőségek/u);
-  assert.match(guestText,/Osztott/u);
+  assert.doesNotMatch(guestText,/ellenőrzött, szabad lehetőségek/u);
   assert.doesNotMatch(guestText,/\b(?:7|8|9|10)[ABC]\b/u);
 });
 
@@ -99,6 +98,6 @@ test('confirmed zero capacity retains the unavailable wording, distinct from unk
   const result=await buildAvailabilityOptions({...input,fallback:false},makeSource({deluxe:0}));
   assert.equal(result.available_options.length,0);
   assert.ok(result.unavailable_options.some(o=>o.key==='deluxe'));
-  assert.equal(result.unverified_options.length,0);
+  assert.equal(result.unverified_options.some(o=>o.key==='deluxe'),false);
   assert.match(availabilitySentence(result,'en'),/not found/u);
 });
