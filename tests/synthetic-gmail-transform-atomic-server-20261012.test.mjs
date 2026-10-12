@@ -27,7 +27,7 @@ async function transformFixture(){
  return window.sarberkiGmailTransform;
 }
 function syntheticEmail(from='guest@synthetic.invalid'){
- const body='Jó napot! 2026. november 26–28. között 2 felnőtt részére VIP faházat szeretnénk. Gyermek nem jön. Van szabad hely? Üdvözlettel: Teszt Vendég';
+ const body='Jó napot! 2026. november 26–28. között 2 felnőtt részére VIP faházat szeretnénk. gyermek nélkül. Van szabad hely? Üdvözlettel: Teszt Vendég';
  return {id:'test-msg-001',threadId:'test-thread-001',
   internalDate:String(Date.parse('2026-10-12T08:00:00Z')),labelIds:['INBOX'],
   payload:{mimeType:'text/plain',body:{data:Buffer.from(body).toString('base64url')},
