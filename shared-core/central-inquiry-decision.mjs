@@ -36,9 +36,10 @@ function decideCapacity(result,input,ready,now,tenant){
   permitted=splitCapacityOptions(input.guests,pools,request).filter(x=>x.availability_verified&&x.availability==='available'&&x.capacity>=input.guests)
    .map(x=>({...x,key:x.requiredC&&!x.requiredAB?'splitC':x.requiredAB&&!x.requiredC?'splitAB':'splitCombination',units:x.units.length}));
  }
- const candidates=wholeCabinCandidates(input).candidates;
- // Fallback is permitted only after fresh, verified UNAVAILABLE evidence for
- // the requested type. UNKNOWN must never be interpreted as sold out.
+ const {candidates,rejected}=wholeCabinCandidates(input);
+ // Local physical incompatibility also permits independently verified
+ // alternatives. UNKNOWN capacity must never be interpreted as sold out.
+ const requestedWholeIncompatible=Boolean(input.cabin==='deluxe'&&rejected.some(row=>row.key===input.cabin&&row.reason==='capacity_incompatible'));
  const requestedWholeUnavailable=Boolean(input.cabin&&!split&&
   !result.available_options.some(row=>row.key===input.cabin)&&
   !result.unverified_options.some(row=>row.key===input.cabin)&&
@@ -53,7 +54,7 @@ function decideCapacity(result,input,ready,now,tenant){
  const requestedCUnavailable=Boolean(requestedCPool&&requestedCPool.availableUnits<requestedCUnits&&
   result.unavailable_options.some(row=>row.key==='splitC'&&row.units===requestedCUnits&&row.availability_verified===true)&&
   !result.unverified_options.some(row=>row.key==='splitC'));
- const requestedUnavailable=input.fallback!==false&&(requestedWholeUnavailable||requestedCUnavailable);
+ const requestedUnavailable=input.fallback!==false&&(requestedWholeIncompatible||requestedWholeUnavailable||requestedCUnavailable);
  const selectedRows=requestedUnavailable?result.available_options.filter(row=>row.availability==='available'&&row.availability_verified===true):selectedCapacityOptions(result,input);
  const selected=selectedRows.flatMap(row=>{
   if(split&&!requestedUnavailable){

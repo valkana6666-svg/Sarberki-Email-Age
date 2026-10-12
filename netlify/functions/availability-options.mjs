@@ -57,7 +57,10 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
     }
   };
   const checked=await Promise.all(mapped.map(checkOption));
-  if(input.cabin&&!input.cabin.startsWith('split')&&input.fallback!==false&&checked.some(x=>x.key===input.cabin&&x.availability==='unavailable'&&x.availability_verified===true)&&!checked.some(x=>x.key===input.cabin&&x.availability==='unverified'))checked.push(...await Promise.all(candidates.filter(x=>x.key!==input.cabin&&(input.units!=null||x.units===1)).map(checkOption)));
+  // Physical incompatibility is established locally, without a source call.
+  // A failed/unknown capacity lookup still cannot trigger fallback.
+  const requestedWholeIncompatible=input.cabin==='deluxe'&&rejected.some(x=>x.key===input.cabin&&x.reason==='capacity_incompatible');
+  if(input.cabin&&!input.cabin.startsWith('split')&&input.fallback!==false&&(requestedWholeIncompatible||checked.some(x=>x.key===input.cabin&&x.availability==='unavailable'&&x.availability_verified===true))&&!checked.some(x=>x.key===input.cabin&&x.availability==='unverified'))checked.push(...await Promise.all(candidates.filter(x=>x.key!==input.cabin&&(input.units!=null||x.units===1)).map(checkOption)));
 
   const checkPool=async cabin=>{
     try{
