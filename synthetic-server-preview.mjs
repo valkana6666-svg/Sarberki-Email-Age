@@ -18,9 +18,10 @@ export function syntheticPreviewState(result){
 }
 export function initSyntheticPreviewPanel({documentRef=document,sessionProvider=()=>window.SarberkiCaseStoreSession}={}){
  const get=id=>documentRef.getElementById(id),action=get('server_preview_action'),status=get('server_preview_status'),output=get('server_preview_text');
+ const editText=get('server_edit_text'),editAction=get('server_edit_action'),editStatus=get('server_edit_status');
  if(!action||!status||!output)return false;
- let epoch=0;
- const clear=()=>{output.value='';if(get('server_preview_hu'))get('server_preview_hu').value='';for(const field of ['details','capacity','price','revision','approval','audit'])if(get('server_preview_'+(field==='revision'?'revision_state':field)))get('server_preview_'+(field==='revision'?'revision_state':field)).textContent='NEM IGAZOLT.';};
+ let epoch=0,editableCase=null;
+ const clear=()=>{editableCase=null;if(editText){editText.value='';editText.disabled=true;}if(editAction)editAction.disabled=true;if(editStatus)editStatus.textContent='Nincs aktív, szerkeszthető szerveres tervezet.';output.value='';if(get('server_preview_hu'))get('server_preview_hu').value='';for(const field of ['details','capacity','price','revision','approval','audit'])if(get('server_preview_'+(field==='revision'?'revision_state':field)))get('server_preview_'+(field==='revision'?'revision_state':field)).textContent='NEM IGAZOLT.';};
  const invalidate=()=>{epoch++;clear();action.disabled=false;status.textContent='A tesztügy vagy munkamenet megváltozott. Új előnézet szükséges.';};
  for(const id of ['server_preview_case_id','server_preview_revision'])get(id)?.addEventListener('input',invalidate);
  for(const event of ['sarberki:session-changed','isolated-approval-session-changed'])documentRef.addEventListener?.(event,invalidate);
@@ -38,11 +39,49 @@ export function initSyntheticPreviewPanel({documentRef=document,sessionProvider=
    if(result?.persisted!==false||result?.caseId!==id||result?.revision!==revision||result?.approval!=='pending'||typeof result?.text!=='string')throw Error('INVALID_PREVIEW');
    const view=syntheticPreviewState(result);
    output.value=result.text;
+   if(editText&&editAction&&editStatus){
+    const stored=result.storedDraft;
+    if(stored&&stored.caseRevision===revision&&typeof stored.text==='string'&&stored.text.length<=20000&&stored.text.trim()&&result.reviewState?.storedApproval==='pending'){
+     editText.value=stored.text;
+     const permitted=session.canEditDraft===true;
+     editText.disabled=!permitted;editAction.disabled=!permitted;
+     editableCase=permitted?{id,revision,epoch:attempt,text:stored.text}:null;
+     editStatus.textContent=permitted?'A mentett tervezet szerkeszthető, a változtatás nem jóváhagyás.':'Mentett tervezet betöltve – szerkesztéshez külön írási jogosultság szükséges.';
+    }else editStatus.textContent='Nincs aktuális, szerveresen mentett tervezet. Szerkesztés nem engedélyezett.';
+   }
    if(get('server_preview_hu'))get('server_preview_hu').value=typeof result.operatorReviewText==='string'?result.operatorReviewText:'Magyar ellenőrző szöveg: NEM IGAZOLT.';
    for(const [field,text]of Object.entries(view))if(get('server_preview_'+(field==='revision'?'revision_state':field)))get('server_preview_'+(field==='revision'?'revision_state':field)).textContent=text;
    status.textContent='Belső előnézet kész. Nincs mentés, jóváhagyás vagy e-mail-küldés.';
   }catch(e){if(attempt===epoch){clear();status.textContent='Az előnézet nem kérhető le: '+(['AUTH_REQUIRED','FORBIDDEN','CASE_CONFLICT','CASE_STORE_DISABLED','SERVICE_UNAVAILABLE'].includes(e?.message)?e.message:'ellenőrzés szükséges')+'. Semmi nem lett elküldve.';}}
   finally{if(attempt===epoch)action.disabled=false;}
+ });
+ if(editText&&editAction&&editStatus)editAction.addEventListener('click',async()=>{
+  const active=editableCase;
+  const session=sessionProvider();
+  if(!active||active.epoch!==epoch||session?.canEditDraft!==true||typeof session.getAccessToken!=='function'){
+   editStatus.textContent='Nincs hitelesített és engedélyezett szerkesztési munkamenet.';return;
+  }
+  const edited=editText.value;
+  if(!edited.trim()||edited.length>20000||edited===active.text){editStatus.textContent='Adjon meg egy új, nem üres szerkesztett szöveget (legfeljebb 20 000 karakter).';return;}
+  editAction.disabled=true;
+  editStatus.textContent='Szintetikus tervezet mentése a szerveres ügytárba…';
+  try{
+   const client=createCaseStoreClient({getAccessToken:()=>session.getAccessToken(),request:session.request||fetch});
+   const saved=await client.editDraft('sarberki-test',active.id,active.revision,edited);
+   if(active.epoch!==epoch)return;
+   const latest=saved?.data?.drafts?.at(-1);
+   if(saved?.caseId!==active.id||saved?.revision!==active.revision+1||saved.data?.state?.approval!=='pending'||
+      latest?.text!==edited||latest?.edited!==true||latest?.reviewStatus!=='manual_edit_requires_review')throw Error('INVALID_DRAFT');
+   invalidate();
+   get('server_preview_revision').value=String(saved.revision);
+   editStatus.textContent='A szerkesztett szöveg mentve új ügyverzióba, jóváhagyás nélkül. Kérj friss előnézetet.';
+   status.textContent='Szerveres mentés igazolva. Nincs e-mail-küldés vagy jóváhagyás.';
+  }catch(error){
+   if(active.epoch===epoch){
+    invalidate();
+    editStatus.textContent='A mentés nem igazolt ('+(['AUTH_REQUIRED','FORBIDDEN','CASE_CONFLICT','INVALID_DRAFT','CASE_STORE_DISABLED'].includes(error?.message)?error.message:'ellenőrzés szükséges')+'). Friss előnézet szükséges.';
+   }
+  }
  });
  clear();status.textContent='Csak szintetikus ügy. Külön hitelesített tesztkezelői munkamenet szükséges.';return true;
 }
