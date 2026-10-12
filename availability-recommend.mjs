@@ -24,7 +24,7 @@ function unitText(option,language='hu'){
   return count===1?label:`${count} × ${label}`;
 }
 export function availabilitySentence(result,language='hu'){
-  const available=(result?.available_options||[]).filter(x=>x.availability==='available'&&x.availability_verified===true).map(option=>unitText(option,language));
+  const available=(result?.available_options||[]).filter(x=>x.availability==='available'&&x.availability_verified===true).map(option=>{const label=unitText(option,language);if(option.extraBedRequired!==true)return label;const notes={hu:' (az ötödik fő részére pótágy szükséges; elhelyezése és esetleges külön díja egyeztetendő)',de:' (für die fünfte Person ist ein Zustellbett erforderlich; Unterbringung und mögliche Zusatzkosten sind zu bestätigen)',en:' (an extra bed is required for the fifth guest; placement and any additional fee require confirmation)',si:' (za petega gosta je potrebno dodatno ležišče; namestitev in morebitno doplačilo je treba potrditi)'};return label+(notes[language]||notes.hu);});
   if(!available.length){
     // A failed or incomplete Previo check is UNKNOWN, never evidence of sold-out inventory.
     if(!result || result.status==='unverified'||(result.unverified_options||[]).length>0 || !Array.isArray(result.available_options) || !Array.isArray(result.unavailable_options) || (result.available_options.length===0 && (result.unavailable_options.length===0 || result.unavailable_options.some(x=>x.availability!=='unavailable'||x.availability_verified!==true)))) {
