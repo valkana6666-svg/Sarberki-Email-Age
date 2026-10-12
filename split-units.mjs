@@ -180,7 +180,7 @@ export function splitCapacityOptions(guests,poolChecks={},request=null){
   const units=[
     {key:'splitA',label:'Osztott A',capacity:BUSINESS.accommodationTypes.splitA.maxGuests,segment:'A'},
     {key:'splitB',label:'Osztott B',capacity:BUSINESS.accommodationTypes.splitB.maxGuests,segment:'B'},
-    {key:'splitC',label:'Osztott C',capacity:4,segment:'C'}
+    {key:'splitC',label:'Osztott C',capacity:5,segment:'C'}
   ];
   const combos=[];
   for(let mask=1;mask<(1<<units.length);mask++){
