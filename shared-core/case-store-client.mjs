@@ -14,5 +14,5 @@ export function createCaseStoreClient({getAccessToken,request=fetch,isolatedAppr
   if(tenantId!=='sarberki-test'||!isIsolatedReviewCaseId(caseId)||!Number.isSafeInteger(expectedRevision)||expectedRevision<1||! /^[a-f0-9]{64}$/.test(reviewedDraftHash))throw Error('INVALID_INPUT');
   return call('POST',{action:'approve',tenantId,caseId,expectedRevision,reviewedDraftHash});
  };
- return {get:(tenantId,caseId)=>call('GET',{tenantId,caseId}),list:tenantId=>call('GET',{tenantId}),ingest:input=>call('POST',input),previewDraft:(tenantId,caseId,expectedRevision)=>call('GET',{action:'preview-draft',tenantId,caseId,expectedRevision}),draft:(tenantId,caseId,expectedRevision)=>call('POST',{action:'draft',tenantId,caseId,expectedRevision}),approve};
+ return {get:(tenantId,caseId)=>call('GET',{tenantId,caseId}),list:tenantId=>call('GET',{tenantId}),ingest:input=>call('POST',input),previewDraft:(tenantId,caseId,expectedRevision)=>call('GET',{action:'preview-draft',tenantId,caseId,expectedRevision}),draft:(tenantId,caseId,expectedRevision)=>call('POST',{action:'draft',tenantId,caseId,expectedRevision}),editDraft:(tenantId,caseId,expectedRevision,editedDraftText)=>call('POST',{action:'edit-draft',tenantId,caseId,expectedRevision,editedDraftText}),approve};
 }
