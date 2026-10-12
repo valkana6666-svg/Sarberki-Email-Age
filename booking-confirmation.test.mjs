@@ -14,10 +14,12 @@ test('under 15 guests uses 50 percent deposit and 14 day cancellation',()=>{
 });
 
 test('15 or more guests uses configured large-group terms',()=>{
-  assert.equal(depositPercentForGuests(15),80);
+  assert.equal(depositPercentForGuests(15),50);
+  assert.equal(depositPercentForGuests(16),50);
+  assert.equal(cancellationDaysForGuests(14),14);
   assert.equal(cancellationDaysForGuests(15),30);
   const en=generateDepositReceivedDraft({language:'EN',guests:15});
-  assert.match(en,/80% booking deposit/u);
+  assert.match(en,/50% booking deposit/u);
   assert.match(en,/30 days before arrival/u);
 });
 
