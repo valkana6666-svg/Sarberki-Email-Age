@@ -9,7 +9,7 @@ export const BUSINESS = Object.freeze({
   timezone: 'Europe/Budapest',
   bookingRules: Object.freeze({
     depositPctUnder15Guests: 50,
-    depositPctFrom15Guests: 80,
+    depositPctFrom15Guests: 50,
     depositDueDays: 10,
     cancellationDaysUnder15Guests: 14,
     cancellationDaysFrom15Guests: 30,
