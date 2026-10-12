@@ -56,3 +56,17 @@ for(const guests of [3,4,5]){
   assert.ok(result.manual_review_options.every(x=>x.units.length===1));
  });
 }
+
+for(const guests of [3,4,5]){
+ test(`${guests} adults: no unnecessary two-person A/B pool request`,async()=>{
+  const calls=[];
+  await buildAvailabilityOptions({arrival:'2026-11-20',departure:'2026-11-22',guests,adults:guests},source(calls),{now:()=>now.getTime()});
+  assert.equal(calls.includes('splitA'),false);
+  assert.ok(calls.includes('splitC'));
+ });
+}
+test('two adults can still query A/B single apartment pool',async()=>{
+ const calls=[];
+ await buildAvailabilityOptions({arrival:'2026-11-20',departure:'2026-11-22',guests:2,adults:2},source(calls),{now:()=>now.getTime()});
+ assert.ok(calls.includes('splitA'));
+});
