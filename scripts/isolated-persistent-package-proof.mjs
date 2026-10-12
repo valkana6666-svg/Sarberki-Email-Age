@@ -23,6 +23,13 @@ const sql=input=>compose(['exec','-T','isolated-postgres','psql','-X','-U','isol
 const pause=()=>new Promise(r=>setTimeout(r,1000));
 const wait=async check=>{for(let i=0;i<60;i++){try{if(check())return;}catch{}await pause();}throw Error('READINESS');};
 const passed=name=>report.checks.push({name,result:'PASS'});
+// Classify subprocess errors into a fixed vocabulary. Never publish stderr,
+// command arguments, rendered Compose config or private environment values.
+const errorCategory=error=>{
+ const diagnostic=String(error?.stderr||'')+'\n'+String(error?.stdout||'');
+ for(const [pattern,code]of [[/manifest unknown|manifest .*not found|no matching manifest/i,'IMAGE_MANIFEST_UNAVAILABLE'],[/toomanyrequests|pull rate limit|429 Too Many/i,'IMAGE_REGISTRY_RATE_LIMIT'],[/pull access denied|unauthorized|authentication required/i,'IMAGE_REGISTRY_ACCESS_DENIED'],[/address already in use|port is already allocated/i,'HOST_PORT_IN_USE'],[/pool overlaps|overlap.*address space/i,'NETWORK_SUBNET_OVERLAP'],[/requested IP.*not available|Address already in use/i,'NETWORK_IP_UNAVAILABLE'],[/invalid mount|not a directory|error mounting/i,'CONTAINER_MOUNT_REJECTED'],[/permission denied|operation not permitted/i,'CONTAINER_PERMISSION_DENIED'],[/dependency failed|unhealthy/i,'DEPENDENCY_UNHEALTHY'],[/network .*not found/i,'NETWORK_NOT_FOUND'],[/lookup .*no such host|dial tcp|i\/o timeout|TLS handshake timeout/i,'REGISTRY_OR_NETWORK_UNREACHABLE']])if(pattern.test(diagnostic))return code;
+ return error?.code==='ETIMEDOUT'?'SUBPROCESS_TIMEOUT':error?.message==='READINESS'?'READINESS_TIMEOUT':'UNCLASSIFIED_FAILURE';
+};
 let image;
 function helper(network,code){return execFileSync('docker',['run','--rm','-i','--network',project+'_'+network,'--entrypoint','node',image,'--input-type=module'],{input:code,stdio:['pipe','pipe','pipe'],timeout:60000}).toString().trim();}
 try{
@@ -42,9 +49,12 @@ try{
  const users=JSON.parse(helper('isolated_backend',`const result={};for(const name of ['operator','writer']){const r=await fetch('http://isolated-auth:9999/admin/users',{method:'POST',headers:{Authorization:'Bearer '+${JSON.stringify(admin)},'Content-Type':'application/json'},body:JSON.stringify({email:'approval-'+name+'@synthetic.invalid',password:${JSON.stringify(password)},email_confirm:true})});if(r.status!==200)throw Error('AUTH');result[name]=(await r.json()).id;}console.log(JSON.stringify(result));`));
  if(!Object.values(users).every(id=>/^[a-f0-9-]{36}$/.test(id)))throw Error('USERS');
  sql(`insert into sc_memberships values('sarberki-test','${users.operator}',true,true,true),('sarberki-test','${users.writer}',true,true,false);`);passed(stage);
- stage='fixed-isolated-runtime-caddy-start';compose(['up','-d','isolated-rest','isolated-app','isolated-https']);
+ stage='runtime-rest-proxy-image-pull';compose(['pull','isolated-rest','isolated-https']);passed(stage);
+ stage='fixed-isolated-runtime-caddy-start';compose(['up','-d','isolated-rest','isolated-app','isolated-https']);passed(stage);
+ stage='caddy-internal-ca-readiness';
  let ca;await wait(()=>{ca=compose(['exec','-T','isolated-https','cat','/data/caddy/pki/authorities/local/root.crt']);return ca.includes('BEGIN CERTIFICATE');});
  const transport=`import {request} from 'node:https';const ca=${JSON.stringify(ca)};async function call(path,{method='GET',token,body}={}){return new Promise((resolve,reject)=>{const r=request({hostname:'operator.isolated.test',port:443,path,method,ca,headers:{Origin:'https://operator.isolated.test','Sec-Fetch-Site':'same-origin',...(token?{Authorization:'Bearer '+token}:{}),...(body?{'Content-Type':'application/json'}:{})}},res=>{let raw='';res.on('data',c=>raw+=c);res.on('end',()=>{let data;try{data=JSON.parse(raw);}catch{}resolve({status:res.statusCode,data,raw});});});r.setTimeout(5000,()=>r.destroy(Error('TIMEOUT')));r.on('error',reject);r.end(body?JSON.stringify(body):undefined);});}function check(ok){if(!ok)throw Error('ASSERT');}`;
+ passed(stage);stage='verified-runtime-through-https-proxy';
  await wait(()=>{const out=helper('isolated_proxy_link',transport+"console.log((await call('/isolated-config')).status);");return out==='200';});passed(stage);
  stage='https-own-auth-api-cas-audit';
  const proof=JSON.parse(helper('isolated_proxy_link',transport+`
@@ -68,7 +78,7 @@ try{
  const record=await call('/.netlify/functions/booking-cases?tenantId=sarberki-test&caseId='+${JSON.stringify(proof.caseId)},{token});check(record.status===200&&record.data.result.revision===3&&record.data.result.data.state.approval==='internally_approved');
  const audit=await call('/isolated-audit?caseId='+${JSON.stringify(proof.caseId)},{token});check(audit.status===200&&audit.data.length===1&&audit.data[0].data_hash===${JSON.stringify(proof.auditHash)});console.log('PASS');`);return value==='PASS';}catch{return false;}});passed(stage);
  report.result='PASS';
-}catch{report.result='FAIL';report.failedStage=stage;process.exitCode=1;}
+}catch(error){report.result='FAIL';report.failedStage=stage;report.errorCategory=errorCategory(error);if(Number.isInteger(error?.status))report.subprocessExitCode=error.status;process.exitCode=1;}
 finally{
  try{compose(['down','--volumes','--remove-orphans']);report.disposableStackRemoved=true;}catch{report.disposableStackRemoved=false;process.exitCode=1;}
  rmSync(base,{recursive:true,force:true});
