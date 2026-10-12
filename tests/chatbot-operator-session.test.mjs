@@ -7,7 +7,7 @@ const metadata={authenticated:true,tenantId:'sarberki-test',expiresAt:new Date(a
 const decision={facts:{language:'en',guests:2},missing:[],contradictions:[],requiresHumanReview:false,capacity:{status:'UNKNOWN',verified:false},pricing:{verified:false},safety:{emailSent:false,bookingCreated:false,approval:'pending'}};
 function fixture(overrides={}){
  const calls=[],preview={caseId:id,revision:2,approval:'pending',persisted:false,text:'SYNTHETIC',operatorReviewText:'Magyar szintetikus ellenőrző szöveg',decision,readOnlyFreshness:{verified:true,syntheticOnly:true,checkedAt:new Date(at).toISOString(),source:'stored-synthetic-case',tenantId:'sarberki-test',caseId:id,revision:2},...overrides};
- const request=async(url,options)=>{calls.push({url,options});const body=url.includes('operator-session')?metadata:url.includes('preview-draft')?preview:{tenantId:'sarberki-test',caseId:id,revision:2,data:{id,tenantId:'sarberki-test',sender:'synthetic@guest.invalid'}};return {ok:true,status:200,json:async()=>url.includes('booking-cases')?{result:body}:body};};
+ const request=async(url,options)=>{calls.push({url,options});const body=url.includes('operator-session')?metadata:url.includes('preview-draft')?preview:[{tenantId:'sarberki-test',caseId:id,revision:2}];return {ok:true,status:200,json:async()=>url.includes('booking-cases')?{result:body}:body};};
  return {calls,preview,request};
 }
 test('persistent restore survives new client without login and GETs use cookie and CSRF, never bearer',async()=>{

@@ -32,8 +32,11 @@ export function createOperatorSession({request=fetch,now=()=>Date.now()}={}){
    return enqueue(async()=>{
    current();const assertSession=()=>{if(turn!==epoch)throw Error('SESSION_CHANGED');return current().csrfToken;};
    const client=createCaseStoreClient({cookieReadOnly:true,getCsrfToken:assertSession,request:async(url,options)=>{const response=await request(url,options);if(response.status===401||response.status===403){if(turn===epoch)invalidate();throw Error('AUTH_REQUIRED');}return response;}});
-   const record=await client.get(tenant,caseId);if(turn!==epoch)throw Error('SESSION_CHANGED');
-   if(record?.tenantId!==tenant||record.caseId!==caseId||record.data?.tenantId!==tenant||record.data.id!==caseId||!Number.isSafeInteger(record.revision)||record.revision<1||!record.data.sender?.endsWith('.invalid'))throw Error('INVALID_DATA');
+   // The Reader API exposes only synthetic summaries and a protected preview.
+   // Do not request raw case data through the intentionally forbidden GET path.
+   const summaries=await client.list(tenant);if(turn!==epoch)throw Error('SESSION_CHANGED');
+   const record=Array.isArray(summaries)?summaries.find(row=>row?.tenantId===tenant&&row.caseId===caseId):null;
+   if(!record||Object.keys(record).sort().join(',')!=='caseId,revision,tenantId'||!Number.isSafeInteger(record.revision)||record.revision<1)throw Error('INVALID_DATA');
    const preview=await client.previewDraft(tenant,caseId,record.revision);assertSession();if(turn!==epoch)throw Error('SESSION_CHANGED');
    if(preview?.caseId!==caseId||preview.revision!==record.revision||preview.persisted!==false||preview.approval!=='pending'||typeof preview.text!=='string')throw Error('INVALID_DATA');
    const d=preview.decision;

@@ -50,11 +50,11 @@ footer{font-size:13px;color:#a5a5a5}
 <select id="operator_case_select" disabled><option value="">Belépés után töltsd be a tesztügyeket</option></select>
 <button type="button" class="secondary" id="operator_open_case" disabled>Kiválasztott ügy megnyitása az előnézetben</button>
 <p id="operator_case_status" class="muted" role="status" aria-live="polite">Csak szerverről ellenőrzött tesztügyek jelenhetnek meg.</p>
-<details><summary>Writer · rögzített szintetikus Reader-tesztügy</summary>
+<div role="group" aria-label="Writer szintetikus tesztügy"><h3>Writer · rögzített szintetikus Reader-tesztügy</h3>
 <p class="muted">Jelentkezz be a fenti védett űrlapon a meglévő Supabase Auth Writer-fiókkal. A szerver külön ellenőrzi a write jogot. Readerrel ez a művelet tiltott; a Reader szerkesztési és jóváhagyási joga nem változik.</p>
 <button type="button" class="secondary" id="operator_create_fixture" disabled>Szintetikus minta és tervezet létrehozása · csak Writer</button>
 <p id="operator_fixture_status" class="muted" role="status" aria-live="polite">Writer-belépés szükséges. Reader nem hozhat létre ügyet.</p>
-</details>
+</div>
 </div>
 <small>A belépés csak szerveroldali engedélyezés esetén működik. A Gmail-tesztfiók leveleit nem tölti fel a szintetikus ügytárba.</small></details></section>
 <section id="server_preview_panel"><details><summary><strong>Központi szerveres választervezet – szintetikus tesztelőnézet</strong></summary><p class="muted">A már létező tesztügytárból csak olvasási előnézetet kér. Nem a fenti kézi/Gmail-feldolgozás adatait tölti fel. Nincs e-mail-küldés, mentés vagy automatikus jóváhagyás. A tesztkezelői belépés csak szintetikus ügyek olvasását engedi; a hozzáféréshez a szerveroldali munkamenet-beállításnak is megfelelőnek kell lennie.</p><div class="grid"><div><label for="server_preview_case_id">Szintetikus tesztügy azonosítója</label><input id="server_preview_case_id" autocomplete="off" placeholder="case-1234"></div><div><label for="server_preview_revision">Ügyverzió</label><input id="server_preview_revision" type="number" min="1" step="1" value="1"></div></div><button id="server_preview_action" type="button">Szerveres tervezet előnézete (nem ment)</button><p id="server_preview_status" class="warning" role="status" aria-live="polite">Hitelesített tesztügytárra vár.</p><label for="server_preview_text">Csak olvasható választervezet</label><textarea id="server_preview_text" readonly style="min-height:180px"></textarea>
