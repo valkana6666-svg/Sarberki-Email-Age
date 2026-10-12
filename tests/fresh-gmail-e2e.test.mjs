@@ -11,6 +11,15 @@ import * as splitUnits from '../split-units.mjs';
 const source=fs.readFileSync(new URL('../gmail-readonly.js',import.meta.url),'utf8')
   .replace(/await import\('\.\/([^']+)'\)/gu,(_,name)=>`modules[${JSON.stringify(name.split('?')[0])}]`);
 
+test('Gmail readonly sign-in does not activate Pushover delivery or mark failed imports as read',()=>{
+ const login=source.slice(source.indexOf('callback:async result =>'),source.indexOf('error_callback:error =>'));
+ assert.ok(login.length>100);
+ assert.doesNotMatch(login,/startPushoverWatch|sendPushoverForMessage|pollPushoverWatch/);
+ assert.match(source,/if\(await displayGmailRecord\(record\)===false\)/);
+ const display=source.slice(source.indexOf('async function displayMessage(message)'),source.indexOf('async function openSelected('));
+ assert.ok(display.indexOf('await displayGmailRecord(record)')<display.indexOf('markRead(message.id)'));
+});
+
 async function createTransform(){
   const button={disabled:false,addEventListener(){}};
   const status={textContent:'',insertAdjacentElement(){}};
