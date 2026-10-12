@@ -63,3 +63,13 @@ for(const channel of ['chat','email']){
   assert.equal(decision.capacity.verified,false);
  });
 }
+
+for(const adults of [6,8])for(const channel of ['chat','email']){
+ test(`T${adults===6?'07':'08'}: ${adults} adults require one verified suitable unit / ${channel}`,async()=>{
+  const {calls,decision}=await run(facts(adults),free);
+  assert.deepEqual(calls,['family']);
+  assert.equal(decision.capacity.status,'AVAILABLE');
+  assert.deepEqual(decision.capacity.selectedOptions.map(x=>x.key),['family']);
+  assert.equal(decision.safety.bookingCreated,false);
+ });
+}
