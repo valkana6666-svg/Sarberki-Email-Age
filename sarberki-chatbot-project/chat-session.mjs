@@ -23,7 +23,9 @@ export function createChatInquirySession({language='hu',clock=()=>new Date()}={}
    const priorParty={},incomingParty={};
    for(const key of ['guests','adults','children']){
     if(facts[key]!==null&&facts[key]!==undefined)priorParty[key]=String(facts[key]);
-    if(n[key]!==null&&n[key]!==undefined)incomingParty[key]=String(n[key]);
+    // An inferred zero from an adult-only follow-up must not erase children
+    // already established earlier in the same booking conversation.
+    if(n[key]!==null&&n[key]!==undefined&&!(key==='children'&&n[key]===0&&facts.children>0&&!/gyermek|gyerek|gyermekek|gyerekek|child|kid|kind|otrok/iu.test(message)))incomingParty[key]=String(n[key]);
    }
    if(facts.child_ages?.length)priorParty.child_ages=facts.child_ages.join(',');
    let ages=n.child_ages||[];
@@ -34,7 +36,7 @@ export function createChatInquirySession({language='hu',clock=()=>new Date()}={}
    for(const key of ['guests','adults','children'])if(merged[key]!==undefined)next[key]=Number(merged[key]);
    if(merged.child_ages!==undefined)next.child_ages=String(merged.child_ages).split(',').map(x=>x.trim()).filter(Boolean).map(Number);
    if(n.cabin&&!n.cabin.startsWith('?'))next.cabin=n.cabin;
-   if(n.children===0&&!ages.length)next.child_ages=[];
+   if(n.children===0&&!ages.length&&next.children===0)next.child_ages=[];
    if(n.split_request?.isSplit)next.split_request=structuredClone(n.split_request);
    if(n.units_open_request)next.units_open_request=true;
    else if(n.units_requested)next.units_open_request=false;
