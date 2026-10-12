@@ -80,8 +80,8 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
    const rows=await client.list('sarberki-test');
    if(globalRef.SarberkiCaseStoreSession!==session)return;
    if(!Array.isArray(rows))throw Error('INVALID_CASE_LIST');
-   listed=rows.filter(row=>row?.tenantId==='sarberki-test'&&
-    row.data?.sender?.endsWith('.invalid')&&isIsolatedReviewCaseId(row.caseId)&&
+   listed=rows.filter(row=>row&&Object.keys(row).sort().join(',')==='caseId,revision,tenantId'&&
+    row.tenantId==='sarberki-test'&&isIsolatedReviewCaseId(row.caseId)&&
     Number.isSafeInteger(row.revision)&&row.revision>=1)
     .map(row=>({id:row.caseId,revision:row.revision})).slice(0,100);
    const placeholder=documentRef.createElement('option');placeholder.value='';placeholder.textContent='Válassz szintetikus tesztügyet';
