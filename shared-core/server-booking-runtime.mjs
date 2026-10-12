@@ -117,7 +117,10 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
   async ingest(envelope,values,{expectedRevision,approvedCaseId=null,persistDraft=false}={}){
    // One optional synthetic-only path saves the parsed case and its pending reply draft in the SAME insert/CAS.
    // The normal Gmail read-only importer never sets this flag or uploads a real message.
-   if(persistDraft&&(tenantId!=='sarberki-test'||approvedCaseId||envelope?.case_id))reject('FORBIDDEN');
+   if(persistDraft){
+    if(tenantId!=='sarberki-test'||approvedCaseId||envelope?.case_id)reject('FORBIDDEN');
+    await service.requireWrite({requestContext,tenantId});
+   }
    if(values===undefined){validateSyntheticMessage(envelope,{});values=extractServerMessage(envelope);}
    validateSyntheticMessage(envelope,values);
    const records=await service.listCases({requestContext,tenantId});
