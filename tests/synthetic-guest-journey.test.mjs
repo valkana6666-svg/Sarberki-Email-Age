@@ -95,7 +95,7 @@ test('an explicit same-house request is not confirmed by aggregated Previo pools
 
 test('confirmed zero capacity retains the unavailable wording, distinct from unknown',async()=>{
   const input=capacityInput({...dates,unit:'Deluxe'});
-  const result=await buildAvailabilityOptions({...input,fallback:false},makeSource({deluxe:0}));
+  const result=await buildAvailabilityOptions({...input,guests:5,adults:5,fallback:false},makeSource({deluxe:0}));
   assert.equal(result.available_options.length,0);
   assert.ok(result.unavailable_options.some(o=>o.key==='deluxe'));
   assert.equal(result.unverified_options.some(o=>o.key==='deluxe'),false);
