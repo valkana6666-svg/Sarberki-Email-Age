@@ -69,7 +69,13 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    if(!current)reject('CASE_NOT_FOUND');if(current.revision!==expectedRevision)reject('CASE_CONFLICT');
    // Read-only common planner preview; client facts are never evidence.
    const planned=buildEmailInquiryDraft(serverInquiryOptions(current,new Date(clock())));
-   return {caseId,revision:current.revision,text:planned.text,operatorReviewText:planned.operatorReviewText,decision:planned.decision,approval:'pending',persisted:false};
+   const latestDraft=current.data.drafts.at(-1);
+   const reviewState={caseRevision:current.revision,factsRevision:current.data.state.revision,
+    latestDraftRevision:latestDraft?.revision??null,
+    latestDraftMessageCount:latestDraft?.basedOnMessageCount??null,
+    messageCount:current.data.messages.length,storedApproval:current.data.state.approval,
+    auditStatus:'not_verified'};
+   return {caseId,revision:current.revision,text:planned.text,operatorReviewText:planned.operatorReviewText,decision:planned.decision,reviewState,approval:'pending',persisted:false};
   },
   async draft(caseId,expectedRevision){
    // Save only after separate server-side write authorization and optimistic concurrency check.

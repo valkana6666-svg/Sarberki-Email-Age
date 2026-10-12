@@ -1,0 +1,33 @@
+name: Sarberki disposable persistent package proof
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths:
+      - deployment/isolated-approval/**
+      - shared-core/isolated-persistent-*.mjs
+      - scripts/isolated-persistent-*.mjs
+      - recovery/sql/isolated-persistent-identity.sql
+      - .github/workflows/sarberki-persistent-package.yml
+permissions:
+  contents: read
+jobs:
+  package:
+    if: github.ref == 'refs/heads/gmail-test-subject-allowlist' && contains(github.event.head_commit.message, '[sarberki-persistent-package-20261011]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: New disposable Compose bootstrap and actual HTTPS wiring only
+        run: sudo --preserve-env=GITHUB_RUN_ID,GITHUB_REF env PATH="$PATH" node scripts/isolated-persistent-package-proof.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sarberki-persistent-package-proof
+          path: /tmp/sarberki-persistent-package-proof/PACKAGE-PROOF.json
+          if-no-files-found: error
+          retention-days: 7

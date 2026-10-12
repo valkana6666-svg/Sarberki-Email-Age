@@ -1,0 +1,101 @@
+name: sarberki-isolated-approval
+services:
+  isolated-postgres:
+    image: postgres:17-bookworm
+    profiles: [approved-deployment]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: isolated_owner
+      POSTGRES_DB: sc_approval_test
+      POSTGRES_PASSWORD_FILE: /run/secrets/database-owner-password
+    secrets: [database-owner-password]
+    volumes:
+      - isolated_database:/var/lib/postgresql/data
+      - ${ISOLATED_PRIVATE_DIR:?private preparation required}/bootstrap-roles.sql:/docker-entrypoint-initdb.d/10-isolated-roles.sql:ro
+    networks: [isolated_backend]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -h 127.0.0.1 -U isolated_owner -d sc_approval_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: {driver: none}
+  isolated-auth:
+    image: supabase/gotrue:v2.196.0
+    profiles: [approved-deployment]
+    restart: unless-stopped
+    env_file: ["${ISOLATED_PRIVATE_DIR:?private preparation required}/auth.env"]
+    depends_on:
+      isolated-postgres: {condition: service_healthy}
+    networks: [isolated_backend]
+    security_opt: [no-new-privileges:true]
+    logging: {driver: none}
+  isolated-rest:
+    image: postgrest/postgrest:v14.17
+    profiles: [approved-deployment]
+    restart: unless-stopped
+    env_file: ["${ISOLATED_PRIVATE_DIR:?private preparation required}/rest.env"]
+    depends_on:
+      isolated-postgres: {condition: service_healthy}
+    networks: [isolated_backend]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    logging: {driver: none}
+  isolated-app:
+    profiles: [approved-deployment]
+    build:
+      context: ../..
+      dockerfile: deployment/isolated-approval/Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: '8080'
+    secrets:
+      - {source: operator-config, target: operator-config.json}
+      - {source: anon-jwt, target: anon-jwt}
+      - {source: runtime, target: runtime.json}
+    depends_on: [isolated-auth, isolated-rest]
+    networks:
+      isolated_backend: {}
+      isolated_proxy_link: {ipv4_address: 172.29.86.3}
+    read_only: true
+    tmpfs: [/tmp:size=16m,mode=1777]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    logging: {driver: none}
+  isolated-https:
+    image: caddy:2.10.2-alpine
+    profiles: [approved-deployment]
+    restart: unless-stopped
+    environment:
+      ISOLATED_OPERATOR_HOSTNAME: ${ISOLATED_OPERATOR_HOSTNAME:?isolated HTTPS hostname required}
+    ports: ['80:80', '443:443']
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - isolated_tls:/data
+      - isolated_caddy_config:/config
+    depends_on: [isolated-app]
+    networks:
+      isolated_proxy_link: {ipv4_address: 172.29.86.2}
+      isolated_acme_egress: {}
+    security_opt: [no-new-privileges:true]
+    logging: {driver: none}
+secrets:
+  database-owner-password:
+    file: ${ISOLATED_PRIVATE_DIR:?private preparation required}/database-owner-password
+  operator-config:
+    file: ${ISOLATED_PRIVATE_DIR:?private preparation required}/operator-config.json
+  anon-jwt:
+    file: ${ISOLATED_PRIVATE_DIR:?private preparation required}/anon-jwt
+  runtime:
+    file: ${ISOLATED_PRIVATE_DIR:?private preparation required}/runtime.json
+networks:
+  isolated_backend: {internal: true}
+  isolated_proxy_link:
+    internal: true
+    ipam:
+      config: [{subnet: 172.29.86.0/29}]
+  isolated_acme_egress: {}
+volumes:
+  isolated_database: {}
+  isolated_tls: {}
+  isolated_caddy_config: {}

@@ -4,7 +4,7 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {resolve,sep} from 'node:path';
 import assert from 'node:assert/strict';
 import {chromium,webkit} from 'playwright';
-const root=resolve('.'),report={syntheticOnly:true,externalRequests:0,emailSent:false,pushoverSent:false,bookingCreated:false,actualIPhoneVerified:false,checks:[]};
+const root=resolve(process.env.CHATBOT_PROOF_ROOT||'.'),report={syntheticOnly:true,externalRequests:0,emailSent:false,pushoverSent:false,bookingCreated:false,actualIPhoneVerified:false,checks:[]};
 const messages={hu:'Van szabad Deluxe faház 2026.11.13-15 között 2 felnőtt részére, gyermek nélkül?',de:'Ist ein Deluxe Haus vom 2026-11-13 bis 2026-11-15 für 2 Erwachsene ohne Kinder frei?',en:'Is a Deluxe cabin available from 2026-11-13 to 2026-11-15 for 2 adults and no children?',si:'Ali je Deluxe hiška prosta od 2026-11-13 do 2026-11-15 za 2 odrasli osebi brez otrok?'};
 const server=createServer((req,res)=>{
  try{

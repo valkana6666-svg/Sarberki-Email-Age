@@ -1,6 +1,6 @@
 # Sárberki – laptop nélkül futtatható titkosított adatbázismentés
 
-Állapot 2026-10-11: valódi titkosított adatbázis-export és ciphertext-visszafejtés igazolt; teljes izolált helyreállítás még nem igazolt.
+Állapot 2026-10-11: a korábbi titkosított export és annak 43 táblás izolált SQL/RLS/CAS visszaállítása igazolt (38129512850). A friss snapshot és annak visszaállítása az új futás bizonyítékáig NEM IGAZOLT; teljes platform-helyreállítás továbbra sincs igazolva.
 Kizárólag sarberki-test / mojnqizbcaczstguikpv / London eu-west-2 / gmail-test-subject-allowlist.
 
 ## Meglévő tulajdonosi beállítások – a neveket megőrizzük
@@ -70,3 +70,17 @@ A CA-ellenőrzés után a TLS-kapcsolat már sikerült. A pooler a startup PGOPT
 - Teljes izolált SQL/Auth/RLS/CAS visszaállítás: NEM IGAZOLT. Platform/API/JWT/OAuth/Netlify/GitHub titkok és beállítások teljes helyreállítása: NEM IGAZOLT.
 
 Csak olvasható kiegészítő leltár: Storage bucket=0, Storage object=0, Vault secret=0. Egy Edge Function létezik: reader-password-reset, v9, verify_jwt=true; kódja 410 választ ad, jelszót nem módosít. A letölthető csomag ezt a forrás-pillanatképet és leltárt külön tartalmazza. A leltár a mentési munkamenetben külön olvasás, nem a pg_dump snapshot része.
+
+## Friss mentés és ugyanazon snapshot izolált visszaállítása
+
+Az új exportjob a meglévő védett beállításokat használja: nincs jelszócsere, új szolgáltatás vagy a forrásba írás. A tesztág, `SARBERKI_BACKUP_ENABLED=yes` és `[sarberki-backup-run]` marker együttes feltétele változatlan. A source-export és az izolált restore külön lépés, elkülönített környezeti változókkal; a restore nem kap forráskapcsolati titkot.
+
+A friss export mellé `PROVENANCE.json` kerül: sarberki-test projektazonosító, forrás csak-olvasási státusz, pontos forráscommit és az aktuális Actions-run azonosítója. A restore explicit `SARBERKI_RESTORE_INPUT=current-export-v1` módja kizárólag `/tmp/sarberki-cloud-backup` alatt fogadja el a három GPG fájlt és a három titok nélküli kísérőfájlt. Hiányzó, többlet-, symlink-, módosult checksum-, idegen projekt-, eltérő commit/run-, más ágú vagy más repository-ból származó bemenet hibának számít. Nincs checksum-ellenőrzést kihagyó kapcsoló. Ez az eredetkötés az adott védett workflow exportlépésére támaszkodik; nem helyettesít külső aláírást vagy független tárolási igazolást.
+
+A cél kizárólag a jobhoz létrehozott PostgreSQL 17 service: `postgres`, `restore_admin`, ideiglenes tesztjelszó és `sc_restore` adatbázis. PG service/hostaddr/options vagy forráskapcsolati override tiltott. A szükséges nyilvános Supabase Vault kiterjesztés ugyanarra a korábban használt commitra rögzített. A friss mód teljes SQL restore-t követel; Vault nélküli/részleges helyreállítást nem fogad el. A régi, rögzített 38127744637 mentés alapértelmezett módja és annak checksumjai megmaradnak.
+
+A restore a korábbi ellenőrzőt használja újra: minden archívumbeli táblapayload, szekvenciaérték, role-attribútum, ügytár-manifest, RLS, CAS, egyediség és audit ellenőrzése, szintetikus visszagörgetett fixture-rel. PostgreSQL 17 hosted membership-grantor bootstrap eltérése a bizonyítékban szerepel. Nyílt dump csak memóriában és RAM-alapú ideiglenes könyvtárban létezik; artifactba csak titkosított állományok és szűrt jelentés kerülnek. A céladatbázis a próba végén törlődik; a forrásprojektbe nincs restore.
+
+Bizonyítékok: `sarberki-fresh-isolated-restore-<run_id>/ISOLATED-RESTORE.json`, illetve `sarberki-test-encrypted-<run_id>` titkosított csomag. A workflow a sikeresen titkosított és visszafejtéssel ellenőrzött mentési csomagot sikertelen izolált restore esetén is megőrzi; a sikertelen export részleges fájljait nem tölti fel. A restore külön szűrt JSON jelentését kell ellenőrizni: a mentési artifact létezése önmagában nem bizonyít visszaállíthatóságot. Az artifact 7 napos átadás: tartós, független tárhelyre mentés és visszaolvasás külön szükséges. A `STATUS.txt` exportlépésben íródik, ezért restore státuszához mindig a külön run/commit-kötött JSON jelentést kell olvasni.
+
+A sikeres friss SQL restore sem igazolja az Auth API-bejelentkezést, a Vault kulcsfüggőségek teljes helyreállítását, API/JWT/OAuth/Netlify konfigurációt vagy a teljes rendszer-visszaállítást. Role-jelszavak továbbra sem szerepelnek az exportban. Az új 10 offline restore-határteszt nem helyettesíti a tényleges felhős visszaállítási futást.

@@ -8,6 +8,8 @@ on:
       - docs/SARBERKI-CLOUD-BACKUP.md
       - scripts/cloud-encrypted-backup.py
       - scripts/test_cloud_encrypted_backup.py
+      - scripts/verify-isolated-restore.py
+      - scripts/test_isolated_restore.py
       - scripts/certs/supabase-prod-ca-2021.crt
 
 permissions:
@@ -29,7 +31,9 @@ jobs:
           fetch-depth: 2
           persist-credentials: false
       - name: Verify synthetic safety and real encryption only
-        run: python3 -m unittest discover -s scripts -p 'test*encrypted_backup.py' -v
+        run: |
+          python3 -m unittest discover -s scripts -p 'test*encrypted_backup.py' -v
+          python3 -m unittest discover -s scripts -p 'test_isolated_restore.py' -v
   export:
     needs: offline-safety
     if: >-
@@ -38,7 +42,16 @@ jobs:
       contains(github.event.head_commit.message, '[sarberki-backup-run]')
     runs-on: ubuntu-24.04
     container: postgres:17-bookworm
-    timeout-minutes: 20
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_USER: restore_admin
+          POSTGRES_PASSWORD: ephemeral-isolated-test-only
+        options: >-
+          --health-cmd "pg_isready -U restore_admin"
+          --health-interval 5s --health-timeout 5s --health-retries 12
     steps:
       - uses: actions/checkout@v4
         with:
@@ -59,6 +72,7 @@ jobs:
       - name: Install encryption and Python tools
         run: apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 gnupg ca-certificates
       - name: Export read-only, encrypt with AES256, and verify decryption
+        id: fresh_export
         env:
           SARBERKI_BACKUP_DB_URL: ${{ secrets.SARBERKI_BACKUP_DB_URL }}
           SARBERKI_BACKUP_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_PASSPHRASE }}
@@ -66,7 +80,48 @@ jobs:
           SARBERKI_BACKUP_SESSION_HOST: aws-0-eu-west-2.pooler.supabase.com
           SARBERKI_BACKUP_OUTPUT: /tmp/sarberki-cloud-backup
         run: python3 scripts/cloud-encrypted-backup.py
+      - name: Bind current export to this test commit and run
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          Path('/tmp/sarberki-cloud-backup/PROVENANCE.json').write_text(json.dumps({
+              'project': 'mojnqizbcaczstguikpv', 'source_read_only': True,
+              'source_commit': os.environ['GITHUB_SHA'], 'run_id': os.environ['GITHUB_RUN_ID']
+          }, sort_keys=True) + '\n')
+          PY
+      - name: Install matching public Vault extension in isolated service
+        env:
+          ISOLATED_SERVICE_ID: ${{ job.services.postgres.id }}
+        run: |
+          apt-get install -y -qq --no-install-recommends docker.io
+          docker exec "$ISOLATED_SERVICE_ID" sh -ec '
+            apt-get update -qq
+            apt-get install -y -qq --no-install-recommends ca-certificates curl make gcc postgresql-server-dev-17 libsodium-dev
+            mkdir /tmp/vault-build
+            curl -fsSL https://github.com/supabase/vault/archive/6e0cd916242d922a646e4d611cc215e09dd429f4.tar.gz | tar -xz --strip-components=1 -C /tmp/vault-build
+            cd /tmp/vault-build
+            make && make install
+          '
+      - name: Restore the same fresh snapshot in disposable PostgreSQL only
+        env:
+          PGHOST: postgres
+          PGUSER: restore_admin
+          PGPASSWORD: ephemeral-isolated-test-only
+          PGDATABASE: postgres
+          SARBERKI_RESTORE_INPUT: current-export-v1
+          SARBERKI_BACKUP_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_PASSPHRASE }}
+        run: python3 scripts/verify-isolated-restore.py
+      - name: Publish sanitized restore evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sarberki-fresh-isolated-restore-${{ github.run_id }}
+          path: /tmp/restore-evidence/ISOLATED-RESTORE.json
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Publish ciphertext only for temporary download
+        if: always() && steps.fresh_export.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: sarberki-test-encrypted-${{ github.run_id }}
@@ -76,8 +131,9 @@ jobs:
             /tmp/sarberki-cloud-backup/manifest.json.gpg
             /tmp/sarberki-cloud-backup/SHA256SUMS.txt
             /tmp/sarberki-cloud-backup/STATUS.txt
+            /tmp/sarberki-cloud-backup/PROVENANCE.json
           if-no-files-found: error
           retention-days: 7
       - name: State outstanding recovery checks
         run: |
-          echo 'Encrypted export and decryption verified; uploaded for 7 days. Independent storage and isolated restore are NOT VERIFIED.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Fresh test export encrypted and fully SQL-restored in disposable PostgreSQL; see sanitized restore evidence. Auth API login and complete platform recovery are NOT VERIFIED. Independent durable storage remains separate.' >> "$GITHUB_STEP_SUMMARY"

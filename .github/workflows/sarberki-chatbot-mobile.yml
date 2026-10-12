@@ -4,6 +4,8 @@ on:
     branches: [gmail-test-subject-allowlist]
     paths:
       - scripts/chatbot-mobile-proof.mjs
+      - scripts/build-static.cjs
+      - sarberki-chatbot-project/**
       - .github/workflows/sarberki-chatbot-mobile.yml
   workflow_dispatch:
     inputs:
@@ -28,7 +30,13 @@ jobs:
           node-version: '22'
       - run: npm ci
       - run: npx playwright install --with-deps chromium webkit
+      - name: Build the actual deployable static assets
+        env:
+          COMMIT_REF: ${{ github.sha }}
+        run: node scripts/build-static.cjs
       - name: Only synthetic loopback mobile page checks
+        env:
+          CHATBOT_PROOF_ROOT: dist
         run: node scripts/chatbot-mobile-proof.mjs
       - uses: actions/upload-artifact@v4
         if: always()

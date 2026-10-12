@@ -20,6 +20,8 @@ test('Gmail thread follow-up keeps stay and ages; preview uses common decision a
  assert.equal(p.decision.facts.dates.arrival,'2026-11-01');assert.deepEqual(p.decision.facts.child_ages,[7,10]);assert.equal(p.decision.facts.guests,4);
  assert.equal(p.decision.capacity.status,'UNKNOWN');assert.equal(p.persisted,false);assert.match(p.operatorReviewText,/Kedves|Köszönjük/);
  assert.equal(follow.record.data.drafts.length,0);
+ assert.deepEqual(p.reviewState,{caseRevision:2,factsRevision:follow.record.data.state.revision,
+  latestDraftRevision:null,latestDraftMessageCount:null,messageCount:2,storedApproval:'pending',auditStatus:'not_verified'});
 });
 test('split requests keep explicit placement constraints in persisted server facts',()=>{
  const v=extractServerMessage(envelope('split','Osztott A+C egymás mellett, 6 felnőtt és 0 gyermek 2026.11.13-15 között'));

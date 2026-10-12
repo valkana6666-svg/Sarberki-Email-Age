@@ -1,0 +1,34 @@
+name: Sarberki synthetic Gmail operator mobile proof
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths:
+      - index.html
+      - synthetic-server-preview.mjs
+      - scripts/gmail-server-mobile-proof.mjs
+      - .github/workflows/sarberki-gmail-mobile.yml
+permissions:
+  contents: read
+jobs:
+  mobile:
+    if: github.ref == 'refs/heads/gmail-test-subject-allowlist' && contains(github.event.head_commit.message, '[sarberki-persistent-package-20261011]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Loopback synthetic UI only; external requests blocked
+        run: node scripts/gmail-server-mobile-proof.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sarberki-gmail-mobile-proof
+          path: /tmp/sarberki-gmail-server-proof/RESULT.json
+          if-no-files-found: error
+          retention-days: 7
