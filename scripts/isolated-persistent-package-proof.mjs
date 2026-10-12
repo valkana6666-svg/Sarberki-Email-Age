@@ -1,5 +1,5 @@
 // Disposable Actions Compose verification. No platform/source credentials.
-import {readFileSync,writeFileSync,mkdirSync,rmSync,chownSync} from 'node:fs';
+import {readFileSync,writeFileSync,mkdirSync,rmSync,chownSync,statSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {randomBytes,createHmac} from 'node:crypto';
 import {prepareIsolatedDeployment} from '../deployment/isolated-approval/prepare.mjs';
@@ -30,6 +30,30 @@ const errorCategory=error=>{
  for(const [pattern,code]of [[/manifest unknown|manifest .*not found|no matching manifest/i,'IMAGE_MANIFEST_UNAVAILABLE'],[/toomanyrequests|pull rate limit|429 Too Many/i,'IMAGE_REGISTRY_RATE_LIMIT'],[/pull access denied|unauthorized|authentication required/i,'IMAGE_REGISTRY_ACCESS_DENIED'],[/address already in use|port is already allocated/i,'HOST_PORT_IN_USE'],[/pool overlaps|overlap.*address space/i,'NETWORK_SUBNET_OVERLAP'],[/requested IP.*not available|Address already in use/i,'NETWORK_IP_UNAVAILABLE'],[/invalid mount|not a directory|error mounting/i,'CONTAINER_MOUNT_REJECTED'],[/permission denied|operation not permitted/i,'CONTAINER_PERMISSION_DENIED'],[/dependency failed|unhealthy/i,'DEPENDENCY_UNHEALTHY'],[/network .*not found/i,'NETWORK_NOT_FOUND'],[/lookup .*no such host|dial tcp|i\/o timeout|TLS handshake timeout/i,'REGISTRY_OR_NETWORK_UNREACHABLE']])if(pattern.test(diagnostic))return code;
  return error?.code==='ETIMEDOUT'?'SUBPROCESS_TIMEOUT':error?.message==='READINESS'?'READINESS_TIMEOUT':'UNCLASSIFIED_FAILURE';
 };
+const mountTargets=new Set(['/etc/caddy/Caddyfile','/run/secrets/operator-config.json','/run/secrets/anon-jwt','/run/secrets/runtime.json','/run/secrets/database-owner-password','/docker-entrypoint-initdb.d/10-isolated-roles.sql','/tmp','/data','/config','/var/lib/postgresql/data']);
+const fileKind=path=>{try{const s=statSync(path);return s.isFile()?'FILE':s.isDirectory()?'DIRECTORY':'OTHER';}catch{return 'MISSING';}};
+function reportMountTypes(){
+ // Rendered config includes private env values: keep it in memory only and
+ // project exclusively whitelisted targets + file kinds into public evidence.
+ const rendered=JSON.parse(compose(['config','--format','json']));
+ report.mountSources=[];
+ for(const [service,definition]of Object.entries(rendered.services)){
+  if(!['isolated-postgres','isolated-auth','isolated-rest','isolated-app','isolated-https'].includes(service))continue;
+  for(const volume of definition.volumes||[])if(volume.type==='bind'&&mountTargets.has(volume.target))report.mountSources.push({service,target:volume.target,sourceKind:fileKind(volume.source)});
+  for(const secret of definition.secrets||[]){
+   const target='/run/secrets/'+(secret.target||secret.source);
+   if(mountTargets.has(target))report.mountSources.push({service,target,sourceKind:fileKind(rendered.secrets?.[secret.source]?.file)});
+  }
+ }
+ // The Caddy image's destination is public configuration metadata, not a secret.
+ const kind=execFileSync('docker',['run','--rm','--entrypoint','/bin/sh','caddy:2.10.2-alpine','-c','if test -f /etc/caddy/Caddyfile; then echo FILE; elif test -d /etc/caddy/Caddyfile; then echo DIRECTORY; else echo MISSING; fi'],{stdio:['pipe','pipe','pipe'],timeout:60000}).toString().trim();
+ report.caddyImageTargetKind=['FILE','DIRECTORY','MISSING'].includes(kind)?kind:'OTHER';
+}
+function mountFailureEvidence(error){
+ const text=String(error?.stderr||'');
+ return {target:[...mountTargets].find(target=>text.includes(target))||'UNKNOWN',
+  condition:/not a directory/i.test(text)?'SOURCE_OR_TARGET_NOT_DIRECTORY':/read-only file system/i.test(text)?'READ_ONLY_FILESYSTEM':/permission denied|operation not permitted/i.test(text)?'PERMISSION_DENIED':/no such file or directory/i.test(text)?'MISSING_MOUNT_PATH':'UNCLASSIFIED_MOUNT_FAILURE'};
+}
 let image;
 function helper(network,code){return execFileSync('docker',['run','--rm','-i','--network',project+'_'+network,'--entrypoint','node',image,'--input-type=module'],{input:code,stdio:['pipe','pipe','pipe'],timeout:60000}).toString().trim();}
 try{
@@ -50,6 +74,7 @@ try{
  if(!Object.values(users).every(id=>/^[a-f0-9-]{36}$/.test(id)))throw Error('USERS');
  sql(`insert into sc_memberships values('sarberki-test','${users.operator}',true,true,true),('sarberki-test','${users.writer}',true,true,false);`);passed(stage);
  stage='runtime-rest-proxy-image-pull';compose(['pull','isolated-rest','isolated-https']);passed(stage);
+ stage='runtime-mount-filetype-check';reportMountTypes();passed(stage);
  stage='fixed-isolated-runtime-caddy-start';compose(['up','-d','isolated-rest','isolated-app','isolated-https']);passed(stage);
  stage='caddy-internal-ca-readiness';
  let ca;await wait(()=>{ca=compose(['exec','-T','isolated-https','cat','/data/caddy/pki/authorities/local/root.crt']);return ca.includes('BEGIN CERTIFICATE');});
@@ -78,7 +103,7 @@ try{
  const record=await call('/.netlify/functions/booking-cases?tenantId=sarberki-test&caseId='+${JSON.stringify(proof.caseId)},{token});check(record.status===200&&record.data.result.revision===3&&record.data.result.data.state.approval==='internally_approved');
  const audit=await call('/isolated-audit?caseId='+${JSON.stringify(proof.caseId)},{token});check(audit.status===200&&audit.data.length===1&&audit.data[0].data_hash===${JSON.stringify(proof.auditHash)});console.log('PASS');`);return value==='PASS';}catch{return false;}});passed(stage);
  report.result='PASS';
-}catch(error){report.result='FAIL';report.failedStage=stage;report.errorCategory=errorCategory(error);if(Number.isInteger(error?.status))report.subprocessExitCode=error.status;process.exitCode=1;}
+}catch(error){report.result='FAIL';report.failedStage=stage;report.errorCategory=errorCategory(error);if(report.errorCategory==='CONTAINER_MOUNT_REJECTED')report.mountFailure=mountFailureEvidence(error);if(Number.isInteger(error?.status))report.subprocessExitCode=error.status;process.exitCode=1;}
 finally{
  try{compose(['down','--volumes','--remove-orphans']);report.disposableStackRemoved=true;}catch{report.disposableStackRemoved=false;process.exitCode=1;}
  rmSync(base,{recursive:true,force:true});
