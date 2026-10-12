@@ -3,18 +3,21 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {initOperatorLoginPanel} from '../operator-login-ui.mjs';
 const ui=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-const names=['operator_login_form','operator_login_email','operator_login_password','operator_login','operator_restore','operator_logout','operator_login_status'];
+const names=['operator_login_form','operator_login_email','operator_login_password','operator_login','operator_restore','operator_logout','operator_login_status','operator_list_cases','operator_case_select','operator_open_case','operator_case_status'];
 const valid=()=>({authenticated:true,tenantId:'sarberki-test',csrfToken:'ab'.repeat(32),expiresAt:new Date(Date.now()+3600_000).toISOString()});
 function harness(request){
  const map=new Map(),events=[];
  for(const name of names){
-  const element={id:name,value:'',disabled:false,textContent:'',listeners:{},
+  const element={id:name,value:'',disabled:false,textContent:'',children:[],listeners:{},
+   replaceChildren(...children){this.children=children;this.value='';},
+   appendChild(child){this.children.push(child);},
+   dispatchEvent(event){return this.listeners[event.type]?.(event);},
    addEventListener(type,fn){this.listeners[type]=fn;},
    async click(){return this.listeners.click?.();},
    async submit(){return this.listeners.submit?.({preventDefault(){}});}};
   map.set(name,element);
  }
- const documentRef={getElementById:id=>map.get(id),dispatchEvent:event=>events.push(event.type)};
+ const documentRef={getElementById:id=>map.get(id),createElement:tag=>({tag,value:'',textContent:''}),dispatchEvent:event=>events.push(event.type)};
  const globalRef={};
  assert.equal(initOperatorLoginPanel({documentRef,globalRef,request}),true);
  return {map,get:id=>map.get(id),globalRef,events};
@@ -93,4 +96,49 @@ test('failed logout locally drops the session and does not claim remote revocati
  await h.get('operator_logout').click();
  assert.equal(h.globalRef.SarberkiCaseStoreSession,null);
  assert.match(h.get('operator_login_status').textContent,/nem igazolt/u);
+});
+
+test('authorized synthetic cases appear as IDs and revisions only; fake guest data is never shown',async()=>{
+ const requests=[],fixtureRows=[
+  {tenantId:'sarberki-test',caseId:'case-synth-one',revision:3,data:{sender:'guest@synthetic.invalid',original:'PRIVATE SYNTHETIC MESSAGE'}},
+  {tenantId:'sarberki-test',caseId:'case-real',revision:4,data:{sender:'real@example.com',original:'NOT FOR UI'}},
+  {tenantId:'demo-test',caseId:'case-other',revision:1,data:{sender:'other@synthetic.invalid'}},
+  {tenantId:'sarberki-test',caseId:'bad-case',revision:2,data:{sender:'guest@synthetic.invalid'}}
+ ];
+ const h=harness(async(url,opt)=>{
+  requests.push({url,opt});
+  if(url.endsWith('/operator-session'))return {ok:true,json:async()=>valid()};
+  return {ok:true,json:async()=>({result:fixtureRows})};
+ });
+ await h.get('operator_restore').click();
+ await h.get('operator_list_cases').click();
+ assert.equal(requests.length,2);
+ assert.equal(requests[1].opt.method,'GET');
+ assert.equal(requests[1].opt.credentials,'same-origin');
+ assert.equal(requests[1].opt.headers.Authorization,undefined);
+ assert.equal(requests[1].opt.headers['X-CSRF-Token'],'ab'.repeat(32));
+ assert.equal(h.get('operator_case_select').children.length,2);
+ assert.match(h.get('operator_case_select').children[1].textContent,/case-synth-one · v3/);
+ assert.doesNotMatch(JSON.stringify(h.get('operator_case_select').children),/PRIVATE SYNTHETIC MESSAGE|NOT FOR UI/);
+ assert.equal(h.get('operator_case_select').disabled,false);
+ assert.equal(h.get('operator_open_case').disabled,false);
+ const id={value:'',listeners:{},dispatchEvent(evt){this.listeners[evt.type]?.();}},
+ revision={value:'',listeners:{},dispatchEvent(evt){this.listeners[evt.type]?.();}};
+ // The selection is applied only to the test preview's form, not an external API.
+ h.get('operator_case_select').value='case-synth-one';
+ assert.equal(h.get('operator_case_select').children[1].value,'case-synth-one');
+ assert.match(h.get('operator_case_status').textContent,/1 ellenőrzött tesztügy/u);
+ await h.get('operator_logout').click();
+ assert.equal(h.get('operator_case_select').children.length,0);
+ assert.equal(h.get('operator_case_select').disabled,true);
+ assert.equal(h.get('operator_open_case').disabled,true);
+});
+test('case-list errors clear choices without changing a real booking',async()=>{
+ const h=harness(async(url,opt)=>url.endsWith('/operator-session')?{ok:true,json:async()=>valid()}:
+  {ok:false,json:async()=>({error:'CASE_STORE_DISABLED'})});
+ await h.get('operator_restore').click();
+ await h.get('operator_list_cases').click();
+ assert.match(h.get('operator_case_status').textContent,/CASE_STORE_DISABLED/);
+ assert.equal(h.get('operator_case_select').disabled,true);
+ assert.equal(h.get('operator_open_case').disabled,true);
 });
