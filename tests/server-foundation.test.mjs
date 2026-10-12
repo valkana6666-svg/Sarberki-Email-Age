@@ -3,6 +3,7 @@ import {createServerCaseService} from '../shared-core/server-case-service.mjs';
 import {createSupabaseAuthority,createSupabaseCaseRepository,createSupabaseTransport} from '../shared-core/supabase-case-repository.mjs';
 import {createServerBookingRuntime} from '../shared-core/server-booking-runtime.mjs';
 import {createCaseHandler} from '../netlify/functions/booking-cases.mjs';
+import {createCaseStoreClient} from '../shared-core/case-store-client.mjs';
 import {exportCaseSnapshot,previewCaseSnapshot} from '../shared-core/case-migration-preview.mjs';
 const envelope=(message_id='m1',extras={})=>({sender:'guest@example.invalid',text:'Foglalást kérek',mailbox_id:'test-inbox',message_id,thread_id:'t1',received_at:'2026-10-09T08:00:00Z',...extras});
 const values={arrival:'2026-11-01',departure:'2026-11-03',adults:'2',children:'0',guests:'2',unit:'Deluxe'};
@@ -150,6 +151,24 @@ test('synthetic ingest-and-draft rejects real sender, forced link, other tenant,
  const readonly=createServerBookingRuntime({service:f.service,tenantId:'sarberki-test',requestContext:{subject:'reader',tenants:{'sarberki-test':['read']}}});
  await assert.rejects(readonly.ingest(envelope('reader'),values,{expectedRevision:0,persistDraft:true}),e=>e.code==='FORBIDDEN');
  assert.equal(f.rows.size,0);
+});
+test('opt-in synthetic client calls only protected case POST and overwrites attacker-supplied action',async()=>{
+ const calls=[];
+ const client=createCaseStoreClient({getAccessToken:async()=> 'synthetic-test-session-token',request:async(url,options)=>{
+  calls.push({url,options});
+  return {ok:true,json:async()=>({result:{resolution:{status:'new'},record:{caseId:'case-1000',revision:1}}})};
+ }});
+ const result=await client.ingestAndDraft({action:'approve',tenantId:'sarberki-test',envelope:envelope('client-fixture'),expectedRevision:0});
+ assert.equal(result.record.revision,1);
+ assert.equal(calls.length,1);
+ assert.equal(calls[0].url,'/.netlify/functions/booking-cases');
+ assert.equal(calls[0].options.method,'POST');
+ assert.equal(calls[0].options.headers.Authorization,'Bearer synthetic-test-session-token');
+ const body=JSON.parse(calls[0].options.body);
+ assert.equal(body.action,'ingest-and-draft');
+ assert.equal(body.envelope.sender,'guest@example.invalid');
+ assert.equal(body.expectedRevision,0);
+ assert.ok(!('approvedCaseId' in body));
 });
 test('default-disabled API refuses synthetic ingest-and-draft before reading or writing',async()=>{
  let requests=0;
