@@ -320,7 +320,7 @@
         currentToken = result.access_token;
         currentMessages = await readWithToken(currentToken);
         renderPicker(currentMessages);
-        startPushoverWatch(currentMessages);
+        // V1: Gmail-olvasás nem indíthat automatikus Pushover-küldést. A figyelés külön engedélyt igényel.
         const nextUnread = currentMessages.find(message => !isLocallyRead(message.id));
         if (nextUnread) {
           await displayMessage(nextUnread);
