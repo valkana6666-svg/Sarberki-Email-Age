@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {initOperatorLoginPanel} from '../operator-login-ui.mjs';
 const ui=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-const names=['operator_login_form','operator_login_email','operator_login_password','operator_login','operator_restore','operator_logout','operator_login_status','operator_list_cases','operator_case_select','operator_open_case','operator_case_status'];
+const names=['operator_login_form','operator_login_email','operator_login_password','operator_login','operator_restore','operator_logout','operator_login_status','operator_list_cases','operator_case_select','operator_open_case','operator_case_status','server_preview_case_id','server_preview_revision'];
 const valid=()=>({authenticated:true,tenantId:'sarberki-test',csrfToken:'ab'.repeat(32),expiresAt:new Date(Date.now()+3600_000).toISOString()});
 function harness(request){
  const map=new Map(),events=[];
@@ -122,11 +122,12 @@ test('authorized synthetic cases appear as IDs and revisions only; fake guest da
  assert.doesNotMatch(JSON.stringify(h.get('operator_case_select').children),/PRIVATE SYNTHETIC MESSAGE|NOT FOR UI/);
  assert.equal(h.get('operator_case_select').disabled,false);
  assert.equal(h.get('operator_open_case').disabled,false);
- const id={value:'',listeners:{},dispatchEvent(evt){this.listeners[evt.type]?.();}},
- revision={value:'',listeners:{},dispatchEvent(evt){this.listeners[evt.type]?.();}};
- // The selection is applied only to the test preview's form, not an external API.
+ // Selecting fills only the pre-existing read-only preview controls.
  h.get('operator_case_select').value='case-synth-one';
  assert.equal(h.get('operator_case_select').children[1].value,'case-synth-one');
+ await h.get('operator_open_case').click();
+ assert.equal(h.get('server_preview_case_id').value,'case-synth-one');
+ assert.equal(h.get('server_preview_revision').value,'3');
  assert.match(h.get('operator_case_status').textContent,/1 ellenőrzött tesztügy/u);
  await h.get('operator_logout').click();
  assert.equal(h.get('operator_case_select').children.length,0);
