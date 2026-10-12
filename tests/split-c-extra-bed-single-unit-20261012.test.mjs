@@ -13,6 +13,11 @@ for(const guests of [4,5,6]){
   if(guests<=5){
    assert.ok(calls.includes('splitC'));
    assert.ok(result.available_options.some(x=>x.key==='splitC'&&x.units===1));
+   const option=result.available_options.find(x=>x.key==='splitC'&&x.units===1);
+   assert.equal(option.nominalGuests,4);
+   assert.equal(option.extraBedRequired,guests===5);
+   assert.equal(option.extraBedPlacementRequiresConfirmation,guests===5);
+   assert.equal(option.extraBedFeeVerified,false);
   }else{
    assert.equal(calls.includes('splitC'),false);
    assert.equal(calls.includes('splitA'),false);
