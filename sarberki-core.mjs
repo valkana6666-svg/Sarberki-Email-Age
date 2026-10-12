@@ -177,6 +177,20 @@ function parseDateRange(text='', now=new Date(), timeZone='Europe/Budapest'){
       inferredYear:false
     };
   }
+  // Guest month.day dates: 11.26–11.28. or 2026.11.26–28.
+  const monthDayRange=text.match(/\b(?:(20\d{2})[.\/-])?(\d{1,2})[.\/-](\d{1,2})\.?\s*[-–—]\s*(?:(\d{1,2})[.\/-])?(\d{1,2})\.?(?!\d)/iu);
+  if(monthDayRange){
+    const startMonth=Number(monthDayRange[2]), startDay=Number(monthDayRange[3]);
+    const endMonth=monthDayRange[4]?Number(monthDayRange[4]):startMonth;
+    const endDay=Number(monthDayRange[5]);
+    if(startMonth>=1&&startMonth<=12&&endMonth>=1&&endMonth<=12&&startDay>=1&&startDay<=31&&endDay>=1&&endDay<=31){
+      const local=new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).format(now).split('-').map(Number);
+      let year=monthDayRange[1]?Number(monthDayRange[1]):local[0];
+      if(!monthDayRange[1]&&(startMonth<local[1]||(startMonth===local[1]&&startDay<local[2]))) year++;
+      const endYear=year+(endMonth<startMonth?1:0);
+      return {arrival:`${year}-${String(startMonth).padStart(2,'0')}-${String(startDay).padStart(2,'0')}`,departure:`${endYear}-${String(endMonth).padStart(2,'0')}-${String(endDay).padStart(2,'0')}`,inferredYear:!monthDayRange[1]};
+    }
+  }
   const europeanCompactRange=text.match(/\b(\d{1,2})\s*[./]\s*(\d{1,2})\s*[./]?\s*(?:[-–]|to|bis|do|tól|tol)\s*(\d{1,2})\s*[./]\s*(\d{1,2})(?:\s*[./]?\s*(20\d{2}))?\b/iu);
   if(europeanCompactRange){
     const local=new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).format(now).split('-').map(Number);
@@ -254,7 +268,7 @@ function parseDateRange(text='', now=new Date(), timeZone='Europe/Budapest'){
     }
   }
   const dayFirst=text.match(new RegExp(`\\b(?:vom\\s+)?(\\d{1,2})\\.?\\s*(?:bis|[-–])\\s*(\\d{1,2})\\.?\\s+(${names})\\b`,'iu'));
-  const r=text.match(new RegExp(`\\b(?:20\\d{2}\\s*[.\\/-]?\\s*)?(${names})\\s+(\\d{1,2})\\s*(?:[-–]|to|bis|do|(?:-?(?:től|tól|tol)))\\s*(?:(?:${names})\\s+)?(\\d{1,2})(?:-?ig)?\\b`,'iu'));
+  const r=text.match(new RegExp(`\\b(?:20\\d{2}\\s*[.\\/-]?\\s*)?(${names})\\.?\\s+(\\d{1,2})\\.?\\s*(?:[-–—]|to|bis|do|(?:-?(?:től|tól|tol)))\\s*(?:(?:${names})\\s+)?(\\d{1,2})\\.?(?:-?ig)?\\b`,'iu'));
   if(!r&&!dayFirst) return null;
   const month=monthNumber(r ? r[1] : dayFirst[3]); if(!month) return null;
   const explicit=text.match(/\b20\d{2}\b/u)?.[0];
