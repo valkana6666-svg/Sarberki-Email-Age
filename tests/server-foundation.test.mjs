@@ -96,6 +96,71 @@ test('migration is a local preview with duplicate/tenant validation and no impli
  const snapshot=exportCaseSnapshot([record.data],'sarberki-test');const preview=previewCaseSnapshot(snapshot,'sarberki-test',[record.caseId]);assert.equal(preview.uploadAllowed,false);assert.equal(preview.rows[0].duplicate,true);
  assert.throws(()=>previewCaseSnapshot(snapshot,'demo-test'));assert.throws(()=>previewCaseSnapshot({...snapshot,cases:[record.data,record.data]},'sarberki-test'));assert.equal(record.data.messages.length,1);
 });
+test('synthetic-only ingest-and-draft persists message, facts and pending draft in one insertion',async()=>{
+ const f=fixture();
+ const first=await f.runtime.ingest(envelope('new-synthetic',{text:'Deluxe cabin for 2 adults between 2026-11-01 and 2026-11-03.'}),undefined,{expectedRevision:0,persistDraft:true});
+ assert.equal(first.record.revision,1);
+ assert.equal(first.record.data.messages.length,1);
+ assert.equal(first.record.data.drafts.length,1);
+ assert.equal(first.record.data.drafts[0].revision,first.record.data.state.revision);
+ assert.equal(first.record.data.drafts[0].basedOnMessageCount,1);
+ assert.equal(first.record.data.drafts[0].synthetic,true);
+ assert.equal(first.record.data.drafts[0].reviewStatus,'manual_review_required');
+ assert.ok(first.record.data.drafts[0].text.length>20);
+ assert.equal(first.record.data.state.approval,'pending');
+ assert.equal(first.record.data.state.quote,null);
+ assert.equal(first.record.data.state.availability,null);
+ const persisted=await f.service.getCase({requestContext:f.auth,tenantId:'sarberki-test',caseId:first.record.caseId});
+ assert.deepEqual(persisted,first.record);
+ assert.equal(f.rows.size,1);
+ const again=await f.runtime.ingest(envelope('new-synthetic',{text:'Deluxe cabin for 2 adults between 2026-11-01 and 2026-11-03.'}),undefined,{expectedRevision:0,persistDraft:true});
+ assert.equal(again.resolution.status,'duplicate');
+ assert.equal(again.record.revision,1);
+ assert.deepEqual(again.record.data.drafts,first.record.data.drafts);
+ assert.equal(f.rows.size,1);
+});
+test('synthetic follow-up updates shared case and draft in a single CAS, without stale prices',async()=>{
+ const f=fixture();
+ const first=await f.runtime.ingest(envelope('first'),values,{expectedRevision:0,persistDraft:true});
+ const second=await f.runtime.ingest(envelope('followup',{text:'Please change the arrival to November 4 and departure to November 6, 2026.'}),
+   {arrival:'2026-11-04',departure:'2026-11-06'},{expectedRevision:1,persistDraft:true});
+ assert.equal(second.resolution.status,'linked');
+ assert.equal(second.record.caseId,first.record.caseId);
+ assert.equal(second.record.revision,2);
+ assert.equal(second.record.data.messages.length,2);
+ assert.equal(second.record.data.drafts.length,2);
+ assert.deepEqual(second.record.data.drafts[0],first.record.data.drafts[0]);
+ assert.equal(second.record.data.drafts[1].basedOnMessageCount,2);
+ assert.equal(second.record.data.drafts[1].revision,second.record.data.state.revision);
+ assert.equal(second.record.data.state.values.arrival,'2026-11-04');
+ assert.equal(second.record.data.state.quote,null);
+ assert.equal(second.record.data.state.availability,null);
+ await assert.rejects(f.runtime.ingest(envelope('race',{text:'Latest changed arrival.'}),{arrival:'2026-11-07'},
+   {expectedRevision:1,persistDraft:true}),e=>e.code==='CASE_CONFLICT');
+ assert.equal((await f.service.getCase({requestContext:f.auth,tenantId:'sarberki-test',caseId:first.record.caseId})).revision,2);
+});
+test('synthetic ingest-and-draft rejects real sender, forced link, other tenant, and read-only caller',async()=>{
+ const f=fixture();
+ const badReal={...envelope('real'),sender:'visitor@example.com'};
+ await assert.rejects(f.runtime.ingest(badReal,values,{expectedRevision:0,persistDraft:true}),e=>e.code==='INVALID_INPUT');
+ await assert.rejects(f.runtime.ingest({...envelope('forced'),case_id:'case-9000'},values,{expectedRevision:0,persistDraft:true}),e=>e.code==='FORBIDDEN');
+ await assert.rejects(f.runtime.ingest(envelope('manual'),values,{expectedRevision:0,persistDraft:true,approvedCaseId:'case-9000'}),e=>e.code==='FORBIDDEN');
+ const other=createServerBookingRuntime({service:f.service,tenantId:'demo-test',requestContext:{subject:'writer',tenants:{'demo-test':['read','write']}}});
+ await assert.rejects(other.ingest(envelope('other'),values,{expectedRevision:0,persistDraft:true}),e=>e.code==='FORBIDDEN');
+ const readonly=createServerBookingRuntime({service:f.service,tenantId:'sarberki-test',requestContext:{subject:'reader',tenants:{'sarberki-test':['read']}}});
+ await assert.rejects(readonly.ingest(envelope('reader'),values,{expectedRevision:0,persistDraft:true}),e=>e.code==='FORBIDDEN');
+ assert.equal(f.rows.size,0);
+});
+test('default-disabled API refuses synthetic ingest-and-draft before reading or writing',async()=>{
+ let requests=0;
+ const handler=createCaseHandler({env:{},fetchImpl:async()=>{requests++;throw Error('External request forbidden');}});
+ const response=await handler({httpMethod:'POST',headers:{authorization:'Bearer '+'x'.repeat(40)},body:JSON.stringify({
+  action:'ingest-and-draft',tenantId:'sarberki-test',envelope:envelope('api-synthetic'),expectedRevision:0
+ })});
+ assert.equal(response.statusCode,503);
+ assert.match(response.body,/CASE_STORE_DISABLED/u);
+ assert.equal(requests,0);
+});
 test('server draft is versioned, internal and carries no invented price/capacity',async()=>{
  const {runtime}=fixture();const first=await runtime.ingest(envelope(),values,{expectedRevision:0});
  const draft=await runtime.draft(first.record.caseId,1);assert.equal(draft.revision,2);assert.equal(draft.data.drafts.length,1);assert.equal(draft.data.state.quote,null);assert.equal(draft.data.state.availability,null);assert.equal(draft.data.state.approval,'pending');assert.ok(draft.data.drafts[0].text.length>20);
