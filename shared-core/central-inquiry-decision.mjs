@@ -39,7 +39,7 @@ function decideCapacity(result,input,ready,now,tenant){
  const candidates=wholeCabinCandidates(input).candidates;
  // Fallback is permitted only after fresh, verified UNAVAILABLE evidence for
  // the requested type. UNKNOWN must never be interpreted as sold out.
- const requestedUnavailable=Boolean(input.cabin&&!split&&
+ const requestedWholeUnavailable=Boolean(input.cabin&&!split&&
   !result.available_options.some(row=>row.key===input.cabin)&&
   !result.unverified_options.some(row=>row.key===input.cabin)&&
   result.unavailable_options.some(row=>{
@@ -48,9 +48,15 @@ function decideCapacity(result,input,ready,now,tenant){
    const evidence=currentEvidence(row.evidence,row.key,input,now,tenant);
    return expected&&evidence&&(evidence.status==='UNAVAILABLE'||evidence.availableUnits<expected.units);
   }));
+ const requestedCPool=input.cabin==='splitC'?currentEvidence(result.split_pool_checks?.splitC?.evidence,'splitC',input,now,tenant):null;
+ const requestedCUnits=input.placement?.c||input.units||1;
+ const requestedCUnavailable=Boolean(requestedCPool&&requestedCPool.availableUnits<requestedCUnits&&
+  result.unavailable_options.some(row=>row.key==='splitC'&&row.units===requestedCUnits&&row.availability_verified===true)&&
+  !result.unverified_options.some(row=>row.key==='splitC'));
+ const requestedUnavailable=input.fallback!==false&&(requestedWholeUnavailable||requestedCUnavailable);
  const selectedRows=requestedUnavailable?result.available_options.filter(row=>row.availability==='available'&&row.availability_verified===true):selectedCapacityOptions(result,input);
  const selected=selectedRows.flatMap(row=>{
-  if(split){
+  if(split&&!requestedUnavailable){
    const plan=permitted.find(p=>p.key===row.key&&p.units===row.units&&
     (row.requiredAB===undefined||row.requiredAB===p.requiredAB)&&(row.requiredC===undefined||row.requiredC===p.requiredC));
    return plan?[plan]:[];

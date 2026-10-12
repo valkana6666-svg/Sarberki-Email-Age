@@ -104,6 +104,13 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
     if(checked.some(x=>x.key===planKey&&x.units===plan.units.length))continue;
     checked.push({...plan,key:plan.requiredC&&!plan.requiredAB?'splitC':plan.requiredAB&&!plan.requiredC?'splitAB':'splitCombination',units:plan.units.length,availability,availability_verified:availability!=='unverified',availableUnits:plan.requiredAB&&!plan.requiredC?splitAB.availableUnits:plan.requiredC&&!plan.requiredAB?splitC.availableUnits:null});
   }
+  // A verified unavailable requested C apartment permits suitable whole-cabin
+  // alternatives. Unknown pool evidence never triggers this second stage.
+  const requestedCUnits=placement?.c||input.units||1;
+  if(input.cabin==='splitC'&&input.fallback!==false&&canCheckSplit&&splitC.verified&&splitC.availableUnits<requestedCUnits&&
+    checked.some(row=>row.key==='splitC'&&row.units===requestedCUnits&&row.availability==='unavailable'&&row.availability_verified===true)){
+    checked.push(...await Promise.all(candidates.filter(option=>input.units!=null||option.units===1).map(checkOption)));
+  }
   const excluded_options=rejected.filter(x=>!input.cabin||x.key===input.cabin);
   const checkedAt=new Date(currentNow()).toISOString();
 
