@@ -88,3 +88,12 @@ test('explicit single C apartment for two guests checks C pool despite default q
  assert.equal(calls.includes('splitA'),false);
  assert.ok(result.available_options.some(x=>x.key==='splitC'&&x.units===1));
 });
+
+test('unverified requested C capacity does not trigger unrelated Previo calls or a bookable offer',async()=>{
+ const calls=[];
+ const result=await buildAvailabilityOptions({arrival:'2026-11-20',departure:'2026-11-22',guests:2,adults:2,cabin:'splitC'},async ({cabin})=>{calls.push(cabin);throw Error('SYNTHETIC_PREVIO_TIMEOUT');},{now:()=>now.getTime()});
+ assert.deepEqual(calls,['splitC']);
+ assert.equal(result.available_options.length,0);
+ assert.ok(result.unverified_options.some(x=>x.key==='splitC'));
+ assert.equal(result.bookingCompleted,false);
+});
