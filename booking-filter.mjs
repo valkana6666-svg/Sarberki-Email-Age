@@ -74,7 +74,7 @@ export function wholeCabinCandidates(input){
  for(const [key,type]of Object.entries(BUSINESS.accommodationTypes)){
   if(!type.bookingName)continue;
   const verifiedCapacity=Math.min(...SARBERKI_TENANT.inventory.filter(x=>x.type===key).map(x=>x.capacity));
-  const units=input.units||Math.max(Math.ceil(input.guests/verifiedCapacity),Math.ceil((input.adults||input.guests)/verifiedCapacity));
+  const units=input.units??1; // Never split an unqualified single-unit request into multiple cabins.
   const stock=type.physicalHouseNumbers?.length||0;
   if(units>stock||input.guests>units*verifiedCapacity||(input.adults||input.guests)>units*verifiedCapacity){rejected.push({key,availability:'unavailable',reason:'capacity_incompatible',units});continue;}
   candidates.push({key,label:type.label,capacity:verifiedCapacity,units});
