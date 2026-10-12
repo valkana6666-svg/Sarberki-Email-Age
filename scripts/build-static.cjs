@@ -6,7 +6,7 @@ const output = path.resolve('dist');
 fs.rmSync(output, {recursive:true, force:true});
 fs.mkdirSync(output);
 const allowedDirectories = new Set(['business','guest-reply','shared-core','price-source','sarberki-chatbot-project']);
-const chatbotAssets = new Set(['index.html','chat-session.mjs','inquiry-preview.mjs','operator-session.mjs','version-status.mjs','manifest.webmanifest','icons']);
+const chatbotAssets = new Set(['index.html','chat-session.mjs','chat-view.mjs','inquiry-preview.mjs','operator-session.mjs','version-status.mjs','manifest.webmanifest','icons']);
 function copyDirectory(source, relative='') {
  for (const entry of fs.readdirSync(source,{withFileTypes:true})) {
   const rel=path.join(relative,entry.name);

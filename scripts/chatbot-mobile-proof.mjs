@@ -47,7 +47,8 @@ try{
   const submit=async text=>{await page.locator('#question').fill(text);await page.locator('#chatForm button[type=submit]').click();};
   for(const [language,message]of Object.entries(messages)){
    await page.goto(origin+'/sarberki-chatbot-project/index.html');
-   await page.locator('#language').selectOption(language);await submit(message);
+   assert.equal(await page.locator('#language').inputValue(),'auto');await submit(message);
+   assert.equal(await page.locator('#conversation .entry').first().getAttribute('lang'),language==='si'?'sl':language);
    const last=page.locator('#conversation .entry').last();
    if(language!=='hu'){
     await last.locator('.operator-review').waitFor();
@@ -57,6 +58,39 @@ try{
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
    report.checks.push({engine,language,mobileWidth:390,result:'PASS'});
   }
+  await page.locator('#language').selectOption('de');await page.locator('#resetChat').click();
+  assert.equal(await page.locator('#conversation .entry').count(),1);
+  await page.locator('#language').selectOption('si');
+  assert.equal(await page.locator('#conversation .entry').count(),1);
+  assert.match(await page.locator('#conversation .entry').first().innerText(),/Dobrodošli/);
+  assert.doesNotMatch(await page.locator('#conversation').innerText(),/Willkommen/);
+  await page.locator('#language').selectOption('auto');await submit(messages.de);
+  const history=await page.locator('#conversation .entry').allTextContents();
+  await submit('Želimo nastanitev, prosimo za ceno.');
+  assert.equal(await page.locator('#conversation .entry').last().getAttribute('lang'),'sl');
+  assert.deepEqual((await page.locator('#conversation .entry').allTextContents()).slice(0,history.length),history);
+  await submit('OK');assert.equal(await page.locator('#conversation .entry').last().getAttribute('lang'),'sl');
+  await page.locator('#language').selectOption('en');await submit('OK');
+  assert.equal(await page.locator('#conversation .entry').last().getAttribute('lang'),'en');
+  await page.locator('#language').selectOption('auto');await submit(messages.si);
+  assert.equal(await page.locator('#conversation .entry').last().getAttribute('lang'),'sl');
+  report.checks.push({engine,test:'auto-switch-manual-override-greeting-and-history',result:'PASS'});
+  await page.evaluate(async()=>{
+   const {mountGuestChat}=await import('/sarberki-chatbot-project/chat-view.mjs');
+   const host=document.createElement('div');host.id='guest-embed';document.body.append(host);
+   window.__guestChat=mountGuestChat(host);
+  });
+  const guest=page.locator('#guest-embed');await guest.locator('summary').click();
+  await guest.locator('textarea').fill(messages.si);await guest.locator('button[type=submit]').click();
+  assert.equal(await guest.locator('.entry').last().getAttribute('lang'),'sl');
+  assert.equal(await guest.locator('.operator-review,select,[data-chat-status]').count(),0);
+  assert.doesNotMatch(await guest.innerText(),/Magyar kezelői|kapacitás ellenőrzése|Willkommen/);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await guest.locator('summary').click();await guest.locator('summary').click();
+  assert.equal(await guest.locator('.entry').count(),3);
+  await guest.locator('[data-chat-reset]').click();assert.equal(await guest.locator('.entry').count(),1);
+  await page.evaluate(()=>{window.__guestChat.destroy();document.getElementById('guest-embed').remove();});
+  report.checks.push({engine,test:'mobile-guest-embed-no-operator-content',result:'PASS'});
   const manifestHref=await page.locator('link[rel=manifest]').getAttribute('href');
   const manifestUrl=new URL(manifestHref,page.url());assert.equal(manifestUrl.origin,origin);assert.equal(manifestUrl.search,'');assert.equal(manifestUrl.hash,'');
   const manifestResponse=await page.request.get(manifestUrl.href);assert.equal(manifestResponse.status(),200);assert.match(manifestResponse.headers()['content-type'],/application\/manifest\+json/);
@@ -102,7 +136,7 @@ try{
   await submit('2 adults and no children.');
   assert.match(await page.locator('.operator-review').last().innerText(),/kapacitás ellenőrzése még nem igazolt/);
   report.checks.push({engine,test:'multiturn-retains-known-facts',result:'PASS'});
-  await page.locator('#resetChat').click();assert.equal(await page.locator('.operator-review').count(),0);
+  await page.locator('#resetChat').click();assert.equal(await page.locator('#conversation .entry').count(),1);
   await submit('Is there availability?');
   assert.match(await page.locator('.operator-review').last().innerText(),/érkez|távoz|időpont/i);
   report.checks.push({engine,test:'reset-clears-retained-facts',result:'PASS'});

@@ -2,16 +2,24 @@ import {normalizeInquiryInput} from '../intake-normalize.mjs';
 import {buildChatInquiryReply} from '../shared-core/inquiry-channel-adapters.mjs';
 import {chatbotReply,renderChatbotIntent} from '../chatbot-v1.mjs';
 import {mergeBookingFacts} from '../booking-cases.mjs';
-import {childAgesFromText} from '../sarberki-core.mjs';
+import {childAgesFromText,languageFromText} from '../sarberki-core.mjs';
 // Explicit in-memory conversation, no cross-session or browser storage. Each
 // new turn invalidates external evidence; facts never imply verified capacity.
-export function createChatInquirySession({language='hu',clock=()=>new Date()}={}){
+export function createChatInquirySession({language='auto',clock=()=>new Date()}={}){
+ const mode=value=>value==='sl'?'si':['auto','hu','de','en','si'].includes(value)?value:'auto';
+ let languageMode=mode(language);
+ language=languageMode==='auto'?'hu':languageMode;
  let facts={},bookingContext=false,turns=0;
  return Object.freeze({
-  reset(){facts={};bookingContext=false;turns=0;},
-  reply(message,{language:nextLanguage=language}={}){
+  get language(){return language;},
+  get languageMode(){return languageMode;},
+  setLanguage(value){languageMode=mode(value);if(languageMode!=='auto')language=languageMode;},
+  reset(){facts={};bookingContext=false;turns=0;language=languageMode==='auto'?'hu':languageMode;},
+  reply(message,{language:nextLanguage}={}){
    if(typeof message!=='string'||message.length>1000||++turns>100)throw Error('CHAT_INPUT_LIMIT');
-   language=nextLanguage;const now=clock(),faq=chatbotReply({message,language});
+   if(nextLanguage!==undefined){languageMode=mode(nextLanguage);if(languageMode!=='auto')language=languageMode;}
+   if(languageMode==='auto'){const detected=languageFromText(message,{conservative:true});if(detected!=='unknown')language=detected;}
+   const now=clock(),faq=chatbotReply({message,language});
    if(faq.intent==='availability')bookingContext=true;
    if(!bookingContext)return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};
    // Informational detours do not replace the active stay or its missing facts.

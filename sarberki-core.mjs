@@ -369,9 +369,9 @@ export function requestedUnitsFromText(text=''){
 export function pierPreferenceFromText(text=''){
   return /(?:saját|sajat|külön|kulon)\s+stég|stég\w*\s+(?:saját|sajat|külön|kulon)|(?:eigene[rmns]?|privat(?:e[rmns]?)?)\s+steg|(?:own|private)\s+(?:fishing\s+)?(?:pier|dock)|(?:lasten|zaseben)\s+pomol/iu.test(text);
 }
-export function languageFromText(text=''){
+export function languageFromText(text='',{conservative=false}={}){
   const scores={
-    hu:(text.match(/\b(?:szia|üdv|szeretn|erdekl|érdekl|faház|fahaz|szállás|szallas|felnőtt|felnott|gyermek|gyerek|fő|fo|dézsa|dezsa|mennénk|mennenk|jönnénk|jonnenk|ár|ára|mennyibe|éjszaka)\w*/giu)||[]).length,
+    hu:(text.match(/\b(?:szia|üdv|szeretn|erdekl|érdekl|faház|fahaz|szállás|szallas|felnőtt|felnott|gyermek|gyerek|fő|fo(?!\p{L})|dézsa|dezsa|mennénk|mennenk|jönnénk|jonnenk|ár|ára|mennyibe|éjszaka)\w*/giu)||[]).length,
     de:(text.match(/\b(?:hallo|guten tag|möchte|möchten|würde|würden|hätte|hätten|anfrage|unterkunft|buchung|gäste|personen|erwachsene|kinder|verfügbar|übernacht|preis|nächte|telefon|freundlichen grüßen|für|wäre|eigenem|möglich)\w*/giu)||[]).length
        + ((text.match(/[äöüß]/giu)||[]).length ? 2 : 0),
     en:(text.match(/\b(?:would|booking|reservation|accommodation|guests|adults|children|available|availability|cabin|stay|nights?|price|please|phone|total price|thank you|aged)\w*/giu)||[]).length,
@@ -379,6 +379,10 @@ export function languageFromText(text=''){
        + ((text.match(/[čšž]/giu)||[]).length ? 2 : 0)
   };
   const best=Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+  // Conversation switching needs clearer evidence than single-message intake.
+  // Mixed language signals and weak fragments keep the previous chat language.
+  const lexicalScore=best[0][1]-(best[0][0]==='de'&&/[äöüß]/iu.test(text)||best[0][0]==='si'&&/[čšž]/iu.test(text)?2:0);
+  if(conservative&&(best[1][1]>0||lexicalScore<2&&!/^(?:szia|pozdravljeni|guten tag)[!,.\s]*$/iu.test(text.trim())))return 'unknown';
   return best[0][1]>0 && best[0][1]>best[1][1] ? best[0][0] : 'unknown';
 }
 export function replySummary(language='hu', {arrival=null,departure=null,guests=null,adults:knownAdults=null,children=null,childAges=[],pier=false,hotTub=false,dog=false}={}){
