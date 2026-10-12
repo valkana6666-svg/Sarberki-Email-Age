@@ -27,6 +27,8 @@ test('test booking manager has an operator login form with no stored credentials
  assert.match(ui,/operator-login-ui\.mjs/);
  assert.match(ui,/id="operator_login_password" type="password"/);
  assert.match(ui,/szintetikus ügyek olvasása/u);
+ assert.match(ui,/szerveroldali munkamenet-beállításnak is megfelelőnek kell lennie/u);
+ assert.doesNotMatch(ui,/A külön hitelesített kezelői belépés még nem aktív/u);
  assert.doesNotMatch(ui,/localStorage\.setItem\([^\n]*password/u);
 });
 test('login uses same-origin POST and only exposes read-only cookie-mode case client',async()=>{
