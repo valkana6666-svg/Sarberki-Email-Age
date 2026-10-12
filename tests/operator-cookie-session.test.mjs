@@ -13,7 +13,7 @@ function event({method='GET',cookie,csrf,body,headers={},query={}}={}){
 }
 function fixture(){
  const env={URL:origin,CASE_STORE_ENABLED:'synthetic-only',CASE_STORE_TEST_TENANTS:'sarberki-test,demo-test',SUPABASE_URL:project,SUPABASE_PUBLISHABLE_KEY:'sb_publishable_SYNTHETIC_PUBLIC_KEY_12345',SARBERKI_OPERATOR_SESSION_KEY:'ab'.repeat(32)};
- const state={time:Date.now(),calls:[],refreshCount:0,revoked:false,membershipRead:true,userAnonymous:false,authStatus:null,networkFailure:false,logoutStatus:204,malformedAuth:false};
+ const state={time:Date.now(),calls:[],refreshCount:0,revoked:false,membershipRead:true,userAnonymous:false,authStatus:null,networkFailure:false,logoutStatus:204,malformedAuth:false,caseSender:'guest@synthetic.invalid'};
  const jwt=()=> 'eyJhbGciOiJIUzI1NiJ9.'+Buffer.from(JSON.stringify({role:'authenticated',sub:'synthetic-operator',exp:Math.floor(state.time/1000)+3600})).toString('base64url')+'.synthetic_signature';
  const fetchImpl=async(url,options={})=>{
   state.calls.push({url,options});assert.ok(url.startsWith(project+'/'),url);
@@ -27,7 +27,7 @@ function fixture(){
   if(url.includes('/auth/v1/logout'))return new Response(state.logoutStatus===204?null:'{}',{status:state.logoutStatus});
   if(url.endsWith('/auth/v1/user'))return json({id:'synthetic-operator',is_anonymous:state.userAnonymous});
   if(url.includes('/rest/v1/sc_memberships'))return json([{tenant_id:'sarberki-test',user_id:'synthetic-operator',can_read:state.membershipRead,can_write:false,can_approve:false}]);
-  if(url.includes('/rest/v1/sc_cases'))return json([{tenant_id:'sarberki-test',case_id:'case-synthetic',revision:1,data:{id:'case-synthetic',tenantId:'sarberki-test',sender:'guest@synthetic.invalid'},created_at:new Date(state.time).toISOString(),updated_at:new Date(state.time).toISOString(),updated_by:'synthetic-operator'}]);
+  if(url.includes('/rest/v1/sc_cases'))return json([{tenant_id:'sarberki-test',case_id:'case-synthetic',revision:1,data:{id:'case-synthetic',tenantId:'sarberki-test',sender:state.caseSender},created_at:new Date(state.time).toISOString(),updated_at:new Date(state.time).toISOString(),updated_by:'synthetic-operator'}]);
   throw Error('Unexpected synthetic transport');
  };
  const now=()=>state.time,session=createOperatorCookieSession({env,fetchImpl,now}),handler=createOperatorSessionHandler({env,fetchImpl,now});
@@ -153,6 +153,15 @@ test('cookie reader cannot retrieve a raw case by ID even with valid cookie',asy
   query:{tenantId:'sarberki-test',caseId:'case-synthetic'}}));
  assert.equal(r.statusCode,403);assert.equal(JSON.parse(r.body).error,'FORBIDDEN');
  assert.equal(f.state.calls.length,0);
+});
+test('cookie-only server preview fails closed on a non-synthetic guest sender',async()=>{
+ const f=fixture(),logged=await f.login(),handler=createCaseHandler({env:f.env,fetchImpl:f.fetchImpl});
+ f.state.caseSender='guest@example.com';
+ const result=await handler(event({cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken,
+  query:{tenantId:'sarberki-test',action:'preview-draft',caseId:'case-synthetic',expectedRevision:'1'}}));
+ assert.equal(result.statusCode,403);
+ assert.equal(JSON.parse(result.body).error,'FORBIDDEN');
+ assert.doesNotMatch(result.body,/guest@example|original|text|draft/);
 });
 test('existing bearer GET remains independent of cookie key and cookie CSRF requirements',async()=>{
  const f=fixture();delete f.env.SARBERKI_OPERATOR_SESSION_KEY;const handler=createCaseHandler({env:f.env,fetchImpl:f.fetchImpl});
