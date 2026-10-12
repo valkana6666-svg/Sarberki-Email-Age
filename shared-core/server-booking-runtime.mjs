@@ -114,7 +114,10 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    data.drafts.push({text:preview.text,operatorReviewText:preview.operatorReviewText,at:clock(),revision:data.state.revision,basedOnMessageCount:data.messages.length});
    return service.updateCase({requestContext,tenantId,caseId,expectedRevision,bookingCase:data});
   },
-  async ingest(envelope,values,{expectedRevision,approvedCaseId=null}={}){
+  async ingest(envelope,values,{expectedRevision,approvedCaseId=null,persistDraft=false}={}){
+   // One optional synthetic-only path saves the parsed case and its pending reply draft in the SAME insert/CAS.
+   // The normal Gmail read-only importer never sets this flag or uploads a real message.
+   if(persistDraft&&(tenantId!=='sarberki-test'||approvedCaseId||envelope?.case_id))reject('FORBIDDEN');
    if(values===undefined){validateSyntheticMessage(envelope,{});values=extractServerMessage(envelope);}
    validateSyntheticMessage(envelope,values);
    const records=await service.listCases({requestContext,tenantId});
@@ -129,6 +132,15 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    const result=store.ingest(scopeMessage(envelope),values,{approvedCaseId});
    const data=saved.find(c=>c.id===result.bookingCase.id);
    data.messages=data.messages.map(m=>scopeMessage(m,true));
+   if(persistDraft){
+    const at=clock();
+    const plan=buildEmailInquiryDraft(serverInquiryOptions({tenantId,caseId:data.id,data},new Date(at)));
+    if(typeof plan.text!=='string'||!plan.text.trim())reject('INVALID_DRAFT');
+    data.drafts.push({text:plan.text,operatorReviewText:plan.operatorReviewText,at,
+     revision:data.state.revision,basedOnMessageCount:data.messages.length,
+     synthetic:true,reviewStatus:'manual_review_required'});
+    data.state.approval='pending';
+   }
    const previous=records.find(r=>r.caseId===data.id);
    let record;
    if(previous){
