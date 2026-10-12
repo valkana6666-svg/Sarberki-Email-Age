@@ -42,10 +42,16 @@ export async function runOperatorCookieBrowserProof({browser,engine,root,report}
     if(!handler)return route.fulfill({status:404,body:'{}'});
     const headers=await request.allHeaders(),frameOrigin=new URL(request.frame().url()).origin;
     assert.equal(frameOrigin,origin);
+    // WebKit route interception also precedes final Cookie attachment. Read
+    // only this isolated synthetic context's native jar for the event adapter;
+    // the page itself still cannot read the HttpOnly cookie. Never override a
+    // supplied Cookie header or infer a cookie from application JS state.
+    const jar=headers.cookie===undefined?(await context.cookies(url.href)).filter(cookie=>cookie.name===cookieName):[];
     // Playwright intercepts before the network stack finalizes Origin/Fetch
     // Metadata. The synthetic Netlify adapter derives absent fields only from
     // the verified initiating frame; existing supplied fields are preserved.
     const eventHeaders={...headers,host:url.host,'sec-fetch-site':headers['sec-fetch-site']??'same-origin',
+     ...(jar.length?{cookie:jar.map(cookie=>cookie.name+'='+cookie.value).join('; ')}:{}),
      ...(request.method()==='POST'&&headers.origin===undefined?{origin:frameOrigin}:{})};
     const event={httpMethod:request.method(),headers:eventHeaders,body:request.postData()||'',queryStringParameters:Object.fromEntries(url.searchParams)};
     const result=await handler(event);
