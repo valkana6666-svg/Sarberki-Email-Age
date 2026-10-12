@@ -25,6 +25,25 @@ test('existing engine persists synthetic case and mailbox-scoped duplicate witho
  assert.equal(duplicate.resolution.status,'duplicate');assert.equal(rows.size,1);assert.equal(duplicate.record.revision,1);
  assert.equal(first.record.data.messages[0].message_id,'m1');
 });
+test('duplicate synthetic provider ID never returns an unrelated sender or modified message',async()=>{
+ const f=fixture(),original=envelope('same-mail-id',{text:'Please book a Deluxe cabin for two adults.'});
+ const first=await f.runtime.ingest(original,undefined,{expectedRevision:0,persistDraft:true});
+ const savedVersion=structuredClone(first.record);
+ for(const conflict of [
+  {...original,sender:'different@example.invalid'},
+  {...original,text:'Please book a VIP cabin for eight adults.'}
+ ]){
+  await assert.rejects(f.runtime.ingest(conflict,undefined,{expectedRevision:0,persistDraft:true}),
+   e=>e.code==='CASE_CONFLICT');
+ }
+ const stored=await f.service.getCase({requestContext:f.auth,tenantId:'sarberki-test',caseId:first.record.caseId});
+ assert.deepEqual(stored,savedVersion);
+ assert.equal(f.rows.size,1);
+ const duplicate=await f.runtime.ingest({...original,sender:'GUEST@EXAMPLE.INVALID'},undefined,{expectedRevision:0,persistDraft:true});
+ assert.equal(duplicate.resolution.status,'duplicate');
+ assert.equal(duplicate.record.revision,first.record.revision);
+ assert.equal(duplicate.record.data.drafts.length,1);
+});
 test('two operators observe shared state and competing writes cannot lose data',async()=>{
  const {runtime,service,auth}=fixture();const first=await runtime.ingest(envelope(),values,{expectedRevision:0});
  const secondCtx={...auth,subject:'operator-two'};
