@@ -3,9 +3,11 @@ import assert from 'node:assert/strict';
 import {BUSINESS} from '../business-config.mjs';
 import {wholeCabinCandidates} from '../booking-filter.mjs';
 const types=BUSINESS.accommodationTypes;
-test('upstairs split C has physical maximum of four, never five or six',()=>{
- assert.equal(types.splitC.maxGuests,4);
- assert.equal(types.splitC.maxAdults,4);
+test('upstairs split C has four standard places and a fifth extra bed',()=>{
+ assert.equal(types.splitC.nominalGuests,4);
+ assert.equal(types.splitC.maxGuests,5);
+ assert.equal(types.splitC.maxAdults,5);
+ assert.equal(types.splitC.fifthGuestRequiresExtraBed,true);
  assert.equal(types.splitC.basePriceGuests,4);
 });
 for(const [key,base] of Object.entries({vip:4,family:4,deluxe:4,splitC:4,splitA:2,splitB:2,small:2})){
@@ -20,3 +22,5 @@ for(const [key,max] of Object.entries({vip:7,family:8,deluxe:6,small:3})){
 test('single C cannot be treated as a six-person unit',()=>{
  assert.equal(types.splitC.maxGuests<6,true);
 });
+
+test('single C cannot accommodate a sixth guest even with an extra bed',()=>assert.equal(types.splitC.maxGuests<6,true));
