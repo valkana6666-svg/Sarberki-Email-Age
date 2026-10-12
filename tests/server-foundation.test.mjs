@@ -122,9 +122,13 @@ test('synthetic-only ingest-and-draft persists message, facts and pending draft 
 });
 test('synthetic follow-up updates shared case and draft in a single CAS, without stale prices',async()=>{
  const f=fixture();
- const first=await f.runtime.ingest(envelope('first'),values,{expectedRevision:0,persistDraft:true});
- const second=await f.runtime.ingest(envelope('followup',{text:'Please change the arrival to November 4 and departure to November 6, 2026.'}),
-   {arrival:'2026-11-04',departure:'2026-11-06'},{expectedRevision:1,persistDraft:true});
+ const first=await f.runtime.ingest(envelope('first',{text:'Please book one Deluxe cabin from 2026-11-01 to 2026-11-03 for 2 adults and no children.'}),
+  {arrival:'1999-01-01',adults:'999',unit:'VIP'},{expectedRevision:0,persistDraft:true});
+ assert.equal(first.record.data.state.values.arrival,'2026-11-01');
+ assert.equal(first.record.data.state.values.adults,'2');
+ assert.equal(first.record.data.state.values.unit,'Deluxe');
+ const second=await f.runtime.ingest(envelope('followup',{text:'Please change the stay to 2026-11-04 to 2026-11-06 for 2 adults and no children.'}),
+   {arrival:'2030-12-31',departure:'2031-01-01'},{expectedRevision:1,persistDraft:true});
  assert.equal(second.resolution.status,'linked');
  assert.equal(second.record.caseId,first.record.caseId);
  assert.equal(second.record.revision,2);
@@ -139,6 +143,24 @@ test('synthetic follow-up updates shared case and draft in a single CAS, without
  await assert.rejects(f.runtime.ingest(envelope('race',{text:'Latest changed arrival.'}),{arrival:'2026-11-07'},
    {expectedRevision:1,persistDraft:true}),e=>e.code==='CASE_CONFLICT');
  assert.equal((await f.service.getCase({requestContext:f.auth,tenantId:'sarberki-test',caseId:first.record.caseId})).revision,2);
+});
+test('atomic synthetic mail ignores forged browser facts, even with an apparently valid sender',async()=>{
+ const f=fixture();
+ const message=envelope('spoofed-facts',{text:'Please book one Deluxe cabin from 2026-11-01 to 2026-11-03 for 2 adults and no children.'});
+ const callerFacts={arrival:'2038-01-01',departure:'2038-01-08',adults:'100',children:'20',guests:'120',unit:'VIP',language:'de',phone:'ATTACKER'};
+ const result=await f.runtime.ingest(message,callerFacts,{expectedRevision:0,persistDraft:true});
+ const stored=result.record.data.state.values;
+ assert.equal(stored.arrival,'2026-11-01');
+ assert.equal(stored.departure,'2026-11-03');
+ assert.equal(stored.adults,'2');
+ assert.equal(stored.children,'0');
+ assert.equal(stored.guests,'2');
+ assert.equal(stored.unit,'Deluxe');
+ assert.equal(stored.language,'en');
+ assert.equal(stored.phone,undefined);
+ assert.equal(result.record.data.state.quote,null);
+ assert.equal(result.record.data.state.availability,null);
+ assert.equal(result.record.data.state.approval,'pending');
 });
 test('synthetic ingest-and-draft rejects real sender, forced link, other tenant, and read-only caller',async()=>{
  const f=fixture();
