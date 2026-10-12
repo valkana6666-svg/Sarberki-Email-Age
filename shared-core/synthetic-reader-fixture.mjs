@@ -29,17 +29,21 @@ export async function ensureSyntheticReaderFixture(writerClient){
  if(typeof writerClient?.ingestAndDraft!=='function')throw Error('WRITER_SESSION_REQUIRED');
  const response=await writerClient.ingestAndDraft(syntheticReaderFixtureRequest());
  const record=response?.record,caseId=record?.caseId,data=record?.data;
- if(record?.tenantId!==tenantId||!isIsolatedReviewCaseId(caseId)||
+ const latestDraft=Array.isArray(data?.drafts)?data.drafts.at(-1):null;
+ if(!['new','duplicate'].includes(response?.resolution?.status)||
+    record?.tenantId!==tenantId||!isIsolatedReviewCaseId(caseId)||
     !Number.isSafeInteger(record.revision)||record.revision<1||
     data?.id!==caseId||data?.tenantId!==tenantId||
     data?.sender?.toLowerCase()!==template.sender||
-    data?.state?.approval!=='pending'||data?.state?.quote!=null||
+    data?.state?.approval!=='pending'||data?.serverApproval!=null||
+    data?.state?.quote!=null||
     data?.state?.availability!=null||!Array.isArray(data.messages)||
     !data.messages.some(m=>m.mailbox_id===template.mailbox_id&&m.message_id===template.message_id&&
       m.text===template.text)||
-    !Array.isArray(data.drafts)||!data.drafts.some(d=>d.synthetic===true&&
-      typeof d.text==='string'&&d.text.trim()&&
-      d.revision===data.state.revision&&d.basedOnMessageCount===data.messages.length))
+    !latestDraft||latestDraft.synthetic!==true||
+    typeof latestDraft.text!=='string'||!latestDraft.text.trim()||
+    latestDraft.revision!==data.state.revision||
+    latestDraft.basedOnMessageCount!==data.messages.length)
   throw Error('SYNTHETIC_FIXTURE_UNVERIFIED');
  return Object.freeze({tenantId,caseId,revision:record.revision,
   duplicate:response.resolution?.status==='duplicate',readyForReaderPreview:true});
