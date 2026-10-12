@@ -70,7 +70,7 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
   const splitNeeded=(!input.cabin&&guests<=5)||input.cabin?.startsWith('split')||((guests<=5||input.units>1)&&input.fallback!==false&&checked.some(x=>x.key===input.cabin&&x.availability==='unavailable'&&x.availability_verified===true)&&!checked.some(x=>x.key===input.cabin&&x.availability==='unverified'));
   const unknown={verified:false,availability:'unverified',availableUnits:null,reason:'not_requested'};
   const placement=input.placement||null;
-  const [splitAB,splitC]=await Promise.all([splitNeeded&&(!placement||placement.ab>0)&&((input.units??0)>1||guests<=2||placement?.ab>0)?checkPool('splitA'):unknown,splitNeeded&&(!placement||placement.c>0)?checkPool('splitC'):unknown]);
+  const [splitAB,splitC]=await Promise.all([splitNeeded&&(!placement||placement.ab>0)&&((input.units??0)>1||guests<=2||placement?.ab>0)?checkPool('splitA'):unknown,splitNeeded&&(!placement||placement.c>0)&&(guests>=3||placement?.c>0)?checkPool('splitC'):unknown]);
   const split_pool_checks={splitAB,splitC};
   // One upper apartment needs only a verified C pool. No physical pairing is claimed.
   if(splitNeeded&&guests<=5&&(!placement||placement.c===1&&placement.ab===0)&&!placement?.adjacent&&!placement?.exactIds?.length){
