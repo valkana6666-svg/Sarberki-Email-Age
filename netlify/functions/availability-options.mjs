@@ -81,7 +81,8 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
   }
 
   const request=placement?{kind:placement.exactIds?.length?'exact':'mixed',requestedAB:placement.ab,requestedC:placement.c,exactUnitIds:placement.exactIds||[],requiresAdjacent:placement.adjacent===true}:null;
-  const plans=splitNeeded?buildSplitCapacityOptions(guests,split_pool_checks,request):[];
+  const explicitlyMultipleUnits=(input.units??0)>1||(placement!=null&&placement.ab+placement.c>1);
+  const plans=splitNeeded?buildSplitCapacityOptions(guests,split_pool_checks,request).filter(plan=>explicitlyMultipleUnits||plan.units.length===1):[];
   for(const plan of plans){
     const pools=[[plan.requiredAB,splitAB],[plan.requiredC,splitC]].filter(([n])=>n>0);
     const unavailable=pools.some(([n,pool])=>pool.verified&&pool.availableUnits<n);
