@@ -1,4 +1,5 @@
-// Real browser cookie/DOM + actual session/case handlers; synthetic Auth/REST only.
+// Real browser cookie/DOM + actual session/case handlers; synthetic Auth/REST
+// and Netlify request-event transport. No live Fetch Metadata proof is claimed.
 // Every browser URL is intercepted. No cloud account, real password or DB is used.
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -11,7 +12,7 @@ const origin='https://leafy-chimera-2403e5.netlify.app';
 const project='https://mojnqizbcaczstguikpv.supabase.co';
 const cookieName='__Host-sarberki-operator';
 export async function runOperatorCookieBrowserProof({browser,engine,root,report}){
- const state={login:0,refresh:0,caseReads:0,logout:0,revoked:false};
+ const state={login:0,refresh:0,caseReads:0,logout:0,revoked:false,http:[]};
  const store=createBookingCaseStore({tenantId:'sarberki-test',id:()=> 'case-synthetic'});
  const data=store.ingest({sender:'guest@synthetic.invalid',text:'Synthetic Deluxe inquiry',message_id:'synthetic-message',thread_id:'synthetic-thread',mailbox_id:'synthetic-box',received_at:new Date().toISOString()},
   {arrival:'2026-11-26',departure:'2026-11-28',adults:'2',children:'0',guests:'2',child_ages:'',unit:'deluxe',units_requested:'1',language:'en'}).bookingCase;
@@ -39,9 +40,17 @@ export async function runOperatorCookieBrowserProof({browser,engine,root,report}
    if(url.pathname.startsWith('/.netlify/functions/')){
     const handler=url.pathname==='/.netlify/functions/operator-session'?session:url.pathname==='/.netlify/functions/booking-cases'?cases:null;
     if(!handler)return route.fulfill({status:404,body:'{}'});
-    const headers=await request.allHeaders();
-    const event={httpMethod:request.method(),headers:{...headers,host:url.host},body:request.postData()||'',queryStringParameters:Object.fromEntries(url.searchParams)};
-    const result=await handler(event);return route.fulfill({status:result.statusCode,headers:result.headers,body:result.body});
+    const headers=await request.allHeaders(),frameOrigin=new URL(request.frame().url()).origin;
+    assert.equal(frameOrigin,origin);
+    // Playwright intercepts before the network stack finalizes Origin/Fetch
+    // Metadata. The synthetic Netlify adapter derives absent fields only from
+    // the verified initiating frame; existing supplied fields are preserved.
+    const eventHeaders={...headers,host:url.host,'sec-fetch-site':headers['sec-fetch-site']??'same-origin',
+     ...(request.method()==='POST'&&headers.origin===undefined?{origin:frameOrigin}:{})};
+    const event={httpMethod:request.method(),headers:eventHeaders,body:request.postData()||'',queryStringParameters:Object.fromEntries(url.searchParams)};
+    const result=await handler(event);
+    state.http.push({path:url.pathname,status:result.statusCode,fetchMetadataFromBrowser:headers['sec-fetch-site']!==undefined,originFromBrowser:headers.origin!==undefined,error:JSON.parse(result.body).error||null});
+    return route.fulfill({status:result.statusCode,headers:result.headers,body:result.body});
    }
    if(request.method()!=='GET'||!/^\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_.-]+\.(?:mjs|html|webmanifest|png|json)$/.test(url.pathname))return route.fulfill({status:404,body:''});
    const file=resolve(root,'.'+url.pathname);if(!file.startsWith(root+sep))return route.abort();
@@ -59,7 +68,7 @@ export async function runOperatorCookieBrowserProof({browser,engine,root,report}
   const cookie=(await context.cookies()).find(c=>c.name===cookieName);assert.ok(cookie);assert.equal(cookie.httpOnly,true);assert.equal(cookie.secure,true);assert.equal(cookie.sameSite,'Strict');assert.ok(cookie.expires>Date.now()/1000);
   assert.equal(await page.evaluate(()=>document.cookie.includes('__Host-sarberki-operator')),false);
   assert.equal(await page.evaluate(()=>localStorage.length+sessionStorage.length),0);assert.equal(await page.locator('#operator_password').inputValue(),'');
-  report.checks.push({engine,test:'persistent-HttpOnly-Secure-Strict-cookie-no-browser-token-storage',result:'PASS',authTransport:'synthetic'});
+  report.checks.push({engine,test:'persistent-HttpOnly-Secure-Strict-cookie-no-browser-token-storage',result:'PASS',authTransport:'synthetic',netlifyEventTransport:'synthetic'});
   await page.reload();await page.locator('#operator_panel summary').click();await authenticated();assert.equal(state.login,1);
   const savedState=await context.storageState();await context.close();
   context=await browser.newContext({storageState:savedState,viewport:{width:390,height:844},isMobile:true,hasTouch:true});await install(context);await open();await authenticated();assert.equal(state.login,1);assert.ok(state.refresh>=2);
@@ -75,5 +84,6 @@ export async function runOperatorCookieBrowserProof({browser,engine,root,report}
   await page.reload();await page.locator('#operator_panel summary').click();await page.locator('#operator_status').filter({hasText:'Új bejelentkezés szükséges'}).waitFor();
   assert.equal(await page.locator('#server_chat_reply').inputValue(),'');
   report.checks.push({engine,test:'revoked-refresh-and-explicit-logout-prevent-readback-and-reopening',result:'PASS'});
- }finally{await context?.close();}
+ }catch(error){throw Error(error.message+'; synthetic-boundary-status='+JSON.stringify({login:state.login,refresh:state.refresh,http:state.http.slice(-8)}));}
+ finally{await context?.close();}
 }
