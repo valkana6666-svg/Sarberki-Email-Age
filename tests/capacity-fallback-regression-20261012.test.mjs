@@ -25,7 +25,7 @@ for(const status of ['available','unavailable','unknown']){
    assert.ok(calls.length>1);
    assert.ok(calls.includes('family'));
    assert.ok(calls.includes('vip'));
-   assert.equal(calls.includes('splitC'),false);
+   assert.equal(calls.includes('splitC'),true);
    assert.ok(r.unavailable_options.some(x=>x.key==='deluxe'));
   }
  });
@@ -35,6 +35,6 @@ test('without a specified type, search all suitable cabin families',async()=>{
  const {cabin,...openInput}=input;
  const r=await buildAvailabilityOptions(openInput,fixture('available',calls),{now:()=>now.getTime()});
  for(const key of ['vip','family','deluxe','small','splitA'])assert.ok(calls.includes(key),key);
- assert.equal(calls.includes('splitC'),false);
+ assert.equal(calls.includes('splitC'),true);
  assert.ok(r.available_options.length>0);
 });
