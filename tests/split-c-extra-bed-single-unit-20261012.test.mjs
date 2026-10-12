@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildAvailabilityOptions} from '../netlify/functions/availability-options.mjs';
+import {availabilitySentence} from '../availability-recommend.mjs';
 const now=new Date('2026-10-12T08:00:00Z');
 const source=calls=>async ({cabin,...q})=>{
  calls.push(cabin);
@@ -23,5 +24,14 @@ for(const guests of [4,5,6]){
    assert.equal(calls.includes('splitA'),false);
    assert.equal(result.available_options.some(x=>x.key==='splitC'||x.key==='splitCombination'||x.key==='splitAB'),false);
   }
+ });
+}
+
+for(const [language,pattern] of [['hu',/ötödik fő részére pótágy/u],['de',/fünfte Person.*Zustellbett/u],['en',/extra bed.*fifth guest/u],['si',/petega gosta.*dodatno ležišče/u]]){
+ test(`five-person C reply discloses extra bed in ${language}`,async()=>{
+  const result=await buildAvailabilityOptions({arrival:'2026-11-20',departure:'2026-11-22',guests:5,adults:5},source([]),{now:()=>now.getTime()});
+  const reply=availabilitySentence(result,language);
+  assert.match(reply,pattern);
+  assert.doesNotMatch(reply,/\b(?:7|8|9|10)[ABC]\b/u);
  });
 }
