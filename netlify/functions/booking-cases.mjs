@@ -23,7 +23,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
   if(event.isBase64Encoded||Buffer.byteLength(event.body||'')>32768)return response(400,{error:'INVALID_INPUT'});
   try{
    const input=event.httpMethod==='GET'?(event.queryStringParameters||{}):JSON.parse(event.body||'{}');
-   if(Object.keys(input).some(k=>!['tenantId','caseId','envelope','values','expectedRevision','approvedCaseId','action','reviewedDraftHash'].includes(k)))return response(400,{error:'INVALID_INPUT'});
+   if(Object.keys(input).some(k=>!['tenantId','caseId','envelope','values','expectedRevision','approvedCaseId','action','reviewedDraftHash','editedDraftText'].includes(k)))return response(400,{error:'INVALID_INPUT'});
    if(!env.CASE_STORE_TEST_TENANTS.split(',').includes(input.tenantId))return response(403,{error:'FORBIDDEN'});
    let cookieSession=null;
    if(cookieMode){
@@ -40,6 +40,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    else {
     const runtime=createServerBookingRuntime({service,tenantId:input.tenantId,isolatedApproval:approvalEnabled,reviewProviders:approvalEnabled?reviewProviders:null});
     if(input.action==='draft')result=await runtime.draft(input.caseId,input.expectedRevision);
+    else if(input.action==='edit-draft')result=await runtime.editDraft(input.caseId,input.expectedRevision,input.editedDraftText);
     else if(input.action==='review-draft'&&approvalEnabled)result=await runtime.reviewAndDraft(input.caseId,input.expectedRevision);
     else if(input.action==='approve'&&approvalEnabled)result=await runtime.approve(input.caseId,input.expectedRevision,input.reviewedDraftHash);
     else if(input.action===undefined||input.action==='ingest')result=await runtime.ingest(input.envelope,input.values,{expectedRevision:input.expectedRevision,approvedCaseId:input.approvedCaseId});
