@@ -79,6 +79,25 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
     tenantId,caseId,revision:current.revision,syntheticOnly:true};
    return {caseId,revision:current.revision,text:planned.text,operatorReviewText:planned.operatorReviewText,decision:planned.decision,reviewState,readOnlyFreshness,approval:'pending',persisted:false};
   },
+  async editDraft(caseId,expectedRevision,editedText){
+   // Synthetic-only, operator-authenticated edit; append a pending version, never authorize a guest send.
+   if(tenantId!=='sarberki-test')reject('FORBIDDEN');
+   if(typeof editedText!=='string'||!editedText.trim()||editedText.length>20000||editedText.includes('\\0'))reject('INVALID_DRAFT');
+   await service.requireWrite({requestContext,tenantId});
+   const current=await service.getCase({requestContext,tenantId,caseId});
+   if(!current)reject('CASE_NOT_FOUND');
+   if(current.revision!==expectedRevision)reject('CASE_CONFLICT');
+   const data=current.data,last=data?.drafts?.at(-1);
+   if(!data?.sender?.endsWith('.invalid')||data.state?.approval!=='pending'||data.serverApproval||
+      !last||typeof last.text!=='string'||last.text===editedText||
+      last.revision!==data.state.revision||last.basedOnMessageCount!==data.messages.length)reject('INVALID_DRAFT');
+   const updated=structuredClone(data);
+   updated.drafts.push({text:editedText,at:clock(),revision:updated.state.revision,
+      basedOnMessageCount:updated.messages.length,edited:true,reviewStatus:'manual_edit_requires_review'});
+   updated.state.approval='pending';
+   // CAS + server-side write authority are rechecked by the existing case service.
+   return service.updateCase({requestContext,tenantId,caseId,expectedRevision,bookingCase:updated});
+  },
   async draft(caseId,expectedRevision){
    // Save only after separate server-side write authorization and optimistic concurrency check.
    await service.requireWrite({requestContext,tenantId});
