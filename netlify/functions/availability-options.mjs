@@ -94,7 +94,9 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
     const unavailable=pools.some(([n,pool])=>pool.verified&&pool.availableUnits<n);
     const enough=plan.capacity>=guests;
     const availability=!enough||unavailable?'unavailable':plan.availability;
-    if(plan.requiredC===1&&!plan.requiredAB&&checked.some(x=>x.key==='splitC'))continue;
+    const planKey=plan.requiredC&&!plan.requiredAB?'splitC':plan.requiredAB&&!plan.requiredC?'splitAB':'splitCombination';
+    // A and B share one Previo type pool; never advertise duplicate options.
+    if(checked.some(x=>x.key===planKey&&x.units===plan.units.length))continue;
     checked.push({...plan,key:plan.requiredC&&!plan.requiredAB?'splitC':plan.requiredAB&&!plan.requiredC?'splitAB':'splitCombination',units:plan.units.length,availability,availability_verified:availability!=='unverified',availableUnits:plan.requiredAB&&!plan.requiredC?splitAB.availableUnits:plan.requiredC&&!plan.requiredAB?splitC.availableUnits:null});
   }
   const excluded_options=rejected.filter(x=>!input.cabin||x.key===input.cabin);
