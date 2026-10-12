@@ -129,7 +129,7 @@ function specifiedOptions(request,poolChecks={}){
     return [decorate({
       label:request.exactUnitIds.join(' + '),
       units:rows.map(x=>x.segment==='C'?'splitC':x.segment==='B'?'splitB':'splitA'),
-      capacity:rows.reduce((n,x)=>n+Number(x.nominalGuests||0),0),
+      capacity:rows.reduce((n,x)=>n+(x.segment==='C'?5:Number(x.nominalGuests||0)),0),
       candidateCombinations:[request.exactUnitIds],
       needAB:rows.filter(x=>x.segment!=='C').length,
       needC:rows.filter(x=>x.segment==='C').length,
@@ -170,7 +170,7 @@ function specifiedOptions(request,poolChecks={}){
     combos=[];
     mode='multi_split_units';
   }
-  return [decorate({label,units,capacity:ab*2+c*4,candidateCombinations:combos,needAB:ab,needC:c,requestMode:mode,poolChecks,requiresAdjacent:request.requiresAdjacent===true})];
+  return [decorate({label,units,capacity:ab*2+c*5,candidateCombinations:combos,needAB:ab,needC:c,requestMode:mode,poolChecks,requiresAdjacent:request.requiresAdjacent===true})];
 }
 
 export function splitCapacityOptions(guests,poolChecks={},request=null){
