@@ -5,7 +5,7 @@ import {initOperatorLoginPanel} from '../operator-login-ui.mjs';
 const ui=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const names=['operator_login_form','operator_login_email','operator_login_password','operator_login','operator_restore','operator_logout','operator_login_status','operator_list_cases','operator_case_select','operator_open_case','operator_case_status','server_preview_case_id','server_preview_revision'];
 const valid=()=>({authenticated:true,tenantId:'sarberki-test',csrfToken:'ab'.repeat(32),expiresAt:new Date(Date.now()+3600_000).toISOString()});
-function harness(request){
+async function harness(request){
  const map=new Map(),events=[];
  for(const name of names){
   const element={id:name,value:'',disabled:false,textContent:'',children:[],listeners:{},
@@ -18,9 +18,12 @@ function harness(request){
   map.set(name,element);
  }
  const documentRef={getElementById:id=>map.get(id),createElement:tag=>({tag,value:'',textContent:''}),dispatchEvent:event=>events.push(event.type)};
- const globalRef={};
+ const globalListeners={};
+ const globalRef={addEventListener:(type,fn)=>{globalListeners[type]=fn;}};
  assert.equal(initOperatorLoginPanel({documentRef,globalRef,request}),true);
- return {map,get:id=>map.get(id),globalRef,events};
+ for(let i=0;i<100&&map.get('operator_login').disabled;i++)await Promise.resolve();
+ assert.equal(map.get('operator_login').disabled,false,'startup restore must settle');
+ return {map,get:id=>map.get(id),globalRef,events,globalListeners};
 }
 test('test booking manager has an operator login form with no stored credentials',()=>{
  for(const id of names)assert.match(ui,new RegExp('id="'+id+'"'));
@@ -32,10 +35,11 @@ test('test booking manager has an operator login form with no stored credentials
  assert.doesNotMatch(ui,/localStorage\.setItem\([^\n]*password/u);
 });
 test('login uses same-origin POST and only exposes read-only cookie-mode case client',async()=>{
- const requests=[],h=harness(async(url,options)=>{
+ const requests=[],h=await harness(async(url,options)=>{
   requests.push({url,options});
   return {ok:true,json:async()=>valid()};
  });
+ requests.length=0;
  h.get('operator_login_email').value='reader@synthetic.invalid';
  h.get('operator_login_password').value='SYNTHETIC_PASSWORD_NOT_A_REAL_SECRET';
  await h.get('operator_login_form').submit();
@@ -57,12 +61,19 @@ test('login uses same-origin POST and only exposes read-only cookie-mode case cl
  assert.equal(h.get('operator_logout').disabled,false);
  assert.ok(h.events.includes('sarberki:session-changed'));
 });
-test('reader can restore session explicitly and logout with CSRF; no auto requests',async()=>{
- const requests=[],h=harness(async(url,options)=>{
+test('reader automatically restores once and can explicitly restore and logout with CSRF',async()=>{
+ const requests=[],h=await harness(async(url,options)=>{
   requests.push({url,options});
   return {ok:true,json:async()=>options.method==='GET'?valid():{authenticated:false}};
  });
- assert.equal(requests.length,0);
+ assert.equal(requests.length,1);
+ assert.equal(requests[0].options.method,'GET');
+ assert.equal(requests[0].options.credentials,'same-origin');
+ assert.equal(requests[0].options.body,undefined);
+ assert.equal(h.globalRef.SarberkiCaseStoreSession.cookieReadOnly,true);
+ await h.globalListeners.pageshow({persisted:false});
+ assert.equal(requests.length,1,'ordinary pageshow must not duplicate startup restore');
+ requests.length=0;
  await h.get('operator_restore').click();
  assert.equal(requests[0].options.method,'GET');
  assert.equal(requests[0].options.credentials,'same-origin');
@@ -75,6 +86,43 @@ test('reader can restore session explicitly and logout with CSRF; no auto reques
  assert.equal(h.get('operator_logout').disabled,true);
  assert.match(h.get('operator_login_status').textContent,/kijelentkeztetve/u);
 });
+test('automatic restore fails closed for missing, revoked or unavailable sessions',async()=>{
+ for(const error of ['AUTH_REQUIRED','FORBIDDEN','SESSION_SETUP_REQUIRED','SESSION_SERVICE_UNAVAILABLE']){
+  const requests=[],h=await harness(async(url,options)=>{
+   requests.push({url,options});
+   return {ok:false,json:async()=>({error})};
+  });
+  assert.equal(requests.length,1);
+  assert.equal(requests[0].options.method,'GET');
+  assert.equal(requests[0].options.body,undefined);
+  assert.equal(h.globalRef.SarberkiCaseStoreSession,null);
+  assert.equal(h.get('operator_list_cases').disabled,true);
+  assert.equal(h.get('operator_logout').disabled,true);
+  assert.equal(h.get('operator_login').disabled,false);
+  assert.doesNotMatch(h.get('operator_login_status').textContent,/olvasás aktív/u);
+ }
+});
+test('bfcache return revalidates and clears stale access without parallel cookie refresh',async()=>{
+ let calls=0,release;
+ const h=await harness(async()=>{
+  calls++;
+  if(calls===1)return {ok:true,json:async()=>valid()};
+  return new Promise(resolve=>{release=resolve;});
+ });
+ const pending=h.globalListeners.pageshow({persisted:true});
+ assert.equal(calls,2);
+ assert.equal(h.globalRef.SarberkiCaseStoreSession,null);
+ assert.equal(h.get('operator_list_cases').disabled,true);
+ await h.globalListeners.pageshow({persisted:true});
+ await h.get('operator_restore').click();
+ assert.equal(calls,2,'busy session restoration must not rotate the cookie concurrently');
+ release({ok:false,json:async()=>({error:'AUTH_REQUIRED'})});
+ await pending;
+ assert.equal(h.globalRef.SarberkiCaseStoreSession,null);
+ assert.equal(h.get('operator_list_cases').disabled,true);
+ assert.equal(h.get('operator_login').disabled,false);
+ assert.doesNotMatch(h.get('operator_login_status').textContent,/olvasás aktív/u);
+});
 test('bad credentials, disabled setup and malformed session cannot expose a case store',async()=>{
  for(const failure of [
   {ok:false,json:async()=>({error:'AUTH_REQUIRED'})},
@@ -82,7 +130,7 @@ test('bad credentials, disabled setup and malformed session cannot expose a case
   {ok:true,json:async()=>({...valid(),csrfToken:'wrong'})},
   {ok:true,json:async()=>({...valid(),tenantId:'demo-test'})}
  ]){
-  const h=harness(async()=>failure);
+  const h=await harness(async()=>failure);
   h.get('operator_login_email').value='reader@synthetic.invalid';
   h.get('operator_login_password').value='NOT_REAL_PASSWORD';
   await h.get('operator_login_form').submit();
@@ -93,7 +141,7 @@ test('bad credentials, disabled setup and malformed session cannot expose a case
  }
 });
 test('failed logout locally drops the session and does not claim remote revocation',async()=>{
- const h=harness(async(_url,opt)=>opt.method==='GET'?{ok:true,json:async()=>valid()}:{ok:false,json:async()=>({error:'SESSION_SERVICE_UNAVAILABLE'})});
+ const h=await harness(async(_url,opt)=>opt.method==='GET'?{ok:true,json:async()=>valid()}:{ok:false,json:async()=>({error:'SESSION_SERVICE_UNAVAILABLE'})});
  await h.get('operator_restore').click();
  await h.get('operator_logout').click();
  assert.equal(h.globalRef.SarberkiCaseStoreSession,null);
@@ -107,11 +155,12 @@ test('authorized synthetic cases appear as IDs and revisions only; fake guest da
   {tenantId:'demo-test',caseId:'case-other',revision:1},
   {tenantId:'sarberki-test',caseId:'bad-case',revision:2}
  ];
- const h=harness(async(url,opt)=>{
+ const h=await harness(async(url,opt)=>{
   requests.push({url,opt});
   if(url.endsWith('/operator-session'))return {ok:true,json:async()=>valid()};
   return {ok:true,json:async()=>({result:fixtureRows})};
  });
+ requests.length=0;
  await h.get('operator_restore').click();
  await h.get('operator_list_cases').click();
  assert.equal(requests.length,2);
@@ -137,7 +186,7 @@ test('authorized synthetic cases appear as IDs and revisions only; fake guest da
  assert.equal(h.get('operator_open_case').disabled,true);
 });
 test('case-list errors clear choices without changing a real booking',async()=>{
- const h=harness(async(url,opt)=>url.endsWith('/operator-session')?{ok:true,json:async()=>valid()}:
+ const h=await harness(async(url,opt)=>url.endsWith('/operator-session')?{ok:true,json:async()=>valid()}:
   {ok:false,json:async()=>({error:'CASE_STORE_DISABLED'})});
  await h.get('operator_restore').click();
  await h.get('operator_list_cases').click();

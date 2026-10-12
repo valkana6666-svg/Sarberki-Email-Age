@@ -49,6 +49,10 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
  async function perform(kind){
   if(busy)return;
   waiting(true);
+  if(kind==='restore'){
+   clear();
+   status.textContent='Korábbi tesztkezelői munkamenet ellenőrzése…';
+  }
   try{
    if(kind==='login'){
     const value=email.value.trim(),secret=password.value;
@@ -113,8 +117,13 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
  logout.addEventListener('click',()=>perform('logout'));
  listCases.addEventListener('click',loadCases);
  openCase.addEventListener('click',openSelectedCase);
+ // A normal load restores once below. Only a bfcache return needs pageshow
+ // revalidation; the existing busy gate prevents concurrent cookie rotation.
+ globalRef.addEventListener?.('pageshow',event=>{
+  if(event.persisted)return perform('restore');
+ });
  clear();
- status.textContent='Nincs igazolt tesztkezelői munkamenet. A belépés csak a szintetikus ügyek olvasását teszi lehetővé.';
+ void perform('restore');
  return true;
 }
 if(typeof document!=='undefined'&&typeof window!=='undefined')initOperatorLoginPanel();
