@@ -70,10 +70,10 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
   const splitNeeded=(!input.cabin&&guests<=5)||input.cabin?.startsWith('split')||((guests<=5||input.units>1)&&input.fallback!==false&&checked.some(x=>x.key===input.cabin&&x.availability==='unavailable'&&x.availability_verified===true)&&!checked.some(x=>x.key===input.cabin&&x.availability==='unverified'));
   const unknown={verified:false,availability:'unverified',availableUnits:null,reason:'not_requested'};
   const placement=input.placement||null;
-  const [splitAB,splitC]=await Promise.all([splitNeeded&&(!placement||placement.ab>0)&&((input.units??0)>1||guests<=2||placement?.ab>0)?checkPool('splitA'):unknown,splitNeeded&&(!placement||placement.c>0)&&(guests>=3||placement?.c>0)?checkPool('splitC'):unknown]);
+  const [splitAB,splitC]=await Promise.all([splitNeeded&&input.cabin!=='splitC'&&(!placement||placement.ab>0)&&((input.units??0)>1||guests<=2||placement?.ab>0)?checkPool('splitA'):unknown,splitNeeded&&!['splitA','splitB'].includes(input.cabin)&&(!placement||placement.c>0)&&(guests>=3||placement?.c>0||input.cabin==='splitC')?checkPool('splitC'):unknown]);
   const split_pool_checks={splitAB,splitC};
   // One upper apartment needs only a verified C pool. No physical pairing is claimed.
-  if(splitNeeded&&guests<=5&&(guests>=3||placement?.c>0)&&(!placement||placement.c===1&&placement.ab===0)&&!placement?.adjacent&&!placement?.exactIds?.length){
+  if(splitNeeded&&guests<=5&&(guests>=3||placement?.c>0||input.cabin==='splitC')&&(!placement||placement.c===1&&placement.ab===0)&&!placement?.adjacent&&!placement?.exactIds?.length){
     checked.push({key:'splitC',label:'Osztott C (emeleti apartman)',capacity:5,nominalGuests:4,extraBedRequired:guests===5,extraBedPlacementRequiresConfirmation:guests===5,extraBedFeeVerified:false,units:1,
       availability:splitC.verified?splitC.availability:'unverified',availableUnits:splitC.availableUnits,
       checkedAt:splitC.checkedAt||null,source:splitC.source||null,availability_verified:splitC.verified,
