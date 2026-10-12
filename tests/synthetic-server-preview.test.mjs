@@ -93,6 +93,49 @@ test('edit CAS conflict clears stale draft and requires a fresh preview',async()
  assert.equal(documentRef.data.get('server_edit_text').value,'');
  assert.match(documentRef.data.get('server_edit_status').textContent,/CASE_CONFLICT/);
 });
+test('cookie reader can preview synthetic server case, never unlock editor or send POST',async()=>{
+ const documentRef=elements(),calls=[],csrf='ab'.repeat(32);
+ initSyntheticPreviewPanel({documentRef,sessionProvider:()=>({
+  cookieReadOnly:true,canEditDraft:false,getCsrfToken:async()=>csrf,
+  request:async(url,options)=>{
+   calls.push({url,options});
+   return {ok:true,json:async()=>({result:{caseId:'case-1234',revision:2,persisted:false,approval:'pending',text:'Szintetikus biztonságos előnézet',
+    reviewState:{caseRevision:2,storedApproval:'pending'},
+    storedDraft:{text:'Korábbi szintetikus tervezet',caseRevision:2,edited:false}}})};
+  }
+ })});
+ await documentRef.data.get('server_preview_action').click();
+ assert.equal(documentRef.data.get('server_preview_text').value,'Szintetikus biztonságos előnézet');
+ assert.equal(calls.length,1);
+ assert.equal(calls[0].options.method,'GET');
+ assert.equal(calls[0].options.credentials,'same-origin');
+ assert.equal(calls[0].options.headers['X-CSRF-Token'],csrf);
+ assert.equal(calls[0].options.headers['X-Sarberki-Operator'],'1');
+ assert.equal(calls[0].options.headers.Authorization,undefined);
+ assert.equal(documentRef.data.get('server_edit_text').value,'Korábbi szintetikus tervezet');
+ assert.equal(documentRef.data.get('server_edit_text').disabled,true);
+ assert.equal(documentRef.data.get('server_edit_action').disabled,true);
+ await documentRef.data.get('server_edit_action').click();
+ assert.equal(calls.length,1);
+});
+test('cookie session refuses even a caller-provided edit toggle and suppresses old preview after logout',async()=>{
+ const documentRef=elements(),calls=[];
+ initSyntheticPreviewPanel({documentRef,sessionProvider:()=>({
+  cookieReadOnly:true,canEditDraft:true,getCsrfToken:async()=> 'ab'.repeat(32),
+  request:async(_url,options)=>{
+   calls.push(options.method);
+   return {ok:true,json:async()=>({result:{caseId:'case-1234',revision:2,persisted:false,approval:'pending',text:'Reader only',
+    reviewState:{caseRevision:2,storedApproval:'pending'},storedDraft:{text:'Old',caseRevision:2}}})};
+  }
+ })});
+ await documentRef.data.get('server_preview_action').click();
+ assert.equal(documentRef.data.get('server_edit_action').disabled,true);
+ documentRef.listeners['sarberki:session-changed']();
+ assert.equal(documentRef.data.get('server_preview_text').value,'');
+ assert.equal(documentRef.data.get('server_edit_text').value,'');
+ assert.equal(documentRef.data.get('server_edit_action').disabled,true);
+ assert.deepEqual(calls,['GET']);
+});
 test('UI refuses invalid case ID and missing trusted login without fetching',async()=>{
  const documentRef=elements();initSyntheticPreviewPanel({documentRef,sessionProvider:()=>null});
  documentRef.data.get('server_preview_case_id').value='real-person-mail';
