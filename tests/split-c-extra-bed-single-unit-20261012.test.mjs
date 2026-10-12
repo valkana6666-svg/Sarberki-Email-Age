@@ -46,3 +46,13 @@ test('explicit A+C request still permits verified two-unit split plan',async()=>
  const result=await buildAvailabilityOptions({arrival:'2026-11-20',departure:'2026-11-22',guests:6,adults:6,cabin:'split',units:2,placement:{ab:1,c:1,adjacent:false,exactIds:[]}},source([]),{now:()=>now.getTime()});
  assert.ok(result.available_options.some(x=>x.key==='splitCombination'&&x.requiredAB===1&&x.requiredC===1));
 });
+
+for(const guests of [3,4,5]){
+ test(`${guests} adults without multi-unit request never receive multiple split apartments`,async()=>{
+  const result=await buildAvailabilityOptions({arrival:'2026-11-20',departure:'2026-11-22',guests,adults:guests},source([]),{now:()=>now.getTime()});
+  for(const category of ['available_options','unavailable_options','unverified_options']){
+   assert.ok(result[category].every(x=>x.units===1),`${category} must only contain single units`);
+  }
+  assert.ok(result.manual_review_options.every(x=>x.units.length===1));
+ });
+}
