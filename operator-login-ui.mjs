@@ -66,7 +66,7 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
    status.textContent=kind==='logout'?'A helyi hozzáférés lezárva; a szerveroldali kijelentkezés nem igazolt.':problem(e);
   }finally{password.value='';waiting(false);}
  }
- form.addEventListener('submit',event=>{event.preventDefault();void perform('login');});
+ form.addEventListener('submit',event=>{event.preventDefault();return perform('login');});
  restore.addEventListener('click',()=>perform('restore'));
  logout.addEventListener('click',()=>perform('logout'));
  clear();
