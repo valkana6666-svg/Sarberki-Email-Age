@@ -70,13 +70,19 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
   const fallbackConfirmed=Boolean(input.cabin&&!input.cabin.startsWith('split')&&input.fallback!==false&&checked.some(x=>x.key===input.cabin&&x.availability==='unavailable'&&x.availability_verified===true)&&!checked.some(x=>x.key===input.cabin&&x.availability==='unverified'));
   const splitNeeded=(!input.cabin&&guests<=5)||input.cabin?.startsWith('split')||((guests<=5||input.units>1)&&fallbackConfirmed);
   const unknown={verified:false,availability:'unverified',availableUnits:null,reason:'not_requested'};
-  const placement=input.placement||null;
+  // Resolve a specifically requested split type before checking any pool.
+  // Reuse the existing plan capacity, including C's fifth extra-bed place.
+  const placement=input.placement||(input.cabin==='splitC'?{ab:0,c:input.units||1,adjacent:false,exactIds:[]}:
+    ['splitA','splitB'].includes(input.cabin)?{ab:input.units||1,c:0,adjacent:false,exactIds:[]}:null);
+  const request=placement?{kind:placement.exactIds?.length?'exact':'mixed',requestedAB:placement.ab,requestedC:placement.c,exactUnitIds:placement.exactIds||[],requiresAdjacent:placement.adjacent===true}:null;
+  const splitPhysicallySuitable=!request||buildSplitCapacityOptions(guests,{},request).some(plan=>plan.capacity>=guests);
+  const canCheckSplit=splitNeeded&&splitPhysicallySuitable;
   // C has a four-person base price, not a four-person minimum occupancy.
   // It must also be checked for one/two guests when no type is requested or
   // the requested whole-cabin type is confirmed unavailable.
-  const checkSplitC=splitNeeded&&!['splitA','splitB'].includes(input.cabin)&&(!placement||placement.c>0)&&
+  const checkSplitC=canCheckSplit&&!['splitA','splitB'].includes(input.cabin)&&(!placement||placement.c>0)&&
     (guests>=3||placement?.c>0||['split','splitC'].includes(input.cabin)||!input.cabin||fallbackConfirmed);
-  const [splitAB,splitC]=await Promise.all([splitNeeded&&input.cabin!=='splitC'&&(!placement||placement.ab>0)&&((input.units??0)>1||guests<=2||placement?.ab>0)?checkPool('splitA'):unknown,checkSplitC?checkPool('splitC'):unknown]);
+  const [splitAB,splitC]=await Promise.all([canCheckSplit&&input.cabin!=='splitC'&&(!placement||placement.ab>0)&&((input.units??0)>1||guests<=2||placement?.ab>0)?checkPool('splitA'):unknown,checkSplitC?checkPool('splitC'):unknown]);
   const split_pool_checks={splitAB,splitC};
   // One upper apartment needs only a verified C pool. No physical pairing is claimed.
   if(checkSplitC&&guests<=5&&(!placement||placement.c===1&&placement.ab===0)&&!placement?.adjacent&&!placement?.exactIds?.length){
@@ -86,9 +92,8 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
       verification_scope:'type_pool',individual_unit_mapping_verified:false});
   }
 
-  const request=placement?{kind:placement.exactIds?.length?'exact':'mixed',requestedAB:placement.ab,requestedC:placement.c,exactUnitIds:placement.exactIds||[],requiresAdjacent:placement.adjacent===true}:null;
   const explicitlyMultipleUnits=(input.units??0)>1||(placement!=null&&placement.ab+placement.c>1);
-  const plans=splitNeeded?buildSplitCapacityOptions(guests,split_pool_checks,request).filter(plan=>explicitlyMultipleUnits||plan.units.length===1):[];
+  const plans=canCheckSplit?buildSplitCapacityOptions(guests,split_pool_checks,request).filter(plan=>explicitlyMultipleUnits||plan.units.length===1):[];
   for(const plan of plans){
     const pools=[[plan.requiredAB,splitAB],[plan.requiredC,splitC]].filter(([n])=>n>0);
     const unavailable=pools.some(([n,pool])=>pool.verified&&pool.availableUnits<n);

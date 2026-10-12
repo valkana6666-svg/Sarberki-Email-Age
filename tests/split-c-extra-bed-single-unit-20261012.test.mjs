@@ -72,11 +72,14 @@ test('two adults can still query A/B single apartment pool',async()=>{
 });
 
 for(const guests of [1,2]){
- test(`${guests} adult request skips unnecessary C pool and does not expose unverified C`,async()=>{
+ test(`${guests} adult no-type request checks suitable C once; base-price occupancy is not a minimum`,async()=>{
   const calls=[];
   const result=await buildAvailabilityOptions({arrival:'2026-11-20',departure:'2026-11-22',guests,adults:guests},source(calls),{now:()=>now.getTime()});
-  assert.equal(calls.includes('splitC'),false);
-  assert.ok(calls.includes('splitA'));
+  assert.equal(calls.filter(x=>x==='splitC').length,1);
+  assert.equal(calls.filter(x=>x==='splitA').length,1);
+  const c=result.available_options.filter(x=>x.key==='splitC');
+  assert.equal(c.length,1);assert.equal(c[0].units,1);assert.equal(c[0].availability_verified,true);
+  assert.equal(result.available_options.filter(x=>x.key==='splitAB'&&x.units===1).length,1);
   assert.equal(result.unverified_options.some(x=>x.key==='splitC'),false);
  });
 }

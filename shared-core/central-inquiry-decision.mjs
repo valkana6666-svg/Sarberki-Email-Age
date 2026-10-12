@@ -138,6 +138,9 @@ export function evaluateCentralInquiry({message='',language='hu',now=new Date(),
  else missing.push('current_date');
  if(staged.arrival.status==='known'&&today&&dates.arrival<today)contradictions.push({code:'past_arrival',message:'Az érkezés múltbeli; kezelői pontosítás szükséges.'});
  const input=capacityInput(values,n.originalText);
+ // An absent type allows a general search; an explicit unrecognized stored
+ // choice requires clarification and must not become that general search.
+ if(n.cabin&&!input.cabin)missing.push('accommodation');
  if(fallback===false)input.fallback=false;
  // A follow-up may only contain a phone number or child age. Preserve the
  // already normalized split request instead of re-parsing that latest turn.
