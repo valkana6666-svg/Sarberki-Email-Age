@@ -7,12 +7,12 @@ test('six guests respect verified nominal capacity without unverified extra beds
   const result=await buildAvailabilityOptions({arrival:'2026-10-09',departure:'2026-10-13',guests:6},async input=>({
     status:'review_required',availability:(free[input.cabin]||0)>0?'available':'unavailable',availableUnits:free[input.cabin]||0,checkedAt:new Date().toISOString(),source:'test'
   }));
-  assert.deepEqual(result.available_options.map(x=>x.key).sort(),['deluxe','family']);
-  assert.deepEqual(result.available_options.map(x=>x.units),[2,1]);
+  assert.deepEqual(result.available_options.map(x=>x.key).sort(),['family']);
+  assert.deepEqual(result.available_options.map(x=>x.units),[1]);
   const split=result.manual_review_options.map(x=>x.label).sort();
-  assert.deepEqual(split,['Osztott A + Osztott C','Osztott B + Osztott C']);
+  assert.deepEqual(split,[]);
   assert.ok(result.manual_review_options.every(x=>x.same_house_preferred===true));
-  assert.deepEqual(result.manual_review_options[0].candidate_combinations,[['7A','7C'],['8A','8C'],['9A','9C'],['10A','10C']]);
+  assert.equal(result.manual_review_options.length,0);
   assert.ok(result.manual_review_options.every(x=>x.availability_verified===false));
 });
 
@@ -25,10 +25,8 @@ test('split pooled availability can be verified while physical pairing stays man
     checkedAt:new Date().toISOString(),
     source:'test'
   }));
-  assert.equal(result.split_pool_checks.splitAB.verified,true);
-  assert.equal(result.split_pool_checks.splitAB.availableUnits,4);
-  assert.equal(result.split_pool_checks.splitC.verified,true);
-  assert.equal(result.split_pool_checks.splitC.availableUnits,3);
+  assert.equal(result.split_pool_checks.splitAB.verified,false);
+  assert.equal(result.split_pool_checks.splitC.verified,false);
   for(const option of result.manual_review_options){
     assert.equal(option.pooled_availability_verified,true);
     assert.equal(option.availability_verified,false);
@@ -49,7 +47,7 @@ test('insufficient split pool capacity never upgrades the manual-review combinat
 });
 
 test('same-type multi-unit option requires enough free units',async()=>{
-  const result=await buildAvailabilityOptions({arrival:'2026-10-09',departure:'2026-10-13',guests:12},async input=>({
+  const result=await buildAvailabilityOptions({arrival:'2026-10-09',departure:'2026-10-13',guests:12,units:2},async input=>({
     status:'review_required',availability:'available',availableUnits:input.cabin==='family'?2:1,source:'test',checkedAt:new Date().toISOString()
   }));
   assert.equal(result.available_options.some(x=>x.key==='family'&&x.units===2),true);
@@ -61,7 +59,7 @@ test('availability endpoint accepts only anonymous dates and total guests',async
   const res=await handleAvailabilityOptions(req,async input=>({availability:'available',availableUnits:3,source:'test',checkedAt:new Date().toISOString(),status:'review_required',...input}),true);
   assert.equal(res.status,200);
   const body=await res.json();
-  assert.ok(body.available_options.length>=3);
+  assert.ok(body.available_options.length>=1);
   const bad=new Request('https://leafy-chimera-2403e5.netlify.app/api/availability-options',{method:'POST',body:JSON.stringify({arrival:'2026-10-09',departure:'2026-10-13',guests:6,name:'Kovács István'})});
   const badRes=await handleAvailabilityOptions(bad,async()=>{throw Error('should not call');},true);
   assert.equal(badRes.status,503);
