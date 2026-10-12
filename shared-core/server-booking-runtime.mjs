@@ -129,7 +129,16 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    validateSyntheticMessage(envelope,values);
    const records=await service.listCases({requestContext,tenantId});
    const duplicate=records.find(r=>r.data.messages.some(m=>m.mailbox_id===envelope.mailbox_id&&m.message_id===envelope.message_id));
-   if(duplicate)return {resolution:{status:'duplicate',caseId:duplicate.caseId},record:duplicate};
+   if(duplicate){
+    // A provider ID is only an idempotency key when the original message is identical.
+    // Never expose an unrelated saved case just because a caller reused its ID.
+    const original=duplicate.data.messages.find(m=>m.mailbox_id===envelope.mailbox_id&&m.message_id===envelope.message_id);
+    const canonicalSender=value=>String(value||'').trim().toLowerCase();
+    if(canonicalSender(duplicate.data.sender)!==canonicalSender(envelope.sender)||
+       canonicalSender(original?.sender)!==canonicalSender(envelope.sender)||
+       original?.text!==envelope.text)reject('CASE_CONFLICT');
+    return {resolution:{status:'duplicate',caseId:duplicate.caseId},record:duplicate};
+   }
    // Namespace provider IDs before passing to the existing engine's dedup logic.
    const scoped=records.map(r=>({...r.data,messages:r.data.messages.map(m=>scopeMessage(m))}));
    let saved;
