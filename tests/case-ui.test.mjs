@@ -150,6 +150,20 @@ test('switching to a new manual inquiry hides stale Gmail editor and ignores its
  assert.equal(h.node('draft').value,currentDraft);
  assert.notEqual(runtime.cases.list().at(-1).drafts.at(-1)?.text,'RÉGI GMAIL SZÖVEG');
 });
+test('Gmail import remains unprocessed when local draft storage fails',async()=>{
+ const contents=new Map(),storage={getItem:key=>contents.get(key)??null,setItem:(key,value)=>{
+  const cases=JSON.parse(value);
+  if(cases.some(c=>c.sender==='gmail-flow@example.invalid'&&c.drafts?.length))throw Error('SYNTHETIC_STORAGE_FULL');
+  contents.set(key,value);
+ }};
+ const runtime=createBookingRuntime({storage,request:()=>{throw Error('network unused');}}),h=harness(runtime);
+ assert.equal(await importGmail(h,gmailFixture('gmail-full-storage',gmailFirst)),false);
+ assert.equal(h.node('gmail_record').classList.contains('hidden'),false);
+ assert.match(h.node('gmail_error').textContent,/helyi mentése nem igazolt/u);
+ assert.equal(h.node('gmail_error').classList.contains('hidden'),false);
+ const saved=runtime.cases.list().find(c=>c.sender==='gmail-flow@example.invalid');
+ assert.ok(saved);assert.equal(saved.drafts.length,0);assert.equal(saved.state.approval,'pending');
+});
 test('manual Gmail JSON import runs the central analyzer and clears stale manual case linking',async()=>{
  const runtime=createBookingRuntime({request:()=>{throw Error('network unused');}}),h=harness(runtime);h.node('booking_case_link').value=runtime.cases.list()[0].id;
  assert.equal(await importGmail(h,gmailFixture('gmail-one',gmailFirst)),true);
