@@ -35,3 +35,14 @@ for(const [language,pattern] of [['hu',/ötödik fő részére pótágy/u],['de'
   assert.doesNotMatch(reply,/\b(?:7|8|9|10)[ABC]\b/u);
  });
 }
+
+test('single-unit five-person request has no unsolicited multi-unit review plans',async()=>{
+ const result=await buildAvailabilityOptions({arrival:'2026-11-20',departure:'2026-11-22',guests:5,adults:5},source([]),{now:()=>now.getTime()});
+ assert.ok(result.available_options.some(x=>x.key==='splitC'&&x.units===1));
+ assert.equal(result.available_options.some(x=>x.units>1),false);
+ assert.equal(result.manual_review_options.some(x=>x.units.length>1),false);
+});
+test('explicit A+C request still permits verified two-unit split plan',async()=>{
+ const result=await buildAvailabilityOptions({arrival:'2026-11-20',departure:'2026-11-22',guests:6,adults:6,cabin:'split',units:2,placement:{ab:1,c:1,adjacent:false,exactIds:[]}},source([]),{now:()=>now.getTime()});
+ assert.ok(result.available_options.some(x=>x.key==='splitCombination'&&x.requiredAB===1&&x.requiredC===1));
+});
