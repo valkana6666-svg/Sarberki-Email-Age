@@ -127,7 +127,7 @@ test('synthetic follow-up updates shared case and draft in a single CAS, without
  assert.equal(first.record.data.state.values.arrival,'2026-11-01');
  assert.equal(first.record.data.state.values.adults,'2');
  assert.equal(first.record.data.state.values.unit,'Deluxe');
- const second=await f.runtime.ingest(envelope('followup',{text:'Please change the stay to 2026-11-04 to 2026-11-06 for 2 adults and no children.'}),
+ const second=await f.runtime.ingest(envelope('followup',{text:'Please book one Deluxe cabin from 2026-11-04 to 2026-11-06 for 2 adults and no children.'}),
    {arrival:'2030-12-31',departure:'2031-01-01'},{expectedRevision:1,persistDraft:true});
  assert.equal(second.resolution.status,'linked');
  assert.equal(second.record.caseId,first.record.caseId);
