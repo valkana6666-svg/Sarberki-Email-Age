@@ -3,8 +3,18 @@ import {createSupabaseTransport,createSupabaseAuthority,createSupabaseCaseReposi
 import {createServerBookingRuntime} from '../../shared-core/server-booking-runtime.mjs';
 import {createOperatorCookieSession,OperatorSessionError} from '../../shared-core/operator-cookie-session.mjs';
 import {createIsolatedApprovalAttestor} from '../../shared-core/isolated-approval-attestation.mjs';
+import {isIsolatedReviewCaseId} from '../../shared-core/isolated-review-case-id.mjs';
 const headers={'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 const response=(statusCode,body)=>({statusCode,headers,body:JSON.stringify(body)});
+// Cookie-reader case picker gets metadata only, never raw inquiry content.
+export function syntheticCaseSummaries(records){
+ if(!Array.isArray(records))throw Error('INVALID_CASE_LIST');
+ return records.filter(row=>row?.tenantId==='sarberki-test'&&
+  isIsolatedReviewCaseId(row.caseId)&&Number.isSafeInteger(row.revision)&&row.revision>=1&&
+  typeof row.data?.sender==='string'&&
+  /^[^\\s@]+@[^\\s@]+\\.invalid$/iu.test(row.data.sender))
+  .map(row=>({tenantId:'sarberki-test',caseId:row.caseId,revision:row.revision})).slice(0,100);
+}
 export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedApproval=false,reviewProviders=null}={}){
  return async event=>{
   // Fail closed even when deployed automatically with the repository.
@@ -27,7 +37,8 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    if(!env.CASE_STORE_TEST_TENANTS.split(',').includes(input.tenantId))return response(403,{error:'FORBIDDEN'});
    let cookieSession=null;
    if(cookieMode){
-    if(input.tenantId!=='sarberki-test'||Object.keys(input).some(key=>!['tenantId','caseId','action','expectedRevision'].includes(key))||!['preview-draft',undefined].includes(input.action))return cookieResponse(403,{error:'FORBIDDEN'});
+    if(input.tenantId!=='sarberki-test'||Object.keys(input).some(key=>!['tenantId','caseId','action','expectedRevision'].includes(key))||!['preview-draft',undefined].includes(input.action)||
+      (input.caseId!==undefined&&input.action!=='preview-draft'))return cookieResponse(403,{error:'FORBIDDEN'});
     cookieSession=await createOperatorCookieSession({env,fetchImpl}).protectedRead(event);
     rotatedCookie=cookieSession.setCookie;
    }
@@ -36,7 +47,23 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    const approvalAttestor=approvalEnabled&&/^[a-f0-9]{64}$/.test(env.ISOLATED_APPROVAL_ATTESTATION_KEY||'')?createIsolatedApprovalAttestor(env.ISOLATED_APPROVAL_ATTESTATION_KEY):null;
    const service=createServerCaseService({repository:createSupabaseCaseRepository(transport,{approvalAttestor}),resolveAuthority:cookieSession?async()=>cookieSession.authority:createSupabaseAuthority(transport)});
    let result;
-   if(event.httpMethod==='GET'){if(input.action==='preview-draft'){const runtime=createServerBookingRuntime({service,tenantId:input.tenantId});result=await runtime.previewDraft(input.caseId,Number(input.expectedRevision));}else if(input.action===undefined)result=input.caseId?await service.getCase({tenantId:input.tenantId,caseId:input.caseId}):await service.listCases({tenantId:input.tenantId});else return response(400,{error:'INVALID_INPUT'});}
+   if(event.httpMethod==='GET'){
+    if(input.action==='preview-draft'){
+     if(cookieMode){
+      if(!isIsolatedReviewCaseId(input.caseId))return cookieResponse(403,{error:'FORBIDDEN'});
+      const candidate=await service.getCase({tenantId:input.tenantId,caseId:input.caseId});
+      if(candidate?.tenantId!=='sarberki-test'||typeof candidate.data?.sender!=='string'||
+         !/^[^\\s@]+@[^\\s@]+\\.invalid$/iu.test(candidate.data.sender))
+       return cookieResponse(403,{error:'FORBIDDEN'});
+     }
+     const runtime=createServerBookingRuntime({service,tenantId:input.tenantId});
+     result=await runtime.previewDraft(input.caseId,Number(input.expectedRevision));
+    }else if(input.action===undefined){
+     const records=input.caseId?await service.getCase({tenantId:input.tenantId,caseId:input.caseId}):
+      await service.listCases({tenantId:input.tenantId});
+     result=cookieMode?syntheticCaseSummaries(records):records;
+    }else return response(400,{error:'INVALID_INPUT'});
+   }
    else {
     const runtime=createServerBookingRuntime({service,tenantId:input.tenantId,isolatedApproval:approvalEnabled,reviewProviders:approvalEnabled?reviewProviders:null});
     if(input.action==='draft')result=await runtime.draft(input.caseId,input.expectedRevision);
