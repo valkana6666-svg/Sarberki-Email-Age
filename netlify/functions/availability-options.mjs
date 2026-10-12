@@ -45,7 +45,7 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
     if(input.units!=null&&p.ab+p.c>0&&input.units!==p.ab+p.c)throw Error('Az apartmanszám és az elhelyezési kombináció ellentmondásos.');
   }
   const {candidates,rejected}=wholeCabinCandidates(input);
-  const mapped=input.cabin?candidates.filter(x=>x.key===input.cabin):candidates;
+  const mapped=(input.cabin?candidates.filter(x=>x.key===input.cabin):candidates).filter(x=>input.units!=null||x.units===1);
 
   const checkOption=async option=>{
     try{
@@ -57,7 +57,7 @@ export async function buildAvailabilityOptions(input,source=fetchPublicBookingAv
     }
   };
   const checked=await Promise.all(mapped.map(checkOption));
-  if(input.cabin&&!input.cabin.startsWith('split')&&input.fallback!==false&&checked.some(x=>x.key===input.cabin&&x.availability==='unavailable'&&x.availability_verified===true)&&!checked.some(x=>x.key===input.cabin&&x.availability==='unverified'))checked.push(...await Promise.all(candidates.filter(x=>x.key!==input.cabin).map(checkOption)));
+  if(input.cabin&&!input.cabin.startsWith('split')&&input.fallback!==false&&checked.some(x=>x.key===input.cabin&&x.availability==='unavailable'&&x.availability_verified===true)&&!checked.some(x=>x.key===input.cabin&&x.availability==='unverified'))checked.push(...await Promise.all(candidates.filter(x=>x.key!==input.cabin&&(input.units!=null||x.units===1)).map(checkOption)));
 
   const checkPool=async cabin=>{
     try{
