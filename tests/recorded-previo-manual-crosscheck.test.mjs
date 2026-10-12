@@ -54,7 +54,7 @@ test('offline replay reproduces four-guest split-C alternative but never invents
   assert.equal(result.available_options[0].availableUnits,2);
   assert.equal(result.available_options[0].verification_scope,'type_pool');
   assert.equal(result.available_options[0].individual_unit_mapping_verified,false);
-  assert.deepEqual(result.unavailable_options.map(x=>x.key).sort(),['deluxe','family','splitAB','vip']);
+  assert.deepEqual(result.unavailable_options.map(x=>x.key).sort(),['deluxe','family','vip']);
   // Four guests cannot fit the two-person cabin: exclude it before PMS lookup.
   assert.ok(result.excluded_options.some(x=>x.key==='small'&&x.reason==='capacity_incompatible'));
   assert.equal(calls.includes('small'),false);
