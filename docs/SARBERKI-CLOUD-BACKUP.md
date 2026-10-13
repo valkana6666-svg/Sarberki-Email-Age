@@ -92,3 +92,7 @@ A Writer → szintetikus ingest-and-draft → Reader ügylista/előnézet iPhone
 ## 2026-10-13 – új egyszeri exportkérés a repository-változó létrehozása után
 
 A repository beállításainál a felhasználó létrehozta a SARBERKI_BACKUP_ENABLED változót. Egyszeri új futás: kizárólag sarberki-test, forrás csak olvasható, titkosított export és izolált visszaállítás. A siker kizárólag a friss Actions export job, a restore bizonyíték és az artifact alapján állapítható meg. Production/valódi vendégadat/levélküldés/Previo-írás tiltott.
+
+## 2026-10-13 – felhős jóváhagyás előtti mentési kapu
+
+A projektgazda a meglévő jóváhagyási modul sarberki-test bekötését engedélyezte. Adatbázis-migráció előtt új, kizárólag a mojnqizbcaczstguikpv tesztprojektet olvasó titkosított export és ellenőrzött izolált restore szükséges. Ez a kérelem nem jelent migrációt vagy jóváhagyás-aktiválást. Csak a friss run sikeres exportja, ciphertext ellenőrzőösszegei, eredetkötése és restore-bizonyítéka nyitja meg a migráció előfeltételét. Minden korábbi mentés megőrzendő. Main/production, vendégküldés és Previo-írás tiltott.
