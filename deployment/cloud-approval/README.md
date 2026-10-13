@@ -42,3 +42,11 @@ Never restore the full database over later work merely to disable this feature.
 
 Local tests use PGlite PostgreSQL plus simulated Supabase HTTP/Auth. They do not
 prove managed-cloud execution, live operator login or Netlify configuration.
+
+The follow-up `separate-approver-permission.sql` replaces only the original
+`approve => write` membership CHECK with `approve => read`. This lets a separate
+read+approve operator review and approve without editing cases. It does not add
+users or memberships, change Writer/Reader permissions, or modify the approval
+RPC. It requires the same exact project declaration and verified fresh backup
+as the installer. The original constraint is located by its definition and must
+exist; an unexpected schema aborts the migration transaction.

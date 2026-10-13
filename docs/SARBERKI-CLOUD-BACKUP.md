@@ -96,3 +96,7 @@ A repository beállításainál a felhasználó létrehozta a SARBERKI_BACKUP_EN
 ## 2026-10-13 – felhős jóváhagyás előtti mentési kapu
 
 A projektgazda a meglévő jóváhagyási modul sarberki-test bekötését engedélyezte. Adatbázis-migráció előtt új, kizárólag a mojnqizbcaczstguikpv tesztprojektet olvasó titkosított export és ellenőrzött izolált restore szükséges. Ez a kérelem nem jelent migrációt vagy jóváhagyás-aktiválást. Csak a friss run sikeres exportja, ciphertext ellenőrzőösszegei, eredetkötése és restore-bizonyítéka nyitja meg a migráció előfeltételét. Minden korábbi mentés megőrzendő. Main/production, vendégküldés és Previo-írás tiltott.
+
+## 2026-10-13 – külön jóváhagyói jogosultság javítása előtti mentés
+
+Az igazolt felhős sémahiba miatt az approve jogosultság jelenleg write jogosultságot is követel. A külön read+approve, write nélküli jóváhagyó támogatását célzó minimális constraint-migráció előtt új, kizárólag a mojnqizbcaczstguikpv tesztprojektet olvasó titkosított snapshot és izolált restore szükséges. Új Actions-futás készül; korábbi run újrafuttatása és artifact-felülírás tilos. Ez a dokumentációs trigger nem igazol mentési sikert vagy migrációt: csak a friss eredetkötött export, ellenőrzőösszeg és sikeres restore-bizonyíték után alkalmazható a változtatás. Korábbi mentések megőrzendők; production/main, valódi vendégadat, e-mail-küldés és Previo-írás tiltott.
