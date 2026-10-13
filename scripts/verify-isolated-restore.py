@@ -35,17 +35,24 @@ CIPHERTEXT_NAMES = ('database.dump.gpg', 'manifest.json.gpg', 'roles.sql.gpg')
 PINNED_HASHES = {'database.dump.gpg':'426322d99c0eb10fa07d38d3184df614d10e0696759e439abe2fe57e191df3e7',
                 'manifest.json.gpg':'e01e54ec40de5fb38ec04d3bc56ab227ddc26af43cc1b60df372d238c115444e',
                 'roles.sql.gpg':'2b77a4cd435d638d60d0f781191313fca72b9c79cee1ce5edfb615d27fe5ee1c'}
+ARCHIVED_20261013_HASHES = {
+    'database.dump.gpg': '94818939c994bb304fab79446d463701d2e49cee18b77b35250734d51b1a304e',
+    'manifest.json.gpg': 'ec69c6b7bd173c728fddc3801ffcb548565640178d2844cfe5c5676127366368',
+    'roles.sql.gpg': 'eebaf330e816e78c1027ef98b6e3288dc2b6cbe3d141c1ee301d5ae70b37ee35'}
 FRESH_DIRECTORY = Path('/tmp/sarberki-cloud-backup')
 
 
 def validate_destination(values):
+    # PG_MAJOR/PG_VERSION/PGDATA are Docker server metadata, not libpq routing.
+    # All other inherited PG* overrides remain rejected.
     # Never permit inherited libpq service, source credentials or routing overrides.
     if (values.get('PGHOST') != 'postgres' or values.get('PGUSER') != 'restore_admin'
             or values.get('PGDATABASE') != 'postgres'
             or values.get('PGPASSWORD') != 'ephemeral-isolated-test-only'
             or values.get('PGPORT', '5432') != '5432'
             or any(values.get(k) for k in values if k.startswith('PG')
-                   and k not in {'PGHOST', 'PGUSER', 'PGDATABASE', 'PGPASSWORD', 'PGPORT'})
+                   and k not in {'PGHOST', 'PGUSER', 'PGDATABASE', 'PGPASSWORD', 'PGPORT',
+                                 'PG_MAJOR', 'PG_VERSION', 'PGDATA'})
             or any(values.get(k) for k in values if k.startswith('SARBERKI_BACKUP_DB_'))):
         raise RuntimeError('DESTINATION_NOT_ISOLATED')
 
@@ -98,12 +105,20 @@ def main():
     report['destination_identity_verified'] = True
     fresh_mode = os.environ.get('SARBERKI_RESTORE_INPUT')
     if fresh_mode:
-        if fresh_mode != 'current-export-v1' or os.environ.get('SARBERKI_RESTORE_SETUP_ONLY'):
+        if fresh_mode not in {'current-export-v1', 'archived-export-38414863596'} or os.environ.get('SARBERKI_RESTORE_SETUP_ONLY'):
             raise RuntimeError('RESTORE_INPUT_INVALID')
-        expected, provenance = fresh_identity(FRESH_DIRECTORY, os.environ)
+        identity_values = os.environ
+        if fresh_mode == 'archived-export-38414863596':
+            identity_values = dict(os.environ, GITHUB_SHA='ad3aad6688416e223a18fe002101521bd5f467ff',
+                                   GITHUB_RUN_ID='38414863596')
+        expected, provenance = fresh_identity(FRESH_DIRECTORY, identity_values)
+        if fresh_mode == 'archived-export-38414863596' and expected != ARCHIVED_20261013_HASHES:
+            raise RuntimeError('ARCHIVED_SNAPSHOT_IDENTITY_FAILED')
         encrypted = read_ciphertexts(FRESH_DIRECTORY, expected)
         report.update(snapshot_run=int(provenance['run_id']), snapshot_commit=provenance['source_commit'],
-                      source_project=provenance['project'], input_mode='verified_current_export',
+                      source_project=provenance['project'], input_mode='pinned_archived_export' if fresh_mode == 'archived-export-38414863596' else 'verified_current_export',
+                      verification_run=os.environ.get('GITHUB_RUN_ID'),
+                      verification_commit=os.environ.get('GITHUB_SHA'),
                       ciphertexts_sha256=expected)
     else:
         encrypted = read_ciphertexts(Path('/tmp/original-backup'), PINNED_HASHES)
@@ -221,7 +236,11 @@ def main():
 def entrypoint():
     try:
         main()
-    except Exception:
+    except Exception as exc:
+        # Emit only known constant error codes; never exception values or SQL.
+        code = str(exc)
+        if isinstance(exc, RuntimeError) and re.fullmatch(r'[A-Z_]{3,80}', code):
+            report['failure_code'] = code
         report['verification_completed']=False
         print('Restore verification incomplete; see sanitized report.')
     else:

@@ -115,11 +115,14 @@ class RestoreBoundarySafety(unittest.TestCase):
         values = {'PGHOST': 'postgres', 'PGUSER': 'restore_admin', 'PGDATABASE': 'postgres',
                   'PGPASSWORD': 'ephemeral-isolated-test-only'}
         restore.validate_destination(values)
+        restore.validate_destination(dict(values, PG_MAJOR='17', PG_VERSION='17.11-1.pgdg12+2',
+                                         PGDATA='/var/lib/postgresql/data'))
         for field, value in [('PGHOST', 'remote.invalid'), ('PGUSER', 'postgres'),
                              ('PGDATABASE', 'source-db'), ('PGPORT', '6543'),
                              ('PGPASSWORD', 'other'), ('PGSERVICE', 'source'),
                              ('PGSERVICEFILE', '/tmp/source'), ('PGHOSTADDR', '192.0.2.1'),
-                             ('PGOPTIONS', '-c search_path=foreign'),
+                             ('PGOPTIONS', '-c search_path=foreign'), ('PGSSLMODE', 'disable'),
+                             ('PGPASSFILE', '/tmp/source'), ('PGDATABASE_EXTRA', 'source'),
                              ('SARBERKI_BACKUP_DB_URL', 'synthetic-source-uri')]:
             with self.subTest(field=field):
                 with self.assertRaisesRegex(RuntimeError, 'DESTINATION_NOT_ISOLATED'):

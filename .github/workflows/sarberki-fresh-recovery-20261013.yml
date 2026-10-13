@@ -1,0 +1,103 @@
+name: Sarberki October 13 full SQL and runtime recovery
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths:
+      - .github/workflows/sarberki-fresh-recovery-20261013.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  restore:
+    if: github.ref == 'refs/heads/gmail-test-subject-allowlist' && contains(github.event.head_commit.message, '[sarberki-fresh-restore-20261013]')
+    runs-on: ubuntu-24.04
+    container: postgres:17-bookworm
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_USER: restore_admin
+          POSTGRES_PASSWORD: ephemeral-isolated-test-only
+        options: >-
+          --health-cmd "pg_isready -U restore_admin"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      PGHOST: postgres
+      PGUSER: restore_admin
+      PGPASSWORD: ephemeral-isolated-test-only
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 gnupg ca-certificates
+      - name: Install matching public Vault extension in isolated service
+        env:
+          ISOLATED_SERVICE_ID: ${{ job.services.postgres.id }}
+        run: |
+          apt-get install -y -qq --no-install-recommends docker.io
+          docker exec "$ISOLATED_SERVICE_ID" sh -ec '
+            apt-get update -qq
+            apt-get install -y -qq --no-install-recommends ca-certificates curl make gcc postgresql-server-dev-17 libsodium-dev
+            mkdir /tmp/vault-build
+            curl -fsSL https://github.com/supabase/vault/archive/6e0cd916242d922a646e4d611cc215e09dd429f4.tar.gz | tar -xz --strip-components=1 -C /tmp/vault-build
+            cd /tmp/vault-build
+            make && make install
+          '
+      - uses: actions/download-artifact@v4
+        with:
+          name: sarberki-test-encrypted-38414863596
+          path: /tmp/sarberki-cloud-backup
+          run-id: 38414863596
+          github-token: ${{ github.token }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify destination boundaries offline
+        run: python3 -m unittest discover -s scripts -p 'test_isolated_restore.py' -v
+      - name: Restore pinned October 13 ciphertext into isolated database only
+        env:
+          SARBERKI_KEEP_ISOLATED_DB: runtime-test
+          SARBERKI_RESTORE_INPUT: archived-export-38414863596
+          SARBERKI_BACKUP_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_PASSPHRASE }}
+        run: python3 scripts/verify-isolated-restore.py
+      - name: Start isolated Auth and REST API services
+        env:
+          ISOLATED_NETWORK: ${{ job.container.network }}
+        run: |
+          python3 - <<'PYENV'
+          import secrets,os
+          from pathlib import Path
+          os.umask(0o077)
+          key=secrets.token_hex(32)
+          # Restore-only login credentials: never connected to the source project.
+          import subprocess
+          subprocess.run(['psql','-X','-w','-qAt','-v','ON_ERROR_STOP=1','-d','sc_restore','-c',"ALTER ROLE supabase_auth_admin PASSWORD 'ephemeral-isolated-test-only';"],check=True,capture_output=True)
+          Path('/tmp/runtime-jwt-secret').write_text(key)
+          auth={'GOTRUE_API_HOST':'0.0.0.0','GOTRUE_API_PORT':'9999','API_EXTERNAL_URL':'http://auth:9999','GOTRUE_SITE_URL':'http://localhost:3000','GOTRUE_DB_DRIVER':'postgres','GOTRUE_DB_DATABASE_URL':'postgres://supabase_auth_admin:ephemeral-isolated-test-only@postgres:5432/sc_restore?search_path=auth','GOTRUE_DB_NAMESPACE':'auth','GOTRUE_JWT_SECRET':key,'GOTRUE_JWT_EXP':'3600','GOTRUE_JWT_AUD':'authenticated','GOTRUE_JWT_DEFAULT_GROUP_NAME':'authenticated','GOTRUE_JWT_ADMIN_ROLES':'service_role','GOTRUE_EXTERNAL_EMAIL_ENABLED':'true','GOTRUE_MAILER_AUTOCONFIRM':'true','GOTRUE_DISABLE_SIGNUP':'true'}
+          rest={'PGRST_DB_URI':'postgres://restore_admin:ephemeral-isolated-test-only@postgres:5432/sc_restore','PGRST_DB_SCHEMAS':'public','PGRST_DB_ANON_ROLE':'anon','PGRST_JWT_SECRET':key,'PGRST_DB_EXTRA_SEARCH_PATH':'public,extensions'}
+          for name,values in [('auth',auth),('rest',rest)]: Path('/tmp/runtime-'+name+'.env').write_text(''.join(k+'='+v+'\n' for k,v in values.items()))
+          PYENV
+          docker run -d --name "sarberki-auth-$GITHUB_RUN_ID" --network "$ISOLATED_NETWORK" --network-alias auth --env-file /tmp/runtime-auth.env supabase/gotrue:v2.196.0
+          docker run -d --name "sarberki-rest-$GITHUB_RUN_ID" --network "$ISOLATED_NETWORK" --network-alias rest --env-file /tmp/runtime-rest.env postgrest/postgrest:v14.17
+      - name: Run actual Auth API and application chain
+        env:
+          ISOLATED_AUTH_CONTAINER: sarberki-auth-${{ github.run_id }}
+          ISOLATED_REST_CONTAINER: sarberki-rest-${{ github.run_id }}
+        run: node scripts/isolated-fresh-runtime-chain.mjs
+      - name: Stop disposable services and database
+        if: always()
+        run: |
+          docker rm -f "sarberki-auth-$GITHUB_RUN_ID" "sarberki-rest-$GITHUB_RUN_ID" >/dev/null 2>&1 || true
+          psql -X -w -qAt -d postgres -c 'DROP DATABASE IF EXISTS sc_restore WITH (FORCE);' >/dev/null 2>&1 || true
+          rm -f /tmp/runtime-jwt-secret /tmp/runtime-auth.env /tmp/runtime-rest.env
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sarberki-fresh-full-recovery-${{ github.run_id }}
+          path: |
+            /tmp/runtime-evidence/RUNTIME-CHAIN.json
+            /tmp/restore-evidence/ISOLATED-RESTORE.json
+          retention-days: 7
+          if-no-files-found: error
