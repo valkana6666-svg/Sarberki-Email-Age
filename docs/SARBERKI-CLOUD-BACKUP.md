@@ -88,3 +88,7 @@ A sikeres friss SQL restore sem igazolja az Auth API-bejelentkezést, a Vault ku
 ## 2026-10-13 – egyszeri friss mentési ellenőrzés
 
 A Writer → szintetikus ingest-and-draft → Reader ügylista/előnézet iPhone-próba után egyszeri, kizárólag olvasó forráskapcsolatú titkosított snapshot és izolált restore indítása. A korábbi sikeres teszteket nem ismételjük kézzel. Ez a dokumentációs trigger önmagában nem igazolja az export vagy restore sikerét; csak a GitHub Actions futás és a keletkezett bizonyíték alapján jelenthető késznek. Production, valódi vendégadat, e-mail-küldés és Previo-írás tilos.
+
+## 2026-10-13 – új egyszeri exportkérés a repository-változó létrehozása után
+
+A repository beállításainál a felhasználó létrehozta a SARBERKI_BACKUP_ENABLED változót. Egyszeri új futás: kizárólag sarberki-test, forrás csak olvasható, titkosított export és izolált visszaállítás. A siker kizárólag a friss Actions export job, a restore bizonyíték és az artifact alapján állapítható meg. Production/valódi vendégadat/levélküldés/Previo-írás tiltott.
