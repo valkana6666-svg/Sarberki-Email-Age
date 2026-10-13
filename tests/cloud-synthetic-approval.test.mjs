@@ -1,0 +1,70 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {PGlite} from '@electric-sql/pglite';
+import {createCaseHandler} from '../netlify/functions/booking-cases.mjs';
+import {cloudSyntheticApprovalEnabled,assertCloudSyntheticReviewCase} from '../shared-core/cloud-synthetic-approval.mjs';
+import {syntheticReaderFixtureRequest} from '../shared-core/synthetic-reader-fixture.mjs';
+import {buildCloudSyntheticApprovalSql} from '../scripts/build-cloud-synthetic-approval-sql.mjs';
+
+const project='https://mojnqizbcaczstguikpv.supabase.co';
+const user='11111111-1111-4111-8111-111111111111',reader='22222222-2222-4222-8222-222222222222',session='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const env={URL:'https://leafy-chimera-2403e5.netlify.app',SUPABASE_URL:project,SUPABASE_PUBLISHABLE_KEY:'synthetic-public-key',CASE_STORE_ENABLED:'synthetic-only',CASE_STORE_TEST_TENANTS:'sarberki-test,demo-test',CASE_APPROVAL_ENABLED:'sarberki-test-synthetic-only',ISOLATED_APPROVAL_ATTESTATION_KEY:'a1'.repeat(32)};
+test('cloud approval target and fixed synthetic record fail closed',()=>{
+ assert.equal(cloudSyntheticApprovalEnabled(env),true);
+ for(const override of [{SUPABASE_URL:'https://other.supabase.co'},{URL:'https://production.example'},{CASE_APPROVAL_ENABLED:''},{ISOLATED_APPROVAL_ATTESTATION_KEY:''}])assert.equal(cloudSyntheticApprovalEnabled({...env,...override}),false);
+ assert.throws(()=>assertCloudSyntheticReviewCase({tenantId:'sarberki-test',data:{tenantId:'sarberki-test',sender:'any@synthetic.invalid',messages:[]}}),/FORBIDDEN/);
+});
+test('generated managed binding reuses existing approval SQL and real PostgreSQL auth/CAS/audit',async t=>{
+ const db=new PGlite();
+ try{
+  await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create table auth.sessions(id uuid primary key,user_id uuid,not_after timestamptz);create function auth.uid() returns uuid language sql stable as $$select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;grant usage on schema auth to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;`);
+  await db.exec(await readFile(new URL('../supabase/migrations/202610090001_case_store.sql',import.meta.url),'utf8'));
+  await db.exec("insert into sc_tenants values('sarberki-test','Synthetic',true),('demo-test','Other',true)");
+  const source=await readFile(new URL('../recovery/sql/isolated-approval.sql',import.meta.url),'utf8'),sql=buildCloudSyntheticApprovalSql(source);
+  assert.equal(sql,await readFile(new URL('../deployment/cloud-approval/install.sql',import.meta.url),'utf8'));
+  await assert.rejects(db.exec(sql),/verified test project and fresh backup/);await db.exec('rollback');
+  await db.query("select set_config('sarberki.approval_install_project_ref',$1,false)",['other']);
+  await db.query("select set_config('sarberki.approval_backup_sha256',$1,false)",['b'.repeat(64)]);
+  await assert.rejects(db.exec(sql),/verified test project and fresh backup/);await db.exec('rollback');
+  await db.query("select set_config('sarberki.approval_install_project_ref',$1,false)",['mojnqizbcaczstguikpv']);await db.exec(sql);
+  await db.query('insert into sc_isolated_approval_key(key_hex) values($1)',[env.ISOLATED_APPROVAL_ATTESTATION_KEY]);
+  await db.query('insert into auth.users values($1),($2)',[user,reader]);await db.query('insert into auth.sessions values($1,$2,null)',[session,user]);
+  await db.query("insert into sc_memberships values('sarberki-test',$1,true,true,true),('sarberki-test',$2,true,false,false)",[user,reader]);
+  let issuer=project+'/auth/v1';
+  const fetchImpl=async(raw,options)=>{
+   const url=new URL(raw);assert.equal(url.origin,project);
+   const actor=options.headers.Authorization.endsWith('synthetic-reader-token-0002')?reader:user;
+   if(url.pathname==='/auth/v1/user')return {ok:true,json:async()=>({id:actor})};
+   await db.exec('set role authenticated');await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({sub:actor,iss:issuer,role:'authenticated',exp:Math.floor(Date.now()/1000)+3600,session_id:session})]);
+   try{
+    let result;
+    if(url.pathname.endsWith('/sc_memberships'))result=(await db.query('select * from sc_memberships where user_id=$1',[actor])).rows;
+    else if(url.pathname.endsWith('/sc_write_case')){const b=JSON.parse(options.body);result=(await db.query('select sc_write_case($1,$2,$3,$4) result',[b.p_tenant,b.p_case,b.p_expected,JSON.stringify(b.p_data)])).rows[0].result;}
+    else if(url.pathname.endsWith('/sc_approve_case')){const b=JSON.parse(options.body);result=(await db.query('select sc_approve_case($1,$2,$3,$4,$5) result',[b.p_tenant,b.p_case,b.p_expected,b.p_draft_hash,JSON.stringify(b.p_evidence)])).rows[0].result;}
+    else if(url.pathname.endsWith('/sc_audit'))result=(await db.query("select revision,actor,kind,data_hash from sc_audit where tenant_id='sarberki-test' and case_id=$1 and kind='approve_isolated_synthetic'",[url.searchParams.get('case_id').slice(3)])).rows;
+    else {const id=url.searchParams.get('case_id')?.slice(3);result=(await db.query('select * from sc_cases where tenant_id=$1'+(id?' and case_id=$2':''),id?['sarberki-test',id]:['sarberki-test'])).rows;}
+    return {ok:true,json:async()=>result};
+   }catch(error){return {ok:false,status:error.code==='42501'?403:400};}finally{await db.exec('reset role');}
+  };
+  const handler=createCaseHandler({env,fetchImpl});
+  const call=async(input,token='synthetic-writer-token-0001',status=200)=>{
+   const r=await handler({httpMethod:'POST',headers:{authorization:'Bearer '+token},body:JSON.stringify({tenantId:'sarberki-test',...input})});assert.equal(r.statusCode,status,r.body);return JSON.parse(r.body).result;
+  };
+  const created=await call(syntheticReaderFixtureRequest()),caseId=created.record.caseId;
+  const reviewed=await call({action:'review-draft',caseId,expectedRevision:1});assert.equal(reviewed.review.status,'internal_review_required');
+  const readResponse=await handler({httpMethod:'GET',headers:{authorization:'Bearer synthetic-reader-token-0002'},queryStringParameters:{tenantId:'sarberki-test',caseId,action:'review-record'}});
+  assert.equal(readResponse.statusCode,200,readResponse.body);assert.equal(JSON.parse(readResponse.body).result.revision,2);
+  assert.equal((await db.query('select revision from sc_cases where case_id=$1',[caseId])).rows[0].revision,2);
+
+  const reviewedDraftHash=createHash('sha256').update(reviewed.record.data.drafts.at(-1).text).digest('hex'),input={action:'approve',caseId,expectedRevision:2,reviewedDraftHash};
+  await t.test('Reader write and approve permissions remain denied',async()=>{await call({action:'review-draft',caseId,expectedRevision:2},'synthetic-reader-token-0002',403);await call(input,'synthetic-reader-token-0002',403);});
+  await t.test('wrong signed project issuer is denied',async()=>{issuer='https://other.supabase.co/auth/v1';await call(input,undefined,403);issuer=project+'/auth/v1';});
+  await t.test('CAS and reviewed hash bind exact saved version',async()=>{await call({...input,expectedRevision:1},undefined,409);await call({...input,reviewedDraftHash:'0'.repeat(64)},undefined,400);});
+  await t.test('approved state and audit read back with original authority',async()=>{const approved=await call(input);assert.equal(approved.revision,3);assert.equal(approved.data.state.approval,'internally_approved');assert.equal(approved.data.serverApproval.draftHash,reviewedDraftHash);const audit=(await db.query("select * from sc_audit where kind='approve_isolated_synthetic'")).rows;assert.equal(audit.length,1);assert.equal(audit[0].actor,user);await call(input,undefined,409);
+   const r=await handler({httpMethod:'GET',headers:{authorization:'Bearer synthetic-writer-token-0001'},queryStringParameters:{tenantId:'sarberki-test',caseId,action:'approval-state'}});
+   assert.equal(r.statusCode,200,r.body);const back=JSON.parse(r.body).result;assert.equal(back.approval,'internally_approved');assert.equal(back.audit[0].actor,user);assert.equal(back.serverApproval.draftHash,reviewedDraftHash);assert.equal(back.serverApproval.evidence,undefined);
+  });
+ }finally{await db.close();}
+});

@@ -27,7 +27,7 @@ function fixture(){
   }
   if(url.includes('/auth/v1/logout'))return new Response(state.logoutStatus===204?null:'{}',{status:state.logoutStatus});
   if(url.endsWith('/auth/v1/user'))return json({id:'synthetic-operator',is_anonymous:state.userAnonymous});
-  if(url.includes('/rest/v1/sc_memberships'))return json([{tenant_id:'sarberki-test',user_id:'synthetic-operator',can_read:state.membershipRead,can_write:state.membershipWrite===true,can_approve:false}]);
+  if(url.includes('/rest/v1/sc_memberships'))return json([{tenant_id:'sarberki-test',user_id:'synthetic-operator',can_read:state.membershipRead,can_write:state.membershipWrite===true,can_approve:state.membershipApprove===true}]);
   if(state.fixtureRows&&url.includes('/rest/v1/rpc/sc_write_case')){
    if(!state.membershipWrite)return new Response('{}',{status:403});
    const input=JSON.parse(options.body),prior=state.fixtureRows.get(input.p_case);
@@ -238,4 +238,27 @@ test('conflicting or malformed primary/multivalue header maps fail before any Au
   const e=event({cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken});e.multiValueHeaders=multiValueHeaders;await assert.rejects(f.session.protectedRead(e),error=>error.status===403);assert.equal(f.state.calls.length,0);
  }
  const valid=event({cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken});valid.multiValueHeaders={host:[valid.headers.host],'x-csrf-token':[valid.headers['x-csrf-token']]};assert.equal((await f.session.protectedRead(valid)).metadata.authenticated,true);
+});
+
+
+test('cloud cookie approval requires separate fresh approve permission and same-origin CSRF',async()=>{
+ const f=fixture(),logged=await f.login(),cookie=cookieHeader(logged.setCookie),csrf=logged.metadata.csrfToken;
+ const approval=()=>f.session.protectedApproval(event({method:'POST',cookie,csrf}));
+ await assert.rejects(approval(),error=>error.code==='FORBIDDEN');
+ f.state.membershipWrite=true;await assert.rejects(approval(),error=>error.code==='FORBIDDEN');
+ f.state.membershipWrite=false;f.state.membershipApprove=true;
+ assert.ok((await approval()).authority.tenants['sarberki-test'].includes('approve'));
+ await assert.rejects(f.session.protectedApproval(event({method:'POST',cookie})),error=>error.code==='FORBIDDEN');
+ await assert.rejects(f.session.protectedApproval(event({method:'POST',cookie,csrf,headers:{origin:'https://other.example'}})),error=>error.code==='FORBIDDEN');
+ f.state.revoked=true;await assert.rejects(approval(),error=>error.code==='AUTH_REQUIRED');
+});
+test('enabled cloud cookie route still denies Reader review and approval, including custom fields',async()=>{
+ const f=fixture(),logged=await f.login(),cookie=cookieHeader(logged.setCookie),csrf=logged.metadata.csrfToken;
+ const env={...f.env,CASE_APPROVAL_ENABLED:'sarberki-test-synthetic-only',ISOLATED_APPROVAL_ATTESTATION_KEY:'a1'.repeat(32)};
+ const handler=createCaseHandler({env,fetchImpl:f.fetchImpl});
+ for(const action of ['review-draft','approve']){
+  const response=await handler(event({method:'POST',cookie,csrf,body:{tenantId:'sarberki-test',action,caseId:'case-synthetic',expectedRevision:1}}));
+  assert.equal(response.statusCode,403);assert.ok(response.headers['Set-Cookie']);
+ }
+ const response=await handler(event({method:'POST',cookie,csrf,body:{tenantId:'sarberki-test',action:'approve',caseId:'case-synthetic',expectedRevision:1,envelope:{sender:'not@synthetic.invalid'}}}));assert.equal(response.statusCode,403);
 });

@@ -13,7 +13,7 @@ const safeCode=error=>['AUTH_REQUIRED','FORBIDDEN','CASE_CONFLICT','REVIEW_CHANG
 export function initIsolatedApprovalPanel({
  documentRef=globalThis.document, sessionProvider=()=>null, enabled=false,
  approvalTarget=null, request=globalThis.fetch?.bind(globalThis),
- cryptoProvider=globalThis.crypto
+ cryptoProvider=globalThis.crypto,cloudSyntheticApproval=false,cloudClient=null
 }={}){
  const element=id=>documentRef?.getElementById(id);
  const ids=['isolated_approval_case_id','isolated_approval_load',
@@ -36,12 +36,12 @@ export function initIsolatedApprovalPanel({
  confirmation.checked=false;submit.disabled=true;
  // Passing an expected target string is not a server-side authorization bypass.
  // No token, network call, or approval client is initialized without both gates.
- if(enabled!==true||approvalTarget!==allowedTarget||typeof request!=='function'){
+ if(enabled!==true||!(approvalTarget===allowedTarget||cloudSyntheticApproval===true&&approvalTarget==='https://mojnqizbcaczstguikpv.supabase.co'&&cloudClient)||typeof request!=='function'){
   loadButton.disabled=true;
   message('Elkülönített jóváhagyás kikapcsolva. Nincs hálózati kérés.');
   return false;
  }
- const client=createCaseStoreClient({
+ const client=cloudSyntheticApproval===true?cloudClient:createCaseStoreClient({
   getAccessToken:async()=>{
    const provider=typeof sessionProvider==='function'?sessionProvider():null;
    if(typeof provider?.getAccessToken!=='function')throw Error('AUTH_REQUIRED');

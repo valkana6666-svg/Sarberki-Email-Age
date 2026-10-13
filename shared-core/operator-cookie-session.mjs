@@ -107,6 +107,14 @@ export function createOperatorCookieSession({env=process.env,fetchImpl=fetch,now
   },
   async restore(event){boundary(event);return refreshed(read(event));},
   async protectedRead(event){boundary(event);const payload=read(event);csrf(event,payload);return refreshed(payload);},
+  async protectedApproval(event){
+   boundary(event,{post:true});
+   if(event.httpMethod!=='POST')fail(405,'METHOD_NOT_ALLOWED');
+   const payload=read(event);csrf(event,payload);
+   const verified=await refreshed(payload);
+   if(!verified.authority.tenants?.['sarberki-test']?.includes('approve'))fail(403,'FORBIDDEN',verified.setCookie);
+   return verified;
+  },
   async protectedWrite(event){
    boundary(event,{post:true});
    if(event.httpMethod!=='POST')fail(405,'METHOD_NOT_ALLOWED');

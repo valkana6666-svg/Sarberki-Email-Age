@@ -19,7 +19,7 @@ function copyDirectory(source, relative='') {
    if(entry.name==='fixtures')continue;
    copyDirectory(path.join(source,entry.name),rel);
   } else if(entry.isFile() && /\.(?:html|m?js|css|svg|txt|webmanifest|png)$/.test(entry.name) && !/\.test\./.test(entry.name) && !/(?:^server-|^supabase-case-repository|^price-server|^recorded-previo-test)/.test(entry.name)) {
-   if(/^isolated-persistent-(?:runtime|http)\.mjs$/.test(entry.name)||entry.name==='operator-cookie-session.mjs')continue;
+   if(/^isolated-persistent-(?:runtime|http)\.mjs$/.test(entry.name)||entry.name==='operator-cookie-session.mjs'||entry.name==='cloud-synthetic-approval.mjs')continue;
    fs.mkdirSync(path.dirname(path.join(output,rel)),{recursive:true});
    fs.copyFileSync(path.join(source,entry.name),path.join(output,rel));
   }
