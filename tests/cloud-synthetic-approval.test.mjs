@@ -5,6 +5,7 @@ import {createHash} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 import {createCaseHandler} from '../netlify/functions/booking-cases.mjs';
 import {cloudSyntheticApprovalEnabled,assertCloudSyntheticReviewCase} from '../shared-core/cloud-synthetic-approval.mjs';
+import {syntheticMailLanguages,syntheticMailEnvelope} from '../shared-core/synthetic-mail-fixtures.mjs';
 import {syntheticReaderFixtureRequest} from '../shared-core/synthetic-reader-fixture.mjs';
 import {buildCloudSyntheticApprovalSql} from '../scripts/build-cloud-synthetic-approval-sql.mjs';
 
@@ -81,6 +82,19 @@ test('generated managed binding reuses existing approval SQL and real PostgreSQL
   await t.test('approved state and audit read back with original authority',async()=>{const approved=await call(input,'synthetic-approver-token-0003');assert.equal(approved.revision,3);assert.equal(approved.data.state.approval,'internally_approved');assert.equal(approved.data.serverApproval.draftHash,reviewedDraftHash);const audit=(await db.query("select * from sc_audit where kind='approve_isolated_synthetic'")).rows;assert.equal(audit.length,1);assert.equal(audit[0].actor,approver);await call(input,'synthetic-approver-token-0003',409);
    const r=await handler({httpMethod:'GET',headers:{authorization:'Bearer synthetic-writer-token-0001'},queryStringParameters:{tenantId:'sarberki-test',caseId,action:'approval-state'}});
    assert.equal(r.statusCode,200,r.body);const back=JSON.parse(r.body).result;assert.equal(back.approval,'internally_approved');assert.equal(back.audit[0].actor,approver);assert.equal(back.serverApproval.draftHash,reviewedDraftHash);assert.equal(back.serverApproval.evidence,undefined);
+  });
+  await t.test('exact four-language mail registry reuses existing SQL/runtime without touching original approved case',async()=>{
+   for(const language of syntheticMailLanguages){
+    const created=await call({action:'ingest-and-draft',envelope:syntheticMailEnvelope(language),expectedRevision:0});
+    assert.equal(created.record.data.state.values.language,language);assert.ok(created.record.data.state.values.phone);
+    const same=await call({action:'ingest-and-draft',envelope:syntheticMailEnvelope(language),expectedRevision:0});assert.equal(same.record.revision,1);
+    const review=await call({action:'review-draft',caseId:created.record.caseId,expectedRevision:1});assert.equal(review.review.status,'internal_review_required');
+    const hash=createHash('sha256').update(review.record.data.drafts.at(-1).text).digest('hex');
+    const approved=await call({action:'approve',caseId:created.record.caseId,expectedRevision:2,reviewedDraftHash:hash},'synthetic-approver-token-0003');
+    assert.equal(approved.revision,3);assert.equal(approved.data.state.approval,'internally_approved');
+   }
+   const old=(await db.query('select * from sc_cases where case_id=$1',[caseId])).rows[0];assert.equal(old.revision,3);assert.equal(old.data.serverApproval.draftHash,reviewedDraftHash);
+   assert.equal((await db.query("select count(*)::int n from sc_audit where kind='approve_isolated_synthetic'")).rows[0].n,5);
   });
  }finally{await db.close();}
 });

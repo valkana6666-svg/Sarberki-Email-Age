@@ -18,7 +18,7 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
   reply(message,{language:nextLanguage}={}){
    if(typeof message!=='string'||message.length>1000||++turns>100)throw Error('CHAT_INPUT_LIMIT');
    if(nextLanguage!==undefined){languageMode=mode(nextLanguage);if(languageMode!=='auto')language=languageMode;}
-   if(languageMode==='auto'){const detected=languageFromText(message,{conservative:true});if(detected!=='unknown')language=detected;}
+   if(languageMode==='auto'){const detected=languageFromText(message,{conservative:turns>1});if(detected!=='unknown')language=detected;}
    const now=clock(),faq=chatbotReply({message,language});
    if(faq.intent==='availability')bookingContext=true;
    if(!bookingContext)return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};

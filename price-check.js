@@ -5,6 +5,14 @@
   let approvedPrice = null;
   let pendingQuote = null;
   let availabilityOptions = null;
+  function skipClosedSyntheticMail(message=''){
+    if(!window.SarberkiClosedSyntheticMailPreview?.(message||currentMessage()))return false;
+    availabilityOptions=null;
+    clearApprovedPrice('Zárt szintetikus minta: korábbi ár nem használható, nincs élő árlekérés.');
+    if($('price_result'))$('price_result').textContent='';
+    if($('price_status'))$('price_status').textContent='Kitalált Gmail minta. Kapacitás és ár kizárólag a felhős szintetikus review-ban számolható.';
+    return true;
+  }
 
   function explicitCabin(message='') {
     const found=[];
@@ -144,6 +152,7 @@
   }
 
   async function refreshAvailabilityOptions(message=''){
+    if(skipClosedSyntheticMail(message))return;
     if(window.SarberkiBookingRuntime){await window.SarberkiRefreshCapacity?.();return;}
     const analysis=typeof extract==='function'?extract(message,''):null;
     if(!analysis||explicitCabin(message)){availabilityOptions=null;return;}
@@ -157,6 +166,7 @@
       const response=await fetch('/api/availability-options',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({arrival,departure,guests}),cache:'no-store'});
       if(!response.headers.get('content-type')?.includes('application/json')) throw Error('A kapacitás-ellenőrző szerver nincs csatlakoztatva.');
       const result=await response.json();
+      if(skipClosedSyntheticMail(message))return;
       if(!response.ok||result.status!=='review_required'||result.arrival!==arrival||result.departure!==departure||Number(result.guests)!==guests||result.bookingCompleted!==false||!Array.isArray(result.available_options)||!Array.isArray(result.manual_review_options)) throw Error(result.error||'A kapacitásválasz hiányos vagy eltér a kért adatoktól.');
       if(requestState&&(requestState.original!==window.SarberkiCaseController?.snapshot()?.original||requestFingerprint!==window.SarberkiCaseState?.caseFingerprint(window.SarberkiCaseController.snapshot().values)))return;
       availabilityOptions={...result,fingerprint:availabilityFingerprint(arrival,departure,guests)};
@@ -474,6 +484,7 @@
   }
 
   function applyFocusedReply(message=''){
+    if(skipClosedSyntheticMail(message))return;
     const reply=focusedReply(message);
     const box=$('draft');
     if(reply&&box) box.value=reply;
@@ -482,6 +493,7 @@
   }
 
   function approvePriceIntoDraft(){
+    if(skipClosedSyntheticMail())return;
     const inputValue=Number($('approved_price_manual')?.value||pendingQuote?.total||0);
     if(!Number.isFinite(inputValue)||inputValue<=0){
       $('price_approval_status').textContent='Nincs jóváhagyható ár. Előbb kérd le vagy add meg a hitelesen ellenőrzött teljes árat.';
@@ -523,6 +535,7 @@
   }
 
   async function autoPrepareAndQuoteFromGmail() {
+    if(skipClosedSyntheticMail())return;
     if(window.SarberkiBookingRuntime){
       const central=window.SarberkiCaseController?.snapshot();if(!central)return;
       prepare(central.original);const v=central.values;
@@ -582,6 +595,7 @@
     return ages.every(age=>age>=0&&age<=17)?ages:null;
   }
   $('check_price').onclick = async () => {
+    if(skipClosedSyntheticMail())return;
     const status=$('price_status'); status.textContent='Árlekérés folyamatban…';$('price_result').textContent='';
     clearApprovedPrice('Új árlekérés indult; az előző jóváhagyás törölve.');
     const message=currentMessage();
@@ -623,6 +637,7 @@
       let response=await fetch(referenceMode?'/api/price-reference':'/api/price-quote',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input),cache:'no-store'});
       if (!response.headers.get('content-type')?.includes('application/json')) throw Error('Az árlekérő szerver nincs ehhez az oldalhoz csatlakoztatva.');
       let result=await response.json();
+      if(skipClosedSyntheticMail(message))return;
       // Closed safety gate: request a public price-list reference, never an unverified Previo read.
       if(response.status===503&&result.code==='PREVIO_SAFETY_GATE_CLOSED'){
         response=await fetch('/api/price-reference',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input),cache:'no-store'});
@@ -663,6 +678,7 @@
 
   document.addEventListener('sarberki:analysis-ready',(event)=>{
     const message=event?.detail?.message||$('message')?.value||'';
+    if(skipClosedSyntheticMail(message))return;
     if(message){
       prepare(message);
       setTimeout(()=>applyFocusedReply(message),0);

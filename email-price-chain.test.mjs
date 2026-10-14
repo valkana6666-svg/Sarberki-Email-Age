@@ -1,3 +1,4 @@
+import {syntheticMailEnvelope,isClosedSyntheticMailUiRecord} from './shared-core/synthetic-mail-fixtures.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -547,4 +548,15 @@ test('operator clicks ordinary quote button: locked Previo returns labelled refe
  assert.match(h.element('draft').value,/A kiválasztott szállás a kért időszakra elérhető/u);
  assert.doesNotMatch(h.element('draft').value,/Ellenőrizzük, hogy a megadott időpontra elérhető|Az elérhetőséget külön visszaigazoljuk/u);
  assert.match(h.element('price_approval_status').textContent,/elérhetőségét jóváhagytad/u);
+});
+
+
+test('closed synthetic Gmail events and manual price check do not query providers or reuse old quote',async()=>{
+ const envelope=syntheticMailEnvelope('hu'),message=envelope.text,record={source:{provider:'gmail',subject:'TESZT SÁRBERKI CLOSED HU',from_email:envelope.sender,message_id:envelope.message_id,thread_id:envelope.thread_id,received_at:envelope.received_at},original_message:message},h=harness(message,()=>assert.fail('no synthetic live fetch'));
+ h.context.window.SarberkiClosedSyntheticMailPreview=text=>isClosedSyntheticMailUiRecord(record,text);
+ h.element('price_result').textContent='old verified price';h.element('approved_price_manual').value='999';h.element('manual_quote_confirmed').checked=true;
+ h.listeners.get('sarberki:analysis-ready')({detail:{message}});
+ await h.listeners.get('sarberki:gmail-normalized')();
+ await h.element('check_price').onclick();
+ assert.equal(h.calls,0);assert.equal(h.element('price_result').textContent,'');assert.equal(h.element('approved_price_manual').value,'');assert.equal(h.element('manual_quote_confirmed').checked,false);assert.equal(h.element('approve_price').disabled,true);
 });

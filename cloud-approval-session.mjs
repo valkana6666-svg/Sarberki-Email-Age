@@ -6,6 +6,8 @@ import {formatCloudApprovalFailure} from './shared-core/cloud-approval-errors.mj
 import {isIsolatedReviewCaseId} from './shared-core/isolated-review-case-id.mjs';
 const origin='https://leafy-chimera-2403e5.netlify.app';
 const el=id=>document.getElementById(id);
+const selectedCase=new URLSearchParams(location.search).get('caseId');
+if(isIsolatedReviewCaseId(selectedCase))el('isolated_approval_case_id').value=selectedCase;
 if(location.origin===origin){
  const session=createOperatorSession();let authenticated=false,epoch=0;
  const clear=()=>{epoch++;authenticated=false;el('workspace').disabled=true;el('logout').disabled=true;el('password').value='';el('readback_status').textContent='';document.dispatchEvent(new Event('isolated-approval-session-changed'));};

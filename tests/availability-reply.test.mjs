@@ -1,3 +1,4 @@
+import {syntheticMailEnvelope,isClosedSyntheticMailUiRecord} from '../shared-core/synthetic-mail-fixtures.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -70,11 +71,11 @@ function harness(){
  const source=fs.readFileSync(new URL('../availability-recommend.mjs',import.meta.url),'utf8').replaceAll('export function','function');
  const nodes=new Map();
  const node=id=>{if(!nodes.has(id))nodes.set(id,{value:'',textContent:'',classList:{contains:()=>true},dispatchEvent(){}});return nodes.get(id);};
- const pending=[];
- const context=vm.createContext({document:{getElementById:node,addEventListener(){},dispatchEvent(){}},window:{SarberkiNormalize:core,SarberkiSplitUnits:splitUnits},Event,console,Number,JSON,setTimeout(){},fetch:()=>new Promise(resolve=>pending.push(resolve))});
+ const pending=[],listeners=new Map();
+ const context=vm.createContext({document:{getElementById:node,addEventListener:(type,fn)=>listeners.set(type,fn),dispatchEvent(){}},window:{SarberkiNormalize:core,SarberkiSplitUnits:splitUnits},Event,console,Number,JSON,setTimeout(){},fetch:()=>new Promise(resolve=>pending.push(resolve))});
  node('f_arrival').value='2026-10-16';node('f_departure').value='2026-10-18';node('f_guests').value='6';node('f_language').value='HU';node('message').value='6 fő';node('draft').value='eredeti';
  vm.runInContext(source,context);
- return {node,pending,window:context.window,run:(data)=>{context.provided=data;return vm.runInContext('enrich(provided)',context);}};
+ return {node,pending,listeners,window:context.window,run:(data)=>{context.provided=data;return vm.runInContext('enrich(provided)',context);}};
 }
 test('late availability response cannot overwrite a changed inquiry',async()=>{
  const h=harness(),p=h.run();h.node('f_arrival').value='2026-11-20';h.node('draft').value='új érdeklődés';
@@ -208,4 +209,18 @@ test('central reply distinguishes failed capacity evidence from insufficient inv
 });
 test('mixed repeated inventory displays component counts independently',()=>{
  const text=availabilitySentence({available_options:[{availability:'available',availability_verified:true,units:4,components:[{label:'Osztott A/B',units:2},{label:'Osztott C',units:2}]}]},'hu');assert.match(text,/2 × Osztott A\/B \+ 2 × Osztott C/u);
+});
+
+
+test('closed synthetic mail event and manual availability refresh make no provider calls and discard old verified evidence',async()=>{
+ const h=harness(),actions=[];const envelope=syntheticMailEnvelope('hu'),original=envelope.text,record={source:{provider:'gmail',subject:'TESZT SÁRBERKI CLOSED HU',from_email:envelope.sender,message_id:envelope.message_id,thread_id:envelope.thread_id,received_at:envelope.received_at},original_message:original};h.node('message').value=original;
+ h.window.SarberkiClosedSyntheticMailPreview=message=>isClosedSyntheticMailUiRecord(record,message);
+ h.window.SarberkiBookingRuntime={check:()=>assert.fail('synthetic UI must not call live runtime')};
+ const state={original,values:{arrival:'2026-10-23',departure:'2026-10-25',unit:'Deluxe'},quote:{total:999},availability:{verified:true}};
+ h.window.SarberkiCaseState={caseFingerprint:()=> 'synthetic'};
+ h.window.SarberkiCaseController={snapshot:()=>state,apply:action=>{actions.push(action);if(action.type==='invalidateQuote')state.quote=null;if(action.type==='availability')state.availability={verified:action.verified};}};
+ h.listeners.get('sarberki:analysis-ready')({detail:{message:original}});
+ await h.window.SarberkiRefreshCapacity();
+ assert.equal(h.pending.length,0);assert.equal(state.quote,null);assert.equal(state.availability.verified,false);
+ assert.ok(actions.some(action=>action.type==='invalidateQuote'));assert.match(h.node('gmail_record_state').textContent,/szintetikus/);
 });

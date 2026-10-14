@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {syntheticMailEnvelope,closedMailRequestFromGmailRecord} from '../shared-core/synthetic-mail-fixtures.mjs';
 import {initOperatorLoginPanel} from '../operator-login-ui.mjs';
 const ui=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-const names=['operator_login_form','operator_login_email','operator_login_password','operator_login','operator_restore','operator_logout','operator_login_status','operator_list_cases','operator_case_select','operator_open_case','operator_case_status','server_preview_case_id','server_preview_revision','operator_create_fixture','operator_fixture_status'];
+const names=['operator_login_form','operator_login_email','operator_login_password','operator_login','operator_restore','operator_logout','operator_login_status','operator_list_cases','operator_case_select','operator_open_case','operator_case_status','server_preview_case_id','server_preview_revision','operator_create_fixture','operator_fixture_status','gmail_cloud_fixture_language','gmail_cloud_fixture_load','gmail_cloud_fixture_save','gmail_cloud_fixture_status','gmail_cloud_fixture_approval','gmail_json','message'];
 const valid=()=>({authenticated:true,tenantId:'sarberki-test',csrfToken:'ab'.repeat(32),expiresAt:new Date(Date.now()+3600_000).toISOString()});
 async function harness(request){
  const map=new Map(),events=[];
@@ -17,13 +18,14 @@ async function harness(request){
    async submit(){return this.listeners.submit?.({preventDefault(){}});}};
   map.set(name,element);
  }
- const documentRef={getElementById:id=>map.get(id),createElement:tag=>({tag,value:'',textContent:''}),dispatchEvent:event=>events.push(event.type)};
+ const documentListeners={};
+ const documentRef={addEventListener:(type,fn)=>{documentListeners[type]=fn;},getElementById:id=>map.get(id),createElement:tag=>({tag,value:'',textContent:''}),dispatchEvent:event=>events.push(event.type)};
  const globalListeners={};
  const globalRef={addEventListener:(type,fn)=>{globalListeners[type]=fn;}};
  assert.equal(initOperatorLoginPanel({documentRef,globalRef,request}),true);
  for(let i=0;i<100&&map.get('operator_login').disabled;i++)await Promise.resolve();
  assert.equal(map.get('operator_login').disabled,false,'startup restore must settle');
- return {map,get:id=>map.get(id),globalRef,events,globalListeners};
+ return {map,get:id=>map.get(id),globalRef,events,globalListeners,documentListeners};
 }
 test('test booking manager has an operator login form with no stored credentials',()=>{
  for(const id of names)assert.match(ui,new RegExp('id="'+id+'"'));
@@ -218,4 +220,33 @@ test('Reader fixture denial preserves read-only session and never claims creatio
  assert.equal(h.globalRef.SarberkiCaseStoreSession,before);assert.equal(before.cookieReadOnly,true);
  assert.match(h.get('operator_fixture_status').textContent,/Writer-jogosultság szükséges/);
  assert.equal(h.get('server_preview_case_id').value,'');
+});
+
+
+test('closed Gmail MIME load is explicit and cloud save shares existing session/busy gate with no client facts',async()=>{
+ const calls=[];const caseId='44444444-4444-4444-8444-444444444444';
+ const h=await harness(async(url,options)=>{
+  calls.push({url,options});
+  return {ok:true,json:async()=>url.endsWith('/operator-session')?valid():{result:{resolution:{status:'new'},record:{tenantId:'sarberki-test',caseId,revision:1}}}};
+ });
+ const envelope=syntheticMailEnvelope('hu');h.get('gmail_cloud_fixture_language').value='hu';
+ let mime,displayed;
+ h.globalRef.sarberkiGmailTransform=value=>{mime=value;return {source:{provider:'gmail',subject:'TESZT SÁRBERKI CLOSED HU',from_email:envelope.sender,message_id:envelope.message_id,thread_id:envelope.thread_id,received_at:envelope.received_at},original_message:envelope.text};};
+ h.globalRef.displayGmailRecord=async value=>{displayed=value;h.get('gmail_json').value=JSON.stringify(value);h.get('message').value=value.original_message;return true;};
+ calls.length=0;await h.get('gmail_cloud_fixture_load').click();
+ assert.equal(calls.length,0,'load must not write or fetch live providers');assert.equal(mime.id,envelope.message_id);assert.equal(displayed.original_message,envelope.text);assert.equal(h.globalRef.SarberkiClosedSyntheticMailPreview(),true);
+ await h.get('gmail_cloud_fixture_save').click();assert.equal(calls.length,1);
+ assert.equal(calls[0].url,'/.netlify/functions/booking-cases');assert.deepEqual(JSON.parse(calls[0].options.body),closedMailRequestFromGmailRecord(displayed));
+ assert.equal(calls[0].options.headers['X-CSRF-Token'],'ab'.repeat(32));assert.equal(calls[0].options.credentials,'same-origin');
+ assert.equal(h.get('server_preview_case_id').value,caseId);assert.equal(h.get('server_preview_revision').value,'1');
+ assert.equal(h.get('gmail_cloud_fixture_approval').href,'/cloud-approval.html?caseId='+caseId);
+ assert.equal(h.globalRef.SarberkiCaseStoreSession.cookieReadOnly,true);
+ h.get('message').value+=' changed';assert.equal(h.globalRef.SarberkiClosedSyntheticMailPreview(envelope.text),false);calls.length=0;await h.get('gmail_cloud_fixture_save').click();assert.equal(calls.length,0);
+});
+test('foreign loaded Gmail record and lost session cannot cause cloud write',async()=>{
+ let calls=0;const h=await harness(async()=>{calls++;return {ok:true,json:async()=>valid()};});
+ h.get('gmail_cloud_fixture_language').value='hu';
+ h.globalRef.sarberkiGmailTransform=()=>({source:{provider:'gmail',from_email:'arbitrary@synthetic.invalid'},original_message:'anything'});
+ h.globalRef.displayGmailRecord=async()=>true;
+ calls=0;await h.get('gmail_cloud_fixture_load').click();await h.get('gmail_cloud_fixture_save').click();assert.equal(calls,0);assert.equal(h.get('gmail_cloud_fixture_save').disabled,true);
 });

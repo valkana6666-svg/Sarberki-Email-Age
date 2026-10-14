@@ -23,6 +23,7 @@ export function createBookingRuntime({request,storage=null,clock=Date.now,tenant
 if(typeof window!=='undefined'){
  let storage=null;try{storage=window.localStorage;}catch{}
  window.SarberkiBookingRuntime=createBookingRuntime({storage,request:async input=>{
+  if(window.SarberkiClosedSyntheticMailPreview?.())throw Error('Zárt szintetikus Gmail minta: élő kapacitáslekérés tiltott.');
   const response=await fetch('/api/availability-options',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input),cache:'no-store'});const data=await response.json();if(!response.ok)throw Error(data.error||'Kapacitásellenőrzési hiba.');return data;
  }});
 }

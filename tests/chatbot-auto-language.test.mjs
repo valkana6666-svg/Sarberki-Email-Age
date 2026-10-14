@@ -71,3 +71,19 @@ test('real iPhone: German booking to Slovenian hot-tub question switches languag
  assert.equal(result.response.bookingCreated,false);
  assert.equal(result.response.emailSent,false);
 });
+
+
+test('first automatic German inquiry with shared Telefon token uses existing intake language, not Hungarian fallback',()=>{
+ const chat=createChatInquirySession({clock});
+ const message='Guten Tag! Wir suchen ein Deluxe Ferienhaus vom 23.10.2026 bis 25.10.2026 für 2 Erwachsene und 0 Kinder. Telefon: +36 30 123 4567.';
+ assert.equal(languageFromText(message),'de');assert.equal(languageFromText(message,{conservative:true}),'unknown');
+ const reply=chat.reply(message);assert.equal(chat.language,'de');assert.equal(reply.response.language,'de');assert.match(reply.text,/Guten Tag/);assert.doesNotMatch(reply.text,/Kedves Vendég/);
+ chat.reply('telefon');assert.equal(chat.language,'de','later switches keep the original conservative contract');
+});
+test('first-turn shared contact words do not block clear SI/EN messages; ambiguous tie retains Hungarian',()=>{
+ for(const [language,message] of [['si','Pozdravljeni! Želimo Deluxe hiško od 2026-11-01 do 2026-11-03 za 2 odrasli brez otrok. Telefon: +36 00 000 0000.'],['en','Please book one Deluxe cabin for 2 adults and no children from 2026-11-01 to 2026-11-03. Telefon: +36 00 000 0000.']]){
+  const chat=createChatInquirySession({clock});const reply=chat.reply(message);assert.equal(chat.language,language);assert.equal(reply.response.language,language);
+ }
+ const ambiguous=createChatInquirySession({clock});ambiguous.reply('Telefon');assert.equal(ambiguous.language,'hu');
+ const mixed=createChatInquirySession({clock});mixed.reply('booking Erwachsene');assert.equal(mixed.language,'hu');
+});

@@ -5,6 +5,7 @@ import {createOperatorCookieSession,OperatorSessionError} from '../../shared-cor
 import {createIsolatedApprovalAttestor} from '../../shared-core/isolated-approval-attestation.mjs';
 import {isIsolatedReviewCaseId} from '../../shared-core/isolated-review-case-id.mjs';
 import {cloudSyntheticApprovalEnabled,cloudSyntheticReviewProviders,assertCloudSyntheticReviewCase} from '../../shared-core/cloud-synthetic-approval.mjs';
+import {closedSyntheticMailLanguage} from '../../shared-core/synthetic-mail-fixtures.mjs';
 const headers={'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 const response=(statusCode,body)=>({statusCode,headers,body:JSON.stringify(body)});
 // Cookie-reader case picker gets metadata only, never raw inquiry content.
@@ -40,9 +41,11 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    let cookieSession=null;
    if(cookieMode){
     const cookiePost=event.httpMethod==='POST';
-    if(input.tenantId!=='sarberki-test'||Object.keys(input).some(key=>!(cookiePost?['tenantId','caseId','action','expectedRevision','reviewedDraftHash']:['tenantId','caseId','action','expectedRevision']).includes(key))||
-      (cookiePost?!['review-draft','approve'].includes(input.action):!(cloudApproval?['preview-draft','approval-state','review-record',undefined]:['preview-draft',undefined]).includes(input.action))||
+    const closedIngest=cookiePost&&input.action==='ingest-and-draft';
+    if(input.tenantId!=='sarberki-test'||Object.keys(input).some(key=>!(closedIngest?['tenantId','action','envelope','expectedRevision']:cookiePost?['tenantId','caseId','action','expectedRevision','reviewedDraftHash']:['tenantId','caseId','action','expectedRevision']).includes(key))||
+      (cookiePost?!['review-draft','approve','ingest-and-draft'].includes(input.action):!(cloudApproval?['preview-draft','approval-state','review-record',undefined]:['preview-draft',undefined]).includes(input.action))||
       (!cookiePost&&input.caseId!==undefined&&!['preview-draft','approval-state','review-record'].includes(input.action)))return cookieResponse(403,{error:'FORBIDDEN'});
+    if(closedIngest&&(!cloudApproval||input.expectedRevision!==0||!closedSyntheticMailLanguage(input.envelope)))return cookieResponse(403,{error:'FORBIDDEN'});
     const session=createOperatorCookieSession({env,fetchImpl});
     cookieSession=await (cookiePost?(input.action==='approve'?session.protectedApproval(event):session.protectedWrite(event)):session.protectedRead(event));
     rotatedCookie=cookieSession.setCookie;

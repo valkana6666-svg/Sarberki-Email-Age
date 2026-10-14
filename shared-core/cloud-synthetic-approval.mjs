@@ -1,5 +1,6 @@
 import {syntheticReaderFixtureRequest} from './synthetic-reader-fixture.mjs';
 import {CaseServiceError} from './server-case-service.mjs';
+import {matchesClosedSyntheticMailRecord} from './synthetic-mail-fixtures.mjs';
 
 export function cloudSyntheticApprovalEnabled(env){
  return env.CASE_APPROVAL_ENABLED==='sarberki-test-synthetic-only'&&
@@ -7,9 +8,10 @@ export function cloudSyntheticApprovalEnabled(env){
   env.URL==='https://leafy-chimera-2403e5.netlify.app'&&
   /^[a-f0-9]{64}$/.test(env.ISOLATED_APPROVAL_ATTESTATION_KEY||'');
 }
-// This cloud rehearsal approves only the already established fictional Writer
-// fixture. A .invalid address alone is insufficient to turn any case into proof.
+// Only the unchanged original Reader fixture or one of four exact fictional
+// mail registry records is accepted. A .invalid address alone is insufficient.
 export function assertCloudSyntheticReviewCase(record){
+ if(matchesClosedSyntheticMailRecord(record))return;
  const fixture=syntheticReaderFixtureRequest().envelope;
  if(record?.tenantId!=='sarberki-test'||record.data?.tenantId!=='sarberki-test'||
   record.data.sender!==fixture.sender||record.data.messages?.length!==1||

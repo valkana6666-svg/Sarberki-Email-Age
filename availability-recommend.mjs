@@ -223,6 +223,15 @@ async function enrich(provided=null){
   const arrival=$('f_arrival')?.value||'', departure=$('f_departure')?.value||'', guests=Number($('f_guests')?.value||0), cabin=$('f_unit')?.value||'';
   const caseState=window.SarberkiCaseController?.snapshot();
   const original=caseState?.original||$('message')?.value||$('gmail_original')?.textContent||'';
+  if(window.SarberkiClosedSyntheticMailPreview?.(original)){
+    inflightKey=null;
+    if(caseState){
+      window.SarberkiCaseController?.apply({type:'invalidateQuote'});
+      window.SarberkiCaseController?.apply({type:'availability',fingerprint:window.SarberkiCaseState?.caseFingerprint(caseState.values),verified:false,evidence:null,lines:[]});
+    }
+    if($('gmail_record_state'))$('gmail_record_state').textContent='Zárt szintetikus minta; nincs élő kapacitás- vagy árellenőrzés.';
+    return;
+  }
   const splitCabin=/osztott|split/iu.test(cabin);
   const mustClarify=Boolean(window.SarberkiNormalize?.cabinClarificationRequired?.(original,guests));
   const initialSplitRequest=splitCabin?(window.SarberkiSplitUnits?.splitRequestFromText?.(original)||null):null;
@@ -244,7 +253,7 @@ async function enrich(provided=null){
     const runtime=window.SarberkiBookingRuntime;
     const response=runtime||provided?null:await fetch('/api/availability-options',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({arrival,departure,guests})});
     const data=provided||(runtime?await runtime.check(caseState?.values||{arrival,departure,guests,unit:cabin},original):await response.json());
-    if(key!==fingerprint())return;
+    if(key!==fingerprint()||window.SarberkiClosedSyntheticMailPreview?.(original))return;
     if(response&&!response.ok)throw Error(data.error||'Nem sikerült a kapacitás-ellenőrzés.');
     const rawLang=($('f_language')?.value||'HU').toLowerCase();
     const lang=rawLang==='sl'?'si':rawLang;
@@ -268,7 +277,7 @@ async function enrich(provided=null){
     syncGmailRecordAfterAvailability();
     if(status){status.className='warning';status.textContent='Kapacitásvizsgálat kész; a tervezet frissítve, kezelői ellenőrzés szükséges.';}
   }catch(error){
-    if(key!==fingerprint())return;
+    if(key!==fingerprint()||window.SarberkiClosedSyntheticMailPreview?.(original))return;
     renderSplitInternalNote([],null);
     if(caseState)window.SarberkiCaseController.apply({type:'availability',fingerprint:caseKey,verified:false,requestedAvailable:false,lines:[]});
     else {draft.value=currentReplyBase();if($('gmail_draft'))$('gmail_draft').value=draft.value;}

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {createDecipheriv} from 'node:crypto';
 import {createOperatorCookieSession,clearOperatorCookie} from '../shared-core/operator-cookie-session.mjs';
 import {createOperatorSessionHandler} from '../netlify/functions/operator-session.mjs';
+import {syntheticMailEnvelope} from '../shared-core/synthetic-mail-fixtures.mjs';
 import {createCaseHandler,syntheticCaseSummaries} from '../netlify/functions/booking-cases.mjs';
 import {createWriterReaderFixtureHandler} from '../netlify/functions/writer-reader-fixture.mjs';
 const origin='https://leafy-chimera-2403e5.netlify.app',project='https://mojnqizbcaczstguikpv.supabase.co';
@@ -261,4 +262,24 @@ test('enabled cloud cookie route still denies Reader review and approval, includ
   assert.equal(response.statusCode,403);assert.ok(response.headers['Set-Cookie']);
  }
  const response=await handler(event({method:'POST',cookie,csrf,body:{tenantId:'sarberki-test',action:'approve',caseId:'case-synthetic',expectedRevision:1,envelope:{sender:'not@synthetic.invalid'}}}));assert.equal(response.statusCode,403);
+});
+
+
+test('closed mail cookie ingestion requires exact registry, Writer and CSRF; cannot accept arbitrary invalid guests or facts',async()=>{
+ const f=fixture();f.state.membershipWrite=true;f.state.fixtureRows=new Map();
+ const env={...f.env,CASE_APPROVAL_ENABLED:'sarberki-test-synthetic-only',ISOLATED_APPROVAL_ATTESTATION_KEY:'a1'.repeat(32)};
+ const logged=await f.login();let cookie=cookieHeader(logged.setCookie);const csrf=logged.metadata.csrfToken;
+ const handler=createCaseHandler({env,fetchImpl:f.fetchImpl});
+ const input={tenantId:'sarberki-test',action:'ingest-and-draft',envelope:syntheticMailEnvelope('hu'),expectedRevision:0};
+ const call=body=>handler(event({method:'POST',cookie,csrf,body}));
+ for(const envelope of [{...input.envelope,text:input.envelope.text+' changed'},{...input.envelope,sender:'other@synthetic.invalid'},{...input.envelope,mailbox_id:'other'},{...input.envelope,message_id:'other'},{...input.envelope,thread_id:'other'},{...input.envelope,received_at:'2026-10-13T06:00:00.000Z'},{...input.envelope,case_id:'case-synthetic'}])assert.equal((await call({...input,envelope})).statusCode,403);
+ assert.equal((await call({...input,values:{adults:'999'}})).statusCode,403);
+ assert.equal((await call({...input,expectedRevision:1})).statusCode,403);
+ assert.equal((await handler(event({method:'POST',cookie,body:input}))).statusCode,403);
+ assert.equal((await handler(event({method:'POST',cookie,csrf,body:input,headers:{origin:'https://other.example'}}))).statusCode,403);
+ f.state.membershipWrite=false;assert.equal((await call(input)).statusCode,403);f.state.membershipWrite=true;
+ const first=await call(input);assert.equal(first.statusCode,200,first.body);cookie=cookieHeader(first.headers['Set-Cookie']);
+ const created=JSON.parse(first.body).result;assert.equal(created.record.revision,1);assert.equal(created.record.data.state.values.language,'hu');assert.ok(created.record.data.state.values.phone);
+ const duplicate=await call(input);assert.equal(duplicate.statusCode,200);assert.equal(JSON.parse(duplicate.body).result.record.revision,1);assert.equal(f.state.fixtureRows.size,1);
+ const disabled=createCaseHandler({env:{...env,CASE_APPROVAL_ENABLED:''},fetchImpl:f.fetchImpl});assert.equal((await disabled(event({method:'POST',cookie,csrf,body:input}))).statusCode,401);
 });
