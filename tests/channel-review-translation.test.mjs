@@ -9,7 +9,10 @@ for(const [language,message]of Object.entries(messages))test('same frozen decisi
  const chat=buildChatInquiryReply({message,language,now}),email=buildEmailInquiryDraft({message,language,now});
  assert.deepEqual(chat.decision,email.decision);
  assert.equal(chat.operatorReviewLanguage,'hu');assert.equal(email.operatorReviewLanguage,'hu');
- assert.equal(chat.operatorReviewText,renderCentralConversation(chat.decision,{language:'hu'}));
+ assert.equal(chat.operatorReviewText,email.operatorReviewText);
+ assert.equal(chat.text,email.text);
+ assert.ok(chat.operatorReviewText.endsWith(renderCentralConversation(chat.decision,{language:'hu'})));
+ assert.match(chat.operatorReviewText,/Kedves Vendégünk!/u);
  assert.match(chat.operatorReviewText,/kapacitás ellenőrzése még nem igazolt/);
  assert.match(email.operatorReviewText,/kapacitás ellenőrzése még nem igazolt/);
  assert.equal(chat.decision.facts.language,language);assert.equal(Object.isFrozen(chat.decision),true);

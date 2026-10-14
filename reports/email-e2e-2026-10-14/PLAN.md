@@ -80,3 +80,7 @@ automatikus vendégküldést. Elfogadás: hivatalos test hoston kitalált levél
 → explicit Writer mentés → Reader read-only → külön jóváhagyó → reload audit;
 valódi/idegen/rossz tárgyú levél, Reader írás, ismeretlen kapacitás/ár és stale
 revision mindenhol fail-closed. A meglévő sikeres cloud-mintát nem hagyjuk jóvá újra.
+
+## Állapotfrissítés – 2026-10-14
+
+A projektgazda kifejezetten jóváhagyta a fenti teljes-vendégszöveg-paritás diffet. A közös chatbot-adapterben az engedélyezett változás elkészült, a meglévő e-mail-adapter renderelőjét használja; az új bizonyíték `../full-text-parity-2026-10-14/REPORT.md` alatt található. A korábbi diffblokk az elbírált terv történeti másolata. A Gmail UI szintetikus felhős integrációjáról szóló rész továbbra is javaslat, nem végrehajtott módosítás.

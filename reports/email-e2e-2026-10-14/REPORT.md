@@ -61,3 +61,9 @@ A tényleges vendégszöveg-egyezés javításához az érintett védett válasz
 ## V1 készültség és bevezetés
 
 A koordinátor becslése: **kb. 90–92% fejlesztési készültség**. Ez nem a sikeres tesztek százaléka, és nem élesítési engedély. A közös feldolgozás, tartós ügytár, jogosultságok és felhős emberi jóváhagyás jelentős része igazolt; a tényleges Gmail felület → felhős ügytár kapcsolat és a teljes vendégszöveg-egyezés még hiányzik. Az éles bevezetéshez ezek lezárása, az olvasási Previo-integráció mellékhatásainak igazolása, tényleges iPhone/Safari használati próba és külön kiadási jóváhagyás szükséges. A korábbi ellenőrzött mentések megmaradtak; ebben a feladatban nincs adatbázis-migráció vagy felhős tesztügy-módosítás.
+
+## 2026-10-14 – a teljes közös vendégszöveg hiányának célzott lezárása
+
+A projektgazda külön jóváhagyta, hogy a chatbot a meglévő e-mail-adapter teljes szövegét használja. A `shared-core/inquiry-channel-adapters.mjs` chatbot-ága most ugyanazzal a `renderEmailDecision` hívással állítja elő a teljes vendégszöveget és a magyar ellenőrző levelet. Az új négy nyelvű próbában a tényleges booking-chat session és preview ugyanazt a teljes szöveget adja, mint a szerveres e-mail-adapter; az összekötött MIME/PostgreSQL teszt a korábbi eltérés-karakterizálás helyett exact `.text` és HU review egyenlőséget ellenőriz. Részletek: `../full-text-parity-2026-10-14/REPORT.md`.
+
+Ez lezárja a közös adapter/szerveres e-mail és booking-chat szövegeltérését. A régi helyi Gmail UI külön renderelő útvonala és felhős bekötésének hiánya változatlan; a tényleges Gmail UI teljes felhős E2E folyamata továbbra sem kész. Üzleti szabály, jogosultság, felhős adat és a már jóváhagyott v4 mintatesztügy nem változott.

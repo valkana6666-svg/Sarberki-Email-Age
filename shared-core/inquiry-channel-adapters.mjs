@@ -19,7 +19,8 @@ export function renderCentralConversation(decision,{language=decision.facts.lang
 }
 export function buildChatInquiryReply(options={}){
  const decision=evaluateCentralInquiry(options);
- return {decision,text:renderCentralConversation(decision),operatorReviewText:renderCentralConversation(decision,{language:'hu'}),operatorReviewLanguage:'hu',channel:'chat',requiresApproval:true};
+ const original=options.message||decision.facts.originalText||'';
+ return {decision,text:renderEmailDecision(decision,original,decision.facts.language),operatorReviewText:renderEmailDecision(decision,original,'hu'),operatorReviewLanguage:'hu',channel:'chat',requiresApproval:true};
 }
 function renderEmailDecision(decision,original,language){
  const f=decision.facts;

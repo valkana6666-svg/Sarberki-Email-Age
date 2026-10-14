@@ -92,9 +92,7 @@ test('four-language synthetic MIME -> PostgreSQL draft -> Reader -> separate app
    assert.deepEqual(email.decision,chat.decision);assert.equal(created.record.data.drafts[0].text,email.text);
    // Both the initial and reviewed drafts receive the stored known phone.
    assert.doesNotMatch(email.text,/phone number|telefonszám|Telefonnummer|telefonsko številko/iu);
-   // Presentation mismatch is explicitly recorded, never silently called exact
-   // whole-response parity: the email contains a letter plus the chat status.
-   assert.ok(email.text.endsWith(chat.text));assert.notEqual(email.text,chat.text);
+   assert.equal(email.text,chat.text);assert.equal(email.operatorReviewText,chat.operatorReviewText);
    providerCalls.length=0;const reviewed=await write.runtime.reviewAndDraft(id,1);
    assert.equal(reviewed.review.status,'internal_review_required');assert.equal(reviewed.review.quote.total,200);assert.equal(reviewed.review.evidence.availableUnits,1);assert.deepEqual(providerCalls,['capacity','price']);
    assert.equal(reviewed.record.data.state.values.phone,parsed.normalized.phone);
