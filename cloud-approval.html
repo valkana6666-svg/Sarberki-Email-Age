@@ -1,22 +1,26 @@
 <!doctype html>
-<html lang="hu"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Sárberki – felhős szintetikus jóváhagyás</title>
+<link rel="stylesheet" href="./cloud-approval.css"></head>
 <body><main>
 <h1>Felhős szintetikus jóváhagyás</h1>
 <p>Csak a rögzített Writer mintatesztügy belső jóváhagyása. Az ár és kapacitás kitalált tesztadat. A művelet nem küld levelet és nem hoz létre foglalást.</p>
+<section class="card">
 <form id="login"><label>Operátor e-mail <input id="email" type="email" required autocomplete="off"></label>
 <label>Jelszó <input id="password" type="password" required autocomplete="off"></label>
 <button id="signin">Bejelentkezés</button></form><button id="logout" disabled>Kijelentkezés</button>
 <p id="auth_status" role="status">Kikapcsolva.</p>
+</section>
 <fieldset id="workspace" disabled><legend>Tárolt tervezet</legend>
 <label>Ügyazonosító <input id="isolated_approval_case_id"></label>
 <button id="cloud_prepare">Writer: ellenőrzött teszttervezet mentése</button>
 <button id="isolated_approval_load">Tervezet betöltése</button>
 <label>Aktuális tárolt verzió <input id="isolated_approval_revision" readonly></label>
-<label>Átnézendő tervezet <textarea id="isolated_approval_text" rows="14" cols="80" readonly></textarea>
+<label for="isolated_approval_text">Átnézendő tervezet</label>
+<textarea id="isolated_approval_text" rows="14" readonly></textarea>
 <label for="isolated_approval_hu">Magyar ellenőrző szöveg – nem küldhető külön tervezetként</label>
-<textarea id="isolated_approval_hu" readonly></textarea></label>
-<label><input id="isolated_approval_confirm" type="checkbox">Ezt a tárolt tervezetet elolvastam és jóváhagyom.</label>
+<textarea id="isolated_approval_hu" rows="10" readonly></textarea>
+<label class="confirmation"><input id="isolated_approval_confirm" type="checkbox"><span>Ezt a tárolt tervezetet elolvastam és jóváhagyom.</span></label>
 <button id="isolated_approval_submit" disabled>Belső jóváhagyás mentése</button>
 <p id="isolated_approval_status" role="status"></p>
 <button id="readback">Tárolt állapot és audit visszaolvasása</button><pre id="readback_status" role="status"></pre>
