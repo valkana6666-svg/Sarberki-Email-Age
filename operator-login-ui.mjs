@@ -185,7 +185,19 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
  mailSave?.addEventListener('click',saveClosedMail);
  mailLanguage?.addEventListener('change',clearMail);
  documentRef.addEventListener?.('sarberki:gmail-normalized',event=>{
-  if(loadedMail&&event.detail?.message_id!==loadedMail.envelope.message_id)clearMail();
+  if(busy){
+   if(loadedMail&&event.detail?.message_id!==loadedMail.envelope.message_id)clearMail();
+   return;
+  }
+  clearMail();
+  if(!active||!globalRef.SarberkiCaseStoreSession)return;
+  try{
+   const parsed=JSON.parse(get('gmail_json')?.value||'null');
+   const input=closedMailRequestFromGmailRecord(parsed);
+   if(event.detail?.message_id!==input.envelope.message_id||!globalRef.SarberkiClosedSyntheticMailPreview(input.envelope.text))return;
+   loadedMail=input;waiting(false);
+   if(mailStatus)mailStatus.textContent='A pontos zárt Gmail minta előkészítve. Felhős mentés még nincs; a mentés külön Writer-művelet.';
+  }catch{ /* Normal or changed Gmail records stay excluded from cloud writes. */ }
  });
  documentRef.addEventListener?.('sarberki:session-changed',clearMail);
  globalRef.addEventListener?.('pagehide',clearMail);
