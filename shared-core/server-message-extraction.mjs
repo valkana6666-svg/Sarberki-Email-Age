@@ -7,6 +7,7 @@ export function extractServerMessage(envelope){
  const n=inquiry.normalized,values={};
  if(n.dates&&!n.dates.inferred_year){values.arrival=n.dates.arrival;values.departure=n.dates.departure;}
  for(const key of ['guests','adults','children'])if(Number.isSafeInteger(n[key])&&n[key]>=0)values[key]=String(n[key]);
+ if(typeof n.phone==='string'&&n.phone.trim())values.phone=n.phone;
  if(n.child_ages.length)values.child_ages=n.child_ages.join(',');
  if(n.cabin&&!n.cabin.startsWith('?'))values.unit=n.cabin;
  if(n.units_requested>0&&!n.units_open_request)values.units_requested=String(n.units_requested);
