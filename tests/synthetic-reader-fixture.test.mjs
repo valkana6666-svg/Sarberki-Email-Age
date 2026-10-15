@@ -80,3 +80,23 @@ test('fixture validation rejects mismatched tenant, legacy ID, no draft, or unsa
   await assert.rejects(ensureSyntheticReaderFixture({ingestAndDraft:async()=>item}),e=>e.message==='SYNTHETIC_FIXTURE_UNVERIFIED');
  assert.equal(f.rows.size,1);
 });
+
+test('Writer probe isolates the historical approved v1 fixture and never overwrites its evidence',async()=>{
+ const f=fixture();
+ const legacy=syntheticReaderFixtureRequest();
+ Object.assign(legacy.envelope,{sender:'guest@reader-fixture.invalid',mailbox_id:'sarberki_reader_fixture',message_id:'reader-preview-20261012-v1',thread_id:'reader-preview-synthetic-thread-v1'});
+ const old=await f.client.ingestAndDraft(legacy);
+ const key='sarberki-test:'+old.record.caseId;
+ const approved=f.rows.get(key);
+ approved.revision=4;approved.data.state.approval='internally_approved';
+ approved.data.serverApproval={synthetic:true};
+ const before=structuredClone(approved);
+ const created=await ensureSyntheticReaderFixture(f.client);
+ assert.equal(created.duplicate,false);assert.equal(created.revision,1);
+ assert.notEqual(created.caseId,old.record.caseId);
+ assert.deepEqual(f.rows.get(key),before);
+ assert.equal(f.rows.size,2);
+ const again=await ensureSyntheticReaderFixture(f.client);
+ assert.deepEqual(again,{...created,duplicate:true});
+ assert.deepEqual(f.rows.get(key),before);assert.equal(f.rows.size,2);
+});

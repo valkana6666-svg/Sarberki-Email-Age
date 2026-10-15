@@ -4,12 +4,14 @@ import {isIsolatedReviewCaseId} from './isolated-review-case-id.mjs';
 // Writer -> server ingest-and-draft API. Importing this file NEVER writes data.
 // This is not an authorization adapter and does not handle credentials.
 const tenantId='sarberki-test';
+// Separate from the historical v1 fixture used for approval/restore evidence.
+// Never reset or overwrite an approved case to make a Writer probe pass.
 const template=Object.freeze({
- sender:'guest@reader-fixture.invalid',
+ sender:'guest@writer-reader-fixture-v2.invalid',
  text:'Please book one Deluxe cabin from 2026-10-23 to 2026-10-25 for 2 adults and no children.',
- mailbox_id:'sarberki_reader_fixture',
- message_id:'reader-preview-20261012-v1',
- thread_id:'reader-preview-synthetic-thread-v1',
+ mailbox_id:'sarberki_writer_reader_fixture_v2',
+ message_id:'writer-reader-preview-20261015-v2',
+ thread_id:'writer-reader-preview-synthetic-thread-v2',
  received_at:'2026-10-12T10:00:00Z'
 });
 

@@ -82,7 +82,7 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
    ...(body?{body:JSON.stringify(body)}:{})
   });
   const data=await response.json();
-  if(!response.ok)throw Error(['AUTH_REQUIRED','FORBIDDEN','SESSION_SETUP_REQUIRED','SESSION_SERVICE_UNAVAILABLE','CASE_STORE_DISABLED','CASE_CONFLICT','INVALID_INPUT','SERVICE_UNAVAILABLE'].includes(data?.error)?data.error:'SESSION_UNAVAILABLE');
+  if(!response.ok)throw Error(['AUTH_REQUIRED','FORBIDDEN','SESSION_SETUP_REQUIRED','SESSION_SERVICE_UNAVAILABLE','CASE_STORE_DISABLED','SYNTHETIC_FIXTURE_UNVERIFIED','CASE_CONFLICT','INVALID_INPUT','SERVICE_UNAVAILABLE'].includes(data?.error)?data.error:'SESSION_UNAVAILABLE');
   return data;
  }
  async function loadClosedMail(){
@@ -154,7 +154,7 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
    get('server_preview_case_id').value=r.caseId;get('server_preview_case_id').dispatchEvent(new Event('input'));
    get('server_preview_revision').value=String(r.revision);get('server_preview_revision').dispatchEvent(new Event('input'));
   }catch(e){
-   if(globalRef.SarberkiCaseStoreSession===session)fixtureStatus.textContent=({FORBIDDEN:'Writer-jogosultság szükséges vagy a szerver elutasította a kérést. Reader hozzáférése változatlan, csak olvasás.',AUTH_REQUIRED:'Writer-munkamenet nem igazolt. Ellenőrizd a tesztbelépést.',SESSION_SETUP_REQUIRED:'A tesztkörnyezet kezelői munkamenete nincs megfelelően beállítva.',SESSION_SERVICE_UNAVAILABLE:'A hitelesítési szolgáltatás nem elérhető.',SERVICE_UNAVAILABLE:'A Writer-mentési szolgáltatás nem elérhető.',SESSION_UNAVAILABLE:'A Writer-végpont válasza nem ellenőrizhető.',INVALID_INPUT:'A Writer-tesztkérés nem megfelelő.',CASE_CONFLICT:'A tesztügy időközben megváltozott.'})[e.message]||'A szintetikus ügy létrehozása NEM IGAZOLT. Ismeretlen szerverhiba; titkot ne másolj a chatbe.';
+   if(globalRef.SarberkiCaseStoreSession===session)fixtureStatus.textContent=({FORBIDDEN:'Writer-jogosultság szükséges vagy a szerver elutasította a kérést. Reader hozzáférése változatlan, csak olvasás.',AUTH_REQUIRED:'Writer-munkamenet nem igazolt. Ellenőrizd a tesztbelépést.',SESSION_SETUP_REQUIRED:'A tesztkörnyezet kezelői munkamenete nincs megfelelően beállítva.',SESSION_SERVICE_UNAVAILABLE:'A hitelesítési szolgáltatás nem elérhető.',SERVICE_UNAVAILABLE:'A Writer-mentési szolgáltatás nem elérhető.',SYNTHETIC_FIXTURE_UNVERIFIED:'A szerver válaszolt, de a szintetikus tesztügy függőben lévő tervezete NEM IGAZOLT. Korábbi jóváhagyott ügy nem írható felül.',SESSION_UNAVAILABLE:'A Writer-végpont válasza nem ellenőrizhető.',INVALID_INPUT:'A Writer-tesztkérés nem megfelelő.',CASE_CONFLICT:'A tesztügy időközben megváltozott.'})[e.message]||'A szintetikus ügy létrehozása NEM IGAZOLT. Ismeretlen szerverhiba; titkot ne másolj a chatbe.';
   }finally{waiting(false);}
  }
  const problem=e=>{

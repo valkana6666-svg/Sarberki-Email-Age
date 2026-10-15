@@ -225,7 +225,7 @@ test('Reader fixture denial preserves read-only session and never claims creatio
 
 
 test('Writer fixture errors show distinct safe diagnostics without exposing server details',async()=>{
- for(const [code,expected] of [['AUTH_REQUIRED',/Writer-munkamenet nem igazolt/],['SESSION_SETUP_REQUIRED',/nincs megfelelően beállítva/],['SESSION_SERVICE_UNAVAILABLE',/hitelesítési szolgáltatás nem elérhető/],['SERVICE_UNAVAILABLE',/mentési szolgáltatás nem elérhető/],['INVALID_INPUT',/tesztkérés nem megfelelő/]]){
+ for(const [code,expected] of [['SYNTHETIC_FIXTURE_UNVERIFIED',/A szerver válaszolt.*NEM IGAZOLT/],['AUTH_REQUIRED',/Writer-munkamenet nem igazolt/],['SESSION_SETUP_REQUIRED',/nincs megfelelően beállítva/],['SESSION_SERVICE_UNAVAILABLE',/hitelesítési szolgáltatás nem elérhető/],['SERVICE_UNAVAILABLE',/mentési szolgáltatás nem elérhető/],['INVALID_INPUT',/tesztkérés nem megfelelő/]]){
   const h=await harness(async url=>url.endsWith('/writer-reader-fixture')?{ok:false,json:async()=>({error:code})}:{ok:true,json:async()=>valid()});
   await h.get('operator_create_fixture').click();
   assert.match(h.get('operator_fixture_status').textContent,expected);
