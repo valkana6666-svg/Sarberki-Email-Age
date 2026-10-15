@@ -74,3 +74,20 @@ test('default client displays disabled provider truthfully without fabricating a
   assert.equal(f.nodes.get('foreign_incoming_hu').value,'');assert.equal(f.nodes.get('draft').value,'Original draft');
  }finally{globalThis.fetch=originalFetch;}
 });
+test('default UI displays distinct safe Hungarian errors without reflecting unknown upstream details',async()=>{
+ const originalFetch=globalThis.fetch;
+ try{
+  for(const [code,message] of [
+   ['TRANSLATION_UNVERIFIED',/számai nem ellenőrizhetők/],['AUTH_REQUIRED',/belépés szükséges/],
+   ['FORBIDDEN',/Writer-jogosultság szükséges/],['TRANSLATION_KEY_REJECTED',/elutasította.*API-kulcsot/],
+   ['TRANSLATION_ACCESS_DENIED',/megtagadta az API-hozzáférést/],
+   ['TRANSLATION_MODEL_UNAVAILABLE',/fordítómodell nem érhető el/],['TRANSLATION_QUOTA_EXHAUSTED',/egyenlege elfogyott/],
+   ['TRANSLATION_RATE_LIMITED',/átmeneti kéréskorlátot/],['SECRET_UNKNOWN_PROVIDER_DETAIL',/átmenetileg nem érhető el/]
+  ]){
+   globalThis.fetch=async()=>new Response(JSON.stringify({error:code,detail:'SECRET_RESPONSE_BODY'}),{status:503});
+   const f=fixture();await f.clone.sync();await f.nodes.get('foreign_incoming_hu_request').fire('click');
+   const shown=f.nodes.get('foreign_incoming_hu_status').textContent;assert.match(shown,message);assert.doesNotMatch(shown,/SECRET/);
+   assert.equal(f.nodes.get('foreign_incoming_hu').value,'');assert.equal(f.nodes.get('draft').value,'Original draft');
+  }
+ }finally{globalThis.fetch=originalFetch;}
+});

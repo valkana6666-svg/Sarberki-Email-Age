@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto';
 import {createOperatorCookieSession,OperatorSessionError} from '../../shared-core/operator-cookie-session.mjs';
 import {assertClosedTranslation,translationConfigured,translateClosedIncoming} from '../../shared-core/server-translation.mjs';
+import {translationErrorCode} from '../../translation-errors.mjs';
 
 export function createTranslationHandler({env=process.env,fetchImpl=fetch,now=Date.now}={}){
  const session=createOperatorCookieSession({env,fetchImpl,now}),requests=new Map();
@@ -29,7 +30,7 @@ export function createTranslationHandler({env=process.env,fetchImpl=fetch,now=Da
   }catch(error){
    if(error instanceof OperatorSessionError)return reply(error.status,{error:error.code},error.setCookie||cookie);
    if(error instanceof SyntaxError||error.message==='INVALID_INPUT')return reply(400,{error:'INVALID_INPUT'});
-   return reply(503,{error:error.message==='TRANSLATION_UNVERIFIED'?'TRANSLATION_UNVERIFIED':'TRANSLATION_UNAVAILABLE'});
+   return reply(503,{error:translationErrorCode(error?.message)});
   }
  };
 }

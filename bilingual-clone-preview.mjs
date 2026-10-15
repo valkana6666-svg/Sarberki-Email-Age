@@ -2,6 +2,7 @@
 // Translation never changes the source, approved reply, or Gmail state.
 import {sameProtectedTokens} from './bilingual-preview.mjs';
 import {createIncomingTranslator} from './translation-client.mjs';
+import {translationErrorMessage} from './translation-errors.mjs';
 export const LANGS={de:'Német',en:'Angol',si:'Szlovén',sl:'Szlovén'};
 const TEST_FIXTURES={
  de:{incoming:'Guten Tag! Wir möchten vom 16. bis 18. Oktober 2026 für zwei Erwachsene ein Deluxe-Ferienhaus buchen. Ist es verfügbar?',huIncoming:'Jó napot! 2026. október 16–18. között két felnőtt részére szeretnénk egy Deluxe faházat foglalni. Szabad a szállás?',
@@ -82,7 +83,7 @@ export function initBilingualClone({doc=document,translate=null,globalRef=global
    if(version!==generation)return;
    if(typeof result!=='string'||!result.trim()||!sameProtectedTokens(text,result))throw Error('NO_VERIFIED_TRANSLATION');
    view.area.value=result;view.status.textContent='Gépi magyar fordítás – kezelői ellenőrzés szükséges; nem ember által jóváhagyott fordítás.';
-  }catch(error){if(version===generation)view.status.textContent=error.message==='TRANSLATION_DISABLED'?'A fordítószolgáltatás nincs bekapcsolva vagy beállítva. Az eredeti szöveg változatlan.':'A fordítás nem érhető el vagy nem ellenőrizhető. Writer-belépés és engedélyezett zárt tesztlevél szükséges. Az eredeti szöveg változatlan.';}
+  }catch(error){if(version===generation)view.status.textContent=translationErrorMessage(error?.message);}
  }
  for(const view of [first,gmailFirst].filter(Boolean)){
   const button=doc.createElement('button');button.type='button';button.textContent='Magyar fordítás kérése';

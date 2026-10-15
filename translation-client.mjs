@@ -1,5 +1,6 @@
 import {createSafeTranslator} from './safe-translation-adapter.mjs';
 import {assertClosedTranslation} from './shared-core/incoming-translation-policy.mjs';
+import {translationErrorCode} from './translation-errors.mjs';
 // Explicit button use only. Session identity is checked around every await.
 export function createIncomingTranslator({globalRef=globalThis.window,request=globalThis.fetch}={}){
  let current=null,cache=new Map();
@@ -17,7 +18,7 @@ export function createIncomingTranslator({globalRef=globalThis.window,request=gl
     signal:AbortSignal.timeout(20000),headers:{'Content-Type':'application/json','X-Sarberki-Operator':'1','X-CSRF-Token':csrf},body:JSON.stringify(input)});
    const result=await response.json();
    if(globalRef.SarberkiCaseStoreSession!==session)throw Error('SESSION_CHANGED');
-   if(!response.ok)throw Error(['TRANSLATION_DISABLED','FORBIDDEN','AUTH_REQUIRED','INVALID_INPUT'].includes(result?.error)?result.error:'TRANSLATION_UNAVAILABLE');
+   if(!response.ok)throw Error(translationErrorCode(result?.error));
    return result;
   })());
   const result=await cache.get(key);

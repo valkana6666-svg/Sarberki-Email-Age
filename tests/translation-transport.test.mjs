@@ -6,6 +6,7 @@ import {translateClosedIncoming} from '../shared-core/server-translation.mjs';
 import {syntheticMailEnvelope} from '../shared-core/synthetic-mail-fixtures.mjs';
 import {sameProtectedTokens} from '../bilingual-preview.mjs';
 import {createIncomingTranslator} from '../translation-client.mjs';
+import {translationErrorCode,translationErrorMessage} from '../translation-errors.mjs';
 const origin='https://leafy-chimera-2403e5.netlify.app',project='https://mojnqizbcaczstguikpv.supabase.co';
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status});
 const input=language=>({text:syntheticMailEnvelope(language).text,sourceLanguage:language,targetLanguage:'hu',purpose:'incoming'});
@@ -109,6 +110,39 @@ test('configured gpt-5.6-luna disables reasoning explicitly without changing oth
  const response=await f.request();assert.equal(response.statusCode,200);
  const body=JSON.parse(f.state.provider[0].body);assert.equal(body.model,'gpt-5.6-luna');assert.deepEqual(body.reasoning,{effort:'none'});
  assert.equal(body.max_output_tokens,1200);assert.ok(f.state.provider[0].signal instanceof AbortSignal);
+});
+test('provider failures expose only whitelisted categories through handler and client, with no retry',async()=>{
+ for(const [status,result,code] of [
+  [401,{error:{message:'SECRET_PROVIDER_DETAIL'}},'TRANSLATION_KEY_REJECTED'],
+  [403,{error:{message:'SECRET_PROVIDER_DETAIL'}},'TRANSLATION_ACCESS_DENIED'],
+  [404,{error:{message:'SECRET_PROVIDER_DETAIL'}},'TRANSLATION_MODEL_UNAVAILABLE'],
+  [429,{error:{code:'insufficient_quota',message:'SECRET_PROVIDER_DETAIL'}},'TRANSLATION_QUOTA_EXHAUSTED'],
+  [429,{error:{code:'rate_limit_exceeded',message:'SECRET_PROVIDER_DETAIL'}},'TRANSLATION_RATE_LIMITED'],
+  [429,{error:{message:'insufficient_quota SECRET_PROVIDER_DETAIL'}},'TRANSLATION_RATE_LIMITED'],
+  [429,{error:{code:'INSUFFICIENT_QUOTA',message:'SECRET_PROVIDER_DETAIL'}},'TRANSLATION_RATE_LIMITED'],
+  [500,{error:{code:'insufficient_quota',message:'SECRET_PROVIDER_DETAIL'}},'TRANSLATION_UNAVAILABLE']
+ ]){
+  const f=await harness();f.state.status=status;f.state.result=result;
+  const response=await f.request();assert.equal(response.statusCode,503);assert.deepEqual(JSON.parse(response.body),{error:code});assert.ok(response.headers['Set-Cookie']);
+  assert.doesNotMatch(response.body,/SECRET|synthetic_not_a_real_key|synthetic-test-model/);
+  await f.request();assert.equal(f.state.provider.length,1);
+  const globalRef={SarberkiCaseStoreSession:{getCsrfToken:async()=> 'ab'.repeat(32)}};
+  const translate=createIncomingTranslator({globalRef,request:async()=>json(JSON.parse(response.body),503)});
+  await assert.rejects(translate(input('en')),error=>error.message===code);
+ }
+});
+test('malformed 429 JSON remains rate limited and unknown provider/network details remain generic',async()=>{
+ const f=await harness();let calls=0;
+ await assert.rejects(translateClosedIncoming(input('en'),{env:f.config,fetchImpl:async()=>{calls++;return {ok:false,status:429,json:async()=>{throw Error('SECRET_JSON');}};}}),/TRANSLATION_RATE_LIMITED/);
+ assert.equal(calls,1);
+ assert.equal(translationErrorCode('SECRET_UPSTREAM_ERROR'),'TRANSLATION_UNAVAILABLE');
+ for(const code of ['TRANSLATION_UNVERIFIED','AUTH_REQUIRED','FORBIDDEN','TRANSLATION_DISABLED']){
+  const translate=createIncomingTranslator({globalRef:{SarberkiCaseStoreSession:{getCsrfToken:async()=> 'ab'.repeat(32)}},request:async()=>json({error:code},503)});
+  await assert.rejects(translate(input('en')),error=>error.message===code);
+ }
+ const unknown=createIncomingTranslator({globalRef:{SarberkiCaseStoreSession:{getCsrfToken:async()=> 'ab'.repeat(32)}},request:async()=>json({error:'SECRET_DETAIL'},503)});
+ await assert.rejects(unknown(input('en')),error=>error.message==='TRANSLATION_UNAVAILABLE');
+ assert.doesNotMatch(translationErrorMessage('SECRET_DETAIL'),/SECRET_DETAIL/);
 });
 test('invalid canonical key never falls back to valid alias; invalid/missing alias remains disabled',async()=>{
  for(const invalid of ['',null,undefined,'short','contains whitespace key','x'.repeat(513)]){
