@@ -49,6 +49,7 @@ test('all three closed fictional incoming bodies use bounded raw Responses POST;
  for(const options of f.state.provider){
   const body=JSON.parse(options.body);assert.equal(options.method,'POST');assert.equal(options.redirect,'error');assert.ok(options.signal instanceof AbortSignal);
   assert.equal(body.store,false);assert.deepEqual(body.tools,[]);assert.equal(body.max_output_tokens,1200);assert.equal(body.model,'synthetic-test-model');
+  assert.equal(Object.hasOwn(body,'reasoning'),false);
  }
  f.state.write=false;
  const denied=await f.request();assert.equal(denied.statusCode,403);assert.equal(f.state.provider.length,3);assert.ok(denied.headers['Set-Cookie']);
@@ -93,6 +94,33 @@ test('transport also rejects unapproved input/config before its injected provide
  let calls=0;const fetchImpl=()=>{calls++;assert.fail('unexpected egress');};
  await assert.rejects(translateClosedIncoming({...input('en'),synthetic:true},{env:env(),fetchImpl}),/INVALID_INPUT/);
  await assert.rejects(translateClosedIncoming(input('en'),{env:{},fetchImpl}),/TRANSLATION_DISABLED/);assert.equal(calls,0);
+});
+test('server-only key alias works when canonical key is absent and preserves canonical precedence',async()=>{
+ for(const canonical of [false,true]){
+  const f=await harness();f.config.AI_TRANSLATION_API_KEY='synthetic_alias_not_a_real_key';
+  if(!canonical)delete f.config.OPENAI_TRANSLATION_API_KEY;
+  const response=await f.request();assert.equal(response.statusCode,200);assert.equal(f.state.provider.length,1);
+  assert.equal(f.state.provider[0].headers.Authorization,'Bearer '+(canonical?'synthetic_not_a_real_key':'synthetic_alias_not_a_real_key'));
+  assert.doesNotMatch(response.body,/synthetic_alias_not_a_real_key|synthetic_not_a_real_key/);
+ }
+});
+test('configured gpt-5.6-luna disables reasoning explicitly without changing other model requests',async()=>{
+ const f=await harness();f.config.OPENAI_TRANSLATION_MODEL='gpt-5.6-luna';
+ const response=await f.request();assert.equal(response.statusCode,200);
+ const body=JSON.parse(f.state.provider[0].body);assert.equal(body.model,'gpt-5.6-luna');assert.deepEqual(body.reasoning,{effort:'none'});
+ assert.equal(body.max_output_tokens,1200);assert.ok(f.state.provider[0].signal instanceof AbortSignal);
+});
+test('invalid canonical key never falls back to valid alias; invalid/missing alias remains disabled',async()=>{
+ for(const invalid of ['',null,undefined,'short','contains whitespace key','x'.repeat(513)]){
+  const f=await harness();f.config.OPENAI_TRANSLATION_API_KEY=invalid;f.config.AI_TRANSLATION_API_KEY='synthetic_alias_not_a_real_key';
+  const auth=f.state.auth,response=await f.request();assert.equal(response.statusCode,503);assert.equal(JSON.parse(response.body).error,'TRANSLATION_DISABLED');
+  assert.equal(f.state.provider.length,0);assert.equal(f.state.auth,auth);
+ }
+ for(const alias of [undefined,'','short','contains whitespace key']){
+  const f=await harness();delete f.config.OPENAI_TRANSLATION_API_KEY;if(alias!==undefined)f.config.AI_TRANSLATION_API_KEY=alias;
+  const auth=f.state.auth,response=await f.request();assert.equal(response.statusCode,503);assert.equal(JSON.parse(response.body).error,'TRANSLATION_DISABLED');
+  assert.equal(f.state.provider.length,0);assert.equal(f.state.auth,auth);
+ }
 });
 test('client deduplicates same session, rejects unapproved egress, and discards late previous-session responses',async()=>{
  const globalRef={SarberkiCaseStoreSession:{getCsrfToken:async()=> 'ab'.repeat(32)}};let calls=0,complete;
