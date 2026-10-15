@@ -154,7 +154,7 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
    get('server_preview_case_id').value=r.caseId;get('server_preview_case_id').dispatchEvent(new Event('input'));
    get('server_preview_revision').value=String(r.revision);get('server_preview_revision').dispatchEvent(new Event('input'));
   }catch(e){
-   if(globalRef.SarberkiCaseStoreSession===session)fixtureStatus.textContent=e.message==='FORBIDDEN'?'Writer-jogosultság szükséges. Reader hozzáférése változatlan, csak olvasás.':'A szintetikus ügy létrehozása NEM IGAZOLT. Ellenőrizd a Writer-belépést; titkot ne másolj a chatbe.';
+   if(globalRef.SarberkiCaseStoreSession===session)fixtureStatus.textContent=({FORBIDDEN:'Writer-művelet tiltva: a szerver nem igazolta az írási jogosultságot vagy a kérést.',AUTH_REQUIRED:'Writer-munkamenet nem igazolt. Ellenőrizd a tesztbelépést.',SESSION_SETUP_REQUIRED:'A tesztkörnyezet kezelői munkamenete nincs megfelelően beállítva.',SESSION_SERVICE_UNAVAILABLE:'A hitelesítési szolgáltatás nem elérhető.',SERVICE_UNAVAILABLE:'A Writer-mentési szolgáltatás nem elérhető.',SESSION_UNAVAILABLE:'A Writer-végpont válasza nem ellenőrizhető.',INVALID_INPUT:'A Writer-tesztkérés nem megfelelő.',CASE_CONFLICT:'A tesztügy időközben megváltozott.'})[e.message]||'A szintetikus ügy létrehozása NEM IGAZOLT. Ismeretlen szerverhiba; titkot ne másolj a chatbe.';
   }finally{waiting(false);}
  }
  const problem=e=>{
