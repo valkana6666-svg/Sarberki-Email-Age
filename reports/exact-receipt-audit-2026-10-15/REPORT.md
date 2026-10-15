@@ -2,6 +2,10 @@
 
 2026-10-15. Branch `gmail-test-subject-allowlist`; coordinator code baseline `7654c5d`, documentation HEAD `1624ad2c85d51e8e59d4015e416018f6aa5ba183`. This patch has not been committed, deployed or verified against the managed service by Codex.
 
+## Coordinator cloud verification
+
+Deployed and tested code: `322bcdd00e86c66550cc72f6b21f589aa043651a`. Managed PostgREST text casting and normal authenticated Reader-path preview succeeded. The stored v1 insert audit actor and SHA256 matched; pending approval and unknown capacity/price remained unchanged. CI run `38687214869`: 1501 PASS, 0 FAIL, 0 SKIP. Fresh encrypted backup / isolated restore run `38687214672`: PASS, 47 tables compared; Auth API login NOT_RUN. These are coordinator observations after the original local Codex report below.
+
 ## Change
 
 The existing `preview-draft` action can verify the current database write audit only for the privately configured exact receipt. It reuses the ordinary authenticated user transport and existing `sc_cases` / `sc_audit` RLS. There is no new endpoint, permission, database object, SQL migration, approval mechanism or provider call.

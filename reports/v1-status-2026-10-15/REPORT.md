@@ -1,6 +1,21 @@
 # Sárberki V1 – ellenőrzött állapot, 2026-10-15
 
 
+## Lezárt felhős szakasz – 2026-10-15
+
+**Tesztelt és telepített kódcommit: `322bcdd00e86c66550cc72f6b21f589aa043651a`.** Az ezt követő jelentésfrissítés csak dokumentáció, nem új kód- vagy CI-eredmény.
+
+- [CI 38687214869](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/38687214869) SUCCESS: **1501 PASS / 0 FAIL / 0 SKIP**. Az élő Previo smoke külön SKIPPED. A szintetikus Gmail mobilworkflow és a kapacitásregresszió is SUCCESS. Helyben csak a 22 érintett célzott ellenőrzés futott.
+- A normál Writer-mentés, az azonos levél második feldolgozásának változatlan v1 eredménye és a Readerként bekért külön belépésből történő írás FORBIDDEN eredménye igazolt. Újratöltés után listázás és v1 szerveres előnézet sikeres.
+- Az új auditpatch tényleges PostgREST `data::text` útvonala sikeres. Olvasói munkamenetből visszaolvasható: létrehozás / v1; actor `d6c910cd-d0bf-4470-a1f2-2def40a1ab1c`; adat-SHA256 `b04dc79ee54c1de22db89e3936b8ee631ef4f3347ba160a14a8eac6878e92b3c`. Az alkalmazás normál RLS-es olvasással egyeztette a tárolt adatot és audit-hash-t. Ez a létrehozás aktuális írási auditja, nem jóváhagyás vagy teljes auditlánc-bizonyítás.
+- Állapot pending; ismeretlen kapacitás/ár mellett jóváhagyás tiltott. Korábbi négy nyelvi jóváhagyási tesztet nem ismételtünk. E-mail/Pushover-küldés, Previo-hívás vagy -írás nem történt ebben a szakaszban; production/main változatlan. Ügyírás nem történt admin SQL-lel vagy service role-lal.
+- [Mentés 38687214672](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/38687214672) SUCCESS; teljes izolált SQL-restore PASS, **47/47 tábla** adattartalma egyezik. Snapshot: 8 ügy, 8 üzenetkulcs, 20 audit; a privát exact-receipt DB-tábla is része. RLS/CAS/audit rollbackpróba PASS; Auth API login továbbra NOT_RUN ebben a visszaállításban.
+- Tartósan külön megőrzött csomag: `Sarberki_Verified_PostReceipt_Backup_2026-10-15.zip`, 105753 byte; SHA256 `8810a80bd3e00532f3a0cab9c8cacf1828d84793ed1df3287c74749e7a1237f8`. ZIP CRC, GitHub artifact digest és három ciphertext-hash egyezik. A GitHub-példány lejárata **2026-10-22 05:32:55 UTC / 07:32:55 Budapest**, restore-artifact egy másodperccel korábban. Minden régi mentés megmaradt. Netlify/Google külső beállítások nem részei a DB-mentésnek.
+
+**Bizonyítékhatár:** a tényleges Gmail-azonosítójú kitalált levél korábbi, felhasználói eszközön készült exportjának teljes felhős mentési/visszaolvasási/duplikációs és írási auditfolyamata sikeres. Új, közvetlen Work–Google OAuth/Gmail-beolvasás ebben a szakaszban nem történt, így ezt nem állítjuk.
+
+**V1: 92% mérnöki becslés**, nem tesztlefedettségi mutató. Fennmarad a friss, közvetlen Gmail-read kapcsolat bizonyítása; a bejövő idegen nyelvű levél magyar fordításának biztonságos bekötése; a canonical/local gyermek-visszakérdezési eltérés rendezése a védett komponensek külön engedélyezett javításával; a biztonságos Previo-read/hold-mentesség igazolása és az élesítési security-advisor tételek áttekintése. A szerveres tárolt tervezetben a 8 felnőtt és a dátumok helyesek. Következő konkrét feladat: friss gmail.readonly beolvasás az elkülönített szintetikus postaládából, a most már igazolt felhős szakasz újrafuttatása nélkül, kivéve ha új adatváltozás indokolja.
+
 ## További felhős ellenőrzés – 2026-10-15 07:19 után
 
 A felhasználó kifejezetten engedélyezte a pontos tesztpayload privát Netlify/DB-kötését és a hibásan titkosként jelölt nyilvános aktiváló kapcsoló újralétrehozását. A kapcsoló nem titkos, a PRIVATE_JSON változó továbbra is titkos; a teljes secrets scanning és Require approval védelem megmaradt. A javított Netlify-teszttelepítés `6ad062c02d18ba10a74a8372` / `1624ad2` published.
