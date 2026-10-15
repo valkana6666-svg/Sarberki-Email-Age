@@ -7,6 +7,8 @@ on:
       - gmail-test-subject-allowlist
     paths:
       - .github/workflows/v1-gmail-manual-check.yml
+      - operator-login-ui.mjs
+      - tests/operator-login-ui.test.mjs
 permissions:
   contents: read
 jobs:
