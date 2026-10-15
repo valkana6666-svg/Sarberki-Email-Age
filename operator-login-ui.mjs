@@ -6,6 +6,24 @@ import {syntheticMailMime,closedMailRequestFromGmailRecord,isClosedSyntheticMail
 import {formatCloudApprovalFailure} from './shared-core/cloud-approval-errors.mjs';
 const endpoint='/.netlify/functions/operator-session';
 const tokenPattern=/^[a-f0-9]{64}$/;
+// Public shape validation only; authorization and the one private receipt match
+// remain server-side. Preserve original text bytes, including CRLF, in payload.
+export function gmailReceiptRequestFromRecord(record,currentMessage){
+ const source=record?.source,text=record?.original_message;
+ const keys=['provider','message_id','thread_id','rfc_message_id','in_reply_to','references','subject','from','from_email','to','received_at'];
+ if(!source||Array.isArray(source)||Object.keys(source).sort().join(',')!==keys.sort().join(',')||
+   source.provider!=='gmail'||source.to!=='sarberkiprojecttest@gmail.com'||source.in_reply_to!==null||
+   !Array.isArray(source.references)||source.references.length||
+   keys.filter(k=>!['in_reply_to','references'].includes(k)).some(k=>typeof source[k]!=='string'||!source[k]||source[k].length>2000)||
+   !/^[a-zA-Z0-9_-]{1,256}$/.test(source.message_id)||!Number.isFinite(Date.parse(source.received_at))||
+   !/^[^@\s]+@[^@\s]+$/.test(source.from_email)||typeof text!=='string'||!text||text.length>20000||
+   typeof currentMessage!=='string'||currentMessage.replace(/\r\n?/g,'\n')!==text.replace(/\r\n?/g,'\n'))throw Error('INVALID_INPUT');
+ const mailbox_id='sarberki_gmail_test';
+ return {tenantId:'sarberki-test',action:'ingest-and-draft',expectedRevision:0,
+  sourceReceipt:{...structuredClone(source),mailbox_id},
+  envelope:{sender:source.from_email,text,mailbox_id,message_id:source.message_id,thread_id:source.thread_id,
+   rfc_message_id:source.rfc_message_id,references:[],received_at:source.received_at}};
+}
 export function initOperatorLoginPanel({documentRef=document,globalRef=window,request=fetch}={}){
  const get=id=>documentRef.getElementById(id);
  globalRef.SarberkiClosedSyntheticMailPreview=message=>{
@@ -20,6 +38,23 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
   mailSave=get('gmail_cloud_fixture_save'),mailStatus=get('gmail_cloud_fixture_status'),mailApproval=get('gmail_cloud_fixture_approval');
  if(!form||!email||!password||!status||!restore||!logout||!login||!listCases||!caseSelect||!openCase||!caseStatus)return false;
  let active=false,busy=false,listed=[];
+ const receiptPanel=get('gmail_bridge');let receiptSave=null,receiptStatus=null;
+ if(receiptPanel){
+  receiptSave=documentRef.createElement('button');receiptSave.id='gmail_exact_receipt_save';receiptSave.type='button';receiptSave.disabled=true;
+  receiptSave.textContent='Betöltött Gmail-tesztlevél mentése · Writer';
+  receiptStatus=documentRef.createElement('p');receiptStatus.id='gmail_exact_receipt_status';receiptStatus.setAttribute?.('role','status');
+  receiptStatus.textContent='Csak a szerveren privátan engedélyezett egyetlen szintetikus tesztlevél menthető. Nincs automatikus mentés vagy jóváhagyás.';
+  receiptPanel.appendChild(receiptSave);receiptPanel.appendChild(receiptStatus);
+ }
+ let receiptEpoch=0,receiptEventId=null;
+ const receiptInput=()=>{
+  const record=JSON.parse(get('gmail_json')?.value||'null');
+  if(receiptEventId!==null&&record?.source?.message_id!==receiptEventId)throw Error('INVALID_INPUT');
+  return gmailReceiptRequestFromRecord(record,get('message')?.value);
+ };
+ const refreshReceipt=()=>{if(receiptSave){try{receiptInput();receiptSave.disabled=busy||!active||!globalRef.SarberkiCaseStoreSession;}catch{receiptSave.disabled=true;}}};
+ const invalidateReceipt=()=>{receiptEpoch++;refreshReceipt();};
+
  let loadedMail=null,mailEpoch=0;
  const clearMail=()=>{loadedMail=null;mailEpoch++;if(mailSave)mailSave.disabled=true;if(mailApproval){mailApproval.hidden=true;mailApproval.removeAttribute?.('href');}};
  const emit=()=>documentRef.dispatchEvent?.(new Event('sarberki:session-changed'));
@@ -38,7 +73,7 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
   active=true;logout.disabled=false;listCases.disabled=false;resetCases();emit();
   status.textContent='Hitelesített tesztkezelői olvasás aktív. Szintetikus ügyek ellenőrizhetők; szerkesztés, jóváhagyás és küldés nem engedélyezett.';
  };
- const waiting=on=>{busy=on;login.disabled=on;restore.disabled=on;logout.disabled=on||!active;listCases.disabled=on||!active;openCase.disabled=on||listed.length===0;if(createFixture)createFixture.disabled=on||!active;if(mailLoad)mailLoad.disabled=on||!active;if(mailSave)mailSave.disabled=on||!active||!loadedMail;if(mailLanguage)mailLanguage.disabled=on;};
+ const waiting=on=>{busy=on;login.disabled=on;restore.disabled=on;logout.disabled=on||!active;listCases.disabled=on||!active;openCase.disabled=on||listed.length===0;if(createFixture)createFixture.disabled=on||!active;if(mailLoad)mailLoad.disabled=on||!active;if(mailSave)mailSave.disabled=on||!active||!loadedMail;if(mailLanguage)mailLanguage.disabled=on;refreshReceipt();};
  async function call(method,body,csrf,path=endpoint){
   const response=await request(path,{
    method,cache:'no-store',credentials:'same-origin',redirect:'error',
@@ -82,6 +117,25 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
    mailStatus.textContent=(r.resolution.status==='duplicate'?'Meglévő':'Mentett')+' szintetikus felhős ügy: '+record.caseId+' · v'+record.revision+'. A Reader-előnézet kiválasztva; nincs küldés, foglalás vagy jóváhagyás.';
    if(mailApproval){mailApproval.href='/cloud-approval.html?caseId='+encodeURIComponent(record.caseId);mailApproval.hidden=false;}
   }catch(error){if(globalRef.SarberkiCaseStoreSession===session&&mailEpoch===turn)mailStatus.textContent=formatCloudApprovalFailure(error,'review-draft');}
+  finally{waiting(false);}
+ }
+ async function saveExactReceipt(){
+  if(!active||busy||!receiptStatus)return;
+  let input;try{input=receiptInput();}catch{refreshReceipt();return;}
+  const session=globalRef.SarberkiCaseStoreSession,turn=receiptEpoch,snapshot=JSON.stringify(input);waiting(true);
+  try{
+   const csrf=await session?.getCsrfToken?.();
+   if(!active||globalRef.SarberkiCaseStoreSession!==session||receiptEpoch!==turn)throw Error('AUTH_REQUIRED');
+   if(!tokenPattern.test(csrf||'')||JSON.stringify(receiptInput())!==snapshot)throw Error('INVALID_INPUT');
+   const body=await call('POST',input,csrf,'/.netlify/functions/booking-cases');
+   if(!active||globalRef.SarberkiCaseStoreSession!==session||receiptEpoch!==turn||JSON.stringify(receiptInput())!==snapshot)return;
+   const r=body?.result,record=r?.record;
+   if(!['new','duplicate'].includes(r?.resolution?.status)||record?.tenantId!=='sarberki-test'||!isIsolatedReviewCaseId(record.caseId)||!Number.isSafeInteger(record.revision)||record.revision<1)throw Error('INVALID_INPUT');
+   const id=get('server_preview_case_id'),revision=get('server_preview_revision');
+   if(id&&revision){id.value=record.caseId;id.dispatchEvent(new Event('input'));revision.value=String(record.revision);revision.dispatchEvent(new Event('input'));}
+   if(mailApproval){mailApproval.hidden=true;mailApproval.removeAttribute?.('href');}
+   receiptStatus.textContent=(r.resolution.status==='duplicate'?'Meglévő':'Mentett')+' privátan engedélyezett szintetikus tesztügy: '+record.caseId+' · v'+record.revision+'. Reader-előnézet kiválasztva. Kapacitás és ár nem igazolt; nincs jóváhagyás, küldés vagy foglalás.';
+  }catch(error){if(globalRef.SarberkiCaseStoreSession===session&&receiptEpoch===turn)receiptStatus.textContent=formatCloudApprovalFailure(error,'review-draft');}
   finally{waiting(false);}
  }
  async function createReaderFixture(){
@@ -183,8 +237,12 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
  createFixture?.addEventListener('click',createReaderFixture);
  mailLoad?.addEventListener('click',loadClosedMail);
  mailSave?.addEventListener('click',saveClosedMail);
+ receiptSave?.addEventListener('click',saveExactReceipt);
+ get('gmail_json')?.addEventListener('input',invalidateReceipt);
+ get('message')?.addEventListener('input',invalidateReceipt);
  mailLanguage?.addEventListener('change',clearMail);
  documentRef.addEventListener?.('sarberki:gmail-normalized',event=>{
+  receiptEventId=event.detail?.message_id||'';invalidateReceipt();
   if(busy){
    if(loadedMail&&event.detail?.message_id!==loadedMail.envelope.message_id)clearMail();
    return;
@@ -199,8 +257,8 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
    if(mailStatus)mailStatus.textContent='A pontos zárt Gmail minta előkészítve. Felhős mentés még nincs; a mentés külön Writer-művelet.';
   }catch{ /* Normal or changed Gmail records stay excluded from cloud writes. */ }
  });
- documentRef.addEventListener?.('sarberki:session-changed',clearMail);
- globalRef.addEventListener?.('pagehide',clearMail);
+ documentRef.addEventListener?.('sarberki:session-changed',()=>{clearMail();invalidateReceipt();});
+ globalRef.addEventListener?.('pagehide',()=>{clearMail();invalidateReceipt();});
  // A normal load restores once below. Only a bfcache return needs pageshow
  // revalidation; the existing busy gate prevents concurrent cookie rotation.
  globalRef.addEventListener?.('pageshow',event=>{

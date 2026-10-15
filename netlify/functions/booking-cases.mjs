@@ -5,16 +5,17 @@ import {createOperatorCookieSession,OperatorSessionError} from '../../shared-cor
 import {createIsolatedApprovalAttestor} from '../../shared-core/isolated-approval-attestation.mjs';
 import {isIsolatedReviewCaseId} from '../../shared-core/isolated-review-case-id.mjs';
 import {cloudSyntheticApprovalEnabled,cloudSyntheticReviewProviders,assertCloudSyntheticReviewCase} from '../../shared-core/cloud-synthetic-approval.mjs';
+import {createExactGmailReceipt} from '../../shared-core/server-exact-gmail-receipt.mjs';
 import {closedSyntheticMailLanguage} from '../../shared-core/synthetic-mail-fixtures.mjs';
 const headers={'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 const response=(statusCode,body)=>({statusCode,headers,body:JSON.stringify(body)});
 // Cookie-reader case picker gets metadata only, never raw inquiry content.
-export function syntheticCaseSummaries(records){
+export function syntheticCaseSummaries(records,exactReceipt=null){
  if(!Array.isArray(records))throw Error('INVALID_CASE_LIST');
  return records.filter(row=>row?.tenantId==='sarberki-test'&&
   isIsolatedReviewCaseId(row.caseId)&&Number.isSafeInteger(row.revision)&&row.revision>=1&&
   typeof row.data?.sender==='string'&&
-  /^[^\s@]+@[^\s@]+\.invalid$/iu.test(row.data.sender))
+  (/^[^\s@]+@[^\s@]+\.invalid$/iu.test(row.data.sender)||exactReceipt?.matchesRecord(row)))
   .map(row=>({tenantId:'sarberki-test',caseId:row.caseId,revision:row.revision})).slice(0,100);
 }
 export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedApproval=false,reviewProviders=null}={}){
@@ -24,6 +25,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
   if(!['GET','POST'].includes(event.httpMethod))return response(405,{error:'METHOD_NOT_ALLOWED'});
   const authorization=event.headers?.authorization||event.headers?.Authorization;
   const cloudApproval=cloudSyntheticApprovalEnabled(env);
+  const exactReceipt=createExactGmailReceipt(env);
   const cookieMode=authorization===undefined&&(event.httpMethod==='GET'||cloudApproval&&event.httpMethod==='POST')&&
    Object.keys(event.headers||{}).some(key=>['cookie','x-sarberki-operator'].includes(key.toLowerCase()));
   if(!cookieMode&&(typeof authorization!=='string'||!/^Bearer [A-Za-z0-9._-]{20,8192}$/.test(authorization)))return response(401,{error:'AUTH_REQUIRED'});
@@ -36,16 +38,16 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
   if(event.isBase64Encoded||Buffer.byteLength(event.body||'')>32768)return response(400,{error:'INVALID_INPUT'});
   try{
    const input=event.httpMethod==='GET'?(event.queryStringParameters||{}):JSON.parse(event.body||'{}');
-   if(Object.keys(input).some(k=>!['tenantId','caseId','envelope','values','expectedRevision','approvedCaseId','action','reviewedDraftHash','editedDraftText'].includes(k)))return response(400,{error:'INVALID_INPUT'});
+   if(Object.keys(input).some(k=>!['tenantId','caseId','envelope','values','expectedRevision','approvedCaseId','action','reviewedDraftHash','editedDraftText','sourceReceipt'].includes(k)))return response(400,{error:'INVALID_INPUT'});
    if(!env.CASE_STORE_TEST_TENANTS.split(',').includes(input.tenantId))return response(403,{error:'FORBIDDEN'});
    let cookieSession=null;
    if(cookieMode){
     const cookiePost=event.httpMethod==='POST';
     const closedIngest=cookiePost&&input.action==='ingest-and-draft';
-    if(input.tenantId!=='sarberki-test'||Object.keys(input).some(key=>!(closedIngest?['tenantId','action','envelope','expectedRevision']:cookiePost?['tenantId','caseId','action','expectedRevision','reviewedDraftHash']:['tenantId','caseId','action','expectedRevision']).includes(key))||
+    if(input.tenantId!=='sarberki-test'||Object.keys(input).some(key=>!(closedIngest?['tenantId','action','envelope','expectedRevision','sourceReceipt']:cookiePost?['tenantId','caseId','action','expectedRevision','reviewedDraftHash']:['tenantId','caseId','action','expectedRevision']).includes(key))||
       (cookiePost?!['review-draft','approve','ingest-and-draft'].includes(input.action):!(cloudApproval?['preview-draft','approval-state','review-record',undefined]:['preview-draft',undefined]).includes(input.action))||
       (!cookiePost&&input.caseId!==undefined&&!['preview-draft','approval-state','review-record'].includes(input.action)))return cookieResponse(403,{error:'FORBIDDEN'});
-    if(closedIngest&&(!cloudApproval||input.expectedRevision!==0||!closedSyntheticMailLanguage(input.envelope)))return cookieResponse(403,{error:'FORBIDDEN'});
+    if(closedIngest&&(!cloudApproval||input.expectedRevision!==0||!(input.sourceReceipt===undefined?closedSyntheticMailLanguage(input.envelope):exactReceipt?.matches(input.envelope,input.sourceReceipt))))return cookieResponse(403,{error:'FORBIDDEN'});
     const session=createOperatorCookieSession({env,fetchImpl});
     cookieSession=await (cookiePost?(input.action==='approve'?session.protectedApproval(event):session.protectedWrite(event)):session.protectedRead(event));
     rotatedCookie=cookieSession.setCookie;
@@ -75,7 +77,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
       if(!isIsolatedReviewCaseId(input.caseId))return cookieResponse(403,{error:'FORBIDDEN'});
       const candidate=await service.getCase({tenantId:input.tenantId,caseId:input.caseId});
       if(candidate?.tenantId!=='sarberki-test'||typeof candidate.data?.sender!=='string'||
-         !/^[^\s@]+@[^\s@]+\.invalid$/iu.test(candidate.data.sender))
+         (!/^[^\s@]+@[^\s@]+\.invalid$/iu.test(candidate.data.sender)&&!exactReceipt?.matchesRecord(candidate)))
        return cookieResponse(403,{error:'FORBIDDEN'});
      }
      const runtime=createServerBookingRuntime({service,tenantId:input.tenantId});
@@ -83,16 +85,16 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     }else if(input.action===undefined){
      const records=input.caseId?await service.getCase({tenantId:input.tenantId,caseId:input.caseId}):
       await service.listCases({tenantId:input.tenantId});
-     result=cookieMode?syntheticCaseSummaries(records):records;
+     result=cookieMode?syntheticCaseSummaries(records,exactReceipt):records;
     }else return response(400,{error:'INVALID_INPUT'});
    }
    else {
-    const runtime=createServerBookingRuntime({service,tenantId:input.tenantId,isolatedApproval:approvalEnabled,reviewProviders:cloudApproval?cloudSyntheticReviewProviders():approvalEnabled?reviewProviders:null});
+    const runtime=createServerBookingRuntime({service,tenantId:input.tenantId,isolatedApproval:approvalEnabled,exactReceipt,reviewProviders:cloudApproval?cloudSyntheticReviewProviders():approvalEnabled?reviewProviders:null});
     if(input.action==='draft')result=await runtime.draft(input.caseId,input.expectedRevision);
     else if(input.action==='edit-draft')result=await runtime.editDraft(input.caseId,input.expectedRevision,input.editedDraftText);
     else if(input.action==='review-draft'&&approvalEnabled)result=await runtime.reviewAndDraft(input.caseId,input.expectedRevision);
     else if(input.action==='approve'&&approvalEnabled)result=await runtime.approve(input.caseId,input.expectedRevision,input.reviewedDraftHash);
-    else if(input.action===undefined||input.action==='ingest'||input.action==='ingest-and-draft')result=await runtime.ingest(input.envelope,input.values,{expectedRevision:input.expectedRevision,approvedCaseId:input.approvedCaseId,persistDraft:input.action==='ingest-and-draft'});
+    else if(input.action===undefined||input.action==='ingest'||input.action==='ingest-and-draft')result=await runtime.ingest(input.envelope,input.values,{expectedRevision:input.expectedRevision,approvedCaseId:input.approvedCaseId,persistDraft:input.action==='ingest-and-draft',sourceReceipt:input.sourceReceipt});
     else return response(400,{error:'INVALID_INPUT'});
    }
    return cookieResponse(200,{result});

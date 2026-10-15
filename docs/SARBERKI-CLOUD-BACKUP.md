@@ -1,5 +1,21 @@
 # Sárberki – laptop nélkül futtatható titkosított adatbázismentés
 
+## 2026-10-15 – pontos Gmail-tesztlevél kapuja előtti új helyreállítási pont
+
+A meglévő mentési workflow változatlanul kizárólag a `mojnqizbcaczstguikpv`
+tesztprojektet olvassa, és az új exportot külön, eldobható PostgreSQL-en
+ellenőrzi. Az új, egyetlen privát receiptre kötött telepítési jelölt előtt friss
+titkosított mentés és sikeres izolált restore szükséges; az október 13-i csomag
+nem tartalmazza a későbbi négy nyelvű jóváhagyásokat. A jelölt SQL még nem
+futott a felhőben, és az új receipt-kapu alapértelmezetten zárt.
+
+Ez a dokumentum friss exportot kér a meglévő `[sarberki-backup-run]` triggerrel.
+Siker csak az új run projekt-/commitkötött artifactja, checksumja és külön
+restore-jelentése után állítható. A régi csomagok és artifactok nem írhatók felül.
+A kész új csomagot tartós tárolás és visszaolvasás követi. A korábbi artifactok
+tényleges lejáratai és a tartós példányok integritása a
+`reports/v1-status-2026-10-15/REPORT.md` jelentésben szerepelnek.
+
 Állapot 2026-10-11: a korábbi titkosított export és annak 43 táblás izolált SQL/RLS/CAS visszaállítása igazolt (38129512850). A friss snapshot és annak visszaállítása az új futás bizonyítékáig NEM IGAZOLT; teljes platform-helyreállítás továbbra sincs igazolva.
 Kizárólag sarberki-test / mojnqizbcaczstguikpv / London eu-west-2 / gmail-test-subject-allowlist.
 

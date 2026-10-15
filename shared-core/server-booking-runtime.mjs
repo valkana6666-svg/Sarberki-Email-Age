@@ -8,13 +8,14 @@ import { prepareSyntheticBookingReview } from './server-synthetic-booking-review
 const reject=code=>{throw new CaseServiceError(code,code);};
 const allowed=['sender','text','message_id','mailbox_id','thread_id','rfc_message_id','in_reply_to','references','received_at','case_id'];
 const fields=['arrival','departure','guests','adults','children','child_ages','unit','units_requested','request','split_request_text','language','name','phone','cars','nights','pier','dog'];
-export function validateSyntheticMessage(envelope,values) {
+function validateMessage(envelope,values,exactSender=false) {
  if(!envelope||!values||Array.isArray(values)||Object.keys(envelope).some(k=>!allowed.includes(k))||Object.keys(values).some(k=>!fields.includes(k)))reject('INVALID_INPUT');
- if(!/^[^@\s]+@[^@\s]+\.invalid$/i.test(envelope.sender||'') || typeof envelope.text!=='string' || envelope.text.length>20000 || !/^[a-zA-Z0-9_-]{1,128}$/.test(envelope.mailbox_id||'') || !/^[a-zA-Z0-9_-]{1,256}$/.test(envelope.message_id||'') || !Number.isFinite(Date.parse(envelope.received_at)))reject('INVALID_INPUT');
+ if((!exactSender&&!/^[^@\s]+@[^@\s]+\.invalid$/i.test(envelope.sender||'')) || typeof envelope.text!=='string' || envelope.text.length>20000 || !/^[a-zA-Z0-9_-]{1,128}$/.test(envelope.mailbox_id||'') || !/^[a-zA-Z0-9_-]{1,256}$/.test(envelope.message_id||'') || !Number.isFinite(Date.parse(envelope.received_at)))reject('INVALID_INPUT');
  if(Object.values(values).some(x=>typeof x!=='string'||x.length>2000))reject('INVALID_INPUT');
  if(Object.entries(envelope).some(([k,v])=>k!=='references'&&(typeof v!=='string'||v.length>20000)))reject('INVALID_INPUT');
  if(envelope.references!==undefined&&(!Array.isArray(envelope.references)||envelope.references.length>100||envelope.references.some(x=>typeof x!=='string'||x.length>512)))reject('INVALID_INPUT');
 }
+export function validateSyntheticMessage(envelope,values){validateMessage(envelope,values);}
 // Scope RFC references as well as provider IDs, preserving angle-bracket syntax.
 function scopeMessage(message, reverse=false){
  const box=message.mailbox_id, prefix=box+':';
@@ -27,7 +28,7 @@ function scopeMessage(message, reverse=false){
   ...(message.references?{references:message.references.map(refs)}:{})};
 }
 // Reuses the existing engine. Only persistence is asynchronous; no new booking rules.
-export function createServerBookingRuntime({service,tenantId,requestContext,clock=()=>new Date().toISOString(),id=randomUUID,reviewProviders=null,isolatedApproval=false}){
+export function createServerBookingRuntime({service,tenantId,requestContext,clock=()=>new Date().toISOString(),id=randomUUID,reviewProviders=null,isolatedApproval=false,exactReceipt=null}){
  return {
   async approve(caseId,expectedRevision,draftHash){
    if(!isolatedApproval||tenantId!=='sarberki-test'||!reviewProviders)reject('SETUP_REQUIRED');
@@ -114,7 +115,9 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    data.drafts.push({text:preview.text,operatorReviewText:preview.operatorReviewText,at:clock(),revision:data.state.revision,basedOnMessageCount:data.messages.length});
    return service.updateCase({requestContext,tenantId,caseId,expectedRevision,bookingCase:data});
   },
-  async ingest(envelope,values,{expectedRevision,approvedCaseId=null,persistDraft=false}={}){
+  async ingest(envelope,values,{expectedRevision,approvedCaseId=null,persistDraft=false,sourceReceipt}={}){
+   const exact=tenantId==='sarberki-test'&&persistDraft&&exactReceipt?.matches(envelope,sourceReceipt)===true;
+   if(sourceReceipt!==undefined&&!exact)reject('FORBIDDEN');
    // One optional synthetic-only path saves the parsed case and its pending reply draft in the SAME insert/CAS.
    // The normal Gmail read-only importer never sets this flag or uploads a real message.
    if(persistDraft){
@@ -122,14 +125,15 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
     await service.requireWrite({requestContext,tenantId});
     // Never persist client-asserted booking facts in the atomic synthetic mail path.
     // Even if a browser supplies parsed values, the server extracts its own facts from the message.
-    validateSyntheticMessage(envelope,{});
+    validateMessage(envelope,{},exact);
     values=extractServerMessage(envelope);
    }
-   if(values===undefined){validateSyntheticMessage(envelope,{});values=extractServerMessage(envelope);}
-   validateSyntheticMessage(envelope,values);
+   if(values===undefined){validateMessage(envelope,{},exact);values=extractServerMessage(envelope);}
+   validateMessage(envelope,values,exact);
    const records=await service.listCases({requestContext,tenantId});
    const duplicate=records.find(r=>r.data.messages.some(m=>m.mailbox_id===envelope.mailbox_id&&m.message_id===envelope.message_id));
    if(duplicate){
+    if(exact&&!exactReceipt.matchesRecord(duplicate))reject('CASE_CONFLICT');
     // A provider ID is only an idempotency key when the original message is identical.
     // Never expose an unrelated saved case just because a caller reused its ID.
     const original=duplicate.data.messages.find(m=>m.mailbox_id===envelope.mailbox_id&&m.message_id===envelope.message_id);
@@ -143,11 +147,15 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    const scoped=records.map(r=>({...r.data,messages:r.data.messages.map(m=>scopeMessage(m))}));
    let saved;
    const storage={getItem:()=>JSON.stringify(scoped),setItem:(_,value)=>{saved=JSON.parse(value);}};
-   const store=createBookingCaseStore({storage,tenantId,clock,id});
+   const store=createBookingCaseStore({storage,tenantId,clock,id:exact?()=>exactReceipt.caseId:id});
    if(approvedCaseId||envelope.case_id)await service.requireApproval({requestContext,tenantId});
    const result=store.ingest(scopeMessage(envelope),values,{approvedCaseId});
    const data=saved.find(c=>c.id===result.bookingCase.id);
    data.messages=data.messages.map(m=>scopeMessage(m,true));
+   if(exact){
+    data.sourceReceipt=structuredClone(sourceReceipt);
+    if(!exactReceipt.matchesRecord({tenantId,caseId:data.id,data}))reject('FORBIDDEN');
+   }
    if(persistDraft){
     const at=clock();
     const plan=buildEmailInquiryDraft(serverInquiryOptions({tenantId,caseId:data.id,data},new Date(at)));

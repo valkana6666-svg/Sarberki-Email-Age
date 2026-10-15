@@ -1,0 +1,70 @@
+# Sárberki V1 – ellenőrzött állapot, 2026-10-15
+
+Kizárólagos ág: `gmail-test-subject-allowlist`. Kiinduló GitHub HEAD és frissen ellenőrzött Netlify teszttelepítés: `77cf97cfad2d594ae33a967946f889b4df301fe2`. Ez a jelentés és az új negatív teszt nem aktivál új adatfogadási útvonalat.
+
+## GitHub és CI
+
+A branch-szűrt Actions-lista legfrissebb futása: [38546025723](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/38546025723), `4ea4b936117b60ad461a7a616faf2cfb8a12b218`, 2026-10-14 09:57:26 UTC, SUCCESS. A tesztjob (`115792172500`) naplója: **1472 PASS / 0 FAIL / 0 SKIP**. Az élő Previo smoke lépés külön SKIPPED, nem élő kapacitásbizonyíték.
+
+A jelenlegi `77cf97cf…` commit `[skip actions]` jelöléssel készült: nincs hozzá teljes Actions-futás. Korábbi célzott bizonyítéka **19 PASS / 0 FAIL / 0 SKIP**, nem új teljes CI-siker. A PR-futásokat szűrő wrapper üres válaszából nem következtettünk a push-futások hiányára; a branch-szűrt REST-listát külön ellenőriztük.
+
+A legutóbbi failure-listázott futás [38414863596](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/38414863596), az október 13-i export/restore munka része. A későbbi, eredethez kötött `38457118999` mentés teljes izolált visszaállítási bizonyítéka PASS; a régi failure újrafuttatása most nem szükséges.
+
+## Működés és bizonyítékszintek
+
+- A korábbi HU/DE/SI/EN zárt minták Writer → PostgreSQL → Reader → külön jóváhagyó → audit útja igazolt. A négy emberi jóváhagyást nem ismételtük.
+- A korábbi eredeti mintán a v3 → v4 jóváhagyás igazolt. A négy új nyelvi ügy v3 / `internally_approved` állapotban lett visszaolvasva október 14-én.
+- Október 15-én csak reprezentatív, írás nélküli friss olvasás történt: az EN ügy (`926cc81d-16a1-435f-bfd3-41e874c1b1bc`) továbbra is v3 / `internally_approved`, egy audit, az eredeti actor és időpont, változatlan hash-ek. Nem új jóváhagyás.
+- A Reader olvasási, a Writer írási és a külön jóváhagyó approve-joga elkülönül. A korábbi automatizált tiltási bizonyítékok megmaradnak; ma nem ismételtük a teljes szerepkörtesztet.
+- A valódi Gmail-olvasás és helyi feldolgozás a felhasználó iPhone-os képeivel és az átadott canonical JSON-nal igazolt. Ez külön eszközről származó bizonyíték, nem a Work sikeres Google OAuth-munkamenete. A Work böngészőjében utoljára 502 / Connection refused akadály volt; ma nem indult ismételt Google-belépés.
+- A tényleges Gmail-üzenet Supabase-mentése, Reader-megjelenítése és felhős duplikációpróbája **NEM IGAZOLT**. A zárt fixture-eredményt nem tulajdonítjuk ennek a levélnek.
+
+## Új befejezett szakasz
+
+A Codex 2 új célzott ellenőrzést készített: `tests/actual-receipt-storage-boundary.test.mjs`. **2 PASS / 0 FAIL / 0 SKIP**. A koordinátor ellenőrizte a teszt orákulumait és a jelentést.
+
+A valódi feladó változatlan megőrzését két meglévő védelem akadályozza: a runtime és a `sc_write_case` SQL egyaránt `.invalid` feladót követel. Valódi PostgreSQL-motoron, authenticated Writer-tagság mellett SQLSTATE `22023` a válasz; az ügy-, üzenetkulcs- és auditszám nulla marad. Azonos jog és payload mellett a kitalált `.invalid` pozitív kontroll sikeres. A kontroll nem javasolt feladóhamisítás.
+
+Részletes bizonyíték és offline jelölt: [exact receipt storage boundary](../actual-gmail-receipt-2026-10-15/REPORT.md). A diagnosztika után a Codex elkészítette az egyetlen privát tesztreceiptre kötött, alapból zárt szerveradaptert, a meglévő API/runtime bekötését, az explicit Writer-gombot és az install/rollback SQL-jelöltet. A frissen érintett backend/UI célzott végső futása **16 PASS / 0 FAIL / 0 SKIP**; a controller módosítása miatt indokolt korábbi futásban a 6 új UI-ellenőrzés mellett a 13 meglévő controller-ellenőrzés is sikeres volt. Ezek átfedő futások, nem összeadandó tesztösszegek. A koordinátor a forrást a pontos távoli 77cf HEAD-del vetette össze. Nincs alkalmazott felhős sémaátírás, bekapcsolt privát receipt vagy jogosultságbővítés. Kódba személyes feladó, tényleges RFC-fejléc vagy privát receipt nem kerül.
+
+## Nyitott V1-hiányok
+
+1. Egyetlen, privát konfigurációval pontosan rögzített Gmail-tesztlevél eredethű szerveres fogadása. Az általános feladóvédelem oldása vagy szintetikus alias nem elfogadható megoldás.
+2. A valódi levélre épülő Writer → Reader → ismételt feldolgozás bizonyítéka.
+3. A teljes magyar fordítás nincs bekötve a képeken látható valódi Gmail-útvonalon. A zárt minták magyar ellenőrző szövege nem általános fordítómotor-bizonyíték.
+4. Az EN levél 8 felnőttet ad meg, de a canonical rekordban a total `guests` null, gyermekre rákérdezés és hiányjelzés jelenik meg. Ez a jóváhagyott szabállyal összevetendő eltérés; a védett üzleti szabályokat és renderert most nem módosítottuk.
+5. A levél Oct30–Nov1 időszakára nincs igazolt kapacitás vagy ár. Korábbi fixture-kapacitás/ár nem használható hozzá; foglalási ajánlat jóváhagyása továbbra is tiltott.
+6. Élő Previo-művelet addig nem indítható, amíg az átmeneti készletzárolás hiánya nincs dokumentáltan igazolva. Élesítés nem engedélyezett.
+
+A V1 készültsége **90–92% mérnöki becslés**, nem automatizált lefedettségi mutató. A fenti integrációs és fordítási hiányok miatt nem tekinthető éles bevezetésre késznek.
+
+## Mentések – tényleges megőrzés és integritás
+
+A mentési workflow-kban `retention-days: 7` szerepel. A GitHub artifact API október 15-i válasza szerint:
+
+| Artifact | Lejárat UTC | Europe/Budapest | Állapot |
+|---|---|---|---|
+| sarberki-fresh-full-recovery-38417777616 | 2026-10-20 14:57:52 | október 20. 16:57:52 | nem járt le |
+| sarberki-test-encrypted-38457118999 | 2026-10-20 19:45:35 | október 20. 21:45:35 | nem járt le |
+| sarberki-fresh-isolated-restore-38457118999 | 2026-10-20 19:45:34 | október 20. 21:45:34 | nem járt le |
+
+A két külön megőrzött csomag a tartós fájltárban megtalálható; helyi példányaik ZIP CRC-je hibátlan:
+
+- `Sarberki_Separate_Approver_Verified_Backup_2026-10-13.zip`, 88309 byte, SHA-256 `b8f970df4997dfc8646758ec45bf40bc9af6e5c616fa02676e076d17321803ec`.
+- `Sarberki_PreApproval_Verified_Backup_2026-10-13.zip`, 81666 byte, SHA-256 `d25ce75bb81d9b5919c796a51f2107e52c17e5623a786254b4c7d5e74e545544`.
+
+A külön encrypted ZIP hash-e `0f51d6d8c2bf33d37248129286b9838bdcb72a643e4aaa2358b6a02339875fe5`, egyezik az artifact API digestjével. A benne lévő három ciphertext SHA256SUMS értéke most is egyezik. A `38457118999` eredethez kötött restore-jelentés 46 tábla payload-egyezését, teljes izolált PostgreSQL restore-t, role/sequence/manifest/RLS ellenőrzést és hordozható visszafejtést igazol. Ennek a külön restore-nak `auth_api_login=NOT_RUN`; nem tulajdonítunk neki új Auth API-belépési próbát.
+
+Az exportkor írt STATUS.txt még nem ismerte a később elkészült restore/tartós másolat eredményét; a külön provenance-kötött restore JSON és a csomaghash a későbbi bizonyíték. Ma nem fejtettük vissza ismét az adatbázist, és nem állítottunk helyre forrásprojektbe. A tartós példányok meglétét és a helyi bytes integritását ellenőriztük; a tartós tárolóból ma új letöltéses byte-összevetés nem történt.
+
+### Lejárat előtti pótlás konkrét rendje
+
+Legkésőbb október 18-ig, illetve bármely szükséges DB-migráció ELŐTT készüljön új, test-project-refhez és commit/runhoz kötött, titkosított, read-only snapshot a meglévő export + izolált restore eljárással. Csak mindkét ellenőrzés sikere után tekinthető új helyreállítási pontnak. A ciphertextet, checksumot és külön restore/provenance jelentést egy új dátumozott tartós csomagban kell megőrizni és visszaolvasással ellenőrizni. A régi csomagokat megtartjuk. Régi artifact újrafeltöltése nem friss adatbázismentés.
+
+A kezdeti audit nem indított új exportot vagy teljes CI-t. A később elkészült írási/API-határ jelöltjének tesztági commitja a meglévő backup-triggerrel friss exportot és a repó szokásos CI-ellenőrzését kérheti; ezt a DB-telepítés előfeltétele indokolja. E jelentés írásakor a friss run eredménye még nem igazolt. Ismétlődő automatizmus vagy retention-beállítás-módosítás nem készült. A lejáró artifactok nem az egyetlen megőrzött másolatok.
+
+## Következő konkrét döntési pont
+
+A pontos Gmail-receipt fogadásához az adatbázis meglévő szintetikus határának szűk, egyetlen levélre kötött kiterjesztése szükséges. Az előkészített javaslat megőrzi a Writer-jogot, tenant/RLS-t, CAS-t, üzenetkulcsot és auditot, és nem enged jóváhagyást ismeretlen kapacitással/árral. Nem kér általános Gmail-feladóengedélyt vagy admin/service-role alkalmazásjogot. Telepítés előtt a konkrét módosítás, célzott negatív tesztek, friss mentés és az érintett sarberki-test projektazonosítás kötelező. E szakasz önmagában nem jelent DB-kapu aktiválási jóváhagyást.
+
+Takarékosság: helyben csak az új diagnosztikai/backend/UI tesztek és a közvetlenül módosított controller 13 régi ellenőrzése futott. A teljes 1472-es csomag helyben nem ismétlődött; a négy nyelv emberi jóváhagyása sem ismétlődött. A szokásos tesztági CI egyszeri futását az új tárolási/API-határ módosítása indokolja, nem pusztán az állapotfelmérés. Production/main, e-mail-küldés, Pushover-küldés és Previo-írás nem történt.
