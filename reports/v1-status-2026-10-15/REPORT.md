@@ -1,5 +1,22 @@
 # Sárberki V1 – ellenőrzött állapot, 2026-10-15
 
+## Végrehajtás utáni frissítés – az alábbi korábbi pillanatképet felülírja
+
+- Új kódcommit és ellenőrzött teszttelepítés: `7654c5d617e06788f3d59a9f7e5540561d9eaed4`. Kizárólag a tesztág és a leafy-chimera tesztoldal változott.
+- [CI 38682628961](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/38682628961): SUCCESS; **1496 PASS / 0 FAIL / 0 SKIP**. A kapacitásregresszió és a szintetikus Gmail mobilpróba is SUCCESS. A chatbot mobilworkflow szándékosan SKIPPED. Ez az egyszeri automatikus CI az új storage/API-határ változása miatt indokolt; nem indult újabb teljes helyi tesztfutás.
+- A tesztoldal health-válasza pontosan ezt a kódcommitot jelzi; `autoSend=false`, `autoBookingModification=false`.
+- [Friss mentés 38682628995](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/38682628995): SUCCESS. Forrásprojekt `mojnqizbcaczstguikpv`, read-only export; teljes izolált SQL-restore PASS, 46/46 tábla adattartalma egyezik; RLS/CAS/audit rollback-próba PASS. Auth API login ebben a restore-ban NOT_RUN, szerepjelszavak nincsenek a mentésben.
+- A letöltött ZIP-ek SHA256-ja egyezik a GitHub artifact digesttel; mindhárom ciphertext hash-e egyezik a restore-bizonyítékkal. A külön megőrzött `Sarberki_Verified_PreReceipt_Backup_2026-10-15.zip` SHA256: `bf4697c0907ce30c86d26469fbfcdeb12f99e43f428354996d8edb6415d15050`. A titkosított GitHub artifact lejárata **2026-10-22 04:41:41 UTC / 06:41:41 Budapest**; restore-artifact egy másodperccel korábban. A korábbi mentések megmaradtak.
+- A friss mentés és projektazonosság ellenőrzése UTÁN alkalmazva a `synthetic_exact_gmail_receipt_guard` séma-migráció. A meglévő Writer funkció csak pontosan privát konfigurációhoz kötött tesztügyet fogadhat; auth, Writer-jog, CAS, append-only, audit és ismeretlen ár/kapacitás tiltás változatlan. A konfigurációs tábla RLS-védett, jelenleg **0 sor**, anon/authenticated/service_role közvetlen hozzáférése tiltott. Nem történt alkalmazási ügyírás admin SQL-lel vagy service role-lal.
+- A hivatalos Netlify Google-belépés sikeres; a privát konfiguráció MENTÉSE viszont az automatikus jóváhagyási ellenőrzésen megállt. Indok: a valódi Gmail-azonosítók, operátori feladócím és kitalált tesztlevélszöveg Netlify-célhelyre továbbításához külön adat–célhely engedély szükséges. A blokkolást nem kerültük meg; a privát env nem mentődött és a DB-kötés sem aktiválódott.
+- Ezért a tényleges Gmail-levél Writer-mentése, Reader-visszaolvasása és ismételt feldolgozásának FELHŐS eredménye továbbra is **NEM IGAZOLT**. Az offline adapter/RLS/UI-próba sikeres. Ismeretlen kapacitás és ár mellett foglalási ajánlat jóváhagyása tiltott.
+- Supabase security advisor: a privát táblák policy nélküli RLS-e szándékos teljes kliensoldali tiltás; a három sc_* definer RPC meglévő hitelesített belépési pont. Nyitott élesítési ellenőrzés a korábbi `rls_auto_enable` triggerfüggvény EXECUTE-grantja és a kikapcsolt leaked-password protection. Ezekhez most nem változtattunk jogosultságot vagy Auth-beállítást.
+- Következő konkrét lépés: kifejezett engedély a pontos tesztpayload kizárólag a leafy-chimera tesztoldal titkos env-jébe és a sarberki-test privát kötésébe történő mentésére; utána normál Writer-belépés, egy mentés, azonos levél deduplikációja, Reader előnézet és jóváhagyási tiltás. A védett renderer/üzleti szabályok eltérései továbbra is nyitottak; nem módosultak.
+- V1: **90–92% mérnöki becslés**, élesítésre még nem kész.
+
+## Korábbi, a végrehajtás előtti pillanatkép
+
+
 Kizárólagos ág: `gmail-test-subject-allowlist`. Kiinduló GitHub HEAD és frissen ellenőrzött Netlify teszttelepítés: `77cf97cfad2d594ae33a967946f889b4df301fe2`. Ez a jelentés és az új negatív teszt nem aktivál új adatfogadási útvonalat.
 
 ## GitHub és CI
