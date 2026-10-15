@@ -53,8 +53,7 @@ test('Gmail bridge enforces the predicate after inbox listing', () => {
 
 test('Gmail bridge imports the shared Sárberki core helpers', () => {
   assert.ok(source.includes("import('./sarberki-core.mjs"));
-  assert.match(source, /guestCountFromText\(original\)/u);
-  assert.match(source, /childCountFromText\(original\)/u);
+  assert.match(source, /partyCountsFromText\(original\)/u);
   assert.match(source, /dateRangeFromText\(original, new Date\(\), BUSINESS\.timezone\)/u);
 });
 
@@ -133,7 +132,7 @@ test('reply and follow-up inquiry subjects remain readable',async()=>{
 
 
 test('contradictory adult child totals are escalated to human review',()=>{
-  assert.match(source,/adultCountFromText\(original\)/u);
+  assert.match(source,/guests:count,adults:adultCount,children:childCount.*partyCountsFromText\(original\)/u);
   assert.match(source,/adultCount\+childCount!==count/u);
   assert.match(source,/Ellentmondó létszámadat/u);
 });

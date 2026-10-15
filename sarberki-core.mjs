@@ -123,6 +123,17 @@ export function guestCountFromText(text=''){
   const w=text.match(/\b(ketten|kéten|hárman|harman|négyen|negyen|öten|oten|hatan|heten|nyolcan|kilencen|tízen|tizen)\b/iu)?.[1]?.toLocaleLowerCase('hu-HU');
   return w ? words[w] : null;
 }
+// Gmail party projection uses the shared parsers without claiming an explicit
+// zero-child statement. A clear adult-only inquiry supplies its total; unresolved
+// child mentions remain unknown. Explicit totals survive contradiction checks.
+export function partyCountsFromText(text=''){
+  text=activeMessageText(text);
+  const adults=adultCountFromText(text),explicitChildren=childCountFromText(text);
+  const childMention=/\b(?:gyerek\w*|gyermek\w*|baba\w*|child\w*|kid\w*|baby|babies|kind\w*|kinder\w*|baby\w*|otrok\w*|otroci)\b/iu.test(text);
+  const children=explicitChildren;
+  const guests=guestCountFromText(text) ?? (adults>0&&!childMention?adults:null);
+  return {guests,adults,children};
+}
 export function adultCountFromText(text=''){
   text=activeMessageText(text);
   const deWords={ein:1,eine:1,einen:1,einem:1,einer:1,eines:1,eins:1,zwei:2,drei:3,vier:4,fünf:5,fuenf:5,sechs:6,sieben:7,acht:8,neun:9,zehn:10,elf:11,zwölf:12,zwoelf:12};

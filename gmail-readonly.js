@@ -1,7 +1,7 @@
 /* Browser-only Gmail bridge. Access token stays in memory and is never stored. */
 (async () => {
   'use strict';
-  const { cabinFromText, cabinClarificationRequired, guestCountFromText, adultCountFromText, childCountFromText, dateRangeFromText, phoneFromText, childAgesFromText, pierPreferenceFromText, languageFromText, buildReplyDraft, specialRequestsFromText, requestedUnitsFromText, activeMessageText, requestFlagsFromText } = await import('./sarberki-core.mjs?v=20261007-e2e1');
+  const { cabinFromText, cabinClarificationRequired, partyCountsFromText, dateRangeFromText, phoneFromText, childAgesFromText, pierPreferenceFromText, languageFromText, buildReplyDraft, specialRequestsFromText, requestedUnitsFromText, activeMessageText, requestFlagsFromText } = await import('./sarberki-core.mjs?v=20261007-e2e1');
   const { BUSINESS } = await import('./business-config.mjs?v=20261007-e2e1');
   const { splitRequestFromText } = await import('./split-units.mjs?v=20261007-e2e1');
   const { fishingQuestion } = await import('./fishing-rules.mjs?v=20261005-stress1');
@@ -225,9 +225,7 @@
     if (!original) throw Error('A levélnek nincs olvasható szöveges része; emberi ellenőrzés szükséges.');
     const received = new Date(Number(message.internalDate));
     const normalizedDate = dateRangeFromText(original, new Date(), BUSINESS.timezone);
-    const count = guestCountFromText(original) || ({ketten:2,hárman:3,négyen:4,öten:5,hatan:6}[original.match(/\b(ketten|hárman|négyen|öten|hatan)\b/iu)?.[1]?.toLowerCase()] || null);
-    const adultCount = adultCountFromText(original);
-    const childCount = childCountFromText(original);
+    const {guests:count,adults:adultCount,children:childCount} = partyCountsFromText(original);
     const childAges = childAgesFromText(original);
     const phone = phoneFromText(original);
     const name = original.match(/(?:^|\n)\s*(?:üdv\.?|üdvözlettel|tisztelettel)\s*[:.,-]*\s*([A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+\s+[A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+)\s*$/imu)?.[1] || original.match(/(?:^|\n)\s*([A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+\s+[A-ZÁÉÍÓÖŐÚÜŰ][\p{L}-]+)\s*$/mu)?.[1];
