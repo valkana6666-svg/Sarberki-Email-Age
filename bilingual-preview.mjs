@@ -14,7 +14,8 @@ export function protectedTokens(text=''){
 }
 export function sameProtectedTokens(a,b){
  const x=protectedTokens(a),y=protectedTokens(b);
- return x.length===y.length && x.every(v=>y.includes(v));
+ x.sort();y.sort();
+ return x.length===y.length && x.every((v,i)=>v===y[i]);
 }
 export function mountBilingualPanels(doc=document){
  const insertAfter=(anchor,id,label,editable=false)=>{

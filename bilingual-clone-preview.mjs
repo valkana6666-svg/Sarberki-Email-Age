@@ -1,6 +1,7 @@
 // Read-only bilingual preview for the isolated TEST interface.
 // Translation never changes the source, approved reply, or Gmail state.
 import {sameProtectedTokens} from './bilingual-preview.mjs';
+import {createIncomingTranslator} from './translation-client.mjs';
 export const LANGS={de:'Német',en:'Angol',si:'Szlovén',sl:'Szlovén'};
 const TEST_FIXTURES={
  de:{incoming:'Guten Tag! Wir möchten vom 16. bis 18. Oktober 2026 für zwei Erwachsene ein Deluxe-Ferienhaus buchen. Ist es verfügbar?',huIncoming:'Jó napot! 2026. október 16–18. között két felnőtt részére szeretnénk egy Deluxe faházat foglalni. Szabad a szállás?',
@@ -20,7 +21,7 @@ export function detectForeign(text,normalize){
  const language=normalize?.languageFromText?.(text)||'hu';
  return LANGS[language]?language:null;
 }
-export function initBilingualClone({doc=document,translate=null}={}){
+export function initBilingualClone({doc=document,translate=null,globalRef=globalThis.window}={}){
  const get=id=>doc.getElementById(id);
  const incoming=get('message'),draft=get('draft');
  if(!incoming||!draft)return false;
@@ -38,6 +39,9 @@ export function initBilingualClone({doc=document,translate=null}={}){
  const gmailFirst=gmailIncoming?insert(gmailIncoming,'gmail_foreign_incoming_hu','Magyar fordítás – beérkezett Gmail-levél'):null;
  const gmailSecond=gmailDraft?insert(gmailDraft,'gmail_foreign_reply_hu','Magyar munkaváltozat – Gmail-választervezet',false):null;
  const all=[first,second,gmailFirst,gmailSecond].filter(Boolean);
+ const incomingTranslator=translate||createIncomingTranslator({globalRef});
+ const requestButtons=[];
+ let requesting=false;
  let generation=0,activeLanguage=null,lastDraft='',manualRevision=0,locked=false;
  const approval=get('approve');
  approval?.addEventListener('click',event=>{if(locked){event.stopImmediatePropagation();event.preventDefault();second.status.textContent='A magyar módosítás visszafordítása nincs jóváhagyva, ezért a belső jóváhagyás tiltott.';}},true);
@@ -65,23 +69,36 @@ export function initBilingualClone({doc=document,translate=null}={}){
  }
  let pendingForeign=null;
  const clear=()=>{generation++;manualRevision++;pendingForeign=null;activeLanguage=null;lastDraft='';unlock();for(const x of all){x.wrap.hidden=true;x.area.value='';x.status.textContent='';}};
- async function translateOne(view,text,lang,kind,version){
+ async function translateOne(view,text,lang,kind,version,{explicit=false}={}){
   view.area.value='';view.status.textContent='Fordítás ellenőrzése…';
   const demo=fixtureTranslation(text,lang,kind);
   if(demo){view.area.value=demo;view.status.textContent='Mesterséges tesztmondat ellenőrzött mintafordítása – nem általános fordítómotor.';return;}
-  if(typeof translate!=='function'){
-   view.status.textContent='A magyar fordítás még nem érhető el: biztonságos fordítómotor nincs bekötve. Az eredeti szöveg változatlan.';
+  if(!explicit){
+   view.status.textContent=kind==='incoming'?'Magyar fordítás csak a külön kérés gombbal indul, Writer-belépéssel; jelenleg kizárólag három zárt tesztlevélhez.':'A választervezet szolgáltatói fordítása nincs engedélyezve. Az eredeti szöveg változatlan.';
    return;
   }
   try{
-   const result=await translate({text,sourceLanguage:lang,targetLanguage:'hu',purpose:kind});
+   const result=await incomingTranslator({text,sourceLanguage:lang,targetLanguage:'hu',purpose:kind});
    if(version!==generation)return;
-   if(typeof result!=='string'||!result.trim())throw Error('NO_VERIFIED_TRANSLATION');
-   view.area.value=result;view.status.textContent='Gépi magyar fordítás – kezelői ellenőrzés szükséges.';
-  }catch{if(version===generation)view.status.textContent='A fordítás sikertelen. Az eredeti szöveg változatlan, küldés nem történt.';}
+   if(typeof result!=='string'||!result.trim()||!sameProtectedTokens(text,result))throw Error('NO_VERIFIED_TRANSLATION');
+   view.area.value=result;view.status.textContent='Gépi magyar fordítás – kezelői ellenőrzés szükséges; nem ember által jóváhagyott fordítás.';
+  }catch(error){if(version===generation)view.status.textContent=error.message==='TRANSLATION_DISABLED'?'A fordítószolgáltatás nincs bekapcsolva vagy beállítva. Az eredeti szöveg változatlan.':'A fordítás nem érhető el vagy nem ellenőrizhető. Writer-belépés és engedélyezett zárt tesztlevél szükséges. Az eredeti szöveg változatlan.';}
+ }
+ for(const view of [first,gmailFirst].filter(Boolean)){
+  const button=doc.createElement('button');button.type='button';button.textContent='Magyar fordítás kérése';
+  button.id=view.area.id+'_request';view.wrap.append(button);requestButtons.push(button);
+  button.addEventListener('click',async()=>{
+   if(requesting||!activeLanguage)return;
+   requesting=true;for(const b of requestButtons)b.disabled=true;
+   const version=generation,text=incoming.value,lang=activeLanguage;
+   try{
+    await translateOne(first,text,lang,'incoming',version,{explicit:true});
+    if(version===generation&&text===incoming.value&&gmailFirst){gmailFirst.area.value=first.area.value;gmailFirst.status.textContent=first.status.textContent;}
+   }finally{requesting=false;for(const b of requestButtons)b.disabled=false;}
+  });
  }
  async function sync({force=false}={}){
-  const lang=detectForeign(incoming.value,globalThis.window?.SarberkiNormalize);
+  const lang=detectForeign(incoming.value,globalRef?.SarberkiNormalize);
   if(!lang){clear();return;}
   const version=++generation;activeLanguage=lang;
   if(force){manualRevision++;pendingForeign=null;unlock();}
@@ -115,7 +132,8 @@ export function initBilingualClone({doc=document,translate=null}={}){
  doc.addEventListener('sarberki:gmail-normalized',()=>{void sync({force:true});});
  draft.addEventListener('input',()=>{if(activeLanguage)void sync();});
  get('refresh')?.addEventListener('click',()=>{if(activeLanguage)void sync({force:true});});
- incoming.addEventListener('input',()=>{if(activeLanguage&&detectForeign(incoming.value,globalThis.window?.SarberkiNormalize)!==activeLanguage)clear();});
+ incoming.addEventListener('input',()=>{clear();});
+ doc.addEventListener('sarberki:session-changed',()=>{clear();});
  return {sync,clear};
 }
 if(typeof document!=='undefined')initBilingualClone();
