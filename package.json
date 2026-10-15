@@ -4,7 +4,7 @@
   "scripts": {
     "price-server": "node price-server.mjs",
     "test:price": "node --test price-quote.test.mjs",
-    "test:gmail": "node --test gmail-filter.test.mjs gmail-policy.test.mjs gmail-writer-receipt.test.mjs gmail-server-exact-receipt.test.mjs tests/operator-login-ui.test.mjs",
+    "test:gmail": "node --test gmail-filter.test.mjs gmail-policy.test.mjs gmail-writer-receipt.test.mjs gmail-server-exact-receipt.test.mjs tests/operator-login-ui.test.mjs tests/reply-child-status-source.test.mjs",
     "test": "node --test *.test.mjs price-source/*.test.mjs price-source/recorded-previo-test.mjs tests/*.test.mjs",
     "test:gmail-normalize": "node --test gmail-normalize.test.mjs",
     "test:stress": "node --test tests/email-stress.test.mjs tests/availability-reply.test.mjs"
