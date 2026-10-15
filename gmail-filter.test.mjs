@@ -165,7 +165,7 @@ test('previously read Gmail messages can be reopened directly from the picker',(
 });
 
 test('adult count suppresses unnecessary child clarification in Gmail missing fields',()=>{
- assert.match(source,/if \(childCount==null && adultCount==null\) missing\.push\('Érkezik-e gyermek; ha igen, hányan és milyen életkorúak'\)/u);
- assert.doesNotMatch(source,/if \(childCount==null\) missing\.push/u);
+ const sourceLine=source.split('\n').find(line=>line.includes("missing.push('Érkezik-e gyermek"));
+ assert.equal(sourceLine?.trim(),"if (childCount==null && adultCount==null) missing.push('Érkezik-e gyermek; ha igen, hányan és milyen életkorúak');");
  assert.match(source,/if \(childCount && childAges\.length < childCount\) missing\.push\('Gyermek életkora'\)/u);
 });
