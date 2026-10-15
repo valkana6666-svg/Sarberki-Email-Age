@@ -1,4 +1,5 @@
 name: V1 Gmail manual test check
+# One-shot test-branch push verification after multilingual regression was added.
 on:
   workflow_dispatch:
   push:
