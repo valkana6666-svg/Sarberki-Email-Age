@@ -163,3 +163,9 @@ test('previously read Gmail messages can be reopened directly from the picker',(
   assert.match(source,/currentMessages\.find\(m => m\.id === id\)/u);
   assert.match(source,/Bármelyik korábban olvasott levél újra megnyitható/iu);
 });
+
+test('adult count suppresses unnecessary child clarification in Gmail missing fields',()=>{
+ assert.match(source,/if \(childCount==null && adultCount==null\) missing\.push\('Érkezik-e gyermek; ha igen, hányan és milyen életkorúak'\)/u);
+ assert.doesNotMatch(source,/if \(childCount==null\) missing\.push/u);
+ assert.match(source,/if \(childCount && childAges\.length < childCount\) missing\.push\('Gyermek életkora'\)/u);
+});
