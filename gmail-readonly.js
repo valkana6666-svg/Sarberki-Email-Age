@@ -262,7 +262,7 @@
     if (normalizedDate?.inferredYear && !inferred.some(x => x.label === 'Év')) inferred.push({label:'Év',value:`${normalizedDate.arrival.slice(0,4)}, a feldolgozás napja alapján következtetve; emberi ellenőrzés szükséges`});
     if (!count) missing.push('Vendégek száma');
     if (adultCount==null) missing.push('Felnőttek száma');
-    if (childCount==null) missing.push('Érkezik-e gyermek; ha igen, hányan és milyen életkorúak');
+    if (childCount==null && adultCount==null) missing.push('Érkezik-e gyermek; ha igen, hányan és milyen életkorúak');
     if (childCount && childAges.length < childCount) missing.push('Gyermek életkora');
     if (!phone) missing.push('Telefonszám');
     const reviewYear = normalizedDate?.inferredYear ? Number(normalizedDate.arrival.slice(0,4)) : null;
