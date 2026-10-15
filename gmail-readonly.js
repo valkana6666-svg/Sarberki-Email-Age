@@ -5,7 +5,7 @@
   const { BUSINESS } = await import('./business-config.mjs?v=20261007-e2e1');
   const { splitRequestFromText } = await import('./split-units.mjs?v=20261007-e2e1');
   const { fishingQuestion } = await import('./fishing-rules.mjs?v=20261005-stress1');
-  const { INBOX_QUERY, TEST_GMAIL_ACCOUNT, assertTestGmailAccount, isTestInquiry } = await import('./gmail-policy.mjs');
+  const { INBOX_QUERY, TEST_GMAIL_ACCOUNT, assertTestGmailAccount, isTestInquiry, syntheticMessageIdFromSearch } = await import('./gmail-policy.mjs');
 
   function headerMap(message) {
     return Object.fromEntries((message.payload?.headers || []).map(h => [h.name.toLowerCase(), h.value]));
@@ -280,10 +280,18 @@
     return {source:{provider:'gmail',message_id:message.id,thread_id:message.threadId,rfc_message_id:headers['message-id']||null,in_reply_to:headers['in-reply-to']||null,references:(headers.references||'').match(/<[^>]+>/g)||[],subject:headers.subject || '',from:headers.from || '',from_email:emailAddress(headers.from || ''),to:headers.to || '',received_at:received.toISOString()},original_message:rawOriginal,normalized:{language,cabin,dates:normalizedDate,guests:count,adults:adultCount,children:childCount,child_ages:childAges,phone,nights:normalizedDate?(Date.parse(normalizedDate.departure)-Date.parse(normalizedDate.arrival))/86400000:null,special_requests:specialRequests,fishing_question:Boolean(fishingInfo),parking_question:/(?:parkol|parking|parkplatz|parkplätze|parkiriš|parkiris)/iu.test(original),units_requested:requestedUnits.count||null,units_open:requestedUnits.open,split_request:splitRequest,pier_requested:pier,hot_tub_requested:hotTub,pet_requested:dog},extracted,inferred,missing,human_review:humanReview,reply_draft:replyDraft};
   }
   async function readWithToken(token) {
+    const exactId=syntheticMessageIdFromSearch(window.location?.search||'');
     const headers = {Authorization:`Bearer ${token}`};
     const profileResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {headers,cache:'no-store'});
     if (!profileResponse.ok) throw Error(`A Gmail tesztfiók nem ellenőrizhető (${profileResponse.status}).`);
     assertTestGmailAccount(await profileResponse.json());
+    if(exactId){
+      const response=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(exactId)}?format=full`,{headers,cache:'no-store'});
+      if(!response.ok)throw Error(`A kijelölt szintetikus Gmail-levél nem olvasható (${response.status}).`);
+      const message=await response.json();
+      if(message?.id!==exactId||!isTestInquiry(message))throw Error('A kijelölt szintetikus levél azonossága vagy Inbox-státusza nem igazolt.');
+      return [message];
+    }
     const candidates = [];
     let pageToken;
     do {

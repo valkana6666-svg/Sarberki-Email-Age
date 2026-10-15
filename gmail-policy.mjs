@@ -13,3 +13,13 @@ export function isTestInquiry(message) {
     && Number.isFinite(Number(message.internalDate))
     && Number(message.internalDate) > AFTER;
 }
+
+// Optional narrow read for an operator-preidentified synthetic message.
+// An invalid/empty/duplicate selector must never fall back to the inbox query.
+export function syntheticMessageIdFromSearch(search='') {
+  const ids=new URLSearchParams(search).getAll('syntheticGmailMessageId');
+  if(!ids.length)return null;
+  if(ids.length!==1||! /^[a-f0-9]{12,32}$/.test(ids[0]))
+    throw Error('Érvénytelen szintetikus Gmail-üzenetazonosító; az Inbox nem kerül beolvasásra.');
+  return ids[0];
+}

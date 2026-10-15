@@ -120,3 +120,10 @@ Az igazolt felhős sémahiba miatt az approve jogosultság jelenleg write jogosu
 ### 2026-10-15 – exact receipt mentése utáni friss pillanatkép
 
 A Writer normál Auth-útvonalon létrehozta az egyetlen privátan engedélyezett szintetikus Gmail-ügyet v1-ben. Az ismételt feldolgozás ugyanazt a v1-et adta vissza; külön olvasói belépésből írás FORBIDDEN, újratöltés után listázás és előnézet sikeres. A meglévő titkosított mentések megőrzése mellett új, eredethez kötött export és izolált SQL-restore kérése indokolt, hogy ez az ügy és a privát konfiguráció is mentve legyen. Jelen bejegyzés a futás indítását rögzíti, nem előlegezi meg annak sikerét.
+
+
+### 2026-10-15 – Writer-javítás utáni V1 mentés
+
+A 12028c420b38dc75285875981cb2cae99955f8fe Writer-javítás, az új v2 szintetikus ügy és az élő Reader/négynyelvű ellenőrzés utáni egyszeri titkosított export és izolált SQL-restore kérése. A Gmail OAuth-próbához külön, egy előre azonosított üzenetre szűkített olvasási mód készül; hibás vagy üres azonosító nem válthat át Inbox-olvasásra. Konkrét levélazonosító, személyes adat és titok nem kerül a repositoryba.
+
+A meglévő sarberki-test, csak olvasható forráskapcsolat, titkosítás, eredetkötés és izolált restore biztonsági kapui változatlanok. A korábbi mentések megmaradnak. A friss ciphertext és a kód/config-leltár tartós letölthető csomagba kerül; külső szolgáltatói titkok teljes mentése nem állítható. Ez a bejegyzés indítási kérelem, a siker kizárólag az Actions-bizonyítékok alapján jelenthető.
