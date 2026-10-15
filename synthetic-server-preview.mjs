@@ -14,7 +14,12 @@ export function syntheticPreviewState(result){
  const price=d?.pricing?.verified===true?'Belső számítás ellenőrzött; vendégár nincs jóváhagyva.':'NEM IGAZOLT – nincs jóváhagyott vendégár.';
  const valid=s&&Number.isSafeInteger(s.caseRevision)&&s.caseRevision===result.revision&&Number.isSafeInteger(s.factsRevision)&&Number.isSafeInteger(s.messageCount);
  const current=valid&&s.latestDraftRevision===s.factsRevision&&s.latestDraftMessageCount===s.messageCount;
- return {details,capacity,price,revision:valid?'Ügyverzió: '+s.caseRevision+' · tényverzió: '+s.factsRevision+' · '+(current?'Tárolt tervezet verziója egyezik; külön kezelői ellenőrzés szükséges.':'Nincs aktuális, az üzenetekhez kötött tárolt tervezet. Új ellenőrzés szükséges.'):'Tárolt tervezet verziója: NEM IGAZOLT.',approval:'Az előnézet függőben van; itt nincs jóváhagyás.',audit:'Audit: ezen az olvasási előnézeten nincs visszaolvasva; NEM IGAZOLT.'};
+ const a=result?.auditProof;
+ const auditVerified=valid&&s.auditStatus==='verified'&&s.storedApproval==='pending'&&a?.verified===true&&a.scope==='stored-case-write'&&
+  a.tenantId==='sarberki-test'&&a.caseId===result.caseId&&a.revision===result.revision&&
+  a.kind===(result.revision===1?'insert':'update')&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(a.actor||'')&&/^[a-f0-9]{64}$/.test(a.dataHash||'');
+ const audit=auditVerified?'Audit visszaolvasva · '+(a.kind==='insert'?'létrehozás':'módosítás')+' · v'+a.revision+' · kezelő: '+a.actor+' · SHA256: '+a.dataHash+'. Ez nem jóváhagyás.':'Audit: ezen az olvasási előnézeten nincs igazolt visszaolvasás; NEM IGAZOLT.';
+ return {details,capacity,price,revision:valid?'Ügyverzió: '+s.caseRevision+' · tényverzió: '+s.factsRevision+' · '+(current?'Tárolt tervezet verziója egyezik; külön kezelői ellenőrzés szükséges.':'Nincs aktuális, az üzenetekhez kötött tárolt tervezet. Új ellenőrzés szükséges.'):'Tárolt tervezet verziója: NEM IGAZOLT.',approval:'Az előnézet függőben van; itt nincs jóváhagyás.',audit};
 }
 export function initSyntheticPreviewPanel({documentRef=document,sessionProvider=()=>window.SarberkiCaseStoreSession}={}){
  const get=id=>documentRef.getElementById(id),action=get('server_preview_action'),status=get('server_preview_status'),output=get('server_preview_text');

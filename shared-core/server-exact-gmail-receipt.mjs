@@ -20,3 +20,23 @@ export function createExactGmailReceipt(env){
    matchesRecord:record=>record?.tenantId==='sarberki-test'&&record.caseId===config.caseId&&record.data?.sender===m.sender&&isDeepStrictEqual(record.data?.messages,[m])&&isDeepStrictEqual(record.data?.sourceReceipt,s)});
  }catch{return null;}
 }
+
+// Existing user transport + sc_audit RLS only. The PostgreSQL text cast avoids
+// inventing a JavaScript imitation of the DB's jsonb::text audit hash format.
+export async function readExactReceiptAudit({record,exactReceipt,transport}){
+ if(!exactReceipt?.matchesRecord(record)||record.data.state?.approval!=='pending'||record.data.serverApproval)return null;
+ try{
+  const scope={tenant_id:'eq.sarberki-test',case_id:'eq.'+record.caseId,revision:'eq.'+record.revision,limit:'2'};
+  const snapshots=await transport('/rest/v1/sc_cases?'+new URLSearchParams({...scope,select:'tenant_id,case_id,revision,updated_by,data::text'}));
+  if(!Array.isArray(snapshots)||snapshots.length!==1)return null;
+  const snapshot=snapshots[0];
+  if(snapshot.tenant_id!==record.tenantId||snapshot.case_id!==record.caseId||snapshot.revision!==record.revision||snapshot.updated_by!==record.updatedBy||typeof snapshot.data!=='string'||!isDeepStrictEqual(JSON.parse(snapshot.data),record.data))return null;
+  const rows=await transport('/rest/v1/sc_audit?'+new URLSearchParams({...scope,select:'tenant_id,case_id,revision,actor,kind,data_hash'}));
+  if(!Array.isArray(rows)||rows.length!==1)return null;
+  const row=rows[0],kind=record.revision===1?'insert':'update';
+  if(row.tenant_id!==record.tenantId||row.case_id!==record.caseId||row.revision!==record.revision||row.actor!==record.updatedBy||
+    !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(row.actor||'')||row.kind!==kind||
+    !/^[a-f0-9]{64}$/.test(row.data_hash||'')||createHash('sha256').update(snapshot.data,'utf8').digest('hex')!==row.data_hash)return null;
+  return {verified:true,scope:'stored-case-write',tenantId:record.tenantId,caseId:record.caseId,revision:record.revision,actor:row.actor,kind,dataHash:row.data_hash};
+ }catch{return null;}
+}

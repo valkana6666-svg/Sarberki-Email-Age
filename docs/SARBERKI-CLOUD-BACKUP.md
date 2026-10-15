@@ -116,3 +116,7 @@ A projektgazda a meglévő jóváhagyási modul sarberki-test bekötését enged
 ## 2026-10-13 – külön jóváhagyói jogosultság javítása előtti mentés
 
 Az igazolt felhős sémahiba miatt az approve jogosultság jelenleg write jogosultságot is követel. A külön read+approve, write nélküli jóváhagyó támogatását célzó minimális constraint-migráció előtt új, kizárólag a mojnqizbcaczstguikpv tesztprojektet olvasó titkosított snapshot és izolált restore szükséges. Új Actions-futás készül; korábbi run újrafuttatása és artifact-felülírás tilos. Ez a dokumentációs trigger nem igazol mentési sikert vagy migrációt: csak a friss eredetkötött export, ellenőrzőösszeg és sikeres restore-bizonyíték után alkalmazható a változtatás. Korábbi mentések megőrzendők; production/main, valódi vendégadat, e-mail-küldés és Previo-írás tiltott.
+
+### 2026-10-15 – exact receipt mentése utáni friss pillanatkép
+
+A Writer normál Auth-útvonalon létrehozta az egyetlen privátan engedélyezett szintetikus Gmail-ügyet v1-ben. Az ismételt feldolgozás ugyanazt a v1-et adta vissza; külön olvasói belépésből írás FORBIDDEN, újratöltés után listázás és előnézet sikeres. A meglévő titkosított mentések megőrzése mellett új, eredethez kötött export és izolált SQL-restore kérése indokolt, hogy ez az ügy és a privát konfiguráció is mentve legyen. Jelen bejegyzés a futás indítását rögzíti, nem előlegezi meg annak sikerét.

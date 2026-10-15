@@ -1,5 +1,16 @@
 # Sárberki V1 – ellenőrzött állapot, 2026-10-15
 
+
+## További felhős ellenőrzés – 2026-10-15 07:19 után
+
+A felhasználó kifejezetten engedélyezte a pontos tesztpayload privát Netlify/DB-kötését és a hibásan titkosként jelölt nyilvános aktiváló kapcsoló újralétrehozását. A kapcsoló nem titkos, a PRIVATE_JSON változó továbbra is titkos; a teljes secrets scanning és Require approval védelem megmaradt. A javított Netlify-teszttelepítés `6ad062c02d18ba10a74a8372` / `1624ad2` published.
+
+- Normál Writer UI-mentés sikeres: az engedélyezett ügy `13c8ecb7-f836-4e2c-9833-d58ee96f2dda`, v1. Ugyanazon export második feldolgozása meglévő ügyet és változatlan v1-et adott.
+- Külön, Readerként bekért védett belépés után a Writer-mentési próba FORBIDDEN; teljes oldal-újratöltés után az ügy v1-ként listázható, és a tárolt tervezet szerverről visszaolvasható. A szerveres előnézetben kapacitás/ár NEM IGAZOLT, állapot pending; nincs jóváhagyás.
+- Ez a korábban user-eszközön valódi Gmailből beolvasott export felhős visszajátszása. Nem új Work–Google OAuth/Gmail-read bizonyíték.
+- A szerveres tárolt tervezet összlétszáma 8, felnőttek 8, dátum 2026-10-30–11-01, 2 éj; a korábbi canonical/local gyermek-visszakérdezési eltérés nyitott.
+- Az audit előnézeti hiányára a Codex elkészítette a meglévő GET-preview útvonal normál RLS-es, privát exact-receipt-egyezésre kötött kiegészítését. 22 célzott PASS/0FAIL/0SKIP; részletes jelentés: `../exact-receipt-audit-2026-10-15/REPORT.md`. Nincs új RPC, migráció, jogosultság vagy jóváhagyási út. Az új auditpatch felhős eredménye és új mentési futása ezen commit készítésekor még függőben van.
+
 ## Végrehajtás utáni frissítés – az alábbi korábbi pillanatképet felülírja
 
 - Új kódcommit és ellenőrzött teszttelepítés: `7654c5d617e06788f3d59a9f7e5540561d9eaed4`. Kizárólag a tesztág és a leafy-chimera tesztoldal változott.

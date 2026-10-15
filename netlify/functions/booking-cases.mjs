@@ -5,7 +5,7 @@ import {createOperatorCookieSession,OperatorSessionError} from '../../shared-cor
 import {createIsolatedApprovalAttestor} from '../../shared-core/isolated-approval-attestation.mjs';
 import {isIsolatedReviewCaseId} from '../../shared-core/isolated-review-case-id.mjs';
 import {cloudSyntheticApprovalEnabled,cloudSyntheticReviewProviders,assertCloudSyntheticReviewCase} from '../../shared-core/cloud-synthetic-approval.mjs';
-import {createExactGmailReceipt} from '../../shared-core/server-exact-gmail-receipt.mjs';
+import {createExactGmailReceipt,readExactReceiptAudit} from '../../shared-core/server-exact-gmail-receipt.mjs';
 import {closedSyntheticMailLanguage} from '../../shared-core/synthetic-mail-fixtures.mjs';
 const headers={'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 const response=(statusCode,body)=>({statusCode,headers,body:JSON.stringify(body)});
@@ -73,15 +73,23 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      result={caseId:record.caseId,revision:record.revision,approval:record.data.state.approval,
       serverApproval:approval?{actor:approval.actor,at:approval.at,reviewedRevision:approval.reviewedRevision,draftHash:approval.draftHash}:null,audit};
     }else if(input.action==='preview-draft'){
+     let candidate=null;
      if(cookieMode){
       if(!isIsolatedReviewCaseId(input.caseId))return cookieResponse(403,{error:'FORBIDDEN'});
-      const candidate=await service.getCase({tenantId:input.tenantId,caseId:input.caseId});
+      candidate=await service.getCase({tenantId:input.tenantId,caseId:input.caseId});
       if(candidate?.tenantId!=='sarberki-test'||typeof candidate.data?.sender!=='string'||
          (!/^[^\s@]+@[^\s@]+\.invalid$/iu.test(candidate.data.sender)&&!exactReceipt?.matchesRecord(candidate)))
        return cookieResponse(403,{error:'FORBIDDEN'});
      }
      const runtime=createServerBookingRuntime({service,tenantId:input.tenantId});
      result=await runtime.previewDraft(input.caseId,Number(input.expectedRevision));
+     if(exactReceipt&&input.caseId===exactReceipt.caseId){
+      const record=candidate||await service.getCase({tenantId:input.tenantId,caseId:input.caseId});
+      if(record?.revision===result.revision){
+       const proof=await readExactReceiptAudit({record,exactReceipt,transport});
+       if(proof){result.auditProof=proof;result.reviewState.auditStatus='verified';}
+      }
+     }
     }else if(input.action===undefined){
      const records=input.caseId?await service.getCase({tenantId:input.tenantId,caseId:input.caseId}):
       await service.listCases({tenantId:input.tenantId});
