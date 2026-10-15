@@ -1,6 +1,11 @@
 name: V1 Gmail manual test check
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - gmail-test-subject-allowlist
+    paths:
+      - .github/workflows/v1-gmail-manual-check.yml
 permissions:
   contents: read
 jobs:
