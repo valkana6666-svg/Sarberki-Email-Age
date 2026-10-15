@@ -13,8 +13,8 @@ test('adult-only reply draft omits child clarification in all four languages',as
  for(const [language,question] of [
   ['hu','érkezik-e gyermek is'],
   ['de','Reisen auch Kinder mit?'],
-  ['en','Are any children coming'],
-  ['si','Ali prihajajo tudi otroci']
+  ['en','Will any children be staying with you?'],
+  ['si','ali bodo z vami tudi otroci']
  ]){
   const draft=buildReplyDraft({language,original:'Synthetic booking inquiry',adults:4,children:null,guests:4,phone:'000-TEST',cabin:'Deluxe',arrival:'2026-10-25',departure:'2026-10-27'});
   assert.equal(draft.includes(question),false,language);
