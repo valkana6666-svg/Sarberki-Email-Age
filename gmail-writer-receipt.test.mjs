@@ -26,3 +26,18 @@ test('exact Gmail Writer request fails closed for wrong mailbox, altered text or
  const extra=sample();extra.source.unauthorized=true;
  assert.throws(()=>gmailReceiptRequestFromRecord(extra,text),/INVALID_INPUT/);
 });
+
+test('exact Gmail receipt preserves original CRLF bytes while accepting equivalent displayed line endings',()=>{
+ const record=sample();record.original_message='Line one\r\nLine two';
+ const result=gmailReceiptRequestFromRecord(record,'Line one\nLine two');
+ assert.equal(result.envelope.text,'Line one\r\nLine two');
+ assert.equal(result.sourceReceipt.message_id,record.source.message_id);
+});
+test('exact Gmail receipt rejects malformed IDs, oversized body and missing sender',()=>{
+ const malformed=sample();malformed.source.message_id='bad id with spaces';
+ assert.throws(()=>gmailReceiptRequestFromRecord(malformed,text),/INVALID_INPUT/);
+ const oversized=sample();oversized.original_message='x'.repeat(20001);
+ assert.throws(()=>gmailReceiptRequestFromRecord(oversized,oversized.original_message),/INVALID_INPUT/);
+ const missing=sample();missing.source.from_email='';
+ assert.throws(()=>gmailReceiptRequestFromRecord(missing,text),/INVALID_INPUT/);
+});
