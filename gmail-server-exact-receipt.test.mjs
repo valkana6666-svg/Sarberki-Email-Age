@@ -93,3 +93,23 @@ test('stored Gmail receipt audit rejects duplicate database snapshots without re
  assert.equal(await readExactReceiptAudit({record,exactReceipt,transport}),null);
  assert.equal(auditRead,false);
 });
+
+test('stored Gmail receipt audit rejects wrong actor, revision and untrusted audit kind',async()=>{
+ const {env,source,envelope,config}=fixture();
+ const exactReceipt=createExactGmailReceipt(env);
+ const actor='12345678-1234-1234-1234-123456789abc';
+ const data={sender:envelope.sender,messages:[envelope],sourceReceipt:source,state:{approval:'pending'}};
+ const record={tenantId:'sarberki-test',caseId:config.caseId,revision:1,updatedBy:actor,data};
+ const serialized=JSON.stringify(data);
+ const hash=createHash('sha256').update(serialized).digest('hex');
+ for(const changed of [
+  {revision:2},
+  {actor:'87654321-1234-1234-1234-123456789abc'},
+  {kind:'update'}
+ ]){
+  const transport=async url=>url.startsWith('/rest/v1/sc_cases?')
+   ?[{tenant_id:record.tenantId,case_id:record.caseId,revision:1,updated_by:actor,data:serialized}]
+   :[{tenant_id:record.tenantId,case_id:record.caseId,revision:1,actor,kind:'insert',data_hash:hash,...changed}];
+  assert.equal(await readExactReceiptAudit({record,exactReceipt,transport}),null,JSON.stringify(changed));
+ }
+});
