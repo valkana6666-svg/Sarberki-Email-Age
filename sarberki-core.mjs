@@ -737,7 +737,7 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const effectiveAdults=(Number.isInteger(Number(adults))&&Number(adults)>0)?Number(adults):derivedAdults;
   const needAdults=!(Number.isInteger(effectiveAdults)&&effectiveAdults>0);
   const childStatusKnown=children!==null&&children!==undefined&&children!==''&&Number.isInteger(Number(children))&&Number(children)>=0;
-  const needChildStatus=!childStatusKnown;
+  const needChildStatus=!childStatusKnown && needAdults;
   const needChildAge=childStatusKnown&&Number(children)>0&&childAges.length<Number(children);
   const questions=replyQuestions(lang,{needDates,needAdults,needChildStatus,needPhone:!phone,needCabin:needCabin&&!canRecommendByCapacity,needChildAge,guests});
   if(needChildAge&&childAges.length){
