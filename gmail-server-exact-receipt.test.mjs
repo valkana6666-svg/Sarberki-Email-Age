@@ -75,3 +75,21 @@ test('stored Gmail receipt audit fails closed on altered audit hash and approved
  assert.equal(await readExactReceiptAudit({record:{...record,data:{...data,state:{approval:'approved'}}},exactReceipt,transport:async()=>{called=true;throw Error('unexpected');}}),null);
  assert.equal(called,false);
 });
+
+test('stored Gmail receipt audit rejects duplicate database snapshots without reading audit',async()=>{
+ const {env,source,envelope,config}=fixture();
+ const exactReceipt=createExactGmailReceipt(env);
+ const actor='12345678-1234-1234-1234-123456789abc';
+ const data={sender:envelope.sender,messages:[envelope],sourceReceipt:source,state:{approval:'pending'}};
+ const record={tenantId:'sarberki-test',caseId:config.caseId,revision:1,updatedBy:actor,data};
+ let auditRead=false;
+ const transport=async url=>{
+  if(url.startsWith('/rest/v1/sc_cases?')){
+   const snapshot={tenant_id:record.tenantId,case_id:record.caseId,revision:1,updated_by:actor,data:JSON.stringify(data)};
+   return [snapshot,snapshot];
+  }
+  auditRead=true;return [];
+ };
+ assert.equal(await readExactReceiptAudit({record,exactReceipt,transport}),null);
+ assert.equal(auditRead,false);
+});
