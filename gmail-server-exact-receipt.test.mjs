@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {createExactGmailReceipt} from './shared-core/server-exact-gmail-receipt.mjs';
+import {createExactGmailReceipt,readExactReceiptAudit} from './shared-core/server-exact-gmail-receipt.mjs';
 
 const text='Synthetic Gmail receipt only; no real guest data.';
 function fixture(){
@@ -37,4 +37,41 @@ test('server rejects tampered private body hash and untrusted sender',()=>{
  assert.equal(createExactGmailReceipt({...env,CASE_EXACT_RECEIPT_PRIVATE_JSON:JSON.stringify({...config,bodySha256:'0'.repeat(64)})}),null);
  const altered=structuredClone(config);altered.source.from_email='Guest@Example.invalid';
  assert.equal(createExactGmailReceipt({...env,CASE_EXACT_RECEIPT_PRIVATE_JSON:JSON.stringify(altered)}),null);
+});
+
+test('stored Gmail receipt audit validates one matching database snapshot and audit hash',async()=>{
+ const {env,source,envelope,config}=fixture();
+ const exactReceipt=createExactGmailReceipt(env);
+ const actor='12345678-1234-1234-1234-123456789abc';
+ const data={sender:envelope.sender,messages:[envelope],sourceReceipt:source,state:{approval:'pending'}};
+ const record={tenantId:'sarberki-test',caseId:config.caseId,revision:1,updatedBy:actor,data};
+ const serialized=JSON.stringify(data);
+ const hash=createHash('sha256').update(serialized,'utf8').digest('hex');
+ const calls=[];
+ const transport=async url=>{
+  calls.push(url);
+  if(url.startsWith('/rest/v1/sc_cases?'))return [{tenant_id:record.tenantId,case_id:record.caseId,revision:1,updated_by:actor,data:serialized}];
+  if(url.startsWith('/rest/v1/sc_audit?'))return [{tenant_id:record.tenantId,case_id:record.caseId,revision:1,actor,kind:'insert',data_hash:hash}];
+  throw Error('UNEXPECTED_ROUTE');
+ };
+ const result=await readExactReceiptAudit({record,exactReceipt,transport});
+ assert.equal(result?.verified,true);
+ assert.equal(result?.scope,'stored-case-write');
+ assert.equal(result?.dataHash,hash);
+ assert.equal(calls.length,2);
+});
+test('stored Gmail receipt audit fails closed on altered audit hash and approved record',async()=>{
+ const {env,source,envelope,config}=fixture();
+ const exactReceipt=createExactGmailReceipt(env);
+ const actor='12345678-1234-1234-1234-123456789abc';
+ const data={sender:envelope.sender,messages:[envelope],sourceReceipt:source,state:{approval:'pending'}};
+ const record={tenantId:'sarberki-test',caseId:config.caseId,revision:1,updatedBy:actor,data};
+ const serialized=JSON.stringify(data);
+ const transport=async url=>url.startsWith('/rest/v1/sc_cases?')
+  ?[{tenant_id:record.tenantId,case_id:record.caseId,revision:1,updated_by:actor,data:serialized}]
+  :[{tenant_id:record.tenantId,case_id:record.caseId,revision:1,actor,kind:'insert',data_hash:'0'.repeat(64)}];
+ assert.equal(await readExactReceiptAudit({record,exactReceipt,transport}),null);
+ let called=false;
+ assert.equal(await readExactReceiptAudit({record:{...record,data:{...data,state:{approval:'approved'}}},exactReceipt,transport:async()=>{called=true;throw Error('unexpected');}}),null);
+ assert.equal(called,false);
 });
