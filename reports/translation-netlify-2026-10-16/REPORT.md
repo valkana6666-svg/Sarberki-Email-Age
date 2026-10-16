@@ -42,3 +42,24 @@ The connected Platform plugin exposes key-provisioning operations, not account l
 The operator completed normal Google sign-in and OpenAI MFA. The authenticated Platform Limits page was visible for the previously selected project, followed by Billing Overview. Billing showed no remaining API credit and explicitly separated API credits from ChatGPT. This establishes an account-funding blocker for further provider translation verification; the earlier generic429 classification alone did not establish this. The limits page also listed the configured model.
 
 No payment details were entered, credit purchase performed, limit changed, key rotated or further provider request made. Next action belongs to the operator: establish API credit in the same account, then resume one closed English test, followed by DE/SI only if successful. Previously passed1545 CI tests and Gmail/restore proofs remain valid and were not rerun. Code remains97030326f694a2564277b2b17ca0b5938bb965f0; this checkpoint changes documentation only.
+
+## 2026-10-16 09:47–09:50 Europe/Budapest — three live translations PASS
+
+The operator reported completing the credit purchase in their own browser. A fresh authenticated Billing Overview showed an available API balance and Auto-reload OFF. The agent performed no financial transaction or change.
+
+On deployed code97030326f694a2564277b2b17ca0b5938bb965f0, the existing normal test-operator session was restored. Each exact syntheticMailEnvelope EN/DE/SI MIME fixture was loaded locally and translated by one explicit incoming translation button click. All three displayed the machine-translation status requiring operator review, in both incoming panels, with source messages unchanged. Each retained2026-10-23,2026-10-25,2 adults,0 children and+36 00 000 0000. No cloud case save, guest email, Pushover, Previo call/write, production/main change or automatic retry was performed.
+
+Observed English result:
+> Üdvözlöm! Egy Deluxe kabin 2026-10-23-tól 2026-10-25-ig 2 felnőtt és 0 gyermek számára. Telefon: +36 00 000 0000.
+
+Observed German result:
+> Jó napot! Deluxe nyaralóház 2026-10-23-tól 2026-10-25-ig, 2 felnőtt, 0 gyermek. Telefon: +36 00 000 0000.
+
+Observed Slovenian result:
+> Üdvözlöm! Deluxe házikó 2026-10-23-tól 2026-10-25-ig, 2 felnőtt, 0 gyermek. Telefon: +36 00 000 0000.
+
+This proves actual configured provider transport and numeric checks for these three closed fictional messages. It is not general/private Gmail approval, full translation-quality certification, reply/backtranslation or human approval. Terminology such as English cabin→kabin remains subject to domain-language review. Previous1545 CI tests were not rerun to obtain this evidence.
+
+UI issue observed: old bilingual-preview incoming panels still show an empty unconfigured-service placeholder below the working explicit clone panel. A minimal follow-up will suppress only these duplicate legacy incoming panels when the new ones exist, retaining legacy-only fallback and reply/editor/approval protections.
+
+The UI follow-up hides the two old incoming wrappers whenever their explicit replacement exists, in both initialization orders and after source updates/remount. Without a replacement the legacy fallback remains. Reply editors and approval code are unchanged. Targeted DOM/translation suites:17 PASS,0 FAIL,0 SKIP; syntax and diff checks PASS. No repeat provider calls were used to test this cosmetic change.

@@ -1,6 +1,6 @@
 // Read-only bilingual preview for the isolated TEST interface.
 // Translation never changes the source, approved reply, or Gmail state.
-import {sameProtectedTokens} from './bilingual-preview.mjs';
+import {sameProtectedTokens,hideReplacedIncomingPanels} from './bilingual-preview.mjs';
 import {createIncomingTranslator} from './translation-client.mjs';
 import {translationErrorMessage} from './translation-errors.mjs';
 export const LANGS={de:'Német',en:'Angol',si:'Szlovén',sl:'Szlovén'};
@@ -39,6 +39,7 @@ export function initBilingualClone({doc=document,translate=null,globalRef=global
  const gmailIncoming=get('gmail_original'),gmailDraft=get('gmail_draft');
  const gmailFirst=gmailIncoming?insert(gmailIncoming,'gmail_foreign_incoming_hu','Magyar fordítás – beérkezett Gmail-levél'):null;
  const gmailSecond=gmailDraft?insert(gmailDraft,'gmail_foreign_reply_hu','Magyar munkaváltozat – Gmail-választervezet',false):null;
+ hideReplacedIncomingPanels(doc);
  const all=[first,second,gmailFirst,gmailSecond].filter(Boolean);
  const incomingTranslator=translate||createIncomingTranslator({globalRef});
  const requestButtons=[];

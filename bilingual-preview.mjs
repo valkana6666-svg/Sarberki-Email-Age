@@ -17,7 +17,17 @@ export function sameProtectedTokens(a,b){
  x.sort();y.sort();
  return x.length===y.length && x.every((v,i)=>v===y[i]);
 }
+const incomingReplacements={gmail_original_hu:'gmail_foreign_incoming_hu',message_hu:'foreign_incoming_hu'};
+export function hideReplacedIncomingPanels(doc){
+ for(const [legacy,replacement] of Object.entries(incomingReplacements)){
+  if(doc.getElementById(replacement)){
+   const panel=doc.getElementById(legacy)?.closest('.bilingual-panel');
+   if(panel)panel.hidden=true;
+  }
+ }
+}
 export function mountBilingualPanels(doc=document){
+ hideReplacedIncomingPanels(doc);
  const insertAfter=(anchor,id,label,editable=false)=>{
   if(!anchor || doc.getElementById(id))return;
   const wrap=doc.createElement('div');wrap.className='bilingual-panel';
@@ -42,7 +52,8 @@ export function mountBilingualPanels(doc=document){
   if(!source||!target)continue;
   const update=()=>{
    const lang=detectForeignLanguage(source.value??source.textContent??'');
-   target.closest('.bilingual-panel').hidden=lang==='hu'||!(source.value??source.textContent??'').trim();
+   const replaced=Boolean(incomingReplacements[target.id]&&doc.getElementById(incomingReplacements[target.id]));
+   target.closest('.bilingual-panel').hidden=replaced||lang==='hu'||!(source.value??source.textContent??'').trim();
    const status=doc.getElementById(target.id+'_status');
    if(lang==='unknown')status.textContent='A nyelv nem azonosítható biztosan. Fordítás szükséges.';
    else status.textContent='Felismert nyelv (előzetes): '+lang.toUpperCase()+'. Fordítószolgáltatás hiányában nincs automatikus fordítás.';
