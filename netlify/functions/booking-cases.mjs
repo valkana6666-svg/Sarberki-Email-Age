@@ -7,7 +7,7 @@ import {createIsolatedApprovalAttestor} from '../../shared-core/isolated-approva
 import {isIsolatedReviewCaseId} from '../../shared-core/isolated-review-case-id.mjs';
 import {cloudSyntheticApprovalEnabled,cloudSyntheticReviewProviders,assertCloudSyntheticReviewCase} from '../../shared-core/cloud-synthetic-approval.mjs';
 import {createExactGmailReceipt,readExactReceiptAudit} from '../../shared-core/server-exact-gmail-receipt.mjs';
-import {closedSyntheticMailLanguage,isClosedTubFollowup,isClosedTubPreviousRecord} from '../../shared-core/synthetic-mail-fixtures.mjs';
+import {closedSyntheticMailLanguage,isClosedTubFollowup,isClosedTubPreviousRecord,isClosedTubReview,isClosedTubReviewRecord} from '../../shared-core/synthetic-mail-fixtures.mjs';
 import {resolveBookingCase} from '../../booking-cases.mjs';
 const headers={'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 const response=(statusCode,body)=>({statusCode,headers,body:JSON.stringify(body)});
@@ -43,14 +43,15 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    if(Object.keys(input).some(k=>!['tenantId','caseId','envelope','values','expectedRevision','approvedCaseId','action','reviewedDraftHash','editedDraftText','sourceReceipt','targetCaseId','targetRevision','reason','servicePreviewHash'].includes(k)))return response(400,{error:'INVALID_INPUT'});
    if(!env.CASE_STORE_TEST_TENANTS.split(',').includes(input.tenantId))return response(403,{error:'FORBIDDEN'});
    let cookieSession=null;
+   const closedTubReview=event.httpMethod==='POST'&&input.action==='ingest-and-draft'&&isClosedTubReview(input.envelope);
    const closedTub=event.httpMethod==='POST'&&input.action==='ingest-and-draft'&&isClosedTubFollowup(input.envelope);
    if(cookieMode){
     const cookiePost=event.httpMethod==='POST';
     const closedIngest=cookiePost&&input.action==='ingest-and-draft';
-    if(input.tenantId!=='sarberki-test'||Object.keys(input).some(key=>!(closedIngest?(closedTub?['tenantId','caseId','action','envelope','expectedRevision']:['tenantId','action','envelope','expectedRevision','sourceReceipt']):cookiePost?['tenantId','caseId','action','expectedRevision','reviewedDraftHash','targetCaseId','targetRevision','reason','servicePreviewHash']:['tenantId','caseId','action','expectedRevision']).includes(key))||
+    if(input.tenantId!=='sarberki-test'||Object.keys(input).some(key=>!(closedIngest?(closedTub||closedTubReview?['tenantId','caseId','action','envelope','expectedRevision']:['tenantId','action','envelope','expectedRevision','sourceReceipt']):cookiePost?['tenantId','caseId','action','expectedRevision','reviewedDraftHash','targetCaseId','targetRevision','reason','servicePreviewHash']:['tenantId','caseId','action','expectedRevision']).includes(key))||
       (cookiePost?!['review-draft','approve','ingest-and-draft','resolve-service-link','approve-service'].includes(input.action):!(cloudApproval?['preview-draft','approval-state','review-record','service-approval-state',undefined]:['preview-draft','service-approval-state',undefined]).includes(input.action))||
       (!cookiePost&&input.caseId!==undefined&&!['preview-draft','approval-state','review-record','service-approval-state'].includes(input.action)))return cookieResponse(403,{error:'FORBIDDEN'});
-    if(closedIngest&&(!cloudApproval||(closedTub?(!isIsolatedReviewCaseId(input.caseId)||!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<1):(input.expectedRevision!==0||!(input.sourceReceipt===undefined?closedSyntheticMailLanguage(input.envelope):exactReceipt?.matches(input.envelope,input.sourceReceipt))))))return cookieResponse(403,{error:'FORBIDDEN'});
+    if(closedIngest&&(!cloudApproval||(closedTub||closedTubReview?(!isIsolatedReviewCaseId(input.caseId)||!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<1):(input.expectedRevision!==0||!(input.sourceReceipt===undefined?closedSyntheticMailLanguage(input.envelope):exactReceipt?.matches(input.envelope,input.sourceReceipt))))))return cookieResponse(403,{error:'FORBIDDEN'});
     const session=createOperatorCookieSession({env,fetchImpl});
     cookieSession=await (cookiePost?(['approve','resolve-service-link','approve-service'].includes(input.action)?session.protectedApproval(event):session.protectedWrite(event)):session.protectedRead(event));
     rotatedCookie=cookieSession.setCookie;
@@ -70,6 +71,18 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     const candidates=await service.listCases({tenantId:input.tenantId});
     const link=resolveBookingCase(candidates.map(row=>row.data),input.envelope,{});
     if(link.status!=='linked'||link.caseId!==input.caseId)return cookieResponse(403,{error:'FORBIDDEN'});
+   }
+   let fixtureTarget=null;
+   if(cookieMode&&closedTubReview){
+    const target=await service.getCase({tenantId:input.tenantId,caseId:input.caseId});
+    if(!isClosedTubPreviousRecord(target))return cookieResponse(403,{error:'FORBIDDEN'});
+    if(target.revision!==input.expectedRevision)return cookieResponse(409,{error:'CASE_CONFLICT'});
+    const records=await service.listCases({tenantId:input.tenantId});
+    const prior=records.find(row=>row.data.messages.some(m=>m.mailbox_id===input.envelope.mailbox_id&&m.message_id===input.envelope.message_id));
+    if(prior&&!isClosedTubReviewRecord(prior))return cookieResponse(409,{error:'CASE_CONFLICT'});
+    const link=resolveBookingCase(records.map(row=>row.data),input.envelope,{});
+    if(link.status!=='ambiguous'||link.serviceOnly!==true)return cookieResponse(403,{error:'FORBIDDEN'});
+    fixtureTarget={caseId:target.caseId,revision:target.revision};
    }
    const serviceFlow=()=>createTubServiceApproval({service,tenantId:input.tenantId,bindingProvider:serviceBindingProvider,availabilityProvider:serviceAvailabilityProvider,
     attestor:/^[a-f0-9]{64}$/.test(env.ISOLATED_APPROVAL_ATTESTATION_KEY||'')?createServiceApprovalAttestor(env.ISOLATED_APPROVAL_ATTESTATION_KEY):null});
@@ -125,8 +138,12 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     else if(input.action==='edit-draft')result=await runtime.editDraft(input.caseId,input.expectedRevision,input.editedDraftText);
     else if(input.action==='review-draft'&&approvalEnabled)result=await runtime.reviewAndDraft(input.caseId,input.expectedRevision);
     else if(input.action==='approve'&&approvalEnabled)result=await runtime.approve(input.caseId,input.expectedRevision,input.reviewedDraftHash);
-    else if(input.action===undefined||input.action==='ingest'||input.action==='ingest-and-draft')result=await runtime.ingest(input.envelope,input.values,{expectedRevision:input.expectedRevision,approvedCaseId:input.approvedCaseId,persistDraft:input.action==='ingest-and-draft',sourceReceipt:input.sourceReceipt});
+    else if(input.action===undefined||input.action==='ingest'||input.action==='ingest-and-draft')result=await runtime.ingest(input.envelope,input.values,{expectedRevision:fixtureTarget?0:input.expectedRevision,approvedCaseId:input.approvedCaseId,persistDraft:input.action==='ingest-and-draft',sourceReceipt:input.sourceReceipt});
     else return response(400,{error:'INVALID_INPUT'});
+    if(fixtureTarget){
+     if(!isClosedTubReviewRecord(result?.record)||result.record.caseId===fixtureTarget.caseId)throw Error('INVALID_REVIEW_FIXTURE');
+     result={...result,fixtureTarget};
+    }
    }
    return cookieResponse(200,{result});
   }catch(error){

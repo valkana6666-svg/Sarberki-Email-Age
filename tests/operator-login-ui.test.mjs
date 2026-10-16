@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {syntheticMailEnvelope,closedMailRequestFromGmailRecord,syntheticTubFollowupEnvelope} from '../shared-core/synthetic-mail-fixtures.mjs';
+import {syntheticMailEnvelope,closedMailRequestFromGmailRecord,syntheticTubFollowupEnvelope,syntheticTubReviewEnvelope} from '../shared-core/synthetic-mail-fixtures.mjs';
 import {initOperatorLoginPanel} from '../operator-login-ui.mjs';
 const ui=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-const names=['operator_login_form','operator_login_email','operator_login_password','operator_login','operator_restore','operator_logout','operator_login_status','operator_list_cases','operator_case_select','operator_open_case','operator_case_status','server_preview_case_id','server_preview_revision','operator_create_fixture','operator_fixture_status','gmail_cloud_fixture_language','gmail_cloud_fixture_load','gmail_cloud_fixture_save','gmail_cloud_fixture_status','gmail_cloud_fixture_approval','gmail_cloud_tub_followup','gmail_json','message'];
+const names=['operator_login_form','operator_login_email','operator_login_password','operator_login','operator_restore','operator_logout','operator_login_status','operator_list_cases','operator_case_select','operator_open_case','operator_case_status','server_preview_case_id','server_preview_revision','operator_create_fixture','operator_fixture_status','gmail_cloud_fixture_language','gmail_cloud_fixture_load','gmail_cloud_fixture_save','gmail_cloud_fixture_status','gmail_cloud_fixture_approval','gmail_cloud_tub_followup','gmail_cloud_tub_review','service_link_target','service_link_target_revision','gmail_json','message'];
 const valid=()=>({authenticated:true,tenantId:'sarberki-test',csrfToken:'ab'.repeat(32),expiresAt:new Date(Date.now()+3600_000).toISOString()});
 async function harness(request){
  const map=new Map(),events=[];
@@ -289,4 +289,50 @@ test('tub follow-up discards changed selection before POST and during pending re
  after.get('server_preview_case_id').value='case-another';csrfDone();await pending;
  assert.equal(after.get('server_preview_case_id').value,'case-another');assert.equal(after.get('server_preview_revision').value,'1');
  const beforePending=before.get('gmail_cloud_tub_followup').click();before.get('server_preview_case_id').value='case-another';await beforePending;assert.equal(before.posts(),1);
+});
+
+async function closedReviewUi(onReview=null){
+ const caseId='44444444-4444-4444-8444-444444444444',reviewId='55555555-5555-4555-8555-555555555555',base=syntheticMailEnvelope('hu'),envelope=syntheticTubReviewEnvelope();let posts=0;
+ const baseRecord={tenantId:'sarberki-test',caseId,revision:1,data:{tenantId:'sarberki-test',id:caseId,sender:base.sender,messages:[base],state:{approval:'pending',values:{arrival:'2026-10-23',departure:'2026-10-25',guests:'2',adults:'2',children:'0',unit:'Deluxe'}}}};
+ const reviewRecord={tenantId:'sarberki-test',caseId:reviewId,revision:1,data:{tenantId:'sarberki-test',id:reviewId,sender:base.sender,caseKind:'service_link_review',status:'link_review_required',messages:[envelope],state:{intent:'service_request',approval:'pending',original:envelope.text,revision:1,values:{language:'hu',phone:'',cars:''}},serviceRequests:[{kind:'tub_request',serviceOnly:true,linkedCaseId:null,startDate:'2026-10-24',startTime:'18:00',durationHours:24,confirmationAllowed:false}],drafts:[{synthetic:true,basedOnMessageCount:1,revision:1}]}};
+ const h=await harness(async(url,options)=>{
+  if(url.endsWith('/operator-session'))return {ok:true,json:async()=>valid()};
+  posts++;const input=JSON.parse(options.body);
+  if(input.expectedRevision===0)return {ok:true,json:async()=>({result:{resolution:{status:'new'},record:baseRecord}})};
+  assert.deepEqual(input,{tenantId:'sarberki-test',action:'ingest-and-draft',caseId,expectedRevision:1,envelope});
+  const response=()=>({ok:true,json:async()=>({result:{resolution:{status:'ambiguous'},record:reviewRecord,fixtureTarget:{caseId,revision:1}}})});
+  return onReview?onReview(input,response):response();
+ });
+ h.get('gmail_cloud_fixture_language').value='hu';
+ h.globalRef.sarberkiGmailTransform=mime=>{const e=mime.id===envelope.message_id?envelope:base;return {source:{provider:'gmail',subject:'TESZT SÁRBERKI CLOSED HU',from_email:e.sender,message_id:e.message_id,thread_id:e.thread_id,received_at:e.received_at},original_message:e.text};};
+ h.globalRef.displayGmailRecord=async parsed=>{h.get('gmail_json').value=JSON.stringify(parsed);h.get('message').value=parsed.original_message;return true;};
+ return {...h,caseId,reviewId,posts:()=>posts,prepare:async()=>{await h.get('gmail_cloud_fixture_load').click();await h.get('gmail_cloud_fixture_save').click();}};
+}
+test('detached review Writer fixture opens a separate Reader case and preloads the unchanged target for human resolution',async()=>{
+ const h=await closedReviewUi();assert.equal(h.get('gmail_cloud_tub_review').disabled,true);await h.get('gmail_cloud_tub_review').click();assert.equal(h.posts(),0);
+ await h.prepare();assert.equal(h.get('gmail_cloud_tub_review').disabled,false);await h.get('gmail_cloud_tub_review').click();
+ assert.equal(h.posts(),2);assert.equal(h.get('server_preview_case_id').value,h.reviewId);assert.equal(h.get('server_preview_revision').value,'1');assert.equal(h.get('service_link_target').value,h.caseId);assert.equal(h.get('service_link_target_revision').value,'1');assert.match(h.get('gmail_cloud_fixture_status').textContent,/Célfoglalás változatlan/);assert.equal(h.get('gmail_cloud_tub_review').disabled,true);
+ await h.get('gmail_cloud_tub_review').click();assert.equal(h.posts(),2);
+});
+test('review fixture rejects tampered source, lost session/selection and late responses',async()=>{
+ for(const change of ['source','session','selection']){
+  const h=await closedReviewUi();await h.prepare();
+  if(change==='source'){const transform=h.globalRef.sarberkiGmailTransform;h.globalRef.sarberkiGmailTransform=mime=>({...transform(mime),original_message:'tampered'});}
+  if(change==='session')h.globalRef.SarberkiCaseStoreSession=null;if(change==='selection')h.get('server_preview_revision').value='9';
+  await h.get('gmail_cloud_tub_review').click();assert.equal(h.posts(),1);
+ }
+ let release;const h=await closedReviewUi((_input,response)=>new Promise(resolve=>release=()=>resolve(response())));await h.prepare();const pending=h.get('gmail_cloud_tub_review').click();while(!release)await Promise.resolve();h.get('server_preview_case_id').value='case-other';release();await pending;assert.equal(h.get('server_preview_case_id').value,'case-other');assert.equal(h.get('service_link_target').value,'');
+});
+test('pending review CSRF wait rechecks source epoch, target selection and session before POST',async()=>{
+ for(const change of ['source','target','session']){
+  const h=await closedReviewUi();await h.prepare();const pending=h.get('gmail_cloud_tub_review').click();
+  if(change==='source')h.get('message').dispatchEvent({type:'input'});
+  if(change==='target')h.get('server_preview_revision').value='9';
+  if(change==='session')h.globalRef.SarberkiCaseStoreSession=null;
+  await pending;assert.equal(h.posts(),1);
+ }
+});
+
+test('source input during pending review response cannot open its late review case',async()=>{
+ let release;const h=await closedReviewUi((_input,response)=>new Promise(resolve=>release=()=>resolve(response())));await h.prepare();const pending=h.get('gmail_cloud_tub_review').click();while(!release)await Promise.resolve();h.get('message').dispatchEvent({type:'input'});release();await pending;assert.equal(h.get('server_preview_case_id').value,h.caseId);assert.equal(h.get('service_link_target').value,'');
 });

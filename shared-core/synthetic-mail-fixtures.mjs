@@ -75,3 +75,27 @@ export function syntheticTubFollowupMime(){
   payload:{mimeType:'text/plain',headers:[{name:'From',value:e.sender},{name:'To',value:'test-inbox@synthetic.invalid'},{name:'Subject',value:'TESZT SÁRBERKI CLOSED TUB HU'}],
    body:{data:btoa(Array.from(bytes,value=>String.fromCharCode(value)).join('')).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}}};
 }
+
+// One detached-thread fixture for the human association review, not a new guest allowlist.
+export function syntheticTubReviewEnvelope(){
+ return {...syntheticTubFollowupEnvelope(),message_id:'sarberki-closed-tub-review-hu-20261016-v1',
+  thread_id:'sarberki-closed-tub-review-thread-hu-v1',received_at:'2026-10-16T15:00:00.000Z'};
+}
+export const isClosedTubReview=envelope=>exactEnvelope(envelope,syntheticTubReviewEnvelope());
+export function isClosedTubReviewRecord(record){
+ const d=record?.data,v=d?.state?.values,r=d?.serviceRequests?.[0],draft=d?.drafts?.[0];
+ return record?.tenantId==='sarberki-test'&&record.revision===1&&d?.tenantId==='sarberki-test'&&d.id===record.caseId&&
+  d.caseKind==='service_link_review'&&d.status==='link_review_required'&&d.sender===syntheticTubReviewEnvelope().sender&&
+  d.state?.intent==='service_request'&&d.state.approval==='pending'&&d.state.original===syntheticTubReviewEnvelope().text&&
+  d.state.quote==null&&d.state.availability==null&&!d.serverApproval&&v&&Object.keys(v).every(k=>['language','phone','cars'].includes(k))&&
+  Object.entries(v).every(([k,value])=>k==='language'?value==='hu':value==='')&&
+  d.messages?.length===1&&isClosedTubReview(d.messages[0])&&d.serviceRequests?.length===1&&r?.kind==='tub_request'&&
+  r.serviceOnly===true&&r.linkedCaseId===null&&r.cancelled!==true&&r.actionConflict!==true&&
+  r.startDate==='2026-10-24'&&r.startTime==='18:00'&&r.durationHours===24&&r.confirmationAllowed===false&&
+  d.drafts?.length===1&&draft?.synthetic===true&&draft.basedOnMessageCount===1&&draft.revision===d.state.revision;
+}
+export function syntheticTubReviewMime(){
+ const result=syntheticTubFollowupMime(),e=syntheticTubReviewEnvelope();
+ return {...result,id:e.message_id,threadId:e.thread_id,internalDate:String(Date.parse(e.received_at)),
+  payload:{...result.payload,headers:result.payload.headers.map(h=>h.name==='Subject'?{name:'Subject',value:'TESZT SÁRBERKI CLOSED TUB REVIEW HU'}:h)}};
+}

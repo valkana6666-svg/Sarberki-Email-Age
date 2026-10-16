@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createDecipheriv} from 'node:crypto';
 import {createOperatorCookieSession,clearOperatorCookie} from '../shared-core/operator-cookie-session.mjs';
 import {createOperatorSessionHandler} from '../netlify/functions/operator-session.mjs';
-import {syntheticMailEnvelope,syntheticTubFollowupEnvelope} from '../shared-core/synthetic-mail-fixtures.mjs';
+import {syntheticMailEnvelope,syntheticTubFollowupEnvelope,syntheticTubReviewEnvelope,isClosedTubReviewRecord} from '../shared-core/synthetic-mail-fixtures.mjs';
 import {createCaseHandler,syntheticCaseSummaries} from '../netlify/functions/booking-cases.mjs';
 import {createWriterReaderFixtureHandler} from '../netlify/functions/writer-reader-fixture.mjs';
 const origin='https://leafy-chimera-2403e5.netlify.app',project='https://mojnqizbcaczstguikpv.supabase.co';
@@ -334,4 +334,18 @@ test('service approval cookie POST rejects Reader, Writer-only, missing CSRF and
  for(const role of ['reader','writer']){f.state.membershipWrite=role==='writer';assert.equal((await handler(event(base))).statusCode,403);}
  f.state.membershipApprove=true;assert.equal((await handler(event({...base,csrf:undefined}))).statusCode,403);
  f.state.revoked=true;assert.equal((await handler(event(base))).statusCode,401);assert.equal(f.state.calls.filter(c=>c.url.includes('/rpc/sc_approve_tub_service')).length,0);
+});
+
+test('detached exact review fixture requires current closed target and Writer; replay after resolution is rejected',async()=>{
+ const f=fixture();f.state.membershipWrite=true;f.state.fixtureRows=new Map();const env={...f.env,CASE_APPROVAL_ENABLED:'sarberki-test-synthetic-only',ISOLATED_APPROVAL_ATTESTATION_KEY:'a1'.repeat(32)},logged=await f.login(),handler=createCaseHandler({env,fetchImpl:f.fetchImpl});
+ let cookie=cookieHeader(logged.setCookie);const csrf=logged.metadata.csrfToken;
+ const call=(body,options={})=>handler(event({method:'POST',cookie,csrf,body,...options}));
+ const base=await call({tenantId:'sarberki-test',action:'ingest-and-draft',expectedRevision:0,envelope:syntheticMailEnvelope('hu')});assert.equal(base.statusCode,200,base.body);cookie=cookieHeader(base.headers['Set-Cookie']);const target=JSON.parse(base.body).result.record;
+ const input={tenantId:'sarberki-test',action:'ingest-and-draft',caseId:target.caseId,expectedRevision:target.revision,envelope:syntheticTubReviewEnvelope()},before=structuredClone(f.state.fixtureRows.get(target.caseId));
+ for(const change of [{expectedRevision:99},{caseId:'case-not-found'},{envelope:{...input.envelope,thread_id:'fake-thread'}},{envelope:{...input.envelope,text:input.envelope.text+' changed'}},{envelope:{...input.envelope,case_id:target.caseId}},{values:{}},{approvedCaseId:target.caseId}])assert.ok([403,409].includes((await call({...input,...change})).statusCode));
+ assert.equal((await call(input,{csrf:undefined})).statusCode,403);f.state.membershipWrite=false;assert.equal((await call(input)).statusCode,403);f.state.membershipWrite=true;
+ const created=await call(input);assert.equal(created.statusCode,200,created.body);cookie=cookieHeader(created.headers['Set-Cookie']);const result=JSON.parse(created.body).result;assert.equal(result.resolution.status,'ambiguous');assert.notEqual(result.record.caseId,target.caseId);assert.equal(isClosedTubReviewRecord(result.record),true);assert.deepEqual(result.fixtureTarget,{caseId:target.caseId,revision:target.revision});
+ const repeat=await call(input);assert.equal(repeat.statusCode,200);assert.equal(JSON.parse(repeat.body).result.resolution.status,'duplicate');assert.equal(f.state.fixtureRows.size,2);assert.deepEqual(f.state.fixtureRows.get(target.caseId),before);
+ f.state.fixtureRows.get(result.record.caseId).revision=2;assert.equal((await call(input)).statusCode,409);assert.equal(f.state.fixtureRows.size,2);
+ f.state.revoked=true;assert.equal((await call(input)).statusCode,401);
 });
