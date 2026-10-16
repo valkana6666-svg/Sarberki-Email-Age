@@ -2,10 +2,11 @@
 import {createPrevioTubNoteReader} from './previo-tub-note-reader.mjs';
 const own=Object.prototype.hasOwnProperty;
 const clean=x=>typeof x==='string'&&x.length>0&&x.length<=256;
+const validInstant=x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(x)&&Number.isFinite(Date.parse(x));
 export function createSyntheticPrevioTubAdapter({bookings=[]}={}){
  if(!Array.isArray(bookings))throw new TypeError('bookings must be an array');
  const records=bookings.map(b=>{
-  if(!b||!clean(b.id)||!clean(b.tenantId)||!clean(b.note)||!clean(b.start)||!clean(b.end)||!clean(b.resourceId)||!own.call(b,'accommodationHouse'))throw new TypeError('invalid synthetic booking');
+  if(!b||!clean(b.id)||!clean(b.tenantId)||!clean(b.note)||!validInstant(b.start)||!validInstant(b.end)||Date.parse(b.end)<=Date.parse(b.start)||!clean(b.resourceId)||!own.call(b,'accommodationHouse'))throw new TypeError('invalid synthetic booking');
   return Object.freeze({...b});
  });
  const fetchNotes=async ({tenantId,resourceId,start,end})=>({
