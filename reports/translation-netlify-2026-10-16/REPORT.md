@@ -28,3 +28,11 @@ The secure Writer login request timed out with no verified successful transition
 
 A local screenshot writer-login-20261016.jpg shows the empty login form and restored read-only status; no credentials are visible. No production/main, real guest data, mail/Pushover sends, Previo write or backup changes occurred. This documentation-only checkpoint requests CI skipping to avoid rerunning already-passed code tests.
 
+
+## 2026-10-16 08:55 Europe/Budapest — authorization advanced, provider 429
+
+After the operator completed manual test-site login and confirmed continuation, a single closed English MIME fixture was loaded locally and its translation button invoked. The UI returned TRANSLATION_RATE_LIMITED. This branch is reached only after protectedWrite succeeds and the provider returns HTTP 429. Therefore the prior operator gate no longer blocks this request. No translated output was accepted; DE/SI were not invoked, and no automated retries occurred. This is not a successful translation-quality proof.
+
+Diagnostic limit: the current transport maps exact error.code insufficient_quota separately, but all other or unreadable 429 bodies become TRANSLATION_RATE_LIMITED. The precise provider code is not preserved; do not claim definite transient throttling or rule out spend/usage limits. Official rate-limit documentation also lists hard spend limits as possible HTTP429 causes: https://developers.openai.com/api/docs/guides/rate-limits . No new code was required or tested this session. Previously verified code remains 97030326f694a2564277b2b17ca0b5938bb965f0 with1545 passing CI tests.
+
+The connected Platform plugin exposes key-provisioning operations, not account limits/billing reads. Direct navigation to https://platform.openai.com/settings/organization/limits rendered a login page. Next required action is normal user sign-in to inspect the account limits. No purchase, credit top-up, limit increase, new key, production or main modification was performed. Existing key value was never read out of Netlify.
