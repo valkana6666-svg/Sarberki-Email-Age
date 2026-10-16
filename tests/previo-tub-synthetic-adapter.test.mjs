@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createSyntheticPrevioTubAdapter} from '../shared-core/previo-tub-synthetic-adapter.mjs';
+const q={tenantId:'sarberki-test',resourceId:'tub-house-12',start:'2026-10-24T16:00:00Z',end:'2026-10-25T16:00:00Z'};
+const b={id:'synthetic-b1',tenantId:'sarberki-test',resourceId:'tub-house-12',accommodationHouse:8,start:'2026-10-24T18:00:00Z',end:'2026-10-25T12:00:00Z',note:'12-es dézsa 2026-10-24 20:00'};
+test('another house can request a fixed tub, note is candidate only',async()=>{const r=await createSyntheticPrevioTubAdapter({bookings:[b]}).read(q);assert.equal(r.status,'CANDIDATES_ONLY');assert.equal(r.complete,false);assert.equal(r.notes.length,1)});
+test('different physical tub is not returned',async()=>{const r=await createSyntheticPrevioTubAdapter({bookings:[{...b,resourceId:'tub-house-11'}]}).read(q);assert.equal(r.notes.length,0);assert.equal(r.complete,false)});
+test('adjacent interval is excluded',async()=>{const r=await createSyntheticPrevioTubAdapter({bookings:[{...b,end:q.start,start:'2026-10-23T16:00:00Z'}]}).read(q);assert.equal(r.notes.length,0)});
+test('tenant isolation',async()=>{const r=await createSyntheticPrevioTubAdapter({bookings:[{...b,tenantId:'other-tenant'}]}).read(q);assert.equal(r.notes.length,0)});
+test('invalid fixture rejected',()=>assert.throws(()=>createSyntheticPrevioTubAdapter({bookings:[{id:'bad'}]})));
