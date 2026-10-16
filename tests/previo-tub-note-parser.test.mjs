@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parsePrevioTubNote as parse} from '../shared-core/previo-tub-note-parser.mjs';
-test('house 8 guest can request house 12 fixed tub',()=>{const r=parse('12-es ház dézsa 2026-10-24 18:00 24 órára',{accommodationHouse:8});assert.equal(r.status,'CANDIDATE');assert.equal(r.tubHouse,12);assert.equal(r.accommodationHouse,8);assert.equal(r.availabilityVerified,false);});
-test('house 8 has no physical tub',()=>assert.equal(parse('8-as ház dézsa 2026-10-24 18:00 24 órára').status,'UNKNOWN'));
-test('guest house is not inferred as tub house',()=>assert.equal(parse('Dézsa 2026-10-24 18:00 24 órára',{accommodationHouse:12}).status,'UNKNOWN'));
-test('missing, ambiguous and cancelled note fail closed',()=>{for(const s of ['12-es ház dézsa 2026-10-24 18:00 24 órára, 2026-10-25','12-es ház dézsa 2026-10-24 18:00 és 19:00 24 órára','12-es ház dézsa 2026-10-24 18:00','12-es ház dézsa lemondva 2026-10-24 18:00 24 órára','12-es ház dézsa 2026-02-30 18:00 24 órára'])assert.equal(parse(s).status,'UNKNOWN',s);});
-test('candidate is never confirmed availability',()=>assert.equal(parse('11-es ház dézsa 2026-10-24 18:00 24 órára').availabilityVerified,false));
+test('different accommodation and physical tub',()=>{const r=parse('12-es ház dézsa 2026-10-24 18:00 24 órára',{accommodationHouse:8});assert.equal(r.status,'CANDIDATE');assert.equal(r.tubHouse,12);assert.equal(r.tubResourceId,'tub-house-12');assert.equal(r.accommodationHouse,8);assert.equal(r.availabilityVerified,false)});
+test('same tub from different accommodation uses same resource',()=>{const a=parse('12-es ház dézsa 2026-10-24 18:00 24 órára',{accommodationHouse:8});const b=parse('12-es ház dézsa 2026-10-24 18:00 24 órára',{accommodationHouse:10});assert.equal(a.tubResourceId,b.tubResourceId)});
+test('different fixed tub uses different resource',()=>{const a=parse('12-es ház dézsa 2026-10-24 18:00 24 órára');const b=parse('11-es ház dézsa 2026-10-24 18:00 24 órára');assert.notEqual(a.tubResourceId,b.tubResourceId)});
+test('7 to 10 have no own tub',()=>{for(let i=7;i<=10;i++)assert.equal(parse(`${i}-es ház dézsa 2026-10-24 18:00 24 órára`).status,'UNKNOWN')});
+test('accommodation house cannot imply tub',()=>assert.equal(parse('Dézsa 2026-10-24 18:00 24 órára',{accommodationHouse:12}).status,'UNKNOWN'));
+test('invalid notes fail closed',()=>{for(const s of ['12-es ház dézsa 2026-10-24 18:00 24 órára, 2026-10-25','12-es ház dézsa 2026-10-24 18:00 és 19:00 24 órára','12-es ház dézsa 2026-10-24 18:00','12-es ház dézsa lemondva 2026-10-24 18:00 24 órára','12-es ház dézsa 2026-02-30 18:00 24 órára','11-es ház dézsa és 12-es ház dézsa 2026-10-24 18:00 24 órára'])assert.equal(parse(s).status,'UNKNOWN',s)});
+test('candidate is not availability evidence',()=>assert.equal(parse('11-es ház dézsa 2026-10-24 18:00 24 órára').availabilityVerified,false));
