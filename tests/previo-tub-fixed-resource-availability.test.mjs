@@ -25,3 +25,14 @@ test('incomplete Previo notes cannot prove availability',async()=>{
  const result=await checker([],false).check(query);
  assert.equal(result.status,'UNKNOWN');assert.equal(result.confirmationAllowed,false);
 });
+
+test('two different accommodation houses conflict on the same fixed tub with complete evidence',async()=>{
+ const reservations=[
+  {...booking('tub-house-12',8,'2026-10-24T16:00:00Z','2026-10-25T16:00:00Z'),id:'synthetic-guest-house-8'},
+  {...booking('tub-house-12',10,'2026-10-24T18:00:00Z','2026-10-25T12:00:00Z'),id:'synthetic-guest-house-10'}
+ ];
+ const result=await checker(reservations).check(query);
+ assert.equal(result.status,'UNAVAILABLE');
+ assert.equal(result.conflictCount,2);
+ assert.equal(result.confirmationAllowed,false);
+});
