@@ -16,7 +16,8 @@ from datetime import datetime, timezone
 
 PROJECT = 'mojnqizbcaczstguikpv'
 LEGACY_REQUIRED = ('sc_tenants', 'sc_memberships', 'sc_cases', 'sc_message_keys', 'sc_audit')
-REQUIRED = ('sc_tenants', 'sc_memberships', 'sc_cases', 'sc_message_keys', 'sc_audit', 'sc_service_link_decisions')
+V2_REQUIRED = LEGACY_REQUIRED + ('sc_service_link_decisions',)
+REQUIRED = V2_REQUIRED + ('sc_service_approvals',)
 
 
 def connection(host, username):
@@ -70,11 +71,11 @@ def encrypt_command(command, target, gpg, recipient, env):
             partial.unlink()
 
 
-def validate_toc(toc, schema_version=2):
-    # Explicit v1 validation supports old archives; new exports always require v2.
-    if schema_version not in (1, 2):
+def validate_toc(toc, schema_version=3):
+    # Explicit v1 validation supports old archives; new exports always require v3.
+    if schema_version not in (1, 2, 3):
         raise ValueError('Unknown backup schema version')
-    for name in (LEGACY_REQUIRED if schema_version == 1 else REQUIRED):
+    for name in (LEGACY_REQUIRED if schema_version == 1 else V2_REQUIRED if schema_version == 2 else REQUIRED):
         for kind in ('TABLE', 'TABLE DATA'):
             if not re.search(r'\b' + kind + r' public ' + name + r'\s', toc):
                 raise RuntimeError('Hiányos archívum: ' + name)
@@ -159,7 +160,7 @@ def main():
                 digest = hashlib.file_digest(ciphertext, 'sha256').hexdigest()
             hashes.append(digest + '  ' + path.name)
         (destination / 'SHA256SUMS.txt').write_text('\n'.join(hashes) + '\n', encoding='ascii')
-        (destination / 'STATUS.txt').write_text('Backup schema version: 2.\nEncrypted logical database export + roles (no role passwords).\n'
+        (destination / 'STATUS.txt').write_text('Backup schema version: 3.\nEncrypted logical database export + roles (no role passwords).\n'
             'Auth data included. Local ciphertext readback and archive coverage checked.\n'
             'Independent storage readback, isolated SQL restore and Auth/RLS/CAS tests: NOT VERIFIED.\n'
             'Platform settings, API keys, Storage binaries and Vault keys require separate owner inventory.\n', encoding='utf-8')

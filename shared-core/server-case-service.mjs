@@ -121,7 +121,24 @@ export function createServerCaseService({ repository, resolveAuthority, clock = 
     if(record.revision!==expectedRevision+1||record.updatedBy!==actor||record.data?.caseKind!=='service_link_review'||record.data?.state?.approval!=='pending')reject('STORAGE_FAILURE','Érvénytelen rendezési válasz.');
     return copy(record);
   }
-  return Object.freeze({ getCase, listCases, createCase, updateCase, approveCase, serviceLinkState, resolveServiceLink,
+  async function getServiceApproval({requestContext,tenantId,caseId}){
+    await authorize(requestContext,tenantId,'read');if(!validCaseId(caseId))reject('INVALID_CASE','Ügyazonosító szükséges.');
+    if(typeof repository.getServiceApproval!=='function')reject('SETUP_REQUIRED','Szolgáltatás-jóváhagyási ügytár szükséges.');
+    const row=await repository.getServiceApproval(tenantId,caseId);
+    if(row&&(row.tenant_id!==tenantId||row.case_id!==caseId))reject('ISOLATION_FAILURE','Eltérő szolgáltatás-jóváhagyás.');
+    return copy(row);
+  }
+  async function approveService({requestContext,tenantId,caseId,expectedRevision,payload,attestation}){
+    const actor=await authorize(requestContext,tenantId,'approve');await authorize(requestContext,tenantId,'read');
+    if(!validCaseId(caseId)||!Number.isSafeInteger(expectedRevision)||expectedRevision<1||payload?.actor!==actor||payload?.tenantId!==tenantId||payload?.caseId!==caseId||payload?.caseRevision!==expectedRevision)reject('INVALID_EVIDENCE','Eltérő bizonyíték.');
+    if(typeof repository.approveService!=='function')reject('SETUP_REQUIRED','Szolgáltatás-jóváhagyási ügytár szükséges.');
+    const row=await repository.approveService(payload,attestation);
+    if(!row)reject('CASE_CONFLICT','Az ügy, kapcsolat vagy bizonyíték már nem aktuális.');
+    if(row.tenant_id!==tenantId||row.case_id!==caseId||row.actor!==actor||row.payload?.caseRevision!==expectedRevision)reject('STORAGE_FAILURE','Eltérő jóváhagyási eredmény.');
+    return copy(row);
+  }
+  return Object.freeze({ getCase, listCases, createCase, updateCase, approveCase, serviceLinkState, resolveServiceLink, getServiceApproval, approveService,
+    requireRead: ({requestContext,tenantId}) => authorize(requestContext,tenantId,'read'),
     requireWrite: ({requestContext,tenantId}) => authorize(requestContext,tenantId,'write'),
     requireApproval: ({requestContext,tenantId}) => authorize(requestContext,tenantId,'approve') });
 }

@@ -43,8 +43,11 @@ export function assessTubEligibility({unitNumber,unit,availability}={}) {
  if(!BUSINESS.hotTubRentalRules.houseNumbers.includes(n))return {status:'not_available',confirmationAllowed:false};
  return {status:availability==='available'?'requires_operator_confirmation':'unverified',confirmationAllowed:false};
 }
+export function latestTubServiceRequest(record){
+ return record?.serviceRequests?.reduce((latest,item)=>!latest||Date.parse(item.at)>Date.parse(latest.at)||Date.parse(item.at)===Date.parse(latest.at)&&item.cancelled?item:latest,null)??null;
+}
 export function tubServiceProjection(record){
- const request=record?.serviceRequests?.reduce((latest,item)=>!latest||Date.parse(item.at)>Date.parse(latest.at)||Date.parse(item.at)===Date.parse(latest.at)&&item.cancelled?item:latest,null);
+ const request=latestTubServiceRequest(record);
  if(!request)return null;
  return {requested:request.cancelled!==true,startDate:request.startDate??null,startTime:request.startTime??null,durationHours:request.durationHours??null,
   linkedCaseId:request.linkedCaseId??null,verificationStatus:request.actionConflict?'unverified':request.cancelled?'cancelled_unverified':request.eligibility?.status==='not_available'?'not_available':'unverified',requiresHumanApproval:true};

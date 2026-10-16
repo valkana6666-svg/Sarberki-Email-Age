@@ -1,3 +1,4 @@
+import {createTubServiceApproval,createServiceApprovalAttestor} from '../../shared-core/server-tub-approval.mjs';
 import {createServerCaseService} from '../../shared-core/server-case-service.mjs';
 import {createSupabaseTransport,createSupabaseAuthority,createSupabaseCaseRepository} from '../../shared-core/supabase-case-repository.mjs';
 import {createServerBookingRuntime} from '../../shared-core/server-booking-runtime.mjs';
@@ -19,7 +20,7 @@ export function syntheticCaseSummaries(records,exactReceipt=null){
   (/^[^\s@]+@[^\s@]+\.invalid$/iu.test(row.data.sender)||exactReceipt?.matchesRecord(row)))
   .map(row=>({tenantId:'sarberki-test',caseId:row.caseId,revision:row.revision})).slice(0,100);
 }
-export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedApproval=false,reviewProviders=null}={}){
+export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedApproval=false,reviewProviders=null,serviceBindingProvider=null,serviceAvailabilityProvider=null}={}){
  return async event=>{
   // Fail closed even when deployed automatically with the repository.
   if(env.CASE_STORE_ENABLED!=='synthetic-only'||env.URL!=='https://leafy-chimera-2403e5.netlify.app'||env.CASE_STORE_TEST_TENANTS!=='sarberki-test,demo-test')return response(503,{error:'CASE_STORE_DISABLED'});
@@ -39,19 +40,19 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
   if(event.isBase64Encoded||Buffer.byteLength(event.body||'')>32768)return response(400,{error:'INVALID_INPUT'});
   try{
    const input=event.httpMethod==='GET'?(event.queryStringParameters||{}):JSON.parse(event.body||'{}');
-   if(Object.keys(input).some(k=>!['tenantId','caseId','envelope','values','expectedRevision','approvedCaseId','action','reviewedDraftHash','editedDraftText','sourceReceipt','targetCaseId','targetRevision','reason'].includes(k)))return response(400,{error:'INVALID_INPUT'});
+   if(Object.keys(input).some(k=>!['tenantId','caseId','envelope','values','expectedRevision','approvedCaseId','action','reviewedDraftHash','editedDraftText','sourceReceipt','targetCaseId','targetRevision','reason','servicePreviewHash'].includes(k)))return response(400,{error:'INVALID_INPUT'});
    if(!env.CASE_STORE_TEST_TENANTS.split(',').includes(input.tenantId))return response(403,{error:'FORBIDDEN'});
    let cookieSession=null;
    const closedTub=event.httpMethod==='POST'&&input.action==='ingest-and-draft'&&isClosedTubFollowup(input.envelope);
    if(cookieMode){
     const cookiePost=event.httpMethod==='POST';
     const closedIngest=cookiePost&&input.action==='ingest-and-draft';
-    if(input.tenantId!=='sarberki-test'||Object.keys(input).some(key=>!(closedIngest?(closedTub?['tenantId','caseId','action','envelope','expectedRevision']:['tenantId','action','envelope','expectedRevision','sourceReceipt']):cookiePost?['tenantId','caseId','action','expectedRevision','reviewedDraftHash','targetCaseId','targetRevision','reason']:['tenantId','caseId','action','expectedRevision']).includes(key))||
-      (cookiePost?!['review-draft','approve','ingest-and-draft','resolve-service-link'].includes(input.action):!(cloudApproval?['preview-draft','approval-state','review-record',undefined]:['preview-draft',undefined]).includes(input.action))||
-      (!cookiePost&&input.caseId!==undefined&&!['preview-draft','approval-state','review-record'].includes(input.action)))return cookieResponse(403,{error:'FORBIDDEN'});
+    if(input.tenantId!=='sarberki-test'||Object.keys(input).some(key=>!(closedIngest?(closedTub?['tenantId','caseId','action','envelope','expectedRevision']:['tenantId','action','envelope','expectedRevision','sourceReceipt']):cookiePost?['tenantId','caseId','action','expectedRevision','reviewedDraftHash','targetCaseId','targetRevision','reason','servicePreviewHash']:['tenantId','caseId','action','expectedRevision']).includes(key))||
+      (cookiePost?!['review-draft','approve','ingest-and-draft','resolve-service-link','approve-service'].includes(input.action):!(cloudApproval?['preview-draft','approval-state','review-record','service-approval-state',undefined]:['preview-draft','service-approval-state',undefined]).includes(input.action))||
+      (!cookiePost&&input.caseId!==undefined&&!['preview-draft','approval-state','review-record','service-approval-state'].includes(input.action)))return cookieResponse(403,{error:'FORBIDDEN'});
     if(closedIngest&&(!cloudApproval||(closedTub?(!isIsolatedReviewCaseId(input.caseId)||!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<1):(input.expectedRevision!==0||!(input.sourceReceipt===undefined?closedSyntheticMailLanguage(input.envelope):exactReceipt?.matches(input.envelope,input.sourceReceipt))))))return cookieResponse(403,{error:'FORBIDDEN'});
     const session=createOperatorCookieSession({env,fetchImpl});
-    cookieSession=await (cookiePost?(['approve','resolve-service-link'].includes(input.action)?session.protectedApproval(event):session.protectedWrite(event)):session.protectedRead(event));
+    cookieSession=await (cookiePost?(['approve','resolve-service-link','approve-service'].includes(input.action)?session.protectedApproval(event):session.protectedWrite(event)):session.protectedRead(event));
     rotatedCookie=cookieSession.setCookie;
    }
    const transport=cookieSession?.transport||createSupabaseTransport({url:env.SUPABASE_URL,publishableKey:env.SUPABASE_PUBLISHABLE_KEY,token:authorization.slice(7),fetchImpl});
@@ -70,9 +71,14 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     const link=resolveBookingCase(candidates.map(row=>row.data),input.envelope,{});
     if(link.status!=='linked'||link.caseId!==input.caseId)return cookieResponse(403,{error:'FORBIDDEN'});
    }
+   const serviceFlow=()=>createTubServiceApproval({service,tenantId:input.tenantId,bindingProvider:serviceBindingProvider,availabilityProvider:serviceAvailabilityProvider,
+    attestor:/^[a-f0-9]{64}$/.test(env.ISOLATED_APPROVAL_ATTESTATION_KEY||'')?createServiceApprovalAttestor(env.ISOLATED_APPROVAL_ATTESTATION_KEY):null});
    let result;
    if(event.httpMethod==='GET'){
-    if(input.action==='review-record'&&cloudApproval){
+    if(input.action==='service-approval-state'){
+     if(!isIsolatedReviewCaseId(input.caseId))return cookieResponse(403,{error:'FORBIDDEN'});
+     result=await serviceFlow().state(input.caseId,Number(input.expectedRevision));
+    }else if(input.action==='review-record'&&cloudApproval){
      result=await service.getCase({tenantId:input.tenantId,caseId:input.caseId});
      assertCloudSyntheticReviewCase(result);
     }else if(input.action==='approval-state'&&cloudApproval){
@@ -108,7 +114,10 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    }
    else {
     const runtime=createServerBookingRuntime({service,tenantId:input.tenantId,isolatedApproval:approvalEnabled,exactReceipt,reviewProviders:cloudApproval?cloudSyntheticReviewProviders():approvalEnabled?reviewProviders:null});
-    if(input.action==='resolve-service-link'){
+    if(input.action==='approve-service'){
+     if(input.tenantId!=='sarberki-test'||!isIsolatedReviewCaseId(input.caseId))return cookieResponse(403,{error:'FORBIDDEN'});
+     result=await serviceFlow().approve(input.caseId,input.expectedRevision,input.servicePreviewHash);
+    }else if(input.action==='resolve-service-link'){
      if(input.tenantId!=='sarberki-test'||!isIsolatedReviewCaseId(input.caseId)||!isIsolatedReviewCaseId(input.targetCaseId))return cookieResponse(403,{error:'FORBIDDEN'});
      result=await service.resolveServiceLink({tenantId:input.tenantId,caseId:input.caseId,expectedRevision:input.expectedRevision,targetCaseId:input.targetCaseId,targetRevision:input.targetRevision,reason:input.reason});
     }
@@ -123,7 +132,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
   }catch(error){
    if(error instanceof OperatorSessionError)return cookieResponse(error.status,{error:error.code},error.setCookie);
    const code=error.code;
-   const status=code==='FORBIDDEN'?403:code==='CASE_CONFLICT'||code==='REVIEW_CHANGED'?409:code==='REVIEW_NOT_READY'?422:code?.startsWith('INVALID_')||error instanceof SyntaxError?400:503;
+   const status=code==='FORBIDDEN'?403:code==='CASE_CONFLICT'||code==='REVIEW_CHANGED'?409:['REVIEW_NOT_READY','SERVICE_AVAILABILITY_UNKNOWN'].includes(code)?422:code?.startsWith('INVALID_')||error instanceof SyntaxError?400:503;
    return cookieResponse(status,{error:status===503?'SERVICE_UNAVAILABLE':code||'INVALID_INPUT'});
   }
  };

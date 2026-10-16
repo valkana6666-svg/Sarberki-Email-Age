@@ -124,6 +124,7 @@ test('encrypted isolated fixture snapshot restores policies, privileges, draft h
  try{
   const data=record();await as(user1,()=>write(data));data.drafts.push({text:'Synthetic internal draft',revision:1});await as(user1,()=>write(data,1));
   await db.exec(await readFile(new URL('../supabase/migrations/20261016111515_service_link_resolution.sql',import.meta.url),'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/20261016114328_tub_service_approval.sql',import.meta.url),'utf8'));
   await db.query('update sc_memberships set can_approve=true where tenant_id=$1 and user_id=$2',['sarberki-test',user1]);
   const target=record('case-restore-target','target-message');target.state.intent='booking_request';target.state.values={guests:'2',arrival:'2026-11-13',departure:'2026-11-15'};
   const review=record('case-restore-review','review-message');review.caseKind='service_link_review';review.state.intent='service_request';review.state.revision=1;review.serviceRequests=[{kind:'tub_request',serviceOnly:true,confirmationAllowed:false}];

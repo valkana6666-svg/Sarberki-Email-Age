@@ -327,3 +327,11 @@ test('service-link cookie mutation requires approval, CSRF and current membershi
  f.state.revoked=true;assert.equal((await handler(event(base))).statusCode,401);
  assert.equal(f.state.calls.filter(c=>c.url.includes('/rpc/sc_resolve_service_link')).length,0);
 });
+
+test('service approval cookie POST rejects Reader, Writer-only, missing CSRF and revoked sessions before service RPC',async()=>{
+ const f=fixture(),env={...f.env,CASE_APPROVAL_ENABLED:'sarberki-test-synthetic-only',ISOLATED_APPROVAL_ATTESTATION_KEY:'a1'.repeat(32)},logged=await f.login();
+ const handler=createCaseHandler({env,fetchImpl:f.fetchImpl}),base={method:'POST',cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken,body:{tenantId:'sarberki-test',action:'approve-service',caseId:'case-review123',expectedRevision:1,servicePreviewHash:'ab'.repeat(32)}};
+ for(const role of ['reader','writer']){f.state.membershipWrite=role==='writer';assert.equal((await handler(event(base))).statusCode,403);}
+ f.state.membershipApprove=true;assert.equal((await handler(event({...base,csrf:undefined}))).statusCode,403);
+ f.state.revoked=true;assert.equal((await handler(event(base))).statusCode,401);assert.equal(f.state.calls.filter(c=>c.url.includes('/rpc/sc_approve_tub_service')).length,0);
+});

@@ -14,6 +14,7 @@ Hibás, hiányzó, idegen vagy lejárt forrás UNKNOWN. A pillanatkép másolt, 
 
 - `node --test tests/tub-availability.test.mjs`: **11 PASS / 0 FAIL / 0 SKIP**, kizárólag szintetikus provider fixture. Jogosult/tiltott házak, többnapos és házak közötti erőforrásütközés, időhatárok, hibás dátum/offset, tenant/ügy/verzió-kötés, hiányzó provenance, lejárat/hibás óra, hiányos naptár, adapterhiba és mutációk ellenőrzése.
 - Két JS syntaxcheck és `git diff --check`: PASS. A kapacitást érintő kötelező teljes npm tesztet a commit utáni CI futtatja; helyben nem ismételtük.
+- Igazolt commit: **`0f49049e08a12c17a21601961e83c695f1682637`**. [Teljes CI](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/38895524044), job `116954949564`: **1591 PASS / 0 FAIL / 0 SKIP**. Pontos teszthost-build ugyanez (`DEPLOY SYNC PASS`); offline Windows mentésmásolási ellenőrzés SUCCESS. Ez a modul telepítését igazolja, valódi elérhetőséget nem.
 - Nincs éles vagy teszt-Previo-lekérdezés, AI-providerhívás, küldés, adatbázisírás vagy foglalás.
 - Valódi adatforrás **nincs bekötve**; tényleges dézsaelérhetőség **NEM IGAZOLT**. A provider-szerződés és fixture nem bizonyítja egy későbbi valódi adapter hitelességét vagy mellékhatásmentességét.
 

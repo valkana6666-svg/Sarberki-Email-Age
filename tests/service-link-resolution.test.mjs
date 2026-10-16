@@ -13,6 +13,7 @@ test('protected service link PostgreSQL RPC: permissions, CAS, tenant, JSON spoo
   await db.exec(await readFile(new URL('../supabase/migrations/202610090001_case_store.sql',import.meta.url),'utf8'));
   const migration=(await readdir(new URL('../supabase/migrations/',import.meta.url))).find(n=>n.endsWith('_service_link_resolution.sql'));
   await db.exec(await readFile(new URL('../supabase/migrations/'+migration,import.meta.url),'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/20261016114328_tub_service_approval.sql',import.meta.url),'utf8'));
   for(const id of Object.values(ids))await db.query('insert into auth.users values ($1)',[id]);
   await db.exec("insert into sc_tenants values ('sarberki-test','Synthetic',true),('demo-test','Other',true)");
   for(const [role,id]of Object.entries(ids))await db.query('insert into sc_memberships values ($1,$2,true,$3,$4)',[role==='outsider'?'demo-test':'sarberki-test',id,['approver','writer'].includes(role),role==='approver']);

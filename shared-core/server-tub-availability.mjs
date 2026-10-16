@@ -55,3 +55,6 @@ export function createTubAvailabilityChecker({provider=null,clock=Date.now}={}){
    sourceId:adapter.sourceId,provenance:adapter.provenance,evidenceReference:snapshot.evidenceReference,version:snapshot.version,checkedAt:snapshot.checkedAt,validUntil:snapshot.validUntil,conflictCount:conflicts});
  }});
 }
+
+// Shared strict parser for server-side binding/approval evidence.
+export {instant as parseOffsetInstant};

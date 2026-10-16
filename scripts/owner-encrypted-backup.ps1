@@ -85,7 +85,7 @@ try {
     $archive = Join-Path $temporary 'database.dump'
     Invoke-Private $pgdump @('-w', '--format=custom', '--file', $archive) | Out-Null
     $toc = (Invoke-Private $pgrestore @('--list', $archive)) -join "`n"
-    foreach ($table in @('sc_tenants','sc_memberships','sc_cases','sc_message_keys','sc_audit','sc_service_link_decisions')) {
+    foreach ($table in @('sc_tenants','sc_memberships','sc_cases','sc_message_keys','sc_audit','sc_service_link_decisions','sc_service_approvals')) {
         foreach ($kind in @('TABLE','TABLE DATA')) {
             if ($toc -notmatch ('\b' + $kind + ' public ' + $table + '\s')) { throw 'Hiannyos ugytar-archivum.' }
         }
@@ -110,7 +110,7 @@ try {
         (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() + '  ' + $_.Name
     }
     [IO.File]::WriteAllLines((Join-Path $destination 'SHA256SUMS.txt'), [string[]]$hashes, [Text.Encoding]::ASCII)
-    [IO.File]::WriteAllText((Join-Path $destination 'STATUS.txt'), "Backup schema version: 2.`r`nEncrypted logical export and local archive readback completed.`r`nIndependent storage readback: NOT VERIFIED.`r`nIsolated SQL/Auth/RLS/CAS restore: NOT VERIFIED.`r`nPlatform settings, Storage binaries, Vault and role passwords require separate inventory.`r`nCASE_STORE_ENABLED must remain disabled.`r`n")
+    [IO.File]::WriteAllText((Join-Path $destination 'STATUS.txt'), "Backup schema version: 3.`r`nEncrypted logical export and local archive readback completed.`r`nIndependent storage readback: NOT VERIFIED.`r`nIsolated SQL/Auth/RLS/CAS restore: NOT VERIFIED.`r`nPlatform settings, Storage binaries, Vault and role passwords require separate inventory.`r`nCASE_STORE_ENABLED must remain disabled.`r`n")
     Write-Host ('Titkositott logikai export es helyi visszaolvasas kesz: ' + $destination)
     Write-Host 'A teljes mentes feltetele meg NEM teljesult: kulon tarolas es izolalt restore szukseges.'
 } catch {
