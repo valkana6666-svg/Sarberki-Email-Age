@@ -18,7 +18,7 @@ test('synthetic tub request preserves existing booking and requires fresh review
 });
 
 test('synthetic tub request from different sender cannot hijack booking',()=>{
- const store=createBookingCaseStore({storage:null,id:()=> 'synthetic-case-'+Math.random(),clock:()=> '2026-10-16T09:00:00Z'});
+ const store=createBookingCaseStore({storage:null,id:(()=>{let n=0;return ()=> 'synthetic-case-'+(++n);})(),clock:()=> '2026-10-16T09:00:00Z'});
  const first=store.ingest(message('m1','Foglalás'),{arrival:'2026-10-23'},{intent:'booking_request'});
  const second=store.ingest(message('m2','Dézsát kérnék','another-synthetic@example.test'),{},{intent:'other'});
  assert.notEqual(first.bookingCase.id,second.bookingCase.id);
