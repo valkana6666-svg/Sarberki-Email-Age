@@ -30,6 +30,14 @@ A CLI által készített `20261016114328_tub_service_approval.sql` migráció si
 
 Az advisor új bejegyzése a szándékosan authenticated által hívható védett definer RPC; [figyelmeztetés leírása](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable). Az explicit Auth/session/tenant/read/approve/CAS/MAC ellenőrzés kötelező. A többi advisor-bejegyzés már a változtatás előtt jelen volt.
 
-Commit utáni teljes CI és pontos deploy ellenőrzése következik. Valódi ház-/foglaláskötési és dézsanaptár-adatforrás **nincs bekötve**: tényleges elérhetőség és valódi szolgáltatásjóváhagyás **NEM IGAZOLT**, a felhős jóváhagyás tiltott marad. A pozitív bizonyíték offline szintetikus fixture; ez nem valódi Supabase Auth vagy élő szolgáltatásfoglalás bizonyítéka. Admin SQL-es ügyírás, service role, küldés, Pushover és Previo-művelet nem történt.
+Igazolt kódcommit: **`26d177c54db3a3450a292ac75aead89ea8f61199`**. [Teljes CI](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/38897233284), job `116960518541`: **1599 PASS / 0 FAIL / 0 SKIP**. `DEPLOY SYNC PASS`: expected = deployed = `26d177c54db3a3450a292ac75aead89ea8f61199`. Capacity regression `38897233336` SUCCESS; synthetic Gmail operator mobile proof `38897233484` SUCCESS; offline Windows backup-copy job `116960518336` SUCCESS. A külön offline chatbot mobil workflow feltételesen skipped; ez nem az npm tesztek SKIP-je. A live Previo workflow-lépés nem futott.
+
+Az új, explicit szolgáltatásállapot-lekérdezés a tesztoldal tényleges kezelői Auth-munkamenetével sikeres a már létező, kizárólag szintetikus `fa570d0b-1ea9-4568-a8f2-08b4dec446d0` v4 ügyön. UI: „Nincs szolgáltatás-jóváhagyás.”; „Nincs aktuális, emberileg ellenőrizhető szolgáltatásbizonyíték.”; jóváhagyó gomb nem látható. Nem történt mentés/jóváhagyás. Képernyőbizonyíték helyben: `cloud-no-proof-approval-hidden.jpg`; a kép nem kerül a kódcommitba.
+
+Valódi ház-/foglaláskötési és dézsanaptár-adatforrás **nincs bekötve**: tényleges elérhetőség és valódi szolgáltatásjóváhagyás **NEM IGAZOLT**, a felhős jóváhagyás tiltott marad. A pozitív bizonyíték offline szintetikus fixture; ez nem valódi Supabase Auth vagy élő szolgáltatásfoglalás bizonyítéka. A tényleges felhős emberi összerendelés és pozitív szolgáltatásjóváhagyás külön E2E-próbája még nyitott. Admin SQL-es ügyírás, service role, küldés, Pushover és Previo-művelet nem történt.
+
+## Következő lépés / emberi közreműködés
+
+A három kért kódfejlesztési szakasz zöld CI-vel lezárult. A munkához nem kellett új emberi hitelesítés. Következő tényleges forrásbekötéshez a ház/foglalás-kötés és a dézsanaptár hiteles adatgazdáját, elérését és olvasási mellékhatásmentességét kell igazolni és jóváhagyni; ezt az injekciós interfész önmagában nem helyettesíti. Az élő Previo-tiltás változatlan. Utána kizárólag zárt szintetikus felhős A/C siker- és tiltási próbák következhetnek; production külön engedélyhez kötött.
 
 V2/V3-érték: elkülönített erőforrás-bizonyíték és emberi döntés a meglévő Auth/tenant/RLS/CAS határokon. Új jogosultsági vagy válaszmotor, külső végrehajtás és Previo-írás nem része a fejlesztésnek.
