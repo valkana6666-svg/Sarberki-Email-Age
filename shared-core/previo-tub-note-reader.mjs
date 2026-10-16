@@ -1,6 +1,6 @@
 // Read-only source boundary. Never infers full calendar coverage from Previo notes.
 const validId=x=>typeof x==='string'&&/^[a-zA-Z0-9][a-zA-Z0-9_.:/-]{0,255}$/.test(x);
-const validInstant=x=>typeof x==='string'&&/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(x)&&Number.isFinite(Date.parse(x));
+const validInstant=x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(x)&&Number.isFinite(Date.parse(x));
 const freeze=Object.freeze;
 export function createPrevioTubNoteReader({fetchNotes=null,sourceId='previo-notes-unverified'}={}){
  const enabled=typeof fetchNotes==='function'&&validId(sourceId);
