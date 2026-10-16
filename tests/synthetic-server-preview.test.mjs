@@ -248,3 +248,39 @@ test('late link submit after selection or session change performs no POST',async
   release('csrf');await pending;assert.equal(calls,0);
  }
 });
+
+test('service-only preview does not ask for a new accommodation stay or change safety evidence',()=>{
+ const serviceRequest={requested:true,startDate:'2026-10-24',startTime:'18:00',durationHours:24};
+ const input={decision:structuredClone(decision),serviceOnly:true,serviceRequest,serviceLink:{status:'resolved'}};
+ const before=JSON.stringify(input);
+ const view=syntheticPreviewState(input),normal=syntheticPreviewState({decision});
+ assert.match(view.details,/dátuma, kezdése és időtartama rögzítve/);
+ assert.match(view.details,/ügykapcsolás emberileg rendezett/);
+ assert.doesNotMatch(view.details,/érkezési|távozási|felnőtt|gyermek/);
+ assert.match(view.details,/nem visszaigazolás/);
+ for(const field of ['capacity','price','approval','audit'])assert.equal(view[field],normal[field]);
+ assert.equal(JSON.stringify(input),before);
+});
+test('service-only missing schedule and unresolved association remain explicit',()=>{
+ const view=syntheticPreviewState({decision,serviceOnly:true,serviceRequest:{requested:true}});
+ for(const text of ['kért dátuma','kezdési időpontja','időtartama','foglalási ügy külön ellenőrzendő'])assert.ok(view.details.includes(text));
+ assert.doesNotMatch(view.details,/érkezési|távozási|felnőtt|gyermek/);
+ assert.match(view.capacity,/NEM IGAZOLT/);
+ assert.match(view.approval,/függőben/);
+});
+test('mixed and legacy previews keep accommodation clarification despite a tub request',()=>{
+ const normal=syntheticPreviewState({decision}).details;
+ for(const serviceOnly of [false,undefined,'true']){
+  const view=syntheticPreviewState({decision,serviceOnly,serviceRequest:{requested:true}});
+  assert.equal(view.details,normal);
+  assert.match(view.details,/érkezési/);
+ }
+ assert.equal(syntheticPreviewState({decision,serviceOnly:true}).details,normal);
+});
+test('withdrawal and contradictions remain visible in service-only details',()=>{
+ const input={decision:{...decision,contradictions:[{code:'synthetic_schedule_conflict'}]},serviceOnly:true,serviceRequest:{requested:false}};
+ const view=syntheticPreviewState(input);
+ assert.match(view.details,/visszavonása emberi ellenőrzést/);
+ assert.match(view.details,/synthetic_schedule_conflict/);
+ assert.doesNotMatch(view.details,/Pontosítandó:/);
+});

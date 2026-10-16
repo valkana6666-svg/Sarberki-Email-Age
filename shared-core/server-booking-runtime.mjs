@@ -95,9 +95,9 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
     try{await service.requireWrite({requestContext,tenantId});await service.requireApproval({requestContext,tenantId});canResolveServiceLink=serviceLink?.status!=='resolved';}catch(error){if(error.code!=='FORBIDDEN')throw error;}
     if(serviceRequest)serviceRequest.linkedCaseId=serviceLink?.status==='resolved'?serviceLink.targetCaseId:null;
    }
-   const serviceOnly=request.kind==='tub_request'&&request.serviceOnly;
+   const serviceOnly=request.kind==='tub_request'&&request.serviceOnly===true;
    const serviceText=language=>tubServiceDraft(language,Boolean(serviceRequest?.linkedCaseId),serviceRequest?.verificationStatus==='not_available',request.cancelled);
-   return {caseId,revision:current.revision,text:serviceOnly?serviceText(planned.decision.facts.language):planned.text,operatorReviewText:serviceOnly?serviceText('hu'):planned.operatorReviewText,decision:planned.decision,reviewState,readOnlyFreshness,storedDraft,approval:'pending',persisted:false,serviceRequest,serviceLink,serviceLinkReview:current.data.caseKind==='service_link_review'?{reason:current.data.linkReview?.evidence||'human_association_required'}:null,canResolveServiceLink};
+   return {caseId,revision:current.revision,text:serviceOnly?serviceText(planned.decision.facts.language):planned.text,operatorReviewText:serviceOnly?serviceText('hu'):planned.operatorReviewText,decision:planned.decision,reviewState,readOnlyFreshness,storedDraft,approval:'pending',persisted:false,serviceOnly,serviceRequest,serviceLink,serviceLinkReview:current.data.caseKind==='service_link_review'?{reason:current.data.linkReview?.evidence||'human_association_required'}:null,canResolveServiceLink};
   },
   async editDraft(caseId,expectedRevision,editedText){
    // Synthetic-only, operator-authenticated edit; append a pending version, never authorize a guest send.

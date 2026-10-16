@@ -21,6 +21,19 @@ export function syntheticPreviewState(result){
  const audit=auditVerified?'Audit visszaolvasva · '+(a.kind==='insert'?'létrehozás':'módosítás')+' · v'+a.revision+' · kezelő: '+a.actor+' · SHA256: '+a.dataHash+'. Ez nem jóváhagyás.':'Audit: ezen az olvasási előnézeten nincs igazolt visszaolvasás; NEM IGAZOLT.';
  const service=result?.serviceRequest;
  const link=result?.serviceLink,review=result?.serviceLinkReview;
+ // Display-only scope from the server; never changes the decision or approval gates.
+ if(result?.serviceOnly===true&&service){
+  const missing=[];
+  if(!service.startDate)missing.push('a dézsa kért dátuma');
+  if(!service.startTime)missing.push('a dézsa kezdési időpontja');
+  if(!Number.isInteger(service.durationHours)||service.durationHours<=0)missing.push('a dézsabérlés időtartama');
+  details=service.requested===false?'A dézsaigény visszavonása emberi ellenőrzést igényel.':
+   missing.length?'Pontosítandó: '+missing.join(', ')+'.':'A dézsaigény dátuma, kezdése és időtartama rögzítve.';
+  details+=' '+(link?.status==='resolved'?'Az ügykapcsolás emberileg rendezett.':'A kapcsolódó foglalási ügy külön ellenőrzendő.');
+  details+=' A dézsa elérhetősége külön ellenőrzést és emberi jóváhagyást igényel; ez nem visszaigazolás.';
+  if(Array.isArray(d?.contradictions)&&d.contradictions.length)details+='\nEllentmondások: '+d.contradictions.map(x=>String(x.code)).join(', ');
+ }
+
  const reasons={untrusted_case_claim:'A levélben állított ügyazonosító nem hiteles.',conflicting_service_booking_references:'Több eltérő foglalási hivatkozás érkezett.',conflicting_service_identity:'Több lehetséges foglalási ügy található.',service_link_unverified:'Nem igazolt, melyik foglaláshoz tartozik az igény.',service_thread_conflict:'A levélszál eltér a lehetséges foglalásétól.',service_booking_reference_conflict:'A foglalási hivatkozás eltér a hiteles ügyadatoktól.',human_association_required:'Emberi ügyazonosítás szükséges.'};
  const linkStatus=review?'Kapcsolat ellenőrzésének oka: '+(reasons[review.reason]||reasons.human_association_required)+'. '+(link?.status==='resolved'?'Emberileg rendezve: '+link.targetCaseId+' · célverzió '+link.targetRevision+' · indok: '+link.reason+' · kezelő: '+link.actor:link?.status==='stale'?'A rendezési döntés elavult; új emberi ellenőrzés szükséges.':'Még nincs hiteles emberi rendezési döntés.'):'Nincs külön ügykapcsolási felülvizsgálat.';
  const serviceFields={service_requested:service?.requested===true?'Igen – dézsaigény érkezett.':service?.requested===false?'Az igény visszavonását ellenőrizni kell.':'Nincs felismert dézsaigény.',
