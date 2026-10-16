@@ -8,3 +8,6 @@ test('different physical tub is not returned',async()=>{const r=await createSynt
 test('adjacent interval is excluded',async()=>{const r=await createSyntheticPrevioTubAdapter({bookings:[{...b,end:q.start,start:'2026-10-23T16:00:00Z'}]}).read(q);assert.equal(r.notes.length,0)});
 test('tenant isolation',async()=>{const r=await createSyntheticPrevioTubAdapter({bookings:[{...b,tenantId:'other-tenant'}]}).read(q);assert.equal(r.notes.length,0)});
 test('invalid fixture rejected',()=>assert.throws(()=>createSyntheticPrevioTubAdapter({bookings:[{id:'bad'}]})));
+
+test('invalid fixture date is rejected instead of silently skipped',()=>assert.throws(()=>createSyntheticPrevioTubAdapter({bookings:[{...b,start:'invalid'}]})));
+test('reversed fixture interval is rejected',()=>assert.throws(()=>createSyntheticPrevioTubAdapter({bookings:[{...b,start:b.end,end:b.start}]})));
