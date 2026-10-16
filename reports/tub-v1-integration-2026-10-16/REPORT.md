@@ -46,6 +46,14 @@ A Codex célzottan reprodukálta az egyetlen hibát: a visszavonás-felismerő a
 
 A javítás célzott eredménye: 43 PASS / 0 FAIL / 0 SKIP (30 case-ui + 13 tub-linked-service teszt), az eredeti hibás CI-próba változatlan elvárásával. A kézzel kapcsolt szolgáltatás is megtartja a serviceOnly jelzőt, ezért az override sem kerülheti meg a külön jóváhagyási tiltást. Módosult: tub-request, booking-cases, index.html és a két érintett teszt. Következő: az új javítócommit teljes CI-je és pontos teszttelepítésének ellenőrzése; új felhős írási próba nem szükséges az ettől függetlenül már sikeres dézsa-followup útvonalhoz.
 
+## Végső igazolt állapot
+
+Javító kódcommit: **3570934f9e7bc393c61e7783a4b7e5573b5a2dd2**. Teljes CI: **1575 PASS / 0 FAIL / 0 SKIP**. Run: https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/38891485291 ; job: 116941776915. A teljes naplóból pontos DEPLOY SYNC PASS: expected és deployed egyaránt 3570934f9e7bc393c61e7783a4b7e5573b5a2dd2. Capacity regression run38891485239 és synthetic Gmail operator mobile proof run38891485381 szintén sikeres. Az offline Windows mentésmásolási job116941777111 sikeres. Élő Previo-lépés továbbra szándékosan kihagyott, nem teszt-SKIP. Valódi iPhone-főképernyős próba ebből nem következik.
+
+A fenti piros CI történeti eredmény; az ok javítva, az eredeti teszt változatlan elvárással sikeres. A felhős v3→v4 és Reader-próba az integrációs 908a751-en történt; a javítócommit pontos teszttelepítését a CI igazolta. Az ettől függetlenül már sikeres felhős írást nem ismételtük. A régi mentés-/restore-, Gmail OAuth- és incomingfordítás-próbákat sem futtattuk újra. Fizetős AI-providerkérés nem történt ebben a fejlesztési körben.
+
+Hátralévő V1-kapuk: bizonytalan ügyek emberi rendezésének teljes szerveres kezelői útja; hiteles, konkrét házhoz és teljes bérlési időszakhoz kötött dézsaelérhetőségi bizonyíték; külön auditált szolgáltatás-jóváhagyás. Ezek hiányában a szolgáltatás megerősítése továbbra tiltott. A korábbi helyi válaszfordítási fejlesztés külön megőrzött, még nem publikált munka. Jelen fejlesztéshez emberi belépés vagy új jóváhagyás nem kellett; a valós szolgáltatás visszaigazolása előtt hiteles ellenőrzés és emberi döntés kell.
+
 Production/main, valódi vendégadat, e-mail/Pushover-küldés és Previo-írás/lekérdezés nem megengedett. Auth, tenant/RLS/CAS/audit és emberi jóváhagyás megőrzendő. Nincs második válaszmotor, jogosultsági rendszer vagy automatikus küldés. Meglévő mentések változatlanok.
 
 V2/V3 érték: a szolgáltatásigény a meglévő ügyhöz és közös kommunikációs adapterhez kapcsolódik, elkülönített bizonyítékkal; ez nem automatikus foglalási/küldési képesség. Bizonyítékkorlát: a helyi mock/DOM/PostgreSQL és CI eredmény nem helyettesíti a tényleges Gmail→felhő→Reader hitelesített működés igazolását.
