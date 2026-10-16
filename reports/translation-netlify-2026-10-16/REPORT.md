@@ -17,3 +17,14 @@ Targeted transport suite: 10 passed, 0 failed/skipped; syntax and diff checks pa
 Commit a89a152b65b16f8cb7953baef239ce831b816832: CI run 38826326659, test job 116734528554, 1542 passed / 0 failed / 0 skipped; exact deployment sync passed. Capacity run 38826326398 passed. The test browser restored the existing operator session and loaded the closed English MIME fixture locally. One explicit translation button request returned the previous generic failure state; no translation was displayed. DE/SI were deferred to avoid extra requests before classification.
 
 This follow-up exposes only fixed, whitelisted error classes for operator authentication/Writer permission, disabled config, upstream key/access/model/quota/rate limit, and unverified translation. No provider message, content, key or model value is reflected. Existing timeout/cache/no-retry behavior is unchanged. 27 targeted tests passed with no failures/skips, syntax and diff checks passed. Actual failure class remains pending the deployed diagnostic UI.
+
+## Verified checkpoint / authentication blocker
+
+Runtime commit 97030326f694a2564277b2b17ca0b5938bb965f0 is verified: CI 38826676537 / job 116735638039, 1545 PASS, 0 FAIL, 0 SKIP; exact Netlify deployment sync PASS. Capacity run 38826676612 passed. Static build and server-module exclusion passed.
+
+The diagnostic English button request returned Operator FORBIDDEN before the provider call; no translated text was accepted. This is an operator authorization/session rejection, not evidence that the provider key is invalid, accepted or funded. The existing helper also uses FORBIDDEN for origin/CSRF and membership checks, so this code alone is not conclusive proof of a Reader role. Next step is a fresh normal Writer login and one closed English request. DE/SI remain pending. No provider bypass, admin SQL or service-role workaround was used.
+
+The secure Writer login request timed out with no verified successful transition. A fresh test tab still restored read access, but no successful Writer login is established. Manual login handoff is required. Do not repeat the successful CI, backup restore or prior Gmail OAuth proofs.
+
+A local screenshot writer-login-20261016.jpg shows the empty login form and restored read-only status; no credentials are visible. No production/main, real guest data, mail/Pushover sends, Previo write or backup changes occurred. This documentation-only checkpoint requests CI skipping to avoid rerunning already-passed code tests.
+
