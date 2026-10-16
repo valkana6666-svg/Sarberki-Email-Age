@@ -100,7 +100,28 @@ export function createServerCaseService({ repository, resolveAuthority, clock = 
       reject('STORAGE_FAILURE','Érvénytelen jóváhagyási ügytárválasz.');
     return copy(record);
   }
-  return Object.freeze({ getCase, listCases, createCase, updateCase, approveCase,
+  async function serviceLinkState({requestContext,tenantId,caseId}){
+    const review=await getCase({requestContext,tenantId,caseId});
+    if(!review||review.data.caseKind!=='service_link_review')return null;
+    if(typeof repository.serviceLinkDecision!=='function')reject('SETUP_REQUIRED','Rendezési ügytár szükséges.');
+    const decision=await repository.serviceLinkDecision(tenantId,caseId);
+    if(!decision)return {status:'unresolved'};
+    if(decision.tenant_id!==tenantId||decision.review_case_id!==caseId)reject('ISOLATION_FAILURE','Eltérő rendezési ügy.');
+    const target=await getCase({requestContext,tenantId,caseId:decision.target_case_id});
+    return {status:decision.review_revision===review.revision&&target?.revision===decision.target_revision?'resolved':'stale',
+      targetCaseId:decision.target_case_id,targetRevision:decision.target_revision,reviewRevision:decision.review_revision,reason:decision.reason,actor:decision.actor,at:decision.at};
+  }
+  async function resolveServiceLink({requestContext,tenantId,caseId,expectedRevision,targetCaseId,targetRevision,reason}){
+    const actor=await authorize(requestContext,tenantId,'write');await authorize(requestContext,tenantId,'approve');
+    if(!validCaseId(caseId)||!validCaseId(targetCaseId)||caseId===targetCaseId||typeof reason!=='string'||reason.trim().length<5||reason.length>1000||/\u0000/u.test(reason))reject('INVALID_INPUT','Ügy és indoklás szükséges.');
+    if(!Number.isSafeInteger(expectedRevision)||expectedRevision<1||!Number.isSafeInteger(targetRevision)||targetRevision<1)reject('INVALID_REVISION','Ügyverzió szükséges.');
+    if(typeof repository.resolveServiceLink!=='function')reject('SETUP_REQUIRED','Rendezési ügytár szükséges.');
+    const record=validateStored(await repository.resolveServiceLink(tenantId,caseId,expectedRevision,targetCaseId,targetRevision,reason.trim()),tenantId,caseId);
+    if(!record)reject('CASE_CONFLICT','Az ügy vagy célfoglalás időközben megváltozott.');
+    if(record.revision!==expectedRevision+1||record.updatedBy!==actor||record.data?.caseKind!=='service_link_review'||record.data?.state?.approval!=='pending')reject('STORAGE_FAILURE','Érvénytelen rendezési válasz.');
+    return copy(record);
+  }
+  return Object.freeze({ getCase, listCases, createCase, updateCase, approveCase, serviceLinkState, resolveServiceLink,
     requireWrite: ({requestContext,tenantId}) => authorize(requestContext,tenantId,'write'),
     requireApproval: ({requestContext,tenantId}) => authorize(requestContext,tenantId,'approve') });
 }

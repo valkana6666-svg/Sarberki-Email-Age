@@ -6,7 +6,7 @@ import {initSyntheticPreviewPanel,syntheticPreviewState} from '../synthetic-serv
 
 const ui=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 test('real test UI contains separate read-only preview and opt-in module',()=>{
- for(const id of ['server_preview_panel','server_preview_case_id','server_preview_revision','server_preview_action','server_preview_status','server_preview_text','server_preview_hu','server_preview_details','server_preview_capacity','server_preview_price','server_preview_revision_state','server_preview_approval','server_preview_audit','server_edit_text','server_edit_action','server_edit_status']) assert.match(ui,new RegExp('id="'+id+'"'));
+ for(const id of ['server_preview_panel','server_preview_case_id','server_preview_revision','server_preview_action','server_preview_status','server_preview_text','server_preview_hu','server_preview_details','server_preview_capacity','server_preview_price','server_preview_revision_state','server_preview_approval','server_preview_audit','server_edit_text','server_edit_action','server_edit_status','service_link_controls','service_link_action','service_link_status','service_link_target','service_link_target_revision','service_link_reason','server_preview_service_link']) assert.match(ui,new RegExp('id="'+id+'"'));
  assert.match(ui,/synthetic-server-preview\.mjs/);
  assert.match(ui,/id="server_preview_text" readonly/);
 });
@@ -25,7 +25,7 @@ test('client read-only preview sends bearer-protected GET without POST or body',
 });
 function elements(){
  const data=new Map();
- for(const id of ['server_preview_action','server_preview_status','server_preview_text','server_preview_case_id','server_preview_revision','server_preview_hu','server_preview_details','server_preview_capacity','server_preview_price','server_preview_revision_state','server_preview_approval','server_preview_audit','server_edit_text','server_edit_action','server_edit_status']){
+ for(const id of ['server_preview_action','server_preview_status','server_preview_text','server_preview_case_id','server_preview_revision','server_preview_hu','server_preview_details','server_preview_capacity','server_preview_price','server_preview_revision_state','server_preview_approval','server_preview_audit','server_edit_text','server_edit_action','server_edit_status','service_link_controls','service_link_action','service_link_status','service_link_target','service_link_target_revision','service_link_reason','server_preview_service_link']){
   const e={id,value:'',textContent:'',disabled:false,listeners:{},addEventListener(event,callback){this.listeners[event]=callback;},async click(){await this.listeners.click();}};
   data.set(id,e);
  }
@@ -215,4 +215,36 @@ test('reselecting unchanged case and revision preserves the Reader preview witho
  documentRef.data.get('server_preview_revision').value='3';documentRef.data.get('server_preview_revision').listeners.input();
  assert.equal(documentRef.data.get('server_preview_text').value,'');
  assert.match(documentRef.data.get('server_preview_status').textContent,/megváltozott/);
+});
+
+test('Reader cannot expose link controls; approver explicit decision uses bound cookie/CSRF and invalidates selection',async()=>{
+ for(const allowed of [false,true]){
+  const documentRef=elements(),calls=[];
+  const session={cookieReadOnly:true,getCsrfToken:async()=> 'synthetic-csrf',request:async(url,options)=>{
+   calls.push(options);return {ok:true,json:async()=>({result:options.method==='GET'?{caseId:'case-1234',revision:2,persisted:false,approval:'pending',text:'SYNTHETIC',canResolveServiceLink:allowed,serviceLinkReview:{reason:'service_thread_conflict'}}:{caseId:'case-1234',revision:3}})};
+  }};
+  initSyntheticPreviewPanel({documentRef,sessionProvider:()=>session});
+  assert.equal(documentRef.data.get('service_link_controls').hidden,true);
+  await documentRef.data.get('server_preview_action').click();
+  assert.equal(documentRef.data.get('service_link_controls').hidden,!allowed);
+  assert.match(documentRef.data.get('server_preview_service_link').textContent,/levélszál eltér/u);
+  documentRef.data.get('service_link_target').value='case-5678';documentRef.data.get('service_link_target_revision').value='4';documentRef.data.get('service_link_reason').value='Szintetikus azonosítás ellenőrizve';
+  await documentRef.data.get('service_link_action').click();
+  assert.equal(calls.filter(x=>x.method==='POST').length,allowed?1:0);
+  if(allowed){assert.equal(calls[1].headers['X-CSRF-Token'],'synthetic-csrf');assert.equal(JSON.parse(calls[1].body).expectedRevision,2);assert.equal(documentRef.data.get('server_preview_revision').value,'3');assert.equal(documentRef.data.get('service_link_controls').hidden,true);}
+ }
+});
+test('late link submit after selection or session change performs no POST',async()=>{
+ for(const change of ['selection','session']){
+  const documentRef=elements();let release,calls=0;
+  const initial={cookieReadOnly:true,getCsrfToken:async()=>new Promise(resolve=>release=resolve),request:async(_url,options)=>{if(options.method==='POST')calls++;return {ok:true,json:async()=>({result:{caseId:'case-1234',revision:2,persisted:false,approval:'pending',text:'SYNTHETIC',canResolveServiceLink:true,serviceLinkReview:{reason:'service_link_unverified'}}})};}};
+  // First GET must not wait on the submit-only delayed CSRF.
+  initial.getCsrfToken=async()=> 'csrf';let session=initial;
+  initSyntheticPreviewPanel({documentRef,sessionProvider:()=>session});await documentRef.data.get('server_preview_action').click();
+  initial.getCsrfToken=async()=>new Promise(resolve=>release=resolve);
+  documentRef.data.get('service_link_target').value='case-5678';documentRef.data.get('service_link_target_revision').value='4';documentRef.data.get('service_link_reason').value='Szintetikus ellenőrzés';
+  const pending=documentRef.data.get('service_link_action').click();await Promise.resolve();
+  if(change==='selection')documentRef.data.get('server_preview_case_id').value='case-other';else session={...initial};
+  release('csrf');await pending;assert.equal(calls,0);
+ }
 });

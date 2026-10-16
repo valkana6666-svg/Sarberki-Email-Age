@@ -20,22 +20,26 @@ export function syntheticPreviewState(result){
   a.kind===(result.revision===1?'insert':'update')&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(a.actor||'')&&/^[a-f0-9]{64}$/.test(a.dataHash||'');
  const audit=auditVerified?'Audit visszaolvasva · '+(a.kind==='insert'?'létrehozás':'módosítás')+' · v'+a.revision+' · kezelő: '+a.actor+' · SHA256: '+a.dataHash+'. Ez nem jóváhagyás.':'Audit: ezen az olvasási előnézeten nincs igazolt visszaolvasás; NEM IGAZOLT.';
  const service=result?.serviceRequest;
+ const link=result?.serviceLink,review=result?.serviceLinkReview;
+ const reasons={untrusted_case_claim:'A levélben állított ügyazonosító nem hiteles.',conflicting_service_booking_references:'Több eltérő foglalási hivatkozás érkezett.',conflicting_service_identity:'Több lehetséges foglalási ügy található.',service_link_unverified:'Nem igazolt, melyik foglaláshoz tartozik az igény.',service_thread_conflict:'A levélszál eltér a lehetséges foglalásétól.',service_booking_reference_conflict:'A foglalási hivatkozás eltér a hiteles ügyadatoktól.',human_association_required:'Emberi ügyazonosítás szükséges.'};
+ const linkStatus=review?'Kapcsolat ellenőrzésének oka: '+(reasons[review.reason]||reasons.human_association_required)+'. '+(link?.status==='resolved'?'Emberileg rendezve: '+link.targetCaseId+' · célverzió '+link.targetRevision+' · indok: '+link.reason+' · kezelő: '+link.actor:link?.status==='stale'?'A rendezési döntés elavult; új emberi ellenőrzés szükséges.':'Még nincs hiteles emberi rendezési döntés.'):'Nincs külön ügykapcsolási felülvizsgálat.';
  const serviceFields={service_requested:service?.requested===true?'Igen – dézsaigény érkezett.':service?.requested===false?'Az igény visszavonását ellenőrizni kell.':'Nincs felismert dézsaigény.',
   service_date:service?.startDate||'Nincs megadva – pontosítandó.',service_time:service?.startTime||'Nincs megadva – pontosítandó.',
   service_duration:Number.isInteger(service?.durationHours)&&service.durationHours>0?service.durationHours+' óra':'Nincs megadva – pontosítandó.',
   service_case:service?.linkedCaseId||'Nem igazolt – emberi ügyazonosítás szükséges.',
   service_verification:service?.verificationStatus==='not_available'?'A szállásegységhez nincs dézsa. Nincs visszaigazolás.':service?.verificationStatus==='cancelled_unverified'?'Visszavonás – emberi ellenőrzés szükséges.':'Elérhetőség NEM IGAZOLT – nincs visszaigazolás.',
   service_human:service?'Igen – külön emberi jóváhagyás szükséges.':'Nem alkalmazható – nincs aktuális dézsaigény.'};
- return {details,capacity,price,...serviceFields,revision:valid?'Ügyverzió: '+s.caseRevision+' · tényverzió: '+s.factsRevision+' · '+(current?'Tárolt tervezet verziója egyezik; külön kezelői ellenőrzés szükséges.':'Nincs aktuális, az üzenetekhez kötött tárolt tervezet. Új ellenőrzés szükséges.'):'Tárolt tervezet verziója: NEM IGAZOLT.',approval:'Az előnézet függőben van; itt nincs jóváhagyás.',audit};
+ return {details,capacity,price,...serviceFields,service_link:linkStatus,revision:valid?'Ügyverzió: '+s.caseRevision+' · tényverzió: '+s.factsRevision+' · '+(current?'Tárolt tervezet verziója egyezik; külön kezelői ellenőrzés szükséges.':'Nincs aktuális, az üzenetekhez kötött tárolt tervezet. Új ellenőrzés szükséges.'):'Tárolt tervezet verziója: NEM IGAZOLT.',approval:'Az előnézet függőben van; itt nincs jóváhagyás.',audit};
 }
 export function initSyntheticPreviewPanel({documentRef=document,sessionProvider=()=>window.SarberkiCaseStoreSession}={}){
  const get=id=>documentRef.getElementById(id),action=get('server_preview_action'),status=get('server_preview_status'),output=get('server_preview_text');
+ const linkPanel=get('service_link_controls'),linkAction=get('service_link_action'),linkStatus=get('service_link_status');
  const editText=get('server_edit_text'),editAction=get('server_edit_action'),editStatus=get('server_edit_status');
  if(!action||!status||!output)return false;
- let epoch=0,editableCase=null;
+ let epoch=0,editableCase=null,resolvableCase=null;
  const selectionKey=()=>JSON.stringify([get('server_preview_case_id')?.value.trim()||'',Number(get('server_preview_revision')?.value)]);
  let selection=selectionKey();
- const clear=()=>{editableCase=null;if(editText){editText.value='';editText.disabled=true;}if(editAction)editAction.disabled=true;if(editStatus)editStatus.textContent='Nincs aktív, szerkeszthető szerveres tervezet.';output.value='';if(get('server_preview_hu'))get('server_preview_hu').value='';for(const field of ['details','capacity','price','revision','approval','audit','service_requested','service_date','service_time','service_duration','service_case','service_verification','service_human'])if(get('server_preview_'+(field==='revision'?'revision_state':field)))get('server_preview_'+(field==='revision'?'revision_state':field)).textContent='NEM IGAZOLT.';};
+ const clear=()=>{editableCase=null;resolvableCase=null;if(linkPanel)linkPanel.hidden=true;if(linkAction)linkAction.disabled=true;if(editText){editText.value='';editText.disabled=true;}if(editAction)editAction.disabled=true;if(editStatus)editStatus.textContent='Nincs aktív, szerkeszthető szerveres tervezet.';output.value='';if(get('server_preview_hu'))get('server_preview_hu').value='';for(const field of ['details','capacity','price','revision','approval','audit','service_requested','service_date','service_time','service_duration','service_case','service_verification','service_human','service_link'])if(get('server_preview_'+(field==='revision'?'revision_state':field)))get('server_preview_'+(field==='revision'?'revision_state':field)).textContent='NEM IGAZOLT.';};
  const invalidate=()=>{epoch++;selection=selectionKey();clear();action.disabled=false;status.textContent='A tesztügy vagy munkamenet megváltozott. Új előnézet szükséges.';};
  for(const id of ['server_preview_case_id','server_preview_revision'])get(id)?.addEventListener('input',()=>{if(selectionKey()!==selection)invalidate();});
  for(const event of ['sarberki:session-changed','isolated-approval-session-changed'])documentRef.addEventListener?.(event,invalidate);
@@ -53,6 +57,9 @@ export function initSyntheticPreviewPanel({documentRef=document,sessionProvider=
    const result=await client.previewDraft('sarberki-test',id,revision);
    if(attempt!==epoch)return;
    if(result?.persisted!==false||result?.caseId!==id||result?.revision!==revision||result?.approval!=='pending'||typeof result?.text!=='string')throw Error('INVALID_PREVIEW');
+   if(linkPanel&&linkAction&&result.canResolveServiceLink===true&&result.serviceLinkReview){
+    linkPanel.hidden=false;linkAction.disabled=false;resolvableCase={id,revision,epoch:attempt,session};
+   }
    const view=syntheticPreviewState(result);
    output.value=result.text;
    if(editText&&editAction&&editStatus){
@@ -98,6 +105,23 @@ export function initSyntheticPreviewPanel({documentRef=document,sessionProvider=
     editStatus.textContent='A mentés nem igazolt ('+(['AUTH_REQUIRED','FORBIDDEN','CASE_CONFLICT','INVALID_DRAFT','CASE_STORE_DISABLED'].includes(error?.message)?error.message:'ellenőrzés szükséges')+'). Friss előnézet szükséges.';
    }
   }
+ });
+ if(linkAction)linkAction.addEventListener('click',async()=>{
+  const active=resolvableCase,session=sessionProvider();
+  const valid=()=>active&&active===resolvableCase&&active.epoch===epoch&&session===sessionProvider()&&selectionKey()===JSON.stringify([active.id,active.revision]);
+  if(!valid()||session?.cookieReadOnly!==true||typeof session.getCsrfToken!=='function')return;
+  const targetCaseId=get('service_link_target')?.value.trim(),targetRevision=Number(get('service_link_target_revision')?.value),reason=get('service_link_reason')?.value.trim();
+  if(!isIsolatedReviewCaseId(targetCaseId)||targetCaseId===active.id||!Number.isSafeInteger(targetRevision)||targetRevision<1||!reason||reason.length<5||reason.length>1000){linkStatus.textContent='Érvényes célügy, célverzió és indoklás szükséges.';return;}
+  linkAction.disabled=true;
+  try{
+   const csrf=await session.getCsrfToken();if(!valid())return;
+   const response=await (session.request||fetch)('/.netlify/functions/booking-cases',{method:'POST',credentials:'same-origin',cache:'no-store',redirect:'error',headers:{'Content-Type':'application/json','X-Sarberki-Operator':'1','X-CSRF-Token':csrf},body:JSON.stringify({tenantId:'sarberki-test',action:'resolve-service-link',caseId:active.id,expectedRevision:active.revision,targetCaseId,targetRevision,reason})});
+   const body=await response.json();if(!valid())return;
+   if(!response.ok)throw Error(['FORBIDDEN','AUTH_REQUIRED','CASE_CONFLICT','INVALID_INPUT'].includes(body?.error)?body.error:'SERVICE_UNAVAILABLE');
+   if(body.result?.caseId!==active.id||body.result.revision!==active.revision+1)throw Error('SERVICE_UNAVAILABLE');
+   invalidate();get('server_preview_revision').value=String(body.result.revision);linkStatus.textContent='Ügykapcsolási döntés mentve; friss előnézet szükséges. Ez nem szolgáltatás-jóváhagyás.';
+  }catch(error){if(valid())linkStatus.textContent='A rendezés nem igazolt: '+error.message;}
+  finally{if(valid())linkAction.disabled=false;}
  });
  clear();status.textContent='Csak szintetikus ügy. Külön hitelesített tesztkezelői munkamenet szükséges.';return true;
 }

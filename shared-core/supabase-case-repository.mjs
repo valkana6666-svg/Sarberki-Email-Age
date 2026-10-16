@@ -55,6 +55,14 @@ export function createSupabaseCaseRepository(transport,{approvalAttestor=null}={
   },
   insert:(tenant,caseId,record)=>write(tenant,caseId,0,record),
   compareAndSwap:(tenant,caseId,expected,record)=>write(tenant,caseId,expected,record),
+  async serviceLinkDecision(tenant,caseId){
+   const rows=await transport('/rest/v1/sc_service_link_decisions?'+new URLSearchParams({tenant_id:'eq.'+tenant,review_case_id:'eq.'+caseId,order:'review_revision.desc',limit:'1',select:'*'}));
+   if(!Array.isArray(rows)||rows.length>1)fail('STORAGE_FAILURE');return rows[0]||null;
+  },
+  async resolveServiceLink(tenant,caseId,expected,targetCaseId,targetExpected,reason){
+   const row=await transport('/rest/v1/rpc/sc_resolve_service_link',{method:'POST',body:{p_tenant:tenant,p_case:caseId,p_expected:expected,p_target:targetCaseId,p_target_expected:targetExpected,p_reason:reason}});
+   return row===null?null:mapRecord(row);
+  },
   async approve(tenant,caseId,expected,draftHash,evidence){
    if(typeof approvalAttestor!=='function')fail('SETUP_REQUIRED');
    const signedEvidence=approvalAttestor(tenant,caseId,expected,draftHash,evidence);

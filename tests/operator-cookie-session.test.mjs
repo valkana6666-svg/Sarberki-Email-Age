@@ -316,3 +316,14 @@ test('fixed cookie tub follow-up requires the exact persisted base, current revi
  f.state.membershipWrite=false;const preview=await handler(event({cookie,csrf,query:{tenantId:'sarberki-test',caseId:original.caseId,expectedRevision:'2',action:'preview-draft'}}));
  assert.equal(preview.statusCode,200,preview.body);const service=JSON.parse(preview.body).result.serviceRequest;assert.equal(service.startDate,'2026-10-24');assert.equal(service.linkedCaseId,original.caseId);assert.equal(service.requiresHumanApproval,true);assert.equal(service.verificationStatus,'unverified');assert.equal(writes(),after);
 });
+
+test('service-link cookie mutation requires approval, CSRF and current membership before any resolution RPC',async()=>{
+ const f=fixture(),env={...f.env,CASE_APPROVAL_ENABLED:'sarberki-test-synthetic-only',ISOLATED_APPROVAL_ATTESTATION_KEY:'a1'.repeat(32)},logged=await f.login();
+ const handler=createCaseHandler({env,fetchImpl:f.fetchImpl}),base={method:'POST',cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken,body:{tenantId:'sarberki-test',action:'resolve-service-link',caseId:'case-review123',expectedRevision:1,targetCaseId:'case-target123',targetRevision:1,reason:'Synthetic identity checked'}};
+ for(const role of ['reader','writer']){f.state.membershipWrite=role==='writer';assert.equal((await handler(event(base))).statusCode,403);}
+ f.state.membershipWrite=true;f.state.membershipApprove=true;
+ assert.equal((await handler(event({...base,csrf:undefined}))).statusCode,403);
+ assert.equal((await handler(event({...base,headers:{origin:'https://other.example'}}))).statusCode,403);
+ f.state.revoked=true;assert.equal((await handler(event(base))).statusCode,401);
+ assert.equal(f.state.calls.filter(c=>c.url.includes('/rpc/sc_resolve_service_link')).length,0);
+});
