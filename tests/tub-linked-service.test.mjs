@@ -69,8 +69,8 @@ test('9 quoted-only old tub request does not create a new service request after 
 });
 test('10 Reader seven fields and four-language clarification drafts cannot claim availability or approval',()=>{
  const request={requested:true,startDate:'2026-11-14',startTime:'18:00',durationHours:24,linkedCaseId:'case-1',verificationStatus:'unverified',requiresHumanApproval:true};
- const state=syntheticPreviewState({serviceRequest:request});const fields=Object.keys(state).filter(key=>key.startsWith('service_'));assert.equal(fields.length,7);assert.match(state.service_verification,/NEM IGAZOLT/);assert.match(state.service_human,/Igen/);
- const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');for(const field of fields)assert.ok(html.includes('id="server_preview_'+field+'"'));
+ const state=syntheticPreviewState({serviceRequest:request});const fields=['service_requested','service_date','service_time','service_duration','service_case','service_verification','service_human'];assert.equal(fields.length,7);assert.deepEqual(Object.keys(state).filter(key=>key.startsWith('service_')).sort(),[...fields,'service_link'].sort());assert.match(state.service_link,/Nincs külön ügykapcsolási felülvizsgálat/u);assert.match(state.service_verification,/NEM IGAZOLT/);assert.match(state.service_human,/Igen/);
+ const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');for(const field of [...fields,'service_link'])assert.ok(html.includes('id="server_preview_'+field+'"'));
  for(const language of ['hu','de','en','si']){assert.ok(tubServiceDraft(language,false).length>70);assert.ok(tubServiceDraft(language,true).length>70);}
  assert.equal(extractServerMessage({text:'Bitte Badezuber für 24 Stunden.',received_at:'2026-10-16T10:00:00Z'}).request,'Bitte Badezuber für 24 Stunden.');
 });

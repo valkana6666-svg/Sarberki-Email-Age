@@ -116,15 +116,24 @@ test('encrypted isolated fixture snapshot restores policies, privileges, draft h
  const {randomBytes,createCipheriv,createDecipheriv}=await import('node:crypto');
  const {db,as,write}=await fixture();let restored;
  const manifest=async conn=>({
-  counts:(await conn.query("select (select count(*) from sc_cases)::int cases,(select count(*) from sc_audit)::int audit,(select count(*) from sc_memberships)::int memberships")).rows,
+  counts:(await conn.query("select (select count(*) from sc_cases)::int cases,(select count(*) from sc_audit)::int audit,(select count(*) from sc_memberships)::int memberships,(select count(*) from sc_service_link_decisions)::int service_link_decisions")).rows,
   policies:(await conn.query("select tablename,policyname,roles,cmd,qual from pg_policies where schemaname='public' order by tablename,policyname")).rows,
   rls:(await conn.query("select relname,relrowsecurity from pg_class where relname like 'sc_%' and relkind='r' order by relname")).rows,
-  audit:(await conn.query('select revision,data_hash from sc_audit order by revision')).rows
+  audit:(await conn.query('select case_id,revision,data_hash from sc_audit order by case_id,revision')).rows
  });
  try{
   const data=record();await as(user1,()=>write(data));data.drafts.push({text:'Synthetic internal draft',revision:1});await as(user1,()=>write(data,1));
+  await db.exec(await readFile(new URL('../supabase/migrations/20261016111515_service_link_resolution.sql',import.meta.url),'utf8'));
+  await db.query('update sc_memberships set can_approve=true where tenant_id=$1 and user_id=$2',['sarberki-test',user1]);
+  const target=record('case-restore-target','target-message');target.state.intent='booking_request';target.state.values={guests:'2',arrival:'2026-11-13',departure:'2026-11-15'};
+  const review=record('case-restore-review','review-message');review.caseKind='service_link_review';review.state.intent='service_request';review.state.revision=1;review.serviceRequests=[{kind:'tub_request',serviceOnly:true,confirmationAllowed:false}];
+  await as(user1,()=>write(target));await as(user1,()=>write(review));
+  const resolution=(await as(user1,()=>db.query('select sc_resolve_service_link($1,$2,1,$3,1,$4) as result',['sarberki-test',review.id,target.id,'Synthetic restore identity verified']))).rows[0].result;
+  assert.equal(resolution.revision,2);assert.equal(resolution.data.state.approval,'pending');
+  const decisions=(await db.query('select * from sc_service_link_decisions')).rows;
+  assert.equal(decisions.length,1);assert.equal(decisions[0].actor,user1);assert.equal(decisions[0].target_revision,1);
   const sql=(await readFile(new URL('../scripts/case-store-recovery-manifest.sql',import.meta.url),'utf8')).replace('begin transaction isolation level repeatable read read only;','').replace('commit;','');
-  const fullManifest=(await db.query(sql)).rows[0].recovery_manifest;assert.equal(fullManifest.audit_gaps,0);assert.equal(fullManifest.latest_hash_mismatches,0);
+  const fullManifest=(await db.query(sql)).rows[0].recovery_manifest;assert.equal(fullManifest.audit_gaps,0);assert.equal(fullManifest.latest_hash_mismatches,0);assert.equal(fullManifest.counts.service_link_decisions,1);assert.ok(fullManifest.tables.some(t=>t.relname==='sc_service_link_decisions'&&t.relrowsecurity));
   const before=await manifest(db),snapshot=Buffer.from(await (await db.dumpDataDir()).arrayBuffer());
   // Fixture-only encryption key stays in test memory; this is not a cloud backup.
   const key=randomBytes(32),iv=randomBytes(12),cipher=createCipheriv('aes-256-gcm',key,iv);
@@ -136,14 +145,19 @@ test('encrypted isolated fixture snapshot restores policies, privileges, draft h
   assert.deepEqual(await manifest(restored),before);assert.deepEqual((await restored.query(sql)).rows[0].recovery_manifest,fullManifest);
   assert.equal((await restored.query("select has_table_privilege('authenticated','sc_cases','INSERT') as allowed")).rows[0].allowed,false);
   await restored.exec('set role authenticated');await restored.query("select set_config('request.jwt.claim.sub',$1,false)",[user2]);
-  assert.equal((await restored.query('select * from sc_cases')).rows.length,1);
+  assert.equal((await restored.query('select * from sc_cases')).rows.length,3);
+  assert.deepEqual((await restored.query('select * from sc_service_link_decisions')).rows,decisions);
+  for(const operation of ['INSERT','UPDATE','DELETE'])assert.equal((await restored.query("select has_table_privilege('authenticated','sc_service_link_decisions',$1) as allowed",[operation])).rows[0].allowed,false);
+  await assert.rejects(restored.query('select sc_resolve_service_link($1,$2,2,$3,1,$4)',['sarberki-test',review.id,target.id,'Reader cannot resolve restored decision']),/forbidden/);
   await assert.rejects(restored.query('select sc_write_case($1,$2,2,$3)',['sarberki-test',data.id,JSON.stringify(data)]),/forbidden/);
-  await restored.query("select set_config('request.jwt.claim.sub',$1,false)",[user3]);assert.equal((await restored.query('select * from sc_cases')).rows.length,0);
+  await restored.query("select set_config('request.jwt.claim.sub',$1,false)",[user3]);assert.equal((await restored.query('select * from sc_cases')).rows.length,0);assert.equal((await restored.query('select * from sc_service_link_decisions')).rows.length,0);
   await restored.query("select set_config('request.jwt.claim.sub',$1,false)",[user1]);
   const removed={...data,drafts:[]};await assert.rejects(restored.query('select sc_write_case($1,$2,2,$3)',['sarberki-test',data.id,JSON.stringify(removed)]),/history removal/);
   data.drafts.push({text:'Second internal version',revision:2});
   assert.equal((await restored.query('select sc_write_case($1,$2,2,$3) as ok',['sarberki-test',data.id,JSON.stringify(data)])).rows[0].ok,true);
-  await restored.exec('reset role');const ids=(await restored.query('select event_id from sc_audit order by revision')).rows.map(r=>r.event_id);assert.equal(ids.length,3);assert.equal(new Set(ids).size,3);assert.ok(ids[2]>ids[1]);
+  await restored.exec('reset role');assert.deepEqual((await restored.query('select data from sc_cases where case_id=$1',[target.id])).rows[0].data,target);assert.deepEqual((await restored.query('select * from sc_service_link_decisions')).rows,decisions);
+  assert.equal((await restored.query('select count(*)::int as n from sc_audit')).rows[0].n,6);
+  const ids=(await restored.query('select event_id from sc_audit where case_id=$1 order by revision',[data.id])).rows.map(r=>r.event_id);assert.equal(ids.length,3);assert.equal(new Set(ids).size,3);assert.ok(ids[2]>ids[1]);
  }finally{if(restored)await restored.close();else await db.close();}
 });
 
