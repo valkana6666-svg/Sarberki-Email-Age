@@ -49,6 +49,8 @@ export function latestTubServiceRequest(record){
 export function tubServiceProjection(record){
  const request=latestTubServiceRequest(record);
  if(!request)return null;
+ // Accommodation-house equipment is not rental availability: guests may rent
+ // another house's fixed tub. Only the separate trusted calendar can verify it.
  return {requested:request.cancelled!==true,startDate:request.startDate??null,startTime:request.startTime??null,durationHours:request.durationHours??null,
-  linkedCaseId:request.linkedCaseId??null,verificationStatus:request.actionConflict?'unverified':request.cancelled?'cancelled_unverified':request.eligibility?.status==='not_available'?'not_available':'unverified',requiresHumanApproval:true};
+  linkedCaseId:request.linkedCaseId??null,verificationStatus:request.actionConflict?'unverified':request.cancelled?'cancelled_unverified':'unverified',requiresHumanApproval:true};
 }

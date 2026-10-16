@@ -33,7 +33,7 @@ test('3 missing, impossible and conflicting schedule values remain unknown and n
 test('4 a persisted verified reference can link; unknown or conflicting email references remain separate service review',()=>{
  const f=fixture(),store=f.trust({verified:true,source:'operator_verified',reference:'REF-123',unitNumber:7});
  const linked=store.ingest(message('m2','Booking reference REF-123. Please add a hot tub.',{thread_id:''}),{});
- assert.equal(linked.bookingCase.id,f.first.id);assert.equal(tubServiceProjection(linked.bookingCase).verificationStatus,'not_available');
+ assert.equal(linked.bookingCase.id,f.first.id);assert.equal(linked.bookingCase.serviceRequests.at(-1).eligibility.status,'not_available');assert.equal(tubServiceProjection(linked.bookingCase).verificationStatus,'unverified');
  for(const [id,text]of [['m3','Booking reference WRONG-123. Please add a hot tub.'],['m4','Booking reference REF-123. Booking reference OTHER-456. Please add a hot tub.']]){
   const result=store.ingest(message(id,text),{});assert.equal(result.resolution.status,'ambiguous');assert.equal(result.bookingCase.caseKind,'service_link_review');for(const key of Object.keys(stay))assert.equal(result.bookingCase.state.values[key],undefined);assert.equal(tubServiceProjection(result.bookingCase).linkedCaseId,null);
  }
@@ -104,4 +104,33 @@ test('cancellation policy questions do not withdraw a mixed accommodation and tu
   const parsed=tubServiceMessage(text);assert.equal(parsed.kind,'tub_request');assert.equal(parsed.serviceOnly,false);assert.notEqual(parsed.cancelled,true);
  }
  for(const text of ['A dézsát lemondjuk.','Please cancel the hot tub.','Bitte stornieren Sie den Badezuber.','Želim preklicati masažno kad.'])assert.equal(tubServiceMessage(text).cancelled,true,text);
+});
+
+test('split-house guests retain an unverified rental request while their own-house equipment stays absent',()=>{
+ for(const house of [7,8,9,10]){
+  const f=fixture(),store=f.trust({verified:true,source:'operator_verified',reference:'REF-123',unitNumber:house});
+  const result=store.ingest(message('cross-house','Booking reference REF-123. Please add a hot tub on 2026-11-14 at 18:00 for 24 hours.',{thread_id:''}),{});
+  const physical=result.bookingCase.serviceRequests.at(-1).eligibility;
+  const service=tubServiceProjection(result.bookingCase);
+  assert.equal(physical.status,'not_available');
+  assert.equal(physical.confirmationAllowed,false);
+  assert.equal(service.verificationStatus,'unverified');
+  assert.equal(service.linkedCaseId,f.first.id);
+  assert.equal(service.startDate,'2026-11-14');
+  assert.equal(service.requiresHumanApproval,true);
+  for(const [key,value] of Object.entries(stay))assert.equal(result.bookingCase.state.values[key],value);
+  const view=syntheticPreviewState({serviceRequest:service});
+  assert.match(view.service_verification,/NEM IGAZOLT/);
+  assert.doesNotMatch(view.service_verification,/nincs dézsa/);
+ }
+});
+
+test('stored physical eligibility and caller availability cannot prove service calendar availability',()=>{
+ for(const status of ['not_available','requires_operator_confirmation','unverified']){
+  const record={serviceRequests:[{at:'2026-10-16T12:00:00Z',eligibility:{status,confirmationAllowed:true},availability:'available'}]};
+  const result=tubServiceProjection(record);
+  assert.equal(result.verificationStatus,'unverified');
+  assert.equal(result.requiresHumanApproval,true);
+  assert.equal('confirmationAllowed' in result,false);
+ }
 });
