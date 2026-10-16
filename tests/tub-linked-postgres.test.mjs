@@ -47,5 +47,23 @@ test('actual PostgreSQL service follow-up persists through normal Writer CAS/aud
   assert.equal(uncertain.record.data.caseKind,'service_link_review');assert.equal(uncertain.record.data.state.values.arrival,undefined);
   assert.equal(uncertain.record.data.serviceRequests[0].linkedCaseId,null);assert.match(uncertain.record.data.drafts.at(-1).text,/Please clarify the booking reference/);
   assert.equal((await db.query('select * from sc_audit')).rows.length,3);
+  const originalStay=JSON.stringify((await db.query('select * from sc_cases where case_id=$1',[first.record.caseId])).rows);
+  const mixed=await runtime.ingest(envelope('mixed-cancellation','Please book one Deluxe cabin from 2026-12-11 to 2026-12-14 for 4 adults and no children. Please cancel the hot tub.',{sender:'mixed@synthetic.invalid',thread_id:'mixed-new-stay'}),undefined,{expectedRevision:0,persistDraft:true});
+  assert.notEqual(mixed.record.data.caseKind,'service_link_review');
+  assert.equal(mixed.record.data.state.values.arrival,'2026-12-11');
+  assert.equal(mixed.record.data.state.values.departure,'2026-12-14');
+  assert.equal(mixed.record.data.state.values.adults,'4');
+  assert.equal(mixed.record.data.serviceRequests.at(-1).cancelled,true);
+  assert.equal(mixed.record.data.state.approval,'pending');
+  assert.ok(mixed.record.data.drafts.at(-1).text.length>0);
+  subject=reader;
+  const mixedPreview=await runtime.previewDraft(mixed.record.caseId,mixed.record.revision);
+  assert.equal(mixedPreview.serviceOnly,false);
+  assert.equal(mixedPreview.serviceRequest.requested,false);
+  assert.equal(mixedPreview.serviceRequest.verificationStatus,'cancelled_unverified');
+  assert.equal(mixedPreview.persisted,false);
+  assert.equal(mixedPreview.approval,'pending');
+  assert.equal(JSON.stringify((await db.query('select * from sc_cases where case_id=$1',[first.record.caseId])).rows),originalStay);
+  assert.equal((await db.query('select * from sc_audit')).rows.length,4);
  }finally{await db.close();}
 });

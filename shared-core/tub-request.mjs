@@ -12,11 +12,17 @@ export function trustedTubContext(record={}){
  const context=record.bookingContext;
  return context?.verified===true&&context.source==='operator_verified'?context:null;
 }
+// Use the same accommodation scope for additions and withdrawals.
+function requestsAccommodation(source){
+ const stayObject='(?:faház\\p{L}*|szállást|cabins?|houses?|accommodation|ferienhaus|unterkunft|hišk\\p{L}*|nastanitev)';
+ const stayRequest=new RegExp('(?:\\b(?:book|reserve|buchen|rezervirati|foglalni|lefoglal\\p{L}*)\\s+(?:(?:a|an|one|two|ein\\p{L}*|egy|két|deluxe|vip|family|családi)\\s+){0,4}'+stayObject+'|'+stayObject+'\\s+(?:szeretn\\p{L}*\\s+)?(?:foglalni|buchen|book)|(?:new|separate|új|másik|neue|nova)\\s+(?:stay|accommodation|szállás|übernachtung|nastanitev))','iu');
+ return stayRequest.test(source);
+}
 export function tubServiceMessage(text=''){
  const source=currentText(text);
  // Withdrawal intent wins over a bare tub mention, including imperative EN/DE/SI.
  if(tub.test(source)&&/(?:nem\s+kér|mégsem|megsem|nincs\s+szükség|cancel(?:led|ing)?(?!\p{L})|stornier(?:en|e|t)(?!\p{L})|preklic(?:ati|ujem|ujemo)?(?!\p{L})|lemond(?:om|juk|anám|anánk|ani)?(?!\p{L})|no\s+longer|do\s+not\s+want|don't\s+want|kein\p{L}*\s+(?:badefass|badezuber)|ne\s+žel|ne\s+potreb)/iu.test(source))
-  return {kind:'tub_request',serviceOnly:true,cancelled:true,actionConflict:/(?:but|and|de|és|aber|und|ampak|in)\s+.{0,30}(?:add|request|kérek|kérünk|möcht|želim)/iu.test(source),startDate:null,startTime:null,durationHours:null,requestedBookingReference:tubBookingReference(source),confirmationAllowed:false,requiresHumanReview:true};
+  return {kind:'tub_request',serviceOnly:!requestsAccommodation(source),cancelled:true,actionConflict:/(?:but|and|de|és|aber|und|ampak|in)\s+.{0,30}(?:add|request|kérek|kérünk|möcht|želim)/iu.test(source),startDate:null,startTime:null,durationHours:null,requestedBookingReference:tubBookingReference(source),confirmationAllowed:false,requiresHumanReview:true};
  return classifyTubRequest(source);
 }
 export function classifyTubRequest(text='') {
@@ -30,9 +36,7 @@ export function classifyTubRequest(text='') {
  const durations=[...source.matchAll(/\b(\d{1,3})\s*(órá(?:ra|s)?|óra|hours?|stunden|ur|nap(?:ra|ig)?|days?|tage?|dni)\b/giu)].map(m=>Number(m[1])*(/^(?:nap|day|tag|dni)/iu.test(m[2])?24:1));
  const startDate=dates.length?unique(dates):null,startTime=times.length?unique(times):null,durationHours=durations.length?unique(durations):null;
  // A mixed new accommodation request still follows the existing booking route.
- const stayObject='(?:faház\\p{L}*|szállást|cabins?|houses?|accommodation|ferienhaus|unterkunft|hišk\\p{L}*|nastanitev)';
- const stayRequest=new RegExp('(?:\\b(?:book|reserve|buchen|rezervirati|foglalni|lefoglal\\p{L}*)\\s+(?:(?:a|an|one|two|ein\\p{L}*|egy|két|deluxe|vip|family|családi)\\s+){0,4}'+stayObject+'|'+stayObject+'\\s+(?:szeretn\\p{L}*\\s+)?(?:foglalni|buchen|book)|(?:new|separate|új|másik|neue|nova)\\s+(?:stay|accommodation|szállás|übernachtung|nastanitev))','iu');
- const serviceOnly=!stayRequest.test(source);
+ const serviceOnly=!requestsAccommodation(source);
  return {kind:'tub_request',serviceOnly,startDate,startTime,durationHours:durationHours>0&&!/\b\d{1,3}\s*(?:vagy|or|oder|ali)\s*\d{1,3}\s*(?:ór|hour|stund|ur|nap|day|tag|dni)/iu.test(source)?durationHours:null,
   requestedBookingReference:tubBookingReference(source),bookingReferenceConflict:new Set([...source.matchAll(/(?:foglalási\s*(?:szám|azonosító)|booking\s*(?:reference|ref|id|number)|reservierungsnummer|številka\s+rezervacije)\s*[:#]?\s*([A-Z0-9][A-Z0-9-]{2,63})/giu)].map(m=>m[1].toUpperCase())).size>1,availability:'unverified',confirmationAllowed:false,requiresHumanReview:true};
 }

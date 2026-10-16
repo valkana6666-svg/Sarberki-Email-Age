@@ -134,3 +134,38 @@ test('stored physical eligibility and caller availability cannot prove service c
   assert.equal('confirmationAllowed' in result,false);
  }
 });
+
+const mixedWithdrawalMessages=[
+ 'Deluxe faházat foglalni szeretnénk 2026-12-11 és 2026-12-14 között. A dézsát lemondjuk.',
+ 'Please book a Deluxe cabin from 2026-12-11 to 2026-12-14. Please cancel the hot tub.',
+ 'Wir möchten ein Deluxe Ferienhaus buchen, vom 2026-12-11 bis 2026-12-14. Bitte stornieren Sie den Badezuber.',
+ 'Želimo rezervirati hiško Deluxe od 2026-12-11 do 2026-12-14. Preklicujem masažno kad.'
+];
+test('HU DE EN SI tub withdrawals retain a simultaneous new accommodation request',()=>{
+ for(const text of mixedWithdrawalMessages){
+  const parsed=tubServiceMessage(text);
+  assert.equal(parsed.kind,'tub_request',text);
+  assert.equal(parsed.cancelled,true,text);
+  assert.equal(parsed.serviceOnly,false,text);
+  assert.equal(parsed.confirmationAllowed,false);
+  assert.equal(parsed.requiresHumanReview,true);
+ }
+});
+test('mixed withdrawal ingests accommodation facts and a separate unconfirmed cancellation without hijacking an older stay',()=>{
+ for(const text of mixedWithdrawalMessages){
+  const {store,first}=fixture(),before=store.get(first.id);
+  const incoming={...stay,arrival:'2026-12-11',departure:'2026-12-14'};
+  const result=store.ingest(message('mixed-withdrawal',text,{thread_id:'new-stay-thread'}),incoming);
+  assert.equal(result.resolution.status,'new',text);
+  assert.notEqual(result.bookingCase.id,first.id);
+  assert.notEqual(result.bookingCase.caseKind,'service_link_review');
+  assert.equal(result.bookingCase.state.intent,'booking_request');
+  for(const [key,value] of Object.entries(incoming))assert.equal(result.bookingCase.state.values[key],value,key);
+  const service=tubServiceProjection(result.bookingCase);
+  assert.equal(service.requested,false);
+  assert.equal(service.verificationStatus,'cancelled_unverified');
+  assert.equal(service.requiresHumanApproval,true);
+  assert.equal(result.bookingCase.state.approval,'pending');
+  assert.deepEqual(store.get(first.id),before);
+ }
+});
