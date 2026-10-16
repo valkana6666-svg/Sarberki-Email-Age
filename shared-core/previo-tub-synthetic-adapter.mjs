@@ -1,8 +1,9 @@
 // Synthetic-only Previo booking note adapter. No HTTP calls, secrets or live writes.
 import {createPrevioTubNoteReader} from './previo-tub-note-reader.mjs';
+import {parseOffsetInstant} from './server-tub-availability.mjs';
 const own=Object.prototype.hasOwnProperty;
 const clean=x=>typeof x==='string'&&x.length>0&&x.length<=256;
-const validInstant=x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(x)&&Number.isFinite(Date.parse(x));
+const validInstant=x=>Number.isFinite(parseOffsetInstant(x));
 export function createSyntheticPrevioTubAdapter({bookings=[]}={}){
  if(!Array.isArray(bookings))throw new TypeError('bookings must be an array');
  const records=bookings.map(b=>{
