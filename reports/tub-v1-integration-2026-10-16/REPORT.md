@@ -30,6 +30,22 @@ További célzott eredmény: a kibővített 16 suite 125 PASS / 0 FAIL / 0 SKIP;
 
 Módosított kódfájlok: booking-cases.mjs, central-reply.mjs, index.html, netlify/functions/booking-cases.mjs, operator-login-ui.mjs, sarberki-core.mjs, shared-core/server-booking-runtime.mjs, shared-core/synthetic-mail-fixtures.mjs, shared-core/tub-request.mjs, synthetic-server-preview.mjs. Tesztek: closed-synthetic-mail-registry, operator-cookie-session, operator-login-ui; új tub-linked-service és tub-linked-postgres. Sem adatbázismigráció, sem konfiguráció-/kulcsmódosítás nem történt.
 
+## Publikált kód és tényleges felhős próba
+
+Integrációs commit: 908a751500782e80c4738840c4631b5b755d2429, kizárólag a tesztágon. A böngészőben BUILD908a751 látható. Meglévő tesztoperátori cookie-munkamenet helyreállt; jelszót vagy tokent nem olvastunk/adtunk meg.
+
+A HU alapminta a már meglévő fa570d0b-1ea9-4568-a8f2-08b4dec446d0 ügy v3 rekordját adta vissza; nem keletkezett új szállásügy. Az új rögzített Gmail MIME-követőlevél ugyanide v4-ként mentődött. A csak olvasási szerveres előnézet visszaadta: dézsaigény igen, 2026-10-24, 18:00, 24 óra, ugyanaz a caseId, elérhetőség NEM IGAZOLT, emberi jóváhagyás szükséges. A magyar tervezet a külön bérelhető dézsát és a még elvégzendő ellenőrzést mondja ki; nem megerősítés. Képek: cloud-reader-proof.jpg és cloud-reader-fields.jpg. Ez tényleges szintetikus felhős Writer→Reader-panel bizonyíték, nem új élő Gmail OAuth-próba vagy külön Reader-fiókos bejelentkezés. A valódi Reader szerep írási tiltását a PostgreSQL-próba igazolja.
+
+## Nyitott CI-hiba
+
+Run https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/38890554396 , job116938723266: 1573 teszt / 1572 PASS / 1 FAIL / 0 SKIP. Hiba: tests/case-ui.test.mjs:100, integrated approval cannot override failed fresh capacity; az árquote null helyett jóváhagyott maradt. A kapacitás-regresszió workflow38890554563 is hibás. A 908a751 NEM zöld kiadásra jelölt állapot, és nem írjuk felül a hibás elvárást. A konkrét ok és a legkisebb biztonságos javítás közvetlen Codex-feladatként folyamatban. Az adott CI-ben a deploy-szinkron lépés a teszthiba miatt kimaradt; csak a böngésző rövid buildazonosítója és a felhős próba igazolt.
+
+Más workflow-k ugyanazon SHA-n: V1 Gmail manual check és synthetic Gmail operator mobile proof sikeres; offline Windows backup copy sikeres; offline chatbot mobile workflow kihagyott. Ezek nem teszik zölddé a teljes CI-t.
+
+A Codex célzottan reprodukálta az egyetlen hibát: a visszavonás-felismerő a „lemondási feltételek” iránti tájékoztatáskérést is szolgáltatás-visszavonásnak vette. A hibás service_request besorolás miatt a korábbi intenthez kötött UI-jóváhagyási ellenőrzés kimaradhatott. A javítás pontos visszavonás-felismerést és önálló fail-closed szolgáltatási jóváhagyásgátat alkalmaz; az eredeti CI-regresszió elvárása változatlan marad. Végső javítás és új CI még folyamatban.
+
+A javítás célzott eredménye: 43 PASS / 0 FAIL / 0 SKIP (30 case-ui + 13 tub-linked-service teszt), az eredeti hibás CI-próba változatlan elvárásával. A kézzel kapcsolt szolgáltatás is megtartja a serviceOnly jelzőt, ezért az override sem kerülheti meg a külön jóváhagyási tiltást. Módosult: tub-request, booking-cases, index.html és a két érintett teszt. Következő: az új javítócommit teljes CI-je és pontos teszttelepítésének ellenőrzése; új felhős írási próba nem szükséges az ettől függetlenül már sikeres dézsa-followup útvonalhoz.
+
 Production/main, valódi vendégadat, e-mail/Pushover-küldés és Previo-írás/lekérdezés nem megengedett. Auth, tenant/RLS/CAS/audit és emberi jóváhagyás megőrzendő. Nincs második válaszmotor, jogosultsági rendszer vagy automatikus küldés. Meglévő mentések változatlanok.
 
 V2/V3 érték: a szolgáltatásigény a meglévő ügyhöz és közös kommunikációs adapterhez kapcsolódik, elkülönített bizonyítékkal; ez nem automatikus foglalási/küldési képesség. Bizonyítékkorlát: a helyi mock/DOM/PostgreSQL és CI eredmény nem helyettesíti a tényleges Gmail→felhő→Reader hitelesített működés igazolását.

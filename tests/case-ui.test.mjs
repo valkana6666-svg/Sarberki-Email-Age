@@ -247,3 +247,16 @@ test('UI never fabricates a single unit from generic availability and preserves 
  h.analyze('2026. október 23–25. között két Családi faházat szeretnénk 8 felnőtt részére.');
  assert.equal(h.node('f_units_requested').value,'2');
 });
+
+test('service-only review and manually linked service cannot bypass approval with override',async()=>{
+ const runtime=createBookingRuntime({request:()=>{throw Error('service must not request accommodation capacity');}}),h=harness(runtime);
+ const original=runtime.cases.list()[0];
+ assert.equal(original.state.intent,'booking_request');
+ for(const linked of [false,true]){
+  h.node('booking_case_link').value=linked?original.id:'';
+  h.analyze('Dézsát szeretnénk kérni 2026-11-14 18:00-tól 24 órára.');
+  h.node('override').checked=true;await h.node('approve').onclick();
+  assert.match(h.node('status').textContent,/Jóváhagyás tiltva.*dézsaszolgáltatás/u);
+  assert.equal(runtime.cases.list().find(c=>c.id===(linked?original.id:runtime.cases.list().at(-1).id)).state.approval,'pending');
+ }
+});

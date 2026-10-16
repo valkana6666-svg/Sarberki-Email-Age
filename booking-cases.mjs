@@ -80,7 +80,7 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
    }
    let resolution=resolveBookingCase(cases,envelope,incoming);
    const service=tubServiceMessage(envelope.text||''),serviceOnly=service.kind==='tub_request'&&service.serviceOnly;
-   if(approvedCaseId){const found=cases.find(c=>c.id===approvedCaseId&&c.sender===sender(envelope.sender));if(!found)throw Error('Az ügyösszekapcsolás nem igazolható.');resolution={status:'linked',caseId:found.id,evidence:'human_approved'};}
+   if(approvedCaseId){const found=cases.find(c=>c.id===approvedCaseId&&c.sender===sender(envelope.sender));if(!found)throw Error('Az ügyösszekapcsolás nem igazolható.');resolution={status:'linked',caseId:found.id,evidence:'human_approved',...(serviceOnly?{serviceOnly:true}:{})};}
    const target=resolution.status==='linked'?cases.find(c=>c.id===resolution.caseId):null;
    const eventAt=Date.parse(envelope.received_at||clock());
    const latestAt=target?Math.max(...target.messages.map(m=>Date.parse(m.received_at)).filter(Number.isFinite)):-Infinity;

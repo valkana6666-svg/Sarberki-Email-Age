@@ -95,3 +95,13 @@ test('booking a tub at the existing cabin in four languages never changes accomm
  }
  assert.equal(classifyTubRequest('Please book one Deluxe cabin and a hot tub.').serviceOnly,false);
 });
+
+test('cancellation policy questions do not withdraw a mixed accommodation and tub request',()=>{
+ for(const text of [
+  'Deluxe faházat foglalni szeretnénk, dézsát is kérünk. Milyen lemondási feltételek vannak?',
+  'Please book a Deluxe cabin and add a hot tub. What are the cancellation conditions?'
+ ]){
+  const parsed=tubServiceMessage(text);assert.equal(parsed.kind,'tub_request');assert.equal(parsed.serviceOnly,false);assert.notEqual(parsed.cancelled,true);
+ }
+ for(const text of ['A dézsát lemondjuk.','Please cancel the hot tub.','Bitte stornieren Sie den Badezuber.','Želim preklicati masažno kad.'])assert.equal(tubServiceMessage(text).cancelled,true,text);
+});

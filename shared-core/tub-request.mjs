@@ -15,7 +15,7 @@ export function trustedTubContext(record={}){
 export function tubServiceMessage(text=''){
  const source=currentText(text);
  // Withdrawal intent wins over a bare tub mention, including imperative EN/DE/SI.
- if(tub.test(source)&&/(?:nem\s+kér|mégsem|megsem|nincs\s+szükség|cancel|storn|preklic|lemond|no\s+longer|do\s+not\s+want|don't\s+want|kein\p{L}*\s+(?:badefass|badezuber)|ne\s+žel|ne\s+potreb)/iu.test(source))
+ if(tub.test(source)&&/(?:nem\s+kér|mégsem|megsem|nincs\s+szükség|cancel(?:led|ing)?(?!\p{L})|stornier(?:en|e|t)(?!\p{L})|preklic(?:ati|ujem|ujemo)?(?!\p{L})|lemond(?:om|juk|anám|anánk|ani)?(?!\p{L})|no\s+longer|do\s+not\s+want|don't\s+want|kein\p{L}*\s+(?:badefass|badezuber)|ne\s+žel|ne\s+potreb)/iu.test(source))
   return {kind:'tub_request',serviceOnly:true,cancelled:true,actionConflict:/(?:but|and|de|és|aber|und|ampak|in)\s+.{0,30}(?:add|request|kérek|kérünk|möcht|želim)/iu.test(source),startDate:null,startTime:null,durationHours:null,requestedBookingReference:tubBookingReference(source),confirmationAllowed:false,requiresHumanReview:true};
  return classifyTubRequest(source);
 }
