@@ -54,7 +54,7 @@ export function nameFromText(text=''){
 export function requestFlagsFromText(text=''){
   text=activeMessageText(text);
   const pet=/(?:kuty\p{L}*|háziállat\p{L}*|dogs?|pets?|hund\p{L}*|haustier\p{L}*|\bpes\b|\bpsa\b)/iu;
-  const tub=/(?:dézs\p{L}*|dezsa\p{L}*|hot[ -]?tub|whirlpool|badefass|jacuzzi|(?:vroč\p{L}*|masaž\p{L}*)\s*kad)/iu;
+  const tub=/(?:dézs\p{L}*|dezsa\p{L}*|hot[ -]?tub|whirlpool|badefass|badezuber|jacuzzi|(?:vroč\p{L}*|masaž\p{L}*)\s*kad)/iu;
   const negation=/(?<!\p{L})(?:nem|mégsem|megsem|nincs|nélkül|nelkul|not|no|without|kein\p{L}*|nicht|ohne|brez|ne)(?!\p{L})/iu;
   const requested=pattern=>{
     const mentions=text.split(/[.!?\n]|\b(?:de|but|aber|ampak)\b/iu).filter(s=>pattern.test(s));

@@ -1,12 +1,42 @@
 import {createCaseState,updateCaseState} from './case-state.mjs';
-import {childAgesFromText} from './sarberki-core.mjs';
+import {childAgesFromText,languageFromText} from './sarberki-core.mjs';
 import {stageFacts} from './booking-filter.mjs';
 import {followupDateUpdate} from './booking-followup.mjs';
+import {tubServiceMessage,tubServiceProjection,trustedTubContext,assessTubEligibility} from './shared-core/tub-request.mjs';
 const copy=v=>JSON.parse(JSON.stringify(v));
 const list=v=>String(v||'').match(/<[^>]+>/g)||[];
 const sender=v=>String(v||'').trim().toLowerCase();
 const present=v=>v!==''&&v!=null;
+function resolveTubCase(cases,envelope,request){
+ const from=sender(envelope.sender),owned=cases.filter(c=>c.sender===from&&from&&c.caseKind!=='service_link_review');
+ const uncertain=(evidence,candidates=owned)=>({status:'ambiguous',candidates:candidates.map(c=>c.id),evidence,serviceOnly:true});
+ if(envelope.case_id)return uncertain('untrusted_case_claim');
+ if(request.bookingReferenceConflict)return uncertain('conflicting_service_booking_references');
+ const refs=[...list(envelope.in_reply_to),...(Array.isArray(envelope.references)?envelope.references:list(envelope.references))];
+ const ref=request.requestedBookingReference;
+ const byReference=owned.filter(c=>ref&&String(trustedTubContext(c)?.reference||'').toUpperCase()===ref);
+ const direct=owned.filter(c=>envelope.thread_id&&c.messages.some(m=>m.thread_id===envelope.thread_id)||c.messages.some(m=>m.rfc_message_id&&refs.includes(m.rfc_message_id)));
+ if(direct.length>1||byReference.length>1)return uncertain('conflicting_service_identity');
+ const chosen=direct[0]||byReference[0];
+ if(!chosen)return uncertain('service_link_unverified');
+ if(envelope.thread_id&&chosen.messages.some(m=>m.thread_id)&&!chosen.messages.some(m=>m.thread_id===envelope.thread_id))return uncertain('service_thread_conflict');
+ if(ref&&String(trustedTubContext(chosen)?.reference||'').toUpperCase()!==ref)return uncertain('service_booking_reference_conflict');
+ if(byReference[0]&&byReference[0]!==chosen)return uncertain('service_booking_reference_conflict');
+ return {status:'linked',caseId:chosen.id,evidence:direct.length?'service_thread_or_reference':'trusted_booking_reference',serviceOnly:true};
+}
+function appendTubRequest(c,envelope,request,resolution){
+ if(request.kind!=='tub_request')return;
+ const context=trustedTubContext(c);
+ c.serviceRequests??=[];
+ c.serviceRequests.push({...request,sourceMessageId:envelope.message_id,at:envelope.received_at||c.state.now,
+  linkedCaseId:c.caseKind==='service_link_review'?null:c.id,association:resolution.evidence,
+  eligibility:assessTubEligibility({unitNumber:context?.unitNumber,unit:c.state.values.unit}),availability:'unverified',confirmationAllowed:false,requiresHumanReview:true});
+ const current=tubServiceProjection(c);
+ c.state.hotTub={...c.state.hotTub,requested:current.requested,available:null,fee:null,included:null};
+}
 export function resolveBookingCase(cases,envelope,values={}){
+ const service=tubServiceMessage(envelope.text||'');
+ if(service.kind==='tub_request'&&service.serviceOnly)return resolveTubCase(cases,envelope,service);
  const from=sender(envelope.sender),refs=[...list(envelope.in_reply_to),...(Array.isArray(envelope.references)?envelope.references:list(envelope.references))].filter(Boolean);
  const owned=cases.filter(c=>c.sender===from&&from);
  const direct=owned.filter(c=>envelope.case_id===c.id||(envelope.thread_id&&c.messages.some(m=>m.thread_id===envelope.thread_id))||c.messages.some(m=>m.rfc_message_id&&refs.includes(m.rfc_message_id)));
@@ -49,11 +79,13 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
     return {resolution:{status:'duplicate',caseId:existing.id},bookingCase:copy(existing)};
    }
    let resolution=resolveBookingCase(cases,envelope,incoming);
+   const service=tubServiceMessage(envelope.text||''),serviceOnly=service.kind==='tub_request'&&service.serviceOnly;
    if(approvedCaseId){const found=cases.find(c=>c.id===approvedCaseId&&c.sender===sender(envelope.sender));if(!found)throw Error('Az ügyösszekapcsolás nem igazolható.');resolution={status:'linked',caseId:found.id,evidence:'human_approved'};}
    const target=resolution.status==='linked'?cases.find(c=>c.id===resolution.caseId):null;
    const eventAt=Date.parse(envelope.received_at||clock());
    const latestAt=target?Math.max(...target.messages.map(m=>Date.parse(m.received_at)).filter(Number.isFinite)):-Infinity;
    if(target&&Number.isFinite(eventAt)&&eventAt<latestAt){
+    target.state.approval='pending';delete target.serverApproval;appendTubRequest(target,envelope,service,resolution);
     target.messages.push({...envelope,historical:true,received_at:envelope.received_at});target.updatedAt=clock();persist();
     return {resolution:{...resolution,status:'historical',evidence:'older_message_preserved_without_overwrite'},bookingCase:copy(target)};
    }
@@ -61,18 +93,23 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
    if(target&&Number(target.state.values.children)>String(target.state.values.child_ages||'').split(',').filter(x=>x.trim()).length&&!incoming.child_ages){
     const ages=childAgesFromText('gyermek '+envelope.text);if(ages.length)incoming={...incoming,child_ages:ages.join(', ')};
    }
-   const dateUpdate=target?followupDateUpdate(envelope.text,target.state.values):{status:'none'};
+   if(serviceOnly){
+    const language=incoming.language||languageFromText(envelope.text);
+    incoming={...(target?{request:envelope.text}:{}),...(['hu','de','en','si'].includes(language)?{language}:{})};
+   }
+   const dateUpdate=target&&!serviceOnly?followupDateUpdate(envelope.text,target.state.values):{status:'none'};
    if(dateUpdate.status==='updated')incoming={...incoming,...dateUpdate.values,nights:String((Date.parse(dateUpdate.values.departure)-Date.parse(dateUpdate.values.arrival))/86400000)};
    const values=target?mergeBookingFacts(target.state.values,incoming,envelope.text):incoming;
    if(dateUpdate.status==='unverified'){values.arrival='';values.departure='';values.nights='';}
    const previousDates=target?{arrival:target.state.values.arrival,departure:target.state.values.departure}:null;
-   const c=target||{id:id(),sender:sender(envelope.sender),messages:[],drafts:[],createdAt:clock(),state:createCaseState({original:envelope.text,values,intent,now:clock()})};
+   const c=target||{id:id(),sender:sender(envelope.sender),messages:[],drafts:[],createdAt:clock(),...(serviceOnly?{caseKind:'service_link_review'}:{}),state:createCaseState({original:envelope.text,values,intent:serviceOnly?'service_request':intent,now:clock()})};
    if(target){
     const previousApproval=c.state.approval;
     c.state=updateCaseState(c.state,{type:'facts',values});
     // Every new message requires a fresh operator review, even if extracted facts are unchanged.
     // Do not carry an earlier draft approval into a newly received guest reply.
     c.state.approval='pending';
+    delete c.serverApproval;
     if(previousApproval==='internally_approved'){
      c.events??=[];
      c.events.push({time:clock(),type:'Jóváhagyás érvénytelenítve; új vendégválasz érkezett',approval:'pending',previousApproval,revision:c.state.revision,scope:'local_unverified_operator'});
@@ -80,7 +117,8 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
    }
    if(dateUpdate.status!=='none')c.dateReview={...dateUpdate,previousDates,at:clock()};
    c.state.original=envelope.text;c.state.now=clock();
-   c.state.intent=target&&['other','general_question'].includes(intent)?target.state.intent:intent;c.facts=stageFacts(values);
+   c.state.intent=serviceOnly?(target?target.state.intent:'service_request'):target&&['other','general_question'].includes(intent)?target.state.intent:intent;c.facts=stageFacts(values);
+   appendTubRequest(c,envelope,service,resolution);
    c.messages.push({...envelope,received_at:envelope.received_at||clock()});c.updatedAt=clock();
    c.status=resolution.status==='ambiguous'?'link_review_required':'preparing';c.linkReview=resolution.status==='ambiguous'?resolution:null;
    if(!target)cases.push(c);persist();return {resolution,bookingCase:copy(c)};

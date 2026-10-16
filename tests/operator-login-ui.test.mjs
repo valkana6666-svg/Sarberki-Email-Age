@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {syntheticMailEnvelope,closedMailRequestFromGmailRecord} from '../shared-core/synthetic-mail-fixtures.mjs';
+import {syntheticMailEnvelope,closedMailRequestFromGmailRecord,syntheticTubFollowupEnvelope} from '../shared-core/synthetic-mail-fixtures.mjs';
 import {initOperatorLoginPanel} from '../operator-login-ui.mjs';
 const ui=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-const names=['operator_login_form','operator_login_email','operator_login_password','operator_login','operator_restore','operator_logout','operator_login_status','operator_list_cases','operator_case_select','operator_open_case','operator_case_status','server_preview_case_id','server_preview_revision','operator_create_fixture','operator_fixture_status','gmail_cloud_fixture_language','gmail_cloud_fixture_load','gmail_cloud_fixture_save','gmail_cloud_fixture_status','gmail_cloud_fixture_approval','gmail_json','message'];
+const names=['operator_login_form','operator_login_email','operator_login_password','operator_login','operator_restore','operator_logout','operator_login_status','operator_list_cases','operator_case_select','operator_open_case','operator_case_status','server_preview_case_id','server_preview_revision','operator_create_fixture','operator_fixture_status','gmail_cloud_fixture_language','gmail_cloud_fixture_load','gmail_cloud_fixture_save','gmail_cloud_fixture_status','gmail_cloud_fixture_approval','gmail_cloud_tub_followup','gmail_json','message'];
 const valid=()=>({authenticated:true,tenantId:'sarberki-test',csrfToken:'ab'.repeat(32),expiresAt:new Date(Date.now()+3600_000).toISOString()});
 async function harness(request){
  const map=new Map(),events=[];
@@ -259,4 +259,34 @@ test('foreign loaded Gmail record and lost session cannot cause cloud write',asy
  h.globalRef.sarberkiGmailTransform=()=>({source:{provider:'gmail',from_email:'arbitrary@synthetic.invalid'},original_message:'anything'});
  h.globalRef.displayGmailRecord=async()=>true;
  calls=0;await h.get('gmail_cloud_fixture_load').click();await h.get('gmail_cloud_fixture_save').click();assert.equal(calls,0);assert.equal(h.get('gmail_cloud_fixture_save').disabled,true);
+});
+
+async function closedTubUi(onFollowup=null){
+ const caseId='44444444-4444-4444-8444-444444444444',base=syntheticMailEnvelope('hu'),followup=syntheticTubFollowupEnvelope();let posts=0,mimeCount=0;
+ const record=revision=>({tenantId:'sarberki-test',caseId,revision,data:{tenantId:'sarberki-test',id:caseId,sender:base.sender,messages:revision===1?[base]:[base,followup],state:{approval:'pending',values:{arrival:'2026-10-23',departure:'2026-10-25',guests:'2',adults:'2',children:'0',unit:'Deluxe'}}}});
+ const h=await harness(async(url,options)=>{
+  if(url.endsWith('/operator-session'))return {ok:true,json:async()=>valid()};
+  const input=JSON.parse(options.body);posts++;
+  if(input.expectedRevision>0){assert.deepEqual(input,{tenantId:'sarberki-test',action:'ingest-and-draft',caseId,expectedRevision:input.expectedRevision,envelope:followup});if(onFollowup)return onFollowup(input,()=>({ok:true,json:async()=>({result:{resolution:{status:'linked'},record:record(2)}})}));}
+  return {ok:true,json:async()=>({result:{resolution:{status:input.expectedRevision===0?'new':input.expectedRevision===1?'linked':'duplicate'},record:record(input.expectedRevision===0?1:2)}})};
+ });
+ h.get('gmail_cloud_fixture_language').value='hu';
+ h.globalRef.sarberkiGmailTransform=mime=>{mimeCount++;const e=mime.id===followup.message_id?followup:base;return {source:{provider:'gmail',subject:'TESZT SÁRBERKI CLOSED HU',from_email:e.sender,message_id:e.message_id,thread_id:e.thread_id,received_at:e.received_at},original_message:e.text};};
+ h.globalRef.displayGmailRecord=async parsed=>{h.get('gmail_json').value=JSON.stringify(parsed);h.get('message').value=parsed.original_message;return true;};
+ return {...h,caseId,posts:()=>posts,mimeCount:()=>mimeCount,prepare:async()=>{await h.get('gmail_cloud_fixture_load').click();await h.get('gmail_cloud_fixture_save').click();}};
+}
+test('fixed tub Writer button requires saved base and updates Reader revision only after exact follow-up response',async()=>{
+ const h=await closedTubUi();assert.equal(h.get('gmail_cloud_tub_followup').disabled,true);await h.get('gmail_cloud_tub_followup').click();assert.equal(h.posts(),0);
+ await h.prepare();assert.equal(h.get('gmail_cloud_tub_followup').disabled,false);await h.get('gmail_cloud_tub_followup').click();assert.equal(h.posts(),2);assert.equal(h.mimeCount(),2);
+ assert.equal(h.get('server_preview_case_id').value,h.caseId);assert.equal(h.get('server_preview_revision').value,'2');assert.equal(h.get('gmail_cloud_fixture_approval').hidden,true);assert.match(h.get('gmail_cloud_fixture_status').textContent,/Nincs dézsa-visszaigazolás/);
+ await h.get('gmail_cloud_tub_followup').click();assert.equal(h.posts(),3);assert.equal(h.get('server_preview_revision').value,'2');
+ h.globalRef.SarberkiCaseStoreSession=null;await h.get('gmail_cloud_tub_followup').click();assert.equal(h.posts(),3);
+});
+test('tub follow-up discards changed selection before POST and during pending response',async()=>{
+ const before=await closedTubUi();await before.prepare();let csrfDone;
+ const after=await closedTubUi(async(_input,reply)=>new Promise(resolve=>{csrfDone=()=>resolve(reply());}));await after.prepare();
+ const pending=after.get('gmail_cloud_tub_followup').click();for(let i=0;i<20&&!csrfDone;i++)await Promise.resolve();
+ after.get('server_preview_case_id').value='case-another';csrfDone();await pending;
+ assert.equal(after.get('server_preview_case_id').value,'case-another');assert.equal(after.get('server_preview_revision').value,'1');
+ const beforePending=before.get('gmail_cloud_tub_followup').click();before.get('server_preview_case_id').value='case-another';await beforePending;assert.equal(before.posts(),1);
 });

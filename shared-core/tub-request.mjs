@@ -1,21 +1,51 @@
 import {activeMessageText,requestFlagsFromText} from '../sarberki-core.mjs';
-// Pure, synthetic-safe service-request classifier. No reservation or email side effects.
-const tub=/\b(?:dézsa(?:fürdő)?|dézsát|dézsafürdőt|hot\s*tub|badezuber|badefass|vroča\s*kad)\b/iu;
-const date=/\b(20\d{2})[.\/-](\d{1,2})[.\/-](\d{1,2})\b/u;
-const time=/\b([01]?\d|2[0-3]):([0-5]\d)\b/u;
-export function classifyTubRequest(text='') {
- const source=activeMessageText(String(text));
- if(!tub.test(source)||!requestFlagsFromText(source).hotTubRequested)return {kind:'none'};
- const d=source.match(date),t=source.match(time);
- let startDate=null;
- if(d){const iso=`${d[1]}-${d[2].padStart(2,'0')}-${d[3].padStart(2,'0')}`;if(!Number.isNaN(Date.parse(iso))&&new Date(iso).toISOString().slice(0,10)===iso)startDate=iso;}
- const hours=/\b24\s*(?:órá(?:ra|s)?|hours?|stunden|ur)\b/iu.test(source)?24:null;
- return {kind:'tub_request',startDate,startTime:t?`${t[1].padStart(2,'0')}:${t[2]}`:null,durationHours:hours,availability:'unverified',confirmationAllowed:false,requiresHumanReview:true};
+import {BUSINESS} from '../business-config.mjs';
+// Parse the current request only. Dates/times are requests, never service evidence.
+const tub=/(?:dézs\p{L}*|dezsa\p{L}*|hot[ -]?tub|badezuber|badefass|whirlpool|(?:vroč\p{L}*|masaž\p{L}*)\s*kad)/iu;
+const currentText=text=>activeMessageText(String(text).replace(/\\n/g,'\n'));
+const unique=items=>new Set(items).size===1?items[0]:null;
+export function tubBookingReference(text=''){
+ const source=currentText(text);
+ return unique([...source.matchAll(/(?:foglalási\s*(?:szám|azonosító)|booking\s*(?:reference|ref|id|number)|reservierungsnummer|številka\s+rezervacije)\s*[:#]?\s*([A-Z0-9][A-Z0-9-]{2,63})/giu)].map(m=>m[1].toUpperCase()));
 }
-export function assessTubEligibility({unitNumber,availability}={}) {
- const n=Number(unitNumber);
+export function trustedTubContext(record={}){
+ const context=record.bookingContext;
+ return context?.verified===true&&context.source==='operator_verified'?context:null;
+}
+export function tubServiceMessage(text=''){
+ const source=currentText(text);
+ // Withdrawal intent wins over a bare tub mention, including imperative EN/DE/SI.
+ if(tub.test(source)&&/(?:nem\s+kér|mégsem|megsem|nincs\s+szükség|cancel|storn|preklic|lemond|no\s+longer|do\s+not\s+want|don't\s+want|kein\p{L}*\s+(?:badefass|badezuber)|ne\s+žel|ne\s+potreb)/iu.test(source))
+  return {kind:'tub_request',serviceOnly:true,cancelled:true,actionConflict:/(?:but|and|de|és|aber|und|ampak|in)\s+.{0,30}(?:add|request|kérek|kérünk|möcht|želim)/iu.test(source),startDate:null,startTime:null,durationHours:null,requestedBookingReference:tubBookingReference(source),confirmationAllowed:false,requiresHumanReview:true};
+ return classifyTubRequest(source);
+}
+export function classifyTubRequest(text='') {
+ const source=currentText(text);
+ if(!tub.test(source)||!requestFlagsFromText(source).hotTubRequested)return {kind:'none'};
+ const dates=[...source.matchAll(/\b(20\d{2})[.\/-](\d{1,2})[.\/-](\d{1,2})\b/gu)].map(d=>{
+  const iso=`${d[1]}-${d[2].padStart(2,'0')}-${d[3].padStart(2,'0')}`;
+  return !Number.isNaN(Date.parse(iso))&&new Date(iso).toISOString().slice(0,10)===iso?iso:null;
+ });
+ const times=[...source.matchAll(/\b([01]?\d|2[0-3]):([0-5]\d)\b/gu)].map(t=>`${t[1].padStart(2,'0')}:${t[2]}`);
+ const durations=[...source.matchAll(/\b(\d{1,3})\s*(órá(?:ra|s)?|óra|hours?|stunden|ur|nap(?:ra|ig)?|days?|tage?|dni)\b/giu)].map(m=>Number(m[1])*(/^(?:nap|day|tag|dni)/iu.test(m[2])?24:1));
+ const startDate=dates.length?unique(dates):null,startTime=times.length?unique(times):null,durationHours=durations.length?unique(durations):null;
+ // A mixed new accommodation request still follows the existing booking route.
+ const stayObject='(?:faház\\p{L}*|szállást|cabins?|houses?|accommodation|ferienhaus|unterkunft|hišk\\p{L}*|nastanitev)';
+ const stayRequest=new RegExp('(?:\\b(?:book|reserve|buchen|rezervirati|foglalni|lefoglal\\p{L}*)\\s+(?:(?:a|an|one|two|ein\\p{L}*|egy|két|deluxe|vip|family|családi)\\s+){0,4}'+stayObject+'|'+stayObject+'\\s+(?:szeretn\\p{L}*\\s+)?(?:foglalni|buchen|book)|(?:new|separate|új|másik|neue|nova)\\s+(?:stay|accommodation|szállás|übernachtung|nastanitev))','iu');
+ const serviceOnly=!stayRequest.test(source);
+ return {kind:'tub_request',serviceOnly,startDate,startTime,durationHours:durationHours>0&&!/\b\d{1,3}\s*(?:vagy|or|oder|ali)\s*\d{1,3}\s*(?:ór|hour|stund|ur|nap|day|tag|dni)/iu.test(source)?durationHours:null,
+  requestedBookingReference:tubBookingReference(source),bookingReferenceConflict:new Set([...source.matchAll(/(?:foglalási\s*(?:szám|azonosító)|booking\s*(?:reference|ref|id|number)|reservierungsnummer|številka\s+rezervacije)\s*[:#]?\s*([A-Z0-9][A-Z0-9-]{2,63})/giu)].map(m=>m[1].toUpperCase())).size>1,availability:'unverified',confirmationAllowed:false,requiresHumanReview:true};
+}
+export function assessTubEligibility({unitNumber,unit,availability}={}) {
+ const mapped=BUSINESS.splitPhysicalUnits.find(row=>row.id===String(unit||'').trim().toUpperCase());
+ const n=mapped?.physicalHouse??(unitNumber===undefined?Number(String(unit||'').trim()):Number(unitNumber));
  if(!Number.isInteger(n)||n<1||n>15)return {status:'unverified',confirmationAllowed:false};
- if(n>=7&&n<=10)return {status:'not_available',confirmationAllowed:false};
- // Availability evidence alone is insufficient: this module never confirms a service.
+ if(!BUSINESS.hotTubRentalRules.houseNumbers.includes(n))return {status:'not_available',confirmationAllowed:false};
  return {status:availability==='available'?'requires_operator_confirmation':'unverified',confirmationAllowed:false};
+}
+export function tubServiceProjection(record){
+ const request=record?.serviceRequests?.reduce((latest,item)=>!latest||Date.parse(item.at)>Date.parse(latest.at)||Date.parse(item.at)===Date.parse(latest.at)&&item.cancelled?item:latest,null);
+ if(!request)return null;
+ return {requested:request.cancelled!==true,startDate:request.startDate??null,startTime:request.startTime??null,durationHours:request.durationHours??null,
+  linkedCaseId:request.linkedCaseId??null,verificationStatus:request.actionConflict?'unverified':request.cancelled?'cancelled_unverified':request.eligibility?.status==='not_available'?'not_available':'unverified',requiresHumanApproval:true};
 }

@@ -1,0 +1,37 @@
+# Dézsa V1-integráció — 2026-10-16
+
+## Igazolt kiindulópont
+
+Ág: gmail-test-subject-allowlist. HEAD: 1688024c387cb57625a54f1f91ce521e0c31ea9b. A commit CI-je sikeres, nem maradt függőben: 1557 PASS / 0 FAIL / 0 SKIP. Run: https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/38877755663 ; test job: 116896811577. A job pontos EXPECTED/deployed SHA-egyezést igazolt a leafy-chimera-2403e5 teszthoston. Offline Windows mentésmásolás is sikeres. Az élő Previo-lépés szándékosan kimaradt. Korábbi sikertelen köztes commitok után ez a HEAD zöld; a régi teszteket nem futtattuk újra.
+
+A régi sarberki checkoutban maradt, még nem publikált válaszfordítási fejlesztést és képeket megőriztük. Az új munka külön sarberki-tub checkoutban, ugyanazon kizárólagos tesztágon történik; a korábbi módosítás nem kerül véletlenül ebbe a commitba.
+
+## Feltárt hiányok
+
+A classifier és az utolsó üzenetből számolt serviceRequest metaadat már létezett. Nem volt teljes szolgáltatásigény-ügyfolyamat vagy külön Reader-megjelenítés. Az összerendelés feladó + thread/RFC referencia alapján működött, foglalási hivatkozás ellenőrzése nélkül. Két nyelvi dézsafelismerési eltérés, valamint a szolgáltatás saját dátumának és a szállás dátumának elkülönítése igényel célzott ellenőrzést.
+
+Hiteles üzleti konfiguráció: BUSINESS.hotTubRentalRules.houseNumbers = 1,2,3,4,5,6,11,12,13,14,15; a splitPhysicalUnits minden 7–10 A/B/C elemén hotTub:false. Külön bérelhető szolgáltatás. A fizikai alkalmasság nem elérhetőség-bizonyíték.
+
+## Folyamatban
+
+A Codex közvetlenül megkapta a minimális linked-service implementációt és a tíz kért szintetikus teszthelyzetet. A koordinátori diffreview külön felhívta a figyelmet a történeti levél utáni igény-újraaktiválás és a több eltérő booking reference nullára egyszerűsítésének veszélyére; mindkettőre célzott negatív ellenőrzést kértünk. Új kód, CI és tényleges felhős működés még NEM IGAZOLT.
+
+Bizonytalan összerendeléskor megőrzendő az e-mail egy szolgáltatási ellenőrző ügyben (`service_link_review`), üres szállástényekkel; ez nem új szállásfoglalás. A Reader hét külön mezőt kap: igény ténye, dátum, kezdési időpont, időtartam, kapcsolódó ügy, ellenőrzési állapot, emberi jóváhagyás szükségessége. A szolgáltatás dátuma nem írhatja át a meglévő szállás dátumait.
+
+Első implementációs réteg: közös storeban elkülönített szolgáltatási igény és szigorú összerendelés, szállástények megőrzése, új/történeti egyedi levél után jóváhagyás függőre állítása, visszavonás és idézett levelek kezelése; közös rendererben négynyelvű, kizárólag tájékoztató/pontosító tervezet; szerveres hétmezős projekció és Reader-megjelenítés. Nincs ár, megerősítés vagy belső házszám a vendégtervezetben.
+
+Codex első célzott eredménye: 13 érintett suite, 80 PASS / 0 FAIL / 0 SKIP. Új `tests/tub-linked-service.test.mjs` fedi a kért tíz helyzetet és az azonos időbélyegű visszavonást. Új `tests/tub-linked-postgres.test.mjs` valódi PGlite PostgreSQL-motoron igazolja a normál Writer→service-followup→Reader utat, a Reader írási tiltását közvetlen SQL RPC-vel is, az ütköző CAS elutasítását és az audit/üzenetkulcsok számát. A koordinátor a tesztkódot és a diffet ellenőrizte. Ez helyi bizonyíték; további kis Gmail-kapu-patch és teljes CI még hátravan.
+
+Elkészült a minimális felületi/Gmail-kapu is: a meglévő `ingest-and-draft` művelet egyetlen pontos magyar MIME-követőlevelet fogad el, a korábban mentett pontos HU alapesethez, aktuális CAS-revízióval. A szerver a mentés előtt ellenőrzi a rekordot és az egyértelmű összerendelést. Korábban belsőleg jóváhagyott alapesetnél az új levél függőre állítja az állapotot és eltávolítja a régi serverApprovalt. Az azonos követőlevél ismétlése idempotens. Új endpoint/action, általános `.invalid` engedély vagy kliens által állított tesztjelző nincs. A régi írási, CSRF-, Writer- és tenancy-védelem megmarad.
+
+A meglévő szintetikus Gmail-panel egy Writer-gombot kapott, kizárólag az aktuális munkamenetben igazoltan mentett HU-alapesethez. A forrás-/session-/ügy-/revízióváltás és az aszinkron CSRF/response kontextusa védett. Utána a Reader-előnézet ügyazonosítója és revíziója frissül, a szolgáltatásjóváhagyási link nem jelenik meg. Külön szolgáltatásjóváhagyás még NEM IGAZOLT; ismeretlen dézsaelérhetőség nem jogosít megerősítésre.
+
+További célzott eredmény: a kibővített 16 suite 125 PASS / 0 FAIL / 0 SKIP; a legutóbbi szigorított cookie/UI változat érintett részhalmaza 43 PASS. Ezek átfedő tesztek, nem összeadandó darabszámok. A koordinátor a Gmail-kapu diffjét külön ellenőrizte. A végső commit CI-je és a tényleges felhős működés még ellenőrzendő.
+
+Módosított kódfájlok: booking-cases.mjs, central-reply.mjs, index.html, netlify/functions/booking-cases.mjs, operator-login-ui.mjs, sarberki-core.mjs, shared-core/server-booking-runtime.mjs, shared-core/synthetic-mail-fixtures.mjs, shared-core/tub-request.mjs, synthetic-server-preview.mjs. Tesztek: closed-synthetic-mail-registry, operator-cookie-session, operator-login-ui; új tub-linked-service és tub-linked-postgres. Sem adatbázismigráció, sem konfiguráció-/kulcsmódosítás nem történt.
+
+Production/main, valódi vendégadat, e-mail/Pushover-küldés és Previo-írás/lekérdezés nem megengedett. Auth, tenant/RLS/CAS/audit és emberi jóváhagyás megőrzendő. Nincs második válaszmotor, jogosultsági rendszer vagy automatikus küldés. Meglévő mentések változatlanok.
+
+V2/V3 érték: a szolgáltatásigény a meglévő ügyhöz és közös kommunikációs adapterhez kapcsolódik, elkülönített bizonyítékkal; ez nem automatikus foglalási/küldési képesség. Bizonyítékkorlát: a helyi mock/DOM/PostgreSQL és CI eredmény nem helyettesíti a tényleges Gmail→felhő→Reader hitelesített működés igazolását.
+
+Takarékosság: célzott fájlok és helyi ellenőrzések, majd a módosult commit egyszeri kötelező CI-je. Korábbi Gmail OAuth-, restore- és incomingfordítás-próbák nem ismétlődnek.

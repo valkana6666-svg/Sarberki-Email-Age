@@ -1,5 +1,6 @@
 import { createBookingCaseStore } from '../booking-cases.mjs';
-import {classifyTubRequest} from './tub-request.mjs';
+import {tubServiceMessage,tubServiceProjection} from './tub-request.mjs';
+import {tubServiceDraft} from '../central-reply.mjs';
 import { CaseServiceError } from './server-case-service.mjs';
 import { buildEmailInquiryDraft } from './inquiry-channel-adapters.mjs';
 import {serverInquiryOptions} from './server-inquiry-options.mjs';
@@ -86,9 +87,11 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    const readOnlyFreshness={verified:true,checkedAt:clock(),source:'stored-synthetic-case',
     tenantId,caseId,revision:current.revision,syntheticOnly:true};
    const latestMessage=current.data.messages.at(-1);
-   const serviceRequest=classifyTubRequest(latestMessage?.text||'');
-   return {caseId,revision:current.revision,text:planned.text,operatorReviewText:planned.operatorReviewText,decision:planned.decision,reviewState,readOnlyFreshness,storedDraft,approval:'pending',persisted:false,
-    serviceRequest:serviceRequest.kind==='tub_request'?serviceRequest:null};
+   const request=tubServiceMessage(current.data.state.original||latestMessage?.text||'');
+   const serviceRequest=tubServiceProjection(current.data)||(request.kind==='tub_request'?tubServiceProjection({serviceRequests:[request]}):null);
+   const serviceOnly=request.kind==='tub_request'&&request.serviceOnly;
+   const serviceText=language=>tubServiceDraft(language,Boolean(serviceRequest?.linkedCaseId),serviceRequest?.verificationStatus==='not_available',request.cancelled);
+   return {caseId,revision:current.revision,text:serviceOnly?serviceText(planned.decision.facts.language):planned.text,operatorReviewText:serviceOnly?serviceText('hu'):planned.operatorReviewText,decision:planned.decision,reviewState,readOnlyFreshness,storedDraft,approval:'pending',persisted:false,serviceRequest};
   },
   async editDraft(caseId,expectedRevision,editedText){
    // Synthetic-only, operator-authenticated edit; append a pending version, never authorize a guest send.
@@ -163,6 +166,12 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    if(persistDraft){
     const at=clock();
     const plan=buildEmailInquiryDraft(serverInquiryOptions({tenantId,caseId:data.id,data},new Date(at)));
+    const request=tubServiceMessage(data.state.original);
+    if(request.kind==='tub_request'&&request.serviceOnly){
+     const projection=tubServiceProjection(data);
+     plan.text=tubServiceDraft(plan.decision.facts.language,Boolean(projection?.linkedCaseId),projection?.verificationStatus==='not_available',request.cancelled);
+     plan.operatorReviewText=tubServiceDraft('hu',Boolean(projection?.linkedCaseId),projection?.verificationStatus==='not_available',request.cancelled);
+    }
     if(typeof plan.text!=='string'||!plan.text.trim())reject('INVALID_DRAFT');
     data.drafts.push({text:plan.text,operatorReviewText:plan.operatorReviewText,at,
      revision:data.state.revision,basedOnMessageCount:data.messages.length,

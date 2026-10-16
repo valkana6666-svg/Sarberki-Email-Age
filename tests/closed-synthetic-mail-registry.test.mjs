@@ -7,7 +7,7 @@ import {BUSINESS} from '../business-config.mjs';
 import * as fishing from '../fishing-rules.mjs';
 import * as policy from '../gmail-policy.mjs';
 import * as splitUnits from '../split-units.mjs';
-import {syntheticMailLanguages,syntheticMailMime,syntheticMailEnvelope,closedMailRequestFromGmailRecord,matchesClosedSyntheticMailRecord} from '../shared-core/synthetic-mail-fixtures.mjs';
+import {syntheticMailLanguages,syntheticMailMime,syntheticMailEnvelope,closedMailRequestFromGmailRecord,matchesClosedSyntheticMailRecord,syntheticTubFollowupEnvelope,syntheticTubFollowupMime,isClosedTubFollowup} from '../shared-core/synthetic-mail-fixtures.mjs';
 test('four exact fictional MIME payloads pass actual Gmail transform and match only their server registry envelope',async()=>{
  const source=(await readFile(new URL('../gmail-readonly.js',import.meta.url),'utf8')).replace(/await import\('\.\/([^']+)'\)/gu,(_,name)=>'modules['+JSON.stringify(name.split('?')[0])+']');
  const window={},element={disabled:false,textContent:'',addEventListener(){},insertAdjacentElement(){}};
@@ -23,5 +23,8 @@ test('four exact fictional MIME payloads pass actual Gmail transform and match o
   assert.throws(()=>closedMailRequestFromGmailRecord({...parsed,source:{...parsed.source,from_email:'unlisted@synthetic.invalid'}}),/FORBIDDEN/);
   assert.equal(matchesClosedSyntheticMailRecord({...record,data:{...record.data,messages:[input.envelope,input.envelope]}}),false);
  }
+ const parsedTub=window.sarberkiGmailTransform(syntheticTubFollowupMime()),expectedTub=syntheticTubFollowupEnvelope();
+ assert.equal(parsedTub.original_message,expectedTub.text);assert.equal(parsedTub.source.thread_id,expectedTub.thread_id);assert.equal(parsedTub.source.from_email,expectedTub.sender);
+ assert.equal(isClosedTubFollowup({...expectedTub,text:parsedTub.original_message,sender:parsedTub.source.from_email,message_id:parsedTub.source.message_id,thread_id:parsedTub.source.thread_id,received_at:parsedTub.source.received_at}),true);
  assert.throws(()=>syntheticMailMime('other'),/INVALID_INPUT/);
 });

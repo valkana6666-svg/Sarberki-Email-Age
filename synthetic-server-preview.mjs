@@ -19,7 +19,14 @@ export function syntheticPreviewState(result){
   a.tenantId==='sarberki-test'&&a.caseId===result.caseId&&a.revision===result.revision&&
   a.kind===(result.revision===1?'insert':'update')&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(a.actor||'')&&/^[a-f0-9]{64}$/.test(a.dataHash||'');
  const audit=auditVerified?'Audit visszaolvasva · '+(a.kind==='insert'?'létrehozás':'módosítás')+' · v'+a.revision+' · kezelő: '+a.actor+' · SHA256: '+a.dataHash+'. Ez nem jóváhagyás.':'Audit: ezen az olvasási előnézeten nincs igazolt visszaolvasás; NEM IGAZOLT.';
- return {details,capacity,price,revision:valid?'Ügyverzió: '+s.caseRevision+' · tényverzió: '+s.factsRevision+' · '+(current?'Tárolt tervezet verziója egyezik; külön kezelői ellenőrzés szükséges.':'Nincs aktuális, az üzenetekhez kötött tárolt tervezet. Új ellenőrzés szükséges.'):'Tárolt tervezet verziója: NEM IGAZOLT.',approval:'Az előnézet függőben van; itt nincs jóváhagyás.',audit};
+ const service=result?.serviceRequest;
+ const serviceFields={service_requested:service?.requested===true?'Igen – dézsaigény érkezett.':service?.requested===false?'Az igény visszavonását ellenőrizni kell.':'Nincs felismert dézsaigény.',
+  service_date:service?.startDate||'Nincs megadva – pontosítandó.',service_time:service?.startTime||'Nincs megadva – pontosítandó.',
+  service_duration:Number.isInteger(service?.durationHours)&&service.durationHours>0?service.durationHours+' óra':'Nincs megadva – pontosítandó.',
+  service_case:service?.linkedCaseId||'Nem igazolt – emberi ügyazonosítás szükséges.',
+  service_verification:service?.verificationStatus==='not_available'?'A szállásegységhez nincs dézsa. Nincs visszaigazolás.':service?.verificationStatus==='cancelled_unverified'?'Visszavonás – emberi ellenőrzés szükséges.':'Elérhetőség NEM IGAZOLT – nincs visszaigazolás.',
+  service_human:service?'Igen – külön emberi jóváhagyás szükséges.':'Nem alkalmazható – nincs aktuális dézsaigény.'};
+ return {details,capacity,price,...serviceFields,revision:valid?'Ügyverzió: '+s.caseRevision+' · tényverzió: '+s.factsRevision+' · '+(current?'Tárolt tervezet verziója egyezik; külön kezelői ellenőrzés szükséges.':'Nincs aktuális, az üzenetekhez kötött tárolt tervezet. Új ellenőrzés szükséges.'):'Tárolt tervezet verziója: NEM IGAZOLT.',approval:'Az előnézet függőben van; itt nincs jóváhagyás.',audit};
 }
 export function initSyntheticPreviewPanel({documentRef=document,sessionProvider=()=>window.SarberkiCaseStoreSession}={}){
  const get=id=>documentRef.getElementById(id),action=get('server_preview_action'),status=get('server_preview_status'),output=get('server_preview_text');
@@ -28,7 +35,7 @@ export function initSyntheticPreviewPanel({documentRef=document,sessionProvider=
  let epoch=0,editableCase=null;
  const selectionKey=()=>JSON.stringify([get('server_preview_case_id')?.value.trim()||'',Number(get('server_preview_revision')?.value)]);
  let selection=selectionKey();
- const clear=()=>{editableCase=null;if(editText){editText.value='';editText.disabled=true;}if(editAction)editAction.disabled=true;if(editStatus)editStatus.textContent='Nincs aktív, szerkeszthető szerveres tervezet.';output.value='';if(get('server_preview_hu'))get('server_preview_hu').value='';for(const field of ['details','capacity','price','revision','approval','audit'])if(get('server_preview_'+(field==='revision'?'revision_state':field)))get('server_preview_'+(field==='revision'?'revision_state':field)).textContent='NEM IGAZOLT.';};
+ const clear=()=>{editableCase=null;if(editText){editText.value='';editText.disabled=true;}if(editAction)editAction.disabled=true;if(editStatus)editStatus.textContent='Nincs aktív, szerkeszthető szerveres tervezet.';output.value='';if(get('server_preview_hu'))get('server_preview_hu').value='';for(const field of ['details','capacity','price','revision','approval','audit','service_requested','service_date','service_time','service_duration','service_case','service_verification','service_human'])if(get('server_preview_'+(field==='revision'?'revision_state':field)))get('server_preview_'+(field==='revision'?'revision_state':field)).textContent='NEM IGAZOLT.';};
  const invalidate=()=>{epoch++;selection=selectionKey();clear();action.disabled=false;status.textContent='A tesztügy vagy munkamenet megváltozott. Új előnézet szükséges.';};
  for(const id of ['server_preview_case_id','server_preview_revision'])get(id)?.addEventListener('input',()=>{if(selectionKey()!==selection)invalidate();});
  for(const event of ['sarberki:session-changed','isolated-approval-session-changed'])documentRef.addEventListener?.(event,invalidate);

@@ -51,3 +51,27 @@ export function closedMailRequestFromGmailRecord(record){
 export function isClosedSyntheticMailUiRecord(record,currentMessage){
  try{return closedMailRequestFromGmailRecord(record).envelope.text===currentMessage;}catch{return false;}
 }
+
+// One exact fictional follow-up; not a general sender/thread allowlist.
+export function syntheticTubFollowupEnvelope(){
+ const base=syntheticMailEnvelope('hu');
+ return {...base,text:'2026-10-24 18:00-tól 24 órára dézsafürdőt kérünk a meglévő foglalásunkhoz.',
+  message_id:'sarberki-closed-tub-hu-20261016-v1',received_at:'2026-10-16T14:00:00.000Z'};
+}
+const exactEnvelope=(candidate,expected)=>candidate&&typeof candidate==='object'&&!Array.isArray(candidate)&&
+ Object.keys(candidate).length===Object.keys(expected).length&&Object.keys(expected).every(key=>candidate[key]===expected[key]);
+export const isClosedTubFollowup=envelope=>exactEnvelope(envelope,syntheticTubFollowupEnvelope());
+export function isClosedTubPreviousRecord(record){
+ const data=record?.data,base=syntheticMailEnvelope('hu'),messages=data?.messages,v=data?.state?.values;
+ return record?.tenantId==='sarberki-test'&&data?.tenantId==='sarberki-test'&&data.id===record.caseId&&
+  data.caseKind!=='service_link_review'&&!data.linkReview&&data.status!=='link_review_required'&&data.sender===base.sender&&
+  (data.state?.approval==='pending'||messages?.length===1&&data.state?.approval==='internally_approved')&&
+  Array.isArray(messages)&&[1,2].includes(messages.length)&&exactEnvelope(messages[0],base)&&
+  (messages.length===1||isClosedTubFollowup(messages[1]))&&v?.arrival==='2026-10-23'&&v.departure==='2026-10-25'&&v.guests==='2'&&v.adults==='2'&&v.children==='0'&&v.unit==='Deluxe';
+}
+export function syntheticTubFollowupMime(){
+ const e=syntheticTubFollowupEnvelope(),bytes=new TextEncoder().encode(e.text);
+ return {id:e.message_id,threadId:e.thread_id,internalDate:String(Date.parse(e.received_at)),labelIds:['INBOX'],
+  payload:{mimeType:'text/plain',headers:[{name:'From',value:e.sender},{name:'To',value:'test-inbox@synthetic.invalid'},{name:'Subject',value:'TESZT SÁRBERKI CLOSED TUB HU'}],
+   body:{data:btoa(Array.from(bytes,value=>String.fromCharCode(value)).join('')).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}}};
+}
