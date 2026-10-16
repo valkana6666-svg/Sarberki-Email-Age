@@ -63,3 +63,9 @@ This proves actual configured provider transport and numeric checks for these th
 UI issue observed: old bilingual-preview incoming panels still show an empty unconfigured-service placeholder below the working explicit clone panel. A minimal follow-up will suppress only these duplicate legacy incoming panels when the new ones exist, retaining legacy-only fallback and reply/editor/approval protections.
 
 The UI follow-up hides the two old incoming wrappers whenever their explicit replacement exists, in both initialization orders and after source updates/remount. Without a replacement the legacy fallback remains. Reply editors and approval code are unchanged. Targeted DOM/translation suites:17 PASS,0 FAIL,0 SKIP; syntax and diff checks PASS. No repeat provider calls were used to test this cosmetic change.
+
+## Final verified code checkpoint
+
+b7f859793cd30d546bff1bc9af7070bb64070d44: CI38869904994/job116871296341,1547PASS/0FAIL/0SKIP; exact Netlify deployment syncPASS. Capacity run38869904908 also succeeded. A fresh browser tab visibly showed BUILDb7f8597; loading the closed SI MIME fixture showed both old incoming wrappers hidden and the explicit incoming panels present. This cosmetic verification made no provider request; successful EN/DE/SI provider evidence remains the9703032 run above.
+
+Next V1 scope: domain terminology/translation quality review, then separately scoped reply/backtranslation integration; arbitrary/private/real Gmail remains disallowed by the closed input policy. No automatic guest communication or Previo write is enabled. Existing backups preserved.
