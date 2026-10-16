@@ -1,4 +1,5 @@
 import { createBookingCaseStore } from '../booking-cases.mjs';
+import {classifyTubRequest} from './tub-request.mjs';
 import { CaseServiceError } from './server-case-service.mjs';
 import { buildEmailInquiryDraft } from './inquiry-channel-adapters.mjs';
 import {serverInquiryOptions} from './server-inquiry-options.mjs';
@@ -84,7 +85,10 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
     auditStatus:'not_verified'};
    const readOnlyFreshness={verified:true,checkedAt:clock(),source:'stored-synthetic-case',
     tenantId,caseId,revision:current.revision,syntheticOnly:true};
-   return {caseId,revision:current.revision,text:planned.text,operatorReviewText:planned.operatorReviewText,decision:planned.decision,reviewState,readOnlyFreshness,storedDraft,approval:'pending',persisted:false};
+   const latestMessage=current.data.messages.at(-1);
+   const serviceRequest=classifyTubRequest(latestMessage?.text||'');
+   return {caseId,revision:current.revision,text:planned.text,operatorReviewText:planned.operatorReviewText,decision:planned.decision,reviewState,readOnlyFreshness,storedDraft,approval:'pending',persisted:false,
+    serviceRequest:serviceRequest.kind==='tub_request'?serviceRequest:null};
   },
   async editDraft(caseId,expectedRevision,editedText){
    // Synthetic-only, operator-authenticated edit; append a pending version, never authorize a guest send.
