@@ -23,3 +23,18 @@ for(const language of languages){
     assert.ok(draft.length>20);
   });
 }
+
+for(const language of languages){
+  test(`V1 language ${language}: unverified sold-out evidence is never definitive`,()=>{
+    const unknown=availabilitySentence({
+      available_options:[],
+      unavailable_options:[{label:'Deluxe',availability:'unavailable',availability_verified:false}]
+    },language);
+    const verified=availabilitySentence({
+      available_options:[],
+      unavailable_options:[{label:'Deluxe',availability:'unavailable',availability_verified:true}]
+    },language);
+    assert.ok(unknown.length>10);
+    assert.notEqual(unknown,verified,'Unverified and verified capacity must produce distinct replies');
+  });
+}
