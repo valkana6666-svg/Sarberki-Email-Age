@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildReplyDraft,depositPolicyForBooking} from '../sarberki-core.mjs';
+import {buildReplyDraft,depositPolicyForBooking,depositReceiptDeadline} from '../sarberki-core.mjs';
 import {availabilitySentence,requestedAvailabilitySentence} from '../availability-recommend.mjs';
 
 const languages=['hu','de','en','si'];
@@ -139,4 +139,22 @@ for(const [guestCount,expectedPct] of [[14,50],[15,50],[16,80]]){
 }
 test('V1 deposit policy: missing booking timestamp must not invent deadline',()=>{
   assert.equal(depositPolicyForBooking({guestCount:4,arrivalDate:'2026-11-10'}).status,'unverified');
+});
+
+test('V1 deposit receipt: 24-hour deadline uses timezone offset correctly',()=>{
+  const result=depositReceiptDeadline({guestCount:4,bookingAt:'2026-10-17T10:00:00+02:00',arrivalDate:'2026-10-20'});
+  assert.equal(result.status,'calculated');
+  assert.equal(result.receiptDeadlineUtc,'2026-10-18T08:00:00.000Z');
+  assert.equal(result.receiptConfirmed,false);
+});
+test('V1 deposit receipt: 7-day deadline uses actual 168 hours',()=>{
+  const result=depositReceiptDeadline({guestCount:16,bookingAt:'2026-10-17T10:00:00+02:00',arrivalDate:'2026-11-10'});
+  assert.equal(result.depositPct,80);
+  assert.equal(result.receiptDeadlineUtc,'2026-10-24T08:00:00.000Z');
+});
+test('V1 deposit receipt: rejects timezone-naive booking timestamps',()=>{
+  assert.equal(depositReceiptDeadline({guestCount:4,bookingAt:'2026-10-17T10:00:00',arrivalDate:'2026-11-10'}).status,'unverified');
+});
+test('V1 deposit receipt: rejects invalid calendar arrival date',()=>{
+  assert.equal(depositReceiptDeadline({guestCount:4,bookingAt:'2026-10-17T10:00:00+02:00',arrivalDate:'2026-02-30'}).status,'unverified');
 });
