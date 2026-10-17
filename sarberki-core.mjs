@@ -491,8 +491,11 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
   if(q.depositAmount){
     const g=Number(guests);
     const knownGuests=Number.isFinite(g)&&g>0;
-    const under15=Number(rules.depositPctUnder15Guests ?? rules.depositPct);
-    const from15=Number(rules.depositPctFrom15Guests ?? rules.depositPct);
+    const validPercent=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))&&Number(v)>0&&Number(v)<=100;
+    const underRaw=rules.depositPctUnder15Guests ?? rules.depositPct;
+    const fromRaw=rules.depositPctFrom15Guests ?? rules.depositPct;
+    const under15=validPercent(underRaw)?Number(underRaw):NaN;
+    const from15=validPercent(fromRaw)?Number(fromRaw):NaN;
     const pct=knownGuests?(g<=15?under15:from15):null;
     if(Number.isFinite(pct)) lines.push({
       hu:`A foglaláshoz ${pct}% előleg szükséges.`,
@@ -507,7 +510,7 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
       si:`Višina predplačila je odvisna od velikosti skupine: ${under15}% za največ 15 oseb in ${from15}% za več kot 15 oseb.`
     }[lang]);
   }
-  if(q.depositDeadline&&Number.isFinite(Number(rules.depositDueDays))){
+  if(q.depositDeadline&&rules.depositDueDays!==null&&rules.depositDueDays!==undefined&&rules.depositDueDays!==''&&Number.isFinite(Number(rules.depositDueDays))&&Number(rules.depositDueDays)>0){
     const days=Number(rules.depositDueDays);
     lines.push({
       hu:`Az előleget a foglalási szándék rögzítésétől számított ${days} napon belül kell befizetni; ha ez határidőn belül nem érkezik meg, a foglalást töröljük.`,
@@ -520,7 +523,7 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
   if(q.cancellation&&guests!==null&&guests!==undefined&&Number(guests)>0){
     const g=Number(guests);
     const days=g<=15?Number(rules.cancellationDaysUnder15Guests):Number(rules.cancellationDaysFrom15Guests);
-    if(Number.isFinite(days)){
+    if(rules[g<=15?'cancellationDaysUnder15Guests':'cancellationDaysFrom15Guests']!==null&&rules[g<=15?'cancellationDaysUnder15Guests':'cancellationDaysFrom15Guests']!==undefined&&rules[g<=15?'cancellationDaysUnder15Guests':'cancellationDaysFrom15Guests']!==''&&Number.isFinite(days)&&days>=0){
       lines.push({
         hu:`${g<=15?'legfeljebb 15 fős':'15 fő feletti'} foglalásnál a lemondási határidő az érkezés előtt ${days} nap.`,
         de:`Bei Buchungen ${g<=15?'mit höchstens 15 Personen':'mit mehr als 15 Personen'} beträgt die Stornierungsfrist ${days} Tage vor der Anreise.`,
