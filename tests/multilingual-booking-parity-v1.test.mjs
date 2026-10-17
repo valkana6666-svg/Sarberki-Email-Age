@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildReplyDraft,depositPolicyForBooking,depositReceiptDeadline} from '../sarberki-core.mjs';
+import {buildReplyDraft,depositPolicyForBooking,depositReceiptDeadline,shortNoticeCancellationAssessment} from '../sarberki-core.mjs';
 import {availabilitySentence,requestedAvailabilitySentence} from '../availability-recommend.mjs';
 
 const languages=['hu','de','en','si'];
@@ -170,3 +170,27 @@ for(const language of languages){
     assert.match(draft,/2026|26/u);
   });
 }
+
+test('V1 cancellation: booking five days before arrival, cancelling four days before, forfeits deposit',()=>{
+  const result=shortNoticeCancellationAssessment({bookingDate:'2026-10-20',arrivalDate:'2026-10-25',cancellationDate:'2026-10-21',depositPct:50});
+  assert.equal(result.status,'policy_applies');
+  assert.equal(result.depositForfeitedOnCancellation,true);
+  assert.equal(result.requiresHumanReview,true);
+});
+test('V1 cancellation: 14-day short-notice boundary is included',()=>{
+  const result=shortNoticeCancellationAssessment({bookingDate:'2026-10-17',arrivalDate:'2026-10-31',cancellationDate:'2026-10-18',depositPct:50});
+  assert.equal(result.status,'policy_applies');
+});
+test('V1 cancellation: bookings more than 14 days ahead need separate policy review',()=>{
+  const result=shortNoticeCancellationAssessment({bookingDate:'2026-10-17',arrivalDate:'2026-11-05',cancellationDate:'2026-10-20',depositPct:50});
+  assert.equal(result.status,'manual_review');
+});
+test('V1 cancellation: large group preserves 80% deposit policy',()=>{
+  const result=shortNoticeCancellationAssessment({bookingDate:'2026-10-20',arrivalDate:'2026-10-25',cancellationDate:'2026-10-21',depositPct:80});
+  assert.equal(result.depositPct,80);
+  assert.equal(result.requiresHumanReview,true);
+});
+test('V1 cancellation: invalid chronology never decides forfeiture',()=>{
+  const result=shortNoticeCancellationAssessment({bookingDate:'2026-10-22',arrivalDate:'2026-10-25',cancellationDate:'2026-10-21',depositPct:50});
+  assert.equal(result.status,'manual_review');
+});
