@@ -1,5 +1,19 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## Legújabb mobilos kiegészítés – Writer és külön approver
+
+Utolsó igazolt tesztcommit: `9c5ea14dda5d5989998d250b5f1c8bd46eed94f2`.
+[CI 39028646129](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39028646129):
+1788 PASS / 0 FAIL / 0 SKIP, pontosan azonos teszthost-build.
+[Mobilrun 39028646128](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39028646128):
+új Writer/approver 14/14 PASS, meglévő Reader 12/12 PASS, 390px Chromium/WebKit.
+Az API/Auth/ár/kapacitás/audit válaszok kontrollált szintetikus transportok;
+nincs új élő felhős vagy tényleges iPhone/PWA-telepítési bizonyíték.
+[Részletes eredmény és a javított tesztassertion](../reports/mobile-writer-approval-2026-10-17/REPORT.md).
+Az alkalmazáskód és az adatbázis változatlan, a korábbi mentés érvényes;
+készültség továbbra is 92%. E dokumentáció nem indít új teljes tesztet.
+
+
 ## Aktuális összesítés – 2026-10-17 11:19 UTC után
 
 A következő történeti szakaszokat ez az összesítés pontosítja.
