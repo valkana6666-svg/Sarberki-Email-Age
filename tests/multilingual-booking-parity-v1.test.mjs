@@ -21,6 +21,9 @@ for(const language of languages){
   test(`V1 language ${language}: draft retains requested stay and cabin`,()=>{
     const draft=buildReplyDraft({...request,language});
     assert.match(draft,/Deluxe/u);
+    // The guest's arrival and departure must survive localized rendering.
+    const dateMarkers=language==='en'?['5 November 2026','7 November 2026']:['05.11.2026','07.11.2026'];
+    for(const marker of dateMarkers) assert.ok(draft.includes(marker),`${language}: missing stay date ${marker}`);
     assert.ok(draft.length>20);
     assert.doesNotMatch(draft,/7A|10C|\bpool\b|\bmapping\b/iu);
   });
