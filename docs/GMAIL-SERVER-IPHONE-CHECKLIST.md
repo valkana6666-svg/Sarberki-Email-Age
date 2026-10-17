@@ -1,4 +1,12 @@
 # Sárberki V1 – Gmail és szerveres tesztügyek iPhone-os ellenőrzése
+
+> **Aktuális folytatási állapot (2026-10-17):** [Összevont elfogadási leltár](V1-ACCEPTANCE-CHECKPOINT-2026-10-17.md).
+> Az alábbi dátumozott részek történetiek. A Gmail OAuth-olvasás, a privát tesztreceipt
+> felhős Writer/Reader/audit útja és a négy zárt nyelvi minta külön-külön már igazolt.
+> Ezeket ne indítsd újra „hiányzó” feladatként. A friss olvasásból ugyanazon receipt
+> közvetlen felhős feldolgozásáig tartó kombinált próba és a tényleges iPhone/PWA
+> ellenőrzése külön nyitott bizonyíték. Titok, alias vagy admin kerülőút nem használható.
+
 Dátum: 2026-10-12. Kizárólag `gmail-test-subject-allowlist`, Netlify: `https://leafy-chimera-2403e5.netlify.app/`.
 
 ## 0. Legfrissebb állapot (korábbi blokkolók feloldva, 2026-10-12)
