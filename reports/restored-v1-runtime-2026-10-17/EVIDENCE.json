@@ -1,0 +1,51 @@
+{
+  "snapshotRun": 39027707428,
+  "snapshotCommit": "a76d3bc5c3657808e022f7874cf78295ff6b1ff4",
+  "verificationRun": 39031412013,
+  "verificationCommit": "0f09633fc4cc23aa0cf91b667508a46f09d5ac23",
+  "artifact": {
+    "id": 12100447833,
+    "sha256": "dfd71f13ec6654be28808e26825fa33aa7bb0fd433c31275ddba41656ebbb50b",
+    "expiresAt": "2026-10-24T12:10:22Z"
+  },
+  "sqlRestore": {
+    "full_restore": "PASS",
+    "case_manifest": "PASS",
+    "portable_decryption": "PASS_ON_NEW_LINUX_RUNNER_NO_DPAPI",
+    "tables_compared": 49,
+    "verification_completed": true
+  },
+  "services": {
+    "source_connection": "NEVER_OPENED",
+    "claims": "SIMULATED_NOT_AUTH_LOGIN",
+    "service_rpc_rollback": "PASS",
+    "manifest_unchanged": true,
+    "scope": "actual restored SQL RPC success, read/approve separate from write, audit, bad MAC/replay, Reader/Writer/anon/tenant boundaries; fixture records rolled back",
+    "completed": true
+  },
+  "runtime": {
+    "source_connection": "NEVER_OPENED",
+    "gmail_oauth_in_isolated_app": "NOT_RUN",
+    "live_previo": "NOT_RUN_SAFETY_GATE",
+    "full_ui_approval_transition": "NOT_RUN_BY_THIS_PROOF",
+    "network": "ephemeral Docker bridge; HTTP local transport adapter; source HTTPS transport unchanged",
+    "auth_service_ready": "PASS",
+    "rest_service_ready": "PASS",
+    "isolated_auth_user_provision": "PASS",
+    "real_auth_password_login": "PASS",
+    "parse_identify_authorized_api_sql_save": "PASS",
+    "draft_review_status": "internal_review_required",
+    "synthetic_capacity_business_rules_and_draft_persist": "PASS",
+    "reader_list_and_saved_draft_preview": "PASS",
+    "reader_create_update_approve_denied": "PASS",
+    "reader_direct_database_rpc_write_denied": "PASS",
+    "writer_cannot_approve": "PASS",
+    "approver_permission_checked_by_auth_and_db": "PASS",
+    "cross_tenant_access_denied": "PASS",
+    "duplicate_message_keeps_single_case": "PASS",
+    "restart_new_login_case_and_draft_preserved": "PASS",
+    "send_email": "NEVER_CALLED",
+    "booking_creation": "NEVER_CALLED",
+    "completed": true
+  }
+}

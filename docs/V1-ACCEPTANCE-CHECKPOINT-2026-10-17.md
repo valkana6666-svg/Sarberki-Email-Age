@@ -1,5 +1,20 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## Legfrissebb helyreállítási kiegészítés – valódi izolált Auth/REST
+
+Utolsó igazolt tesztkód: `0f09633fc4cc23aa0cf91b667508a46f09d5ac23`.
+[CI 39031411958](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39031411958):
+**1789 PASS / 0 FAIL / 0 SKIP**, pontosan azonos teszttelepítés.
+[Recovery 39031412013](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39031412013):
+49 táblás restore, új szolgáltatási SQL-siker/tiltás/rollback és valódi izolált
+GoTrue/PostgREST login → ügy/tervezet → Reader-tiltás → újraindítás/readback PASS.
+Az új SQL-fixture szimulált claims-et, a runtime valódi új tesztfiókokat használ.
+Az eredeti fiókok loginja, külső konfiguráció, iPhone/PWA és Previo továbbra külön kapu.
+Nincs új forrásexport vagy forráskapcsolat. A korábbi mentés változatlanul érvényes.
+[Részletes jelentés és tartós összesített bizonyíték](../reports/restored-v1-runtime-2026-10-17/REPORT.md).
+Becsült készültség **93%**. E dokumentáció nem indít új teljes tesztet/mentést.
+
+
 ## Legújabb mobilos kiegészítés – Writer és külön approver
 
 Utolsó igazolt tesztcommit: `9c5ea14dda5d5989998d250b5f1c8bd46eed94f2`.
