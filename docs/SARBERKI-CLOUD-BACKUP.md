@@ -127,3 +127,29 @@ A Writer normál Auth-útvonalon létrehozta az egyetlen privátan engedélyezet
 A 12028c420b38dc75285875981cb2cae99955f8fe Writer-javítás, az új v2 szintetikus ügy és az élő Reader/négynyelvű ellenőrzés utáni egyszeri titkosított export és izolált SQL-restore kérése. A Gmail OAuth-próbához külön, egy előre azonosított üzenetre szűkített olvasási mód készül; hibás vagy üres azonosító nem válthat át Inbox-olvasásra. Konkrét levélazonosító, személyes adat és titok nem kerül a repositoryba.
 
 A meglévő sarberki-test, csak olvasható forráskapcsolat, titkosítás, eredetkötés és izolált restore biztonsági kapui változatlanok. A korábbi mentések megmaradnak. A friss ciphertext és a kód/config-leltár tartós letölthető csomagba kerül; külső szolgáltatói titkok teljes mentése nem állítható. Ez a bejegyzés indítási kérelem, a siker kizárólag az Actions-bizonyítékok alapján jelenthető.
+
+
+## 2026-10-17 – V1 friss szolgáltatássémás mentés és izolált restore kérése
+
+A projektgazda új, ellenőrzött V1-snapshotot és elkülönített helyreállítást
+kért. A korábbi 4647a34 CI 1785/0/0 és a friss Gmail/exact-receipt/audit
+bizonyítéka nem futtatandó újra kézzel. Az időközben elkészült tesztági
+audit-adatvédelmi változásokat megőriztük (acadd2d bázis).
+
+Egyszeri [sarberki-backup-run] kérés a változatlan védett workflow-val.
+A friss archívum v3 ellenőrzése mind a hét sc_* táblát, köztük a
+sc_service_link_decisions és sc_service_approvals sémáját ÉS adatát követeli.
+A manifest mindkettőnél tárol checksumot, counts/RLS/policies/grants értékeket,
+valamint a sc_resolve_service_link és sc_approve_tub_service függvényazonosságot.
+A teljes izolált restore minden archívumtábla tartalmát, szekvenciáit,
+szerepkör-attribútumait és manifestjét összeveti; az RLS/CAS/audit rollback
+fixture megmarad. Az új szolgáltatásműveletek saját funkcionális RLS-próbája
+és az Auth API-login nem nevezhető automatikusan ennek a restore-nak.
+
+Csak sarberki-test / mojnqizbcaczstguikpv, csak olvasó forrás, külön eldobható
+PostgreSQL-cél. Nincs sémaírás a forrásba, jelszócsere, jogosultságmódosítás,
+email/Pushover, Previo vagy foglalás. Ez a bejegyzés kérelem, nem sikerjelentés.
+A sikerhez friss run/commit-kötött ciphertext, integritásellenőrzés és külön
+ISOLATED-RESTORE bizonyíték szükséges. A korábbi példányokat megtartjuk.
+A 7 napos Actions-megőrzés mellett külön tartós titkosított példány szükséges;
+annak tényleges mentése/visszaolvasása külön igazolandó.
