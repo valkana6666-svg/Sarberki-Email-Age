@@ -263,3 +263,53 @@ test('matching duplicate references still link withdrawals and old quoted refere
   assert.notEqual(tubServiceMessage(text).actionConflict,true);
  }
 });
+
+test('withdrawal of another service cannot cancel a separately requested tub in HU EN DE SI',()=>{
+ for(const text of [
+  'A vacsorát lemondjuk. Dézsát kérünk 2026-11-14 18:00-tól 24 órára.',
+  'Please cancel dinner. Please add a hot tub on 2026-11-14 at 18:00 for 24 hours.',
+  'Bitte stornieren Sie das Abendessen. Wir möchten einen Badezuber am 2026-11-14 um 18:00 für 24 Stunden.',
+  'Želim preklicati večerjo. Prosimo za masažno kad 2026-11-14 ob 18:00 za 24 ur.',
+  'Please cancel dinner, but add a hot tub on 2026-11-14 at 18:00 for 24 hours.',
+  'Please do not cancel dinner. Please add a hot tub on 2026-11-14 at 18:00 for 24 hours.'
+ ]){
+  const request=tubServiceMessage(text);
+  assert.equal(request.kind,'tub_request',text);
+  assert.notEqual(request.cancelled,true,text);
+  assert.notEqual(request.actionConflict,true,text);
+  assert.equal(request.serviceOnly,true);
+  assert.equal(request.startDate,'2026-11-14');assert.equal(request.startTime,'18:00');assert.equal(request.durationHours,24);
+ }
+});
+test('explicit accommodation withdrawal keeps its booking route alongside a separate tub request',()=>{
+ for(const text of [
+  'A szállást lemondjuk. Dézsát kérünk 2026-11-14 18:00-tól 24 órára.',
+  'Please cancel my accommodation. Please add a hot tub on 2026-11-14 at 18:00 for 24 hours.',
+  'Wir möchten die Unterkunft stornieren. Bitte Badezuber am 2026-11-14 um 18:00 für 24 Stunden.',
+  'Želim preklicati nastanitev. Prosimo za masažno kad 2026-11-14 ob 18:00 za 24 ur.'
+ ]){
+  const request=tubServiceMessage(text);
+  assert.equal(request.kind,'tub_request',text);
+  assert.equal(request.serviceOnly,false,text);
+  assert.notEqual(request.cancelled,true,text);
+  assert.equal(request.startDate,'2026-11-14');
+  assert.equal(request.actionConflict,true);
+  assert.equal(tubServiceProjection({serviceRequests:[request]}).requested,null);
+ }
+});
+test('ambiguous tub continuations and opposing tub clauses require review, while explicit tub withdrawal stays a withdrawal',()=>{
+ for(const text of ['Please cancel dinner. And the hot tub.','Please cancel the hot tub. Please add a hot tub.']){
+  const request=tubServiceMessage(text);
+  assert.equal(request.actionConflict,true,text);
+  assert.equal(tubServiceProjection({serviceRequests:[request]}).requested,null);
+ }
+ for(const text of ['Please cancel the hot tub. Please add dinner.','Please cancel dinner and the hot tub.'])assert.equal(tubServiceMessage(text).cancelled,true,text);
+});
+test('another withdrawn service cannot supply the tub schedule, while its own dotted date and booking reference survive',()=>{
+ const missing=tubServiceMessage('Please cancel dinner on 2026-11-14 at 18:00 for 24 hours. Please add a hot tub.');
+ assert.equal(missing.startDate,null);assert.equal(missing.startTime,null);assert.equal(missing.durationHours,null);
+ const own=tubServiceMessage('Booking reference REF-123. Please cancel dinner on 2026-11-13 at 17:00 for 2 hours. Please add a hot tub on 2026.11.14 at 18:00 for 24 hours.');
+ assert.equal(own.startDate,'2026-11-14');assert.equal(own.startTime,'18:00');assert.equal(own.durationHours,24);
+ assert.equal(own.requestedBookingReference,'REF-123');
+ assert.equal(own.confirmationAllowed,false);
+});

@@ -119,6 +119,36 @@ test('conditional intent and conflicting withdrawal references persist through t
   assert.equal((await f.db.query('select count(*)::int n from sc_audit')).rows[0].n,8);
  }finally{await f.db.close();}
 });
+
+test('another service withdrawal preserves the tub schedule, while accommodation withdrawal blocks its service approval',async()=>{
+ const f=await fixture();try{
+  const stay=structuredClone(f.target.data.state.values);
+  const positive=await f.runtime.ingest({...f.env('dinner-withdrawal','Please cancel dinner on 2026-11-13 at 17:00 for 2 hours. Please add a hot tub on 2026-11-14 at 18:00 for 24 hours.','base'),received_at:'2026-10-16T12:01:00Z'},undefined,{expectedRevision:f.target.revision,persistDraft:true});
+  assert.equal(positive.record.data.state.values.arrival,stay.arrival);
+  assert.equal(positive.record.data.state.values.departure,stay.departure);
+  const preview=await f.runtime.previewDraft(positive.record.caseId,positive.record.revision);
+  assert.equal(preview.serviceRequest.requested,true);
+  assert.equal(preview.serviceRequest.startDate,'2026-11-14');
+  assert.equal(preview.serviceRequest.startTime,'18:00');
+  assert.equal(preview.serviceRequest.durationHours,24);
+  assert.doesNotMatch(preview.text,/cancellation request/u);
+  assert.equal((await f.flow().state(positive.record.caseId,positive.record.revision)).canApproveService,true);
+  assert.equal((await f.db.query('select count(*)::int n from sc_service_approvals')).rows[0].n,0);
+  let calls=0;f.bindingChange=()=>calls++;f.duringAvailability=async()=>calls++;
+  const mixed=await f.runtime.ingest({...f.env('stay-withdrawal','Please cancel my accommodation. Please add a hot tub on 2026-11-14 at 18:00 for 24 hours.','base'),received_at:'2026-10-16T12:02:00Z'},undefined,{expectedRevision:positive.record.revision,persistDraft:true});
+  const mixedPreview=await f.runtime.previewDraft(mixed.record.caseId,mixed.record.revision);
+  assert.equal(mixedPreview.serviceOnly,false);
+  assert.equal(mixedPreview.serviceRequest.requested,null);
+  assert.match(mixedPreview.operatorReviewText,/szándék nem egyértelmű/u);
+  assert.equal(mixed.record.data.state.values.arrival,stay.arrival);
+  assert.equal(mixed.record.data.state.values.departure,stay.departure);
+  assert.equal((await f.flow().state(mixed.record.caseId,mixed.record.revision)).canApproveService,false);
+  await assert.rejects(f.flow().approve(mixed.record.caseId,mixed.record.revision,'a'.repeat(64)),e=>e.code==='REVIEW_NOT_READY');
+  assert.equal(calls,0);
+  assert.equal((await f.db.query('select count(*)::int n from sc_service_approvals')).rows[0].n,0);
+  assert.equal((await f.db.query('select count(*)::int n from sc_audit')).rows[0].n,6);
+ }finally{await f.db.close();}
+});
 test('normal and review service approvals preserve A, both cases and accommodation approval; Reader protected status, replay, source changes and encrypted restore',async()=>{
  const f=await fixture();try{
   const before=(await f.db.query('select * from sc_cases order by case_id')).rows;
