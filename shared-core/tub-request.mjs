@@ -22,8 +22,12 @@ const stayObject='(?:faház\\p{L}*|szállást|cabins?|houses?|accommodation|feri
 const stayWithdrawal=new RegExp('(?:'+stayObject+'\\s+(?:szeretn\\p{L}*\\s+)?(?:lemond\\p{L}*|stornier\\p{L}*)|(?:cancel|prekli[cč]\\p{L}*)\\s+(?:(?:my|our|the|a|one|deluxe|vip|family|našo|naša)\\s+){0,4}'+stayObject+')','iu');
 // Use the same accommodation scope for additions and withdrawals.
 function requestsAccommodation(source){
+ // Asking for a free cabin is an accommodation inquiry too, even without
+ // an explicit booking verb. Keep the availability word bound to the stay
+ // noun: an available tub at an existing cabin remains a service-only query.
+ const stayAvailability=new RegExp('(?:(?:szabad|elérhető|available|free|freie?[snmr]?|verfügbar\\p{L}*|prost\\p{L}*)\\s+(?:(?:deluxe|vip|családi|family)\\s+)?'+stayObject+'|'+stayObject+'\\s+(?:(?:is|are|ist|sind|je|so)\\s+)?(?:available|free|frei|verfügbar|prosta|proste))','iu');
  const stayRequest=new RegExp('(?:\\b(?:book|reserve|buchen|rezervirati|foglalni|lefoglal\\p{L}*)\\s+(?:(?:a|an|one|two|ein\\p{L}*|egy|két|deluxe|vip|family|családi)\\s+){0,4}'+stayObject+'|'+stayObject+'\\s+(?:szeretn\\p{L}*\\s+)?(?:foglalni|buchen|book)|(?:new|separate|új|másik|neue|nova)\\s+(?:stay|accommodation|szállás|übernachtung|nastanitev))','iu');
- return stayRequest.test(source)||stayWithdrawal.test(source);
+ return stayRequest.test(source)||stayAvailability.test(source)||stayWithdrawal.test(source);
 }
 export function tubServiceMessage(text=''){
  const source=currentText(text);

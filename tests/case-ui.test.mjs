@@ -122,6 +122,18 @@ function gmailFixture(id,text,{thread='gmail-thread',received='2026-10-08T19:40:
  return {source:{provider:'gmail',message_id:id,thread_id:thread,rfc_message_id:`<${id}@example.invalid>`,in_reply_to:reply,references:refs,from_email:'gmail-flow@example.invalid',received_at:received,subject:'Szállás érdeklődés'},original_message:text,extracted:[],inferred:[],missing:[],human_review:[],reply_draft:'IMPORTÁLT, NEM ELLENŐRZÖTT POZITÍV VÁLASZ',normalized:{}};
 }
 async function importGmail(h,data){h.node('gmail_json').value=JSON.stringify(data);return await h.node('load_gmail_record').onclick();}
+test('Gmail accommodation availability with a tub retains missing details and capacity approval guard',async()=>{
+ const runtime=createBookingRuntime({request:()=>{throw Error('network unused');}}),h=harness(runtime);
+ const text='Érdeklődni szeretnék, hogy 2026. november 13-tól 15-ig lenne-e szabad faházuk. Két felnőtt és két gyermek érkezne. Szeretnénk horgászni, és a dézsafürdő is érdekelne bennünket. Mennyibe kerülne a két éjszaka?';
+ assert.equal(await importGmail(h,gmailFixture('mixed-availability-tub',text)),true);
+ const snapshot=h.window.SarberkiCaseController.snapshot();
+ assert.equal(snapshot.intent,'availability_request');
+ const missing=h.node('gmail_missing').children.map(n=>n.textContent).join(' ');
+ assert.match(missing,/Telefonszám/u);assert.match(missing,/Gyermekek pontos életkora/u);
+ assert.match(h.node('issues').textContent,/kapacitás.*ellenőrzés/u);
+ assert.equal(h.node('approve').disabled,true);
+ assert.equal(snapshot.approval,'pending');
+});
 const gmailFirst='2026. október 23–25. között Deluxe faházat szeretnénk 2 felnőtt és 2 gyermek részére. Az egyik gyermek 7 éves.';
 test('Gmail and main reply editors persist the same manually edited pending draft',async()=>{
  const runtime=createBookingRuntime({request:()=>{throw Error('network unused');}}),h=harness(runtime);

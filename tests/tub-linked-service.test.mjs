@@ -96,6 +96,29 @@ test('booking a tub at the existing cabin in four languages never changes accomm
  assert.equal(classifyTubRequest('Please book one Deluxe cabin and a hot tub.').serviceOnly,false);
 });
 
+test('accommodation availability inquiries with tubs stay on the accommodation route in four languages',()=>{
+ for(const text of [
+  'Lenne szabad faházuk? A dézsafürdő is érdekelne.',
+  'Is a cabin available? We would also like a hot tub.',
+  'Haben Sie ein freies Ferienhaus? Wir möchten auch einen Badezuber.',
+  'Ali je prosta hiška? Želimo tudi masažno kad.'
+ ]){
+  assert.equal(tubServiceMessage(text).kind,'tub_request',text);
+  assert.equal(tubServiceMessage(text).serviceOnly,false,text);
+  assert.equal(tubServiceMessage(text).confirmationAllowed,false,text);
+ }
+});
+test('availability of a tub at an existing cabin is not new accommodation evidence',()=>{
+ for(const text of [
+  'A meglévő faházunkhoz van szabad dézsa?',
+  'Is an available hot tub near our existing cabin?',
+  'Gibt es einen freien Badezuber bei unserem Ferienhaus?',
+  'Ali je prosta masažna kad pri naši hiški?'
+ ]){
+  assert.equal(tubServiceMessage(text).kind,'tub_request',text);
+  assert.equal(tubServiceMessage(text).serviceOnly,true,text);
+ }
+});
 test('cancellation policy questions do not withdraw a mixed accommodation and tub request',()=>{
  for(const text of [
   'Deluxe faházat foglalni szeretnénk, dézsát is kérünk. Milyen lemondási feltételek vannak?',
