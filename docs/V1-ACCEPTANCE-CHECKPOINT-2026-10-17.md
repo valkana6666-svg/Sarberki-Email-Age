@@ -1,5 +1,9 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## 22:02 – tényleges iPhone olvasási előnézet PASS
+
+Az IMG_8839–8843 tulajdonosi képek alapján a v4 szintetikus ügy szerveres angol tervezete és magyar ellenőrző szövege betöltött; **Belső előnézet kész**. A korábbi üres előnézet részállapota lezárult. Nem igazolt ár/kapacitás mellett a jóváhagyás tiltott marad. Ez készülékes olvasási részpróba; audit-visszaolvasást, Writer/approver működést, PWA-telepítést vagy háttér/hálózati elfogadást nem bizonyít. [Részletes hatókör](../reports/iphone-owner-evidence-2026-10-17/REPORT.md). Új CI vagy mentés nem szükséges.
+
 ## Tulajdonosi iPhone-képek és szimulátorjavítás
 
 A helyi magyar minta, hitelesített ügylista és a Writer-kísérlet elutasításának készülékképei rendelkezésre állnak. A szerveres előnézet képe még üres/új lekérést kér; PWA-telepítést és teljes készülékelfogadást nem állítunk. A képekből feltárt régi előlegdemo hibája javítva: hiányos adat tiltott; nincs valódi pénzbeérkezés/véglegesítés állítása; 15 főig 50%, fölötte 80%; régi 14/30 napos általános lemondási ígéret eltávolítva.
