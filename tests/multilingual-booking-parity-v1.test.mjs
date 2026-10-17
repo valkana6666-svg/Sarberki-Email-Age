@@ -322,3 +322,29 @@ test('V1 audit readback: missing timestamp must not match',()=>{
   delete stored.approvedAt;
   assert.equal(verifyCancellationAuditReadback(prepared,stored).status,'mismatch');
 });
+
+test('V1 cancellation audit: unrelated guest data is excluded from audit event',()=>{
+  const prepared=cancellationNoticeAuditEvent({
+    caseId:'synthetic-privacy-1',revision:2,approvedBy:'owner-test',
+    approvedAt:'2026-10-21T12:00:00+02:00',
+    context:{ownerApproved:true,bookingConfirmed:true,depositReceived:true,
+      bookingDate:'2026-10-20',arrivalDate:'2026-10-25',
+      cancellationDate:'2026-10-21',depositPct:50,
+      guestEmail:'private@example.invalid',guestPhone:'555-0100',
+      guestName:'SYNTHETIC PRIVATE NAME'}
+  });
+  assert.equal(prepared.status,'ready_for_persistence');
+  const record=JSON.stringify(prepared.event);
+  assert.equal(record.includes('private@example.invalid'),false);
+  assert.equal(record.includes('555-0100'),false);
+  assert.equal(record.includes('SYNTHETIC PRIVATE NAME'),false);
+});
+test('V1 cancellation audit: untrusted identity characters cannot enter actor or case id',()=>{
+  const base={caseId:'synthetic-1',revision:2,approvedBy:'owner-test',
+    approvedAt:'2026-10-21T12:00:00+02:00',
+    context:{ownerApproved:true,bookingConfirmed:true,depositReceived:true,
+      bookingDate:'2026-10-20',arrivalDate:'2026-10-25',
+      cancellationDate:'2026-10-21',depositPct:50}};
+  assert.equal(cancellationNoticeAuditEvent({...base,approvedBy:'owner@example.invalid'}).status,'blocked');
+  assert.equal(cancellationNoticeAuditEvent({...base,caseId:'synthetic 1'}).status,'blocked');
+});
