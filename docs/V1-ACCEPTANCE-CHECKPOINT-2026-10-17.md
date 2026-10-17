@@ -1,5 +1,22 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## Legfrissebb PWA/session és megőrzési kiegészítés
+
+Igazolt kód: `76874a6f991c2c273215946cecc1542bd38b26ad`.
+[CI 39034507721](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39034507721):
+**1796 PASS / 0 FAIL / 0 SKIP**, ugyanaz a teszttelepítés.
+[Mobil 39034507728](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39034507728):
+30/30 Chromium/WebKit szintetikus ellenőrzés. Háttérbe kerüléskor felhős nézet/
+megerősítés törlődik, visszatéréskor session revalidate; késői válasz és helyi
+cookie-párhuzamosság kezelve. Fizikai iPhone és telepített PWA továbbra NEM IGAZOLT.
+A teljes, október 24-én lejáró restore-artifact külön megőrizve és SHA256-visszaolvasva.
+[Friss eredmény és korlátok](../reports/pwa-lifecycle-acceptance-2026-10-17/REPORT.md),
+[elfogadási mátrix](V1-ACCEPTANCE-MATRIX-2026-10-17.md),
+[külső helyreállítási leltár](EXTERNAL-RECOVERY-READINESS-2026-10-17.md).
+Becsült készültség 93%; szükséges készülékes emberi lépés a
+[rövid útmutatóban](IPHONE-PWA-ACCEPTANCE-2026-10-17.md).
+
+
 ## Legfrissebb helyreállítási kiegészítés – valódi izolált Auth/REST
 
 Utolsó igazolt tesztkód: `0f09633fc4cc23aa0cf91b667508a46f09d5ac23`.

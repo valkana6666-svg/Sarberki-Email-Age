@@ -68,3 +68,11 @@ A schema/migration/RLS/függvény/jogosultság a mentés része. A role-jelszava
 - A tulajdonos saját offline/pendrive-másolata és a jelmondat másik eszközről elérhetősége külön **NEM IGAZOLT**. A titkosított csomag és a feloldó jelszó külön védett helyen maradjon; titkot ne másoljon chatbe.
 
 Minden megállapítás a tesztrendszerre vonatkozik. Domain/DNS, éles Gmail/SMTP/Pushover és Previo nem változott.
+
+## Ellenőrzött hivatalos hivatkozások
+
+2026-10-17-én ellenőrizve, kizárólag olvasva. A hivatkozások nem helyettesítik a tényleges adminexportot.
+
+- [Google Identity Services tokenmodell](https://developers.google.com/identity/oauth2/web/guides/use-token-model) és [OAuth-kliens webes beállítása](https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid).
+- [Netlify Functions környezeti változók](https://docs.netlify.com/build/functions/environment-variables/): a Functions scope/deploy-kontextus külön megőrzendő; a netlify.toml önmagában nem a szerveroldali titkok mentése.
+- [Supabase adatbázis-mentések](https://supabase.com/docs/guides/platform/backups): a DB-mentés és a Storage objektumok bájtjai külön hatókör.

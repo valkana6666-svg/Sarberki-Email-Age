@@ -1,5 +1,7 @@
 # Sárberki V1 – Gmail és szerveres tesztügyek iPhone-os ellenőrzése
 
+> **2026-10-17 frissítés:** a kombinált friss Gmail→azonos Writer dedup→preview/audit próba már lezárt; az alábbi korábbi nyitottként jelölés történeti. [Aktuális rövid készülékpróba](IPHONE-PWA-ACCEPTANCE-2026-10-17.md). A tényleges iPhone/PWA továbbra külön kapu; a sikeres Gmail-próbát ne ismételje meg csak e régi lista miatt.
+
 > **Aktuális folytatási állapot (2026-10-17):** [Összevont elfogadási leltár](V1-ACCEPTANCE-CHECKPOINT-2026-10-17.md).
 > Az alábbi dátumozott részek történetiek. A Gmail OAuth-olvasás, a privát tesztreceipt
 > felhős Writer/Reader/audit útja és a négy zárt nyelvi minta külön-külön már igazolt.
