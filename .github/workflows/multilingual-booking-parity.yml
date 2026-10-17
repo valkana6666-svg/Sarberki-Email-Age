@@ -20,5 +20,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Validate JavaScript syntax
+        run: |
+          node --check sarberki-core.mjs
+          node --check availability-recommend.mjs
+          node --check tests/multilingual-booking-parity-v1.test.mjs
       - name: Run isolated multilingual booking tests
-        run: node --test tests/multilingual-booking-parity-v1.test.mjs
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap tests/multilingual-booking-parity-v1.test.mjs | tee multilingual-parity-results.tap
+      - name: Preserve test results even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: multilingual-parity-test-results
+          path: multilingual-parity-results.tap
+          if-no-files-found: warn
+          retention-days: 7
