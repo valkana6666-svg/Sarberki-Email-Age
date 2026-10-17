@@ -73,3 +73,20 @@ for(const language of languages){
     assert.doesNotMatch(contradictory,/Deluxe/u);
   });
 }
+
+for(const language of languages){
+  for(const intent of ['cancellation_request','modification_request']){
+    test(`V1 language ${language}: ${intent} is only acknowledged, never confirmed`,()=>{
+      const draft=buildReplyDraft({...request,language,intent});
+      assert.ok(draft.length>20);
+      assert.doesNotMatch(draft,/Previo|7A|10C|\bpool\b|\bmapping\b/iu);
+      const reviewMarkers={
+        hu:/Megkaptuk.*kérelmét.*Hamarosan/iu,
+        de:/erhalten.*prüfen/iu,
+        en:/received.*request.*review/iu,
+        si:/Prejeli.*zahtevo.*preverili/iu
+      };
+      assert.match(draft,reviewMarkers[language]);
+    });
+  }
+}
