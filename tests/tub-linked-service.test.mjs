@@ -215,3 +215,51 @@ test('four-language conflict drafts ask to keep or withdraw instead of acknowled
   assert.notEqual(text,tubServiceDraft(language,true,false,true,false));
  }
 });
+
+test('conditional withdrawals and cancellation questions in four languages remain unknown intent',()=>{
+ for(const text of [
+  'Ha esik, a dézsát lemondjuk.','Le lehet mondani a dézsát?',
+  'If it rains, please cancel the hot tub.','Can I cancel the hot tub?',
+  'Falls es regnet, bitte den Badezuber stornieren.','Kann ich den Badezuber stornieren?',
+  'Če dežuje, želim preklicati masažno kad.','Ali lahko prekličem masažno kad?'
+ ]){
+  const request=tubServiceMessage(text);
+  assert.equal(request.kind,'tub_request',text);
+  assert.equal(request.actionConflict,true,text);
+  assert.notEqual(request.cancelled,true,text);
+  assert.equal(tubServiceProjection({serviceRequests:[request]}).requested,null);
+  assert.equal(request.confirmationAllowed,false);
+ }
+});
+test('conflicting booking references cannot bypass service review through a withdrawal or negated withdrawal',()=>{
+ for(const request of ['Please cancel the hot tub.','Please do not cancel the hot tub.','If it rains, please cancel the hot tub.']){
+  const f=fixture(),store=f.trust({verified:true,source:'operator_verified',reference:'REF-123',unitNumber:1});
+  const before=store.get(f.first.id);
+  const text='Booking reference REF-123. Reservierungsnummer OTHER-456. '+request;
+  const parsed=tubServiceMessage(text);
+  assert.equal(parsed.bookingReferenceConflict,true,text);
+  assert.equal(parsed.requestedBookingReference,null);
+  const result=store.ingest(message('conflicting-withdrawal',text),{});
+  assert.equal(result.resolution.status,'ambiguous');
+  assert.equal(result.resolution.evidence,'conflicting_service_booking_references');
+  assert.equal(result.bookingCase.caseKind,'service_link_review');
+  assert.equal(tubServiceProjection(result.bookingCase).linkedCaseId,null);
+  assert.deepEqual(store.get(f.first.id),before);
+ }
+});
+test('matching duplicate references still link withdrawals and old quoted references cannot create a conflict',()=>{
+ for(const request of ['Please cancel the hot tub.','Please do not cancel the hot tub.']){
+  const f=fixture(),store=f.trust({verified:true,source:'operator_verified',reference:'REF-123',unitNumber:1});
+  const text='Booking reference REF-123. Booking ref ref-123. '+request+'\nFrom: guest@synthetic.invalid\nSent: yesterday\nSubject: old\nBooking reference OLD-456.';
+  const parsed=tubServiceMessage(text);
+  assert.equal(parsed.bookingReferenceConflict,false);
+  assert.equal(parsed.requestedBookingReference,'REF-123');
+  const result=store.ingest(message('matching-withdrawal',text),{});
+  assert.equal(result.bookingCase.id,f.first.id);
+  assert.equal(result.resolution.status,'linked');
+ }
+ for(const text of ['Please cancel the hot tub. What time is checkout?','Bitte stornieren Sie den Badezuber. Wann ist die Abreise?']){
+  assert.equal(tubServiceMessage(text).cancelled,true);
+  assert.notEqual(tubServiceMessage(text).actionConflict,true);
+ }
+});

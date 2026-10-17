@@ -4,9 +4,12 @@ import {BUSINESS} from '../business-config.mjs';
 const tub=/(?:dézs\p{L}*|dezsa\p{L}*|hot[ -]?tub|badezuber|badefass|whirlpool|(?:vroč\p{L}*|masaž\p{L}*)\s*kad)/iu;
 const currentText=text=>activeMessageText(String(text).replace(/\\n/g,'\n'));
 const unique=items=>new Set(items).size===1?items[0]:null;
+function tubReferences(source){
+ const references=[...source.matchAll(/(?:foglalási\s*(?:szám|azonosító)|booking\s*(?:reference|ref|id|number)|reservierungsnummer|številka\s+rezervacije)\s*[:#]?\s*([A-Z0-9][A-Z0-9-]{2,63})/giu)].map(m=>m[1].toUpperCase());
+ return {requestedBookingReference:unique(references),bookingReferenceConflict:new Set(references).size>1};
+}
 export function tubBookingReference(text=''){
- const source=currentText(text);
- return unique([...source.matchAll(/(?:foglalási\s*(?:szám|azonosító)|booking\s*(?:reference|ref|id|number)|reservierungsnummer|številka\s+rezervacije)\s*[:#]?\s*([A-Z0-9][A-Z0-9-]{2,63})/giu)].map(m=>m[1].toUpperCase()));
+ return tubReferences(currentText(text)).requestedBookingReference;
 }
 export function trustedTubContext(record={}){
  const context=record.bookingContext;
@@ -23,10 +26,15 @@ export function tubServiceMessage(text=''){
  // A request not to withdraw must never be turned into a withdrawal. Resolve
  // its effect on an existing service explicitly, rather than silently reviving it.
  const negatedWithdrawal=/(?:(?:do\s+not|don['’]t|not\s+to|never)\s+cancel(?!\p{L})|(?:ne|nem)\s+(?:szeretn\p{L}*\s+)?(?:lemond\p{L}*|mond\p{L}*\s+le|töröl\p{L}*)|nicht\s+stornier\p{L}*|stornier\p{L}*[^.!?\n]{0,60}\bnicht\b|ne\s+prekli[cč]\p{L}*)/iu.test(source);
- if(tub.test(source)&&negatedWithdrawal)return {kind:'tub_request',serviceOnly:!requestsAccommodation(source),cancelled:false,actionConflict:true,startDate:null,startTime:null,durationHours:null,requestedBookingReference:tubBookingReference(source),confirmationAllowed:false,requiresHumanReview:true};
+ // Scope conditions/questions to the tub-withdrawal clause. An unrelated
+ // checkout question must not weaken an explicit withdrawal in another sentence.
+ const withdrawalMention=/(?:cancel\p{L}*|stornier\p{L}*|lemond\p{L}*|le\s+(?:lehet\s+)?mond\p{L}*|mond\p{L}*\s+le|prekli[cč]\p{L}*)/iu;
+ const conditionalOrQuestion=/(?<!\p{L})(?:if|unless|falls|wenn|ha|amennyiben|če|ce|lehet|lemondhat\p{L}*|lahko)(?!\p{L})|\b(?:can|could|may)\s+(?:I|we)\b|\b(?:kann|könn\p{L}*|darf|dürf\p{L}*)\s+(?:ich|wir)\b|\b(?:what|which|wie|welche\p{L}*)\b/iu;
+ const conditionalWithdrawal=source.split(/[.!?\n]/u).some(clause=>tub.test(clause)&&withdrawalMention.test(clause)&&conditionalOrQuestion.test(clause));
+ if(tub.test(source)&&(negatedWithdrawal||conditionalWithdrawal))return {kind:'tub_request',serviceOnly:!requestsAccommodation(source),cancelled:false,actionConflict:true,startDate:null,startTime:null,durationHours:null,...tubReferences(source),confirmationAllowed:false,requiresHumanReview:true};
  // Withdrawal intent wins over a bare tub mention, including imperative EN/DE/SI.
  if(tub.test(source)&&/(?:nem\s+kér|mégsem|megsem|nincs\s+szükség|cancel(?:led|ing)?(?!\p{L})|stornier(?:en|e|t)(?!\p{L})|preklic(?:ati|ujem|ujemo)?(?!\p{L})|lemond(?:om|juk|anám|anánk|ani)?(?!\p{L})|no\s+longer|do\s+not\s+want|don't\s+want|kein\p{L}*\s+(?:badefass|badezuber)|ne\s+žel|ne\s+potreb)/iu.test(source))
-  return {kind:'tub_request',serviceOnly:!requestsAccommodation(source),cancelled:true,actionConflict:/(?:but|and|de|és|aber|und|ampak|in)\s+.{0,30}(?:add|request|kérek|kérünk|möcht|želim)/iu.test(source),startDate:null,startTime:null,durationHours:null,requestedBookingReference:tubBookingReference(source),confirmationAllowed:false,requiresHumanReview:true};
+  return {kind:'tub_request',serviceOnly:!requestsAccommodation(source),cancelled:true,actionConflict:/(?:but|and|de|és|aber|und|ampak|in)\s+.{0,30}(?:add|request|kérek|kérünk|möcht|želim)/iu.test(source),startDate:null,startTime:null,durationHours:null,...tubReferences(source),confirmationAllowed:false,requiresHumanReview:true};
  return classifyTubRequest(source);
 }
 export function classifyTubRequest(text='') {
@@ -42,7 +50,7 @@ export function classifyTubRequest(text='') {
  // A mixed new accommodation request still follows the existing booking route.
  const serviceOnly=!requestsAccommodation(source);
  return {kind:'tub_request',serviceOnly,startDate,startTime,durationHours:durationHours>0&&!/\b\d{1,3}\s*(?:vagy|or|oder|ali)\s*\d{1,3}\s*(?:ór|hour|stund|ur|nap|day|tag|dni)/iu.test(source)?durationHours:null,
-  requestedBookingReference:tubBookingReference(source),bookingReferenceConflict:new Set([...source.matchAll(/(?:foglalási\s*(?:szám|azonosító)|booking\s*(?:reference|ref|id|number)|reservierungsnummer|številka\s+rezervacije)\s*[:#]?\s*([A-Z0-9][A-Z0-9-]{2,63})/giu)].map(m=>m[1].toUpperCase())).size>1,availability:'unverified',confirmationAllowed:false,requiresHumanReview:true};
+  ...tubReferences(source),availability:'unverified',confirmationAllowed:false,requiresHumanReview:true};
 }
 export function assessTubEligibility({unitNumber,unit,availability}={}) {
  const mapped=BUSINESS.splitPhysicalUnits.find(row=>row.id===String(unit||'').trim().toUpperCase());

@@ -90,6 +90,35 @@ test('negated withdrawal persists as unknown intent, renders a clarification dra
   assert.equal(providerCalls,0);
  }finally{await f.db.close();}
 });
+
+test('conditional intent and conflicting withdrawal references persist through the normal Writer without changing the target or permitting approval',async()=>{
+ const f=await fixture();try{
+  const targetBefore=(await f.db.query('select * from sc_cases where case_id=$1',[f.target.caseId])).rows;
+  let seq=0,providerCalls=0;
+  f.bindingChange=()=>providerCalls++;
+  f.duringAvailability=async()=>providerCalls++;
+  for(const request of ['Please cancel the hot tub.','Please do not cancel the hot tub.','If it rains, please cancel the hot tub.']){
+   const result=await f.runtime.ingest({...f.env('ref-conflict-'+(++seq),'Booking reference REF-123. Reservierungsnummer OTHER-456. '+request,'base'),received_at:'2026-10-16T12:01:00Z'},undefined,{expectedRevision:0,persistDraft:true});
+   assert.notEqual(result.record.caseId,f.target.caseId);
+   assert.equal(result.record.data.caseKind,'service_link_review');
+   assert.equal(result.record.data.linkReview.evidence,'conflicting_service_booking_references');
+   assert.equal(result.record.data.serviceRequests.at(-1).bookingReferenceConflict,true);
+   assert.equal(result.record.data.serviceRequests.at(-1).linkedCaseId,null);
+   assert.equal(result.record.data.state.approval,'pending');
+   assert.equal((await f.flow().state(result.record.caseId,result.record.revision)).canApproveService,false);
+  }
+  assert.deepEqual((await f.db.query('select * from sc_cases where case_id=$1',[f.target.caseId])).rows,targetBefore);
+  const conditional=await f.runtime.ingest({...f.env('condition-only','If it rains, please cancel the hot tub.','base'),received_at:'2026-10-16T12:02:00Z'},undefined,{expectedRevision:f.target.revision,persistDraft:true});
+  const preview=await f.runtime.previewDraft(conditional.record.caseId,conditional.record.revision);
+  assert.equal(preview.serviceRequest.requested,null);
+  assert.equal(preview.serviceRequest.verificationStatus,'intent_unverified');
+  assert.match(preview.text,/keep or withdraw/u);
+  assert.equal((await f.flow().state(conditional.record.caseId,conditional.record.revision)).canApproveService,false);
+  assert.equal(providerCalls,0);
+  assert.equal((await f.db.query('select count(*)::int n from sc_service_approvals')).rows[0].n,0);
+  assert.equal((await f.db.query('select count(*)::int n from sc_audit')).rows[0].n,8);
+ }finally{await f.db.close();}
+});
 test('normal and review service approvals preserve A, both cases and accommodation approval; Reader protected status, replay, source changes and encrypted restore',async()=>{
  const f=await fixture();try{
   const before=(await f.db.query('select * from sc_cases order by case_id')).rows;
