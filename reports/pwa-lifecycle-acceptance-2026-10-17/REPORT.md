@@ -1,5 +1,15 @@
 # Sárberki V1 – PWA-visszatérés, elfogadási és helyreállítási felkészültség
 
+## Legutóbbi kiegészítés – szimulált kapcsolatvesztés
+
+A felhasználó folytatási kérése után az új `20d0d19e08a363be164eb2b29cf8a33221f36930` tesztcommit csak a mobil-bizonyító scriptet bővítette; az alkalmazáskód az alább leírt `76874a6` változattal azonos.
+
+- [Végleges CI 39034873883](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39034873883), job `117402559047`: **1796 PASS / 0 FAIL / 0 SKIP**, exact deployed SHA = `20d0d19e08a363be164eb2b29cf8a33221f36930`.
+- [Végleges mobilrun 39034873884](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39034873884), job `117402558859`: Reader 12/12 + Writer/approver 22/22 = **34 PASS / 0 FAIL**. Két új eset motoronként: kapcsolat nélküli Writer-visszatérés lezárja a hozzáférést, majd explicit restore nem ment levelet; kapcsolat nélküli approval-load törli a régi tervezetet, és explicit újrabetöltés nem állítja vissza a megerősítést vagy játssza újra az approval POST-ot.
+- A hálózathiba helyi route-abort, nem valódi iPhone repülő üzemmód vagy lassú hálózat mérése. Hosszú válaszidő, több lap közös sütiforgatása és tényleges iOS hálózatváltás továbbra is eszközös hatókör.
+- A korábbi 30/30 és 76874a6 alábbi eredménye történeti, sikeres előzmény; a végső állapotot ez a kiegészítés pontosítja. Készültség továbbra 93%, a valós iPhone/PWA kapu nyitott.
+
+
 2026-10-17. Kizárólag `gmail-test-subject-allowlist`; Codex közvetlen fejlesztés/ellenőrzés, párhuzamos agent nélkül. Kiindulás `f2766ec19857ee2dc52e0cdeef6116c22650b783`; az előző igazolt alkalmazáskód `0f09633fc4cc23aa0cf91b667508a46f09d5ac23`, 1789/0/0.
 
 ## Elkészült fejlesztés

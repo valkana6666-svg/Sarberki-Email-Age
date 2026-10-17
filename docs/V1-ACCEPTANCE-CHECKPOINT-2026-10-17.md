@@ -1,5 +1,17 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## Végleges mobilos hálózathiba-kiegészítés
+
+Igazolt tesztcommit `20d0d19e08a363be164eb2b29cf8a33221f36930`:
+[CI 39034873883](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39034873883)
+**1796/0/0**, azonos deploy;
+[mobil 39034873884](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39034873884)
+**34/34 PASS**. A szimulált hálózatvesztés nem okoz automatikus mentést vagy approval replayt.
+Az alkalmazáskód változatlan 76874a6 óta. Fizikai iPhone/PWA továbbra NEM IGAZOLT;
+a továbblépéshez a [rövid tényleges készülékpróba](IPHONE-PWA-ACCEPTANCE-2026-10-17.md) szükséges.
+[Részletes kiegészítés](../reports/pwa-lifecycle-acceptance-2026-10-17/REPORT.md).
+
+
 ## Legfrissebb PWA/session és megőrzési kiegészítés
 
 Igazolt kód: `76874a6f991c2c273215946cecc1542bd38b26ad`.
