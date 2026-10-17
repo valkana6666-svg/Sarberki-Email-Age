@@ -844,3 +844,23 @@ export function specialRequestsFromText(text='') {
   for(const match of text.matchAll(pattern)) if(match[1].trim()) requests.push(match[1].trim());
   return requests;
 }
+
+
+/**
+ * Calculates the owner's deposit policy without using the server clock.
+ * The caller must supply a verified booking timestamp and arrival date.
+ * No automatic payment collection or reservation confirmation is performed.
+ */
+export function depositPolicyForBooking({guestCount,bookingAt,arrivalDate}={}){
+  if(!Number.isInteger(guestCount)||guestCount<1) return {status:'unverified',reason:'guest_count'};
+  if(typeof bookingAt!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/u.test(bookingAt)||typeof arrivalDate!=='string'||!/^\d{4}-\d{2}-\d{2}$/u.test(arrivalDate)) return {status:'unverified',reason:'dates'};
+  const bookingDay=bookingAt.slice(0,10);
+  const bookingDate=new Date(bookingDay+'T00:00:00Z');
+  const arrival=new Date(arrivalDate+'T00:00:00Z');
+  if(!Number.isFinite(bookingDate.getTime())||!Number.isFinite(arrival.getTime())||bookingDate.toISOString().slice(0,10)!==bookingDay||arrival.toISOString().slice(0,10)!==arrivalDate)return {status:'unverified',reason:'invalid_date'};
+  const daysUntilArrival=Math.round((arrival-bookingDate)/86400000);
+  if(daysUntilArrival<0)return {status:'unverified',reason:'past_arrival'};
+  const depositPct=guestCount>15?80:50;
+  const paymentWindowHours=daysUntilArrival>14?168:24;
+  return {status:'calculated',depositPct,paymentWindowHours,daysUntilArrival,paymentMustBeReceived:true};
+}
