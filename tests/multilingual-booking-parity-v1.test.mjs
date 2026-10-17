@@ -16,11 +16,13 @@ for(const language of languages){
     const result=availabilitySentence({available_options:[]},language);
     assert.doesNotMatch(result,/Deluxe/u);
     assert.ok(result.length>10);
+    assert.notEqual(result,availabilitySentence({available_options:[{label:'Deluxe',units:1,availability:'available',availability_verified:true}]},language));
   });
   test(`V1 language ${language}: draft retains requested stay and cabin`,()=>{
     const draft=buildReplyDraft({...request,language});
     assert.match(draft,/Deluxe/u);
     assert.ok(draft.length>20);
+    assert.doesNotMatch(draft,/7A|10C|\bpool\b|\bmapping\b/iu);
   });
 }
 
