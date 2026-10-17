@@ -513,10 +513,10 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
   if(q.depositDeadline&&rules.depositDueDays!==null&&rules.depositDueDays!==undefined&&rules.depositDueDays!==''&&Number.isFinite(Number(rules.depositDueDays))&&Number(rules.depositDueDays)>0){
     const days=Number(rules.depositDueDays);
     lines.push({
-      hu:`Az előleget a foglalási szándék rögzítésétől számított ${days} napon belül kell befizetni; ha ez határidőn belül nem érkezik meg, a foglalást töröljük.`,
-      de:`Die Anzahlung muss innerhalb von ${days} Tagen nach Erfassung der Buchungsabsicht eingehen; andernfalls wird die Buchung storniert.`,
-      en:`The deposit must be paid within ${days} days after the booking request is recorded; if it is not received by then, the booking is cancelled.`,
-      si:`Predplačilo mora biti poravnano v ${days} dneh po evidentiranju namere rezervacije; če ga do takrat ne prejmemo, se rezervacija prekliče.`
+      hu:`Az előleget a foglalási szándék rögzítésétől számított ${days} napon belül kell befizetni; késedelem esetén munkatársunk tájékoztat a további lépésekről.`,
+      de:`Die Anzahlung muss innerhalb von ${days} Tagen nach Erfassung der Buchungsabsicht eingehen; bei Verspätung informiert unser Team über die nächsten Schritte.`,
+      en:`The deposit must be paid within ${days} days after the booking request is recorded; if it is late, our team will advise on next steps.`,
+      si:`Predplačilo mora biti poravnano v ${days} dneh po evidentiranju namere rezervacije; ob zamudi vas bo naša ekipa obvestila o nadaljnjih korakih.`
     }[lang]);
   }
   if(q.general)lines.push({hu:'A foglalás az előleg beérkezése után válik véglegessé.',de:'Die Buchung wird erst nach Eingang der Anzahlung verbindlich.',en:'The booking becomes final once the deposit has been received.',si:'Rezervacija postane dokončna po prejemu predplačila.'}[lang]);
