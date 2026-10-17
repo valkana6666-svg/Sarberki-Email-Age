@@ -1,5 +1,18 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## Legfrissebb böngészős kérésidőkorlát
+
+Igazolt tesztcommit: `7d914d62807f218940225c431f23584a1effe451`.
+[CI 39046433863](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39046433863):
+**1800/0/0**, azonos tesztdeploy. A 15s JSON-request deadline nem ismétel írást,
+beragadt bodyra is kiterjed; bizonytalan kimenetel után friss állapot-/auditolvasás kell.
+[Mobil 39046272492](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39046272492)
+**36/36 PASS**, azonos alkalmazáskódú szülőcommitról. A végső commit csak a GET-contract
+tesztjében ellenőrzi külön az új AbortSignal-t, ezért a mobilpróbát nem ismételtük.
+[Részletes eredmény](../reports/browser-request-deadline-2026-10-17/REPORT.md).
+A fizikai iPhone/PWA kapu és 93%-os becslés változatlan; készülékes visszajelzés szükséges.
+
+
 ## Végleges mobilos hálózathiba-kiegészítés
 
 Igazolt tesztcommit `20d0d19e08a363be164eb2b29cf8a33221f36930`:
