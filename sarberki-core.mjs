@@ -896,3 +896,23 @@ export function depositReceiptDeadline({guestCount,bookingAt,arrivalDate}={}){
   if(!Number.isFinite(receiptDeadline.getTime()))return {status:'unverified',reason:'invalid_deadline'};
   return {...policy,receiptDeadlineUtc:receiptDeadline.toISOString(),receiptDeadlineBasis:'booking_timestamp',receiptConfirmed:false};
 }
+
+
+/**
+ * Advisory-only cancellation assessment for short-notice bookings.
+ * Does not cancel reservations, charge guests, or decide exceptions.
+ */
+export function shortNoticeCancellationAssessment({bookingDate,arrivalDate,cancellationDate,depositPct}={}){
+  const parseDay=value=>{
+    if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/u.test(value))return null;
+    const parsed=new Date(value+'T00:00:00Z');
+    return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===value?parsed.getTime():null;
+  };
+  const booked=parseDay(bookingDate),arrival=parseDay(arrivalDate),cancelled=parseDay(cancellationDate);
+  if(booked===null||arrival===null||cancelled===null)return {status:'unverified',reason:'dates'};
+  if(booked>cancelled||cancelled>=arrival||booked>=arrival)return {status:'manual_review',reason:'chronology'};
+  const leadDays=Math.round((arrival-booked)/86400000);
+  if(leadDays>14)return {status:'manual_review',reason:'other_cancellation_policy'};
+  if(depositPct!==50&&depositPct!==80)return {status:'manual_review',reason:'deposit_percentage'};
+  return {status:'policy_applies',depositForfeitedOnCancellation:true,depositPct,leadDays,requiresHumanReview:true};
+}
