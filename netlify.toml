@@ -36,6 +36,11 @@
     Expires = "0"
 
 [[headers]]
+  for = "/operator.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json; charset=utf-8"
+
+[[headers]]
   for = "/sarberki-chatbot-project/manifest.webmanifest"
   [headers.values]
     Content-Type = "application/manifest+json; charset=utf-8"

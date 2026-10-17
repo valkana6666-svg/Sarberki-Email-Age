@@ -1,0 +1,26 @@
+{
+  "id": "/sarberki-operator",
+  "name": "Sárberki Kezelő · TESZT",
+  "short_name": "Sárberki Kezelő",
+  "description": "Sárberki Reader és Writer – elkülönített kezelői tesztkörnyezet",
+  "lang": "hu",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#ff7a00",
+  "icons": [
+    {
+      "src": "./sarberki-chatbot-project/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./sarberki-chatbot-project/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

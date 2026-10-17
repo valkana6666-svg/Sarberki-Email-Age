@@ -24,6 +24,8 @@ jobs:
         run: node tests/deployment-sync.mjs
       - name: Check test-host operator session and case-store gates without credentials
         run: node scripts/operator-cloud-preflight.mjs
+      - name: Verify operator PWA assets on the exact test deploy without credentials
+        run: node tests/deployed-operator-pwa-smoke.mjs
       - name: Verify deployed MNB helper without any Previo calls
         run: node tests/deployed-manual-fx-smoke.mjs
       - name: Verify deployed public price reference without any Previo calls

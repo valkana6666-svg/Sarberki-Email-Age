@@ -12,7 +12,7 @@ function copyDirectory(source, relative='') {
   const rel=path.join(relative,entry.name);
   if(relative==='sarberki-chatbot-project'&&!chatbotAssets.has(entry.name))continue;
   if(relative==='sarberki-chatbot-project/icons'&&!['icon-192.png','icon-512.png','apple-touch-icon.png'].includes(entry.name))continue;
-  if(/\.(?:png|webmanifest)$/.test(entry.name)&&!relative.startsWith('sarberki-chatbot-project'))continue;
+  if(/\.(?:png|webmanifest)$/.test(entry.name)&&!relative.startsWith('sarberki-chatbot-project')&&!(relative===''&&entry.name==='operator.webmanifest'))continue;
   if(entry.isSymbolicLink()) continue;
   if(entry.isDirectory()) {
    if(relative==='' && !allowedDirectories.has(entry.name))continue;
