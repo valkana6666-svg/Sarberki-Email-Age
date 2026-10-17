@@ -304,7 +304,8 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
   caseStatus.textContent='A szintetikus ügy kiválasztva. A szerveres előnézet gombbal olvasható.';
  }
  form.addEventListener('submit',event=>{event.preventDefault();return perform('login');});
- restore.addEventListener('click',()=>perform('restore'));
+ // An explicit foreground action must recover even if the OS omitted focus.
+ restore.addEventListener('click',()=>resume());
  logout.addEventListener('click',()=>perform('logout'));
  listCases.addEventListener('click',loadCases);
  openCase.addEventListener('click',openSelectedCase);

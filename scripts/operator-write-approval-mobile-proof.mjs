@@ -89,6 +89,17 @@ try{
   assert.ok(state.calls.slice(beforeFocus).every(c=>c.method==='GET'&&c.path.endsWith('/operator-session')));
   assert.equal(state.saves,0);
   report.checks.push({engine,test:'Focus-only return clears actual cloud preview and revalidates without replay',result:'PASS'});
+  const beforeManualRestore=state.calls.length;
+  await page.evaluate(()=>dispatchEvent(new FocusEvent('blur')));
+  assert.equal(await page.evaluate(()=>window.SarberkiCaseStoreSession),null);
+  // Invoke the actual visible button handler without supplying a focus event.
+  await page.evaluate(()=>document.getElementById('operator_restore').click());
+  await page.locator('#operator_login_status').filter({hasText:'olvasás aktív'}).waitFor();
+  assert.equal(await page.locator('#server_preview_text').inputValue(),'');
+  assert.ok(state.calls.slice(beforeManualRestore).every(c=>c.method==='GET'&&c.path.endsWith('/operator-session')));
+  assert.equal(state.saves,0);
+  report.checks.push({engine,test:'Explicit restore without a focus event rechecks session by GET without password or replay',result:'PASS'});
+
   await page.evaluate(()=>dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));
   assert.equal(await page.evaluate(()=>window.SarberkiCaseStoreSession),null);
   assert.equal(await page.locator('#operator_list_cases').isDisabled(),true);

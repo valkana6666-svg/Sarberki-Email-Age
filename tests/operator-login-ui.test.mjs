@@ -415,3 +415,18 @@ test('failed focus revalidation stays locked and never repeats a write',async()=
  assert.equal(h.globalRef.SarberkiCaseStoreSession,null);assert.equal(h.get('operator_list_cases').disabled,true);
  assert.deepEqual(calls,['GET','GET']);
 });
+
+test('explicit restore recovers a visible page after blur even when focus event is missing',async()=>{
+ const methods=[],h=await harness(async(_url,options)=>{methods.push(options.method);return {ok:true,json:async()=>valid()};});
+ h.documentRef.visibilityState='visible';const old=h.globalRef.SarberkiCaseStoreSession;
+ h.globalListeners.blur();assert.equal(h.globalRef.SarberkiCaseStoreSession,null);
+ await h.get('operator_restore').click();
+ assert.ok(h.globalRef.SarberkiCaseStoreSession,'explicit restore must not silently do nothing on a visible returned app');
+ assert.notEqual(h.globalRef.SarberkiCaseStoreSession,old);assert.deepEqual(methods,['GET','GET']);
+});
+test('explicit restore never treats a hidden document as foreground',async()=>{
+ const methods=[],h=await harness(async(_url,options)=>{methods.push(options.method);return {ok:true,json:async()=>valid()};});
+ h.documentRef.visibilityState='hidden';h.globalListeners.blur();
+ await h.get('operator_restore').click();
+ assert.equal(h.globalRef.SarberkiCaseStoreSession,null);assert.deepEqual(methods,['GET']);
+});
