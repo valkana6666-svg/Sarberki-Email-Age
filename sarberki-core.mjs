@@ -933,3 +933,42 @@ export function shortNoticeCancellationAssessment({bookingDate,arrivalDate,cance
   if(depositPct!==50&&depositPct!==80)return {status:'manual_review',reason:'deposit_percentage'};
   return {status:'policy_applies',depositForfeitedOnCancellation:true,depositPct,leadDays,requiresHumanReview:true};
 }
+
+
+/**
+ * Prepare a structured audit event for an owner-approved cancellation notice.
+ * This function only returns data; persistence must be performed by an authorized writer.
+ * Never include guest names, email addresses, phone numbers or payment credentials.
+ */
+export function cancellationNoticeAuditEvent({caseId,revision,approvedBy,approvedAt,context}={}){
+  if(typeof caseId!=='string'||!/^[-_a-zA-Z0-9]{1,100}$/u.test(caseId)
+    ||!Number.isInteger(revision)||revision<1
+    ||typeof approvedBy!=='string'||!/^[-_a-zA-Z0-9]{1,100}$/u.test(approvedBy)
+    ||typeof approvedAt!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/u.test(approvedAt)
+    ||!Number.isFinite(Date.parse(approvedAt))
+    ||context?.ownerApproved!==true||context?.bookingConfirmed!==true||context?.depositReceived!==true){
+    return {status:'blocked',reason:'missing_verified_approval'};
+  }
+  const policy=shortNoticeCancellationAssessment({
+    bookingDate:context.bookingDate,
+    arrivalDate:context.arrivalDate,
+    cancellationDate:context.cancellationDate,
+    depositPct:context.depositPct
+  });
+  if(policy.status!=='policy_applies')return {status:'blocked',reason:'policy_unverified'};
+  return {
+    status:'ready_for_persistence',
+    event:{
+      eventType:'cancellation_notice_owner_approved',
+      caseId,revision,approvedBy,approvedAt:new Date(approvedAt).toISOString(),
+      policyVersion:'short_notice_v1',
+      bookingDate:context.bookingDate,
+      arrivalDate:context.arrivalDate,
+      cancellationDate:context.cancellationDate,
+      depositPct:policy.depositPct,
+      depositReceivedVerified:true,
+      reservationCancelled:false,
+      emailSent:false
+    }
+  };
+}
