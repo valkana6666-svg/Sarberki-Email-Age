@@ -1,5 +1,12 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## Végső elfogadási felülvizsgálat
+
+[Összevont döntés, bizonyítékok és nyitott kapuk](../reports/v1-final-acceptance-2026-10-17/REPORT.md).
+A kiinduló HEAD a420207482d678572421293988bfa7643d44248e csak dokumentációban tér el a sikeres 7d914d tesztkódtól.
+Új tesztfuttatás és kódmódosítás nélkül: feltételes tesztkörnyezeti elfogadás, 93%, 9–18 aktív óra.
+Teljes V1-lezárás még nem igazolt; következő lépés a tényleges iPhone-próba.
+
 ## Legfrissebb böngészős kérésidőkorlát
 
 Igazolt tesztcommit: `7d914d62807f218940225c431f23584a1effe451`.
