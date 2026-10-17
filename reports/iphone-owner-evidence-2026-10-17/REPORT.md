@@ -26,3 +26,9 @@ Célzott helyi ellenőrzés: **124 PASS / 0 FAIL / 0 SKIP** (`booking-confirmati
 A CI és a pontos tesztdeploy eredménye külön ellenőrizendő. A javított demo készülékes próbáját nem tekintjük már elvégzettnek. V1 becslés 93%; a részleges készülékbizonyíték nem zárta le a teljes elfogadási mátrixot. Következő lépés a javítás CI/deploy-ellenőrzése, majd iPhone-on a külön szerveres előnézet eredményének igazolása.
 
 Nincs éles/ main változtatás, valódi vendégadat, email/Pushover, Previo-hívás vagy foglalás. V2/V3: a demo nem kapott üzleti végrehajtási vagy pénzbeérkezést igazoló jogosultságot.
+
+## Végleges eredmény
+
+Javítás: `309e67f654987a1021a44ebdb9529d7b8f4788b5`. [CI 39061967693](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39061967693), test job `117481600750`: **1807 PASS / 0 FAIL / 0 SKIP**, pontosan azonos expected/deployed SHA. PWA static smoke és a Windows offline másolási ellenőrzés sikeres; élő Previo nem futott. [Mobil 39061967727](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39061967727), job `117481601030`: Reader 12 és Writer/approval/deadline 24, összesen **36 PASS / 0 FAIL**, emulált Chromium/WebKit. [Kapacitásrun 39061967692](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39061967692) SUCCESS.
+
+Külön tényleges böngészős UI-próba a BUILD 309e67f teszttelepítésen: üres űrlap elutasítva; kitöltött, zárt szintetikus 16 fős minta kimenete kifejezett SZIMULÁCIÓ, 80%, és nem történt valódi pénzbeérkezés/véglegesítés. Ez a távoli Chrome böngészőben történt, nem a tulajdonos iPhone-ján. Nem volt külső írás vagy új jóváhagyás. A következő kézi pont továbbra a szerveres előnézet külön lekérési gombja az iPhone-on; általános új folytatási engedély nem szükséges.

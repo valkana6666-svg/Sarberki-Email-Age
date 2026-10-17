@@ -1,5 +1,11 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## Tulajdonosi iPhone-képek és szimulátorjavítás
+
+A helyi magyar minta, hitelesített ügylista és a Writer-kísérlet elutasításának készülékképei rendelkezésre állnak. A szerveres előnézet képe még üres/új lekérést kér; PWA-telepítést és teljes készülékelfogadást nem állítunk. A képekből feltárt régi előlegdemo hibája javítva: hiányos adat tiltott; nincs valódi pénzbeérkezés/véglegesítés állítása; 15 főig 50%, fölötte 80%; régi 14/30 napos általános lemondási ígéret eltávolítva.
+
+Igazolt javítás `309e67f654987a1021a44ebdb9529d7b8f4788b5`: [CI 39061967693](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39061967693) **1807/0/0**, azonos deploy; [mobil 39061967727](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39061967727) **36/0**; kapacitásrun SUCCESS. Célzott helyi 124/0/0 és tényleges Chrome UI-próba sikeres. V1-becslés változatlanul 93%. [Részletes készülékbizonyíték és javítás](../reports/iphone-owner-evidence-2026-10-17/REPORT.md).
+
 ## iPhone-visszajelzés: Gmail 429 javítás
 
 A készülékkép új Gmail-olvasási hibát jelzett. A párhuzamos teljeslevél-olvasás helyett soros olvasás, 429 esetén biztonságos leállás és magyar hibaüzenet készült, automatikus retry nélkül. Javítás `847289bbb559694b28f9b74e804e74aebb4d0e3f`: [CI 39061037266](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39061037266) **1804/0/0**, pontosan azonos tesztdeploy; kapacitásregresszió SUCCESS. Helyi célzott 14/14 és szintetikus PostgreSQL E2E 6/6.
