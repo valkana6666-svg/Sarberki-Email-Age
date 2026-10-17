@@ -194,3 +194,20 @@ test('V1 cancellation: invalid chronology never decides forfeiture',()=>{
   const result=shortNoticeCancellationAssessment({bookingDate:'2026-10-22',arrivalDate:'2026-10-25',cancellationDate:'2026-10-21',depositPct:50});
   assert.equal(result.status,'manual_review');
 });
+
+for(const language of languages){
+  const cancellationContext={ownerApproved:true,bookingConfirmed:true,depositReceived:true,bookingDate:'2026-10-20',arrivalDate:'2026-10-25',cancellationDate:'2026-10-21',depositPct:50};
+  const policyNotice={hu:/befizetett előleg.*nem jár vissza/u,de:/geleistete Anzahlung.*nicht erstattet/u,en:/deposit already received is non-refundable/u,si:/prejeto predplačilo.*ne vrača/u}[language];
+  test(`V1 language ${language}: cancellation notice requires owner approval`,()=>{
+    const draft=buildReplyDraft({...request,language,intent:'cancellation_request',approvedCancellationContext:{...cancellationContext,ownerApproved:false}});
+    assert.doesNotMatch(draft,policyNotice);
+  });
+  test(`V1 language ${language}: cancellation notice requires verified receipt`,()=>{
+    const draft=buildReplyDraft({...request,language,intent:'cancellation_request',approvedCancellationContext:{...cancellationContext,depositReceived:false}});
+    assert.doesNotMatch(draft,policyNotice);
+  });
+  test(`V1 language ${language}: owner-approved cancellation notice remains informational`,()=>{
+    const draft=buildReplyDraft({...request,language,intent:'cancellation_request',approvedCancellationContext:cancellationContext});
+    assert.match(draft,policyNotice);
+  });
+}
