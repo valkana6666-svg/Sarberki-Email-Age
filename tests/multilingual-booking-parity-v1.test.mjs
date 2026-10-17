@@ -109,3 +109,14 @@ for(const language of languages){
     assert.match(draft,markers[language]);
   });
 }
+
+for(const language of languages){
+  for(const guests of [14,15,16]){
+    test(`V1 language ${language}: ${guests}-guest deposit respects over-15 threshold`,()=>{
+      const draft=buildReplyDraft({...request,language,guests,adults:guests,original:'booking terms',bookingRules:{depositPctUnder15Guests:50,depositPctFrom15Guests:80}});
+      const expected=guests>15?'80%':'50%';
+      assert.match(draft,new RegExp(expected.replace('%','%'),'u'));
+      assert.doesNotMatch(draft,new RegExp(guests>15?'50%':'80%','u'));
+    });
+  }
+}
