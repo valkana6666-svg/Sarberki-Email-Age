@@ -284,3 +284,14 @@ test('V1 audit readback: changed revision is rejected',()=>{
   });
   assert.equal(verifyCancellationAuditReadback(prepared,{...prepared.event,revision:3}).status,'mismatch');
 });
+
+for(const language of languages){
+  test(`V1 language ${language}: missing payment rules never fabricate zero-percent deposit`,()=>{
+    const draft=buildReplyDraft({...request,language,original:'deposit előleg Anzahlung predplačilo',bookingRules:{depositPct:null,depositPctUnder15Guests:null,depositPctFrom15Guests:null}});
+    assert.doesNotMatch(draft,/0%/u);
+  });
+  test(`V1 language ${language}: null payment deadline never fabricates zero days`,()=>{
+    const draft=buildReplyDraft({...request,language,original:'deposit deadline előleg határidő Anzahlung Frist rok predplačila',bookingRules:{depositDueDays:null}});
+    assert.doesNotMatch(draft,/0 (?:nap|Tagen|days|dneh)/u);
+  });
+}
