@@ -709,7 +709,7 @@ function capacityOptionText(guests,language='hu'){
   return {hu:'több ház',de:'mehrere Häuser',en:'multiple cabins',si:'več hišk'}[lang];
 }
 
-export function buildReplyDraft({language='hu',name=null,original='',arrival=null,departure=null,guests=null,adults=null,children=null,childAges=[],phone=null,cabin='? – emberi döntésre vár',pier=false,hotTub=false,dog=false,intent='booking_request',brandName='Sárberki Horgásztó',bookingRules=null,operationalRules=null,pricingRules=null,knowledgeLines=[],caseContext=null,approvedPaymentContext=null}={}){
+export function buildReplyDraft({language='hu',name=null,original='',arrival=null,departure=null,guests=null,adults=null,children=null,childAges=[],phone=null,cabin='? – emberi döntésre vár',pier=false,hotTub=false,dog=false,intent='booking_request',brandName='Sárberki Horgásztó',bookingRules=null,operationalRules=null,pricingRules=null,knowledgeLines=[],caseContext=null,approvedPaymentContext=null,approvedCancellationContext=null}={}){
   original=activeMessageText(original);
   const lang=['hu','de','en','si'].includes(language)?language:'hu';
   const flags=requestFlagsFromText(original);
@@ -735,7 +735,24 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   if(intent==='cancellation_request'||intent==='modification_request'){
     const action={hu:intent==='cancellation_request'?'lemondási':'foglalásmódosítási',de:intent==='cancellation_request'?'Stornierungs':'Änderungs',en:intent==='cancellation_request'?'cancellation':'booking change',si:intent==='cancellation_request'?'odpovedi':'spremembe rezervacije'}[lang]||'foglalási';
     const received={hu:`Megkaptuk a ${action} kérelmét. Hamarosan pontos visszajelzést adunk.`,de:`Wir haben Ihre ${action}anfrage erhalten und prüfen sie.`,en:`We have received your ${action} request and will review it.`,si:`Prejeli smo vašo zahtevo za ${action} in jo bomo preverili.`}[lang];
-    return `${greetings[lang]}\n\n${received}\n\n${closings[lang]}\n${brandName}`;
+    let approvedCancellationLine='';
+    if(intent==='cancellation_request' && approvedCancellationContext?.ownerApproved===true && approvedCancellationContext?.bookingConfirmed===true && approvedCancellationContext?.depositReceived===true){
+      const assessment=shortNoticeCancellationAssessment({
+        bookingDate:approvedCancellationContext.bookingDate,
+        arrivalDate:approvedCancellationContext.arrivalDate,
+        cancellationDate:approvedCancellationContext.cancellationDate,
+        depositPct:approvedCancellationContext.depositPct
+      });
+      if(assessment.status==='policy_applies'){
+        approvedCancellationLine={
+          hu:'A tulajdonos által jóváhagyott tájékoztatás szerint a befizetett előleg a lemondási feltételek alapján nem jár vissza. A lemondás feldolgozása külön történik.',
+          de:'Laut der vom Eigentümer freigegebenen Auskunft wird die geleistete Anzahlung gemäß den Stornobedingungen nicht erstattet. Die Stornierung wird gesondert bearbeitet.',
+          en:'According to the owner-approved information, the deposit already received is non-refundable under the cancellation terms. The cancellation is processed separately.',
+          si:'V skladu z informacijami, ki jih je odobril lastnik, se že prejeto predplačilo po pogojih odpovedi ne vrača. Odpoved se obravnava ločeno.'
+        }[lang];
+      }
+    }
+    return `${greetings[lang]}\\n\\n${received}${approvedCancellationLine?'\\n\\n'+approvedCancellationLine:''}\\n\\n${closings[lang]}\\n${brandName}`;
   }
 
   const mismatch=Number.isInteger(guests)&&Number.isInteger(adults)&&Number.isInteger(children)&&guests!==adults+children;
