@@ -493,7 +493,7 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
     const knownGuests=Number.isFinite(g)&&g>0;
     const under15=Number(rules.depositPctUnder15Guests ?? rules.depositPct);
     const from15=Number(rules.depositPctFrom15Guests ?? rules.depositPct);
-    const pct=knownGuests?(g<15?under15:from15):null;
+    const pct=knownGuests?(g<=15?under15:from15):null;
     if(Number.isFinite(pct)) lines.push({
       hu:`A foglaláshoz ${pct}% előleg szükséges.`,
       de:`Für die Buchung ist eine Anzahlung von ${pct}% erforderlich.`,
@@ -501,10 +501,10 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
       si:`Za rezervacijo je potrebno ${pct}% predplačilo.`
     }[lang]);
     else if(Number.isFinite(under15)&&Number.isFinite(from15)&&under15!==from15) lines.push({
-      hu:`Az előleg mértéke létszámfüggő: 15 fő alatt ${under15}%, 15 főtől ${from15}%.`,
-      de:`Die Anzahlung hängt von der Gruppengröße ab: unter 15 Personen ${under15}%, ab 15 Personen ${from15}%.`,
-      en:`The deposit depends on group size: ${under15}% for fewer than 15 guests and ${from15}% for 15 guests or more.`,
-      si:`Višina predplačila je odvisna od velikosti skupine: ${under15}% za manj kot 15 oseb in ${from15}% za 15 oseb ali več.`
+      hu:`Az előleg mértéke létszámfüggő: legfeljebb 15 főnél ${under15}%, 15 fő felett ${from15}%.`,
+      de:`Die Anzahlung hängt von der Gruppengröße ab: bis einschließlich 15 Personen ${under15}%, über 15 Personen ${from15}%.`,
+      en:`The deposit depends on group size: ${under15}% for up to 15 guests and ${from15}% for more than 15 guests.`,
+      si:`Višina predplačila je odvisna od velikosti skupine: ${under15}% za največ 15 oseb in ${from15}% za več kot 15 oseb.`
     }[lang]);
   }
   if(q.depositDeadline&&Number.isFinite(Number(rules.depositDueDays))){
@@ -519,13 +519,13 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
   if(q.general)lines.push({hu:'A foglalás az előleg beérkezése után válik véglegessé.',de:'Die Buchung wird erst nach Eingang der Anzahlung verbindlich.',en:'The booking becomes final once the deposit has been received.',si:'Rezervacija postane dokončna po prejemu predplačila.'}[lang]);
   if(q.cancellation&&guests!==null&&guests!==undefined&&Number(guests)>0){
     const g=Number(guests);
-    const days=g<15?Number(rules.cancellationDaysUnder15Guests):Number(rules.cancellationDaysFrom15Guests);
+    const days=g<=15?Number(rules.cancellationDaysUnder15Guests):Number(rules.cancellationDaysFrom15Guests);
     if(Number.isFinite(days)){
       lines.push({
-        hu:`${g<15?'15 fő alatti':'15 fő vagy nagyobb'} foglalásnál a lemondási határidő az érkezés előtt ${days} nap.`,
-        de:`Bei Buchungen ${g<15?'mit weniger als 15 Personen':'ab 15 Personen'} beträgt die Stornierungsfrist ${days} Tage vor der Anreise.`,
-        en:`For bookings ${g<15?'with fewer than 15 guests':'of 15 guests or more'}, the cancellation deadline is ${days} days before arrival.`,
-        si:`Pri rezervacijah ${g<15?'za manj kot 15 oseb':'za 15 oseb ali več'} je rok za odpoved ${days} dni pred prihodom.`
+        hu:`${g<=15?'legfeljebb 15 fős':'15 fő feletti'} foglalásnál a lemondási határidő az érkezés előtt ${days} nap.`,
+        de:`Bei Buchungen ${g<=15?'mit höchstens 15 Personen':'mit mehr als 15 Personen'} beträgt die Stornierungsfrist ${days} Tage vor der Anreise.`,
+        en:`For bookings ${g<=15?'of up to 15 guests':'of more than 15 guests'}, the cancellation deadline is ${days} days before arrival.`,
+        si:`Pri rezervacijah ${g<=15?'za največ 15 oseb':'za več kot 15 oseb'} je rok za odpoved ${days} dni pred prihodom.`
       }[lang]);
     }
   }
