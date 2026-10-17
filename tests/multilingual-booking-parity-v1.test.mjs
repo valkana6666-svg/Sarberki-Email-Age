@@ -228,3 +228,36 @@ test('V1 cancellation audit: missing owner approval blocks event',()=>{
   const result=cancellationNoticeAuditEvent({caseId:'synthetic-case-1',revision:3});
   assert.equal(result.status,'blocked');
 });
+
+test('V1 audit: approval timestamp is normalized to UTC',()=>{
+  const result=cancellationNoticeAuditEvent({
+    caseId:'synthetic-1',revision:2,approvedBy:'owner-test',
+    approvedAt:'2026-10-21T12:00:00+02:00',
+    context:{ownerApproved:true,bookingConfirmed:true,depositReceived:true,
+      bookingDate:'2026-10-20',arrivalDate:'2026-10-25',
+      cancellationDate:'2026-10-21',depositPct:50}
+  });
+  assert.equal(result.status,'ready_for_persistence');
+  assert.equal(result.event.approvedAt,'2026-10-21T10:00:00.000Z');
+  assert.equal(result.event.policyVersion,'short_notice_v1');
+});
+test('V1 audit: unverified deposit blocks event',()=>{
+  const result=cancellationNoticeAuditEvent({
+    caseId:'synthetic-1',revision:2,approvedBy:'owner-test',
+    approvedAt:'2026-10-21T12:00:00+02:00',
+    context:{ownerApproved:true,bookingConfirmed:true,depositReceived:false,
+      bookingDate:'2026-10-20',arrivalDate:'2026-10-25',
+      cancellationDate:'2026-10-21',depositPct:50}
+  });
+  assert.equal(result.status,'blocked');
+});
+test('V1 audit: long-notice booking blocks short-notice evidence',()=>{
+  const result=cancellationNoticeAuditEvent({
+    caseId:'synthetic-1',revision:2,approvedBy:'owner-test',
+    approvedAt:'2026-10-21T12:00:00+02:00',
+    context:{ownerApproved:true,bookingConfirmed:true,depositReceived:true,
+      bookingDate:'2026-09-20',arrivalDate:'2026-10-25',
+      cancellationDate:'2026-10-21',depositPct:50}
+  });
+  assert.equal(result.status,'blocked');
+});
