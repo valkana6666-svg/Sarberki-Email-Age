@@ -63,6 +63,13 @@ try{
   await page.goto(origin+'/index.html');await page.locator('#operator_login_panel summary').click();
   await page.locator('#operator_login_email').fill('writer@synthetic.invalid');await page.locator('#operator_login_password').fill('SYNTHETIC_NOT_A_REAL_PASSWORD');await page.locator('#operator_login').click();
   await page.locator('#operator_login_status').filter({hasText:'olvasás aktív'}).waitFor();
+  await page.evaluate(()=>dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));
+  assert.equal(await page.evaluate(()=>window.SarberkiCaseStoreSession),null);
+  assert.equal(await page.locator('#operator_list_cases').isDisabled(),true);
+  await page.evaluate(()=>dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));
+  await page.locator('#operator_login_status').filter({hasText:'olvasás aktív'}).waitFor();
+  assert.equal(state.saves,0);
+  report.checks.push({engine,test:'Simulated PWA hide/return clears Writer access and restores without save',result:'PASS'});
   await page.locator('#gmail_cloud_fixture_language').selectOption('de');await page.locator('#gmail_cloud_fixture_load').click();
   await page.locator('#gmail_cloud_fixture_status').filter({hasText:'minta betöltve'}).waitFor();
   assert.equal(state.saves,0,'Loading must never auto-save');
@@ -87,6 +94,17 @@ try{
   await login('approver');
   async function load(){await page.locator('#isolated_approval_load').click();await page.locator('#isolated_approval_status').filter({hasText:'Tervezet betöltve'}).waitFor();assert.equal(await page.locator('#isolated_approval_text').inputValue(),text);}
   await load();assert.equal(await page.locator('#isolated_approval_submit').isDisabled(),true);
+  await page.locator('#isolated_approval_confirm').check();
+  await page.evaluate(()=>dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));
+  assert.equal(await page.locator('#workspace').evaluate(el=>el.disabled),true);
+  assert.equal(await page.locator('#isolated_approval_text').inputValue(),'');
+  assert.equal(await page.locator('#isolated_approval_confirm').isChecked(),false);
+  await page.evaluate(()=>dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));
+  await page.waitForFunction(()=>document.getElementById('workspace').disabled===false);
+  assert.equal(await page.locator('#isolated_approval_submit').isDisabled(),true);
+  assert.equal(state.calls.filter(x=>x.action==='approve').length,0);
+  report.checks.push({engine,test:'Simulated PWA approval return reauthenticates without restoring consent',result:'PASS'});
+  await load();
   await page.locator('#isolated_approval_confirm').check();await page.locator('#isolated_approval_submit').click();
   await page.locator('#isolated_approval_status').filter({hasText:'REVIEW_NOT_READY'}).waitFor();
   assert.equal(state.approved,false);assert.equal(await page.locator('#isolated_approval_submit').isDisabled(),true);

@@ -10,7 +10,7 @@ const selectedCase=new URLSearchParams(location.search).get('caseId');
 if(isIsolatedReviewCaseId(selectedCase))el('isolated_approval_case_id').value=selectedCase;
 if(location.origin===origin){
  const session=createOperatorSession();let authenticated=false,epoch=0;
- const clear=()=>{epoch++;authenticated=false;el('workspace').disabled=true;el('logout').disabled=true;el('password').value='';el('readback_status').textContent='';document.dispatchEvent(new Event('isolated-approval-session-changed'));};
+ const clear=()=>{epoch++;session.clear();authenticated=false;el('workspace').disabled=true;el('logout').disabled=true;el('password').value='';el('readback_status').textContent='';document.dispatchEvent(new Event('isolated-approval-session-changed'));};
  const request=createEpochRequestQueue({getEpoch:()=>epoch,isAuthenticated:()=>authenticated,
   prepare:()=>session.restore(),
   execute:createCloudCaseRequest()
@@ -43,6 +43,17 @@ if(location.origin===origin){
   try{if(!isIsolatedReviewCaseId(id))throw Error('INVALID_INPUT');const result=await request({tenantId:'sarberki-test',caseId:id,action:'approval-state'},'GET');if(turn===epoch)el('readback_status').textContent=JSON.stringify(result,null,2);}
   catch(error){if(turn===epoch)el('readback_status').textContent=formatCloudApprovalFailure(error,'approval-state');}
  });
- const initialEpoch=epoch;session.restore().then(()=>{if(epoch===initialEpoch)restored();}).catch(()=>{if(epoch===initialEpoch)el('auth_status').textContent='Bejelentkezés szükséges.';});
- addEventListener('pagehide',clear);
+ const resume=async()=>{
+  if(document.visibilityState==='hidden')return;
+  const turn=epoch;
+  try{
+   try{await session.restore();}catch(error){if(error.message!=='SESSION_CHANGED'||turn!==epoch)throw error;await session.restore();}
+   if(turn===epoch)restored();
+  }catch{if(turn===epoch)el('auth_status').textContent='Bejelentkezés szükséges.';}
+ };
+ const suspend=()=>{clear();el('auth_status').textContent='A nézet lezárva. Visszatéréskor új ellenőrzés szükséges.';};
+ void resume();
+ addEventListener('pagehide',suspend);
+ addEventListener('pageshow',event=>{if(event.persisted)return resume();});
+ document.addEventListener('visibilitychange',()=>document.visibilityState==='hidden'?suspend():resume());
 }

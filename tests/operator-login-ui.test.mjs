@@ -25,7 +25,7 @@ async function harness(request){
  assert.equal(initOperatorLoginPanel({documentRef,globalRef,request}),true);
  for(let i=0;i<100&&map.get('operator_login').disabled;i++)await Promise.resolve();
  assert.equal(map.get('operator_login').disabled,false,'startup restore must settle');
- return {map,get:id=>map.get(id),globalRef,events,globalListeners,documentListeners};
+ return {map,get:id=>map.get(id),globalRef,events,globalListeners,documentListeners,documentRef};
 }
 test('test booking manager has an operator login form with no stored credentials',()=>{
  for(const id of names)assert.match(ui,new RegExp('id="'+id+'"'));
@@ -335,4 +335,35 @@ test('pending review CSRF wait rechecks source epoch, target selection and sessi
 
 test('source input during pending review response cannot open its late review case',async()=>{
  let release;const h=await closedReviewUi((_input,response)=>new Promise(resolve=>release=()=>resolve(response())));await h.prepare();const pending=h.get('gmail_cloud_tub_review').click();while(!release)await Promise.resolve();h.get('message').dispatchEvent({type:'input'});release();await pending;assert.equal(h.get('server_preview_case_id').value,h.caseId);assert.equal(h.get('service_link_target').value,'');
+});
+
+test('background clears cloud session and queues one fresh restore after a late auth response',async()=>{
+ let calls=0,release;
+ const h=await harness(async()=>{calls++;if(calls===2)return new Promise(r=>release=r);return {ok:true,json:async()=>valid()};});
+ const pending=h.get('operator_restore').click();
+ h.documentRef.visibilityState='hidden';h.documentListeners.visibilitychange();
+ assert.equal(h.globalRef.SarberkiCaseStoreSession,null);assert.equal(h.get('operator_list_cases').disabled,true);
+ h.documentRef.visibilityState='visible';h.documentListeners.visibilitychange();
+ h.globalListeners.pageshow({persisted:true});assert.equal(calls,2,'no overlapping refresh');
+ release({ok:true,json:async()=>valid()});await pending;
+ for(let i=0;i<100&&h.get('operator_login').disabled;i++)await Promise.resolve();
+ assert.equal(calls,3);assert.ok(h.globalRef.SarberkiCaseStoreSession);assert.equal(h.get('operator_list_cases').disabled,false);
+});
+test('late login cannot restore a hidden page and a revoked session stays closed on return',async()=>{
+ let calls=0,release;
+ const h=await harness(async()=>{calls++;if(calls===2)return new Promise(r=>release=r);return {ok:false,json:async()=>({error:'AUTH_REQUIRED'})};});
+ h.get('operator_login_email').value='writer@synthetic.invalid';h.get('operator_login_password').value='SYNTHETIC_PASSWORD';
+ const pending=h.get('operator_login_form').submit();h.globalListeners.pagehide();
+ release({ok:true,json:async()=>valid()});await pending;
+ assert.equal(h.globalRef.SarberkiCaseStoreSession,null);assert.equal(h.get('operator_login_password').value,'');
+ await h.globalListeners.pageshow({persisted:true});assert.equal(calls,3);
+ assert.equal(h.globalRef.SarberkiCaseStoreSession,null);assert.equal(h.get('operator_list_cases').disabled,true);
+});
+test('locally expired session cannot provide a CSRF token or keep cloud access active',async t=>{
+ const metadata=valid(),h=await harness(async()=>({ok:true,json:async()=>metadata}));
+ const session=h.globalRef.SarberkiCaseStoreSession;
+ t.mock.method(Date,'now',()=>Date.parse(metadata.expiresAt)+1);
+ await assert.rejects(session.getCsrfToken(),/AUTH_REQUIRED/);
+ assert.equal(h.globalRef.SarberkiCaseStoreSession,null);assert.equal(h.get('operator_list_cases').disabled,true);
+ assert.match(h.get('operator_login_status').textContent,/lejárt/);
 });

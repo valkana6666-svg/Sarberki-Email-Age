@@ -37,7 +37,8 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
  const mailLanguage=get('gmail_cloud_fixture_language'),mailLoad=get('gmail_cloud_fixture_load'),
   mailSave=get('gmail_cloud_fixture_save'),mailStatus=get('gmail_cloud_fixture_status'),mailApproval=get('gmail_cloud_fixture_approval');
  if(!form||!email||!password||!status||!restore||!logout||!login||!listCases||!caseSelect||!openCase||!caseStatus)return false;
- let active=false,busy=false,listed=[];
+ let active=false,busy=false,listed=[],authEpoch=0,authRequestEpoch=null,resumePending=false;
+ let visible=documentRef.visibilityState!=='hidden';
  const receiptPanel=get('gmail_bridge');let receiptSave=null,receiptStatus=null;
  if(receiptPanel){
   receiptSave=documentRef.createElement('button');receiptSave.id='gmail_exact_receipt_save';receiptSave.type='button';receiptSave.disabled=true;
@@ -66,14 +67,19 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
    !tokenPattern.test(metadata.csrfToken||'')||!Number.isFinite(exp)||exp<=Date.now()||
    exp>Date.now()+8*24*3600*1000)throw Error('INVALID_SESSION');
   const csrfToken=metadata.csrfToken;
-  globalRef.SarberkiCaseStoreSession=Object.freeze({
+  const session=Object.freeze({
    cookieReadOnly:true,canEditDraft:false,
-   getCsrfToken:async()=>csrfToken,request
+   getCsrfToken:async()=>{
+    if(globalRef.SarberkiCaseStoreSession!==session||!visible)throw Error('AUTH_REQUIRED');
+    if(Date.now()>=exp){clear();status.textContent='A tesztkezelői munkamenet lejárt. Új ellenőrzés szükséges.';throw Error('AUTH_REQUIRED');}
+    return csrfToken;
+   },request
   });
+  globalRef.SarberkiCaseStoreSession=session;
   active=true;logout.disabled=false;listCases.disabled=false;resetCases();emit();
   status.textContent='Hitelesített tesztkezelői olvasás aktív. Szintetikus ügyek ellenőrizhetők; szerkesztés, jóváhagyás és küldés nem engedélyezett.';
  };
- const waiting=on=>{busy=on;login.disabled=on;restore.disabled=on;logout.disabled=on||!active;listCases.disabled=on||!active;openCase.disabled=on||listed.length===0;if(createFixture)createFixture.disabled=on||!active;if(mailLoad)mailLoad.disabled=on||!active;if(mailSave)mailSave.disabled=on||!active||!loadedMail;if(mailLanguage)mailLanguage.disabled=on;refreshReceipt();if(tubFollowup)tubFollowup.disabled=on||!active||!savedClosedMail;if(tubReview)tubReview.disabled=on||!active||!savedClosedMail;};
+ const waiting=on=>{busy=on;login.disabled=on;restore.disabled=on;logout.disabled=on||!active;listCases.disabled=on||!active;openCase.disabled=on||listed.length===0;if(createFixture)createFixture.disabled=on||!active;if(mailLoad)mailLoad.disabled=on||!active;if(mailSave)mailSave.disabled=on||!active||!loadedMail;if(mailLanguage)mailLanguage.disabled=on;refreshReceipt();if(tubFollowup)tubFollowup.disabled=on||!active||!savedClosedMail;if(tubReview)tubReview.disabled=on||!active||!savedClosedMail;if(!on&&resumePending&&visible){resumePending=false;void Promise.resolve().then(()=>perform('restore'));}};
  async function call(method,body,csrf,path=endpoint){
   const response=await request(path,{
    method,cache:'no-store',credentials:'same-origin',redirect:'error',
@@ -214,7 +220,8 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
   return 'A kezelői munkamenet nem igazolható. Próbáld újra később.';
  };
  async function perform(kind){
-  if(busy)return;
+  if(busy||!visible)return;
+  const turn=++authEpoch;authRequestEpoch=turn;
   waiting(true);
   if(kind==='restore'){
    clear();
@@ -226,17 +233,23 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
     password.value='';
     if(!value||value.length>254||!secret||secret.length>1024)throw Error('INVALID_INPUT');
     const result=await call('POST',{action:'login',email:value,password:secret});
+    if(turn!==authEpoch||!visible)return;
     enable(result);
    }else if(kind==='restore'){
-    enable(await call('GET'));
+    const result=await call('GET');
+    if(turn!==authEpoch||!visible)return;
+    enable(result);
    }else{
     const csrf=await globalRef.SarberkiCaseStoreSession?.getCsrfToken?.();
+    if(turn!==authEpoch||!visible)return;
     if(!active||!tokenPattern.test(csrf||''))throw Error('AUTH_REQUIRED');
     await call('POST',{action:'logout'},csrf);
+    if(turn!==authEpoch||!visible)return;
     clear();
     status.textContent='A tesztkezelői munkamenet kijelentkeztetve. Nincs küldés vagy foglalás.';
    }
   }catch(e){
+   if(turn!==authEpoch||!visible)return;
    clear();
    status.textContent=kind==='logout'?'A helyi hozzáférés lezárva; a szerveroldali kijelentkezés nem igazolt.':problem(e);
   }finally{password.value='';waiting(false);}
@@ -311,12 +324,21 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
   }catch{ /* Normal or changed Gmail records stay excluded from cloud writes. */ }
  });
  documentRef.addEventListener?.('sarberki:session-changed',()=>{clearMail();invalidateReceipt();});
- globalRef.addEventListener?.('pagehide',()=>{clearMail();invalidateReceipt();});
+ const suspend=()=>{visible=false;authEpoch++;password.value='';clear();status.textContent='A nézet lezárva. Visszatéréskor új munkamenet-ellenőrzés szükséges.';};
+ const resume=()=>{
+  if(documentRef.visibilityState==='hidden')return;
+  visible=true;
+  if(busy){if(authRequestEpoch!==authEpoch)resumePending=true;return;}
+  resumePending=false;
+  return perform('restore');
+ };
+ globalRef.addEventListener?.('pagehide',suspend);
  // A normal load restores once below. Only a bfcache return needs pageshow
  // revalidation; the existing busy gate prevents concurrent cookie rotation.
  globalRef.addEventListener?.('pageshow',event=>{
-  if(event.persisted)return perform('restore');
+  if(event.persisted)return resume();
  });
+ documentRef.addEventListener?.('visibilitychange',()=>documentRef.visibilityState==='hidden'?suspend():resume());
  clear();
  void perform('restore');
  return true;
