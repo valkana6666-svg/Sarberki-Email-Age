@@ -1,5 +1,10 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## iPhone-visszajelzés: Gmail 429 javítás
+
+A készülékkép új Gmail-olvasási hibát jelzett. A párhuzamos teljeslevél-olvasás helyett soros olvasás, 429 esetén biztonságos leállás és magyar hibaüzenet készült, automatikus retry nélkül. Javítás `847289bbb559694b28f9b74e804e74aebb4d0e3f`: [CI 39061037266](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39061037266) **1804/0/0**, pontosan azonos tesztdeploy; kapacitásregresszió SUCCESS. Helyi célzott 14/14 és szintetikus PostgreSQL E2E 6/6.
+[Részletek és korlátok](../reports/gmail-rate-limit-2026-10-17/REPORT.md). A szolgáltatói 429 pontos oka és a javított build tényleges iPhone-Gmail sikere még nem igazolt. A kép nem zárja le a PWA/Reader elfogadást.
+
 ## Végső elfogadási felülvizsgálat
 
 [Összevont döntés, bizonyítékok és nyitott kapuk](../reports/v1-final-acceptance-2026-10-17/REPORT.md).
