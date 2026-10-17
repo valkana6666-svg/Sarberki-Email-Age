@@ -15,11 +15,12 @@ try{
  for(const [engine,launcher] of [['chromium',chromium],['webkit',webkit]]){
   browser=await launcher.launch({headless:true});
   const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block'});
-  const state={role:null,saves:0,revision:1,verified:false,approved:false,calls:[]};
+  const state={role:null,saves:0,revision:1,verified:false,approved:false,offline:false,calls:[]};
   await context.route('**/*',async route=>{
    const req=route.request(),url=new URL(req.url()),method=req.method();
    if(url.origin!==origin){report.blockedExternalRequests++;return route.abort();}
    if(url.pathname.startsWith('/.netlify/functions/')){
+    if(state.offline)return route.abort('internetdisconnected');
     const body=method==='POST'?JSON.parse(req.postData()||'{}'):null,action=body?.action||url.searchParams.get('action')||'list';
     state.calls.push({method,path:url.pathname,action});
     let status=200,result;
@@ -70,6 +71,16 @@ try{
   await page.locator('#operator_login_status').filter({hasText:'olvasás aktív'}).waitFor();
   assert.equal(state.saves,0);
   report.checks.push({engine,test:'Simulated PWA hide/return clears Writer access and restores without save',result:'PASS'});
+  state.offline=true;
+  await page.evaluate(()=>{dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true}));dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));});
+  await page.locator('#operator_login_status').filter({hasText:'munkamenet nem igazolható'}).waitFor();
+  assert.equal(await page.evaluate(()=>window.SarberkiCaseStoreSession),null);
+  assert.equal(await page.locator('#operator_list_cases').isDisabled(),true);
+  state.offline=false;const callsBeforeRetry=state.calls.length;
+  await page.evaluate(()=>new Promise(requestAnimationFrame));assert.equal(state.calls.length,callsBeforeRetry);
+  await page.locator('#operator_restore').click();await page.locator('#operator_login_status').filter({hasText:'olvasás aktív'}).waitFor();
+  assert.equal(state.saves,0);
+  report.checks.push({engine,test:'Disconnected Writer return fails closed and explicit retry never saves',result:'PASS'});
   await page.locator('#gmail_cloud_fixture_language').selectOption('de');await page.locator('#gmail_cloud_fixture_load').click();
   await page.locator('#gmail_cloud_fixture_status').filter({hasText:'minta betöltve'}).waitFor();
   assert.equal(state.saves,0,'Loading must never auto-save');
@@ -115,6 +126,15 @@ try{
   assert.equal(await page.locator('#isolated_approval_submit').isDisabled(),true);assert.equal(state.calls.filter(x=>x.action==='approve').length,before);
   await page.locator('#isolated_approval_case_id').fill(caseId);
   report.checks.push({engine,test:'Changed case invalidates checked approval before POST',result:'PASS'});
+  state.offline=true;const approvalsBeforeOffline=state.calls.filter(x=>x.action==='approve').length;
+  await page.locator('#isolated_approval_load').click();
+  await page.locator('#isolated_approval_status').filter({hasText:'nem tölthető be'}).waitFor();
+  assert.equal(await page.locator('#isolated_approval_text').inputValue(),'');
+  assert.equal(await page.locator('#isolated_approval_submit').isDisabled(),true);
+  state.offline=false;
+  await page.evaluate(()=>new Promise(requestAnimationFrame));assert.equal(state.calls.filter(x=>x.action==='approve').length,approvalsBeforeOffline);
+  await load();assert.equal(await page.locator('#isolated_approval_confirm').isChecked(),false);
+  report.checks.push({engine,test:'Disconnected approval clears review and explicit reload never replays approval',result:'PASS'});
   state.verified=true;await load();await page.locator('#isolated_approval_confirm').check();await page.locator('#isolated_approval_submit').click();
   await page.locator('#isolated_approval_status').filter({hasText:'jóváhagyás mentve'}).waitFor();assert.equal(state.approved,true);assert.equal(state.revision,3);
   await page.locator('#readback').click();await page.locator('#readback_status').filter({hasText:'approve_isolated_synthetic'}).waitFor();
