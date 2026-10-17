@@ -1,5 +1,20 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## Legfrissebb eredmény – a kombinált Gmail-kapu lezárult
+
+2026-10-17 07:23 UTC után friss, egyetlen pontos Gmail-üzenet olvasása →
+normál Writer dedup a meglévő v1-re → azonos ügy szerveres előnézete és
+ellenőrzött audit/hash sikeres. [Részletes bizonyíték és korlátai](../reports/gmail-exact-cloud-chain-2026-10-17/REPORT.md).
+A lentebb szereplő „ténylegesen nyitott Gmail-kapu” és böngészős akadály
+történeti állapot; ez az új eredmény felülírja. Nem új beszúrás, külön új
+Reader-szerepű teszt, ár/kapacitás-igazolás vagy jóváhagyás.
+Kód/CI: 7849d5694b9b800cbe48cdd8cbc55c8c6d0b0015, 1688 PASS / 0 FAIL / 0 SKIP,
+exact deploy PASS. Nem indult új automatikus regresszió.
+Becsült V1-készültség 91%; a további kapuk megmaradtak. Következő célzott
+javítás: explicit felnőttlétszám mellett a helyi figyelmeztetés gyermekstátuszt
+kér, miközben a közös válasz már nem kérdez vissza.
+
+
 Ez az aktuális folytatási leltár. A dátumozott régi jelentések történeti
 pillanatképek; az ott nyitottnak jelölt kapuk közül több később sikeresen lezárult.
 A sikeres bizonyítékokat új hiba/változás nélkül nem kell újrafuttatni.
