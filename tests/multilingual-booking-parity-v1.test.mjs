@@ -348,3 +348,12 @@ test('V1 cancellation audit: untrusted identity characters cannot enter actor or
   assert.equal(cancellationNoticeAuditEvent({...base,approvedBy:'owner@example.invalid'}).status,'blocked');
   assert.equal(cancellationNoticeAuditEvent({...base,caseId:'synthetic 1'}).status,'blocked');
 });
+
+for(const language of languages){
+  test(`V1 language ${language}: deposit deadline never promises automatic cancellation`,()=>{
+    const draft=buildReplyDraft({...request,language,
+      original:'deposit deadline előleg határidő Anzahlung Frist rok predplačila',
+      bookingRules:{depositDueDays:7}});
+    assert.doesNotMatch(draft,/foglalást töröljük|Buchung storniert|booking is cancelled|rezervacija prekliče/iu);
+  });
+}
