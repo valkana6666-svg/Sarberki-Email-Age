@@ -972,3 +972,19 @@ export function cancellationNoticeAuditEvent({caseId,revision,approvedBy,approve
     }
   };
 }
+
+
+/**
+ * Compare a prepared cancellation audit event against an independently read-back
+ * record. This is a pure check, not a database write or proof of persistence.
+ */
+export function verifyCancellationAuditReadback(prepared,stored){
+  if(prepared?.status!=='ready_for_persistence'||!prepared.event||!stored||typeof stored!=='object')
+    return {status:'unverified',reason:'missing_event'};
+  const keys=['eventType','caseId','revision','approvedBy','approvedAt','policyVersion','bookingDate','arrivalDate','cancellationDate','depositPct','depositReceivedVerified','reservationCancelled','emailSent'];
+  for(const key of keys){
+    if(!Object.prototype.hasOwnProperty.call(stored,key)||stored[key]!==prepared.event[key])
+      return {status:'mismatch',field:key};
+  }
+  return {status:'matches',fieldsChecked:keys.length,persistenceIndependentlyVerified:false};
+}
