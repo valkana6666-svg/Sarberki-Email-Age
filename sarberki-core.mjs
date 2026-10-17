@@ -752,7 +752,7 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
         }[lang];
       }
     }
-    return `${greetings[lang]}\\n\\n${received}${approvedCancellationLine?'\\n\\n'+approvedCancellationLine:''}\\n\\n${closings[lang]}\\n${brandName}`;
+    return `${greetings[lang]}\n\n${received}${approvedCancellationLine?'\n\n'+approvedCancellationLine:''}\n\n${closings[lang]}\n${brandName}`;
   }
 
   const mismatch=Number.isInteger(guests)&&Number.isInteger(adults)&&Number.isInteger(children)&&guests!==adults+children;
