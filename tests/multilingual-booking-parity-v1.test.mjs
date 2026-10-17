@@ -295,3 +295,30 @@ for(const language of languages){
     assert.doesNotMatch(draft,/0 (?:nap|Tagen|days|dneh)/u);
   });
 }
+
+test('V1 audit readback: changed approver must not match',()=>{
+  const prepared=cancellationNoticeAuditEvent({
+    caseId:'synthetic-2',revision:4,approvedBy:'owner-test',
+    approvedAt:'2026-10-21T12:00:00+02:00',
+    context:{ownerApproved:true,bookingConfirmed:true,depositReceived:true,
+      bookingDate:'2026-10-20',arrivalDate:'2026-10-25',
+      cancellationDate:'2026-10-21',depositPct:50}
+  });
+  assert.equal(prepared.status,'ready_for_persistence');
+  const result=verifyCancellationAuditReadback(prepared,{...prepared.event,approvedBy:'other-actor'});
+  assert.equal(result.status,'mismatch');
+  assert.equal(result.field,'approvedBy');
+});
+test('V1 audit readback: missing timestamp must not match',()=>{
+  const prepared=cancellationNoticeAuditEvent({
+    caseId:'synthetic-2',revision:4,approvedBy:'owner-test',
+    approvedAt:'2026-10-21T12:00:00+02:00',
+    context:{ownerApproved:true,bookingConfirmed:true,depositReceived:true,
+      bookingDate:'2026-10-20',arrivalDate:'2026-10-25',
+      cancellationDate:'2026-10-21',depositPct:50}
+  });
+  assert.equal(prepared.status,'ready_for_persistence');
+  const stored={...prepared.event};
+  delete stored.approvedAt;
+  assert.equal(verifyCancellationAuditReadback(prepared,stored).status,'mismatch');
+});
