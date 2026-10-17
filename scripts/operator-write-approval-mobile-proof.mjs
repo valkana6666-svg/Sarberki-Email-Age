@@ -104,7 +104,9 @@ try{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   for(const id of ['isolated_approval_load','isolated_approval_submit','readback'])assert.ok(await page.locator('#'+id).evaluate(el=>el.getBoundingClientRect().height)>=44);
   await page.locator('#logout').click();await page.locator('#auth_status').filter({hasText:'Kijelentkezve'}).waitFor();
-  assert.equal(await page.locator('#isolated_approval_text').inputValue(),'');assert.equal(await page.locator('#workspace').isDisabled(),true);
+  assert.equal(await page.locator('#isolated_approval_text').inputValue(),'');
+  assert.equal(await page.locator('#workspace').evaluate(el=>el.disabled),true);
+  assert.equal(await page.locator('#isolated_approval_load').isDisabled(),true);
   report.checks.push({engine,test:'390px approval layout, touch targets and logout clear',result:'PASS'});
   await browser.close();browser=null;
  }
