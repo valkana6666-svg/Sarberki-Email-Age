@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildReplyDraft} from '../sarberki-core.mjs';
+import {buildReplyDraft,depositPolicyForBooking} from '../sarberki-core.mjs';
 import {availabilitySentence,requestedAvailabilitySentence} from '../availability-recommend.mjs';
 
 const languages=['hu','de','en','si'];
@@ -120,3 +120,23 @@ for(const language of languages){
     });
   }
 }
+
+for(const [days,expectedHours] of [[1,24],[3,24],[14,24],[15,168],[30,168]]){
+  test(`V1 deposit policy: ${days} days before arrival requires ${expectedHours} hour receipt window`,()=>{
+    const bookingAt='2026-10-17T09:00:00';
+    const arrivalDate=new Date(Date.UTC(2026,9,17+days)).toISOString().slice(0,10);
+    const result=depositPolicyForBooking({guestCount:4,bookingAt,arrivalDate});
+    assert.equal(result.status,'calculated');
+    assert.equal(result.paymentWindowHours,expectedHours);
+    assert.equal(result.paymentMustBeReceived,true);
+  });
+}
+for(const [guestCount,expectedPct] of [[14,50],[15,50],[16,80]]){
+  test(`V1 deposit policy: ${guestCount} guests require ${expectedPct}%`,()=>{
+    const result=depositPolicyForBooking({guestCount,bookingAt:'2026-10-17T09:00:00',arrivalDate:'2026-11-10'});
+    assert.equal(result.depositPct,expectedPct);
+  });
+}
+test('V1 deposit policy: missing booking timestamp must not invent deadline',()=>{
+  assert.equal(depositPolicyForBooking({guestCount:4,arrivalDate:'2026-11-10'}).status,'unverified');
+});
