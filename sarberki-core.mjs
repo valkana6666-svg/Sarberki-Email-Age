@@ -988,6 +988,10 @@ export function verifyCancellationAuditReadback(prepared,stored){
   if(prepared?.status!=='ready_for_persistence'||!prepared.event||!stored||typeof stored!=='object')
     return {status:'unverified',reason:'missing_event'};
   const keys=['eventType','caseId','revision','approvedBy','approvedAt','policyVersion','bookingDate','arrivalDate','cancellationDate','depositPct','depositReceivedVerified','reservationCancelled','emailSent'];
+  // Reject unexpected fields: a read-back audit record must not silently carry guest PII.
+  for(const key of Object.keys(stored)){
+    if(!keys.includes(key))return {status:'mismatch',field:key};
+  }
   for(const key of keys){
     if(!Object.prototype.hasOwnProperty.call(stored,key)||stored[key]!==prepared.event[key])
       return {status:'mismatch',field:key};
