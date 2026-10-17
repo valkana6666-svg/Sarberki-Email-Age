@@ -357,3 +357,17 @@ for(const language of languages){
     assert.doesNotMatch(draft,/foglalást töröljük|Buchung storniert|booking is cancelled|rezervacija prekliče/iu);
   });
 }
+
+test('V1 audit readback: unexpected guest data makes record invalid',()=>{
+  const prepared=cancellationNoticeAuditEvent({
+    caseId:'synthetic-privacy-2',revision:2,approvedBy:'owner-test',
+    approvedAt:'2026-10-21T12:00:00+02:00',
+    context:{ownerApproved:true,bookingConfirmed:true,depositReceived:true,
+      bookingDate:'2026-10-20',arrivalDate:'2026-10-25',
+      cancellationDate:'2026-10-21',depositPct:50}
+  });
+  assert.equal(prepared.status,'ready_for_persistence');
+  const result=verifyCancellationAuditReadback(prepared,{...prepared.event,guestEmail:'private@example.invalid'});
+  assert.equal(result.status,'mismatch');
+  assert.equal(result.field,'guestEmail');
+});
