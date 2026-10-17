@@ -19,3 +19,13 @@ Célzott helyi tesztek: **54 PASS / 0 FAIL / 0 SKIP** (`operator-login-ui`, `syn
 A mobilpróba új ellenőrzése valódi kezelt DOM-előnézetet tölt be, majd visibility/pagehide nélkül szintetikus FocusEventet küld. Ellenőrzi az angol/magyar preview törlését, a kizárólag session-GET forgalmat és a mentés hiányát Chromium/WebKit alatt. Ez emuláció, nem iOS operációsrendszer-szintű mérés. A commit CI/mobil és pontos deploy eredménye külön rögzítendő.
 
 Nem volt production/main módosítás, valódi vendégadat, Gmail-olvasás, email/Pushover, Previo vagy foglalás. Nincs új mentésigény. V1 becslés marad 93%; a készülékes lifecycle-kapu a javítás után is ellenőrzésre vár. V2/V3: a közös session/epoch határ megmarad, nincs második jogosultsági motor vagy automatikus végrehajtás.
+
+## Végleges CI és mobilbizonyíték
+
+Alkalmazásjavítás: `0080482aeb9dc917a34e69b20a7a8cbc5fae4b65`. A kezdeti mobilrun 39065615772 sikertelen volt: az új teszt nem egyértelmű summary szelektora két elemet talált, még a fókuszpróba előtt. A selector pontosítása két tesztcommitban történt, az alkalmazáskód változtatása nélkül. Ezt nem minősítjük sikeres próbának.
+
+Végleges tesztcommit: **`4ebe84c2a68260510e5b7d3f4fc3ad1fb8d1831a`**. [CI 39065773141](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39065773141), job `117492997666`: **1810 PASS / 0 FAIL / 0 SKIP**, exact deployed SHA megegyezik. Windows offline másolási job és a telepített ellenőrzések sikeresek. Élő Previo nem futott.
+
+[Mobil 39065773119](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39065773119), job `117492997468`: Reader **12 PASS**, Writer/approval/deadline/focus **26 PASS**, összesen **38 PASS / 0 FAIL**. A focus-only visszatérés valódi kezelt DOM-előnézetének törlése Chromium és WebKit alatt külön PASS, kizárólag mock session GET-tel; a régi magyar/angol preview nem állt vissza magától, mentés nem történt. Ez nem tényleges iPhone-hitelesítés.
+
+Az új verzió betöltéséhez a főképernyős kezelőt egyszer teljesen be kell zárni az alkalmazásváltóban, majd az ikonjáról újraindítani. Ezután normál tesztbelépés/ügylista/preview, másik alkalmazás 5–10 másodpercre, visszatérés. E második szakaszban már nem kell bezárni a kezelőt. Elvárt: régi preview üres, session-ellenőrzés után külön újra lekérhető. A tulajdonosi visszajelzésig a korábbi készülékes hibát nyitva tartjuk.

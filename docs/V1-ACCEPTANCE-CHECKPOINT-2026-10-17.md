@@ -1,5 +1,9 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## iPhone PWA háttérből visszatérés – javítás telepítve, eszközpróba nyitott
+
+A tulajdonos a főképernyős PWA-ban megmaradó régi preview-t jelzett; a lifecycle készülékes kapu nem PASS. A fő kezelő blur/focus tartalékvédelmet kapott, meglévő session/epoch érvénytelenítéssel és soros restore GET-tel. Végleges tesztcommit `4ebe84c2a68260510e5b7d3f4fc3ad1fb8d1831a`: [CI 39065773141](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39065773141) **1810/0/0**, azonos deploy; [mobil 39065773119](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39065773119) **38 PASS / 0 FAIL**, focus-only DOM-törlés mindkét engine alatt. A kezdeti új tesztszelektor hibáját a végleges sikeres run felülírja; fizikai iPhone-sikert továbbra nem állítunk. [Részletek és rövid új készülékpróba](../reports/pwa-focus-fallback-2026-10-17/REPORT.md). V1 becslés marad 93%.
+
 ## 22:02 – tényleges iPhone olvasási előnézet PASS
 
 Az IMG_8839–8843 tulajdonosi képek alapján a v4 szintetikus ügy szerveres angol tervezete és magyar ellenőrző szövege betöltött; **Belső előnézet kész**. A korábbi üres előnézet részállapota lezárult. Nem igazolt ár/kapacitás mellett a jóváhagyás tiltott marad. Ez készülékes olvasási részpróba; audit-visszaolvasást, Writer/approver működést, PWA-telepítést vagy háttér/hálózati elfogadást nem bizonyít. [Részletes hatókör](../reports/iphone-owner-evidence-2026-10-17/REPORT.md). Új CI vagy mentés nem szükséges.
