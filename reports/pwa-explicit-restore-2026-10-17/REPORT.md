@@ -19,3 +19,9 @@ A mobilpróba a tényleges restore gomb handlerét hívja szintetikus blur után
 Ha a szerver érvénytelen/lejárt/visszavont belépést talál, a kézi restore nem jogosíthat fel, és a normál védett belépés szükséges. A tulajdonos tényleges eszközén a jelszó nélküli helyreállítást a javítás után külön igazolni kell; ezt nyitva tartjuk. Ha továbbra elutasított, a képernyőn látható konkrét hiba szükséges a cookie/Auth/szolgáltatási ok elkülönítéséhez, titok és token nélkül.
 
 Kizárólag tesztág/tesztkörnyezet. Nincs vendégadat, élő Gmail, email/Pushover, Previo, foglalás, main vagy production módosítás. V1 becslés marad 93%. V2/V3: ugyanaz a session/epoch sorosítás, nincs külön hitelesítési rendszer.
+
+## Végleges ellenőrzés
+
+Commit **8f038b8e217cbe9bf0022215f1c1add1fffb6068**. [CI 39067208971](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39067208971), test job `117497239549`: **1812 PASS / 0 FAIL / 0 SKIP**, exact deployed SHA megegyezik. Windows offline ellenőrzés és [kapacitásrun 39067208936](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39067208936) SUCCESS; élő Previo nem futott. [Mobil 39067209026](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39067209026), job `117497239493`: Reader 12 + Writer/approval/deadline/focus/manual restore 28, **40 PASS / 0 FAIL**. Az explicit helyreállítás focus nélküli, GET-only, jelszó- és replay nélküli próbája Chromium és WebKit alatt PASS. Tényleges iPhone-cookie-helyreállítást ez nem bizonyít.
+
+Következő emberi pont: az új tesztverzió egyszeri betöltése után kizárólag a „Korábbi tesztbelépés ellenőrzése” gomb eredménye. Nem kell új ügyet menteni, Gmailt olvasni vagy a teljes készülékpróbát ismételni. Ha Auth elutasít, a megjelenő hibaüzenet szükséges; jelszó/token nem kérhető chatbe. A tényleges készülékes jelszó nélküli helyreállítás a visszajelzésig nyitott.

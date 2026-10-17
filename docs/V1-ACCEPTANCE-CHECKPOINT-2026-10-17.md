@@ -1,5 +1,11 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## PWA: ismételt jelszókérés után explicit restore javítás
+
+A tulajdonos szerint a rövid alkalmazásváltás után a korábbi tesztbelépés ellenőrzése sem adott jelszó nélküli hozzáférést. Statikusan és új negatív teszttel reprodukált külön klienshiba: blur után, elmaradt focus mellett a restore gomb kérés nélkül visszatért. A gomb most a láthatóságot ellenőrző resume útvonalat használja; nincs Auth-/cookie-/lejárat-lazítás.
+
+Igazolt commit `8f038b8e217cbe9bf0022215f1c1add1fffb6068`: [CI 39067208971](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39067208971) **1812/0/0**, azonos deploy; [mobil 39067209026](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39067209026) **40 PASS / 0 FAIL**, focus nélküli kézi restore mindkét engine alatt PASS. A fizikai iPhone-cookie állapota/jelszókérésének teljes oka és a tényleges helyreállítás még NEM IGAZOLT. [Részletes bizonyíték](../reports/pwa-explicit-restore-2026-10-17/REPORT.md). V1 marad 93%; a teljes készülékteszt ismétlése helyett egyetlen restore-eredmény szükséges.
+
 ## iPhone PWA háttérből visszatérés – javítás telepítve, eszközpróba nyitott
 
 A tulajdonos a főképernyős PWA-ban megmaradó régi preview-t jelzett; a lifecycle készülékes kapu nem PASS. A fő kezelő blur/focus tartalékvédelmet kapott, meglévő session/epoch érvénytelenítéssel és soros restore GET-tel. Végleges tesztcommit `4ebe84c2a68260510e5b7d3f4fc3ad1fb8d1831a`: [CI 39065773141](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39065773141) **1810/0/0**, azonos deploy; [mobil 39065773119](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39065773119) **38 PASS / 0 FAIL**, focus-only DOM-törlés mindkét engine alatt. A kezdeti új tesztszelektor hibáját a végleges sikeres run felülírja; fizikai iPhone-sikert továbbra nem állítunk. [Részletek és rövid új készülékpróba](../reports/pwa-focus-fallback-2026-10-17/REPORT.md). V1 becslés marad 93%.
