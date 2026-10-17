@@ -90,3 +90,22 @@ for(const language of languages){
     });
   }
 }
+
+for(const language of languages){
+  test(`V1 language ${language}: missing dates and contact do not become invented booking details`,()=>{
+    const draft=buildReplyDraft({...request,language,arrival:null,departure:null,phone:null});
+    assert.ok(draft.length>20);
+    assert.doesNotMatch(draft,/05\.11\.2026|07\.11\.2026|5 November 2026|7 November 2026|000-TEST/u);
+    assert.doesNotMatch(draft,/7A|10C|\bpool\b|\bmapping\b/iu);
+  });
+  test(`V1 language ${language}: contradictory guest totals require clarification`,()=>{
+    const draft=buildReplyDraft({...request,language,guests:5,adults:4,children:0});
+    const markers={
+      hu:/összlétszám eltér/iu,
+      de:/Gesamtzahl stimmt nicht/iu,
+      en:/total differs/iu,
+      si:/skupno število se ne ujema/iu
+    };
+    assert.match(draft,markers[language]);
+  });
+}
