@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildReplyDraft,depositPolicyForBooking,depositReceiptDeadline,shortNoticeCancellationAssessment} from '../sarberki-core.mjs';
+import {buildReplyDraft,depositPolicyForBooking,depositReceiptDeadline,shortNoticeCancellationAssessment,cancellationNoticeAuditEvent} from '../sarberki-core.mjs';
 import {availabilitySentence,requestedAvailabilitySentence} from '../availability-recommend.mjs';
 
 const languages=['hu','de','en','si'];
@@ -211,3 +211,20 @@ for(const language of languages){
     assert.match(draft,policyNotice);
   });
 }
+
+test('V1 cancellation audit: approved evidence creates a pending event',()=>{
+  const result=cancellationNoticeAuditEvent({
+    caseId:'synthetic-case-1',revision:3,approvedBy:'owner-test',
+    approvedAt:'2026-10-21T12:00:00+02:00',
+    context:{ownerApproved:true,bookingConfirmed:true,depositReceived:true,
+      bookingDate:'2026-10-20',arrivalDate:'2026-10-25',
+      cancellationDate:'2026-10-21',depositPct:50}
+  });
+  assert.equal(result.status,'ready_for_persistence');
+  assert.equal(result.event.reservationCancelled,false);
+  assert.equal(result.event.emailSent,false);
+});
+test('V1 cancellation audit: missing owner approval blocks event',()=>{
+  const result=cancellationNoticeAuditEvent({caseId:'synthetic-case-1',revision:3});
+  assert.equal(result.status,'blocked');
+});
