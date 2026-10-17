@@ -133,6 +133,19 @@ class RestoreBoundarySafety(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'SNAPSHOT_IDENTITY_FAILED'):
             restore.read_ciphertexts(self.directory, restore.PINNED_HASHES)
 
+    def test_october17_archive_identity_is_immutable_and_distinct(self):
+        values, hashes = restore.restore_input_identity('archived-export-39027707428', self.values)
+        self.assertEqual(values['GITHUB_SHA'], 'a76d3bc5c3657808e022f7874cf78295ff6b1ff4')
+        self.assertEqual(values['GITHUB_RUN_ID'], '39027707428')
+        self.assertEqual(hashes, restore.ARCHIVED_20261017_HASHES)
+        self.assertNotEqual(hashes, restore.ARCHIVED_20261013_HASHES)
+        self.assertEqual(self.values['GITHUB_SHA'], 'a' * 40)
+        with self.assertRaisesRegex(RuntimeError, 'RESTORE_INPUT_INVALID'):
+            restore.restore_input_identity('archived-export-arbitrary', self.values)
+        current, pinned = restore.restore_input_identity('current-export-v1', self.values)
+        self.assertIs(current, self.values)
+        self.assertIsNone(pinned)
+
 
 if __name__ == '__main__':
     unittest.main()

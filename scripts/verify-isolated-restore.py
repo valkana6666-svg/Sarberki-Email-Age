@@ -39,7 +39,25 @@ ARCHIVED_20261013_HASHES = {
     'database.dump.gpg': '94818939c994bb304fab79446d463701d2e49cee18b77b35250734d51b1a304e',
     'manifest.json.gpg': 'ec69c6b7bd173c728fddc3801ffcb548565640178d2844cfe5c5676127366368',
     'roles.sql.gpg': 'eebaf330e816e78c1027ef98b6e3288dc2b6cbe3d141c1ee301d5ae70b37ee35'}
+ARCHIVED_20261017_HASHES = {
+    'database.dump.gpg': '22fb9847e9286b133bb63385fddb814438d16f0e2057e7648bb891fc7f25b2c5',
+    'manifest.json.gpg': '69eef8cd1fbd95f6595c86a4f90e79d6d0112be5053e42e81173f3549a6edf1e',
+    'roles.sql.gpg': '8ed3b6322ff929919e401196989514c98f5cf79ee53a750eefb32fd801719dc3'}
 FRESH_DIRECTORY = Path('/tmp/sarberki-cloud-backup')
+
+
+def restore_input_identity(mode, values):
+    # Only previously verified immutable exports; no caller-selected snapshot.
+    if mode == 'current-export-v1':
+        return values, None
+    archived = {
+        'archived-export-38414863596': ('ad3aad6688416e223a18fe002101521bd5f467ff', '38414863596', ARCHIVED_20261013_HASHES),
+        'archived-export-39027707428': ('a76d3bc5c3657808e022f7874cf78295ff6b1ff4', '39027707428', ARCHIVED_20261017_HASHES),
+    }
+    if mode not in archived:
+        raise RuntimeError('RESTORE_INPUT_INVALID')
+    commit, run_id, hashes = archived[mode]
+    return dict(values, GITHUB_SHA=commit, GITHUB_RUN_ID=run_id), hashes
 
 
 def validate_destination(values):
@@ -105,18 +123,15 @@ def main():
     report['destination_identity_verified'] = True
     fresh_mode = os.environ.get('SARBERKI_RESTORE_INPUT')
     if fresh_mode:
-        if fresh_mode not in {'current-export-v1', 'archived-export-38414863596'} or os.environ.get('SARBERKI_RESTORE_SETUP_ONLY'):
+        if os.environ.get('SARBERKI_RESTORE_SETUP_ONLY'):
             raise RuntimeError('RESTORE_INPUT_INVALID')
-        identity_values = os.environ
-        if fresh_mode == 'archived-export-38414863596':
-            identity_values = dict(os.environ, GITHUB_SHA='ad3aad6688416e223a18fe002101521bd5f467ff',
-                                   GITHUB_RUN_ID='38414863596')
+        identity_values, pinned_hashes = restore_input_identity(fresh_mode, os.environ)
         expected, provenance = fresh_identity(FRESH_DIRECTORY, identity_values)
-        if fresh_mode == 'archived-export-38414863596' and expected != ARCHIVED_20261013_HASHES:
+        if pinned_hashes is not None and expected != pinned_hashes:
             raise RuntimeError('ARCHIVED_SNAPSHOT_IDENTITY_FAILED')
         encrypted = read_ciphertexts(FRESH_DIRECTORY, expected)
         report.update(snapshot_run=int(provenance['run_id']), snapshot_commit=provenance['source_commit'],
-                      source_project=provenance['project'], input_mode='pinned_archived_export' if fresh_mode == 'archived-export-38414863596' else 'verified_current_export',
+                      source_project=provenance['project'], input_mode='pinned_archived_export' if pinned_hashes is not None else 'verified_current_export',
                       verification_run=os.environ.get('GITHUB_RUN_ID'),
                       verification_commit=os.environ.get('GITHUB_SHA'),
                       ciphertexts_sha256=expected)
