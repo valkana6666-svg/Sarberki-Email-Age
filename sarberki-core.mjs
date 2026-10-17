@@ -864,3 +864,23 @@ export function depositPolicyForBooking({guestCount,bookingAt,arrivalDate}={}){
   const paymentWindowHours=daysUntilArrival>14?168:24;
   return {status:'calculated',depositPct,paymentWindowHours,daysUntilArrival,paymentMustBeReceived:true};
 }
+
+
+/**
+ * Exact payment receipt deadline, expressed in UTC.
+ * Requires an offset-aware booking timestamp to avoid silent timezone assumptions.
+ * Uses elapsed 24-hour periods (24h / 168h), not local wall-clock day addition.
+ * Informational only: no payment status, cancellation, or booking confirmation.
+ */
+export function depositReceiptDeadline({guestCount,bookingAt,arrivalDate}={}){
+  if(typeof bookingAt!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-](?:0\d|1[0-4]):[0-5]\d)$/u.test(bookingAt)){
+    return {status:'unverified',reason:'timezone_required'};
+  }
+  const policy=depositPolicyForBooking({guestCount,bookingAt,arrivalDate});
+  if(policy.status!=='calculated')return policy;
+  const parsed=Date.parse(bookingAt);
+  if(!Number.isFinite(parsed))return {status:'unverified',reason:'invalid_booking_timestamp'};
+  const receiptDeadline=new Date(parsed+policy.paymentWindowHours*3600000);
+  if(!Number.isFinite(receiptDeadline.getTime()))return {status:'unverified',reason:'invalid_deadline'};
+  return {...policy,receiptDeadlineUtc:receiptDeadline.toISOString(),receiptDeadlineBasis:'booking_timestamp',receiptConfirmed:false};
+}
