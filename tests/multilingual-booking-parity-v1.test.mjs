@@ -158,3 +158,15 @@ test('V1 deposit receipt: rejects timezone-naive booking timestamps',()=>{
 test('V1 deposit receipt: rejects invalid calendar arrival date',()=>{
   assert.equal(depositReceiptDeadline({guestCount:4,bookingAt:'2026-10-17T10:00:00+02:00',arrivalDate:'2026-02-30'}).status,'unverified');
 });
+
+for(const language of languages){
+  test(`V1 language ${language}: unapproved payment deadline is not added to draft`,()=>{
+    const draft=buildReplyDraft({...request,language,approvedPaymentContext:{operatorApproved:false,bookingConfirmed:true,bookingAt:'2026-10-17T10:00:00+02:00'}});
+    assert.doesNotMatch(draft,/Jóváhagyott fizetési tájékoztatás|Freigegebene Zahlungsinformation|Approved payment information|Odobreno plačilo/u);
+  });
+  test(`V1 language ${language}: approved confirmed booking may display verified deposit deadline`,()=>{
+    const draft=buildReplyDraft({...request,language,approvedPaymentContext:{operatorApproved:true,bookingConfirmed:true,bookingAt:'2026-10-17T10:00:00+02:00'}});
+    assert.match(draft,/50%/u);
+    assert.match(draft,/2026|26/u);
+  });
+}
