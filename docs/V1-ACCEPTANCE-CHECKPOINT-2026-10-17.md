@@ -61,6 +61,31 @@ a Writer- és exact-receipt mentés tiltva maradt. Nem történt új login,
 Gmail-beolvasás, felhős ügyírás, szerepmódosítás vagy jogosultságmegkerülés.
 Ez **aktuális munkamenet-akadály**, nem a korábban igazolt OAuth/Writer kód hibájának bizonyítéka.
 
+### Későbbi mai hitelesítési eredmény – a kezdeti akadály feloldva
+
+A védett bejelentkezési kérés `submitted` eredménye után az alkalmazásban
+pozitív hitelesített kezelői olvasás jelent meg; a Writer-mintagomb elérhetővé
+vált. Ez munkamenet-jelzés, nem új Writer-írási próba. A teszthost kifejezett
+újranyitása után a munkamenet ismét visszaállt, a látható build `50946f9`.
+A kezdeti hiányzó kezelői munkamenet ezért már **nem aktuális akadály**.
+
+A „Legfrissebb érdeklődés beolvasása Gmailből” gomb egyszer elindította a
+Google-olvasási engedélykérést. Az OAuth-ablak felderítését a munkaböngésző
+natív hitelesítés utáni adatvédelme megtagadta (`retained_data_restricted`).
+A támogatott visszatérés az alkalmazás ismert originjére sikerült; a popup
+elérése viszont továbbra sem volt igazolható. Közben egy átmeneti böngésző-
+transporthiba is történt. Nem állítunk Google-hibát, rossz jelszót vagy botblokkolást.
+A korlátozást más eszközzel, tokenkiolvasással vagy jogosultságbővítéssel nem kerültük meg.
+
+A mostani teljes, ugyanazon üzenetes lánc **NEM IGAZOLT**. Nem volt új Gmail-
+levéleredmény, felhős receipt-írás, dedup vagy auditolvasás; a korábbi bizonyítékok
+érvényesek maradnak. A folytatáshoz a meglévő munkaböngészőben kézi Google-
+fiókválasztás/hitelesítés szükséges, kizárólag a kijelölt tesztfiókkal és readonly
+joggal. Új adatcélhely-engedély, allowlist, schema vagy tagsági grant nem kell.
+A hitelesítő adatokat az asszisztens nem látta és nem tárolta.
+
+A változás csak dokumentáció; nem indult új npm/CI/provider teszt.
+
 ## V1 státusz és hátralévő munka
 
 Becsült készültség továbbra is kb. **90%**, mérnöki becslés. A regressziók száma
