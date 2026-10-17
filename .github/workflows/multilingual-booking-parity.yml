@@ -1,0 +1,24 @@
+name: Multilingual booking parity (test branch)
+on:
+  push:
+    branches:
+      - gmail-test-subject-allowlist
+    paths:
+      - 'tests/multilingual-booking-parity-v1.test.mjs'
+      - 'sarberki-core.mjs'
+      - 'availability-recommend.mjs'
+      - '.github/workflows/multilingual-booking-parity.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  multilingual-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run isolated multilingual booking tests
+        run: node --test tests/multilingual-booking-parity-v1.test.mjs
