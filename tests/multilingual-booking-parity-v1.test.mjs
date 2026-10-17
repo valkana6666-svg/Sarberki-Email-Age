@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildReplyDraft} from '../sarberki-core.mjs';
-import {availabilitySentence} from '../availability-recommend.mjs';
+import {availabilitySentence,requestedAvailabilitySentence} from '../availability-recommend.mjs';
 
 const languages=['hu','de','en','si'];
 const request={original:'Synthetic booking inquiry',arrival:'2026-11-05',departure:'2026-11-07',adults:4,guests:4,children:0,phone:'000-TEST',cabin:'Deluxe'};
@@ -41,5 +41,20 @@ for(const language of languages){
     },language);
     assert.ok(unknown.length>10);
     assert.notEqual(unknown,verified,'Unverified and verified capacity must produce distinct replies');
+  });
+}
+
+for(const language of languages){
+  test(`V1 language ${language}: requested Deluxe is not declared sold out without verified evidence`,()=>{
+    const unknown=requestedAvailabilitySentence({unavailable_options:[{key:'deluxe',label:'Deluxe',availability:'unavailable',availability_verified:false}]},'Deluxe',language);
+    const verified=requestedAvailabilitySentence({unavailable_options:[{key:'deluxe',label:'Deluxe',availability:'unavailable',availability_verified:true}]},'Deluxe',language);
+    assert.match(unknown,/Deluxe/u);
+    assert.notEqual(unknown,verified);
+  });
+  test(`V1 language ${language}: verified requested Deluxe is distinguished from unknown`,()=>{
+    const available=requestedAvailabilitySentence({available_options:[{key:'deluxe',label:'Deluxe',availability:'available',availability_verified:true}]},'Deluxe',language);
+    const unknown=requestedAvailabilitySentence({unverified_options:[{key:'deluxe',label:'Deluxe',availability:'unverified',availability_verified:false}]},'Deluxe',language);
+    assert.notEqual(available,unknown);
+    assert.match(available,/Deluxe/u);
   });
 }
