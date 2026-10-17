@@ -39,6 +39,8 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
  if(!form||!email||!password||!status||!restore||!logout||!login||!listCases||!caseSelect||!openCase||!caseStatus)return false;
  let active=false,busy=false,listed=[],authEpoch=0,authRequestEpoch=null,resumePending=false;
  let visible=documentRef.visibilityState!=='hidden';
+ let requestQueue=Promise.resolve();
+ const serialRequest=job=>{const next=requestQueue.then(job,job);requestQueue=next.catch(()=>{});return next;};
  const receiptPanel=get('gmail_bridge');let receiptSave=null,receiptStatus=null;
  if(receiptPanel){
   receiptSave=documentRef.createElement('button');receiptSave.id='gmail_exact_receipt_save';receiptSave.type='button';receiptSave.disabled=true;
@@ -73,7 +75,10 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
     if(globalRef.SarberkiCaseStoreSession!==session||!visible)throw Error('AUTH_REQUIRED');
     if(Date.now()>=exp){clear();status.textContent='A tesztkezelői munkamenet lejárt. Új ellenőrzés szükséges.';throw Error('AUTH_REQUIRED');}
     return csrfToken;
-   },request
+   },request:(url,options)=>serialRequest(()=>{
+    if(!visible||globalRef.SarberkiCaseStoreSession!==session)throw Error('AUTH_REQUIRED');
+    return request(url,options);
+   })
   });
   globalRef.SarberkiCaseStoreSession=session;
   active=true;logout.disabled=false;listCases.disabled=false;resetCases();emit();
@@ -81,11 +86,15 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
  };
  const waiting=on=>{busy=on;login.disabled=on;restore.disabled=on;logout.disabled=on||!active;listCases.disabled=on||!active;openCase.disabled=on||listed.length===0;if(createFixture)createFixture.disabled=on||!active;if(mailLoad)mailLoad.disabled=on||!active;if(mailSave)mailSave.disabled=on||!active||!loadedMail;if(mailLanguage)mailLanguage.disabled=on;refreshReceipt();if(tubFollowup)tubFollowup.disabled=on||!active||!savedClosedMail;if(tubReview)tubReview.disabled=on||!active||!savedClosedMail;if(!on&&resumePending&&visible){resumePending=false;void Promise.resolve().then(()=>perform('restore'));}};
  async function call(method,body,csrf,path=endpoint){
-  const response=await request(path,{
+  const turn=authEpoch;
+  const response=await serialRequest(()=>{
+   if(!visible||turn!==authEpoch)throw Error('AUTH_REQUIRED');
+   return request(path,{
    method,cache:'no-store',credentials:'same-origin',redirect:'error',
    headers:{'X-Sarberki-Operator':'1',...(body?{'Content-Type':'application/json'}:{}),
     ...(csrf?{'X-CSRF-Token':csrf}:{})},
    ...(body?{body:JSON.stringify(body)}:{})
+   });
   });
   const data=await response.json();
   if(!response.ok)throw Error(['AUTH_REQUIRED','FORBIDDEN','SESSION_SETUP_REQUIRED','SESSION_SERVICE_UNAVAILABLE','CASE_STORE_DISABLED','SYNTHETIC_FIXTURE_UNVERIFIED','CASE_CONFLICT','INVALID_INPUT','SERVICE_UNAVAILABLE'].includes(data?.error)?data.error:'SESSION_UNAVAILABLE');

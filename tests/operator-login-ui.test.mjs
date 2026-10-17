@@ -112,6 +112,7 @@ test('bfcache return revalidates and clears stale access without parallel cookie
   return new Promise(resolve=>{release=resolve;});
  });
  const pending=h.globalListeners.pageshow({persisted:true});
+ for(let i=0;i<100&&!release;i++)await Promise.resolve();
  assert.equal(calls,2);
  assert.equal(h.globalRef.SarberkiCaseStoreSession,null);
  assert.equal(h.get('operator_list_cases').disabled,true);
@@ -341,6 +342,7 @@ test('background clears cloud session and queues one fresh restore after a late 
  let calls=0,release;
  const h=await harness(async()=>{calls++;if(calls===2)return new Promise(r=>release=r);return {ok:true,json:async()=>valid()};});
  const pending=h.get('operator_restore').click();
+ for(let i=0;i<100&&!release;i++)await Promise.resolve();
  h.documentRef.visibilityState='hidden';h.documentListeners.visibilitychange();
  assert.equal(h.globalRef.SarberkiCaseStoreSession,null);assert.equal(h.get('operator_list_cases').disabled,true);
  h.documentRef.visibilityState='visible';h.documentListeners.visibilitychange();
@@ -353,7 +355,9 @@ test('late login cannot restore a hidden page and a revoked session stays closed
  let calls=0,release;
  const h=await harness(async()=>{calls++;if(calls===2)return new Promise(r=>release=r);return {ok:false,json:async()=>({error:'AUTH_REQUIRED'})};});
  h.get('operator_login_email').value='writer@synthetic.invalid';h.get('operator_login_password').value='SYNTHETIC_PASSWORD';
- const pending=h.get('operator_login_form').submit();h.globalListeners.pagehide();
+ const pending=h.get('operator_login_form').submit();
+ for(let i=0;i<100&&!release;i++)await Promise.resolve();
+ h.globalListeners.pagehide();
  release({ok:true,json:async()=>valid()});await pending;
  assert.equal(h.globalRef.SarberkiCaseStoreSession,null);assert.equal(h.get('operator_login_password').value,'');
  await h.globalListeners.pageshow({persisted:true});assert.equal(calls,3);
@@ -366,4 +370,17 @@ test('locally expired session cannot provide a CSRF token or keep cloud access a
  await assert.rejects(session.getCsrfToken(),/AUTH_REQUIRED/);
  assert.equal(h.globalRef.SarberkiCaseStoreSession,null);assert.equal(h.get('operator_list_cases').disabled,true);
  assert.match(h.get('operator_login_status').textContent,/lejárt/);
+});
+test('cookie case read and foreground restore share a serial transport and cancel queued stale work',async()=>{
+ let release,active=0,max=0,calls=0;
+ const h=await harness(async()=>{calls++;active++;max=Math.max(max,active);if(calls===2)await new Promise(r=>release=r);active--;return {ok:true,json:async()=>valid()};});
+ const session=h.globalRef.SarberkiCaseStoreSession;
+ const reading=session.request('/.netlify/functions/booking-cases',{method:'GET'});
+ await Promise.resolve();
+ const restoring=h.get('operator_restore').click();
+ h.documentRef.visibilityState='hidden';h.documentListeners.visibilitychange();
+ h.documentRef.visibilityState='visible';h.documentListeners.visibilitychange();
+ assert.equal(calls,2);release();await Promise.all([reading,restoring]);
+ for(let i=0;i<100&&h.get('operator_login').disabled;i++)await Promise.resolve();
+ assert.equal(max,1);assert.equal(calls,3);assert.ok(h.globalRef.SarberkiCaseStoreSession);
 });
