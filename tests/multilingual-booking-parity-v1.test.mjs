@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildReplyDraft,depositPolicyForBooking,depositReceiptDeadline,shortNoticeCancellationAssessment,cancellationNoticeAuditEvent} from '../sarberki-core.mjs';
+import {buildReplyDraft,depositPolicyForBooking,depositReceiptDeadline,shortNoticeCancellationAssessment,cancellationNoticeAuditEvent,verifyCancellationAuditReadback} from '../sarberki-core.mjs';
 import {availabilitySentence,requestedAvailabilitySentence} from '../availability-recommend.mjs';
 
 const languages=['hu','de','en','si'];
@@ -260,4 +260,27 @@ test('V1 audit: long-notice booking blocks short-notice evidence',()=>{
       cancellationDate:'2026-10-21',depositPct:50}
   });
   assert.equal(result.status,'blocked');
+});
+
+test('V1 audit readback: exact fields match without claiming database persistence',()=>{
+  const prepared=cancellationNoticeAuditEvent({
+    caseId:'synthetic-1',revision:2,approvedBy:'owner-test',
+    approvedAt:'2026-10-21T12:00:00+02:00',
+    context:{ownerApproved:true,bookingConfirmed:true,depositReceived:true,
+      bookingDate:'2026-10-20',arrivalDate:'2026-10-25',
+      cancellationDate:'2026-10-21',depositPct:50}
+  });
+  const result=verifyCancellationAuditReadback(prepared,{...prepared.event});
+  assert.equal(result.status,'matches');
+  assert.equal(result.persistenceIndependentlyVerified,false);
+});
+test('V1 audit readback: changed revision is rejected',()=>{
+  const prepared=cancellationNoticeAuditEvent({
+    caseId:'synthetic-1',revision:2,approvedBy:'owner-test',
+    approvedAt:'2026-10-21T12:00:00+02:00',
+    context:{ownerApproved:true,bookingConfirmed:true,depositReceived:true,
+      bookingDate:'2026-10-20',arrivalDate:'2026-10-25',
+      cancellationDate:'2026-10-21',depositPct:50}
+  });
+  assert.equal(verifyCancellationAuditReadback(prepared,{...prepared.event,revision:3}).status,'mismatch');
 });
