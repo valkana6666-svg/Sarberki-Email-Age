@@ -2,7 +2,7 @@ import {buildCentralReply} from './central-reply.mjs';
 import {reconcileIncomingReply} from './shared-core/case-reply-reconcile.mjs';
 import {SARBERKI_TENANT} from './tenant-config.mjs';
 import {stageFacts} from './booking-filter.mjs';
-import {phoneFromText, requestFlagsFromText, activeMessageText, cabinFromText, cabinClarificationRequired} from './sarberki-core.mjs?v=20261007-e2e1';
+import {phoneFromText, requestFlagsFromText, activeMessageText, cabinFromText, cabinClarificationRequired, hasChildMention} from './sarberki-core.mjs?v=20261007-e2e1';
 import {BUSINESS} from './business-config.mjs?v=20261007-e2e1';
 import {fishingQuestion} from './fishing-rules.mjs';
 
@@ -107,7 +107,9 @@ export function deriveCaseView(state, baseReview={warning_codes:[],issues:[]}) {
   if(booking&&!v.arrival){missing.push('Érkezési dátum');add('missing_arrival','Érkezési dátum hiányzik');}
   if(booking&&!v.departure){missing.push('Távozási dátum');add('missing_departure','Távozási dátum hiányzik');}
   if(booking&&!(adults>0)){missing.push('Felnőttek száma');add('missing_adults','Felnőttek száma hiányzik');}
-  if(booking&&children==null){missing.push('Érkezik-e gyermek');add('missing_children','Gyermekek száma nincs megadva');}
+  // Display policy only: never turn an absent child fact into an explicit zero.
+  const adultOnly=Number.isSafeInteger(adults)&&adults>0&&(guests==null||guests===adults)&&!hasChildMention(state.original);
+  if(booking&&children==null&&!adultOnly){missing.push('Érkezik-e gyermek');add('missing_children','Gyermekek száma nincs megadva');}
   if(cabinTypeRequired){missing.push('Háztípus');add('cabin_type_required','A 2 vagy 4 fős igény önmagában nem határozza meg a háztípust; vissza kell kérdezni.');}
   for(const question of state.unresolvedQuestions||[]) if(!['deposit_amount','hot_tub_availability','hot_tub_price'].includes(question.topic)) add(question.topic,question.question||question.message||'Emberi ellenőrzés szükséges');
   if(booking&&!v.phone) {missing.push('Telefonszám');add('missing_phone','Telefon hiányzik');}

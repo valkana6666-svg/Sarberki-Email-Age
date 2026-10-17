@@ -5,6 +5,7 @@ import {
   guestCountFromText,
   adultCountFromText,
   childCountFromText,
+  hasChildMention,
   childAgesFromText,
   dateRangeFromText,
   languageFromText,
@@ -31,7 +32,7 @@ export function normalizeInquiryInput({
   const explicitChildren=childCountFromText(text);
   // Adult-only requests imply zero children unless the message mentions a child
   // whose count is still unresolved. Do not silently discard ambiguous children.
-  const childMention=/\b(?:gyerek\w*|gyermek\w*|baba\w*|child\w*|kid\w*|baby|babies|kind\w*|kinder\w*|baby\w*|otrok\w*|otroci)\b/iu.test(text);
+  const childMention=hasChildMention(text);
   const children=explicitChildren ?? (adults>0&&!childMention?0:null);
   const childAges=childAgesFromText(text);
   const units=requestedUnitsFromText(text);

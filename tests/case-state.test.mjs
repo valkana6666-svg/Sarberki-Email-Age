@@ -9,6 +9,28 @@ const values={name:'Teszt Elek',arrival:'2026-10-16',departure:'2026-10-18',nigh
 const make=()=>createCaseState({original,values,now:'2026-10-05T18:13:41Z'});
 const quote={total:122200,accommodation:120000,tourismTax:2200,eurTotal:332.31,eurRate:367.73,eurRateDate:'2026-10-05'};
 const approve=state=>updateCaseState(state,{type:'quote',quote,fingerprint:caseFingerprint(state.values)});
+test('adult-only missing-list policy agrees with the draft without inventing an explicit child count',()=>{
+ for(const [language,text] of [['HU','8 felnőtt'],['DE','8 Erwachsene'],['EN','8 adults'],['SL','8 odraslih']]){
+  const state=createCaseState({original:text+'. 2026-11-13 to 2026-11-15. Deluxe.',values:{arrival:'2026-11-13',departure:'2026-11-15',guests:'8',adults:'8',children:'',unit:'Deluxe',language},now:'2026-10-17T07:00:00Z'});
+  const before=JSON.stringify(state),view=deriveCaseView(state);
+  assert.equal(view.warnings.some(x=>x.code==='missing_children'),false,language);
+  assert.equal(view.missing.includes('Érkezik-e gyermek'),false,language);
+  assert.ok(view.warnings.some(x=>x.code==='availability_unverified'));
+  assert.equal(view.critical,true);assert.equal(JSON.stringify(state),before);
+ }
+});
+test('unknown child mentions, unknown adults and a larger total still need child-status clarification',()=>{
+ for(const [text,adults,guests] of [['8 felnőtt és gyermekek','8','8'],['8 adults and children','8','8'],['8 Erwachsene und Kinder','8','8'],['8 odraslih in otroci','8','8'],['8 guests','','8'],['8 adults','8','9']]){
+  const state=createCaseState({original:text,values:{arrival:'2026-11-13',departure:'2026-11-15',adults,guests,children:''},now:'2026-10-17T07:00:00Z'});
+  assert.ok(deriveCaseView(state).warnings.some(x=>x.code==='missing_children'),text);
+ }
+});
+test('quoted children do not create a current child-status request, but explicit children still need ages',()=>{
+ const state=createCaseState({original:'8 adults.\nOn 12 Oct 2026, Synthetic wrote:\n> 2 children',values:{arrival:'2026-11-13',departure:'2026-11-15',adults:'8',guests:'8',children:''},now:'2026-10-17T07:00:00Z'});
+ assert.equal(deriveCaseView(state).warnings.some(x=>x.code==='missing_children'),false);
+ const mixed=createCaseState({original:'2 adults and 2 children',values:{arrival:'2026-11-13',departure:'2026-11-15',adults:'2',guests:'4',children:'2',child_ages:''},now:state.now});
+ assert.ok(deriveCaseView(mixed).warnings.some(x=>x.code==='missing_child_ages'));
+});
 test('video Teszt Elek: approved price, missing phone, one car, close arrival and clear hot-tub scope agree',()=>{
  const state=approve(make()), view=deriveCaseView(state);
  assert.match(view.draft,/122\s*200 Ft/u);assert.match(view.draft,/332,31 €/u);

@@ -126,10 +126,13 @@ export function guestCountFromText(text=''){
 // Gmail party projection uses the shared parsers without claiming an explicit
 // zero-child statement. A clear adult-only inquiry supplies its total; unresolved
 // child mentions remain unknown. Explicit totals survive contradiction checks.
+export function hasChildMention(text=''){
+  return /\b(?:gyerek\w*|gyermek\w*|baba\w*|child\w*|kid\w*|baby|babies|kind\w*|kinder\w*|baby\w*|otrok\w*|otroci)\b/iu.test(activeMessageText(text));
+}
 export function partyCountsFromText(text=''){
   text=activeMessageText(text);
   const adults=adultCountFromText(text),explicitChildren=childCountFromText(text);
-  const childMention=/\b(?:gyerek\w*|gyermek\w*|baba\w*|child\w*|kid\w*|baby|babies|kind\w*|kinder\w*|baby\w*|otrok\w*|otroci)\b/iu.test(text);
+  const childMention=hasChildMention(text);
   const children=explicitChildren;
   const guests=guestCountFromText(text) ?? (adults>0&&!childMention?adults:null);
   return {guests,adults,children};

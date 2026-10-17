@@ -488,7 +488,8 @@ test('booking subquestions return only the relevant known policy details',()=>{
   };
   const deadlineOnly=buildReplyDraft({...base,original:'Mennyi időn belül kell befizetni az előleget?'});
   assert.match(deadlineOnly,/10 napon belül/u);
-  assert.match(deadlineOnly,/foglalást töröljük/u);
+  assert.doesNotMatch(deadlineOnly,/foglalást töröljük/u);
+  assert.match(deadlineOnly,/munkatársunk tájékoztat/u);
   assert.doesNotMatch(deadlineOnly,/A foglaláshoz 50% előleg szükséges/u);
   assert.doesNotMatch(deadlineOnly,/lemondási határidő/u);
 
@@ -552,7 +553,7 @@ test('booking policy answers stay equivalent in DE EN SI',()=>{
   }
 });
 
-test('15+ guest cancellation threshold is localized consistently',()=>{
+test('14, 15 and 16 guest cancellation boundaries are localized consistently',()=>{
   const rules={
     depositPct:80,
     depositDueDays:10,
@@ -566,12 +567,14 @@ test('15+ guest cancellation threshold is localized consistently',()=>{
       en:'What are the booking conditions and cancellation terms?',
       si:'Kakšni so rezervacijski pogoji in pogoji odpovedi?'
     }[language];
-    const draft=buildReplyDraft({
-      language,original,arrival:'2026-11-12',departure:'2026-11-16',
-      guests:15,children:0,childAges:[],phone:'+36 30 555 1234',
-      cabin:'Deluxe',intent:'booking_request',bookingRules:rules
-    });
-    assert.match(draft,/30 (?:nap|Tage|days|dni)/u,language);
+    for(const [guests,days] of [[14,14],[15,14],[16,30]]){
+      const draft=buildReplyDraft({
+        language,original,arrival:'2026-11-12',departure:'2026-11-16',
+        guests,children:0,childAges:[],phone:'+36 30 555 1234',
+        cabin:'Deluxe',intent:'booking_request',bookingRules:rules
+      });
+      assert.match(draft,new RegExp(days+' (?:nap|Tage|days|dni)','u'),language+'/'+guests);
+    }
   }
 });
 
@@ -605,14 +608,16 @@ test('dense operational questions are answered from verified config',()=>{
   assert.match(draft,/not applied automatically/u);
 });
 
-test('deposit percentage changes at 15 guests and unknown group size stays explicit',()=>{
+test('deposit percentage changes above 15 guests and unknown group size stays explicit',()=>{
   const rules={depositPctUnder15Guests:50,depositPctFrom15Guests:80,depositDueDays:10,cancellationDaysUnder15Guests:14,cancellationDaysFrom15Guests:30};
   const under=buildReplyDraft({language:'hu',original:'Mekkora előleg kell?',guests:14,phone:'x',cabin:'Deluxe',bookingRules:rules});
-  const over=buildReplyDraft({language:'hu',original:'Mekkora előleg kell?',guests:15,phone:'x',cabin:'Deluxe',bookingRules:rules});
+  const boundary=buildReplyDraft({language:'hu',original:'Mekkora előleg kell?',guests:15,phone:'x',cabin:'Deluxe',bookingRules:rules});
+  const over=buildReplyDraft({language:'hu',original:'Mekkora előleg kell?',guests:16,phone:'x',cabin:'Deluxe',bookingRules:rules});
   const unknown=buildReplyDraft({language:'hu',original:'Mekkora előleg kell?',guests:null,phone:'x',cabin:'Deluxe',bookingRules:rules});
   assert.match(under,/50%/u);
+  assert.match(boundary,/50%/u);
   assert.match(over,/80%/u);
-  assert.match(unknown,/15 fő alatt 50%.*15 főtől 80%/su);
+  assert.match(unknown,/legfeljebb 15 főnél 50%.*15 fő felett 80%/su);
 });
 
 

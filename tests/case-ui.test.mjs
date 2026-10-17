@@ -122,6 +122,22 @@ function gmailFixture(id,text,{thread='gmail-thread',received='2026-10-08T19:40:
  return {source:{provider:'gmail',message_id:id,thread_id:thread,rfc_message_id:`<${id}@example.invalid>`,in_reply_to:reply,references:refs,from_email:'gmail-flow@example.invalid',received_at:received,subject:'Szállás érdeklődés'},original_message:text,extracted:[],inferred:[],missing:[],human_review:[],reply_draft:'IMPORTÁLT, NEM ELLENŐRZÖTT POZITÍV VÁLASZ',normalized:{}};
 }
 async function importGmail(h,data){h.node('gmail_json').value=JSON.stringify(data);return await h.node('load_gmail_record').onclick();}
+test('Gmail adult-only missing list agrees with the reply and edits restore genuine child omissions',async()=>{
+ const h=harness(createBookingRuntime({request:()=>{throw Error('network unused');}}));
+ assert.equal(await importGmail(h,gmailFixture('adult-only-list','8 adults. Deluxe. 2026-11-13 to 2026-11-15.')),true);
+ const missing=()=>h.node('gmail_missing').children.map(n=>n.textContent).join(' ');
+ assert.doesNotMatch(missing(),/Érkezik-e gyermek/u);
+ assert.doesNotMatch(h.node('issues').textContent,/Gyermekek száma nincs megadva/u);
+ assert.doesNotMatch(h.node('draft').value,/Will any children/iu);
+ assert.equal(h.window.SarberkiCaseController.snapshot().values.children,'');
+ assert.equal(h.node('approve').disabled,true);
+ h.window.SarberkiCaseController.facts({children:'2',guests:'10'});
+ assert.match(missing(),/Gyermekek pontos életkora/u);
+ h.window.SarberkiCaseController.facts({child_ages:'7, 11'});
+ assert.doesNotMatch(missing(),/Gyermekek pontos életkora/u);
+ h.window.SarberkiCaseController.facts({children:'',guests:'10'});
+ assert.match(missing(),/Érkezik-e gyermek/u);
+});
 test('Gmail accommodation availability with a tub retains missing details and capacity approval guard',async()=>{
  const runtime=createBookingRuntime({request:()=>{throw Error('network unused');}}),h=harness(runtime);
  const text='Érdeklődni szeretnék, hogy 2026. november 13-tól 15-ig lenne-e szabad faházuk. Két felnőtt és két gyermek érkezne. Szeretnénk horgászni, és a dézsafürdő is érdekelne bennünket. Mennyibe kerülne a két éjszaka?';
