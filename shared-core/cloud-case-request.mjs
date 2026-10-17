@@ -1,6 +1,8 @@
 // Match the established cookie case client on GET as well as POST. Explicit JSON
 // Content-Type avoids an empty GET being represented as a binary/base64 event.
+import {createCookieJsonRequest} from './cookie-json-request.mjs';
 export function createCloudCaseRequest({request=fetch}={}){
+ request=createCookieJsonRequest({request});
  return async(metadata,input,method='POST')=>{
   const response=await request('/.netlify/functions/booking-cases'+(method==='GET'?'?'+new URLSearchParams(input):''),{
    method,credentials:'same-origin',cache:'no-store',redirect:'error',

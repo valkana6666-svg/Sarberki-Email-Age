@@ -1,6 +1,7 @@
 // Explicit, read-only operator login for the synthetic Sárberki test case store.
 // The password travels only to the Auth server; access/refresh tokens never enter the browser.
 import {createCaseStoreClient} from './shared-core/case-store-client.mjs';
+import {createCookieJsonRequest} from './shared-core/cookie-json-request.mjs';
 import {isIsolatedReviewCaseId} from './shared-core/isolated-review-case-id.mjs';
 import {syntheticMailMime,closedMailRequestFromGmailRecord,isClosedSyntheticMailUiRecord,syntheticTubFollowupEnvelope,syntheticTubFollowupMime,isClosedTubFollowup,isClosedTubPreviousRecord,syntheticTubReviewEnvelope,syntheticTubReviewMime,isClosedTubReview,isClosedTubReviewRecord} from './shared-core/synthetic-mail-fixtures.mjs';
 import {formatCloudApprovalFailure} from './shared-core/cloud-approval-errors.mjs';
@@ -25,6 +26,7 @@ export function gmailReceiptRequestFromRecord(record,currentMessage){
    rfc_message_id:source.rfc_message_id,references:[],received_at:source.received_at}};
 }
 export function initOperatorLoginPanel({documentRef=document,globalRef=window,request=fetch}={}){
+ request=createCookieJsonRequest({request});
  const get=id=>documentRef.getElementById(id);
  globalRef.SarberkiClosedSyntheticMailPreview=message=>{
   try{const current=get('message')?.value||'';return (!message||message===current)&&isClosedSyntheticMailUiRecord(JSON.parse(get('gmail_json')?.value||'null'),current);}catch{return false;}

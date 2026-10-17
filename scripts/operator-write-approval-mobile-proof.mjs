@@ -61,6 +61,16 @@ try{
    try{return route.fulfill({status:200,contentType:/\.m?js$/.test(path)?'text/javascript':path.endsWith('.html')?'text/html':path.endsWith('.css')?'text/css':path.endsWith('.webmanifest')?'application/manifest+json':path.endsWith('.svg')?'image/svg+xml':'image/png',body:readFileSync(path)});}catch{return route.fulfill({status:404,body:''});}
   });
   const page=await context.newPage();page.setDefaultTimeout(15000);
+  await page.goto(origin+'/cloud-approval.html');
+  const deadline=await page.evaluate(async()=>{
+   const {createCookieJsonRequest}=await import('./shared-core/cookie-json-request.mjs');
+   let calls=0,signal;
+   const send=createCookieJsonRequest({timeoutMs:25,request:async(_url,options)=>{calls++;signal=options.signal;return {ok:true,status:200,json:()=>new Promise(()=>{})};}});
+   try{await send('/synthetic-never-sent',{method:'POST'});return {unexpectedSuccess:true};}
+   catch(error){return {code:error.message,calls,aborted:signal.aborted};}
+  });
+  assert.deepEqual(deadline,{code:'SERVICE_UNAVAILABLE',calls:1,aborted:true});
+  report.checks.push({engine,test:'Browser JSON body deadline aborts once and never replays a write',result:'PASS'});
   await page.goto(origin+'/index.html');await page.locator('#operator_login_panel summary').click();
   await page.locator('#operator_login_email').fill('writer@synthetic.invalid');await page.locator('#operator_login_password').fill('SYNTHETIC_NOT_A_REAL_PASSWORD');await page.locator('#operator_login').click();
   await page.locator('#operator_login_status').filter({hasText:'olvasás aktív'}).waitFor();

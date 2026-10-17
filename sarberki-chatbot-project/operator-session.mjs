@@ -1,9 +1,11 @@
 import {createCaseStoreClient} from '../shared-core/case-store-client.mjs';
+import {createCookieJsonRequest} from '../shared-core/cookie-json-request.mjs';
 import {isIsolatedReviewCaseId} from '../shared-core/isolated-review-case-id.mjs';
 import {assertCurrentEvidence} from '../shared-core/availability-model.mjs';
 import {renderCentralConversation} from '../shared-core/inquiry-channel-adapters.mjs';
 const tenant='sarberki-test',endpoint='/.netlify/functions/operator-session';
 export function createOperatorSession({request=fetch,now=()=>Date.now()}={}){
+ request=createCookieJsonRequest({request});
  let metadata=null,revocationCsrf=null,epoch=0,queue=Promise.resolve(),restorePending=null;
  const enqueue=job=>{const next=queue.then(job,job);queue=next.catch(()=>{});return next;};
  const invalidate=()=>{epoch++;metadata=null;};
