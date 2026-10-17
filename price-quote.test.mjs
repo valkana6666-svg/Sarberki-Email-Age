@@ -3,6 +3,15 @@ import assert from 'node:assert/strict';
 import {validateQuote,parseHuf,fetchQuote} from './price-quote.mjs';
 import netlifyQuote,{handlePriceQuote} from './netlify/functions/price-quote.mjs';
 
+test('UTC day rollover rejects yesterday without weakening anonymous quote validation',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-10-16T23:59:59Z')});
+ const request={arrival:'2026-10-16',departure:'2026-10-18',cabin:'deluxe',adults:2,children:[]};
+ assert.equal(validateQuote(request).arrival,request.arrival);
+ t.mock.timers.setTime(Date.parse('2026-10-17T00:00:00Z'));
+ assert.throws(()=>validateQuote(request),/jövőbeli tartózkodást/u);
+ assert.equal(validateQuote({...request,arrival:'2026-10-17'}).arrival,'2026-10-17');
+});
+
 test('only exact future dates and explicit room and adult count are accepted', () => {
   assert.deepEqual(validateQuote({arrival:'2027-10-01',departure:'2027-10-02',cabin:'deluxe',adults:5}),{arrival:'2027-10-01',departure:'2027-10-02',cabin:'deluxe',adults:5,children:[]});
   for (const bad of [

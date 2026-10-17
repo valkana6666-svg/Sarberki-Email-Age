@@ -1,6 +1,10 @@
 import {syntheticMailEnvelope,isClosedSyntheticMailUiRecord} from './shared-core/synthetic-mail-fixtures.mjs';
-import test from 'node:test';
+import test,{before,after,mock} from 'node:test';
 import assert from 'node:assert/strict';
+// Historical fixtures use a fixed test clock; production date validation stays real.
+before(()=>mock.timers.enable({apis:['Date'],now:new Date('2026-10-05T15:40:00Z')}));
+after(()=>mock.timers.reset());
+
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {validateQuote} from './price-quote.mjs';

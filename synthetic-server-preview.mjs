@@ -27,7 +27,7 @@ export function syntheticPreviewState(result){
   if(!service.startDate)missing.push('a dézsa kért dátuma');
   if(!service.startTime)missing.push('a dézsa kezdési időpontja');
   if(!Number.isInteger(service.durationHours)||service.durationHours<=0)missing.push('a dézsabérlés időtartama');
-  details=service.requested===false?'A dézsaigény visszavonása emberi ellenőrzést igényel.':
+  details=service.verificationStatus==='intent_unverified'?'A dézsaigényre vonatkozó szándék nem egyértelmű; a megtartás vagy visszavonás emberi tisztázást igényel.':service.requested===false?'A dézsaigény visszavonása emberi ellenőrzést igényel.':
    missing.length?'Pontosítandó: '+missing.join(', ')+'.':'A dézsaigény dátuma, kezdése és időtartama rögzítve.';
   details+=' '+(link?.status==='resolved'?'Az ügykapcsolás emberileg rendezett.':'A kapcsolódó foglalási ügy külön ellenőrzendő.');
   details+=' A dézsa elérhetősége külön ellenőrzést és emberi jóváhagyást igényel; ez nem visszaigazolás.';
@@ -36,11 +36,11 @@ export function syntheticPreviewState(result){
 
  const reasons={untrusted_case_claim:'A levélben állított ügyazonosító nem hiteles.',conflicting_service_booking_references:'Több eltérő foglalási hivatkozás érkezett.',conflicting_service_identity:'Több lehetséges foglalási ügy található.',service_link_unverified:'Nem igazolt, melyik foglaláshoz tartozik az igény.',service_thread_conflict:'A levélszál eltér a lehetséges foglalásétól.',service_booking_reference_conflict:'A foglalási hivatkozás eltér a hiteles ügyadatoktól.',human_association_required:'Emberi ügyazonosítás szükséges.'};
  const linkStatus=review?'Kapcsolat ellenőrzésének oka: '+(reasons[review.reason]||reasons.human_association_required)+'. '+(link?.status==='resolved'?'Emberileg rendezve: '+link.targetCaseId+' · célverzió '+link.targetRevision+' · indok: '+link.reason+' · kezelő: '+link.actor:link?.status==='stale'?'A rendezési döntés elavult; új emberi ellenőrzés szükséges.':'Még nincs hiteles emberi rendezési döntés.'):'Nincs külön ügykapcsolási felülvizsgálat.';
- const serviceFields={service_requested:service?.requested===true?'Igen – dézsaigény érkezett.':service?.requested===false?'Az igény visszavonását ellenőrizni kell.':'Nincs felismert dézsaigény.',
+ const serviceFields={service_requested:service?.verificationStatus==='intent_unverified'?'A dézsaigény szándéka nem egyértelmű – emberi tisztázás szükséges.':service?.requested===true?'Igen – dézsaigény érkezett.':service?.requested===false?'Az igény visszavonását ellenőrizni kell.':'Nincs felismert dézsaigény.',
   service_date:service?.startDate||'Nincs megadva – pontosítandó.',service_time:service?.startTime||'Nincs megadva – pontosítandó.',
   service_duration:Number.isInteger(service?.durationHours)&&service.durationHours>0?service.durationHours+' óra':'Nincs megadva – pontosítandó.',
   service_case:service?.linkedCaseId||'Nem igazolt – emberi ügyazonosítás szükséges.',
-  service_verification:service?.verificationStatus==='not_available'?'A szállásegységhez nincs dézsa. Nincs visszaigazolás.':service?.verificationStatus==='cancelled_unverified'?'Visszavonás – emberi ellenőrzés szükséges.':'Elérhetőség NEM IGAZOLT – nincs visszaigazolás.',
+  service_verification:service?.verificationStatus==='intent_unverified'?'Szándék NEM IGAZOLT – nincs visszaigazolás.':service?.verificationStatus==='not_available'?'A szállásegységhez nincs dézsa. Nincs visszaigazolás.':service?.verificationStatus==='cancelled_unverified'?'Visszavonás – emberi ellenőrzés szükséges.':'Elérhetőség NEM IGAZOLT – nincs visszaigazolás.',
   service_human:service?'Igen – külön emberi jóváhagyás szükséges.':'Nem alkalmazható – nincs aktuális dézsaigény.'};
  return {details,capacity,price,...serviceFields,service_link:linkStatus,revision:valid?'Ügyverzió: '+s.caseRevision+' · tényverzió: '+s.factsRevision+' · '+(current?'Tárolt tervezet verziója egyezik; külön kezelői ellenőrzés szükséges.':'Nincs aktuális, az üzenetekhez kötött tárolt tervezet. Új ellenőrzés szükséges.'):'Tárolt tervezet verziója: NEM IGAZOLT.',approval:'Az előnézet függőben van; itt nincs jóváhagyás.',audit};
 }

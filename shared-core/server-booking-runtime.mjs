@@ -8,6 +8,11 @@ import { randomUUID,createHash } from 'node:crypto';
 import { extractServerMessage } from './server-message-extraction.mjs';
 import { prepareSyntheticBookingReview } from './server-synthetic-booking-review.mjs';
 const reject=code=>{throw new CaseServiceError(code,code);};
+function serviceScopedDraft(text,language,request,projection){
+ if(request.kind!=='tub_request'||!request.serviceOnly&&!request.actionConflict)return text;
+ const clarification=tubServiceDraft(language,Boolean(projection?.linkedCaseId),projection?.verificationStatus==='not_available',request.cancelled,request.actionConflict);
+ return request.serviceOnly?clarification:[text,clarification].join('\n\n');
+}
 const allowed=['sender','text','message_id','mailbox_id','thread_id','rfc_message_id','in_reply_to','references','received_at','case_id'];
 const fields=['arrival','departure','guests','adults','children','child_ages','unit','units_requested','request','split_request_text','language','name','phone','cars','nights','pier','dog'];
 function validateMessage(envelope,values,exactSender=false) {
@@ -96,8 +101,7 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
     if(serviceRequest)serviceRequest.linkedCaseId=serviceLink?.status==='resolved'?serviceLink.targetCaseId:null;
    }
    const serviceOnly=request.kind==='tub_request'&&request.serviceOnly===true;
-   const serviceText=language=>tubServiceDraft(language,Boolean(serviceRequest?.linkedCaseId),serviceRequest?.verificationStatus==='not_available',request.cancelled);
-   return {caseId,revision:current.revision,text:serviceOnly?serviceText(planned.decision.facts.language):planned.text,operatorReviewText:serviceOnly?serviceText('hu'):planned.operatorReviewText,decision:planned.decision,reviewState,readOnlyFreshness,storedDraft,approval:'pending',persisted:false,serviceOnly,serviceRequest,serviceLink,serviceLinkReview:current.data.caseKind==='service_link_review'?{reason:current.data.linkReview?.evidence||'human_association_required'}:null,canResolveServiceLink};
+   return {caseId,revision:current.revision,text:serviceScopedDraft(planned.text,planned.decision.facts.language,request,serviceRequest),operatorReviewText:serviceScopedDraft(planned.operatorReviewText,'hu',request,serviceRequest),decision:planned.decision,reviewState,readOnlyFreshness,storedDraft,approval:'pending',persisted:false,serviceOnly,serviceRequest,serviceLink,serviceLinkReview:current.data.caseKind==='service_link_review'?{reason:current.data.linkReview?.evidence||'human_association_required'}:null,canResolveServiceLink};
   },
   async editDraft(caseId,expectedRevision,editedText){
    // Synthetic-only, operator-authenticated edit; append a pending version, never authorize a guest send.
@@ -173,10 +177,10 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
     const at=clock();
     const plan=buildEmailInquiryDraft(serverInquiryOptions({tenantId,caseId:data.id,data},new Date(at)));
     const request=tubServiceMessage(data.state.original);
-    if(request.kind==='tub_request'&&request.serviceOnly){
+    if(request.kind==='tub_request'){
      const projection=tubServiceProjection(data);
-     plan.text=tubServiceDraft(plan.decision.facts.language,Boolean(projection?.linkedCaseId),projection?.verificationStatus==='not_available',request.cancelled);
-     plan.operatorReviewText=tubServiceDraft('hu',Boolean(projection?.linkedCaseId),projection?.verificationStatus==='not_available',request.cancelled);
+     plan.text=serviceScopedDraft(plan.text,plan.decision.facts.language,request,projection);
+     plan.operatorReviewText=serviceScopedDraft(plan.operatorReviewText,'hu',request,projection);
     }
     if(typeof plan.text!=='string'||!plan.text.trim())reject('INVALID_DRAFT');
     data.drafts.push({text:plan.text,operatorReviewText:plan.operatorReviewText,at,

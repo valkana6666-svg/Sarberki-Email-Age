@@ -20,6 +20,10 @@ function requestsAccommodation(source){
 }
 export function tubServiceMessage(text=''){
  const source=currentText(text);
+ // A request not to withdraw must never be turned into a withdrawal. Resolve
+ // its effect on an existing service explicitly, rather than silently reviving it.
+ const negatedWithdrawal=/(?:(?:do\s+not|don['’]t|not\s+to|never)\s+cancel(?!\p{L})|(?:ne|nem)\s+(?:szeretn\p{L}*\s+)?(?:lemond\p{L}*|mond\p{L}*\s+le|töröl\p{L}*)|nicht\s+stornier\p{L}*|stornier\p{L}*[^.!?\n]{0,60}\bnicht\b|ne\s+prekli[cč]\p{L}*)/iu.test(source);
+ if(tub.test(source)&&negatedWithdrawal)return {kind:'tub_request',serviceOnly:!requestsAccommodation(source),cancelled:false,actionConflict:true,startDate:null,startTime:null,durationHours:null,requestedBookingReference:tubBookingReference(source),confirmationAllowed:false,requiresHumanReview:true};
  // Withdrawal intent wins over a bare tub mention, including imperative EN/DE/SI.
  if(tub.test(source)&&/(?:nem\s+kér|mégsem|megsem|nincs\s+szükség|cancel(?:led|ing)?(?!\p{L})|stornier(?:en|e|t)(?!\p{L})|preklic(?:ati|ujem|ujemo)?(?!\p{L})|lemond(?:om|juk|anám|anánk|ani)?(?!\p{L})|no\s+longer|do\s+not\s+want|don't\s+want|kein\p{L}*\s+(?:badefass|badezuber)|ne\s+žel|ne\s+potreb)/iu.test(source))
   return {kind:'tub_request',serviceOnly:!requestsAccommodation(source),cancelled:true,actionConflict:/(?:but|and|de|és|aber|und|ampak|in)\s+.{0,30}(?:add|request|kérek|kérünk|möcht|želim)/iu.test(source),startDate:null,startTime:null,durationHours:null,requestedBookingReference:tubBookingReference(source),confirmationAllowed:false,requiresHumanReview:true};
@@ -48,13 +52,15 @@ export function assessTubEligibility({unitNumber,unit,availability}={}) {
  return {status:availability==='available'?'requires_operator_confirmation':'unverified',confirmationAllowed:false};
 }
 export function latestTubServiceRequest(record){
- return record?.serviceRequests?.reduce((latest,item)=>!latest||Date.parse(item.at)>Date.parse(latest.at)||Date.parse(item.at)===Date.parse(latest.at)&&item.cancelled?item:latest,null)??null;
+ const priority=request=>request.actionConflict?2:request.cancelled?1:0;
+ return record?.serviceRequests?.reduce((latest,item)=>!latest||Date.parse(item.at)>Date.parse(latest.at)||Date.parse(item.at)===Date.parse(latest.at)&&priority(item)>priority(latest)?item:latest,null)??null;
 }
 export function tubServiceProjection(record){
  const request=latestTubServiceRequest(record);
  if(!request)return null;
  // Accommodation-house equipment is not rental availability: guests may rent
  // another house's fixed tub. Only the separate trusted calendar can verify it.
- return {requested:request.cancelled!==true,startDate:request.startDate??null,startTime:request.startTime??null,durationHours:request.durationHours??null,
-  linkedCaseId:request.linkedCaseId??null,verificationStatus:request.actionConflict?'unverified':request.cancelled?'cancelled_unverified':'unverified',requiresHumanApproval:true};
+ // null means unresolved intent, not an absent request or an accepted withdrawal.
+ return {requested:request.actionConflict?null:request.cancelled!==true,startDate:request.startDate??null,startTime:request.startTime??null,durationHours:request.durationHours??null,
+  linkedCaseId:request.linkedCaseId??null,verificationStatus:request.actionConflict?'intent_unverified':request.cancelled?'cancelled_unverified':'unverified',requiresHumanApproval:true};
 }

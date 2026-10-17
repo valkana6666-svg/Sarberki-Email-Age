@@ -169,3 +169,49 @@ test('mixed withdrawal ingests accommodation facts and a separate unconfirmed ca
   assert.deepEqual(store.get(first.id),before);
  }
 });
+
+const negatedWithdrawals=[
+ 'Kérjük, ne mondják le a dézsát.',
+ 'Please do not cancel the hot tub.',
+ 'Bitte den Badezuber nicht stornieren.',
+ 'Prosimo, ne prekličite masažne kadi.'
+];
+test('negated HU EN DE SI withdrawals cannot become cancellations or approved new requests',()=>{
+ for(const text of [...negatedWithdrawals,"Please don’t cancel the hot tub.",'Nem szeretnénk lemondani a dézsát.']){
+  const parsed=tubServiceMessage(text);
+  assert.equal(parsed.kind,'tub_request',text);
+  assert.notEqual(parsed.cancelled,true,text);
+  assert.equal(parsed.actionConflict,true,text);
+  assert.equal(parsed.serviceOnly,true);
+  assert.equal(parsed.confirmationAllowed,false);
+ }
+});
+test('ambiguous current service intent stays explicit and cannot revive or withdraw a previous request',()=>{
+ for(const text of [...negatedWithdrawals,'Please cancel the hot tub and add a hot tub.']){
+  const {store,first}=fixture();
+  store.ingest(message('cancelled','Please cancel the hot tub.'),{});
+  const result=store.ingest(message('uncertain',text,{received_at:'2026-10-16T12:01:00Z'}),{});
+  const service=tubServiceProjection(result.bookingCase);
+  assert.equal(service.requested,null,text);
+  assert.equal(service.verificationStatus,'intent_unverified');
+  assert.equal(service.requiresHumanApproval,true);
+  const view=syntheticPreviewState({serviceOnly:true,serviceRequest:service});
+  assert.match(view.service_requested,/szándék.*nem egyértelmű/iu);
+  assert.match(view.details,/szándék.*nem egyértelmű/iu);
+  for(const [key,value]of Object.entries(stay))assert.equal(result.bookingCase.state.values[key],value);
+  assert.equal(result.bookingCase.id,first.id);
+  assert.equal(result.bookingCase.state.approval,'pending');
+ }
+});
+test('equal-time conflicts outrank cancellation and requests, while old quoted negations stay inactive',()=>{
+ const conflict={at:'2026-10-16T12:00:00Z',actionConflict:true},cancelled={at:conflict.at,cancelled:true},requested={at:conflict.at};
+ for(const serviceRequests of [[conflict,cancelled,requested],[requested,cancelled,conflict],[cancelled,conflict,requested]])assert.equal(tubServiceProjection({serviceRequests}).requested,null);
+ assert.equal(tubServiceMessage('Köszönöm.\nFrom: guest@synthetic.invalid\nSent: yesterday\nSubject: old\nPlease do not cancel the hot tub.').kind,'none');
+});
+test('four-language conflict drafts ask to keep or withdraw instead of acknowledging cancellation',()=>{
+ for(const [language,clarification] of [['hu',/megtartaná vagy visszavonná/u],['en',/keep or withdraw/u],['de',/beibehalten oder zurücknehmen/u],['si',/ohraniti ali preklicati/u]]){
+  const text=tubServiceDraft(language,true,false,true,true);
+  assert.match(text,clarification);
+  assert.notEqual(text,tubServiceDraft(language,true,false,true,false));
+ }
+});

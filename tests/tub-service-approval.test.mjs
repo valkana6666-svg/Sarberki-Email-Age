@@ -53,8 +53,43 @@ async function fixture(){
  const provider={sourceId:'synthetic-calendar',provenance:'trusted-fixture-adapter',resourceId:'tub-one',readSnapshot:async q=>{await duringAvailability?.();const now=Date.now();return {sourceId:'synthetic-calendar',provenance:'trusted-fixture-adapter',evidenceReference:'calendar-1',version,checkedAt:new Date(now-1000).toISOString(),validUntil:new Date(now+validity).toISOString(),binding:{...q},coverage:{tenantId:q.tenantId,resourceId:q.resourceId,start:q.start,end:q.end,complete:true},bookings:[]};}};
  const attestor=createServiceApprovalAttestor(key),flow=()=>createTubServiceApproval({service,tenantId:'sarberki-test',bindingProvider,availabilityProvider:provider,attestor,clock});
  const raw=proof=>as(()=>db.query('select sc_approve_tub_service($1,$2) as result',[JSON.stringify(proof.p_payload),proof.p_attestation]));
- return {db,as,repository,service,flow,target:normal.record,review:linked,raw,attestor,get captured(){return captured;},set subject(v){subject=v;},set version(v){version=v;},set validity(v){validity=v;},set bindingVersion(v){bindingVersion=v;},set clock(v){clock=v;},set duringAvailability(v){duringAvailability=v;},set bindingChange(v){bindingChange=v;}};
+ return {db,as,repository,service,runtime,env,flow,target:normal.record,review:linked,raw,attestor,get captured(){return captured;},set subject(v){subject=v;},set version(v){version=v;},set validity(v){validity=v;},set bindingVersion(v){bindingVersion=v;},set clock(v){clock=v;},set duringAvailability(v){duringAvailability=v;},set bindingChange(v){bindingChange=v;}};
 }
+
+test('negated withdrawal persists as unknown intent, renders a clarification draft and blocks service approval before any provider call',async()=>{
+ const f=await fixture();try{
+  let revision=f.target.revision,seq=0,providerCalls=0;
+  f.bindingChange=()=>providerCalls++;
+  f.duringAvailability=async()=>providerCalls++;
+  for(const text of ['Kérjük, ne mondják le a dézsát.','Please do not cancel the hot tub.','Bitte den Badezuber nicht stornieren.','Prosimo, ne prekličite masažne kadi.','Please cancel the hot tub and add a hot tub.']){
+   const result=await f.runtime.ingest({...f.env('uncertain-'+(++seq),text,'base'),received_at:'2026-10-16T12:01:00Z'},undefined,{expectedRevision:revision,persistDraft:true});
+   revision=result.record.revision;
+   assert.equal(result.record.caseId,f.target.caseId);
+   assert.equal(result.record.data.state.approval,'pending');
+   assert.equal(result.record.data.state.hotTub.requested,null);
+   assert.match(result.record.data.drafts.at(-1).operatorReviewText,/szándék nem egyértelmű/u);
+   const preview=await f.runtime.previewDraft(result.record.caseId,revision);
+   assert.equal(preview.serviceRequest.verificationStatus,'intent_unverified');
+   assert.equal(preview.serviceRequest.requested,null);
+   assert.match(preview.operatorReviewText,/szándék nem egyértelmű/u);
+   assert.equal((await f.flow().state(result.record.caseId,revision)).canApproveService,false);
+   await assert.rejects(f.flow().approve(result.record.caseId,revision,'a'.repeat(64)),e=>e.code==='REVIEW_NOT_READY');
+  }
+  assert.equal(providerCalls,0);
+  assert.equal((await f.db.query('select count(*)::int n from sc_service_approvals')).rows[0].n,0);
+  assert.equal((await f.db.query('select count(*)::int n from sc_audit')).rows[0].n,9);
+  const mixed=await f.runtime.ingest({...f.env('mixed-uncertain','Please book one Deluxe cabin from 2026-12-11 to 2026-12-14 for 4 adults. Please do not cancel the hot tub.','new-mixed'),sender:'mixed@synthetic.invalid'},undefined,{expectedRevision:0,persistDraft:true});
+  assert.equal(mixed.record.data.state.values.arrival,'2026-12-11');
+  assert.notEqual(mixed.record.data.caseKind,'service_link_review');
+  assert.match(mixed.record.data.drafts.at(-1).text,/keep or withdraw/u);
+  const mixedPreview=await f.runtime.previewDraft(mixed.record.caseId,mixed.record.revision);
+  assert.equal(mixedPreview.serviceOnly,false);
+  assert.match(mixedPreview.text,/keep or withdraw/u);
+  assert.match(mixedPreview.operatorReviewText,/szándék nem egyértelmű/u);
+  assert.equal((await f.flow().state(mixed.record.caseId,mixed.record.revision)).canApproveService,false);
+  assert.equal(providerCalls,0);
+ }finally{await f.db.close();}
+});
 test('normal and review service approvals preserve A, both cases and accommodation approval; Reader protected status, replay, source changes and encrypted restore',async()=>{
  const f=await fixture();try{
   const before=(await f.db.query('select * from sc_cases order by case_id')).rows;

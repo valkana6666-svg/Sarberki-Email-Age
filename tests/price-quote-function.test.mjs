@@ -1,5 +1,9 @@
-import test from 'node:test';
+import test,{before,after,mock} from 'node:test';
 import assert from 'node:assert/strict';
+// Historical fixtures use a fixed test clock; production date validation stays real.
+before(()=>mock.timers.enable({apis:['Date'],now:new Date('2026-10-05T15:40:00Z')}));
+after(()=>mock.timers.reset());
+
 import {handlePriceQuote,isLivePrevioEnabled,fetchMnbEurRate} from '../netlify/functions/price-quote.mjs';
 
 test('live Previo is enabled only on the isolated test host',()=>{
