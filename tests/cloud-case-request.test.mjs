@@ -7,7 +7,9 @@ test('cloud list GET matches established cookie client URL and JSON transport he
  const csrfToken='synthetic-csrf';
  await createCloudCaseRequest({request})({csrfToken},{tenantId:'sarberki-test'},'GET');
  await createCaseStoreClient({request,cookieReadOnly:true,getCsrfToken:()=>csrfToken}).list('sarberki-test');
- assert.deepEqual(calls[0],calls[1]);assert.equal(calls[0].options.body,undefined);
+ const {signal,...httpOptions}=calls[0].options;
+ assert.ok(signal instanceof AbortSignal);assert.equal(signal.aborted,false);
+ assert.deepEqual({...calls[0],options:httpOptions},calls[1]);assert.equal(calls[0].options.body,undefined);
  assert.deepEqual(Object.fromEntries(new URL(calls[0].url,'https://test.invalid').searchParams),{tenantId:'sarberki-test'});
 });
 test('review POST keeps exact case version and CSRF without credential metadata leakage',async()=>{
