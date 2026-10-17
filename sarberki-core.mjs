@@ -709,7 +709,7 @@ function capacityOptionText(guests,language='hu'){
   return {hu:'több ház',de:'mehrere Häuser',en:'multiple cabins',si:'več hišk'}[lang];
 }
 
-export function buildReplyDraft({language='hu',name=null,original='',arrival=null,departure=null,guests=null,adults=null,children=null,childAges=[],phone=null,cabin='? – emberi döntésre vár',pier=false,hotTub=false,dog=false,intent='booking_request',brandName='Sárberki Horgásztó',bookingRules=null,operationalRules=null,pricingRules=null,knowledgeLines=[],caseContext=null}={}){
+export function buildReplyDraft({language='hu',name=null,original='',arrival=null,departure=null,guests=null,adults=null,children=null,childAges=[],phone=null,cabin='? – emberi döntésre vár',pier=false,hotTub=false,dog=false,intent='booking_request',brandName='Sárberki Horgásztó',bookingRules=null,operationalRules=null,pricingRules=null,knowledgeLines=[],caseContext=null,approvedPaymentContext=null}={}){
   original=activeMessageText(original);
   const lang=['hu','de','en','si'].includes(language)?language:'hu';
   const flags=requestFlagsFromText(original);
@@ -798,7 +798,19 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const fishingAsked=/(?:horgász|horgasz|angeln|fish(?:ing)?|ribolov|ribe)/iu.test(original);
   const fishingLines=fishingAsked&&Array.isArray(knowledgeLines)?knowledgeLines.filter(Boolean):[];
   if(caseContext) pricingLines.push(...caseContext.priceLines);
-  const bookingLines=caseContext?caseContext.bookingLines:bookingPolicyLines(lang,original,guests,bookingRules);
+  const bookingLines=caseContext?[...caseContext.bookingLines]:bookingPolicyLines(lang,original,guests,bookingRules);
+  if(approvedPaymentContext?.operatorApproved===true && approvedPaymentContext?.bookingConfirmed===true && !mismatch && arrival && Number.isInteger(guests) && guests>0){
+    const payment=depositReceiptDeadline({guestCount:guests,bookingAt:approvedPaymentContext.bookingAt,arrivalDate:arrival});
+    if(payment.status==='calculated'){
+      const when=new Intl.DateTimeFormat('hu-HU',{timeZone:'Europe/Budapest',dateStyle:'short',timeStyle:'short'}).format(new Date(payment.receiptDeadlineUtc));
+      bookingLines.push({
+        hu:`Jóváhagyott fizetési tájékoztatás: ${payment.depositPct}% előlegnek ${when}-ig be kell érkeznie (magyarországi idő).`,
+        de:`Freigegebene Zahlungsinformation: ${payment.depositPct}% Anzahlung muss bis ${when} eingehen (Ortszeit Ungarn).`,
+        en:`Approved payment information: ${payment.depositPct}% deposit must be received by ${when} (Hungary time).`,
+        si:`Odobreno plačilo: ${payment.depositPct}% predplačilo mora prispeti do ${when} (čas na Madžarskem).`
+      }[lang]);
+    }
+  }
   if(caseContext?.availabilityLines?.length) {
     // Remove only the provisional statement, never an unrelated stay detail.
     if(provisionalStayLine!==null){
