@@ -1,5 +1,34 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## Aktuális összesítés – 2026-10-17 11:19 UTC után
+
+A következő történeti szakaszokat ez az összesítés pontosítja.
+[Részletes friss jelentés](../reports/v1-backup-pwa-2026-10-17/REPORT.md).
+
+- Utolsó igazolt kód: `19dae9d50ccb0b9fb6ea9eca25830ff637f1c922`.
+  [CI 39028144863](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39028144863):
+  **1788 PASS / 0 FAIL / 0 SKIP**, pontosan azonos teszthost-build.
+- Friss AES256 test-DB mentés és külön PostgreSQL 17 restore:
+  [39027707428](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/39027707428)
+  SUCCESS, 49 tábla adata egyezik; mindkét új szolgáltatásséma benne van.
+  A hét napos GitHub-példányon túl külön elmentett csomag is visszaolvasva,
+  teljes és belső hash egyezik. SQL-restore igen, új Auth API-login nem.
+- Kezelői PWA-manifest és tiszta főképernyős indítás elkészült; publikált MIME,
+  ikonok, no-store és pontos tartalom ellenőrizve a teszthoston.
+- Friss mobil Chromium/WebKit szintetikus próba: 12/12 PASS.
+  Ez nem tényleges iPhone/Safari vagy telepített PWA, illetve mobilos Writer/
+  approver végrehajtás bizonyítéka.
+- A korábbi Gmail→azonos Writer dedup→preview/audit kapu lezárt; nem futott újra.
+  Az explicit felnőttlétszám melletti hiánylista-eltérés már javítva a
+  `4647a34b6c2c3a6e442b6be1d2d41dad754ee3d1` commitban.
+- Becsült készültség **92%**, nem élesítési engedély. Marad a tényleges iPhone,
+  teljes platform/Auth recovery és a hozzáférés után mellékhatásmentes Previo/
+  hiteles ház-dézsa forrás, valamint az ezekre támaszkodó szintetikus felhős
+  jóváhagyási elfogadás. A becsült aktív hátralévő munka 9–19 óra, várakozás nélkül.
+
+A jelen frissítés csak dokumentáció; nem indít új teljes tesztet vagy mentést.
+
+
 ## Legfrissebb eredmény – a kombinált Gmail-kapu lezárult
 
 2026-10-17 07:23 UTC után friss, egyetlen pontos Gmail-üzenet olvasása →
