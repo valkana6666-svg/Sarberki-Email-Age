@@ -6,6 +6,11 @@ on:
       - index.html
       - synthetic-server-preview.mjs
       - scripts/gmail-server-mobile-proof.mjs
+      - scripts/operator-write-approval-mobile-proof.mjs
+      - cloud-approval.html
+      - cloud-approval.css
+      - cloud-approval-session.mjs
+      - isolated-approval-panel.mjs
       - operator-login-ui.mjs
       - shared-core/case-store-client.mjs
       - .github/workflows/sarberki-gmail-mobile.yml
@@ -27,10 +32,19 @@ jobs:
       - run: npx playwright install --with-deps chromium webkit
       - name: Loopback synthetic UI only; external requests blocked
         run: node scripts/gmail-server-mobile-proof.mjs
+      - name: Synthetic Writer and separate approval mobile UI; all requests intercepted
+        run: node scripts/operator-write-approval-mobile-proof.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: sarberki-gmail-mobile-proof
           path: /tmp/sarberki-gmail-server-proof/RESULT.json
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sarberki-operator-write-mobile-proof
+          path: /tmp/sarberki-operator-write-proof/RESULT.json
           if-no-files-found: error
           retention-days: 7
