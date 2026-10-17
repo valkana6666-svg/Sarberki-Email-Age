@@ -40,6 +40,7 @@ try{
       assert.match(body.envelope.text,/2026/);assert.ok(body.envelope.sender);
       state.saves++;result={result:{resolution:{status:state.saves===1?'new':'duplicate'},record:record(1)}};
      }else if(action==='list')result={result:[{tenantId:'sarberki-test',caseId,revision:state.revision}]};
+     else if(action==='preview-draft')result={result:{caseId,revision:state.revision,persisted:false,approval:'pending',text,operatorReviewText:'Szintetikus magyar ellenőrzés.'}};
      else if(action==='review-draft'){
       assert.equal(state.role,'writer');assert.equal(body.expectedRevision,state.revision);
       state.revision++;result={result:{record:record(state.revision)}};
@@ -74,6 +75,20 @@ try{
   await page.goto(origin+'/index.html');await page.locator('#operator_login_panel summary').click();
   await page.locator('#operator_login_email').fill('writer@synthetic.invalid');await page.locator('#operator_login_password').fill('SYNTHETIC_NOT_A_REAL_PASSWORD');await page.locator('#operator_login').click();
   await page.locator('#operator_login_status').filter({hasText:'olvasás aktív'}).waitFor();
+  await page.locator('#server_preview_panel summary').click();
+  await page.locator('#server_preview_case_id').fill(caseId);await page.locator('#server_preview_revision').fill('1');
+  await page.locator('#server_preview_action').click();await page.locator('#server_preview_status').filter({hasText:'Belső előnézet kész'}).waitFor();
+  assert.equal(await page.locator('#server_preview_text').inputValue(),text);
+  const beforeFocus=state.calls.length;
+  // Explicit synthetic focus without visibility/pagehide: not a real iOS OS event.
+  await page.evaluate(()=>dispatchEvent(new FocusEvent('focus')));
+  assert.equal(await page.locator('#server_preview_text').inputValue(),'');
+  assert.equal(await page.locator('#server_preview_hu').inputValue(),'');
+  await page.locator('#operator_login_status').filter({hasText:'olvasás aktív'}).waitFor();
+  assert.equal(await page.locator('#server_preview_text').inputValue(),'','session restore must not restore the stale preview');
+  assert.ok(state.calls.slice(beforeFocus).every(c=>c.method==='GET'&&c.path.endsWith('/operator-session')));
+  assert.equal(state.saves,0);
+  report.checks.push({engine,test:'Focus-only return clears actual cloud preview and revalidates without replay',result:'PASS'});
   await page.evaluate(()=>dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));
   assert.equal(await page.evaluate(()=>window.SarberkiCaseStoreSession),null);
   assert.equal(await page.locator('#operator_list_cases').isDisabled(),true);

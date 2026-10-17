@@ -384,3 +384,34 @@ test('cookie case read and foreground restore share a serial transport and cance
  for(let i=0;i<100&&h.get('operator_login').disabled;i++)await Promise.resolve();
  assert.equal(max,1);assert.equal(calls,3);assert.ok(h.globalRef.SarberkiCaseStoreSession);
 });
+
+
+test('window blur clears cloud access without a visibility event; focus only restores by GET',async()=>{
+ const methods=[],h=await harness(async(_url,options)=>{methods.push(options.method);return {ok:true,json:async()=>valid()};});
+ const old=h.globalRef.SarberkiCaseStoreSession;h.get('operator_login_password').value='SYNTHETIC';
+ h.globalListeners.blur();
+ assert.equal(h.globalRef.SarberkiCaseStoreSession,null);assert.equal(h.get('operator_login_password').value,'');
+ assert.equal(h.get('operator_list_cases').disabled,true);await assert.rejects(old.getCsrfToken(),/AUTH_REQUIRED/);
+ const invalidations=h.events.filter(x=>x==='sarberki:session-changed').length;
+ await h.globalListeners.focus();
+ assert.ok(h.globalRef.SarberkiCaseStoreSession);assert.notEqual(h.globalRef.SarberkiCaseStoreSession,old);
+ assert.ok(h.events.filter(x=>x==='sarberki:session-changed').length>invalidations);
+ assert.deepEqual(methods,['GET','GET']);
+});
+test('focus alone invalidates an active session even when blur and visibility were missed',async()=>{
+ let calls=0,release;
+ const h=await harness(async()=>{calls++;if(calls===2)return new Promise(r=>release=r);return {ok:true,json:async()=>valid()};});
+ const old=h.globalRef.SarberkiCaseStoreSession,pending=h.globalListeners.focus();
+ assert.equal(h.globalRef.SarberkiCaseStoreSession,null);assert.equal(h.get('operator_list_cases').disabled,true);
+ await assert.rejects(old.getCsrfToken(),/AUTH_REQUIRED/);
+ for(let i=0;i<100&&!release;i++)await Promise.resolve();
+ await h.globalListeners.focus();assert.equal(calls,2,'duplicate focus must not start parallel session restore');
+ release({ok:true,json:async()=>valid()});await pending;
+ assert.ok(h.globalRef.SarberkiCaseStoreSession);assert.notEqual(h.globalRef.SarberkiCaseStoreSession,old);
+});
+test('failed focus revalidation stays locked and never repeats a write',async()=>{
+ const calls=[],h=await harness(async(_url,options)=>{calls.push(options.method);return calls.length===1?{ok:true,json:async()=>valid()}:{ok:false,json:async()=>({error:'AUTH_REQUIRED'})};});
+ await h.globalListeners.focus();
+ assert.equal(h.globalRef.SarberkiCaseStoreSession,null);assert.equal(h.get('operator_list_cases').disabled,true);
+ assert.deepEqual(calls,['GET','GET']);
+});

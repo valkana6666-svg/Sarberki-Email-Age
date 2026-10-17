@@ -343,6 +343,13 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
   resumePending=false;
   return perform('restore');
  };
+ // Focus is a conservative fallback when a standalone app returns without
+ // a visibility/page transition. Never retain a preview across window refocus.
+ globalRef.addEventListener?.('blur',()=>{if(visible&&(active||busy))suspend();});
+ globalRef.addEventListener?.('focus',()=>{
+  if(visible&&active)suspend();
+  return resume();
+ });
  globalRef.addEventListener?.('pagehide',suspend);
  // A normal load restores once below. Only a bfcache return needs pageshow
  // revalidation; the existing busy gate prevents concurrent cookie rotation.
