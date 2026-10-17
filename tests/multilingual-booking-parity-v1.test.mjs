@@ -58,3 +58,18 @@ for(const language of languages){
     assert.match(available,/Deluxe/u);
   });
 }
+
+for(const language of languages){
+  test(`V1 language ${language}: contradictory capacity evidence never becomes a definitive offer`,()=>{
+    const contradictory=availabilitySentence({
+      available_options:[{label:'Deluxe',units:1,availability:'available',availability_verified:false}],
+      unavailable_options:[{label:'Deluxe',availability:'unavailable',availability_verified:false}]
+    },language);
+    const confirmed=availabilitySentence({
+      available_options:[{label:'Deluxe',units:1,availability:'available',availability_verified:true}],
+      unavailable_options:[]
+    },language);
+    assert.notEqual(contradictory,confirmed);
+    assert.doesNotMatch(contradictory,/Deluxe/u);
+  });
+}
