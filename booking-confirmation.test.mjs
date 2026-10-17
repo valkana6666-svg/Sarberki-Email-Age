@@ -1,31 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {cancellationDaysForGuests,depositPercentForGuests,generateDepositReceivedDraft} from './booking-confirmation.mjs';
-
-test('under 15 guests uses 50 percent deposit and 14 day cancellation',()=>{
-  assert.equal(depositPercentForGuests(8),50);
-  assert.equal(cancellationDaysForGuests(8),14);
-  const hu=generateDepositReceivedDraft({language:'HU',name:'Teszt Elek',arrival:'2026-10-30',departure:'2026-11-01',cabin:'Családi',guests:8});
-  assert.match(hu,/50%-os foglaló/u);
-  assert.match(hu,/foglalását véglegesítettük/u);
-  assert.match(hu,/14\. napig/u);
-  assert.match(hu,/2026-10-30 – 2026-11-01/u);
-  assert.match(hu,/Családi/u);
+const fixture={name:'Teszt Elek',arrival:'2026-10-30',departure:'2026-11-01',cabin:'Deluxe',guests:4};
+test('deposit simulation respects approved 14/15/16 guest boundary',()=>{
+  for(const [n,pct] of [[14,50],[15,50],[16,80]])assert.equal(depositPercentForGuests(n),pct);
 });
-
-test('15 or more guests uses configured large-group terms',()=>{
-  assert.equal(depositPercentForGuests(15),50);
-  assert.equal(depositPercentForGuests(16),50);
-  assert.equal(cancellationDaysForGuests(14),14);
-  assert.equal(cancellationDaysForGuests(15),30);
-  const en=generateDepositReceivedDraft({language:'EN',guests:15});
-  assert.match(en,/50% booking deposit/u);
-  assert.match(en,/30 days before arrival/u);
+test('guest count cannot invent cancellation terms',()=>{
+  for(const n of [4,15,16])assert.throws(()=>cancellationDaysForGuests(n),/dátum/u);
 });
-
-test('all four languages generate finalized booking confirmation',()=>{
-  for(const lang of ['HU','EN','DE','SL']){
-    const draft=generateDepositReceivedDraft({language:lang,guests:4});
-    assert.ok(draft.length>80);
+test('empty and incomplete simulation cannot produce a finalized letter',()=>{
+  assert.throws(()=>generateDepositReceivedDraft({guests:4}),/név/u);
+  for(const field of ['name','arrival','departure','cabin'])assert.throws(()=>generateDepositReceivedDraft({...fixture,[field]:''}),/szimulációhoz/u);
+});
+test('invalid, reversed and same-day intervals are rejected',()=>{
+  for(const change of [{arrival:'2026-02-30'},{departure:'2026-10-29'},{departure:fixture.arrival}])assert.throws(()=>generateDepositReceivedDraft({...fixture,...change}),/időszak/u);
+});
+test('four languages mark every output as simulation and deny actual finalization',()=>{
+  const markers={HU:/SZIMULÁCIÓ/u,EN:/SIMULATION/u,DE:/SIMULATION/u,SL:/SIMULACIJA/u};
+  for(const language of Object.keys(markers)){
+    const draft=generateDepositReceivedDraft({...fixture,language,guests:16});
+    assert.match(draft,markers[language]);assert.match(draft,/80\s?%/u);
+    assert.match(draft,/2026-10-30 – 2026-11-01/u);
+    assert.doesNotMatch(draft,/foglalását véglegesítettük|has now been finalized|endgültig bestätigt wurde|s tem dokončno potrjena|30 days|14\. napig/u);
   }
+});
+test('invalid guest counts and unsupported language fail closed',()=>{
+  for(const guests of [0,-1,1.5,'unknown'])assert.throws(()=>generateDepositReceivedDraft({...fixture,guests}));
+  assert.throws(()=>generateDepositReceivedDraft({...fixture,language:'xx'}));
 });
