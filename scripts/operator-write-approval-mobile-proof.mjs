@@ -75,7 +75,7 @@ try{
   await page.goto(origin+'/index.html');await page.locator('#operator_login_panel summary').click();
   await page.locator('#operator_login_email').fill('writer@synthetic.invalid');await page.locator('#operator_login_password').fill('SYNTHETIC_NOT_A_REAL_PASSWORD');await page.locator('#operator_login').click();
   await page.locator('#operator_login_status').filter({hasText:'olvasás aktív'}).waitFor();
-  await page.locator('#server_preview_panel summary').click();
+  await page.locator('#server_preview_panel > summary').click();
   await page.locator('#server_preview_case_id').fill(caseId);await page.locator('#server_preview_revision').fill('1');
   await page.locator('#server_preview_action').click();await page.locator('#server_preview_status').filter({hasText:'Belső előnézet kész'}).waitFor();
   assert.equal(await page.locator('#server_preview_text').inputValue(),text);
