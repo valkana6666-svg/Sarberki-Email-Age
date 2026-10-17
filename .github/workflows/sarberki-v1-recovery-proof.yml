@@ -4,6 +4,9 @@ on:
     branches: [gmail-test-subject-allowlist]
     paths:
       - .github/workflows/sarberki-v1-recovery-proof.yml
+      - scripts/isolated-fresh-runtime-chain.mjs
+      - scripts/verify-restored-service-rollback.py
+      - scripts/restored-service-rollback.sql
 permissions:
   contents: read
   actions: read

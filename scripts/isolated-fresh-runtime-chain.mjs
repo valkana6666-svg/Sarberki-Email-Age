@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import {createSupabaseTransport,createSupabaseAuthority,createSupabaseCaseRepository} from '../shared-core/supabase-case-repository.mjs';
 import {createServerCaseService} from '../shared-core/server-case-service.mjs';
 import {createServerBookingRuntime} from '../shared-core/server-booking-runtime.mjs';
-const report={source_connection:'NEVER_OPENED',gmail_oauth_in_isolated_app:'NOT_RUN',live_previo:'NOT_RUN_SAFETY_GATE',full_ui_approval_transition:'NOT_IMPLEMENTED_ON_SERVER_RUNTIME',network:'ephemeral Docker bridge; HTTP local transport adapter; source HTTPS transport unchanged'};
+const report={source_connection:'NEVER_OPENED',gmail_oauth_in_isolated_app:'NOT_RUN',live_previo:'NOT_RUN_SAFETY_GATE',full_ui_approval_transition:'NOT_RUN_BY_THIS_PROOF',network:'ephemeral Docker bridge; HTTP local transport adapter; source HTTPS transport unchanged'};
 let stage='guard';
 const step=(name,fn)=>{stage=name;return Promise.resolve().then(fn).then(value=>{report[name]='PASS';return value;});};
 const sql=q=>execFileSync('psql',['-X','-w','-qAt','-v','ON_ERROR_STOP=1','-d','sc_restore','-c',q],{stdio:['ignore','pipe','pipe']});
@@ -38,11 +38,22 @@ try{
  const client=t=>{const transport=createSupabaseTransport({url:'https://isolated-recovery.supabase.co',publishableKey:anon,token:t,fetchImpl:isolatedFetch});return createServerCaseService({repository:createSupabaseCaseRepository(transport),resolveAuthority:createSupabaseAuthority(transport)});};
  const service=client(token),now=new Date().toISOString();
  const runtime=createServerBookingRuntime({service,tenantId:'sarberki-test',requestContext:{},clock:()=>now,reviewProviders:{availability:async q=>({...q,source:'synthetic-fixture',checkedAt:now,availability:'available',availableUnits:1}),pricing:async q=>({...q,source:'synthetic-fixture',checkedAt:now,tenantId:'sarberki-test',unitId:q.cabin,capacity:6,nightly:100,basis:'per_unit',verified:true})}});
- const envelope={sender:'restore-test@synthetic.invalid',text:'Please book one Deluxe cabin from 2026-10-16 to 2026-10-18 for 2 adults and 2 children aged 7 and 11.',mailbox_id:'isolated-recovery',message_id:'restore-runtime-'+Date.now(),received_at:now};
- const first=await step('parse_identify_authorized_api_sql_save',()=>runtime.ingest(envelope,undefined,{expectedRevision:0}));
- assert.equal(first.record.data.state.values.adults,'2');assert.equal(first.record.data.state.values.children,'2');assert.equal(first.record.data.state.values.unit,'Deluxe');
- const reviewed=await step('synthetic_capacity_business_rules_and_draft_persist',()=>runtime.reviewAndDraft(first.record.caseId,1));
- assert.equal(reviewed.review.status,'internal_review_required');assert.equal(reviewed.record.data.drafts.length,1);assert.equal(reviewed.record.data.state.approval,'pending');
+ // The recovery fixture must remain future-dated when replaying an older backup.
+ const arrival=new Date(Date.parse(now)+30*86400000).toISOString().slice(0,10);
+ const departure=new Date(Date.parse(now)+32*86400000).toISOString().slice(0,10);
+ const envelope={sender:'restore-test@synthetic.invalid',text:`Please book one Deluxe cabin from ${arrival} to ${departure} for 2 adults and 2 children aged 7 and 11.`,mailbox_id:'isolated-recovery',message_id:'restore-runtime-'+Date.now(),received_at:now};
+ const first=await step('parse_identify_authorized_api_sql_save',async()=>{
+  const value=await runtime.ingest(envelope,undefined,{expectedRevision:0});
+  assert.equal(value.record.data.state.values.adults,'2');assert.equal(value.record.data.state.values.children,'2');assert.equal(value.record.data.state.values.unit,'Deluxe');
+  assert.equal(value.record.data.state.values.arrival,arrival);assert.equal(value.record.data.state.values.departure,departure);
+  return value;
+ });
+ const reviewed=await step('synthetic_capacity_business_rules_and_draft_persist',async()=>{
+  const value=await runtime.reviewAndDraft(first.record.caseId,1);
+  report.draft_review_status=['internal_review_required','manual_review_required'].includes(value.review.status)?value.review.status:'OTHER';
+  assert.equal(value.review.status,'internal_review_required');assert.equal(value.record.data.drafts.length,1);assert.equal(value.record.data.state.approval,'pending');
+  return value;
+ });
  const readerToken=await login('restore-reader@synthetic.invalid'),readerService=client(readerToken);
  await step('reader_list_and_saved_draft_preview',async()=>{
   const rows=await readerService.listCases({requestContext:{},tenantId:'sarberki-test'});
