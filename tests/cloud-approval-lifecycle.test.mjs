@@ -46,3 +46,47 @@ test('revoked approval session remains locked after foreground return',async()=>
  await h.visibility('hidden');await h.visibility('visible');
  assert.equal(calls,2);assert.equal(h.get('workspace').disabled,true);assert.match(h.get('auth_status').textContent,/Bejelentkezés szükséges/);
 });
+test('readback with revoked session clears review, consent and active login status without writing',async()=>{
+ const calls=[];let revoked=false;
+ const h=await harness(async(url,options)=>{
+  calls.push({url,method:options.method});
+  return revoked?{ok:false,status:401,json:async()=>({error:'AUTH_REQUIRED'})}:{ok:true,json:async()=>valid()};
+ });
+ h.get('isolated_approval_text').value='old review';h.get('isolated_approval_confirm').checked=true;
+ revoked=true;await h.get('readback').click();
+ assert.equal(h.get('workspace').disabled,true);
+ assert.equal(h.get('isolated_approval_text').value,'');
+ assert.equal(h.get('isolated_approval_confirm').checked,false);
+ assert.match(h.get('auth_status').textContent,/Bejelentkezés szükséges/);
+ assert.ok(calls.every(c=>c.method==='GET'));assert.equal(calls.length,2);
+});
+test('case API authentication rejection locks page but ordinary role denial does not revoke session',async()=>{
+ for(const code of ['AUTH_REQUIRED','FORBIDDEN']){
+  const calls=[];
+  const h=await harness(async(url,options)=>{
+   calls.push({url,method:options.method});
+   return url.includes('operator-session')?{ok:true,json:async()=>valid()}:
+    {ok:false,status:code==='AUTH_REQUIRED'?401:403,json:async()=>({error:code})};
+  });
+  await h.get('readback').click();
+  assert.equal(h.get('workspace').disabled,code==='AUTH_REQUIRED');
+  assert.equal(h.get('isolated_approval_submit').disabled,true);
+  assert.ok(calls.every(c=>c.method==='GET'));assert.equal(calls.length,3);
+  if(code==='FORBIDDEN')assert.match(h.get('readback_status').textContent,/FORBIDDEN/);
+ }
+});
+test('late authentication failure from old session cannot clear a new login',async()=>{
+ let release,calls=0;
+ const h=await harness(async()=>{
+  calls++;if(calls===2)return new Promise(r=>release=r);
+  return {ok:true,json:async()=>valid()};
+ });
+ const pending=h.get('readback').click();await settle();
+ h.get('email').value='synthetic@example.invalid';h.get('password').value='synthetic-only';
+ const login=h.get('login').submit({preventDefault(){}});
+ release({ok:false,status:401,json:async()=>({error:'AUTH_REQUIRED'})});
+ await Promise.all([pending,login]);
+ assert.equal(h.get('workspace').disabled,false);
+ assert.match(h.get('auth_status').textContent,/Hitelesített/);
+ assert.equal(h.get('isolated_approval_submit').disabled,true);
+});

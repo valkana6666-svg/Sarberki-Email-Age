@@ -11,10 +11,20 @@ if(isIsolatedReviewCaseId(selectedCase))el('isolated_approval_case_id').value=se
 if(location.origin===origin){
  const session=createOperatorSession();let authenticated=false,epoch=0;
  const clear=()=>{epoch++;session.clear();authenticated=false;el('workspace').disabled=true;el('logout').disabled=true;el('password').value='';el('readback_status').textContent='';document.dispatchEvent(new Event('isolated-approval-session-changed'));};
- const request=createEpochRequestQueue({getEpoch:()=>epoch,isAuthenticated:()=>authenticated,
+ const queuedRequest=createEpochRequestQueue({getEpoch:()=>epoch,isAuthenticated:()=>authenticated,
   prepare:()=>session.restore(),
   execute:createCloudCaseRequest()
  });
+ const request=async(...args)=>{
+  const turn=epoch;
+  try{return await queuedRequest(...args);}
+  catch(error){
+   if(turn===epoch&&error.message==='AUTH_REQUIRED'){
+    clear();el('auth_status').textContent='Bejelentkezés szükséges. A korábbi helyi nézet és jóváhagyási kijelölés törölve; nincs automatikus ismétlés.';
+   }
+   throw error;
+  }
+ };
  const client={get:(tenantId,caseId)=>request({tenantId,caseId,action:'review-record'},'GET'),
   approve:(tenantId,caseId,expectedRevision,reviewedDraftHash)=>request({tenantId,caseId,action:'approve',expectedRevision,reviewedDraftHash})};
  el('cloud_prepare').addEventListener('click',async()=>{

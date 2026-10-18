@@ -1,5 +1,9 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## 2026-10-18 – jóváhagyási felület AUTH_REQUIRED állapotjavítás
+
+A korábbi audit-GET AUTH_REQUIRED mellett az aktív belépés jelzése megmaradt. Két új negatív ág módosítás előtt hibát igazolt. A közös felületi kérésburkoló most csak az aktuális epoch AUTH_REQUIRED hibájánál lezárja a munkaterületet, törli a helyi előnézetet és kijelölést, új belépést jelez. A tárolt jóváhagyást nem törli; nincs újrapróbálás, cookie-/RLS-/lejáratlazítás. A műveleti FORBIDDEN nem léptet ki, és a régi session késői hibája nem zárhatja le az új belépést. Célzott végső teszt: **17 PASS / 0 FAIL / 0 SKIP**, ebből 3 új teszteset. Új CI és tesztdeploy ellenőrzése folyamatban; fizikai iPhone-sikert nem állítunk.
+
 ## 2026-10-18 – friss hitelesített jóváhagyási audit GET PASS
 
 A védett új belépés után a rögzített ügy v3 internally_approved állapota és egyetlen v3 approve_isolated_synthetic auditeseménye a felületen is visszaolvasható, a korábbi DB-bizonyítékkal egyező actor/időpont/hash értékekkel. Jóváhagyást és Writer-mentést nem ismételtünk. A konkrét felhős Writer → külön actorú emberi jóváhagyás → új belépés/audit lánc lezárt; az előző AUTH_REQUIRED oka és a fizikai iPhone Writer/approver mátrix külön nyitott. [Részletek](../reports/writer-approver-acceptance-2026-10-18/REPORT.md). Kód/CI változatlan, V1 93%.
