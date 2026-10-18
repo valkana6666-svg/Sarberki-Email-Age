@@ -572,3 +572,57 @@ test('dropdown excludes an ID duplicated by malformed or cross-tenant summaries'
   assert.equal(h.get('operator_open_case').disabled,true);
  }
 });
+
+test('manual case A→B→A during pending authenticated GET never reselects the stale response',async()=>{
+ const id='982fc2fa-1e79-478b-8241-2a59f73027b8';
+ let release,reads=0;const methods=[];
+ const h=await harness(async(url,options)=>{
+  methods.push(options.method);
+  if(url.includes('/operator-session'))return {ok:true,json:async()=>valid()};
+  reads++;
+  if(reads===1)return new Promise(resolve=>{release=resolve;});
+  return {ok:true,json:async()=>({result:[{tenantId:'sarberki-test',caseId:id,revision:4}]})};
+ });
+ h.get('operator_manual_case_id').value=id;
+ const pending=h.get('operator_open_manual_case').click();
+ for(let i=0;i<100&&!release;i++)await Promise.resolve();
+ assert.equal(typeof release,'function','the summary GET must be pending before editing');
+ h.get('operator_manual_case_id').value='case-other';
+ h.get('operator_manual_case_id').dispatchEvent(new Event('input'));
+ h.get('operator_manual_case_id').value=id;
+ h.get('operator_manual_case_id').dispatchEvent(new Event('input'));
+ assert.match(h.get('operator_case_status').textContent,/Új ellenőrzés szükséges/u);
+ release({ok:true,json:async()=>({result:[{tenantId:'sarberki-test',caseId:id,revision:3}]})});
+ await pending;
+ assert.equal(h.get('server_preview_case_id').value,'');
+ assert.equal(h.get('server_preview_revision').value,'');
+ assert.equal(h.get('operator_manual_audit').hidden,true);
+ assert.match(h.get('operator_case_status').textContent,/Új ellenőrzés szükséges/u);
+ await h.get('operator_open_manual_case').click();
+ assert.equal(h.get('server_preview_case_id').value,id);
+ assert.equal(h.get('server_preview_revision').value,'4');
+ assert.equal(h.get('operator_manual_audit').hidden,false);
+ assert.deepEqual(methods,['GET','GET','GET']);
+});
+test('late failure from manual case A→B→A cannot overwrite the new verification-required message',async()=>{
+ const id='982fc2fa-1e79-478b-8241-2a59f73027b8';
+ let release;
+ const h=await harness(async(url)=>{
+  if(url.includes('/operator-session'))return {ok:true,json:async()=>valid()};
+  return new Promise(resolve=>{release=resolve;});
+ });
+ h.get('operator_manual_case_id').value=id;
+ const pending=h.get('operator_open_manual_case').click();
+ for(let i=0;i<100&&!release;i++)await Promise.resolve();
+ assert.equal(typeof release,'function');
+ h.get('operator_manual_case_id').value='case-other';
+ h.get('operator_manual_case_id').dispatchEvent(new Event('input'));
+ h.get('operator_manual_case_id').value=id;
+ h.get('operator_manual_case_id').dispatchEvent(new Event('input'));
+ release({ok:false,json:async()=>({error:'CASE_STORE_DISABLED'})});
+ await pending;
+ assert.equal(h.get('server_preview_case_id').value,'');
+ assert.equal(h.get('operator_manual_audit').hidden,true);
+ assert.match(h.get('operator_case_status').textContent,/Új ellenőrzés szükséges/u);
+ assert.doesNotMatch(h.get('operator_case_status').textContent,/nem nyitható meg/u);
+});

@@ -40,7 +40,7 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
  const mailLanguage=get('gmail_cloud_fixture_language'),mailLoad=get('gmail_cloud_fixture_load'),
   mailSave=get('gmail_cloud_fixture_save'),mailStatus=get('gmail_cloud_fixture_status'),mailApproval=get('gmail_cloud_fixture_approval');
  if(!form||!email||!password||!status||!restore||!logout||!login||!listCases||!caseSelect||!openCase||!caseStatus)return false;
- let active=false,busy=false,listed=[],authEpoch=0,authRequestEpoch=null,resumePending=false;
+ let active=false,busy=false,listed=[],authEpoch=0,authRequestEpoch=null,resumePending=false,manualSelectionEpoch=0;
  let visible=documentRef.visibilityState!=='hidden';
  let requestQueue=Promise.resolve();
  const serialRequest=job=>{const next=requestQueue.then(job,job);requestQueue=next.catch(()=>{});return next;};
@@ -64,7 +64,7 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
  let loadedMail=null,mailEpoch=0,savedClosedMail=null;
  const clearMail=()=>{loadedMail=null;savedClosedMail=null;if(tubFollowup)tubFollowup.disabled=true;if(tubReview)tubReview.disabled=true;mailEpoch++;if(mailSave)mailSave.disabled=true;if(mailApproval){mailApproval.hidden=true;mailApproval.removeAttribute?.('href');}};
  const emit=()=>documentRef.dispatchEvent?.(new Event('sarberki:session-changed'));
- const invalidateCaseSelection=()=>{if(manualAudit){manualAudit.hidden=true;manualAudit.removeAttribute?.('href');}for(const key of ['server_preview_case_id','server_preview_revision']){const field=get(key);if(field){field.value='';field.dispatchEvent(new Event('input'));}};};
+ const invalidateCaseSelection=()=>{manualSelectionEpoch++;if(manualAudit){manualAudit.hidden=true;manualAudit.removeAttribute?.('href');}for(const key of ['server_preview_case_id','server_preview_revision']){const field=get(key);if(field){field.value='';field.dispatchEvent(new Event('input'));}};};
  const resetCases=()=>{invalidateCaseSelection();listed=[];caseSelect.replaceChildren();caseSelect.disabled=true;openCase.disabled=true;caseStatus.textContent='Csak hitelesített, szintetikus tesztügyek jelenhetnek meg.';};
  const clear=()=>{clearMail();active=false;globalRef.SarberkiCaseStoreSession=null;logout.disabled=true;listCases.disabled=true;if(manualOpen)manualOpen.disabled=true;if(mailLoad)mailLoad.disabled=true;if(createFixture)createFixture.disabled=true;if(fixtureStatus)fixtureStatus.textContent='Writer-belépés szükséges. Reader nem hozhat létre ügyet.';resetCases();emit();};
  const enable=metadata=>{
@@ -305,6 +305,7 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
   if(!active||busy||!manualCase)return;
   const id=manualCase.value.trim(),session=globalRef.SarberkiCaseStoreSession;
   invalidateCaseSelection();
+  const lookupEpoch=manualSelectionEpoch;
   if(!isIsolatedReviewCaseId(id)){caseStatus.textContent='Érvényes tesztügy-azonosítót írj vagy illessz be.';return;}
   waiting(true);if(manualAudit)manualAudit.hidden=true;
   try{
@@ -316,7 +317,7 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
    if(matches.length===0)throw Error('CASE_NOT_FOUND');
    if(matches.length!==1)throw Error('INVALID_INPUT');
    const row=matches[0];
-   if(globalRef.SarberkiCaseStoreSession!==session||manualCase.value.trim()!==id)return;
+   if(globalRef.SarberkiCaseStoreSession!==session||manualSelectionEpoch!==lookupEpoch||manualCase.value.trim()!==id)return;
    if(Object.keys(row).sort().join(',')!=='caseId,revision,tenantId'||
      row.tenantId!=='sarberki-test'||row.caseId!==id||
      !Number.isSafeInteger(row.revision)||row.revision<1)throw Error('INVALID_INPUT');
@@ -325,7 +326,7 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
    }
    if(manualAudit){manualAudit.href='/cloud-approval.html?caseId='+encodeURIComponent(id);manualAudit.hidden=false;}
    caseStatus.textContent='A beírt ügy ellenőrizve és kiválasztva · v'+row.revision+'. Az előnézet vagy az auditfelület megnyitható. Nincs mentés.';
-  }catch(error){if(globalRef.SarberkiCaseStoreSession===session&&manualCase.value.trim()===id)caseStatus.textContent='A beírt ügy nem nyitható meg ('+(['AUTH_REQUIRED','FORBIDDEN','CASE_NOT_FOUND'].includes(error.message)?error.message:'ellenőrzés szükséges')+').';}
+  }catch(error){if(globalRef.SarberkiCaseStoreSession===session&&manualSelectionEpoch===lookupEpoch&&manualCase.value.trim()===id)caseStatus.textContent='A beírt ügy nem nyitható meg ('+(['AUTH_REQUIRED','FORBIDDEN','CASE_NOT_FOUND'].includes(error.message)?error.message:'ellenőrzés szükséges')+').';}
   finally{waiting(false);}
  }
  function openSelectedCase(){
