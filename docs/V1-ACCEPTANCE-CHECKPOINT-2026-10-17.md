@@ -1,5 +1,9 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## 2026-10-18 – friss hitelesített jóváhagyási audit GET PASS
+
+A védett új belépés után a rögzített ügy v3 internally_approved állapota és egyetlen v3 approve_isolated_synthetic auditeseménye a felületen is visszaolvasható, a korábbi DB-bizonyítékkal egyező actor/időpont/hash értékekkel. Jóváhagyást és Writer-mentést nem ismételtünk. A konkrét felhős Writer → külön actorú emberi jóváhagyás → új belépés/audit lánc lezárt; az előző AUTH_REQUIRED oka és a fizikai iPhone Writer/approver mátrix külön nyitott. [Részletek](../reports/writer-approver-acceptance-2026-10-18/REPORT.md). Kód/CI változatlan, V1 93%.
+
 ## 2026-10-18 07:27 – szintetikus emberi jóváhagyás v3 és audit tárolása igazolt
 
 A v2 Writer-tervezet tulajdonosi jóváhagyása v3 internally_approved; célzott, kizárólag olvasási DB-ellenőrzéssel serverApproval és approve_isolated_synthetic audit actor/időpont egyezik, a Writer és a jóváhagyó külön actor. Felületi audit GET azonban AUTH_REQUIRED: a böngészős audit-visszaolvasási kapu nyitott, nem helyettesítjük DB-bizonyítékkal. Jóváhagyás nem ismételhető; következő kizárólag friss hitelesített approval-state GET. [Bizonyíték](../reports/writer-approver-acceptance-2026-10-18/REPORT.md). Fizikai iPhone Writer/approver-próba külön nyitott; kód/CI változatlan, V1 93%.

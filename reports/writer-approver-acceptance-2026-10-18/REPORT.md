@@ -36,3 +36,9 @@ Külön, célzott, csak olvasási Supabase-ellenőrzés a rögzített szintetiku
 A felületi approval-state GET viszont AUTH_REQUIRED hibát adott. Az adatbázisban való megőrzés/audit igazolt, a bejelentkezett böngészőből történő audit-visszaolvasás ebben a munkamenetben NEM PASS. Egyetlen, írásmentes oldalfrissítéssel ellenőriztük a session-helyreállítást; kezdetben letiltott munkaterület jelent meg. A hiba oka nem bizonyított, nem állítunk biztos cookie-lejáratot vagy revokációt. Következő: érvényes munkamenettel kizárólag approval-state GET, jóváhagyás/Writer-újraírás nélkül.
 
 Ez cloud Chrome bizonyíték, nem fizikai iPhone-jóváhagyási próba. A V1 továbbra kb. 93%, a session-/készülékes és külső kapuk miatt nem véglegesen elfogadott. Alkalmazáskód változatlan; új CI/mentés nem készült.
+
+## Hitelesített felületi audit-visszaolvasás PASS
+
+A védett új belépés után kizárólag approval-state GET történt, ugyanazon ügyazonosítóval. A felület visszaadta revision=3, approval=internally_approved, serverApproval.reviewedRevision=2 és a korábban DB-ben igazolt actor/időpont/draftHash értékeket; pontosan egy revision 3 approve_isolated_synthetic auditesemény szerepelt ugyanazzal az actorral és tárolási hash-sel. A böngészős readback akadály ebben az új hitelesített munkamenetben lezárult. A korábbi AUTH_REQUIRED oka továbbra sem bizonyított; általános session-tartóssági vagy fizikai iPhone elfogadást ez nem jelent. Új Writer-mentés és jóváhagyás nem történt.
+
+Lezárt konkrét felhős lánc: v1 pending → egyszeri Writer review-draft v2 → külön actorú emberi jóváhagyás v3 → friss belépés után v3/audit visszaolvasás. V1 továbbra kb. 93%, mert a teljes készülékes/hálózati és külső elfogadási mátrix nem zárt.
