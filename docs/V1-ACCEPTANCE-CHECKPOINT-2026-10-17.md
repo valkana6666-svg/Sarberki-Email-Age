@@ -1,5 +1,9 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## 2026-10-18 06:44 – tényleges iPhone-session helyreállítási részpróba
+
+IMG_8857–8859: **BUILD 70d9b89**, üres email/jelszómező mellett **Hitelesített tesztkezelői olvasás aktív**. A jelszó nélküli ellenőrzésre küldött készülékképek alapján az olvasási session helyreállítási részpróbáját elfogadjuk; automatikus startup és gombnyomás pontos hálózati sorrendjét nem állítjuk. A háttérből visszatérő preview törlése és a teljes PWA-elfogadás ettől külön, még nyitott. [Részletes hatókör](../reports/pwa-explicit-restore-2026-10-17/REPORT.md). Alkalmazáskód változatlan; új CI vagy mentés nem szükséges.
+
 ## PWA: ismételt jelszókérés után explicit restore javítás
 
 A tulajdonos szerint a rövid alkalmazásváltás után a korábbi tesztbelépés ellenőrzése sem adott jelszó nélküli hozzáférést. Statikusan és új negatív teszttel reprodukált külön klienshiba: blur után, elmaradt focus mellett a restore gomb kérés nélkül visszatért. A gomb most a láthatóságot ellenőrző resume útvonalat használja; nincs Auth-/cookie-/lejárat-lazítás.
