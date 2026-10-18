@@ -493,3 +493,45 @@ test('switching from manually chosen case to dropdown removes the previous audit
  assert.equal(h.get('server_preview_revision').value,'2');
  assert.equal(h.get('operator_manual_audit').hidden,true);
 });
+
+test('manual selection rejects duplicate summaries instead of silently choosing the first revision',async()=>{
+ const id='982fc2fa-1e79-478b-8241-2a59f73027b8',methods=[];
+ const h=await harness(async(url,options)=>{
+  methods.push(options.method);
+  return {ok:true,json:async()=>url.includes('/operator-session')?valid():
+   {result:[{tenantId:'sarberki-test',caseId:id,revision:2},{tenantId:'sarberki-test',caseId:id,revision:3}]}};
+ });
+ h.get('operator_manual_case_id').value=id;
+ await h.get('operator_open_manual_case').click();
+ assert.equal(h.get('server_preview_case_id').value,'');
+ assert.equal(h.get('server_preview_revision').value,'');
+ assert.equal(h.get('operator_manual_audit').hidden,true);
+ assert.match(h.get('operator_case_status').textContent,/ellenőrzés szükséges/u);
+ assert.ok(methods.every(method=>method==='GET'));
+});
+test('manual selection rejects extra fields, cross-tenant records and malformed summaries',async()=>{
+ const id='982fc2fa-1e79-478b-8241-2a59f73027b8';
+ for(const row of [
+  {tenantId:'sarberki-test',caseId:id,revision:3,secret:'unexpected'},
+  {tenantId:'other-tenant',caseId:id,revision:3},
+  {tenantId:'sarberki-test',caseId:id,revision:0},
+  {tenantId:'sarberki-test',caseId:id,revision:'3'},
+ ]){
+  const h=await harness(async(url,options)=>({ok:true,json:async()=>url.includes('/operator-session')?valid():{result:[row]}}));
+  h.get('operator_manual_case_id').value=id;
+  await h.get('operator_open_manual_case').click();
+  assert.equal(h.get('server_preview_case_id').value,'');
+  assert.equal(h.get('server_preview_revision').value,'');
+  assert.equal(h.get('operator_manual_audit').hidden,true);
+ }
+});
+test('manual selection picks exactly one authorized case from other nonmatching summaries',async()=>{
+ const id='982fc2fa-1e79-478b-8241-2a59f73027b8';
+ const h=await harness(async(url,options)=>({ok:true,json:async()=>url.includes('/operator-session')?valid():
+  {result:[{tenantId:'sarberki-test',caseId:'case-other',revision:5},{tenantId:'sarberki-test',caseId:id,revision:4}]}}));
+ h.get('operator_manual_case_id').value=id;
+ await h.get('operator_open_manual_case').click();
+ assert.equal(h.get('server_preview_case_id').value,id);
+ assert.equal(h.get('server_preview_revision').value,'4');
+ assert.equal(h.get('operator_manual_audit').hidden,false);
+});

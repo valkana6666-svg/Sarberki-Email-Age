@@ -304,10 +304,16 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
   try{
    const client=createCaseStoreClient({cookieReadOnly:true,getCsrfToken:()=>session.getCsrfToken(),request:session.request});
    const rows=await client.list('sarberki-test');
-   const row=Array.isArray(rows)?rows.find(value=>value.caseId===id):null;
-   if(!row)throw Error('CASE_NOT_FOUND');
+   // The authenticated list is a summary, not permission to trust a malformed or
+   // ambiguous row. Do not select the first matching case when duplicates exist.
+   const matches=Array.isArray(rows)?rows.filter(value=>value&&value.caseId===id):[];
+   if(matches.length===0)throw Error('CASE_NOT_FOUND');
+   if(matches.length!==1)throw Error('INVALID_INPUT');
+   const row=matches[0];
    if(globalRef.SarberkiCaseStoreSession!==session||manualCase.value.trim()!==id)return;
-   if(row?.tenantId!=='sarberki-test'||row.caseId!==id||!Number.isSafeInteger(row.revision)||row.revision<1)throw Error('INVALID_INPUT');
+   if(Object.keys(row).sort().join(',')!=='caseId,revision,tenantId'||
+     row.tenantId!=='sarberki-test'||row.caseId!==id||
+     !Number.isSafeInteger(row.revision)||row.revision<1)throw Error('INVALID_INPUT');
    for(const [key,value] of [['server_preview_case_id',id],['server_preview_revision',String(row.revision)]]){
     const field=get(key);field.value=value;field.dispatchEvent(new Event('input'));
    }
