@@ -461,3 +461,35 @@ test('manual ID cannot select mismatched server case or malformed input',async()
  assert.equal(h.get('server_preview_case_id').value,'');
  assert.equal(h.get('operator_manual_audit').hidden,true);
 });
+
+
+test('editing a manual case ID clears stale preview selection and audit before a new lookup',async()=>{
+ const id='982fc2fa-1e79-478b-8241-2a59f73027b8',calls=[];
+ const h=await harness(async(url,options)=>{calls.push(options.method);return {ok:true,json:async()=>url.includes('/operator-session')?valid():{result:[{tenantId:'sarberki-test',caseId:id,revision:3}]}};});
+ h.get('operator_manual_case_id').value=id;
+ await h.get('operator_open_manual_case').click();
+ assert.equal(h.get('server_preview_case_id').value,id);
+ assert.equal(h.get('operator_manual_audit').hidden,false);
+ h.get('operator_manual_case_id').value='case-1234';
+ h.get('operator_manual_case_id').dispatchEvent(new Event('input'));
+ assert.equal(h.get('server_preview_case_id').value,'');
+ assert.equal(h.get('server_preview_revision').value,'');
+ assert.equal(h.get('operator_manual_audit').hidden,true);
+ h.get('operator_manual_case_id').value='not an ID';
+ await h.get('operator_open_manual_case').click();
+ assert.equal(h.get('server_preview_case_id').value,'');
+ assert.ok(calls.every(method=>method==='GET'),'only existing authorized read calls are allowed');
+});
+test('switching from manually chosen case to dropdown removes the previous audit target',async()=>{
+ const id='982fc2fa-1e79-478b-8241-2a59f73027b8',other='case-1234';
+ const h=await harness(async(url)=>({ok:true,json:async()=>url.includes('/operator-session')?valid():{result:[{tenantId:'sarberki-test',caseId:id,revision:3},{tenantId:'sarberki-test',caseId:other,revision:2}]}}));
+ h.get('operator_manual_case_id').value=id;
+ await h.get('operator_open_manual_case').click();
+ assert.equal(h.get('operator_manual_audit').hidden,false);
+ await h.get('operator_list_cases').click();
+ h.get('operator_case_select').value=other;
+ await h.get('operator_open_case').click();
+ assert.equal(h.get('server_preview_case_id').value,other);
+ assert.equal(h.get('server_preview_revision').value,'2');
+ assert.equal(h.get('operator_manual_audit').hidden,true);
+});
