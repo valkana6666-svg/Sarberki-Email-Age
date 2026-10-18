@@ -1,5 +1,9 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## 2026-10-18 – Writer v2 mentés és jóváhagyói előkészítés
+
+Felhős Chrome UI: a függő szintetikus `982fc2fa-1e79-478b-8241-2a59f73027b8` ügy egyszeri Writer-mentése v1→v2 sikeres; külön visszaolvasva pending, serverApproval null, jóváhagyási audit üres. Angol/magyar tervezet betöltött; kijelentkezés törölte. Új, jóváhagyóként kért belépésből a v2 frissen olvasható. Emberi jóváhagyás és annak jogosultság-/auditbizonyítéka még nyitott; fizikai iPhone Writer/approver-próba nem történt. [Részletes hatókör](../reports/writer-approver-acceptance-2026-10-18/REPORT.md). Kód változatlan, új CI/mentés nélkül, V1 93%.
+
 ## 2026-10-18 07:07 – iPhone Reader visszatérési lánc lezárva
 
 IMG_8869–8870: a korábban érvénytelenített v4 ügy preview-ja külön kérés után újra betöltött, **Belső előnézet kész**. A korábbi 06:55/06:58–59 képsorral együtt a **preview → másik app → törlés/aktív session → új preview** készülékes részpróba PASS. Nem kell ismételni; ez nem teljes PWA/Writer/approver-elfogadás. [Bizonyíték és nyitott kapuk](../reports/pwa-focus-fallback-2026-10-17/REPORT.md). Változatlan alkalmazáskód, új CI/mentés nélkül. Következő: Writer és külön jóváhagyó célzott mobilos elfogadása.
