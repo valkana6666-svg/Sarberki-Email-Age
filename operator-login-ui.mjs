@@ -35,6 +35,7 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
   status=get('operator_login_status'),restore=get('operator_restore'),logout=get('operator_logout'),
   login=get('operator_login'),listCases=get('operator_list_cases'),caseSelect=get('operator_case_select'),
   openCase=get('operator_open_case'),caseStatus=get('operator_case_status');
+ const manualCase=get('operator_manual_case_id'),manualOpen=get('operator_open_manual_case'),manualAudit=get('operator_manual_audit');
  const createFixture=get('operator_create_fixture'),fixtureStatus=get('operator_fixture_status'),tubFollowup=get('gmail_cloud_tub_followup'),tubReview=get('gmail_cloud_tub_review');
  const mailLanguage=get('gmail_cloud_fixture_language'),mailLoad=get('gmail_cloud_fixture_load'),
   mailSave=get('gmail_cloud_fixture_save'),mailStatus=get('gmail_cloud_fixture_status'),mailApproval=get('gmail_cloud_fixture_approval');
@@ -63,8 +64,8 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
  let loadedMail=null,mailEpoch=0,savedClosedMail=null;
  const clearMail=()=>{loadedMail=null;savedClosedMail=null;if(tubFollowup)tubFollowup.disabled=true;if(tubReview)tubReview.disabled=true;mailEpoch++;if(mailSave)mailSave.disabled=true;if(mailApproval){mailApproval.hidden=true;mailApproval.removeAttribute?.('href');}};
  const emit=()=>documentRef.dispatchEvent?.(new Event('sarberki:session-changed'));
- const resetCases=()=>{listed=[];caseSelect.replaceChildren();caseSelect.disabled=true;openCase.disabled=true;caseStatus.textContent='Csak hitelesített, szintetikus tesztügyek jelenhetnek meg.';};
- const clear=()=>{clearMail();active=false;globalRef.SarberkiCaseStoreSession=null;logout.disabled=true;listCases.disabled=true;if(mailLoad)mailLoad.disabled=true;if(createFixture)createFixture.disabled=true;if(fixtureStatus)fixtureStatus.textContent='Writer-belépés szükséges. Reader nem hozhat létre ügyet.';resetCases();emit();};
+ const resetCases=()=>{if(manualAudit)manualAudit.hidden=true;listed=[];caseSelect.replaceChildren();caseSelect.disabled=true;openCase.disabled=true;caseStatus.textContent='Csak hitelesített, szintetikus tesztügyek jelenhetnek meg.';};
+ const clear=()=>{clearMail();active=false;globalRef.SarberkiCaseStoreSession=null;logout.disabled=true;listCases.disabled=true;if(manualOpen)manualOpen.disabled=true;if(mailLoad)mailLoad.disabled=true;if(createFixture)createFixture.disabled=true;if(fixtureStatus)fixtureStatus.textContent='Writer-belépés szükséges. Reader nem hozhat létre ügyet.';resetCases();emit();};
  const enable=metadata=>{
   const exp=Date.parse(metadata?.expiresAt);
   if(metadata?.authenticated!==true||metadata?.tenantId!=='sarberki-test'||
@@ -83,10 +84,10 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
    })
   });
   globalRef.SarberkiCaseStoreSession=session;
-  active=true;logout.disabled=false;listCases.disabled=false;resetCases();emit();
+  active=true;logout.disabled=false;listCases.disabled=false;if(manualOpen)manualOpen.disabled=false;resetCases();emit();
   status.textContent='Hitelesített tesztkezelői olvasás aktív. Szintetikus ügyek ellenőrizhetők; szerkesztés, jóváhagyás és küldés nem engedélyezett.';
  };
- const waiting=on=>{busy=on;login.disabled=on;restore.disabled=on;logout.disabled=on||!active;listCases.disabled=on||!active;openCase.disabled=on||listed.length===0;if(createFixture)createFixture.disabled=on||!active;if(mailLoad)mailLoad.disabled=on||!active;if(mailSave)mailSave.disabled=on||!active||!loadedMail;if(mailLanguage)mailLanguage.disabled=on;refreshReceipt();if(tubFollowup)tubFollowup.disabled=on||!active||!savedClosedMail;if(tubReview)tubReview.disabled=on||!active||!savedClosedMail;if(!on&&resumePending&&visible){resumePending=false;void Promise.resolve().then(()=>perform('restore'));}};
+ const waiting=on=>{busy=on;if(manualOpen)manualOpen.disabled=on||!active;login.disabled=on;restore.disabled=on;logout.disabled=on||!active;listCases.disabled=on||!active;openCase.disabled=on||listed.length===0;if(createFixture)createFixture.disabled=on||!active;if(mailLoad)mailLoad.disabled=on||!active;if(mailSave)mailSave.disabled=on||!active||!loadedMail;if(mailLanguage)mailLanguage.disabled=on;refreshReceipt();if(tubFollowup)tubFollowup.disabled=on||!active||!savedClosedMail;if(tubReview)tubReview.disabled=on||!active||!savedClosedMail;if(!on&&resumePending&&visible){resumePending=false;void Promise.resolve().then(()=>perform('restore'));}};
  async function call(method,body,csrf,path=endpoint){
   const turn=authEpoch;
   const response=await serialRequest(()=>{
@@ -293,6 +294,26 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
    caseStatus.textContent='A tesztügylista nem tölthető be ('+(['AUTH_REQUIRED','FORBIDDEN','CASE_STORE_DISABLED','SERVICE_UNAVAILABLE'].includes(e?.message)?e.message:'ellenőrzés szükséges')+').';
   }finally{waiting(false);}
  }
+ async function openManualCase(){
+  if(!active||busy||!manualCase)return;
+  const id=manualCase.value.trim(),session=globalRef.SarberkiCaseStoreSession;
+  if(!isIsolatedReviewCaseId(id)){caseStatus.textContent='Érvényes tesztügy-azonosítót írj vagy illessz be.';return;}
+  waiting(true);if(manualAudit)manualAudit.hidden=true;
+  try{
+   const client=createCaseStoreClient({cookieReadOnly:true,getCsrfToken:()=>session.getCsrfToken(),request:session.request});
+   const rows=await client.list('sarberki-test');
+   const row=Array.isArray(rows)?rows.find(value=>value.caseId===id):null;
+   if(!row)throw Error('CASE_NOT_FOUND');
+   if(globalRef.SarberkiCaseStoreSession!==session||manualCase.value.trim()!==id)return;
+   if(row?.tenantId!=='sarberki-test'||row.caseId!==id||!Number.isSafeInteger(row.revision)||row.revision<1)throw Error('INVALID_INPUT');
+   for(const [key,value] of [['server_preview_case_id',id],['server_preview_revision',String(row.revision)]]){
+    const field=get(key);field.value=value;field.dispatchEvent(new Event('input'));
+   }
+   if(manualAudit){manualAudit.href='/cloud-approval.html?caseId='+encodeURIComponent(id);manualAudit.hidden=false;}
+   caseStatus.textContent='A beírt ügy ellenőrizve és kiválasztva · v'+row.revision+'. Az előnézet vagy az auditfelület megnyitható. Nincs mentés.';
+  }catch(error){if(globalRef.SarberkiCaseStoreSession===session&&manualCase.value.trim()===id)caseStatus.textContent='A beírt ügy nem nyitható meg ('+(['AUTH_REQUIRED','FORBIDDEN','CASE_NOT_FOUND'].includes(error.message)?error.message:'ellenőrzés szükséges')+').';}
+  finally{waiting(false);}
+ }
  function openSelectedCase(){
   if(!active||busy||!listed.length)return;
   const selected=listed.find(x=>x.id===caseSelect.value);
@@ -309,6 +330,8 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
  logout.addEventListener('click',()=>perform('logout'));
  listCases.addEventListener('click',loadCases);
  openCase.addEventListener('click',openSelectedCase);
+ manualOpen?.addEventListener('click',openManualCase);
+ manualCase?.addEventListener('input',()=>{if(manualAudit)manualAudit.hidden=true;});
  createFixture?.addEventListener('click',createReaderFixture);
  mailLoad?.addEventListener('click',loadClosedMail);
  mailSave?.addEventListener('click',saveClosedMail);

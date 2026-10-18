@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {syntheticMailEnvelope,closedMailRequestFromGmailRecord,syntheticTubFollowupEnvelope,syntheticTubReviewEnvelope} from '../shared-core/synthetic-mail-fixtures.mjs';
 import {initOperatorLoginPanel} from '../operator-login-ui.mjs';
 const ui=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-const names=['operator_login_form','operator_login_email','operator_login_password','operator_login','operator_restore','operator_logout','operator_login_status','operator_list_cases','operator_case_select','operator_open_case','operator_case_status','server_preview_case_id','server_preview_revision','operator_create_fixture','operator_fixture_status','gmail_cloud_fixture_language','gmail_cloud_fixture_load','gmail_cloud_fixture_save','gmail_cloud_fixture_status','gmail_cloud_fixture_approval','gmail_cloud_tub_followup','gmail_cloud_tub_review','service_link_target','service_link_target_revision','gmail_json','message'];
+const names=['operator_manual_case_id','operator_open_manual_case','operator_manual_audit','operator_login_form','operator_login_email','operator_login_password','operator_login','operator_restore','operator_logout','operator_login_status','operator_list_cases','operator_case_select','operator_open_case','operator_case_status','server_preview_case_id','server_preview_revision','operator_create_fixture','operator_fixture_status','gmail_cloud_fixture_language','gmail_cloud_fixture_load','gmail_cloud_fixture_save','gmail_cloud_fixture_status','gmail_cloud_fixture_approval','gmail_cloud_tub_followup','gmail_cloud_tub_review','service_link_target','service_link_target_revision','gmail_json','message'];
 const valid=()=>({authenticated:true,tenantId:'sarberki-test',csrfToken:'ab'.repeat(32),expiresAt:new Date(Date.now()+3600_000).toISOString()});
 async function harness(request){
  const map=new Map(),events=[];
@@ -429,4 +429,35 @@ test('explicit restore never treats a hidden document as foreground',async()=>{
  h.documentRef.visibilityState='hidden';h.globalListeners.blur();
  await h.get('operator_restore').click();
  assert.equal(h.globalRef.SarberkiCaseStoreSession,null);assert.deepEqual(methods,['GET']);
+});
+
+test('manual typed or pasted case ID reads current revision without relying on the case list',async()=>{
+ const calls=[],id='982fc2fa-1e79-478b-8241-2a59f73027b8';
+ const h=await harness(async(url,options)=>{
+  calls.push({url,options});
+  return {ok:true,json:async()=>url.includes('/operator-session')?valid():{result:[{tenantId:'sarberki-test',caseId:id,revision:3}]}};
+ });
+ assert.equal(h.get('operator_open_manual_case').disabled,false);
+ h.get('operator_manual_case_id').value='  '+id+'  ';
+ await h.get('operator_open_manual_case').click();
+ assert.equal(h.get('server_preview_case_id').value,id);
+ assert.equal(h.get('server_preview_revision').value,'3');
+ assert.equal(h.get('operator_manual_audit').href,'/cloud-approval.html?caseId='+id);
+ assert.equal(h.get('operator_manual_audit').hidden,false);
+ assert.ok(calls.every(x=>x.options.method==='GET'));
+ assert.ok(calls.some(x=>x.url.includes('booking-cases?tenantId=sarberki-test')));
+ assert.ok(calls.every(x=>!x.url.includes('caseId=')),'manual lookup uses permitted summaries, never forbidden raw-case GET');
+});
+test('manual ID cannot select mismatched server case or malformed input',async()=>{
+ let requests=0;
+ const h=await harness(async(url)=>{
+  if(url.includes('/operator-session'))return {ok:true,json:async()=>valid()};
+  requests++;return {ok:true,json:async()=>({result:[{tenantId:'other',caseId:'case-other',revision:3}]})};
+ });
+ h.get('operator_manual_case_id').value='not an ID';
+ await h.get('operator_open_manual_case').click();assert.equal(requests,0);
+ h.get('operator_manual_case_id').value='case-1234';
+ await h.get('operator_open_manual_case').click();
+ assert.equal(h.get('server_preview_case_id').value,'');
+ assert.equal(h.get('operator_manual_audit').hidden,true);
 });
