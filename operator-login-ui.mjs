@@ -277,9 +277,15 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
    const rows=await client.list('sarberki-test');
    if(globalRef.SarberkiCaseStoreSession!==session)return;
    if(!Array.isArray(rows))throw Error('INVALID_CASE_LIST');
+   // The list is an authenticated summary, not proof that an ambiguous ID
+   // resolves to one revision. Exclude every duplicated ID, even if one of
+   // its returned rows has an invalid shape or belongs to a different tenant.
+   const caseIdCounts=new Map();
+   for(const row of rows)if(row&&isIsolatedReviewCaseId(row.caseId))
+    caseIdCounts.set(row.caseId,(caseIdCounts.get(row.caseId)||0)+1);
    listed=rows.filter(row=>row&&Object.keys(row).sort().join(',')==='caseId,revision,tenantId'&&
     row.tenantId==='sarberki-test'&&isIsolatedReviewCaseId(row.caseId)&&
-    Number.isSafeInteger(row.revision)&&row.revision>=1)
+    Number.isSafeInteger(row.revision)&&row.revision>=1&&caseIdCounts.get(row.caseId)===1)
     .map(row=>({id:row.caseId,revision:row.revision})).slice(0,100);
    const placeholder=documentRef.createElement('option');placeholder.value='';placeholder.textContent='Válassz szintetikus tesztügyet';
    caseSelect.appendChild(placeholder);

@@ -535,3 +535,40 @@ test('manual selection picks exactly one authorized case from other nonmatching 
  assert.equal(h.get('server_preview_revision').value,'4');
  assert.equal(h.get('operator_manual_audit').hidden,false);
 });
+
+test('dropdown rejects conflicting case revisions and does not select an arbitrary one',async()=>{
+ const id='case-synthetic-duplicate',another='case-synthetic-good',methods=[];
+ const rows=[
+  {tenantId:'sarberki-test',caseId:id,revision:2},
+  {tenantId:'sarberki-test',caseId:id,revision:3},
+  {tenantId:'sarberki-test',caseId:another,revision:4}
+ ];
+ const h=await harness(async(url,options)=>{methods.push(options.method);
+  return {ok:true,json:async()=>url.includes('/operator-session')?valid():{result:rows}};});
+ await h.get('operator_list_cases').click();
+ assert.equal(h.get('operator_case_select').children.length,2);
+ assert.equal(h.get('operator_case_select').children[1].value,another);
+ h.get('operator_case_select').value=id;
+ await h.get('operator_open_case').click();
+ assert.equal(h.get('server_preview_case_id').value,'');
+ assert.equal(h.get('server_preview_revision').value,'');
+ h.get('operator_case_select').value=another;
+ await h.get('operator_open_case').click();
+ assert.equal(h.get('server_preview_case_id').value,another);
+ assert.equal(h.get('server_preview_revision').value,'4');
+ assert.ok(methods.every(method=>method==='GET'));
+});
+test('dropdown excludes an ID duplicated by malformed or cross-tenant summaries',async()=>{
+ const id='case-synthetic-duplicate';
+ for(const second of [
+  {tenantId:'other-tenant',caseId:id,revision:8},
+  {tenantId:'sarberki-test',caseId:id,revision:8,unexpected:'private'},
+ ]){
+  const h=await harness(async(url)=>({ok:true,json:async()=>url.includes('/operator-session')?valid():
+   {result:[{tenantId:'sarberki-test',caseId:id,revision:3},second]}}));
+  await h.get('operator_list_cases').click();
+  assert.equal(h.get('operator_case_select').children.length,1);
+  assert.equal(h.get('operator_case_select').disabled,true);
+  assert.equal(h.get('operator_open_case').disabled,true);
+ }
+});
