@@ -1,5 +1,9 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## 2026-10-18 06:59 – tényleges iPhone háttérből visszatérési részpróba PASS
+
+Az Óra alkalmazásra váltás után a tulajdonosi IMG_8864–8868 képeken a v4 ügy angol/magyar cloud preview-ja üres, új előnézetet kér, az olvasási session aktív. A korábban jelzett megmaradó előnézet konkrét hibája e próbában lezárult. Következő kizárólagos olvasási pont: a megmaradt azonosító/verzióval a szerveres preview újbóli lekérése jelszó nélkül. Ezt a mostani képek még nem igazolják; a teljes PWA/Writer/approver mátrix is külön marad. [Bizonyíték és korlátok](../reports/pwa-focus-fallback-2026-10-17/REPORT.md). Változatlan kódon nincs új CI/mentés.
+
 ## 2026-10-18 06:44 – tényleges iPhone-session helyreállítási részpróba
 
 IMG_8857–8859: **BUILD 70d9b89**, üres email/jelszómező mellett **Hitelesített tesztkezelői olvasás aktív**. A jelszó nélküli ellenőrzésre küldött készülékképek alapján az olvasási session helyreállítási részpróbáját elfogadjuk; automatikus startup és gombnyomás pontos hálózati sorrendjét nem állítjuk. A háttérből visszatérő preview törlése és a teljes PWA-elfogadás ettől külön, még nyitott. [Részletes hatókör](../reports/pwa-explicit-restore-2026-10-17/REPORT.md). Alkalmazáskód változatlan; új CI vagy mentés nem szükséges.
