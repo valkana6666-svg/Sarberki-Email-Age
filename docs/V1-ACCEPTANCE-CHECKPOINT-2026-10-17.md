@@ -1,5 +1,9 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## 2026-10-18 07:27 – szintetikus emberi jóváhagyás v3 és audit tárolása igazolt
+
+A v2 Writer-tervezet tulajdonosi jóváhagyása v3 internally_approved; célzott, kizárólag olvasási DB-ellenőrzéssel serverApproval és approve_isolated_synthetic audit actor/időpont egyezik, a Writer és a jóváhagyó külön actor. Felületi audit GET azonban AUTH_REQUIRED: a böngészős audit-visszaolvasási kapu nyitott, nem helyettesítjük DB-bizonyítékkal. Jóváhagyás nem ismételhető; következő kizárólag friss hitelesített approval-state GET. [Bizonyíték](../reports/writer-approver-acceptance-2026-10-18/REPORT.md). Fizikai iPhone Writer/approver-próba külön nyitott; kód/CI változatlan, V1 93%.
+
 ## 2026-10-18 – tulajdonos által kért teljes belső tesztjog
 
 A `reader@sarberki-test.invalid` meglévő fiók kizárólag sarberki-test tagságán read/write/approve=true, tulajdonosi kifejezett utasításra. Valós authenticated PostgreSQL-próba: mindhárom tesztjog true, más tenant mindhárom joga false, saját tagság RLS láthatóság 1. Ez a fiók többé nem csak olvasó; a korábbi Reader-tiltási bizonyíték történeti, új negatív role-próbához külön read-only fiók kell. Nincs admin-/production-/küldési/foglalási jog vagy RLS-lazítás. [Részletek](../reports/writer-approver-acceptance-2026-10-18/REPORT.md). Emberi jóváhagyás/audit és fizikai Writer/approver kapu nyitott.
