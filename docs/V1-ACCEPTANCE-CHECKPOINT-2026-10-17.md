@@ -1,5 +1,9 @@
 # Sárberki V1 – összevont elfogadási állapot, 2026-10-17
 
+## 2026-10-18 – tulajdonos által kért teljes belső tesztjog
+
+A `reader@sarberki-test.invalid` meglévő fiók kizárólag sarberki-test tagságán read/write/approve=true, tulajdonosi kifejezett utasításra. Valós authenticated PostgreSQL-próba: mindhárom tesztjog true, más tenant mindhárom joga false, saját tagság RLS láthatóság 1. Ez a fiók többé nem csak olvasó; a korábbi Reader-tiltási bizonyíték történeti, új negatív role-próbához külön read-only fiók kell. Nincs admin-/production-/küldési/foglalási jog vagy RLS-lazítás. [Részletek](../reports/writer-approver-acceptance-2026-10-18/REPORT.md). Emberi jóváhagyás/audit és fizikai Writer/approver kapu nyitott.
+
 ## 2026-10-18 – Writer v2 mentés és jóváhagyói előkészítés
 
 Felhős Chrome UI: a függő szintetikus `982fc2fa-1e79-478b-8241-2a59f73027b8` ügy egyszeri Writer-mentése v1→v2 sikeres; külön visszaolvasva pending, serverApproval null, jóváhagyási audit üres. Angol/magyar tervezet betöltött; kijelentkezés törölte. Új, jóváhagyóként kért belépésből a v2 frissen olvasható. Emberi jóváhagyás és annak jogosultság-/auditbizonyítéka még nyitott; fizikai iPhone Writer/approver-próba nem történt. [Részletes hatókör](../reports/writer-approver-acceptance-2026-10-18/REPORT.md). Kód változatlan, új CI/mentés nélkül, V1 93%.
