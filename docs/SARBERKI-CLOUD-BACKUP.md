@@ -153,3 +153,8 @@ A sikerhez friss run/commit-kötött ciphertext, integritásellenőrzés és kü
 ISOLATED-RESTORE bizonyíték szükséges. A korábbi példányokat megtartjuk.
 A 7 napos Actions-megőrzés mellett külön tartós titkosított példány szükséges;
 annak tényleges mentése/visszaolvasása külön igazolandó.
+
+
+## 2026-10-20 – teljes helyreállítási csomaghoz friss felhős export kérése
+
+A projektgazda kérésére a meglévő védett workflow egyszeri indítása. Kizárólag sarberki-test, csak olvasható forráskapcsolat, AES256 titkosított friss export és eldobható PostgreSQL 17 izolált restore. A korábbi mentéseket megőrizzük. Ez indítási kérelem, nem export- vagy restore-sikerigazolás. A friss futás jobstátuszát, ciphertext artifactját, SHA256 ellenőrzéseit és külön ISOLATED-RESTORE bizonyítékát ellenőrizni kell. Netlify/platform/Auth API teljes helyreállítása külön ellenőrzendő. Main és production módosítása, forrásadatbázisba visszatöltés, jelszócsere, vendégküldés és Previo-írás tilos. A 7 napos artifact-megőrzésen túl tartós mentés szükséges.
