@@ -1,0 +1,142 @@
+name: Sarberki verified recovery integration package October 20
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths: [.github/workflows/sarberki-recovery-integrated-20261020.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  assemble:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: SARBERKI_V1_FULL_RECOVERY_2026-10-20
+          run-id: 39470766357
+          github-token: ${{ github.token }}
+          path: /tmp/previous-delivery
+      - uses: actions/download-artifact@v4
+        with:
+          name: sarberki-v1-recovery-proof-39477852959
+          run-id: 39477852959
+          github-token: ${{ github.token }}
+          path: /tmp/current-runtime
+      - name: Isolated Edge handler in Deno, no project credentials
+        run: |
+          mkdir -p /tmp/edge-evidence
+          docker pull denoland/deno:2.9.7
+          docker image inspect denoland/deno:2.9.7 --format '{{index .RepoDigests 0}}' > /tmp/edge-evidence/IMAGE_DIGEST.txt
+          docker run -d --name sarberki-edge-recovery --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges -e DENO_DIR=/tmp/deno-cache -p 127.0.0.1:18787:8000 -v "$GITHUB_WORKSPACE/recovery/edge-20261020/reader-password-reset:/app:ro" denoland/deno:2.9.7 run --no-prompt --allow-net=0.0.0.0:8000 /app/index.ts
+          python3 - <<'PY'
+          import urllib.request,urllib.error,time,json
+          for _ in range(30):
+              try:
+                  try: r=urllib.request.urlopen('http://127.0.0.1:18787/',timeout=2)
+                  except urllib.error.HTTPError as e: r=e
+                  body=r.read().decode()
+                  assert r.code==410
+                  assert body=='Reader reset endpoint closed. No password changed.'
+                  assert r.headers['cache-control']=='no-store'
+                  assert r.headers['content-type']=='text/plain; charset=utf-8'
+                  break
+              except (OSError,AssertionError): time.sleep(1)
+          else: raise SystemExit('Edge handler recovery failed')
+          with open('/tmp/edge-evidence/EDGE-HANDLER.json','w') as f: json.dump({'deno_handler_http':'PASS','status':410,'cache_control':'PASS','body':'PASS','source_project_contact':'NEVER','supabase_gateway_jwt':'NOT_TESTED','scope':'local Deno execution of exported closed handler, not full Edge platform recovery'},f,indent=2)
+          PY
+      - name: Rebuild offline Git backup and merge verified recovery evidence
+        env:
+          PACKAGE_SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile,hashlib,json,shutil,subprocess,os
+          b=Path('/tmp/integrated');b.mkdir()
+          old=Path('/tmp/previous-delivery/SARBERKI_V1_FULL_RECOVERY_2026-10-20.zip')
+          expected='1d203b993ec180fb8e777b4d0419426141beb18c219bf11f60f90c4f9c3365c2'
+          if hashlib.sha256(old.read_bytes()).hexdigest()!=expected: raise SystemExit('Previous package identity mismatch')
+          with zipfile.ZipFile(old) as z:
+              assert z.testzip() is None
+              for n in z.namelist():
+                  p=Path(n)
+                  assert not p.is_absolute() and '..' not in p.parts
+              for line in z.read('SHA256SUMS.txt').decode().splitlines():
+                  h,n=line.split('  ',1);assert hashlib.sha256(z.read(n)).hexdigest()==h
+              z.extractall(b)
+          prior=b/'07_DOCUMENTATION/previous-delivery';prior.mkdir()
+          for p in Path('/tmp/previous-delivery').iterdir(): shutil.copy2(p,prior/p.name)
+          shutil.copytree('/tmp/current-runtime',b/'06_VERIFICATION/runtime-20261020')
+          shutil.copytree('/tmp/edge-evidence',b/'06_VERIFICATION/edge-20261020')
+          shutil.copytree('recovery/edge-20261020',b/'02_SUPABASE/edge-functions-20261020')
+          (b/'02_SUPABASE/edge-functions-20261020/METADATA.json').write_text(json.dumps({'slug':'reader-password-reset','version':9,'verify_jwt':True,'project':'mojnqizbcaczstguikpv','exported_at':'2026-10-20','source':'authenticated Supabase function export','gateway_restore':'NOT_TESTED'},indent=2))
+          shutil.copy2('docs/RECOVERY-CONFIGURATION-PLAN-2026-10-20.md',b/'07_DOCUMENTATION/CONFIGURATION_RECOVERY_PLAN_HU.md')
+          for name in ['RUNTIME-CHAIN.json','SERVICE-ROLLBACK.json','ISOLATED-RESTORE.json']:
+              matches=list(Path('/tmp/current-runtime').rglob(name))
+              assert len(matches)==1,name
+              d=json.loads(matches[0].read_text())
+              if name=='ISOLATED-RESTORE.json':
+                  assert d['verification_completed'] and d['snapshot_run']==39470370851
+              else: assert d['completed'],name
+          git=b/'01_GITHUB'
+          (git/'all-branches.bundle').unlink()
+          subprocess.run(['git','bundle','create',str(git/'all-branches.bundle'),'--all'],check=True)
+          subprocess.run(['git','clone','--mirror',str(git/'all-branches.bundle'),'/tmp/integrated-recovered.git'],check=True)
+          subprocess.run(['git','--git-dir=/tmp/integrated-recovered.git','fsck','--full'],check=True)
+          (git/'REFS.txt').write_bytes(subprocess.check_output(['git','for-each-ref','--format=%(objectname) %(refname)']))
+          subprocess.run(['git','archive','--format=zip','--output='+str(git/'gmail-test-subject-allowlist.zip'),'HEAD'],check=True)
+          previous=json.loads((b/'BACKUP_MANIFEST.json').read_text())
+          (b/'07_DOCUMENTATION/PREVIOUS_BACKUP_MANIFEST.json').write_text(json.dumps(previous,ensure_ascii=False,indent=2))
+          status='RÉSZLEGES – HIÁNYOSSÁGOKKAL'
+          checks={'git_offline_restore':'PASS','previous_zip_identity_and_inner_hashes':'PASS','today_auth_rest_application_chain':'PASS','today_sql_restore_49_tables':'PASS','today_service_rpc_rollback':'PASS','edge_deno_handler':'PASS','supabase_edge_gateway_jwt':'NOT_TESTED','netlify_new_site_https_restore':'NOT_TESTED','external_live_oauth_providers':'NOT_TESTED','separate_owner_key_availability':'NOT_VERIFIED','independent_durable_copy':'NOT_CREATED'}
+          missing=['Netlify read access to both named sites plus authorized new isolated site deployment, configuration/domain/DNS/environment export.','Supabase Auth/SMTP/OAuth/API/JWT/Edge secret inventories and target-project provisioning access.','Owner-held backup decryption phrase and two-factor recovery access confirmation.','Full new HTTPS Netlify browser/cookie/CSRF restore test; Supabase Edge gateway/JWT restore.','Fresh unified ZIP independent durable copy; previous Library 5.8 MB ZIP cannot be materialized in this session.']
+          (b/'BACKUP_MANIFEST.json').write_text(json.dumps({'status':status,'package_commit':os.environ['PACKAGE_SHA'],'snapshot_run':39470370851,'runtime_verification_run':39477852959,'checks':checks,'missing':missing,'previous_package_sha256':expected,'source_runtime_unchanged':True},ensure_ascii=False,indent=2))
+          (b/'BACKUP_STATUS.txt').write_text(status+'\n'+json.dumps(checks,ensure_ascii=False,indent=2)+'\n'+'\n'.join(missing))
+          report='''# Mai integrált helyreállítási jelentés – 2026-10-20
+          A 39477852959 futás a mai 39470370851 snapshotot külön PostgreSQL 17, GoTrue és PostgREST szolgáltatásokba állította vissza. A forráskapcsolat nem nyílt meg. A SQL-restore ismétlése az új szolgáltatáspróba szükséges bootstrapja volt, nem új forrásexport.
+          A runtime-20261020/RUNTIME-CHAIN.json igazolja a valódi Auth login, API-n keresztüli ügymentés, tervezet, Reader-tiltások, Writer/approver és tenant-határok, dedup és konténer-újraindítás utáni új belépés eredményeit.
+          A SERVICE-ROLLBACK.json a visszaállított SQL szolgáltatási RPC-k és audit/MAC/replay tiltások eredménye. A fixture-k az izolált DB-ben futottak.
+          Az Edge handler külön valódi Deno konténerben HTTP 410/no-store választ adott. Ez nem Supabase Edge gateway/JWT-teszt, amely továbbra is NEM IGAZOLT.
+          A runtime szintetikus kapacitás/ár forrást és belső HTTP-adaptert használt. Külső Gmail/OpenAI/Previo/SMTP/Pushover szolgáltatáshívás, emailküldés és foglalás nem futott.
+          Az előző friss csomag minden fájlja és teljes byte-példánya megmaradt. A régi 5,8 MB-os külön Library csomag teljes byte-példányához nem volt helyi fájlhozzáférés; azt továbbra is külön őrizni kell.
+          A hiányzó Netlify/platform hozzáférések miatt a teljes rendszer nem minősíthető 100%-osan visszaállíthatónak. Részletes jogosultságlista és kulcsmentési/újralétrehozási eljárás: 07_DOCUMENTATION/CONFIGURATION_RECOVERY_PLAN_HU.md.
+          '''
+          (b/'06_VERIFICATION/REPORT_HU.md').write_text(report)
+          (b/'06_VERIFICATION/INTEGRATED_RESULTS.json').write_text(json.dumps(checks,indent=2))
+          oldguide=(b/'RESTORE_GUIDE_HU.md').read_text()
+          (b/'RESTORE_GUIDE_HU.md').write_text('# Frissített helyreállítási útmutató\nElőször olvassa: 07_DOCUMENTATION/CONFIGURATION_RECOVERY_PLAN_HU.md és 06_VERIFICATION/REPORT_HU.md. Ezek pontosítják a korábbi útmutatóban még hiányzó mai runtime-próba eredményét. A Netlify és Edge gateway teljes helyreállítása nem igazolt.\n\n'+oldguide)
+          (b/'README_HU.md').write_text('# Sárberki V1 integrált mentés – 2026-10-20\n'+status+'\nMai SQL + Auth/REST alkalmazáslánc + szolgáltatási RPC: PASS. Edge Deno handler: PASS; teljes gateway és új Netlify HTTPS-visszaállítás: NEM IGAZOLT.\nA korábbi teljes átadott csomag is benne van a 07_DOCUMENTATION/previous-delivery mappában.\nA kulcs nincs a ZIP-ben. A ZIP maga nem titkosított. Új titkoskulcs-export nem készült.\nA teljes hiánylista, hozzáférési mátrix, biztonságos kulcsmentési és újralétrehozási eljárás a magyar dokumentációban található.\n')
+          files=sorted(p for p in b.rglob('*') if p.is_file() and p.name not in ['CONTENTS.txt','SHA256SUMS.txt'])
+          (b/'CONTENTS.txt').write_text('\n'.join(sorted([str(p.relative_to(b)) for p in files]+['CONTENTS.txt','SHA256SUMS.txt'])))
+          files=sorted(p for p in b.rglob('*') if p.is_file() and p!=b/'SHA256SUMS.txt')
+          (b/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+str(p.relative_to(b))+'\n' for p in files))
+          out=Path('/tmp/SARBERKI_V1_FULL_RECOVERY_2026-10-20.zip')
+          with zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as z:
+              for p in sorted(b.rglob('*')):
+                  if p.is_file(): z.write(p,p.relative_to(b))
+          with zipfile.ZipFile(out) as z:
+              assert z.testzip() is None
+              for line in z.read('SHA256SUMS.txt').decode().splitlines():
+                  h,n=line.split('  ',1);assert hashlib.sha256(z.read(n)).hexdigest()==h
+          digest=hashlib.sha256(out.read_bytes()).hexdigest()
+          Path(str(out)+'.sha256').write_text(digest+'  '+out.name+'\n')
+          result={'zip_crc':'PASS','inner_sha256':'PASS','sha256':digest,'bytes':out.stat().st_size,'status':status}
+          Path('/tmp/PACKAGE_VERIFICATION.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))
+          print(json.dumps(result,ensure_ascii=False))
+          PY
+      - name: Stop disposable Edge container
+        if: always()
+        run: docker rm -f sarberki-edge-recovery >/dev/null 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SARBERKI_V1_INTEGRATED_RECOVERY_2026-10-20
+          retention-days: 90
+          if-no-files-found: error
+          path: |
+            /tmp/SARBERKI_V1_FULL_RECOVERY_2026-10-20.zip
+            /tmp/SARBERKI_V1_FULL_RECOVERY_2026-10-20.zip.sha256
+            /tmp/PACKAGE_VERIFICATION.json
