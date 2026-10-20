@@ -1,0 +1,153 @@
+name: Sarberki fresh recovery package October 20
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths: [.github/workflows/sarberki-recovery-package-20261020.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Require successful pinned fresh restore
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import urllib.request,json,time,os
+          for _ in range(30):
+              q=urllib.request.Request('https://api.github.com/repos/valkana6666-svg/Sarberki-Email-Age/actions/runs/39470370851',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+              with urllib.request.urlopen(q,timeout=30) as r: d=json.load(r)
+              if d['head_sha']!='3993ec4fb780f1d53558ba9ad51a37fed05a2caa': raise SystemExit('Source mismatch')
+              if d['status']=='completed':
+                  if d['conclusion']!='success': raise SystemExit('Restore failed')
+                  break
+              time.sleep(10)
+          else: raise SystemExit('Restore incomplete')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: sarberki-test-encrypted-39470370851
+          run-id: 39470370851
+          github-token: ${{ github.token }}
+          path: /tmp/input/current
+      - uses: actions/download-artifact@v4
+        with:
+          name: sarberki-fresh-isolated-restore-39470370851
+          run-id: 39470370851
+          github-token: ${{ github.token }}
+          path: /tmp/input/proof
+      - uses: actions/download-artifact@v4
+        with:
+          name: sarberki-test-encrypted-39027707428
+          run-id: 39027707428
+          github-token: ${{ github.token }}
+          path: /tmp/input/oct17
+      - uses: actions/download-artifact@v4
+        with:
+          name: sarberki-test-encrypted-38687214672
+          run-id: 38687214672
+          github-token: ${{ github.token }}
+          path: /tmp/input/oct15
+      - name: Verify Git recovery and run tests
+        env:
+          COMMIT_REF: ${{ github.sha }}
+        run: |
+          mkdir -p /tmp/package/01_GITHUB /tmp/package/06_VERIFICATION
+          git bundle create /tmp/package/01_GITHUB/all-branches.bundle --all
+          git bundle verify /tmp/package/01_GITHUB/all-branches.bundle > /tmp/package/06_VERIFICATION/git-bundle.txt 2>&1
+          git clone --mirror /tmp/package/01_GITHUB/all-branches.bundle /tmp/recovered.git
+          git --git-dir=/tmp/recovered.git fsck --full > /tmp/package/06_VERIFICATION/git-fsck.txt 2>&1
+          git for-each-ref --format='%(objectname) %(refname)' > /tmp/package/01_GITHUB/REFS.txt
+          git archive --format=zip --output=/tmp/package/01_GITHUB/gmail-test-subject-allowlist.zip HEAD
+          npm ci --ignore-scripts --no-audit --no-fund > /tmp/package/06_VERIFICATION/npm-ci.log 2>&1
+          npm test > /tmp/package/06_VERIFICATION/npm-test.log 2>&1
+          node scripts/build-static.cjs > /tmp/package/06_VERIFICATION/build.log 2>&1
+      - name: Assemble and verify ZIP
+        env:
+          PACKAGE_SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,shutil,hashlib,zipfile,os,re
+          b=Path('/tmp/package')
+          for n in ['02_SUPABASE','03_NETLIFY','04_CONFIGURATION','05_RECOVERY_SCRIPTS','07_DOCUMENTATION']: (b/n).mkdir()
+          for name in ['current','oct15','oct17']:
+              s=Path('/tmp/input')/name
+              for line in (s/'SHA256SUMS.txt').read_text().splitlines():
+                  h,n=line.split('  ',1)
+                  if n not in ['database.dump.gpg','roles.sql.gpg','manifest.json.gpg'] or hashlib.sha256((s/n).read_bytes()).hexdigest()!=h: raise SystemExit('Ciphertext integrity failure')
+              shutil.copytree(s,b/'02_SUPABASE'/name)
+          proof=json.loads(Path('/tmp/input/proof/ISOLATED-RESTORE.json').read_text())
+          for k,v in {'verification_completed':True,'full_restore':'PASS','case_manifest':'PASS','tables_compared':49,'manifest_after_rollback_equal':True,'snapshot_run':39470370851}.items():
+              if proof.get(k)!=v: raise SystemExit('Restore proof mismatch: '+k)
+          shutil.copytree('/tmp/input/proof',b/'06_VERIFICATION/fresh-restore')
+          shutil.copytree('dist',b/'03_NETLIFY/rebuilt-dist')
+          shutil.copytree('netlify/functions',b/'03_NETLIFY/functions')
+          shutil.copy2('netlify.toml',b/'03_NETLIFY/netlify.toml')
+          shutil.copytree('supabase',b/'02_SUPABASE/repository-supabase')
+          for f in ['cloud-encrypted-backup.py','owner-encrypted-backup.py','verify-isolated-restore.py','case-store-recovery-manifest.sql']:
+              shutil.copy2(Path('scripts')/f,b/'05_RECOVERY_SCRIPTS'/f)
+          shutil.copy2('docs/SARBERKI-CLOUD-BACKUP.md',b/'07_DOCUMENTATION/ORIGINAL_BACKUP_GUIDE_HU.md')
+          shutil.copytree('reports/restored-v1-runtime-2026-10-17',b/'07_DOCUMENTATION/historical-runtime-proof')
+          names=set()
+          for p in Path('.').rglob('*'):
+              if p.is_file() and p.suffix in ['.mjs','.js','.py','.yml'] and not any(x in p.parts for x in ['node_modules','.git','dist']):
+                  names.update(re.findall(r'process\.env\.([A-Z][A-Z0-9_]+)',p.read_text(errors='replace')))
+          (b/'04_CONFIGURATION/ENVIRONMENT_NAMES.txt').write_text('Source-referenced names, not an account export.\n'+'\n'.join(sorted(names)))
+          status='RÉSZLEGES – HIÁNYOSSÁGOKKAL'
+          gaps=['Netlify-fiók/DNS/környezeti titkok exportja hiányzik.','Auth/SMTP/OAuth/JWT/API és Edge secretértékek külön szükségesek.','Mai teljes Auth/REST runtime-próba nem futott; történeti bizonyíték külön melléklet.','A kulcs tulajdonosi elérhetősége külön ellenőrizendő.','A csomag 90 napos GitHub-átadás; külön tartós másolat szükséges.','A korábbi 5,8 MB-os ZIP további Edge/HTTP/szerkezeti mellékleteit is meg kell őrizni.']
+          (b/'BACKUP_STATUS.txt').write_text(status+'\n'+'\n'.join(gaps))
+          guide='''# Sárberki V1 helyreállítás – 2026-10-20
+          A mai teljes titkosított dump és 49 táblás izolált SQL-restore sikeres. A Reader-próba a klónban rollbackkel külön read-only jogosultságot hoz létre, nem módosítja a forrást. A teljes platform státusza a hiányok miatt részleges.
+          1. Ellenőrzés a kicsomagolt gyökérből: sha256sum -c SHA256SUMS.txt.
+          2. Git: git clone --mirror 01_GITHUB/all-branches.bundle recovered.git; git --git-dir=recovered.git fsck --full. Majd git clone recovered.git recovered-work; git -C recovered-work checkout gmail-test-subject-allowlist. Egyeztesse a REFS.txt fájlt.
+          3. Kód: npm ci --ignore-scripts --no-audit --no-fund; npm test. COMMIT_REF a BACKUP_MANIFEST.json package_commit értéke, majd node scripts/build-static.cjs. Netlify publish=dist; functions=netlify/functions. Fiókértékek külön szükségesek. Csak új tesztoldalt használjon.
+          4. Adatbázis: PostgreSQL 17, Python 3, GnuPG és a workflow-ban rögzített Vault kiterjesztés kell. A legfrissebb snapshot: 02_SUPABASE/current. Ne keverje más snapshot fájljaival. A GPG-jelmondat nincs a csomagban; külön jelszókezelőből szükséges. Nyílt dumpot ne tegyen artifactba.
+          5. A bundle-ben lévő .github/workflows/sarberki-cloud-backup.yml és scripts/verify-isolated-restore.py pontos bootstrapját használja eldobható PostgreSQL 17 szerveren. A scriptet az eredeti scripts könyvtárból futtassa az összes függőséggel; az 05 mappa csak kiemelt másolat.
+          6. A hat snapshotfájlt másolja /tmp/sarberki-cloud-backup alá. SARBERKI_RESTORE_INPUT=current-export-v1. Eredetkötés: GITHUB_REPOSITORY=valkana6666-svg/Sarberki-Email-Age; GITHUB_REF=refs/heads/gmail-test-subject-allowlist; GITHUB_SHA=3993ec4fb780f1d53558ba9ad51a37fed05a2caa; GITHUB_RUN_ID=39470370851. Ezek az archivált export azonosítói. A PG-beállítások kizárólag a script validate_destination feltételei szerinti postgres host/restore_admin felhasználó/postgres induló adatbázisra mutathatnak; sc_restore létrejön és törlődik. Forrás URI-t ne adjon a restore-nak. A védett jelmondat környezeti átadását és ideiglenes céljelszót a workflow szerint oldja meg.
+          7. Elvárt: full_restore PASS; case_manifest PASS; tables_compared 49; verification_completed true; manifest_after_rollback_equal true. A 06_VERIFICATION/fresh-restore a mostani felhős futás bizonyítéka.
+          8. Szerepkörjelszavak, Auth szolgáltatói konfiguráció, SMTP/OAuth/JWT és Netlify környezeti értékek külön újralétrehozandók. A mai SQL-próba nem teljes platform/runtime teszt. A 17-i runtime bizonyíték történeti.
+          9. Éles rendszerhez, Previo íráshoz, foglaláshoz, emailküldéshez ne nyúljon. Tartson két független példányt: titkosított leválasztott SSD és privát 2FA felhőtárhely. A kulcs külön helyen legyen. A GitHub 90 napos artifact önmagában nem tartós archiválás.
+          10. A korábbi 5,8 MB-os csomagot is őrizze meg; ebben további Edge- és HTTP-leltár szerepel. A friss ZIP nem tartalmazza ezek minden mellékletét.
+          '''
+          (b/'README_HU.md').write_text('Sárberki V1 friss helyreállítási csomag\n'+status+'\nMai dump és izolált SQL-restore: PASS. Részletek: RESTORE_GUIDE_HU.md, BACKUP_STATUS.txt. Titkosítási kulcs nincs a ZIP-ben; a ZIP maga nem titkosított.\n')
+          (b/'RESTORE_GUIDE_HU.md').write_text(guide)
+          (b/'BACKUP_MANIFEST.json').write_text(json.dumps({'status':status,'date':'2026-10-20','snapshot_run':39470370851,'snapshot_commit':'3993ec4fb780f1d53558ba9ad51a37fed05a2caa','package_commit':os.environ['PACKAGE_SHA'],'restore':proof,'missing':gaps},ensure_ascii=False,indent=2))
+          files=sorted(p for p in b.rglob('*') if p.is_file())
+          (b/'CONTENTS.txt').write_text('\n'.join(sorted([str(p.relative_to(b)) for p in files]+['CONTENTS.txt','SHA256SUMS.txt'])))
+          files=sorted(p for p in b.rglob('*') if p.is_file())
+          (b/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+str(p.relative_to(b))+'\n' for p in files))
+          out=Path('/tmp/SARBERKI_V1_FULL_RECOVERY_2026-10-20.zip')
+          with zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as z:
+              for p in sorted(b.rglob('*')):
+                  if p.is_file(): z.write(p,p.relative_to(b))
+          with zipfile.ZipFile(out) as z:
+              assert z.testzip() is None
+              for line in z.read('SHA256SUMS.txt').decode().splitlines():
+                  h,n=line.split('  ',1)
+                  assert hashlib.sha256(z.read(n)).hexdigest()==h
+          digest=hashlib.sha256(out.read_bytes()).hexdigest()
+          Path(str(out)+'.sha256').write_text(digest+'  '+out.name+'\n')
+          result={'zip_crc':'PASS','inner_sha256':'PASS','sha256':digest,'bytes':out.stat().st_size,'status':status}
+          Path('/tmp/PACKAGE_VERIFICATION.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))
+          print(json.dumps(result,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SARBERKI_V1_FULL_RECOVERY_2026-10-20
+          retention-days: 90
+          if-no-files-found: error
+          path: |
+            /tmp/SARBERKI_V1_FULL_RECOVERY_2026-10-20.zip
+            /tmp/SARBERKI_V1_FULL_RECOVERY_2026-10-20.zip.sha256
+            /tmp/PACKAGE_VERIFICATION.json
