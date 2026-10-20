@@ -238,7 +238,21 @@ def main():
         report['vault_counts']=json.loads(sql("select json_build_object('secrets',(select count(*) from vault.secrets));")) if report['full_restore']=='PASS' else 'NOT_RESTORED'
         report['table_payload_comparison']=matched
         policy=ROOT.parent/'reports/supabase-connection-verification-2026-10-09/CLOUD-POLICY-TEST.sql'
-        sql(policy.read_text())
+        # The owner may promote the original Reader account in the source.
+        # Establish Reader-only permissions inside this disposable restore's
+        # rollback fixture, without changing source or persisted permissions.
+        policy_text = policy.read_text()
+        marker = 'begin;\nset local role authenticated;'
+        if policy_text.count(marker) != 1:
+            raise RuntimeError('POLICY_FIXTURE_BOUNDARY_INVALID')
+        reader_fixture = """begin;
+update public.sc_memberships
+set can_read=true, can_write=false, can_approve=false
+where tenant_id='sarberki-test'
+  and user_id='d7faae9a-79a9-4219-9b7e-0758a6282f6b';
+set local role authenticated;"""
+        sql(policy_text.replace(marker, reader_fixture, 1))
+        report['reader_permission_fixture']='READ_ONLY_IN_DISPOSABLE_DB_ROLLBACK_ONLY'
         report['rls_behavior']='PASS_RESTORED_DB_SIMULATED_JWT_CLAIMS'
         report['cas_history_uniqueness_audit']='PASS_RESTORED_DB_ROLLBACK_FIXTURE'
         report['manifest_after_rollback_equal']=json.loads(sql((ROOT/'case-store-recovery-manifest.sql').read_text()))==restored
