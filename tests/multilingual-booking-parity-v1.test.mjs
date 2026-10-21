@@ -112,16 +112,16 @@ for(const language of languages){
 
 for(const language of languages){
   for(const guests of [14,15,16]){
-    test(`V1 language ${language}: ${guests}-guest deposit respects over-15 threshold`,()=>{
+    test(`V1 language ${language}: ${guests}-guest deposit respects at-least-15 threshold`,()=>{
       const draft=buildReplyDraft({...request,language,guests,adults:guests,original:'booking terms',bookingRules:{depositPctUnder15Guests:50,depositPctFrom15Guests:80}});
-      const expected=guests>15?'80%':'50%';
+      const expected=guests>=15?'80%':'50%';
       assert.match(draft,new RegExp(expected.replace('%','%'),'u'));
-      assert.doesNotMatch(draft,new RegExp(guests>15?'50%':'80%','u'));
+      assert.doesNotMatch(draft,new RegExp(guests>=15?'50%':'80%','u'));
     });
   }
 }
 
-for(const [days,expectedHours] of [[1,24],[3,24],[14,24],[15,168],[30,168]]){
+for(const [days,expectedHours] of [[1,24],[3,24],[13,24],[15,168],[30,168]]){
   test(`V1 deposit policy: ${days} days before arrival requires ${expectedHours} hour receipt window`,()=>{
     const bookingAt='2026-10-17T09:00:00';
     const arrivalDate=new Date(Date.UTC(2026,9,17+days)).toISOString().slice(0,10);
@@ -131,7 +131,7 @@ for(const [days,expectedHours] of [[1,24],[3,24],[14,24],[15,168],[30,168]]){
     assert.equal(result.paymentMustBeReceived,true);
   });
 }
-for(const [guestCount,expectedPct] of [[14,50],[15,50],[16,80]]){
+for(const [guestCount,expectedPct] of [[14,50],[15,80],[16,80]]){
   test(`V1 deposit policy: ${guestCount} guests require ${expectedPct}%`,()=>{
     const result=depositPolicyForBooking({guestCount,bookingAt:'2026-10-17T09:00:00',arrivalDate:'2026-11-10'});
     assert.equal(result.depositPct,expectedPct);
@@ -177,9 +177,9 @@ test('V1 cancellation: booking five days before arrival, cancelling four days be
   assert.equal(result.depositForfeitedOnCancellation,true);
   assert.equal(result.requiresHumanReview,true);
 });
-test('V1 cancellation: 14-day short-notice boundary is included',()=>{
+test('V1 cancellation: disputed exact 14-day boundary requires review',()=>{
   const result=shortNoticeCancellationAssessment({bookingDate:'2026-10-17',arrivalDate:'2026-10-31',cancellationDate:'2026-10-18',depositPct:50});
-  assert.equal(result.status,'policy_applies');
+  assert.equal(result.status,'manual_review');
 });
 test('V1 cancellation: bookings more than 14 days ahead need separate policy review',()=>{
   const result=shortNoticeCancellationAssessment({bookingDate:'2026-10-17',arrivalDate:'2026-11-05',cancellationDate:'2026-10-20',depositPct:50});

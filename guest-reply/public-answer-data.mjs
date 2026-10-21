@@ -1,4 +1,5 @@
-export const PUBLIC_REPLY_DATA_VERSION='2026-10-07-prep-1';
+import {BUSINESS} from '../business-config.mjs';
+export const PUBLIC_REPLY_DATA_VERSION='2026-10-21-deposit-review';
 
 export const PUBLIC_REPLY_DATA=Object.freeze({
   brandName:'Sárberki Horgásztó',
@@ -30,13 +31,7 @@ export const PUBLIC_REPLY_DATA=Object.freeze({
       si:'Za ribolov je potrebna veljavna madžarska državna ribolovna dovolilnica. Dovoljen je trnek brez zalusti največ velikosti 6. Obvezni so podloga/zibelka za krape, podmetalka, razkužilo za rane in vreča za krape. Ribolovno dovolilnico Sárberki je treba kupiti posebej.'
     })
   }),
-  booking:Object.freeze({
-    depositDueDays:10,
-    depositPctUnder15Guests:50,
-    depositPctFrom15Guests:null,
-    cancellationDaysUnder15Guests:14,
-    cancellationDaysFrom15Guests:30
-  }),
+  booking:BUSINESS.bookingRules,
   operations:Object.freeze({
     checkinFrom:'14:00',
     checkoutBy:'10:00',

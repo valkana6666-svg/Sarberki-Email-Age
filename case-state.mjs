@@ -97,7 +97,7 @@ export function deriveCaseView(state, baseReview={warning_codes:[],issues:[]}) {
   const today=`${dateParts.year}-${dateParts.month}-${dateParts.day}`;
   const untilArrival=v.arrival?(Date.parse(v.arrival)-Date.parse(today))/86400000:null;
   // No new deadline: the configured normal policy cannot safely be applied here.
-  const closeArrival=booking&&Number.isFinite(untilArrival)&&(untilArrival<cancellationDays||untilArrival<=Number(rules.depositDueDays)+1);
+  const closeArrival=booking&&Number.isFinite(untilArrival)&&(untilArrival<cancellationDays||untilArrival<=rules.depositLeadDaysBoundary);
   const removed=new Set(['price_unverified','hot_tub_availability_unverified','unresolved_guest_question','missing_child_ages','missing_contact']);
   if(lang==='hu')removed.add('foreign_review');
   const warnings=(baseReview.warning_codes||[]).flatMap((code,i)=>removed.has(code)?[]:[{code,text:baseReview.issues[i]}]);

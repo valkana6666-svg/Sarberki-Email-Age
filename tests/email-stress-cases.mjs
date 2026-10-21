@@ -83,7 +83,7 @@ add('multi-house','2026. október 16-18. 12 fő. Két Deluxe házat szeretnénk.
 add('open-house','2026. október 16-18. 16 fő. Több ház is megfelelő.',{...dates,unitsRequested:null,cabin:unknown},{},'multiple-units');
 add('no-child','2026. október 16-18. Deluxe, 2 felnőtt, gyermek nélkül.',{...dates,children:0},{absent:/érkezik-e gyermek/},'no-children');
 add('late-arrival','2026. október 16-18. Deluxe, 4 fő. 22:15-kor érkeznénk.',{...dates},{absent:/18:30-as érkezés/},'arrival-time');
-add('policy','2026. október 16-18. Deluxe, 4 fő. Mik a foglalási feltételek?',{...dates},{contains:/50%[\s\S]*10 napon belül[\s\S]*előleg beérkezése.*végleges[\s\S]*14 nap/},'confirmation-policy');
+add('policy','2026. október 16-18. Deluxe, 4 fő. Mik a foglalási feltételek?',{...dates},{contains:/50%[\s\S]*7 nap[\s\S]*24 óra[\s\S]*Pontosan 14 nap[\s\S]*külön emberi ellenőrzés/},'confirmation-policy');
 add('known-cabin','2026. október 16-18. Családi. 2 felnőtt és 1 gyerek, 7 éves.',{...dates,cabin:'Családi'},{contains:/Családi/},'cabin-in-reply');
 add('special','2026. október 16-18. Deluxe. 4 fő.\nKülön kérés: egymás melletti házak',{...dates,specialRequests:['egymás melletti házak']},{},'special-request');
 // Variations retain independent expectations, including shuffled sentence order.

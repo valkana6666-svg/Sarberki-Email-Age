@@ -1,4 +1,5 @@
 import {SARBERKI_PROFILE} from './business/sarberki/profile.mjs';
+import {depositPercentForGuestCount} from './sarberki-core.mjs';
 
 // Guest count alone cannot establish the applicable cancellation policy.
 export function cancellationDaysForGuests(guests){
@@ -10,7 +11,9 @@ export function cancellationDaysForGuests(guests){
 export function depositPercentForGuests(guests){
   const n=Number(guests);
   if(!Number.isInteger(n)||n<1) throw new Error('Érvényes vendéglétszám szükséges.');
-  return n>15 ? 80 : 50;
+  const pct=depositPercentForGuestCount(n,SARBERKI_PROFILE.bookingRules);
+  if(pct===null)throw new Error('Az előlegszázalék emberi ellenőrzést igényel.');
+  return pct;
 }
 
 // Legacy demo only: never assert actual bank receipt or reservation finalization.

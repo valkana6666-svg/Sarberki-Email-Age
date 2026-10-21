@@ -30,26 +30,32 @@ Komment: A vendéglétszám alapján választja ki a kisebb csoportokra érvény
 Forrás: business-config.mjs:10-16
 Komment: 15 vagy több vendégnél magasabb foglaló-százalékot használ.
 
-1.3 A foglaló befizetési határideje 10 nap.
-Forrás: business-config.mjs:10-16
-Komment: A foglalási szándék rögzítésétől számított 10 napon belül kell beérkeznie.
+1.3 A fizetési határidő az érkezésig hátralévő időtől függ.
+Forrás: tulajdonosi utasítás 2026-10-21; business-config.mjs; sarberki-core.mjs.
+Komment: Több mint 14 napos előzetes foglalásnál 7 nap (168 óra), kevesebb mint
+14 napnál 24 óra a beérkezési ablak. A régi általános 10 napos határidő nem aktív.
+Pontosan 14 naptári napos határ esetén a korábbi és jelenlegi megfogalmazás
+nem egyértelmű; automatikus határidő helyett emberi egyeztetés kötelező.
 
-1.4 Lemondási határidő 15 fő alatt: érkezés előtt 14 nap.
-Forrás: business-config.mjs:10-16
-Komment: Kisebb foglalásokra a 14 napos lemondási szabály vonatkozik.
+1.4 A lemondási feltételek külön emberi ellenőrzést igényelnek.
+Forrás: tulajdonosi utasítás 2026-10-21; cancellationAutomaticPolicyVerified=false.
+Komment: A konfigurációban megőrzött régi 14/30 napos értékek nem elegendők
+automatikus vendégígérethez. A konkrét ügyben igazolt feltétel külön kezelendő.
 
-1.5 Lemondási határidő 15 főtől: érkezés előtt 30 nap.
-Forrás: business-config.mjs:10-16
-Komment: Nagyobb csoportnál hosszabb lemondási határidőt használ.
+1.5 A rövid határidejű lemondás sem automatikus foglalástörlés.
+Forrás: sarberki-core.mjs shortNoticeCancellationAssessment és audit-folyamat.
+Komment: Tulajdonosi jóváhagyás, igazolt foglalás és előlegbeérkezés szükséges.
+Pontosan 14 napnál külön emberi felülvizsgálat, nem automatikus előlegvesztés.
 
-1.6 A foglaló és a lemondási napok mindig a létszám alapján kerülnek kiválasztásra.
-Forrás: booking-confirmation.mjs:3-13
-Komment: A program külön függvényben számolja ki a megfelelő százalékot és lemondási határidőt.
+1.6 Az előlegszázalék 15 fő ALATT 50%, LEGALÁBB 15 főnél 80%.
+Forrás: tulajdonosi utasítás 2026-10-21; business-config.mjs.
+Komment: A határ 14/15/16 főre tesztelt. A létszám önmagában nem határoz meg
+fizetési vagy lemondási határidőt, és hiányzó létszám nem található ki.
 
-1.7 A foglaló beérkezése után generált levél véglegesített foglalásról tájékoztat,
-és tartalmazza a létszám szerinti lemondási határidőt.
-Forrás: booking-confirmation.mjs:15-80
-Komment: HU/DE/EN/SL nyelven készít visszaigazoló tervezetet.
+1.7 A booking-confirmation demo kizárólag szimuláció.
+Forrás: booking-confirmation.mjs generateDepositReceivedDraft.
+Komment: HU/DE/EN/SL nyelven egyértelműen jelzi: valódi pénzbeérkezés és
+foglalás-véglegesítés nem történt; nem vendégnek küldhető visszaigazolás.
 
 ----------------------------------------------------------------
 2. ÜZEMELTETÉSI SZABÁLYOK

@@ -10,6 +10,7 @@ import vm from 'node:vm';
 import {validateQuote} from './price-quote.mjs';
 import * as sharedNormalize from './sarberki-core.mjs';
 import {fishingQuestion} from './fishing-rules.mjs';
+import {BUSINESS} from './business-config.mjs';
 
 const html=fs.readFileSync(new URL('./index.html',import.meta.url),'utf8');
 const pricing=fs.readFileSync(new URL('./price-check.js',import.meta.url),'utf8');
@@ -25,7 +26,7 @@ function harness(message,reply){
  };
  const document={getElementById:id=>id==='price_approval_panel'&&!nodes.has(id)?null:element(id),createElement:()=>({id:'',className:'',innerHTML:''}),addEventListener:(type,fn)=>listeners.set(type,fn)};
  element('gmail_record').classList.contains=()=>true;
- const context=vm.createContext({document,window:{SarberkiNormalize:sharedNormalize,SarberkiFishingQuestion:fishingQuestion,addEventListener(){}},console,Date,Intl,Number,JSON,setTimeout:fn=>fn(),fetch:async(_url,options)=>{
+ const context=vm.createContext({document,window:{SarberkiConfig:BUSINESS,SarberkiNormalize:sharedNormalize,SarberkiFishingQuestion:fishingQuestion,addEventListener(){}},console,Date,Intl,Number,JSON,setTimeout:fn=>fn(),fetch:async(_url,options)=>{
   calls++;
   assert.equal(options.method,'POST');
   const parsed=JSON.parse(options.body);
@@ -375,11 +376,11 @@ test('approved child quote includes age, HUF, EUR and under-15 booking terms',as
   assert.match(draft,/106.200|106 200/u);
   assert.match(draft,/288,69|288\.69/u);
   assert.match(draft,/50%-a/u);
-  assert.match(draft,/14\. napig/u);
-  assert.match(draft,/10 napon belül/u);
+  assert.doesNotMatch(draft,/14\. napig|10 napon belül/u);
+  assert.match(draft,/lemondási feltételeket emberi ellenőrzés után/u);
 });
 
-test('approved quote switches to 80 percent deposit and 30 day cancellation from 15 guests',async()=>{
+test('approved quote switches to 80 percent deposit from 15 guests and defers unverified cancellation',async()=>{
   const message='Kedves Sárberki Horgásztó! 2027. október 1–3. között 15 felnőtt mennénk, gyermek nélkül, három Családi házat szeretnénk. Mennyi a teljes ár?';
   const h=harness(message,input=>{
     assert.equal(input.cabin,'family');
@@ -403,9 +404,18 @@ test('approved quote switches to 80 percent deposit and 30 day cancellation from
   h.element('approve_price').onclick();
   const draft=h.element('draft').value;
   assert.match(draft,/80%-a/u);
-  assert.match(draft,/30\. napig/u);
-  assert.match(draft,/10 napon belül/u);
+  assert.doesNotMatch(draft,/30\. napig|10 napon belül/u);
+  assert.match(draft,/lemondási feltételeket emberi ellenőrzés után/u);
   assert.match(draft,/328.500|328 500/u);
+});
+
+test('missing booking configuration cannot invent deposit percentage or deadline in approved legacy price reply',async()=>{
+ const record=recorded[0],h=harness(sample(record),input=>json(quote(input,record)));
+ delete h.context.window.SarberkiConfig;
+ await h.run();h.element('approve_price').onclick();
+ const draft=h.element('draft').value;
+ assert.match(draft,/Az előleg összegét külön ellenőrizzük/u);
+ assert.doesNotMatch(draft,/50%-a|80%-a|10 napon belül|NaN/u);
 });
 
 

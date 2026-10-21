@@ -7,10 +7,11 @@ import {buildAvailabilityOptions} from '../netlify/functions/availability-option
 // Synthetic-only regressions. Never query live Previo or create a booking.
 const dates={arrival:'2026-11-26',departure:'2026-11-28'};
 const input=(guests,cabin,units=1)=>capacityInput({...dates,guests,adults:guests,children:0,unit:cabin,units_requested:units});
-test('deposit remains 50% on both sides of 15-guest boundary',()=>{
+test('owner-approved deposit is 80% from 15 guests and deadline is contextual',()=>{
  assert.equal(BUSINESS.bookingRules.depositPctUnder15Guests,50);
- assert.equal(BUSINESS.bookingRules.depositPctFrom15Guests,50);
- assert.equal(BUSINESS.bookingRules.depositDueDays,10);
+ assert.equal(BUSINESS.bookingRules.depositPctFrom15Guests,80);
+ assert.equal(BUSINESS.bookingRules.depositDueDays,null);
+ assert.equal(BUSINESS.bookingRules.depositExactBoundaryRequiresReview,true);
 });
 test('nine guests requesting one family house cannot silently become two',async()=>{
  const i=input(9,'family');

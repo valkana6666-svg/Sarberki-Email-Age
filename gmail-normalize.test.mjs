@@ -608,16 +608,16 @@ test('dense operational questions are answered from verified config',()=>{
   assert.match(draft,/not applied automatically/u);
 });
 
-test('deposit percentage changes above 15 guests and unknown group size stays explicit',()=>{
+test('deposit percentage changes from 15 guests and unknown group size stays explicit',()=>{
   const rules={depositPctUnder15Guests:50,depositPctFrom15Guests:80,depositDueDays:10,cancellationDaysUnder15Guests:14,cancellationDaysFrom15Guests:30};
   const under=buildReplyDraft({language:'hu',original:'Mekkora előleg kell?',guests:14,phone:'x',cabin:'Deluxe',bookingRules:rules});
   const boundary=buildReplyDraft({language:'hu',original:'Mekkora előleg kell?',guests:15,phone:'x',cabin:'Deluxe',bookingRules:rules});
   const over=buildReplyDraft({language:'hu',original:'Mekkora előleg kell?',guests:16,phone:'x',cabin:'Deluxe',bookingRules:rules});
   const unknown=buildReplyDraft({language:'hu',original:'Mekkora előleg kell?',guests:null,phone:'x',cabin:'Deluxe',bookingRules:rules});
   assert.match(under,/50%/u);
-  assert.match(boundary,/50%/u);
+  assert.match(boundary,/80%/u);
   assert.match(over,/80%/u);
-  assert.match(unknown,/legfeljebb 15 főnél 50%.*15 fő felett 80%/su);
+  assert.match(unknown,/15 fő alatt 50%.*legalább 15 főnél 80%/su);
 });
 
 
@@ -671,8 +671,8 @@ Phone: +44 7700 912345.`;
   });
 
   assert.match(draft,/50% deposit/u);
-  assert.match(draft,/within 10 days/u);
-  assert.match(draft,/14 days before arrival/u);
+  assert.match(draft,/7 days when it is more than 14 days/u);
+  assert.match(draft,/cancellation terms only after separate human review/u);
   assert.match(draft,/Electricity is charged separately/u);
   assert.match(draft,/Firewood is available/u);
   assert.match(draft,/Parking is available/u);

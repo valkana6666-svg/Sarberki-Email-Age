@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {cancellationDaysForGuests,depositPercentForGuests,generateDepositReceivedDraft} from './booking-confirmation.mjs';
 const fixture={name:'Teszt Elek',arrival:'2026-10-30',departure:'2026-11-01',cabin:'Deluxe',guests:4};
 test('deposit simulation respects approved 14/15/16 guest boundary',()=>{
-  for(const [n,pct] of [[14,50],[15,50],[16,80]])assert.equal(depositPercentForGuests(n),pct);
+  for(const [n,pct] of [[14,50],[15,80],[16,80]])assert.equal(depositPercentForGuests(n),pct);
 });
 test('guest count cannot invent cancellation terms',()=>{
   for(const n of [4,15,16])assert.throws(()=>cancellationDaysForGuests(n),/dátum/u);

@@ -25,5 +25,6 @@ test('Sárberki values are supplied through its business profile',()=>{
   assert.equal(SARBERKI_PROFILE.id,'sarberki');
   assert.equal(SARBERKI_PROFILE.brandName,'Sárberki Horgásztó');
   assert.ok(SARBERKI_PROFILE.accommodationTypes.deluxe);
-  assert.equal(SARBERKI_PROFILE.bookingRules.depositDueDays,10);
+  assert.equal(SARBERKI_PROFILE.bookingRules.depositDueDays,null);
+  assert.equal(SARBERKI_PROFILE.bookingRules.depositNormalWindowHours,168);
 });

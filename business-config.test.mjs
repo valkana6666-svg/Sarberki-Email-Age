@@ -54,7 +54,7 @@ test('split unit capacities and public prices stay distinct',()=>{
 
 test('group-size booking rules stay explicit',()=>{
   assert.equal(BUSINESS.bookingRules.depositPctUnder15Guests,50);
-  assert.equal(BUSINESS.bookingRules.depositPctFrom15Guests,50);
+  assert.equal(BUSINESS.bookingRules.depositPctFrom15Guests,80);
   assert.equal(BUSINESS.bookingRules.cancellationDaysUnder15Guests,14);
   assert.equal(BUSINESS.bookingRules.cancellationDaysFrom15Guests,30);
   assert.equal(BUSINESS.operationalRules.returningGuestLookbackDays,730);

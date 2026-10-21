@@ -9,11 +9,18 @@ export const BUSINESS = Object.freeze({
   timezone: 'Europe/Budapest',
   bookingRules: Object.freeze({
     depositPctUnder15Guests: 50,
-    depositPctFrom15Guests: 50,
-    depositDueDays: 10,
+    depositPctFrom15Guests: 80,
+    // Owner instruction 2026-10-21: deadline depends on the verified booking day.
+    // Exactly 14 calendar days remains disputed and requires human review.
+    depositDueDays: null,
+    depositLeadDaysBoundary: 14,
+    depositNormalWindowHours: 168,
+    depositShortWindowHours: 24,
+    depositExactBoundaryRequiresReview: true,
+    cancellationAutomaticPolicyVerified: false,
     cancellationDaysUnder15Guests: 14,
     cancellationDaysFrom15Guests: 30,
-    source: 'Sárberki booking rules / project knowledge base'
+    source: 'Owner instruction 2026-10-21; exact 14-day boundary and cancellation require review'
   }),
   operationalRules: Object.freeze({
     reception24h: true,

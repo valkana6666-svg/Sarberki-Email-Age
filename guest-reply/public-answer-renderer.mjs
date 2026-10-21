@@ -83,11 +83,9 @@ export function composeGuestReply(raw={}){
 
   if(topics.includes('booking_terms')){
     const b=DATA.booking, lines=[];
-    if(facts.guests&&facts.guests<15&&b.depositPctUnder15Guests!==null)lines.push({hu:'A foglaló mértéke '+b.depositPctUnder15Guests+'%, fizetési határideje '+b.depositDueDays+' nap.',de:'Die Anzahlung beträgt '+b.depositPctUnder15Guests+'% und ist innerhalb von '+b.depositDueDays+' Tagen fällig.',en:'The deposit is '+b.depositPctUnder15Guests+'% and is due within '+b.depositDueDays+' days.',si:'Predplačilo znaša '+b.depositPctUnder15Guests+'% in zapade v '+b.depositDueDays+' dneh.'}[lang]);
-    if(facts.guests){
-      const days=facts.guests<15?b.cancellationDaysUnder15Guests:b.cancellationDaysFrom15Guests;
-      lines.push({hu:'A lemondási határidő az érkezés előtt '+days+' nap.',de:'Die Stornierungsfrist beträgt '+days+' Tage vor der Anreise.',en:'The cancellation deadline is '+days+' days before arrival.',si:'Rok za odpoved je '+days+' dni pred prihodom.'}[lang]);
-    }
+    const pct=facts.guests?b[facts.guests>=15?'depositPctFrom15Guests':'depositPctUnder15Guests']:null;
+    if(typeof pct==='number')lines.push({hu:'Az előleg mértéke '+pct+'%.',de:'Die Anzahlung beträgt '+pct+'%.',en:'The deposit is '+pct+'%.',si:'Predplačilo znaša '+pct+'%.'}[lang]);
+    lines.push({hu:'A fizetési határidő az érkezésig hátralévő időtől függ: 14 napnál több idő esetén 7 nap, 14 napnál kevesebb idő esetén 24 óra. Pontosan 14 nap esetén emberi egyeztetés szükséges. A konkrét fizetési és lemondási feltételeket külön visszaigazoljuk.',de:'Die Zahlungsfrist beträgt bei mehr als 14 Tagen bis zur Anreise 7 Tage, bei weniger als 14 Tagen 24 Stunden. Genau 14 Tage erfordern eine menschliche Prüfung. Die konkreten Zahlungs- und Stornobedingungen bestätigen wir separat.',en:'The payment window is 7 days when arrival is more than 14 days away, and 24 hours when it is fewer than 14 days away. Exactly 14 days requires human review. We confirm the specific payment and cancellation terms separately.',si:'Rok plačila je 7 dni pri več kot 14 dneh do prihoda in 24 ur pri manj kot 14 dneh. Natanko 14 dni zahteva človeški pregled. Konkretne plačilne pogoje in pogoje odpovedi potrdimo posebej.'}[lang]);
     if(lines.length)blocks.push(lines.join('\n'));
   }
 

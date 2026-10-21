@@ -113,9 +113,7 @@
     const rules=window.SarberkiConfig?.bookingRules||{};
     const large=Number.isInteger(n)&&n>=15;
     return {
-      depositPct:Number(large?rules.depositPctFrom15Guests:rules.depositPctUnder15Guests)|| (large?80:50),
-      depositDueDays:Number(rules.depositDueDays)||10,
-      cancellationDays:Number(large?rules.cancellationDaysFrom15Guests:rules.cancellationDaysUnder15Guests)|| (large?30:14)
+      depositPct:Number.isInteger(n)&&n>0?Number(large?rules.depositPctFrom15Guests:rules.depositPctUnder15Guests):null
     };
   }
 
@@ -387,9 +385,9 @@
     ];
     if(priceApproved){
       const terms=bookingTermsForGuests(Number(adults||0)+Number(children||0));
-      if(lang==='DE') lines.push('', `Die Anzahlung beträgt ${terms.depositPct} % des Unterkunftspreises und ist innerhalb von ${terms.depositDueDays} Tagen per Überweisung zu bezahlen.`, `Eine Stornierung ist bis ${terms.cancellationDays} Tage vor der Anreise gemäß den Buchungsbedingungen möglich.`, 'Wenn dieses Angebot für Sie passt, antworten Sie bitte auf diese E-Mail und bestätigen Sie, dass wir die Buchung zu den oben genannten Bedingungen erfassen dürfen.');
-      else if(lang==='SL') lines.push('', `Akontacija za rezervacijo znaša ${terms.depositPct} % cene nastanitve in jo je treba poravnati z bančnim nakazilom v ${terms.depositDueDays} dneh.`, `Rezervacijo je mogoče odpovedati do ${terms.cancellationDays} dni pred prihodom v skladu s pogoji rezervacije.`, 'Če vam ponudba ustreza, prosimo odgovorite na to e-pošto in potrdite, da lahko rezervacijo zabeležimo pod zgoraj navedenimi pogoji.');
-      else lines.push('', `The booking deposit is ${terms.depositPct}% of the accommodation price and must be paid by bank transfer within ${terms.depositDueDays} days.`, `The reservation may be cancelled up to ${terms.cancellationDays} days before arrival in accordance with the booking conditions.`, 'If this offer is suitable for you, please reply to this email and confirm that we may proceed with the booking under the conditions above.');
+      if(lang==='DE') lines.push('', Number.isFinite(terms.depositPct)&&terms.depositPct>0?`Die Anzahlung beträgt ${terms.depositPct} % des Unterkunftspreises.`:'Den Anzahlungsbetrag prüfen wir separat.', 'Die Zahlungsfrist hängt vom Abstand zur Anreise ab; den konkreten Termin und die Stornobedingungen bestätigen wir nach menschlicher Prüfung. Bei genau 14 Tagen bis zur Anreise ist eine gesonderte Prüfung erforderlich.', 'Wenn dieses Angebot für Sie passt, antworten Sie bitte auf diese E-Mail und bestätigen Sie, dass wir die Buchung zu den oben genannten Bedingungen erfassen dürfen.');
+      else if(lang==='SL') lines.push('', Number.isFinite(terms.depositPct)&&terms.depositPct>0?`Akontacija za rezervacijo znaša ${terms.depositPct} % cene nastanitve.`:'Znesek predplačila preverimo posebej.', 'Rok plačila je odvisen od časa do prihoda; točen rok in pogoje odpovedi potrdimo po človeškem pregledu. Pri natanko 14 dneh do prihoda je potreben ločen pregled.', 'Če vam ponudba ustreza, prosimo odgovorite na to e-pošto in potrdite, da lahko rezervacijo zabeležimo pod zgoraj navedenimi pogoji.');
+      else lines.push('', Number.isFinite(terms.depositPct)&&terms.depositPct>0?`The booking deposit is ${terms.depositPct}% of the accommodation price.`:'We will check the deposit amount separately.', 'The payment deadline depends on the time until arrival; we confirm the exact deadline and cancellation terms after human review. Exactly 14 days until arrival requires a separate review.', 'If this offer is suitable for you, please reply to this email and confirm that we may proceed with the booking under the conditions above.');
     }
     if(lang==='DE') lines.push('','Mit freundlichen Grüßen','Sárberki Horgásztó');
     else if(lang==='SL') lines.push('','Lep pozdrav,','Sárberki Horgásztó');
@@ -451,7 +449,7 @@
     if(priceApproved){
       const guestCount=(Number(v.adults)||Number($('price_adults')?.value)||0)+(Number(v.children)||Number($('price_children')?.value)||0);
       const terms=bookingTermsForGuests(guestCount);
-      lines.push('',`A foglaló összege a teljes szállásdíj ${terms.depositPct}%-a, amelyet ${terms.depositDueDays} napon belül átutalással kérünk rendezni.`,`A foglalás az érkezést megelőző ${terms.cancellationDays}. napig mondható le a foglalási feltételek szerint.`,'Amennyiben az ajánlat megfelel Önnek, kérjük, válasz e-mailben erősítse meg, hogy a foglalást a fenti feltételekkel rögzíthetjük. A foglalást csak az Ön egyértelmű visszaigazolása után rögzítjük.');
+      lines.push('',Number.isFinite(terms.depositPct)&&terms.depositPct>0?`A foglaló összege a teljes szállásdíj ${terms.depositPct}%-a.`:'Az előleg összegét külön ellenőrizzük.','A fizetési határidő az érkezésig hátralévő időtől függ; a konkrét határidőt és a lemondási feltételeket emberi ellenőrzés után igazoljuk vissza. Pontosan 14 nap esetén külön egyeztetés szükséges.','Amennyiben az ajánlat megfelel Önnek, kérjük, válasz e-mailben erősítse meg, hogy a foglalást a fenti feltételekkel rögzíthetjük. A foglalást csak az Ön egyértelmű visszaigazolása után rögzítjük.');
     }
     if(asked.pet) lines.push('','A kisebb kutyával kapcsolatos kérését is feljegyeztük. Háziállat térítés ellenében hozható; a pontos díjat ellenőrizzük.');
     if(asked.hotTub){ if(/deluxe/iu.test(String(v.unit||''))) lines.push('','A Deluxe házakhoz dézsa tartozik; a kért időszak szabad kapacitását a foglalási felületen ellenőrizzük.'); else lines.push('','A dézsa rendelkezésre állását is ellenőrizzük a kért időszakra.'); }

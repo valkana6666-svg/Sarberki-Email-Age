@@ -2,6 +2,7 @@
 // Single source of truth for Gmail, manual paste and future input channels.
 // Business-specific values are supplied by configuration/adapters.
 // Pure functions: safe to test without Gmail or browser access.
+import {BUSINESS} from './business-config.mjs';
 const MONTHS = {
   január:1,januar:1,február:2,februar:2,március:3,marcius:3,április:4,aprilis:4,május:5,majus:5,június:6,junius:6,július:7,julius:7,augusztus:8,szeptember:9,október:10,oktober:10,november:11,december:12,
   jan:1,febr:2,márc:3,ápr:4,máj:5,jún:6,júl:7,aug:8,szept:9,okt:10,nov:11,dec:12,
@@ -493,13 +494,13 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
   const lang=['hu','de','en','si'].includes(language)?language:'hu';
   if(q.depositAmount){
     const g=Number(guests);
-    const knownGuests=Number.isFinite(g)&&g>0;
+    const knownGuests=Number.isSafeInteger(g)&&g>0;
     const validPercent=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))&&Number(v)>0&&Number(v)<=100;
     const underRaw=rules.depositPctUnder15Guests ?? rules.depositPct;
     const fromRaw=rules.depositPctFrom15Guests ?? rules.depositPct;
     const under15=validPercent(underRaw)?Number(underRaw):NaN;
     const from15=validPercent(fromRaw)?Number(fromRaw):NaN;
-    const pct=knownGuests?(g<=15?under15:from15):null;
+    const pct=knownGuests?(g<15?under15:from15):null;
     if(Number.isFinite(pct)) lines.push({
       hu:`A foglaláshoz ${pct}% előleg szükséges.`,
       de:`Für die Buchung ist eine Anzahlung von ${pct}% erforderlich.`,
@@ -507,12 +508,18 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
       si:`Za rezervacijo je potrebno ${pct}% predplačilo.`
     }[lang]);
     else if(Number.isFinite(under15)&&Number.isFinite(from15)&&under15!==from15) lines.push({
-      hu:`Az előleg mértéke létszámfüggő: legfeljebb 15 főnél ${under15}%, 15 fő felett ${from15}%.`,
-      de:`Die Anzahlung hängt von der Gruppengröße ab: bis einschließlich 15 Personen ${under15}%, über 15 Personen ${from15}%.`,
-      en:`The deposit depends on group size: ${under15}% for up to 15 guests and ${from15}% for more than 15 guests.`,
-      si:`Višina predplačila je odvisna od velikosti skupine: ${under15}% za največ 15 oseb in ${from15}% za več kot 15 oseb.`
+      hu:`Az előleg mértéke létszámfüggő: 15 fő alatt ${under15}%, legalább 15 főnél ${from15}%.`,
+      de:`Die Anzahlung hängt von der Gruppengröße ab: unter 15 Personen ${under15}%, ab 15 Personen ${from15}%.`,
+      en:`The deposit depends on group size: ${under15}% for fewer than 15 guests and ${from15}% for at least 15 guests.`,
+      si:`Višina predplačila je odvisna od velikosti skupine: ${under15}% za manj kot 15 oseb in ${from15}% za najmanj 15 oseb.`
     }[lang]);
   }
+  if(q.depositDeadline&&rules.depositExactBoundaryRequiresReview===true)lines.push({
+    hu:'A fizetési határidő az érkezésig hátralévő időtől függ: 14 napnál korábbi foglalásnál 7 nap, 14 napnál rövidebb időnél 24 óra. Pontosan 14 nap esetén külön emberi egyeztetés szükséges; a konkrét beérkezési határidőt visszaigazoljuk.',
+    de:'Die Zahlungsfrist hängt vom Abstand zur Anreise ab: bei mehr als 14 Tagen 7 Tage, bei weniger als 14 Tagen 24 Stunden. Bei genau 14 Tagen ist eine gesonderte menschliche Prüfung erforderlich; den konkreten Zahlungseingangstermin bestätigen wir separat.',
+    en:'The payment window depends on the time until arrival: 7 days when it is more than 14 days, and 24 hours when it is fewer than 14 days. Exactly 14 days requires separate human review; we confirm the exact receipt deadline separately.',
+    si:'Rok plačila je odvisen od časa do prihoda: pri več kot 14 dneh je 7 dni, pri manj kot 14 dneh pa 24 ur. Pri natanko 14 dneh je potreben ločen človeški pregled; točen rok prejema plačila potrdimo posebej.'
+  }[lang]);
   if(q.depositDeadline&&rules.depositDueDays!==null&&rules.depositDueDays!==undefined&&rules.depositDueDays!==''&&Number.isFinite(Number(rules.depositDueDays))&&Number(rules.depositDueDays)>0){
     const days=Number(rules.depositDueDays);
     lines.push({
@@ -523,7 +530,8 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
     }[lang]);
   }
   if(q.general)lines.push({hu:'A foglalás az előleg beérkezése után válik véglegessé.',de:'Die Buchung wird erst nach Eingang der Anzahlung verbindlich.',en:'The booking becomes final once the deposit has been received.',si:'Rezervacija postane dokončna po prejemu predplačila.'}[lang]);
-  if(q.cancellation&&guests!==null&&guests!==undefined&&Number(guests)>0){
+  if(q.cancellation&&rules.cancellationAutomaticPolicyVerified===false)lines.push({hu:'Lemondási feltételt csak a konkrét foglalás és külön emberi ellenőrzés alapján igazolunk vissza.',de:'Die Stornobedingungen bestätigen wir nur nach gesonderter menschlicher Prüfung der konkreten Buchung.',en:'We confirm cancellation terms only after separate human review of the specific booking.',si:'Pogoje odpovedi potrdimo šele po ločenem človeškem pregledu konkretne rezervacije.'}[lang]);
+  if(q.cancellation&&rules.cancellationAutomaticPolicyVerified!==false&&guests!==null&&guests!==undefined&&Number(guests)>0){
     const g=Number(guests);
     const days=g<=15?Number(rules.cancellationDaysUnder15Guests):Number(rules.cancellationDaysFrom15Guests);
     if(rules[g<=15?'cancellationDaysUnder15Guests':'cancellationDaysFrom15Guests']!==null&&rules[g<=15?'cancellationDaysUnder15Guests':'cancellationDaysFrom15Guests']!==undefined&&rules[g<=15?'cancellationDaysUnder15Guests':'cancellationDaysFrom15Guests']!==''&&Number.isFinite(days)&&days>=0){
@@ -832,6 +840,8 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
         en:`Approved payment information: ${payment.depositPct}% deposit must be received by ${when} (Hungary time).`,
         si:`Odobreno plačilo: ${payment.depositPct}% predplačilo mora prispeti do ${when} (čas na Madžarskem).`
       }[lang]);
+    }else if(payment.status==='manual_review'){
+      bookingLines.push({hu:'A pontosan 14 napos határ miatt a fizetési feltételt külön egyeztetjük; automatikus határidőt nem igazolunk vissza.',de:'Wegen der Grenze von genau 14 Tagen klären wir die Zahlungsbedingung gesondert; eine automatische Frist bestätigen wir nicht.',en:'The exact 14-day boundary requires separate clarification of the payment terms; we do not confirm an automatic deadline.',si:'Meja natanko 14 dni zahteva ločeno uskladitev plačilnih pogojev; samodejnega roka ne potrjujemo.'}[lang]);
     }
   }
   if(caseContext?.availabilityLines?.length) {
@@ -886,17 +896,34 @@ export function specialRequestsFromText(text='') {
  * The caller must supply a verified booking timestamp and arrival date.
  * No automatic payment collection or reservation confirmation is performed.
  */
-export function depositPolicyForBooking({guestCount,bookingAt,arrivalDate}={}){
+export function depositPercentForGuestCount(guestCount,rules=BUSINESS.bookingRules){
+  if(!Number.isSafeInteger(guestCount)||guestCount<1)return null;
+  const value=rules?.[guestCount>=15?'depositPctFrom15Guests':'depositPctUnder15Guests'];
+  return typeof value==='number'&&Number.isFinite(value)&&value>0&&value<=100?value:null;
+}
+
+export function depositPolicyForBooking({guestCount,bookingAt,arrivalDate,bookingRules=BUSINESS.bookingRules}={}){
   if(!Number.isInteger(guestCount)||guestCount<1) return {status:'unverified',reason:'guest_count'};
-  if(typeof bookingAt!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/u.test(bookingAt)||typeof arrivalDate!=='string'||!/^\d{4}-\d{2}-\d{2}$/u.test(arrivalDate)) return {status:'unverified',reason:'dates'};
-  const bookingDay=bookingAt.slice(0,10);
+  if(typeof bookingAt!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/u.test(bookingAt)||!Number.isFinite(Date.parse(bookingAt))||typeof arrivalDate!=='string'||!/^\d{4}-\d{2}-\d{2}$/u.test(arrivalDate)) return {status:'unverified',reason:'dates'};
+  const rawBookingDay=bookingAt.slice(0,10),rawBookingDate=new Date(rawBookingDay+'T00:00:00Z');
+  if(!Number.isFinite(rawBookingDate.getTime())||rawBookingDate.toISOString().slice(0,10)!==rawBookingDay)return {status:'unverified',reason:'invalid_date'};
+  // Calendar lead time belongs to the property's timezone, not an arbitrary
+  // sender offset or the server timezone. Elapsed receipt hours remain UTC.
+  const offsetAware=/(?:Z|[+-]\d{2}:\d{2})$/u.test(bookingAt);
+  const bookingParts=offsetAware?Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:BUSINESS.timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(bookingAt)).map(x=>[x.type,x.value])):null;
+  const bookingDay=bookingParts?`${bookingParts.year}-${bookingParts.month}-${bookingParts.day}`:bookingAt.slice(0,10);
   const bookingDate=new Date(bookingDay+'T00:00:00Z');
   const arrival=new Date(arrivalDate+'T00:00:00Z');
   if(!Number.isFinite(bookingDate.getTime())||!Number.isFinite(arrival.getTime())||bookingDate.toISOString().slice(0,10)!==bookingDay||arrival.toISOString().slice(0,10)!==arrivalDate)return {status:'unverified',reason:'invalid_date'};
   const daysUntilArrival=Math.round((arrival-bookingDate)/86400000);
   if(daysUntilArrival<0)return {status:'unverified',reason:'past_arrival'};
-  const depositPct=guestCount>15?80:50;
-  const paymentWindowHours=daysUntilArrival>14?168:24;
+  const depositPct=depositPercentForGuestCount(guestCount,bookingRules);
+  if(depositPct===null)return {status:'unverified',reason:'deposit_percentage',requiresHumanReview:true};
+  const boundary=bookingRules.depositLeadDaysBoundary;
+  if(!Number.isSafeInteger(boundary)||boundary<1)return {status:'unverified',reason:'payment_policy',requiresHumanReview:true};
+  if(daysUntilArrival===boundary&&bookingRules.depositExactBoundaryRequiresReview===true)return {status:'manual_review',reason:'exact_14_day_boundary',depositPct,daysUntilArrival,requiresHumanReview:true};
+  const paymentWindowHours=daysUntilArrival>boundary?bookingRules.depositNormalWindowHours:bookingRules.depositShortWindowHours;
+  if(!Number.isSafeInteger(paymentWindowHours)||paymentWindowHours<1)return {status:'unverified',reason:'payment_policy',requiresHumanReview:true};
   return {status:'calculated',depositPct,paymentWindowHours,daysUntilArrival,paymentMustBeReceived:true};
 }
 
@@ -935,6 +962,7 @@ export function shortNoticeCancellationAssessment({bookingDate,arrivalDate,cance
   if(booked===null||arrival===null||cancelled===null)return {status:'unverified',reason:'dates'};
   if(booked>cancelled||cancelled>=arrival||booked>=arrival)return {status:'manual_review',reason:'chronology'};
   const leadDays=Math.round((arrival-booked)/86400000);
+  if(leadDays===14)return {status:'manual_review',reason:'exact_14_day_boundary',requiresHumanReview:true};
   if(leadDays>14)return {status:'manual_review',reason:'other_cancellation_policy'};
   if(depositPct!==50&&depositPct!==80)return {status:'manual_review',reason:'deposit_percentage'};
   return {status:'policy_applies',depositForfeitedOnCancellation:true,depositPct,leadDays,requiresHumanReview:true};
