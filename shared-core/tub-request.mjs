@@ -58,8 +58,12 @@ export function classifyTubRequest(text='') {
   return !Number.isNaN(Date.parse(iso))&&new Date(iso).toISOString().slice(0,10)===iso?iso:null;
  });
  const times=[...source.matchAll(/\b([01]?\d|2[0-3]):([0-5]\d)\b/gu)].map(t=>`${t[1].padStart(2,'0')}:${t[2]}`);
- const durations=[...source.matchAll(/\b(\d{1,3})\s*(órá(?:ra|s)?|óra|hours?|stunden|ur|nap(?:ra|ig)?|days?|tage?|dni)\b/giu)].map(m=>Number(m[1])*(/^(?:nap|day|tag|dni)/iu.test(m[2])?24:1));
- const startDate=dates.length?unique(dates):null,startTime=times.length?unique(times):null,durationHours=durations.length?unique(durations):null;
+ // Consume the whole numeric expression before validating it. Matching only
+ // its trailing digits would turn e.g. 1.5 hours into 5 or -24 into +24.
+ // Fractions, signed values and numeric ranges require operator clarification.
+ const durationMatches=[...source.matchAll(/(?<![\p{L}\p{N}])([+\-−–—]?\s*\d+(?:\s*[.,:/+\-−–—]\s*\d+)*)\s*(órá(?:ra|s)?|óra|hours?|stunden|ur|nap(?:ra|ig)?|days?|tage?|dni)(?!\p{L})/giu)];
+ const durations=durationMatches.map(m=>/^\d{1,3}$/.test(m[1].trim())?Number(m[1])*(/^(?:nap|day|tag|dni)/iu.test(m[2])?24:1):null);
+ const startDate=dates.length?unique(dates):null,startTime=times.length?unique(times):null,durationHours=durations.length&&!durations.includes(null)?unique(durations):null;
  // A mixed new accommodation request still follows the existing booking route.
  const serviceOnly=!requestsAccommodation(source);
  return {kind:'tub_request',serviceOnly,startDate,startTime,durationHours:durationHours>0&&!/\b\d{1,3}\s*(?:vagy|or|oder|ali)\s*\d{1,3}\s*(?:ór|hour|stund|ur|nap|day|tag|dni)/iu.test(source)?durationHours:null,

@@ -11,3 +11,28 @@ test('negated tub request is not treated as a new service request',()=>{
 test('quoted old tub request is ignored when current reply has no request',()=>{
  assert.equal(classifyTubRequest('Köszönöm, rendben.\\nFrom: vendeg@example.invalid\\nSent: 2026-10-15\\nSubject: foglalás\\nDézsát kérek.').kind,'none');
 });
+
+test('unsupported numeric duration expressions stay unresolved in all service languages',()=>{
+ for(const [request,unit] of [
+  ['Dézsát kérünk 2026-11-14 18:00 időpontban','órára'],
+  ['Please add a hot tub on 2026-11-14 at 18:00 for','hours'],
+  ['Bitte einen Badezuber am 2026-11-14 um 18:00 buchen für','Stunden'],
+  ['Prosimo za vročo kad 2026-11-14 ob 18:00 za','ur']
+ ])for(const number of ['1.5','1,5','-24','−24','+24','12-24','12 – 24','1/2','1:30','1000']){
+  const r=classifyTubRequest(`${request} ${number} ${unit}`);
+  assert.equal(r.kind,'tub_request',request);
+  assert.equal(r.durationHours,null,`${number} ${unit}`);
+  assert.equal(r.confirmationAllowed,false);
+  assert.equal(r.requiresHumanReview,true);
+ }
+});
+
+test('an unsupported duration cannot be hidden by an additional valid duration',()=>{
+ for(const expression of ['1.5 hours and 24 hours','24 hours and -12 hours','12 / 24 hours'])
+  assert.equal(classifyTubRequest(`Please add a hot tub for ${expression}`).durationHours,null,expression);
+});
+
+test('whole-hour and whole-day durations remain supported',()=>{
+ for(const [expression,hours] of [['24 hours',24],['2 days',48],['24 órára',24],['2 napra',48],['24 Stunden',24],['2 Tage',48],['24 ur',24],['2 dni',48]])
+  assert.equal(classifyTubRequest(`Please add a hot tub for ${expression}`).durationHours,hours,expression);
+});
