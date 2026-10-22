@@ -520,6 +520,12 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
     en:'The payment window depends on the time until arrival: 7 days when it is more than 14 days, and 24 hours when it is fewer than 14 days. Exactly 14 days requires separate human review; we confirm the exact receipt deadline separately.',
     si:'Rok plačila je odvisen od časa do prihoda: pri več kot 14 dneh je 7 dni, pri manj kot 14 dneh pa 24 ur. Pri natanko 14 dneh je potreben ločen človeški pregled; točen rok prejema plačila potrdimo posebej.'
   }[lang]);
+  if(q.depositDeadline&&rules.depositExactBoundaryRequiresReview===false)lines.push({
+    hu:'A fizetési határidő az érkezésig hátralévő időtől függ: 14 napnál több idő esetén 7 nap, legfeljebb 14 nap esetén 24 óra. Pontosan 14 napnál is 24 óra a beérkezési határidő; a konkrét időpontot visszaigazoljuk.',
+    de:'Die Zahlungsfrist hängt vom Abstand zur Anreise ab: bei mehr als 14 Tagen 7 Tage, bei höchstens 14 Tagen 24 Stunden. Auch bei genau 14 Tagen beträgt die Frist für den Zahlungseingang 24 Stunden; den konkreten Termin bestätigen wir separat.',
+    en:'The payment window depends on the time until arrival: 7 days when it is more than 14 days, and 24 hours when it is at most 14 days. Exactly 14 days also requires receipt within 24 hours; we confirm the exact deadline separately.',
+    si:'Rok plačila je odvisen od časa do prihoda: pri več kot 14 dneh je 7 dni, pri največ 14 dneh pa 24 ur. Tudi pri natanko 14 dneh mora plačilo prispeti v 24 urah; točen rok potrdimo posebej.'
+  }[lang]);
   if(q.depositDeadline&&rules.depositDueDays!==null&&rules.depositDueDays!==undefined&&rules.depositDueDays!==''&&Number.isFinite(Number(rules.depositDueDays))&&Number(rules.depositDueDays)>0){
     const days=Number(rules.depositDueDays);
     lines.push({
@@ -921,7 +927,7 @@ export function depositPolicyForBooking({guestCount,bookingAt,arrivalDate,bookin
   if(depositPct===null)return {status:'unverified',reason:'deposit_percentage',requiresHumanReview:true};
   const boundary=bookingRules.depositLeadDaysBoundary;
   if(!Number.isSafeInteger(boundary)||boundary<1)return {status:'unverified',reason:'payment_policy',requiresHumanReview:true};
-  if(daysUntilArrival===boundary&&bookingRules.depositExactBoundaryRequiresReview===true)return {status:'manual_review',reason:'exact_14_day_boundary',depositPct,daysUntilArrival,requiresHumanReview:true};
+  if(daysUntilArrival===boundary&&bookingRules.depositExactBoundaryRequiresReview!==false)return {status:'manual_review',reason:'exact_14_day_boundary',depositPct,daysUntilArrival,requiresHumanReview:true};
   const paymentWindowHours=daysUntilArrival>boundary?bookingRules.depositNormalWindowHours:bookingRules.depositShortWindowHours;
   if(!Number.isSafeInteger(paymentWindowHours)||paymentWindowHours<1)return {status:'unverified',reason:'payment_policy',requiresHumanReview:true};
   return {status:'calculated',depositPct,paymentWindowHours,daysUntilArrival,paymentMustBeReceived:true};

@@ -10,17 +10,17 @@ export const BUSINESS = Object.freeze({
   bookingRules: Object.freeze({
     depositPctUnder15Guests: 50,
     depositPctFrom15Guests: 80,
-    // Owner instruction 2026-10-21: deadline depends on the verified booking day.
-    // Exactly 14 calendar days remains disputed and requires human review.
+    // Owner instruction 2026-10-22: exactly 14 calendar days uses 24 hours.
+    // Cancellation conditions still require separate human review.
     depositDueDays: null,
     depositLeadDaysBoundary: 14,
     depositNormalWindowHours: 168,
     depositShortWindowHours: 24,
-    depositExactBoundaryRequiresReview: true,
+    depositExactBoundaryRequiresReview: false,
     cancellationAutomaticPolicyVerified: false,
     cancellationDaysUnder15Guests: 14,
     cancellationDaysFrom15Guests: 30,
-    source: 'Owner instruction 2026-10-21; exact 14-day boundary and cancellation require review'
+    source: 'Owner instruction 2026-10-22: exactly 14 days = 24 hours; cancellation remains separately reviewed'
   }),
   operationalRules: Object.freeze({
     reception24h: true,

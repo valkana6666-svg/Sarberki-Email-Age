@@ -11,7 +11,7 @@ test('owner-approved deposit is 80% from 15 guests and deadline is contextual',(
  assert.equal(BUSINESS.bookingRules.depositPctUnder15Guests,50);
  assert.equal(BUSINESS.bookingRules.depositPctFrom15Guests,80);
  assert.equal(BUSINESS.bookingRules.depositDueDays,null);
- assert.equal(BUSINESS.bookingRules.depositExactBoundaryRequiresReview,true);
+ assert.equal(BUSINESS.bookingRules.depositExactBoundaryRequiresReview,false);
 });
 test('nine guests requesting one family house cannot silently become two',async()=>{
  const i=input(9,'family');

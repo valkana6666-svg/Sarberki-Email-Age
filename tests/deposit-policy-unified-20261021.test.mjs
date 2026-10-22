@@ -17,19 +17,27 @@ test('one approved configuration controls the public data, simulation and calcul
   assert.equal(depositPolicyForBooking({guestCount,bookingAt,arrivalDate:'2026-11-06'}).depositPct,pct);
  }
 });
-test('13 and 15 calendar-day lead times select 24 and 168 elapsed hours, independently of group size',()=>{
- for(const guestCount of [14,15,16])for(const [arrivalDate,hours,deadline]of [['2026-11-03',24,'2026-10-22T08:00:00.000Z'],['2026-11-05',168,'2026-10-28T08:00:00.000Z']]){
+test('13, 14 and 15 calendar-day lead times select 24, 24 and 168 elapsed hours, independently of group size',()=>{
+ for(const guestCount of [14,15,16])for(const [arrivalDate,hours,deadline]of [['2026-11-03',24,'2026-10-22T08:00:00.000Z'],['2026-11-04',24,'2026-10-22T08:00:00.000Z'],['2026-11-05',168,'2026-10-28T08:00:00.000Z']]){
   const result=depositReceiptDeadline({guestCount,bookingAt,arrivalDate});
   assert.equal(result.status,'calculated');assert.equal(result.paymentWindowHours,hours);assert.equal(result.receiptDeadlineUtc,deadline);
  }
 });
-test('exact 14-day lead time cannot invent a deadline or non-refundable policy for any group',()=>{
+test('owner-approved exact 14-day payment is 24 hours for every group while cancellation remains manual',()=>{
  for(const guestCount of [14,15,16]){
   const result=depositReceiptDeadline({guestCount,bookingAt,arrivalDate:'2026-11-04'});
-  assert.equal(result.status,'manual_review');assert.equal(result.requiresHumanReview,true);
-  assert.equal(result.receiptDeadlineUtc,undefined);assert.equal(result.paymentWindowHours,undefined);
+  assert.equal(result.status,'calculated');assert.equal(result.receiptConfirmed,false);
+  assert.equal(result.receiptDeadlineUtc,'2026-10-22T08:00:00.000Z');assert.equal(result.paymentWindowHours,24);
  }
  assert.equal(shortNoticeCancellationAssessment({bookingDate:'2026-10-21',arrivalDate:'2026-11-04',cancellationDate:'2026-10-22',depositPct:80}).status,'manual_review');
+});
+test('unapproved exact-boundary configuration retains its fail-closed human review fallback',()=>{
+ for(const boundaryFlag of [true,undefined]){
+  const bookingRules={...BUSINESS.bookingRules,depositExactBoundaryRequiresReview:boundaryFlag};
+  const result=depositPolicyForBooking({guestCount:15,bookingAt,arrivalDate:'2026-11-04',bookingRules});
+  assert.equal(result.status,'manual_review');assert.equal(result.requiresHumanReview,true);
+  assert.equal(result.paymentWindowHours,undefined);assert.equal(result.receiptDeadlineUtc,undefined);
+ }
 });
 test('invalid quantities and missing source facts cannot calculate deposit terms',()=>{
  for(const n of [0,-1,1.5,NaN,Infinity,null])assert.equal(depositPercentForGuestCount(n),null);
@@ -42,7 +50,7 @@ test('invalid quantities and missing source facts cannot calculate deposit terms
 test('the calendar-day threshold uses Hungary time rather than the sender offset or server clock',()=>{
  // 23:30Z on Oct21 is Oct22 in Hungary: Nov5 is exactly14 local days away.
  const result=depositReceiptDeadline({guestCount:15,bookingAt:'2026-10-21T23:30:00Z',arrivalDate:'2026-11-05'});
- assert.equal(result.status,'manual_review');assert.equal(result.daysUntilArrival,14);assert.equal(result.receiptDeadlineUtc,undefined);
+ assert.equal(result.status,'calculated');assert.equal(result.daysUntilArrival,14);assert.equal(result.paymentWindowHours,24);assert.equal(result.receiptDeadlineUtc,'2026-10-22T23:30:00.000Z');
  const sameInstant=depositReceiptDeadline({guestCount:15,bookingAt:'2026-10-22T01:30:00+02:00',arrivalDate:'2026-11-05'});
  assert.deepEqual(result,sameInstant);
 });
@@ -53,21 +61,24 @@ test('HU DE EN SI main-config drafts and public replies never reinstate the obso
   for(const text of [draft,reply]){
    assert.match(text,/80%/u);
    assert.doesNotMatch(text,/10 (?:nap|days|Tagen|dneh)|cancellation deadline is|Stornierungsfrist beträgt|rok za odpoved je|lemondási határidő az érkezés előtt/iu);
-   assert.match(text,/14/u);
+   assert.match(text,/14/u);assert.match(text,/24/u);
+   assert.doesNotMatch(text,/Exactly 14 days requires|Genau 14 Tage erfordern|Pontosan 14 nap esetén emberi|Natanko 14 dni zahteva/u);
   }
  }
 });
-test('approved payment context still cannot override the disputed exact 14-day boundary',()=>{
- const draft=buildReplyDraft({language:'en',original:'When is the deposit due?',arrival:'2026-11-04',departure:'2026-11-06',guests:15,adults:15,children:0,cabin:'Deluxe',bookingRules:BUSINESS.bookingRules,approvedPaymentContext:{operatorApproved:true,bookingConfirmed:true,bookingAt}});
- assert.doesNotMatch(draft,/Approved payment information:/u);assert.match(draft,/exact 14-day boundary/u);
+test('approved payment context can display the owner-approved 24-hour deadline at exactly 14 days',()=>{
+ for(const [language,marker]of [['hu',/Jóváhagyott fizetési tájékoztatás: 80%/u],['de',/Freigegebene Zahlungsinformation: 80%/u],['en',/Approved payment information: 80% deposit/u],['si',/Odobreno plačilo: 80%/u]]){
+  const draft=buildReplyDraft({language,original:'When is the deposit due?',arrival:'2026-11-04',departure:'2026-11-06',guests:15,adults:15,children:0,cabin:'Deluxe',bookingRules:BUSINESS.bookingRules,approvedPaymentContext:{operatorApproved:true,bookingConfirmed:true,bookingAt}});
+  assert.match(draft,marker);assert.doesNotMatch(draft,/exact 14-day boundary requires separate|pontosan 14 napos határ miatt|wegen der Grenze von genau 14 Tagen|Meja natanko 14 dni zahteva/iu);
+ }
 });
 test('informational chatbot also defers contextual deadlines in all four languages',()=>{
  for(const language of ['hu','de','en','si']){
   const text=renderChatbotIntent('deposit',language);
-  assert.doesNotMatch(text,/10 (?:nap|days|Tagen|dneh)/u);assert.match(text,/14/u);
+  assert.doesNotMatch(text,/10 (?:nap|days|Tagen|dneh)/u);assert.match(text,/14/u);assert.match(text,/24/u);
  }
 });
-test('a case at the disputed boundary remains critical until explicit human term verification',()=>{
+test('a close-arrival case still requires actual deposit amount and cancellation verification',()=>{
  const state=createCaseState({now:bookingAt,original:'Előleg és lemondás?',values:{arrival:'2026-11-04',departure:'2026-11-06',guests:'15',adults:'15',children:'0',unit:'Deluxe',phone:'synthetic-contact'}});
  const result=deriveCaseView(state);
  assert.equal(result.untilArrival,14);assert.equal(result.closeArrival,true);assert.equal(result.critical,true);

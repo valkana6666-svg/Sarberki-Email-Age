@@ -141,8 +141,8 @@ function draft(v,intent='booking_request',analysis=null){
  if(needsHotTubCheck&&needsCapacityCheck)lines.push('','A dézsafürdő elérhetőségét, valamint a kért időszak szabad kapacitását még ellenőriznünk kell. Ezekkel kapcsolatban munkatársunk visszajelez.');
  else if(needsHotTubCheck)lines.push('','A dézsafürdő elérhetőségét még ellenőriznünk kell. Ezzel kapcsolatban munkatársunk visszajelez.');
  else if(needsCapacityCheck)lines.push('','A kért időszak szabad kapacitását még ellenőriznünk kell. Ezzel kapcsolatban munkatársunk visszajelez.');
- if(v.guests&&(topics.secondary_intents.includes('deposit_question')||intent==='booking_request'))lines.push('','Az előleg mértéke a létszámtól, fizetési határideje az érkezésig hátralévő időtől függ; a konkrét feltételeket külön visszaigazoljuk. Pontosan 14 nap esetén külön egyeztetés szükséges.');
- if(v.guests&&Number(v.guests)<15&&(topics.secondary_intents.includes('cancellation_terms_question')||intent==='booking_request'))lines.push('','A foglalás érkezés előtt 14 nappal mondható le a vonatkozó lemondási feltételek szerint.');
+ if(v.guests&&(topics.secondary_intents.includes('deposit_question')||intent==='booking_request'))lines.push('','Az előleg mértéke a létszámtól, fizetési határideje az érkezésig hátralévő időtől függ; a konkrét feltételeket külön visszaigazoljuk. Legfeljebb 14 nap esetén 24 óra, 14 napnál több idő esetén 7 nap a fizetési ablak.');
+ if(v.guests&&(topics.secondary_intents.includes('cancellation_terms_question')||intent==='booking_request'))lines.push('','A konkrét lemondási feltételeket külön emberi ellenőrzés után igazoljuk vissza.');
  if(topics.secondary_intents.includes('arrival_time_question'))lines.push('','A 18:30 körüli érkezés lehetséges, mivel 24 órás portaszolgálat működik. A távozás napján a szállást 10:00 óráig kell elhagyni.');
  const otherFollowup=topics.secondary_intents.includes('firewood_question')||topics.unresolved_questions?.some(x=>!['hot_tub_availability','alternative_availability','pet_fee','pier_assignment','deposit_amount'].includes(x.topic));
  if(otherFollowup)lines.push('','A további kért részletekkel kapcsolatban munkatársunk visszajelez.');

@@ -31,11 +31,11 @@ Forrás: business-config.mjs:10-16
 Komment: 15 vagy több vendégnél magasabb foglaló-százalékot használ.
 
 1.3 A fizetési határidő az érkezésig hátralévő időtől függ.
-Forrás: tulajdonosi utasítás 2026-10-21; business-config.mjs; sarberki-core.mjs.
-Komment: Több mint 14 napos előzetes foglalásnál 7 nap (168 óra), kevesebb mint
+Forrás: tulajdonosi utasítás 2026-10-21 és pontosítás 2026-10-22; business-config.mjs; sarberki-core.mjs.
+Komment: Több mint 14 napos előzetes foglalásnál 7 nap (168 óra), legfeljebb
 14 napnál 24 óra a beérkezési ablak. A régi általános 10 napos határidő nem aktív.
-Pontosan 14 naptári napos határ esetén a korábbi és jelenlegi megfogalmazás
-nem egyértelmű; automatikus határidő helyett emberi egyeztetés kötelező.
+A tulajdonos 2026-10-22-én a pontosan 14 napos fizetési határra kifejezetten
+a 24 órát választotta. Ez nem lemondási döntés és nem pénzbeérkezési igazolás.
 
 1.4 A lemondási feltételek külön emberi ellenőrzést igényelnek.
 Forrás: tulajdonosi utasítás 2026-10-21; cancellationAutomaticPolicyVerified=false.

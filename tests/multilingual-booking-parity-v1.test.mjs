@@ -121,7 +121,7 @@ for(const language of languages){
   }
 }
 
-for(const [days,expectedHours] of [[1,24],[3,24],[13,24],[15,168],[30,168]]){
+for(const [days,expectedHours] of [[1,24],[3,24],[13,24],[14,24],[15,168],[30,168]]){
   test(`V1 deposit policy: ${days} days before arrival requires ${expectedHours} hour receipt window`,()=>{
     const bookingAt='2026-10-17T09:00:00';
     const arrivalDate=new Date(Date.UTC(2026,9,17+days)).toISOString().slice(0,10);
