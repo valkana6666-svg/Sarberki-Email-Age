@@ -89,9 +89,9 @@ test('checking a policy box without concrete verified data cannot hide missing b
  assert.throws(()=>updateCaseState(make(),{type:'checks',terms:{depositVerified:true}}),/számítási alap/u);
  assert.throws(()=>updateCaseState(make(),{type:'checks',terms:{cancellationVerified:true}}),/ellenőrzött feltétel/u);
 });
-test('normal advance arrival has no close-arrival warning; 15-person group uses configured 30-day threshold',()=>{
+test('normal advance arrival has no close-arrival warning; 15-person group uses the same 14-day threshold',()=>{
  let state=updateCaseState(make(),{type:'facts',values:{arrival:'2026-11-16',departure:'2026-11-18'}});assert.equal(deriveCaseView(state).closeArrival,false);
- state=updateCaseState(state,{type:'facts',values:{guests:'15',arrival:'2026-10-25'}});assert.equal(deriveCaseView(state).closeArrival,true);
+ state=updateCaseState(state,{type:'facts',values:{guests:'15',arrival:'2026-10-25'}});assert.equal(deriveCaseView(state).closeArrival,false);
 });
 test('the calendar threshold uses Budapest date instead of UTC midnight',()=>{
  const state=createCaseState({original,values,now:'2026-10-04T22:30:00Z'});assert.equal(deriveCaseView(state).untilArrival,11);

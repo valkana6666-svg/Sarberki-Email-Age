@@ -23,13 +23,14 @@ test('13, 14 and 15 calendar-day lead times select 24, 24 and 168 elapsed hours,
   assert.equal(result.status,'calculated');assert.equal(result.paymentWindowHours,hours);assert.equal(result.receiptDeadlineUtc,deadline);
  }
 });
-test('owner-approved exact 14-day payment is 24 hours for every group while cancellation remains manual',()=>{
+test('owner-approved exact 14-day payment is independent of the actual cancellation day',()=>{
  for(const guestCount of [14,15,16]){
   const result=depositReceiptDeadline({guestCount,bookingAt,arrivalDate:'2026-11-04'});
   assert.equal(result.status,'calculated');assert.equal(result.receiptConfirmed,false);
   assert.equal(result.receiptDeadlineUtc,'2026-10-22T08:00:00.000Z');assert.equal(result.paymentWindowHours,24);
  }
- assert.equal(shortNoticeCancellationAssessment({bookingDate:'2026-10-21',arrivalDate:'2026-11-04',cancellationDate:'2026-10-22',depositPct:80}).status,'manual_review');
+ const cancellation=shortNoticeCancellationAssessment({bookingDate:'2026-10-21',arrivalDate:'2026-11-04',cancellationDate:'2026-10-22',depositPct:80});
+ assert.equal(cancellation.status,'policy_applies');assert.equal(cancellation.cancellationLeadDays,13);assert.equal(cancellation.depositForfeitedOnCancellation,true);
 });
 test('unapproved exact-boundary configuration retains its fail-closed human review fallback',()=>{
  for(const boundaryFlag of [true,undefined]){

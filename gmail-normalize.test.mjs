@@ -567,7 +567,7 @@ test('14, 15 and 16 guest cancellation boundaries are localized consistently',()
       en:'What are the booking conditions and cancellation terms?',
       si:'Kakšni so rezervacijski pogoji in pogoji odpovedi?'
     }[language];
-    for(const [guests,days] of [[14,14],[15,14],[16,30]]){
+    for(const [guests,days] of [[14,14],[15,30],[16,30]]){
       const draft=buildReplyDraft({
         language,original,arrival:'2026-11-12',departure:'2026-11-16',
         guests,children:0,childAges:[],phone:'+36 30 555 1234',

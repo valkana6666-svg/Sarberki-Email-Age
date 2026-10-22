@@ -177,13 +177,17 @@ test('V1 cancellation: booking five days before arrival, cancelling four days be
   assert.equal(result.depositForfeitedOnCancellation,true);
   assert.equal(result.requiresHumanReview,true);
 });
-test('V1 cancellation: disputed exact 14-day boundary requires review',()=>{
+test('V1 cancellation: booking lead time does not override a cancellation 13 days before arrival',()=>{
   const result=shortNoticeCancellationAssessment({bookingDate:'2026-10-17',arrivalDate:'2026-10-31',cancellationDate:'2026-10-18',depositPct:50});
-  assert.equal(result.status,'manual_review');
+  assert.equal(result.status,'policy_applies');
+  assert.equal(result.cancellationLeadDays,13);
+  assert.equal(result.depositForfeitedOnCancellation,true);
 });
-test('V1 cancellation: bookings more than 14 days ahead need separate policy review',()=>{
+test('V1 cancellation: cancelling 16 days before arrival does not forfeit deposit',()=>{
   const result=shortNoticeCancellationAssessment({bookingDate:'2026-10-17',arrivalDate:'2026-11-05',cancellationDate:'2026-10-20',depositPct:50});
-  assert.equal(result.status,'manual_review');
+  assert.equal(result.status,'policy_applies');
+  assert.equal(result.cancellationLeadDays,16);
+  assert.equal(result.depositForfeitedOnCancellation,false);
 });
 test('V1 cancellation: large group preserves 80% deposit policy',()=>{
   const result=shortNoticeCancellationAssessment({bookingDate:'2026-10-20',arrivalDate:'2026-10-25',cancellationDate:'2026-10-21',depositPct:80});
@@ -239,7 +243,7 @@ test('V1 audit: approval timestamp is normalized to UTC',()=>{
   });
   assert.equal(result.status,'ready_for_persistence');
   assert.equal(result.event.approvedAt,'2026-10-21T10:00:00.000Z');
-  assert.equal(result.event.policyVersion,'short_notice_v1');
+  assert.equal(result.event.policyVersion,'cancellation_14_day_v2_20261022');
 });
 test('V1 audit: unverified deposit blocks event',()=>{
   const result=cancellationNoticeAuditEvent({
@@ -251,7 +255,7 @@ test('V1 audit: unverified deposit blocks event',()=>{
   });
   assert.equal(result.status,'blocked');
 });
-test('V1 audit: long-notice booking blocks short-notice evidence',()=>{
+test('V1 audit: old booking date does not block a verified short-notice cancellation',()=>{
   const result=cancellationNoticeAuditEvent({
     caseId:'synthetic-1',revision:2,approvedBy:'owner-test',
     approvedAt:'2026-10-21T12:00:00+02:00',
@@ -259,7 +263,9 @@ test('V1 audit: long-notice booking blocks short-notice evidence',()=>{
       bookingDate:'2026-09-20',arrivalDate:'2026-10-25',
       cancellationDate:'2026-10-21',depositPct:50}
   });
-  assert.equal(result.status,'blocked');
+  assert.equal(result.status,'ready_for_persistence');
+  assert.equal(result.event.cancellationLeadDays,4);
+  assert.equal(result.event.depositOutcome,'forfeited');
 });
 
 test('V1 audit readback: exact fields match without claiming database persistence',()=>{

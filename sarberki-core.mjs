@@ -539,13 +539,13 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
   if(q.cancellation&&rules.cancellationAutomaticPolicyVerified===false)lines.push({hu:'Lemondási feltételt csak a konkrét foglalás és külön emberi ellenőrzés alapján igazolunk vissza.',de:'Die Stornobedingungen bestätigen wir nur nach gesonderter menschlicher Prüfung der konkreten Buchung.',en:'We confirm cancellation terms only after separate human review of the specific booking.',si:'Pogoje odpovedi potrdimo šele po ločenem človeškem pregledu konkretne rezervacije.'}[lang]);
   if(q.cancellation&&rules.cancellationAutomaticPolicyVerified!==false&&guests!==null&&guests!==undefined&&Number(guests)>0){
     const g=Number(guests);
-    const days=g<=15?Number(rules.cancellationDaysUnder15Guests):Number(rules.cancellationDaysFrom15Guests);
-    if(rules[g<=15?'cancellationDaysUnder15Guests':'cancellationDaysFrom15Guests']!==null&&rules[g<=15?'cancellationDaysUnder15Guests':'cancellationDaysFrom15Guests']!==undefined&&rules[g<=15?'cancellationDaysUnder15Guests':'cancellationDaysFrom15Guests']!==''&&Number.isFinite(days)&&days>=0){
+    const days=g<15?Number(rules.cancellationDaysUnder15Guests):Number(rules.cancellationDaysFrom15Guests);
+    if(rules[g<15?'cancellationDaysUnder15Guests':'cancellationDaysFrom15Guests']!==null&&rules[g<15?'cancellationDaysUnder15Guests':'cancellationDaysFrom15Guests']!==undefined&&rules[g<15?'cancellationDaysUnder15Guests':'cancellationDaysFrom15Guests']!==''&&Number.isFinite(days)&&days>=0){
       lines.push({
-        hu:`${g<=15?'legfeljebb 15 fős':'15 fő feletti'} foglalásnál a lemondási határidő az érkezés előtt ${days} nap.`,
-        de:`Bei Buchungen ${g<=15?'mit höchstens 15 Personen':'mit mehr als 15 Personen'} beträgt die Stornierungsfrist ${days} Tage vor der Anreise.`,
-        en:`For bookings ${g<=15?'of up to 15 guests':'of more than 15 guests'}, the cancellation deadline is ${days} days before arrival.`,
-        si:`Pri rezervacijah ${g<=15?'za največ 15 oseb':'za več kot 15 oseb'} je rok za odpoved ${days} dni pred prihodom.`
+        hu:`${g<15?'15 fő alatti':'legalább 15 fős'} foglalásnál a lemondási határidő az érkezés előtt ${days} nap.`,
+        de:`Bei Buchungen ${g<15?'mit weniger als 15 Personen':'mit mindestens 15 Personen'} beträgt die Stornierungsfrist ${days} Tage vor der Anreise.`,
+        en:`For bookings ${g<15?'of fewer than 15 guests':'of at least 15 guests'}, the cancellation deadline is ${days} days before arrival.`,
+        si:`Pri rezervacijah ${g<15?'za manj kot 15 oseb':'za najmanj 15 oseb'} je rok za odpoved ${days} dni pred prihodom.`
       }[lang]);
     }
   }
@@ -764,12 +764,17 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
         depositPct:approvedCancellationContext.depositPct
       });
       if(assessment.status==='policy_applies'){
-        approvedCancellationLine={
+        approvedCancellationLine=(assessment.depositForfeitedOnCancellation?{
           hu:'A tulajdonos által jóváhagyott tájékoztatás szerint a befizetett előleg a lemondási feltételek alapján nem jár vissza. A lemondás feldolgozása külön történik.',
           de:'Laut der vom Eigentümer freigegebenen Auskunft wird die geleistete Anzahlung gemäß den Stornobedingungen nicht erstattet. Die Stornierung wird gesondert bearbeitet.',
           en:'According to the owner-approved information, the deposit already received is non-refundable under the cancellation terms. The cancellation is processed separately.',
           si:'V skladu z informacijami, ki jih je odobril lastnik, se že prejeto predplačilo po pogojih odpovedi ne vrača. Odpoved se obravnava ločeno.'
-        }[lang];
+        }:{
+          hu:'A tulajdonos által jóváhagyott tájékoztatás szerint a legalább 14 nappal az érkezés előtti lemondás miatt a befizetett előleg nem vész el. A lemondás és az esetleges visszafizetés külön feldolgozást igényel; ez a tájékoztatás nem igazol végrehajtott visszafizetést vagy foglalástörlést.',
+          de:'Laut der vom Eigentümer freigegebenen Auskunft verfällt die geleistete Anzahlung bei einer Stornierung mindestens 14 Tage vor der Anreise nicht. Stornierung und eine etwaige Erstattung werden gesondert bearbeitet; diese Auskunft bestätigt weder eine ausgeführte Erstattung noch eine erfolgte Stornierung.',
+          en:'According to the owner-approved information, the deposit already received is not forfeited when cancellation is at least 14 days before arrival. Cancellation and any refund require separate processing; this information does not confirm an executed refund or reservation cancellation.',
+          si:'V skladu z informacijami, ki jih je odobril lastnik, že prejeto predplačilo pri odpovedi najmanj 14 dni pred prihodom ne zapade. Odpoved in morebitno vračilo se obravnavata ločeno; to obvestilo ne potrjuje izvedenega vračila ali odpovedi rezervacije.'
+        })[lang];
       }
     }
     return `${greetings[lang]}\n\n${received}${approvedCancellationLine?'\n\n'+approvedCancellationLine:''}\n\n${closings[lang]}\n${brandName}`;
@@ -955,7 +960,7 @@ export function depositReceiptDeadline({guestCount,bookingAt,arrivalDate}={}){
 
 
 /**
- * Advisory-only cancellation assessment for short-notice bookings.
+ * Advisory-only cancellation assessment measured from cancellation to arrival.
  * Does not cancel reservations, charge guests, or decide exceptions.
  */
 export function shortNoticeCancellationAssessment({bookingDate,arrivalDate,cancellationDate,depositPct}={}){
@@ -967,11 +972,12 @@ export function shortNoticeCancellationAssessment({bookingDate,arrivalDate,cance
   const booked=parseDay(bookingDate),arrival=parseDay(arrivalDate),cancelled=parseDay(cancellationDate);
   if(booked===null||arrival===null||cancelled===null)return {status:'unverified',reason:'dates'};
   if(booked>cancelled||cancelled>=arrival||booked>=arrival)return {status:'manual_review',reason:'chronology'};
-  const leadDays=Math.round((arrival-booked)/86400000);
-  if(leadDays===14)return {status:'manual_review',reason:'exact_14_day_boundary',requiresHumanReview:true};
-  if(leadDays>14)return {status:'manual_review',reason:'other_cancellation_policy'};
+  const cancellationLeadDays=Math.round((arrival-cancelled)/86400000);
+  const threshold=BUSINESS.bookingRules.cancellationDaysUnder15Guests;
+  if(!Number.isInteger(threshold)||threshold<1||threshold!==BUSINESS.bookingRules.cancellationDaysFrom15Guests)return {status:'manual_review',reason:'cancellation_policy_unverified',requiresHumanReview:true};
   if(depositPct!==50&&depositPct!==80)return {status:'manual_review',reason:'deposit_percentage'};
-  return {status:'policy_applies',depositForfeitedOnCancellation:true,depositPct,leadDays,requiresHumanReview:true};
+  const depositForfeitedOnCancellation=cancellationLeadDays<threshold;
+  return {status:'policy_applies',depositForfeitedOnCancellation,depositOutcome:depositForfeitedOnCancellation?'forfeited':'not_forfeited',depositPct,cancellationLeadDays,thresholdDays:threshold,leadTimeBasis:'cancellation_to_arrival',requiresHumanReview:true,refundExecuted:false,reservationCancelled:false};
 }
 
 
@@ -1001,12 +1007,18 @@ export function cancellationNoticeAuditEvent({caseId,revision,approvedBy,approve
     event:{
       eventType:'cancellation_notice_owner_approved',
       caseId,revision,approvedBy,approvedAt:new Date(approvedAt).toISOString(),
-      policyVersion:'short_notice_v1',
+      policyVersion:'cancellation_14_day_v2_20261022',
       bookingDate:context.bookingDate,
       arrivalDate:context.arrivalDate,
       cancellationDate:context.cancellationDate,
       depositPct:policy.depositPct,
+      cancellationLeadDays:policy.cancellationLeadDays,
+      leadTimeBasis:policy.leadTimeBasis,
+      thresholdDays:policy.thresholdDays,
+      depositOutcome:policy.depositOutcome,
+      depositForfeitedOnCancellation:policy.depositForfeitedOnCancellation,
       depositReceivedVerified:true,
+      refundExecuted:false,
       reservationCancelled:false,
       emailSent:false
     }
@@ -1021,7 +1033,7 @@ export function cancellationNoticeAuditEvent({caseId,revision,approvedBy,approve
 export function verifyCancellationAuditReadback(prepared,stored){
   if(prepared?.status!=='ready_for_persistence'||!prepared.event||!stored||typeof stored!=='object')
     return {status:'unverified',reason:'missing_event'};
-  const keys=['eventType','caseId','revision','approvedBy','approvedAt','policyVersion','bookingDate','arrivalDate','cancellationDate','depositPct','depositReceivedVerified','reservationCancelled','emailSent'];
+  const keys=['eventType','caseId','revision','approvedBy','approvedAt','policyVersion','bookingDate','arrivalDate','cancellationDate','depositPct','cancellationLeadDays','leadTimeBasis','thresholdDays','depositOutcome','depositForfeitedOnCancellation','depositReceivedVerified','refundExecuted','reservationCancelled','emailSent'];
   // Reject unexpected fields: a read-back audit record must not silently carry guest PII.
   for(const key of Object.keys(stored)){
     if(!keys.includes(key))return {status:'mismatch',field:key};

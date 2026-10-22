@@ -11,7 +11,8 @@ export const BUSINESS = Object.freeze({
     depositPctUnder15Guests: 50,
     depositPctFrom15Guests: 80,
     // Owner instruction 2026-10-22: exactly 14 calendar days uses 24 hours.
-    // Cancellation conditions still require separate human review.
+    // Owner clarification: cancellation threshold is 14 days for every group;
+    // individual cancellation/payment handling still requires human review.
     depositDueDays: null,
     depositLeadDaysBoundary: 14,
     depositNormalWindowHours: 168,
@@ -19,8 +20,8 @@ export const BUSINESS = Object.freeze({
     depositExactBoundaryRequiresReview: false,
     cancellationAutomaticPolicyVerified: false,
     cancellationDaysUnder15Guests: 14,
-    cancellationDaysFrom15Guests: 30,
-    source: 'Owner instruction 2026-10-22: exactly 14 days = 24 hours; cancellation remains separately reviewed'
+    cancellationDaysFrom15Guests: 14,
+    source: 'Owner instruction 2026-10-22: exactly 14 days = 24-hour payment; cancellation at least 14 days before arrival does not forfeit either 50% or 80% deposit; separate human approval required'
   }),
   operationalRules: Object.freeze({
     reception24h: true,

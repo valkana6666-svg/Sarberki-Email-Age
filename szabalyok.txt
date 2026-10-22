@@ -38,14 +38,17 @@ A tulajdonos 2026-10-22-én a pontosan 14 napos fizetési határra kifejezetten
 a 24 órát választotta. Ez nem lemondási döntés és nem pénzbeérkezési igazolás.
 
 1.4 A lemondási feltételek külön emberi ellenőrzést igényelnek.
-Forrás: tulajdonosi utasítás 2026-10-21; cancellationAutomaticPolicyVerified=false.
-Komment: A konfigurációban megőrzött régi 14/30 napos értékek nem elegendők
-automatikus vendégígérethez. A konkrét ügyben igazolt feltétel külön kezelendő.
+Forrás: tulajdonosi pontosítás 2026-10-22; cancellationAutomaticPolicyVerified=false.
+Komment: Nincs külön 30 napos csoportszabály. Minden létszámra 14 nap a határ,
+a LEMONDÁS napjától az érkezésig mérve. Legalább 14 napnál az előleg nem vész el;
+14 napnál rövidebb időnél az 50%-os vagy 80%-os befizetett előleg elvész.
+A konkrét ügyben igazolt feltétel külön, emberi jóváhagyással kezelendő.
 
 1.5 A rövid határidejű lemondás sem automatikus foglalástörlés.
 Forrás: sarberki-core.mjs shortNoticeCancellationAssessment és audit-folyamat.
 Komment: Tulajdonosi jóváhagyás, igazolt foglalás és előlegbeérkezés szükséges.
-Pontosan 14 napnál külön emberi felülvizsgálat, nem automatikus előlegvesztés.
+Pontosan 14 nappal érkezés előtt az előleg nem vész el. Ez nem végrehajtott
+visszafizetés vagy foglalástörlés; az ügy feldolgozása külön történik.
 
 1.6 Az előlegszázalék 15 fő ALATT 50%, LEGALÁBB 15 főnél 80%.
 Forrás: tulajdonosi utasítás 2026-10-21; business-config.mjs.
