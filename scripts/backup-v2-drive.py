@@ -44,7 +44,7 @@ def validate_quota(quota,needed):
     except (KeyError,ValueError,TypeError):raise ValueError('STORAGE_QUOTA_NOT_VERIFIED')
     if limit<=0 or used<0 or needed<0 or limit-used<needed+20*1024*1024:
         raise ValueError('INSUFFICIENT_STORAGE_NO_UPGRADE_ATTEMPTED')
-def upload(token,folder_id,name,data):
+def upload(token,folder_id,name,data,verified_copy=None):
     boundary='sarberki-'+secrets.token_hex(24)
     metadata=json.dumps({'name':name,'parents':[folder_id],'appProperties':{
         'purpose':'sarberki-encrypted-backup','sha256':hashlib.sha256(data).hexdigest()}}).encode()
@@ -68,6 +68,11 @@ def upload(token,folder_id,name,data):
     # The exact returned ID, never a latest-by-name lookup.
     plain=request('https://www.googleapis.com/drive/v3/files/'+fid+'?alt=media',token)
     if hashlib.sha256(plain).digest()!=hashlib.sha256(data).digest():raise ValueError('DRIVE_READBACK_MISMATCH')
+    if verified_copy is not None:
+        # Save the remote response bytes, never the local upload input.
+        with verified_copy.open('xb') as copy:
+            copy.write(plain)
+        verified_copy.chmod(0o600)
     return {'file_id':fid,'name':name,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),
         'exact_id_readback':'PASS','url':result.get('webViewLink'),'version_model':'distinct_file_per_run_attempt'}
 def main():
@@ -90,10 +95,12 @@ def main():
     if not re.fullmatch(r'\d+',run) or not re.fullmatch(r'\d+',attempt) or not re.fullmatch(r'[0-9a-f]{40}',sha):
         raise ValueError('RUN_IDENTITY_INVALID')
     prefix='sarberki-'+run+'-'+attempt+'-'+sha
+    readback=Path('/tmp/sarberki-v2-drive-readback')
+    readback.mkdir(mode=0o700,exist_ok=False)
     receipt=[]
     for p in files:
         name=prefix+('.zip' if p.suffix=='.zip' else '.zip.sha256')
-        receipt.append(upload(token,folder,name,p.read_bytes()))
+        receipt.append(upload(token,folder,name,p.read_bytes(),readback/p.name))
     (directory/'DURABLE-STORAGE.json').write_text(json.dumps({'provider':'google-drive','folder_id':folder,
         'objects':receipt,'retention':'append-only; no old-file deletion; quota checked before upload',
         'immutability':'application-level distinct IDs; not WORM/ObjectLock'},indent=2))

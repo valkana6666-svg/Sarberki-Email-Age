@@ -31,3 +31,9 @@ Code/test ZIP is an implementation package, not a fresh database backup. The own
 ## 2026-10-24 integration evidence
 
 Implementation integrated at 92fa6ba5e0c6f4b7ae574dd97820a8ed70cbfe4b, preserving both Gmail commits on the test branch. Local targeted suite: 23 PASS, 0 FAIL. Python syntax and workflow YAML parsing passed. The integration commit skipped CI to avoid a full unrelated application regression after changing workflow path filters. This documentation-only follow-up triggers only the backup safety workflow. Cloud export/restore remains disabled; missing OAuth and new passphrase secrets were confirmed in GitHub UI. No live backup or owner key recovery is claimed.
+
+## Exact-ID Drive download recovery acceptance
+
+Drive uploads now save the remote GET response after SHA256 equality. The new `backup-v2-readback.py` validates the downloaded ZIP and checksum against the exact-ID receipt, allowlists archive members, caps expansion, rejects links/duplicates/traversal, and binds provenance to the current test-branch run. It extracts only the six database payloads into a new protected directory.
+
+A second isolated SQL restore consumes this downloaded input with no source DB credentials. Its sanitized evidence is retained separately at `drive-restore-evidence/ISOLATED-RESTORE.json` in the delivery artifact; it records the Drive ID/hash and does not claim SQL PASS before verification. Preupload SQL verification remains an upload safety gate. Thirty-two affected local synthetic tests pass (17 Drive, 15 readback). This is implementation evidence only; OAuth rotation, secrets, owner key custody, a live full-chain run and scheduling remain blocked/unverified. Public OAuth-page drafts are in BACKUP-V2-PUBLIC-PAGES.md; no URL or compliance claim is invented.

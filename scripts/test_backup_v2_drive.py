@@ -48,6 +48,21 @@ class DriveSafety(unittest.TestCase):
         config=json.dumps(dict(client_id='synthetic',client_secret='synthetic',refresh_token='synthetic'))
         with patch.object(drive,'request',return_value=json.dumps(dict(access_token='synthetic',scope=drive.SCOPE)).encode()):
             self.assertEqual(drive.access_token(config),'synthetic')
+    def test_verified_copy_saves_remote_response(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            copy=Path(directory)/'remote.zip'
+            with patch.object(drive,'request',side_effect=[b'{"id":"synthetic_id"}',b'remote']):
+                drive.upload('synthetic',drive.FOLDER_ID,'synthetic.zip',b'remote',copy)
+            self.assertEqual(copy.read_bytes(),b'remote')
+            self.assertEqual(copy.stat().st_mode & 0o777,0o600)
+    def test_failed_readback_never_saved(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            copy=Path(directory)/'remote.zip'
+            with patch.object(drive,'request',side_effect=[b'{"id":"synthetic_id"}',b'corrupt']):
+                with self.assertRaises(ValueError):drive.upload('synthetic',drive.FOLDER_ID,'synthetic.zip',b'correct',copy)
+            self.assertFalse(copy.exists())
     def test_large_resumable_upload(self):
         import json
         data=b'x'*(5*1024*1024+1)

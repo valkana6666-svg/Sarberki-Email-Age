@@ -9,6 +9,16 @@ Ez a szakasz felülírja az alábbi történeti hozzáférési és ágállapotot
 - A Drive-mappában változatlanul egy 114 bájtos próbafájl és a 2 068 093 bájtos előkészítő ZIP van. Ezek nem friss DB-mentések.
 - A scope-ellenőrzés pontosan drive.file jogosultságot és nem üres access tokent követel; Gmail és egyéb extra scope elutasítva.
 
+## Új javítás: helyreállítás a Drive-ról visszatöltött csomagból
+
+A feltöltő most a Google által visszaadott pontos fájlazonosítóval letöltött válasz bájtjait külön, védett könyvtárba menti. A `backup-v2-readback.py` ellenőrzi a két távoli fájl SHA256-értékét, a ZIP pontos engedélyezett tartalmát, méretkorlátját és a futás/commit/tesztprojekt eredetét. Csak a hat adatbázis-állományt bontja ki; a forráskódot nem futtatja.
+
+Ezután a workflow külön SQL-helyreállítást végez ebből a letöltött bemenetből, forrásadatbázis-hitelesítő nélkül. Bizonyítéka sikeres futás esetén `drive-restore-evidence/ISOLATED-RESTORE.json`, benne `input_mode=exact_id_drive_download`, a Drive-fájl ID-ja és hash-e. A feltöltés előtti restore megmarad biztonsági kapunak, de nem helyettesíti ezt a második próbát.
+
+Fejlesztési ellenőrzés: 17 feltöltőteszt és 15 távoli csomagellenőrző teszt PASS. Ezek szintetikus tesztek; valódi Google-feltöltés vagy SQL-restore nem történt ebben a munkamenetben. A korábbi 23 tesztet nem futtattuk újra változatlan megoldás igazolásaként.
+
+A bemutatkozó, adatkezelési és feltételoldalak szövegtervezete: [BACKUP-V2-PUBLIC-PAGES.md](BACKUP-V2-PUBLIC-PAGES.md). Nincs közzétett URL vagy igazolt domainellenőrzés; a Publish app konkrét hiánya továbbra is adminhozzáférést igényel.
+
 ## Hitelesítés és alternatívák
 
 A személyes My Drive tárhelyhez továbbra is felhasználói offline OAuth a választott út. A Testing refresh token hét napos korlátja miatt ez nem fogadható el tartós automatikus mentésnek. A Production állapot önmagában sem bizonyít megújítást, kvótát, célmappa-hozzáférést vagy tulajdonosi kulcsmegőrzést.
