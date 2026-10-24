@@ -156,6 +156,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           artifact-ids: ${{ steps.cloud_stage.outputs.artifact-id }}
+          merge-multiple: true
           path: /tmp/sarberki-v2-github-readback
       - name: Validate GitHub cloud download and actual expiry
         if: env.SARBERKI_EFFECTIVE_PROVIDER == 'github-bridge'
