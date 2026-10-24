@@ -1,0 +1,130 @@
+name: Sarberki V2 isolated backup and recovery
+on:
+  push:
+    branches: [backup/issue-6-cloud-recovery]
+    paths: [scripts/backup-v2*, scripts/test_backup_v2*.py, .github/workflows/sarberki-backup-v2.yml, docs/BACKUP-V2.md]
+  workflow_dispatch:
+    inputs:
+      export:
+        description: Run read-only source export and isolated restore
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: sarberki-test-cloud-backup
+  cancel-in-progress: false
+jobs:
+  safety:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Synthetic backup boundary tests
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_backup_v2*.py' -v
+          python3 -m py_compile scripts/backup-v2.py scripts/backup-v2-storage.py scripts/backup-v2-restore.py scripts/backup-v2-drive.py
+  export-restore:
+    needs: safety
+    if: >-
+      vars.SARBERKI_V2_ENABLED == 'yes' &&
+      github.ref == 'refs/heads/backup/issue-6-cloud-recovery' &&
+      ((github.event_name == 'workflow_dispatch' && inputs.export) ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[backup-v2-run]')))
+    runs-on: ubuntu-24.04
+    container: postgres:17-bookworm
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_USER: restore_admin
+          POSTGRES_PASSWORD: ephemeral-isolated-test-only
+        options: >-
+          --health-cmd "pg_isready -U restore_admin"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install tools
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 gnupg ca-certificates git docker.io
+      - name: Verify Drive authorization before any source export
+        if: vars.SARBERKI_V2_STORAGE_PROVIDER == 'drive'
+        env:
+          SARBERKI_V2_DRIVE_FOLDER_ID: ${{ vars.SARBERKI_V2_DRIVE_FOLDER_ID }}
+          SARBERKI_V2_DRIVE_OAUTH_JSON: ${{ secrets.SARBERKI_V2_DRIVE_OAUTH_JSON }}
+        run: python3 scripts/backup-v2-drive.py preflight
+      - name: Read-only export with new protected passphrase
+        env:
+          SARBERKI_V2_ENABLED: ${{ vars.SARBERKI_V2_ENABLED }}
+          SARBERKI_V2_STORAGE_PROVIDER: ${{ vars.SARBERKI_V2_STORAGE_PROVIDER }}
+          SARBERKI_V2_DRIVE_FOLDER_ID: ${{ vars.SARBERKI_V2_DRIVE_FOLDER_ID }}
+          SARBERKI_V2_BUCKET: ${{ vars.SARBERKI_V2_BUCKET }}
+          SARBERKI_V2_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_V2_PASSPHRASE }}
+          SARBERKI_BACKUP_DB_URL: ${{ secrets.SARBERKI_BACKUP_DB_URL }}
+          SARBERKI_BACKUP_SESSION_HOST: aws-0-eu-west-2.pooler.supabase.com
+        run: python3 scripts/backup-v2.py export
+      - name: Install matching Vault in disposable destination
+        env:
+          ISOLATED_SERVICE_ID: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$ISOLATED_SERVICE_ID" sh -ec '
+            apt-get update -qq
+            apt-get install -y -qq --no-install-recommends ca-certificates curl make gcc postgresql-server-dev-17 libsodium-dev
+            mkdir /tmp/vault-build
+            curl -fsSL https://github.com/supabase/vault/archive/6e0cd916242d922a646e4d611cc215e09dd429f4.tar.gz | tar -xz --strip-components=1 -C /tmp/vault-build
+            cd /tmp/vault-build
+            make && make install
+          '
+      - name: Restore without source credentials
+        env:
+          PGHOST: postgres
+          PGUSER: restore_admin
+          PGPASSWORD: ephemeral-isolated-test-only
+          PGDATABASE: postgres
+          SARBERKI_RESTORE_INPUT: current-export-v1
+          SARBERKI_BACKUP_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_V2_PASSPHRASE }}
+        run: python3 scripts/backup-v2-restore.py
+      - name: Package after full SQL restore proof
+        run: python3 scripts/backup-v2.py package
+      - name: Private versioned storage and exact-version readback
+        if: vars.SARBERKI_V2_STORAGE_PROVIDER != 'drive'
+        env:
+          SARBERKI_V2_BUCKET: ${{ vars.SARBERKI_V2_BUCKET }}
+          AWS_DEFAULT_REGION: ${{ vars.SARBERKI_V2_STORAGE_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.SARBERKI_V2_STORAGE_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SARBERKI_V2_STORAGE_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: 'true'
+        run: |
+          apt-get install -y -qq --no-install-recommends awscli
+          python3 scripts/backup-v2-storage.py
+      - name: Private Drive snapshots and exact-file SHA256 readback
+        if: vars.SARBERKI_V2_STORAGE_PROVIDER == 'drive'
+        env:
+          SARBERKI_V2_DRIVE_FOLDER_ID: ${{ vars.SARBERKI_V2_DRIVE_FOLDER_ID }}
+          SARBERKI_V2_DRIVE_OAUTH_JSON: ${{ secrets.SARBERKI_V2_DRIVE_OAUTH_JSON }}
+        run: python3 scripts/backup-v2-drive.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sarberki-v2-verified-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/sarberki-v2-delivery/
+          retention-days: 7
+          if-no-files-found: error
+      - name: Sanitized GitHub UI outcome
+        if: always()
+        env:
+          OUTCOME: ${{ job.status }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
+              f.write('Backup V2 outcome: '+os.environ['OUTCOME']+'\n')
+              f.write('Full platform recovery and daily scheduling remain separate gates.\n')
+              p=Path('/tmp/sarberki-v2-delivery/sarberki-recovery.zip.sha256')
+              if p.is_file(): f.write(p.read_text()+'\n')
+          PY
