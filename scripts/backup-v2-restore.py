@@ -304,6 +304,9 @@ def entrypoint():
             os.environ['PGDATABASE']='postgres'
             run(['psql','-X','-w','-qAt','-c','DROP DATABASE IF EXISTS sc_restore WITH (FORCE);'],required=False)
             for role in report.get('temporary_source_roles', []):
+                # Source grants can include cluster parameter privileges. Revoke
+                # these only for newly created roles after dropping the test DB.
+                sql('DROP OWNED BY '+role+';')
                 sql('DROP ROLE IF EXISTS '+role+';')
     if not report.get('verification_completed'):
         raise SystemExit(1)
