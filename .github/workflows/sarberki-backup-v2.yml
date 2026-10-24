@@ -51,7 +51,13 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Install tools
-        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 gnupg ca-certificates git docker.io awscli
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 gnupg ca-certificates git docker.io
+      - name: Verify Drive authorization before any source export
+        if: vars.SARBERKI_V2_STORAGE_PROVIDER == 'drive'
+        env:
+          SARBERKI_V2_DRIVE_FOLDER_ID: ${{ vars.SARBERKI_V2_DRIVE_FOLDER_ID }}
+          SARBERKI_V2_DRIVE_OAUTH_JSON: ${{ secrets.SARBERKI_V2_DRIVE_OAUTH_JSON }}
+        run: python3 scripts/backup-v2-drive.py preflight
       - name: Read-only export with new protected passphrase
         env:
           SARBERKI_V2_ENABLED: ${{ vars.SARBERKI_V2_ENABLED }}
@@ -93,7 +99,9 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.SARBERKI_V2_STORAGE_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.SARBERKI_V2_STORAGE_SECRET_ACCESS_KEY }}
           AWS_EC2_METADATA_DISABLED: 'true'
-        run: python3 scripts/backup-v2-storage.py
+        run: |
+          apt-get install -y -qq --no-install-recommends awscli
+          python3 scripts/backup-v2-storage.py
       - name: Private Drive snapshots and exact-file SHA256 readback
         if: vars.SARBERKI_V2_STORAGE_PROVIDER == 'drive'
         env:

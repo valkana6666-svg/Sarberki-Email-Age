@@ -68,11 +68,17 @@ def upload(token,folder_id,name,data):
     return {'file_id':fid,'name':name,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),
         'exact_id_readback':'PASS','url':result.get('webViewLink'),'version_model':'distinct_file_per_run_attempt'}
 def main():
+    if sys.argv[1:] not in ([],['preflight']):raise ValueError('INVALID_OPERATION')
     folder=os.environ.get('SARBERKI_V2_DRIVE_FOLDER_ID','')
     if folder!=FOLDER_ID:raise ValueError('UNAPPROVED_FOLDER')
     token=access_token(os.environ.get('SARBERKI_V2_DRIVE_OAUTH_JSON',''))
     query=urllib.parse.urlencode({'fields':'id,mimeType,trashed,permissions(type,role,emailAddress)'})
     validate_folder(json.loads(request('https://www.googleapis.com/drive/v3/files/'+folder+'?'+query,token)),folder)
+    if sys.argv[1:]==['preflight']:
+        about=json.loads(request('https://www.googleapis.com/drive/v3/about?fields=storageQuota',token))
+        validate_quota(about.get('storageQuota',{}),0)
+        print('Drive OAuth, owner-only folder and available quota preflight: PASS')
+        return
     directory=Path('/tmp/sarberki-v2-delivery')
     files=[directory/'sarberki-recovery.zip',directory/'sarberki-recovery.zip.sha256']
     about=json.loads(request('https://www.googleapis.com/drive/v3/about?fields=storageQuota',token))
