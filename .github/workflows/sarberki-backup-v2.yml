@@ -51,12 +51,16 @@ jobs:
           --health-cmd "pg_isready -U restore_admin"
           --health-interval 5s --health-timeout 5s --health-retries 12
     steps:
+      # The postgres image has no Git: install before checkout, otherwise checkout
+      # falls back to an archive with no history for fetch and recovery bundles.
+      - name: Install tools
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 gnupg ca-certificates git docker.io
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Install tools
-        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 gnupg ca-certificates git docker.io
+      - name: Verify recovery source Git history
+        run: git rev-parse --verify HEAD && git rev-parse --is-shallow-repository
       - name: Verify Drive authorization before any source export
         if: env.SARBERKI_EFFECTIVE_PROVIDER == 'drive'
         env:
