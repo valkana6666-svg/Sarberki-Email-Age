@@ -2,7 +2,7 @@ name: Sarberki V2 isolated backup and recovery
 on:
   push:
     branches: [backup/issue-6-cloud-recovery]
-    paths: [scripts/backup-v2*, scripts/test_backup_v2.py, .github/workflows/sarberki-backup-v2.yml, docs/BACKUP-V2.md]
+    paths: [scripts/backup-v2*, scripts/test_backup_v2*.py, .github/workflows/sarberki-backup-v2.yml, docs/BACKUP-V2.md]
   workflow_dispatch:
     inputs:
       export:
@@ -24,8 +24,8 @@ jobs:
           persist-credentials: false
       - name: Synthetic backup boundary tests
         run: |
-          python3 -m unittest discover -s scripts -p test_backup_v2.py -v
-          python3 -m py_compile scripts/backup-v2.py scripts/backup-v2-storage.py scripts/backup-v2-restore.py
+          python3 -m unittest discover -s scripts -p 'test_backup_v2*.py' -v
+          python3 -m py_compile scripts/backup-v2.py scripts/backup-v2-storage.py scripts/backup-v2-restore.py scripts/backup-v2-drive.py
   export-restore:
     needs: safety
     if: >-
@@ -55,6 +55,8 @@ jobs:
       - name: Read-only export with new protected passphrase
         env:
           SARBERKI_V2_ENABLED: ${{ vars.SARBERKI_V2_ENABLED }}
+          SARBERKI_V2_STORAGE_PROVIDER: ${{ vars.SARBERKI_V2_STORAGE_PROVIDER }}
+          SARBERKI_V2_DRIVE_FOLDER_ID: ${{ vars.SARBERKI_V2_DRIVE_FOLDER_ID }}
           SARBERKI_V2_BUCKET: ${{ vars.SARBERKI_V2_BUCKET }}
           SARBERKI_V2_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_V2_PASSPHRASE }}
           SARBERKI_BACKUP_DB_URL: ${{ secrets.SARBERKI_BACKUP_DB_URL }}
@@ -84,6 +86,7 @@ jobs:
       - name: Package after full SQL restore proof
         run: python3 scripts/backup-v2.py package
       - name: Private versioned storage and exact-version readback
+        if: vars.SARBERKI_V2_STORAGE_PROVIDER != 'drive'
         env:
           SARBERKI_V2_BUCKET: ${{ vars.SARBERKI_V2_BUCKET }}
           AWS_DEFAULT_REGION: ${{ vars.SARBERKI_V2_STORAGE_REGION }}
@@ -91,6 +94,12 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.SARBERKI_V2_STORAGE_SECRET_ACCESS_KEY }}
           AWS_EC2_METADATA_DISABLED: 'true'
         run: python3 scripts/backup-v2-storage.py
+      - name: Private Drive snapshots and exact-file SHA256 readback
+        if: vars.SARBERKI_V2_STORAGE_PROVIDER == 'drive'
+        env:
+          SARBERKI_V2_DRIVE_FOLDER_ID: ${{ vars.SARBERKI_V2_DRIVE_FOLDER_ID }}
+          SARBERKI_V2_DRIVE_OAUTH_JSON: ${{ secrets.SARBERKI_V2_DRIVE_OAUTH_JSON }}
+        run: python3 scripts/backup-v2-drive.py
       - uses: actions/upload-artifact@v4
         with:
           name: sarberki-v2-verified-${{ github.run_id }}-${{ github.run_attempt }}
