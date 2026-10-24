@@ -36,13 +36,31 @@ A main nem változik. A natív GitHub schedule nem oldja meg a tesztág indítá
 
 A `BACKUP-V2-CLOUD-CONTROL.md` JSON-tartalmú kapcsoló alapértelmezése tiltott. Az indítás csak az új secret biztonságos beállítása és a tulajdonosi kulcsmegőrzés igazolása után engedélyezhető. Az automatizmus konfigurálása nem bizonyít napi mentést: az első valóban időzített teljes futás és a Drive-átadás PASS szükséges. Az óránkénti hibafigyelés legfeljebb közel egyórás felismerési késéssel járhat; értesítéskézbesítés nincs még próbával igazolva.
 
+## Igazolt elfogadási állapot – 2026-10-24 21:16 Europe/Vienna
+
+Részletes gépi bizonyíték: `BACKUP-V2-ACCEPTANCE-2026-10-24.json`.
+
+- Commit: `1e17a56b50fe8ef8ca0aab3119dda8f66581e2f9`; run: `40124286342`, attempt 1.
+- Safety: 56 PASS, 0 FAIL, 0 SKIPPED, tényleges GPG-próbával.
+- Csak olvasható friss tesztprojekt-export: PASS; forrásmanifest változatlan.
+- Teljes AES256 GPG-burkolat és visszafejtés: PASS.
+- Teljes első SQL-restore és a pontos GitHub artifact-ID letöltéséből végzett második SQL-restore: PASS; mindkettőnél 49 tábla, verification_completed=true.
+- Staging artifact `12571839611`; proof `12572595315`; tényleges lejárat `2027-01-22T19:13:11Z`.
+- Drive-fájl: https://drive.google.com/file/d/1Q2FnZL9O2_Fkq83koM2z-LOi4wTo9VoQ/view
+- A pontos Drive-ID szerinti tényleges visszatöltés SHA256-ja: `3ea25b89805a62f8bfe0956398b5e65f9b54d36e09cba939f5074d0ab42870f8` (3 315 880 bájt), PASS.
+- Drive-mappa és új fájlok ACL-je: kizárólag a tulajdonos; régi fájlt nem töröltünk és nem írtunk felül.
+- A V2 titkos jelszó formátuma igazolt, értékét nem olvastuk ki. Tulajdonos külön megőrzést megerősített; független kulcs-visszaolvasási próba még nincs.
+- A runner-kapu `SARBERKI_V2_ENABLED=yes`; a vezérlő JSON engedélyezve. A napi indításnak az első tényleges időzített futás után lesz bizonyítéka.
+
+A futásban javított hibák: Git telepítése checkout elé; pontos konténer-munkamappa Git-bizalma; egyetlen artifact-ID fájljainak közvetlen letöltési könyvtára; kizárólag az izolált próba által létrehozott szerepkörök és szerverparaméter-jogosultságaik takarítása a külön restore-próbák között.
+
 ## Fennmaradó kapuk
 
-1. Új, legalább 32 karakteres külön mentési jelszó GitHub Secrets-be, tulajdonosi független példánnyal. Most a két régi secret neve látható; V2-jelszó nincs.
-2. Az új teljescsomag-titkosítás CI-bizonyítéka és valódi mentési jelszóval végzett felhős elfogadása. A helyi executor tiltja a gpg-agent Unix socketjét; az új valódi GPG-próba itt SKIPPED, a GitHub Ubuntu CI-ben kötelezően fut.
-3. Egyszeri valódi új export és minden felhős restore-kapu végrehajtása. A GitHubról visszatöltött bájtok SQL-restore-ja nem azonos a ténylegesen Drive-ról visszatöltött bájtok SQL-restore-jával; az utóbbi még szükséges.
-4. GitHub-, Netlify-, Auth/Edge/Storage/Vault teljes platform-helyreállítás hiányai megmaradnak.
-5. Ütemezett teljes futás, értesítéskézbesítés, független tulajdonosi kulcs-visszaolvasás és tartós, kvótafüggő megőrzés bizonyítása. Drive-mentést nem törlünk automatikusan, nem vállalunk korlátlan kvótát.
+1. A ténylegesen Drive-ról visszatöltött bájtokból új SQL-restore még NEM FUTOTT. A GitHub-visszatöltés SQL-próbája és a Drive bájtszintű hash-egyezése külön bizonyíték. A Work futtató nem kapja meg a runner jelszavát, a runner nem kapja meg a Drive-csatlakozó hitelesítőjét; támogatott biztonságos bemenetátadás szükséges a külön próbához.
+2. Első időzített teljes futás, hibaértesítés kézbesítése és tulajdonosi független kulcs-visszaolvasás még NEM IGAZOLT.
+3. GitHub-, Netlify-, Auth/Edge/Storage/Vault teljes platform-helyreállítás hiányai megmaradnak, a csomag RECOVERY-GAPS.json fájljában tételesen.
+4. A korábban képen megjelent, dedikált Google backup client secretet a tulajdonosnak vissza kell vonnia/cserélnie. Az új mentési út nem használja; Gmail-klienshez nem nyúltunk.
+5. Megőrzés: GitHub 90 nap igazolt; Drive-példányokat nem törlünk, kvótától függnek. Korlátlan tárhely vagy teljes rendszerhelyreállítás nincs igazolva. Készültség nem 100%.
 
 ## Hivatalos források
 

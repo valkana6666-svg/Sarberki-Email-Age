@@ -1,0 +1,35 @@
+{
+  "run_id": 40124286342,
+  "run_attempt": 1,
+  "snapshot_commit": "1e17a56b50fe8ef8ca0aab3119dda8f66581e2f9",
+  "github_stage_artifact_id": 12571839611,
+  "github_proof_artifact_id": 12572595315,
+  "github_expires_at": "2027-01-22T19:13:11Z",
+  "drive_file_id": "1Q2FnZL9O2_Fkq83koM2z-LOi4wTo9VoQ",
+  "drive_hash_file_id": "1nRWhg6TcKbtpPMLGV6c8K7FlBntWUyOS",
+  "drive_proof_file_id": "1xsoxZGB0lB0bVjWOiiGToNThRnda8yGZ",
+  "drive_folder_id": "1EE2ioPs_8OwpnttT9hYHba_Y9_aWwcqz",
+  "sha256": "3ea25b89805a62f8bfe0956398b5e65f9b54d36e09cba939f5074d0ab42870f8",
+  "bytes": 3315880,
+  "exact_id_drive_byte_readback": "PASS",
+  "github_download_full_sql_restore": "PASS",
+  "drive_download_new_sql_restore": "NOT_RUN",
+  "acl_owner_only": "valkana6666@gmail.com",
+  "verified_at": "2026-10-24T19:16:53.978445+00:00",
+  "safety_tests": {
+    "PASS": 56,
+    "FAIL": 0,
+    "SKIPPED": 0
+  },
+  "tables_compared": 49,
+  "snapshot_export_started_utc": "2026-10-24T19:13:50Z",
+  "snapshot_export_completed_utc": "2026-10-24T19:14:19Z",
+  "drive_transfer_receipt_id": "1DodOsUGyZsyD9a445eVXlNkvy1RlpvnL",
+  "remaining": [
+    "First scheduled complete run and notification delivery",
+    "New SQL restore from actual Drive-downloaded bytes",
+    "Owner independent key recovery readback",
+    "Full hosted Auth/Edge/Storage/Vault/Netlify platform recovery",
+    "Exposed dedicated backup OAuth client secret revocation by owner; unused by bridge"
+  ]
+}
