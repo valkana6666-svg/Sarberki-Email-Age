@@ -15,6 +15,23 @@ class DriveRelayBoundary(unittest.TestCase):
         self.patches=patch.multiple(relay,BLOB=self.blob,HASH=hashlib.sha256(self.data).hexdigest(),BYTES=len(self.data))
         self.patches.start();self.addCleanup(self.patches.stop)
 
+    def test_owner_probe_cannot_receive_or_fall_back_to_normal_key(self):
+        with self.assertRaisesRegex(ValueError,'OWNER_PROBE_REGULAR_KEY_FORBIDDEN'):
+            relay.protected_phrase({'SARBERKI_OWNER_KEY_PROBE':'yes','SARBERKI_BACKUP_V2_PASSPHRASE':'synthetic-normal-'+'x'*40})
+        with self.assertRaisesRegex(ValueError,'OWNER_RECOVERY_KEY_REQUIRED'):
+            relay.protected_phrase({'SARBERKI_OWNER_KEY_PROBE':'yes'})
+
+    def test_independently_entered_owner_key_consumed_without_exposure(self):
+        phrase='synthetic-owner-key-'+'x'*40
+        values={'SARBERKI_OWNER_KEY_PROBE':'yes','SARBERKI_OWNER_RECOVERY_PASSPHRASE':phrase}
+        self.assertEqual(relay.protected_phrase(values),(True,phrase))
+        self.assertNotIn('SARBERKI_OWNER_RECOVERY_PASSPHRASE',values)
+
+    def test_multiline_or_short_owner_key_rejected(self):
+        for phrase in ['short','synthetic-only-'+'x'*40+'\n']:
+            with self.assertRaises(ValueError):
+                relay.protected_phrase({'SARBERKI_OWNER_KEY_PROBE':'yes','SARBERKI_OWNER_RECOVERY_PASSPHRASE':phrase})
+
     def test_exact_drive_bytes_and_git_blob_identity(self):
         relay.validate_relay(self.meta,self.data)
 

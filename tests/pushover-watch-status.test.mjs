@@ -5,7 +5,7 @@ import vm from 'node:vm';
 const source=fs.readFileSync(new URL('../gmail-readonly.js',import.meta.url),'utf8');
 function harness(){
  const nodes=new Map(),store=new Map();const node=id=>{if(!nodes.has(id))nodes.set(id,{textContent:'',className:'',setAttribute(){},insertAdjacentElement(){}});return nodes.get(id);};
- const context=vm.createContext({document:{getElementById:node,createElement:()=>node('gmail_pushover_watch_status')},status:node('gmail_auth_status'),Date,JSON,Set,Error,Number,localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v)},setInterval:()=>1,clearInterval(){},readWithToken:async()=>[],renderPicker(){}});
+ const context=vm.createContext({window:{},document:{getElementById:node,createElement:()=>node('gmail_pushover_watch_status')},status:node('gmail_auth_status'),Date,JSON,Set,Error,Number,localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v)},setInterval:()=>1,clearInterval(){},readWithToken:async()=>[],renderPicker(){}});
  vm.runInContext(source.slice(source.indexOf('  const READ_STORAGE_KEY'),source.indexOf('  function messageLabel('))+';globalThis.start=startPushoverWatch;globalThis.poll=pollPushoverWatch;globalThis.token=value=>currentToken=value;',context);
  return {context,node};
 }

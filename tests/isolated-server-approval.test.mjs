@@ -1,4 +1,8 @@
-import test from 'node:test';
+import test, {before,after,mock} from 'node:test';
+// Freeze the fictional stay, evidence, JWTs and embedded PostgreSQL together.
+// This clock exists only in this isolated test file; application guards stay real-time.
+before(()=>mock.timers.enable({apis:['Date'],now:Date.parse('2026-10-17T12:00:00Z')}));
+after(()=>mock.timers.reset());
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';

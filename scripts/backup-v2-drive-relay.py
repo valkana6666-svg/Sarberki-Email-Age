@@ -39,16 +39,22 @@ def validate_relay(meta, data):
 def snapshot_identity(values):
     return dict(values, GITHUB_SHA=SNAPSHOT_COMMIT, GITHUB_RUN_ID=SNAPSHOT_RUN)
 
+def protected_phrase(values):
+    probe = values.get('SARBERKI_OWNER_KEY_PROBE') == 'yes'
+    if probe and values.get('SARBERKI_BACKUP_V2_PASSPHRASE'):
+        raise ValueError('OWNER_PROBE_REGULAR_KEY_FORBIDDEN')
+    key_name = 'SARBERKI_OWNER_RECOVERY_PASSPHRASE' if probe else 'SARBERKI_BACKUP_V2_PASSPHRASE'
+    phrase = values.pop(key_name, '')
+    if not 32 <= len(phrase) <= 1024 or any(c in phrase for c in '\r\n'):
+        raise ValueError('OWNER_RECOVERY_KEY_REQUIRED' if probe else 'V2_KEY_REQUIRED')
+    return probe, phrase
+
 def main():
     if os.environ.get('GITHUB_REPOSITORY') != REPO or os.environ.get('GITHUB_REF') != BRANCH:
         raise ValueError('UNAPPROVED_EXECUTION_IDENTITY')
     if any(os.environ.get(k) for k in os.environ if k.startswith('SARBERKI_BACKUP_DB_')):
         raise ValueError('SOURCE_CREDENTIALS_FORBIDDEN')
-    probe = os.environ.get('SARBERKI_OWNER_KEY_PROBE') == 'yes'
-    key_name = 'SARBERKI_OWNER_RECOVERY_PASSPHRASE' if probe else 'SARBERKI_BACKUP_V2_PASSPHRASE'
-    phrase = os.environ.pop(key_name, '')
-    if not 32 <= len(phrase) <= 1024 or any(c in phrase for c in '\r\n'):
-        raise ValueError('OWNER_RECOVERY_KEY_REQUIRED' if probe else 'V2_KEY_REQUIRED')
+    probe, phrase = protected_phrase(os.environ)
     req = urllib.request.Request('https://api.github.com/repos/'+REPO+'/git/blobs/'+BLOB,
         headers={'Authorization':'Bearer '+os.environ['GITHUB_TOKEN'], 'Accept':'application/vnd.github+json',
                  'X-GitHub-Api-Version':'2022-11-28'})

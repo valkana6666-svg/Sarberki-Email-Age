@@ -1,4 +1,8 @@
-import test from 'node:test';
+import test, {before,after,mock} from 'node:test';
+// Freeze the fictional stay, evidence, JWTs and embedded PostgreSQL together.
+// This clock exists only in this isolated test file; application guards stay real-time.
+before(()=>mock.timers.enable({apis:['Date'],now:Date.parse('2026-10-17T12:00:00Z')}));
+after(()=>mock.timers.reset());
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
@@ -61,7 +65,7 @@ async function gmailReadHarness({ui=dom(),onDisplay,messages,account=policy.TEST
  };
  const source=(await read('gmail-readonly.js')).replace(/await import\('\.\/([^']+)'\)/gu,(_,name)=>'modules['+JSON.stringify(name.split('?')[0])+']');
  const context=vm.createContext({modules:{'sarberki-core.mjs':core,'business-config.mjs':{BUSINESS},'fishing-rules.mjs':fishing,'gmail-policy.mjs':policy,'split-units.mjs':splitUnits},document:ui.document,window,google:window.google,
-  fetch:fetchImpl,displayGmailRecord:onDisplay,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},console,URL,Date,Number,Intl,TextDecoder,Uint8Array,atob,Event,
+  fetch:fetchImpl,displayGmailRecord:onDisplay,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},console,URL,Date,Number,Intl,TextDecoder,Uint8Array,atob,Event,AbortController,setTimeout,clearTimeout,
   setInterval:()=>assert.fail('reading must never start Pushover polling'),clearInterval(){}});
  await vm.runInContext(source,context);
  return {ui,window,storage,calls,oauthOptions,async read(){await ui.element('read_gmail').click();await callback({access_token:fakeToken});assert.equal(oauthOptions.at(-1).scope,'https://www.googleapis.com/auth/gmail.readonly');assert.equal(oauthOptions.at(-1).include_granted_scopes,false);assert.equal(oauthOptions.at(-1).hint,policy.TEST_GMAIL_ACCOUNT);},
