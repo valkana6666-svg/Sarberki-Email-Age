@@ -56,6 +56,16 @@ def validate_and_extract(download, receipt, destination, values):
             or len(sums) != checksum.get('bytes')
             or sums != (digest+'  sarberki-recovery.zip\n').encode('ascii')):
         raise ValueError('REMOTE_CHECKSUM_INVALID')
+    validate_archive(download, destination, values)
+    return {'provider': 'google-drive', 'file_id': item['file_id'], 'sha256': digest,
+            'input_source': 'exact_id_download', 'archive_boundary': 'PASS',
+            'sql_restore': 'NOT_YET_RUN'}
+
+
+def validate_archive(download, destination, values):
+    """Shared untrusted archive boundary; callers verify provider identity and hashes."""
+    if destination.exists() or destination.is_symlink() or download.is_symlink():
+        raise ValueError('FRESH_REGULAR_INPUT_REQUIRED')
     with zipfile.ZipFile(download) as archive:
         entries = archive.infolist()
         if len(entries) != len(MEMBERS) or {e.filename for e in entries} != MEMBERS:
@@ -80,10 +90,6 @@ def validate_and_extract(download, receipt, destination, values):
             with (destination/name).open('xb') as out:
                 out.write(content)
             (destination/name).chmod(0o600)
-    return {'provider': 'google-drive', 'file_id': item['file_id'], 'sha256': digest,
-            'input_source': 'exact_id_download', 'archive_boundary': 'PASS',
-            'sql_restore': 'NOT_YET_RUN'}
-
 
 def main():
     directory = Path('/tmp/sarberki-v2-drive-readback')

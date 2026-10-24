@@ -45,11 +45,14 @@ ARCHIVED_20261017_HASHES = {
     'roles.sql.gpg': '8ed3b6322ff929919e401196989514c98f5cf79ee53a750eefb32fd801719dc3'}
 FRESH_DIRECTORY = Path('/tmp/sarberki-cloud-backup')
 DRIVE_DIRECTORY = Path('/tmp/sarberki-v2-drive-input')
+GITHUB_DIRECTORY = Path('/tmp/sarberki-v2-github-input')
+REMOTE_MODES = {'drive-readback-v1': (DRIVE_DIRECTORY, 'drive', 'exact_id_drive_download'),
+                'github-readback-v1': (GITHUB_DIRECTORY, 'github', 'exact_id_github_download')}
 
 
 def restore_input_identity(mode, values):
     # Only previously verified immutable exports; no caller-selected snapshot.
-    if mode in ('current-export-v1', 'drive-readback-v1'):
+    if mode in ('current-export-v1', *REMOTE_MODES):
         return values, None
     archived = {
         'archived-export-38414863596': ('ad3aad6688416e223a18fe002101521bd5f467ff', '38414863596', ARCHIVED_20261013_HASHES),
@@ -79,7 +82,7 @@ def validate_destination(values):
 def fresh_identity(directory, values):
     # Accept only fixed paths for this job export or its verified exact-ID Drive readback.
     # No caller-selected path or unchecked checksum bypass is accepted.
-    approved = DRIVE_DIRECTORY if values.get('SARBERKI_RESTORE_INPUT') == 'drive-readback-v1' else FRESH_DIRECTORY
+    approved = REMOTE_MODES.get(values.get('SARBERKI_RESTORE_INPUT'), (FRESH_DIRECTORY,))[0]
     if directory != approved or directory.is_symlink():
         raise RuntimeError('FRESH_DIRECTORY_INVALID')
     allowed = set(CIPHERTEXT_NAMES) | {'SHA256SUMS.txt', 'STATUS.txt', 'PROVENANCE.json'}
@@ -128,7 +131,7 @@ def main():
         if os.environ.get('SARBERKI_RESTORE_SETUP_ONLY'):
             raise RuntimeError('RESTORE_INPUT_INVALID')
         identity_values, pinned_hashes = restore_input_identity(fresh_mode, os.environ)
-        directory = DRIVE_DIRECTORY if fresh_mode == 'drive-readback-v1' else FRESH_DIRECTORY
+        directory = REMOTE_MODES.get(fresh_mode, (FRESH_DIRECTORY,))[0]
         expected, provenance = fresh_identity(directory, identity_values)
         if pinned_hashes is not None and expected != pinned_hashes:
             raise RuntimeError('ARCHIVED_SNAPSHOT_IDENTITY_FAILED')
@@ -138,9 +141,9 @@ def main():
                       verification_run=os.environ.get('GITHUB_RUN_ID'),
                       verification_commit=os.environ.get('GITHUB_SHA'),
                       ciphertexts_sha256=expected)
-        if fresh_mode == 'drive-readback-v1':
-            report['input_mode'] = 'exact_id_drive_download'
-            report['remote_input'] = json.loads((Path('/tmp/sarberki-v2-drive-readback')/'VALIDATED-INPUT.json').read_text())
+        if fresh_mode in REMOTE_MODES:
+            _, provider, report['input_mode'] = REMOTE_MODES[fresh_mode]
+            report['remote_input'] = json.loads((Path('/tmp/sarberki-v2-'+provider+'-readback')/'VALIDATED-INPUT.json').read_text())
     else:
         encrypted = read_ciphertexts(Path('/tmp/original-backup'), PINNED_HASHES)
     report['ciphertexts_identity_sha256' if fresh_mode else 'original_ciphertexts_sha256']='PASS'
@@ -268,7 +271,7 @@ set local role authenticated;"""
         if (fresh_mode and not report['all_archive_tables_compared']) or report['case_manifest']!='PASS' or not report['all_table_copy_payloads_equal'] or not report['sequence_values_equal'] or not report['all_source_role_attributes_equal'] or not report['manifest_after_rollback_equal']:
             raise RuntimeError('RESTORED_CONTENT_MISMATCH')
         report['verified_scope']='actual SQL restore; table data; case schema/RLS definitions/grants/functions/audit hashes'
-        if fresh_mode == 'drive-readback-v1':
+        if fresh_mode in REMOTE_MODES:
             report['remote_input']['sql_restore'] = 'PASS'
 def entrypoint():
     try:
@@ -283,7 +286,8 @@ def entrypoint():
     else:
         report['verification_completed']=True
     finally:
-        out=Path('/tmp/sarberki-v2-delivery/drive-restore-evidence') if os.environ.get('SARBERKI_RESTORE_INPUT') == 'drive-readback-v1' else Path('/tmp/restore-evidence')
+        remote = REMOTE_MODES.get(os.environ.get('SARBERKI_RESTORE_INPUT'))
+        out=Path('/tmp/sarberki-v2-delivery/'+remote[1]+'-restore-evidence') if remote else Path('/tmp/restore-evidence')
         out.mkdir(parents=True,exist_ok=True)
         (out/'ISOLATED-RESTORE.json').write_text(json.dumps(report,indent=2)+'\n')
         print(json.dumps({k:v for k,v in report.items() if k in ('portable_decryption','full_restore','restore_without_vault','case_manifest','tables_compared','verification_completed','full_restore_failure')}))

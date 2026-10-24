@@ -16,6 +16,8 @@ def validate(values):
     provider=values.get('SARBERKI_V2_STORAGE_PROVIDER','s3')
     if provider=='drive':
         if values.get('SARBERKI_V2_DRIVE_FOLDER_ID')!='1EE2ioPs_8OwpnttT9hYHba_Y9_aWwcqz':raise ValueError('APPROVED_DRIVE_FOLDER_REQUIRED')
+    elif provider=='github-bridge':
+        pass  # Encrypted staging artifact; independent Drive transfer remains required.
     elif provider=='s3':
         if not values.get('SARBERKI_V2_BUCKET'):raise ValueError('APPROVED_DURABLE_BUCKET_REQUIRED')
     else:raise ValueError('UNAPPROVED_STORAGE_PROVIDER')

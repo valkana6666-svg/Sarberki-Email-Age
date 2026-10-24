@@ -2,7 +2,7 @@ name: Sarberki V2 isolated backup and recovery
 on:
   push:
     branches: [gmail-test-subject-allowlist]
-    paths: [scripts/backup-v2*, scripts/test_backup_v2*.py, .github/workflows/sarberki-backup-v2.yml, docs/BACKUP-V2.md]
+    paths: [scripts/backup-v2*, scripts/test_backup_v2*.py, .github/workflows/sarberki-backup-v2.yml, docs/BACKUP-V2*.md]
   workflow_dispatch:
     inputs:
       export:
@@ -25,14 +25,19 @@ jobs:
       - name: Synthetic backup boundary tests
         run: |
           python3 -m unittest discover -s scripts -p 'test_backup_v2*.py' -v
-          python3 -m py_compile scripts/backup-v2.py scripts/backup-v2-storage.py scripts/backup-v2-restore.py scripts/backup-v2-drive.py scripts/backup-v2-readback.py
+          python3 -m py_compile scripts/backup-v2.py scripts/backup-v2-storage.py scripts/backup-v2-restore.py scripts/backup-v2-drive.py scripts/backup-v2-readback.py scripts/backup-v2-artifact.py
   export-restore:
     needs: safety
     if: >-
       vars.SARBERKI_V2_ENABLED == 'yes' &&
       github.ref == 'refs/heads/gmail-test-subject-allowlist' &&
       ((github.event_name == 'workflow_dispatch' && inputs.export) ||
-      (github.event_name == 'push' && contains(github.event.head_commit.message, '[backup-v2-run]')))
+      (github.event_name == 'push' && (contains(github.event.head_commit.message, '[backup-v2-run]') || contains(github.event.head_commit.message, '[backup-v2-cloud-bridge-run]'))))
+    permissions:
+      contents: read
+      actions: read
+    env:
+      SARBERKI_EFFECTIVE_PROVIDER: ${{ contains(github.event.head_commit.message, '[backup-v2-cloud-bridge-run]') && 'github-bridge' || vars.SARBERKI_V2_STORAGE_PROVIDER }}
     runs-on: ubuntu-24.04
     container: postgres:17-bookworm
     timeout-minutes: 40
@@ -53,7 +58,7 @@ jobs:
       - name: Install tools
         run: apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 gnupg ca-certificates git docker.io
       - name: Verify Drive authorization before any source export
-        if: vars.SARBERKI_V2_STORAGE_PROVIDER == 'drive'
+        if: env.SARBERKI_EFFECTIVE_PROVIDER == 'drive'
         env:
           SARBERKI_V2_DRIVE_FOLDER_ID: ${{ vars.SARBERKI_V2_DRIVE_FOLDER_ID }}
           SARBERKI_V2_DRIVE_OAUTH_JSON: ${{ secrets.SARBERKI_V2_DRIVE_OAUTH_JSON }}
@@ -61,7 +66,7 @@ jobs:
       - name: Read-only export with new protected passphrase
         env:
           SARBERKI_V2_ENABLED: ${{ vars.SARBERKI_V2_ENABLED }}
-          SARBERKI_V2_STORAGE_PROVIDER: ${{ vars.SARBERKI_V2_STORAGE_PROVIDER }}
+          SARBERKI_V2_STORAGE_PROVIDER: ${{ env.SARBERKI_EFFECTIVE_PROVIDER }}
           SARBERKI_V2_DRIVE_FOLDER_ID: ${{ vars.SARBERKI_V2_DRIVE_FOLDER_ID }}
           SARBERKI_V2_BUCKET: ${{ vars.SARBERKI_V2_BUCKET }}
           SARBERKI_V2_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_V2_PASSPHRASE }}
@@ -92,7 +97,7 @@ jobs:
       - name: Package after full SQL restore proof
         run: python3 scripts/backup-v2.py package
       - name: Private versioned storage and exact-version readback
-        if: vars.SARBERKI_V2_STORAGE_PROVIDER != 'drive'
+        if: env.SARBERKI_EFFECTIVE_PROVIDER == 's3'
         env:
           SARBERKI_V2_BUCKET: ${{ vars.SARBERKI_V2_BUCKET }}
           AWS_DEFAULT_REGION: ${{ vars.SARBERKI_V2_STORAGE_REGION }}
@@ -103,16 +108,16 @@ jobs:
           apt-get install -y -qq --no-install-recommends awscli
           python3 scripts/backup-v2-storage.py
       - name: Private Drive snapshots and exact-file SHA256 readback
-        if: vars.SARBERKI_V2_STORAGE_PROVIDER == 'drive'
+        if: env.SARBERKI_EFFECTIVE_PROVIDER == 'drive'
         env:
           SARBERKI_V2_DRIVE_FOLDER_ID: ${{ vars.SARBERKI_V2_DRIVE_FOLDER_ID }}
           SARBERKI_V2_DRIVE_OAUTH_JSON: ${{ secrets.SARBERKI_V2_DRIVE_OAUTH_JSON }}
         run: python3 scripts/backup-v2-drive.py
       - name: Validate the exact-ID downloaded Drive package
-        if: vars.SARBERKI_V2_STORAGE_PROVIDER == 'drive'
+        if: env.SARBERKI_EFFECTIVE_PROVIDER == 'drive'
         run: python3 scripts/backup-v2-readback.py
       - name: Restore the downloaded Drive package without source credentials
-        if: vars.SARBERKI_V2_STORAGE_PROVIDER == 'drive'
+        if: env.SARBERKI_EFFECTIVE_PROVIDER == 'drive'
         env:
           PGHOST: postgres
           PGUSER: restore_admin
@@ -121,7 +126,60 @@ jobs:
           SARBERKI_RESTORE_INPUT: drive-readback-v1
           SARBERKI_BACKUP_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_V2_PASSPHRASE }}
         run: python3 scripts/backup-v2-restore.py
+      - name: Encrypt the complete cloud bridge recovery package
+        if: env.SARBERKI_EFFECTIVE_PROVIDER == 'github-bridge'
+        env:
+          SARBERKI_BACKUP_V2_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_V2_PASSPHRASE }}
+        run: python3 scripts/backup-v2-artifact.py seal
+      - name: Upload encrypted cloud bridge staging
+        if: env.SARBERKI_EFFECTIVE_PROVIDER == 'github-bridge'
+        id: cloud_stage
+        uses: actions/upload-artifact@v4
+        with:
+          name: sarberki-cloud-stage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            /tmp/sarberki-v2-delivery/sarberki-recovery.zip.gpg
+            /tmp/sarberki-v2-delivery/sarberki-recovery.zip.gpg.sha256
+          retention-days: 90
+          compression-level: 0
+          overwrite: false
+          if-no-files-found: error
+      - name: Download exact cloud staging artifact ID
+        if: env.SARBERKI_EFFECTIVE_PROVIDER == 'github-bridge'
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ steps.cloud_stage.outputs.artifact-id }}
+          path: /tmp/sarberki-v2-github-readback
+      - name: Validate GitHub cloud download and actual expiry
+        if: env.SARBERKI_EFFECTIVE_PROVIDER == 'github-bridge'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SARBERKI_STAGE_ARTIFACT_ID: ${{ steps.cloud_stage.outputs.artifact-id }}
+          SARBERKI_BACKUP_V2_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_V2_PASSPHRASE }}
+        run: python3 scripts/backup-v2-artifact.py
+      - name: Restore exact-ID GitHub cloud download without source credentials
+        if: env.SARBERKI_EFFECTIVE_PROVIDER == 'github-bridge'
+        env:
+          PGHOST: postgres
+          PGUSER: restore_admin
+          PGPASSWORD: ephemeral-isolated-test-only
+          PGDATABASE: postgres
+          SARBERKI_RESTORE_INPUT: github-readback-v1
+          SARBERKI_BACKUP_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_V2_PASSPHRASE }}
+        run: python3 scripts/backup-v2-restore.py
+      - name: Preserve cloud bridge SQL evidence for Drive transfer
+        if: env.SARBERKI_EFFECTIVE_PROVIDER == 'github-bridge'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sarberki-cloud-proof-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            /tmp/sarberki-v2-delivery/GITHUB-STAGING.json
+            /tmp/sarberki-v2-delivery/github-restore-evidence/ISOLATED-RESTORE.json
+          retention-days: 90
+          overwrite: false
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
+        if: env.SARBERKI_EFFECTIVE_PROVIDER != 'github-bridge'
         with:
           name: sarberki-v2-verified-${{ github.run_id }}-${{ github.run_attempt }}
           path: /tmp/sarberki-v2-delivery/
