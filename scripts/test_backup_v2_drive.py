@@ -31,4 +31,15 @@ class DriveSafety(unittest.TestCase):
     def test_corrupt_readback_rejected(self):
         with patch.object(drive,'request',side_effect=[b'{"id":"synthetic_id"}',b'corrupt']):
             with self.assertRaises(ValueError):drive.upload('synthetic',drive.FOLDER_ID,'synthetic.zip',b'correct')
+    def test_large_resumable_upload(self):
+        import json
+        data=b'x'*(5*1024*1024+1)
+        session='https://www.googleapis.com/upload/drive/v3/files?upload_id=synthetic'
+        with patch.object(drive,'request',side_effect=[(b'',{'Location':session}),b'{"id":"synthetic_large"}',data]) as req:
+            result=drive.upload('synthetic',drive.FOLDER_ID,'synthetic.zip',data)
+            self.assertEqual(result['exact_id_readback'],'PASS')
+            self.assertEqual(req.call_args_list[1].kwargs['method'],'PUT')
+    def test_unapproved_resumable_endpoint(self):
+        with patch.object(drive,'request',return_value=(b'',{'Location':'https://example.invalid/upload'})):
+            with self.assertRaises(ValueError):drive.upload('synthetic',drive.FOLDER_ID,'synthetic.zip',b'x'*(5*1024*1024+1))
 if __name__=='__main__':unittest.main()
