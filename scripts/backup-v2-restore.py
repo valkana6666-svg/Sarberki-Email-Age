@@ -47,11 +47,16 @@ FRESH_DIRECTORY = Path('/tmp/sarberki-cloud-backup')
 DRIVE_DIRECTORY = Path('/tmp/sarberki-v2-drive-input')
 GITHUB_DIRECTORY = Path('/tmp/sarberki-v2-github-input')
 REMOTE_MODES = {'drive-readback-v1': (DRIVE_DIRECTORY, 'drive', 'exact_id_drive_download'),
-                'github-readback-v1': (GITHUB_DIRECTORY, 'github', 'exact_id_github_download')}
+                'github-readback-v1': (GITHUB_DIRECTORY, 'github', 'exact_id_github_download'),
+                'drive-relay-v1': (DRIVE_DIRECTORY, 'drive', 'exact_id_drive_download_via_ciphertext_relay')}
 
 
 def restore_input_identity(mode, values):
     # Only previously verified immutable exports; no caller-selected snapshot.
+    if mode == 'drive-relay-v1':
+        spec = importlib.util.spec_from_file_location('drive_relay', ROOT/'backup-v2-drive-relay.py')
+        relay = importlib.util.module_from_spec(spec); spec.loader.exec_module(relay)
+        return relay.snapshot_identity(values), None
     if mode in ('current-export-v1', *REMOTE_MODES):
         return values, None
     archived = {

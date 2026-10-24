@@ -207,3 +207,69 @@ jobs:
               p=Path('/tmp/sarberki-v2-delivery/sarberki-recovery.zip.sha256')
               if p.is_file(): f.write(p.read_text()+'\n')
           PY
+
+  drive-acceptance:
+    needs: safety
+    if: >-
+      github.ref == 'refs/heads/gmail-test-subject-allowlist' &&
+      github.event_name == 'push' &&
+      (contains(github.event.head_commit.message, '[backup-v2-drive-restore]') ||
+       contains(github.event.head_commit.message, '[backup-v2-owner-key-probe]'))
+    runs-on: ubuntu-24.04
+    container: postgres:17-bookworm
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_USER: restore_admin
+          POSTGRES_PASSWORD: ephemeral-isolated-test-only
+        options: >-
+          --health-cmd "pg_isready -U restore_admin"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - name: Install tools before checkout
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 gnupg ca-certificates git docker.io
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate actual Drive readback bytes through immutable ciphertext relay
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SARBERKI_OWNER_KEY_PROBE: ${{ contains(github.event.head_commit.message, '[backup-v2-owner-key-probe]') && 'yes' || 'no' }}
+          SARBERKI_BACKUP_V2_PASSPHRASE: ${{ !contains(github.event.head_commit.message, '[backup-v2-owner-key-probe]') && secrets.SARBERKI_BACKUP_V2_PASSPHRASE || '' }}
+          SARBERKI_OWNER_RECOVERY_PASSPHRASE: ${{ contains(github.event.head_commit.message, '[backup-v2-owner-key-probe]') && secrets.SARBERKI_BACKUP_V2_OWNER_RECOVERY_PASSPHRASE || '' }}
+        run: python3 scripts/backup-v2-drive-relay.py
+      - name: Install matching Vault in disposable destination
+        env:
+          ISOLATED_SERVICE_ID: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$ISOLATED_SERVICE_ID" sh -ec '
+            apt-get update -qq
+            apt-get install -y -qq --no-install-recommends ca-certificates curl make gcc postgresql-server-dev-17 libsodium-dev
+            mkdir /tmp/vault-build
+            curl -fsSL https://github.com/supabase/vault/archive/6e0cd916242d922a646e4d611cc215e09dd429f4.tar.gz | tar -xz --strip-components=1 -C /tmp/vault-build
+            cd /tmp/vault-build
+            make && make install
+          '
+      - name: Full isolated SQL restore of the actual Drive download
+        env:
+          PGHOST: postgres
+          PGUSER: restore_admin
+          PGPASSWORD: ephemeral-isolated-test-only
+          PGDATABASE: postgres
+          SARBERKI_RESTORE_INPUT: drive-relay-v1
+          SARBERKI_BACKUP_PASSPHRASE: ${{ contains(github.event.head_commit.message, '[backup-v2-owner-key-probe]') && secrets.SARBERKI_BACKUP_V2_OWNER_RECOVERY_PASSPHRASE || (!contains(github.event.head_commit.message, '[backup-v2-owner-key-probe]') && secrets.SARBERKI_BACKUP_V2_PASSPHRASE || '') }}
+        run: python3 scripts/backup-v2-restore.py
+      - name: Preserve actual Drive SQL restore evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: sarberki-drive-restore-proof-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            /tmp/sarberki-v2-drive-readback/VALIDATED-INPUT.json
+            /tmp/sarberki-v2-delivery/drive-restore-evidence/ISOLATED-RESTORE.json
+          if-no-files-found: error
+          retention-days: 90
+          overwrite: false
