@@ -29,10 +29,10 @@ def package(directory,evidence,destination):
         z.write(evidence,'evidence/ISOLATED-RESTORE.json')
         # Archive checked-out commit and all its reachable history without push.
         bundle=destination.parent/'source.bundle'
-        subprocess.run(['git','bundle','create',str(bundle),'HEAD'],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        subprocess.run(['git','bundle','create',str(bundle),'HEAD','refs/backup-v2/application'],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
         z.write(bundle,'source.bundle')
         subprocess.run(['git','bundle','verify',str(bundle)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-        inventory={'source_commit':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],
+        inventory={**json.loads(Path('/tmp/sarberki-v2-application.json').read_text()),'backup_logic_commit':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],
             'full_sql_restore':'PASS','platform_restore':'NOT_VERIFIED','daily_schedule':'NOT_VERIFIED',
             'gaps':['hosted Auth/OAuth/SMTP/JWT configuration','Storage object binaries','Vault external keys',
                 'Netlify account/site/context secret values','Gmail/OpenAI/Pushover reconnection','HTTPS service E2E','owner independent key readback']}
@@ -47,6 +47,13 @@ def main():
     mode=sys.argv[1]
     if mode=='export':
         phrase=validate(os.environ)
+        # Capture the current application branch without checkout, push or mutation.
+        subprocess.run(['git','fetch','--no-tags','https://github.com/valkana6666-svg/Sarberki-Email-Age.git',
+            'refs/heads/gmail-test-subject-allowlist:refs/backup-v2/application'],
+            check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        application=subprocess.run(['git','rev-parse','refs/backup-v2/application'],
+            check=True,capture_output=True).stdout.decode().strip()
+        Path('/tmp/sarberki-v2-application.json').write_text(json.dumps({'application_commit':application}))
         cloud=module('cloud_v2',ROOT/'cloud-encrypted-backup.py')
         os.environ['SARBERKI_BACKUP_ENCRYPTION_PASSPHRASE']=phrase
         directory=Path('/tmp/sarberki-cloud-backup')
