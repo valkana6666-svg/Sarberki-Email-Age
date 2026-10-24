@@ -22,6 +22,18 @@
   const PUSHOVER_WATCH_INTERVAL_MS = 60000;
   let currentToken = null;
   let currentMessages = [];
+  // Session-only observation, never server-verified evidence or a permission.
+  const apiMessages = new WeakMap(), apiRecords = new WeakMap();
+  window.SarberkiGmailReadOrigin = Object.freeze({consume(record) {
+    const proof = apiRecords.get(record) || null;
+    apiRecords.delete(record);
+    return proof;
+  }});
+  function rememberApiRead(messages) {
+    const proof = Object.freeze({channel:'gmail_readonly_api',evidence:'browser_observed',serverVerified:false,readAt:new Date().toISOString()});
+    for (const message of messages) apiMessages.set(message, proof);
+    return messages;
+  }
   let pushoverWatchTimer = null;
   let lastGmailCheck = null;
   let lastPushoverSend = null;
@@ -167,6 +179,7 @@
   }
   async function displayMessage(message) {
     const record = transform(message);
+    if (apiMessages.has(message)) apiRecords.set(record, apiMessages.get(message));
     try{if(await displayGmailRecord(record)===false){say('A levél központi feldolgozása nem sikerült; nem jelöltük helyileg olvasottnak.');return false;}}catch(error){say('A levél feldolgozása sikertelen: '+error.message);return false;}
     markRead(message.id);
     renderPicker(currentMessages);
@@ -314,7 +327,7 @@
       assertGmailResponse(response, `A kijelölt szintetikus Gmail-levél nem olvasható (${response.status}).`);
       const message=await response.json();
       if(message?.id!==exactId||!isTestInquiry(message))throw Error('A kijelölt szintetikus levél azonossága vagy Inbox-státusza nem igazolt.');
-      return [message];
+      return rememberApiRead([message]);
     }
     const candidates = [];
     let pageToken;
@@ -363,7 +376,7 @@
     const matching = messages.filter(isTestInquiry);
     if (!matching.length) throw Error('2026.09.25. után nem található beérkezett Gmail-üzenet a tesztfiók inboxában.');
     matching.sort((a, b) => Number(b.internalDate) - Number(a.internalDate) || b.id.localeCompare(a.id));
-    return matching;
+    return rememberApiRead(matching);
   }
   button.addEventListener('click', () => {
     if (!clientId) { say('A Google OAuth kliensazonosító még nincs beállítva ehhez a webhelyhez.'); return; }

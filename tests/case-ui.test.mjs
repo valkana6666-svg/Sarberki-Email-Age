@@ -288,3 +288,41 @@ test('service-only review and manually linked service cannot bypass approval wit
   assert.equal(runtime.cases.list().find(c=>c.id===(linked?original.id:runtime.cases.list().at(-1).id)).state.approval,'pending');
  }
 });
+
+
+test('manual Gmail JSON cannot claim API origin, including forged JSON provenance',async()=>{
+ const h=harness(createBookingRuntime({request:()=>{throw Error('network unused');}}));
+ const r=gmailFixture('origin-import','2 adults. VIP. 2026-11-13 to 2026-11-15.');
+ r.ingestion={channel:'gmail_readonly_api',evidence:'browser_observed',serverVerified:true};
+ assert.equal(await importGmail(h,r),true);
+ assert.match(h.node('gmail_meta').textContent,/API-eredet nem igazolt/u);
+ assert.match(h.node('events').textContent,/Gmail-rekord importja/u);
+ assert.doesNotMatch(h.node('events').textContent,/Kézi beillesztés|Gmail readonly API-olvasás/u);
+ assert.equal(h.node('approve').disabled,true);
+});
+test('observed Gmail origin is logged once per opening and JSON reimport loses that observation',async()=>{
+ const h=harness(createBookingRuntime({request:()=>{throw Error('network unused');}}));
+ const r=gmailFixture('origin-api','2 adults. VIP. 2026-11-13 to 2026-11-15.');
+ const proofs=new WeakMap([[r,{channel:'gmail_readonly_api',evidence:'browser_observed',serverVerified:false,readAt:'2026-10-24T10:00:00.000Z'}]]);
+ h.window.SarberkiGmailReadOrigin={consume(value){const p=proofs.get(value);proofs.delete(value);return p;}};
+ assert.equal(await h.context.displayGmailRecord(r),true);
+ assert.match(h.node('gmail_meta').textContent,/böngészőben megfigyelt, szerveroldalon nem igazolt/u);
+ const events=h.node('events').textContent;
+ assert.equal(events.split('Gmail readonly API-olvasás').length-1,1);
+ assert.doesNotMatch(events,/Kézi beillesztés/u);
+ assert.equal(await importGmail(h,r),true);
+ assert.match(h.node('gmail_meta').textContent,/API-eredet nem igazolt/u);
+ assert.match(h.node('events').textContent,/újbóli megnyitás/u);
+ h.analyze('4 adults. Deluxe. 2026-12-04 to 2026-12-06.');
+ assert.match(h.node('events').textContent,/Kézi beillesztés/u);
+ assert.equal(h.node('approve').disabled,true);
+});
+test('failed Gmail processing does not log API success or leak origin into the next manual analysis',async()=>{
+ const h=harness();
+ const r=gmailFixture('origin-no-runtime','2 adults. VIP. 2026-11-13 to 2026-11-15.');
+ h.window.SarberkiGmailReadOrigin={consume(){return {channel:'gmail_readonly_api',evidence:'browser_observed',serverVerified:false};}};
+ assert.equal(await h.context.displayGmailRecord(r),false);
+ assert.doesNotMatch(h.node('events').textContent,/Gmail readonly API-olvasás/u);
+ h.analyze('4 adults. Deluxe. 2026-12-04 to 2026-12-06.');
+ assert.match(h.node('events').textContent,/Kézi beillesztés/u);
+});

@@ -67,3 +67,11 @@ Az alábbi helyi azonosítók a meglévő üzleti konfigurációból származnak
 | 10A | 10 | KITÖLTENDŐ | KITÖLTENDŐ | NEM IGAZOLT |
 | 10B | 10 | KITÖLTENDŐ | KITÖLTENDŐ | NEM IGAZOLT |
 | 10C | 10 | KITÖLTENDŐ | KITÖLTENDŐ | NEM IGAZOLT |
+
+## Árszerződés célzott hiányleltára – 2026-10-24
+
+A jelenlegi szintetikus quote-harness dátumot, egységet, rate plant, pénznemet és egy összesített `totalMinor` értéket köt a kéréshez. Ez NEM teljes gyermekár-/kedvezmény-/IFA-/dézsadíj-szerződés: a harness jelen kérésében nincs teljes vendégösszetétel és igazolt kedvezményjog, válaszában nincs szolgáltatói ár/adó/szolgáltatás bontás. A zöld fixture-teszt ezért nem minősíthető az összes üzleti árváltozat lefedésének.
+
+Hivatalos dokumentáció érkezésekor a meglévő adapterben kell a szálláshelynek engedélyezett, dokumentált kérés- és válaszmezőket leképezni a központi üzleti kontextusra. Előbb a vendégösszetétel, gyermekkor, kedvezményjog, szolgáltatás, rate plan, adók és teljes végösszeg külön bizonyítékát kell rögzíteni; addig a teljes árkapu nyitott. Nem veszünk fel feltételezett Previo-mezőt vagy kitalált alapértelmezett IFA-értéket a harness sikeressége kedvéért.
+
+A dokumentáció befogadási sorrendje: API-család/verzió → sandbox/property/readonly jogosultság → 23 fizikai egység és típus → rate plan és ár/adó/szolgáltatás szerződés → hibakód/limit/timeout → titokmentes szolgáltatói fixture és célzott negatív teszt. Minden új fixture-hez dokumentációs hivatkozás és verzió szükséges. A mostani belső fixture továbbra kizárólag szintetikus; hálózati Auth, szolgáltatói szemantika és valós készlet nincs vele igazolva.
