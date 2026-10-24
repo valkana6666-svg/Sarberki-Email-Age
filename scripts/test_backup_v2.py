@@ -10,6 +10,11 @@ class Safety(unittest.TestCase):
         return {'GITHUB_REPOSITORY':'valkana6666-svg/Sarberki-Email-Age','GITHUB_REF':runner.BRANCH,
             'SARBERKI_V2_ENABLED':'yes','SARBERKI_V2_PASSPHRASE':'synthetic-only-'+'x'*40,
             'SARBERKI_BACKUP_DB_URL':'synthetic-fixture','SARBERKI_V2_BUCKET':'synthetic-private-bucket'}
+    def test_configuration_failure_has_exact_nonsecret_code(self):
+        self.assertEqual(runner.safe_failure(ValueError('NEW_PROTECTED_PASSPHRASE_REQUIRED')), 'NEW_PROTECTED_PASSPHRASE_REQUIRED')
+    def test_untrusted_exception_or_secret_never_becomes_diagnostic(self):
+        for exc in [ValueError('synthetic-secret-value'), ValueError('NEW_PROTECTED_PASSPHRASE_REQUIRED synthetic-secret'), RuntimeError('V2_NOT_ENABLED')]:
+            self.assertEqual(runner.safe_failure(exc), 'UPSTREAM_OPERATION_FAILED')
     def test_valid_isolated_identity(self):self.assertTrue(runner.validate(self.good()))
     def test_other_branches_and_main_rejected(self):
         for ref in ['refs/heads/main','refs/heads/backup/issue-6-cloud-recovery','refs/heads/unapproved']:

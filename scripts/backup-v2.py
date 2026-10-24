@@ -6,6 +6,14 @@ BRANCH='refs/heads/gmail-test-subject-allowlist'
 def module(name,path):
     spec=importlib.util.spec_from_file_location(name,path)
     m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
+SAFE_FAILURE_CODES = frozenset({'UNAPPROVED_EXECUTION_IDENTITY', 'V2_NOT_ENABLED',
+    'NEW_PROTECTED_PASSPHRASE_REQUIRED', 'PROTECTED_DATABASE_ACCESS_REQUIRED',
+    'APPROVED_DRIVE_FOLDER_REQUIRED', 'APPROVED_DURABLE_BUCKET_REQUIRED',
+    'UNAPPROVED_STORAGE_PROVIDER', 'UNEXPECTED_EXPORT_FILES', 'FULL_SQL_RESTORE_REQUIRED',
+    'ZIP_CRC_ERROR', 'INVALID_OPERATION'})
+def safe_failure(exc):
+    code = str(exc)
+    return code if isinstance(exc, ValueError) and code in SAFE_FAILURE_CODES else 'UPSTREAM_OPERATION_FAILED'
 def validate(values):
     if values.get('GITHUB_REPOSITORY')!='valkana6666-svg/Sarberki-Email-Age' or values.get('GITHUB_REF')!=BRANCH:
         raise ValueError('UNAPPROVED_EXECUTION_IDENTITY')
@@ -74,5 +82,5 @@ def main():
     else:raise ValueError('INVALID_OPERATION')
 if __name__=='__main__':
     try:main()
-    except Exception:
-        print('BLOCKED: backup-v2 operation failed; upstream diagnostics withheld.',file=sys.stderr);sys.exit(1)
+    except Exception as exc:
+        print('BLOCKED: '+safe_failure(exc)+'; secret values and upstream diagnostics withheld.',file=sys.stderr);sys.exit(1)
