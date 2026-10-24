@@ -60,7 +60,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Verify recovery source Git history
-        run: git rev-parse --verify HEAD && git rev-parse --is-shallow-repository
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git rev-parse --verify HEAD
+          test "$(git rev-parse --is-shallow-repository)" = false
       - name: Verify Drive authorization before any source export
         if: env.SARBERKI_EFFECTIVE_PROVIDER == 'drive'
         env:
