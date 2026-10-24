@@ -12,5 +12,8 @@
   "timezone": "Europe/Vienna",
   "owner_key_custody_evidence": "Owner explicitly confirmed separate preservation on 2026-10-24; independent recovery readback remains unverified.",
   "acceptance_evidence": "docs/BACKUP-V2-ACCEPTANCE-2026-10-24.json",
-  "reason_enabled": "Private replacement V2 secret validated, owner confirmed independent custody; run 40124286342 full GitHub SQL restore and exact-ID Drive byte readback PASS. Scheduled end-to-end and Drive-byte SQL restore remain unverified."
+  "reason_enabled": "Owner independently retained key asserted; fresh export, GitHub restore, exact-ID Drive readback and separate actual Drive-byte SQL restore PASS. Scheduled end-to-end and independent owner key probe remain acceptance gates.",
+  "last_drive_sql_restore_run": 40125387830,
+  "notification_drill_id": "DRILL-20261024-DRIVE-ACCEPTANCE",
+  "notification_drill_status": "PENDING_DELIVERY_EVIDENCE"
 }

@@ -13,7 +13,7 @@
   "bytes": 3315880,
   "exact_id_drive_byte_readback": "PASS",
   "github_download_full_sql_restore": "PASS",
-  "drive_download_new_sql_restore": "NOT_RUN",
+  "drive_download_new_sql_restore": "PASS",
   "acl_owner_only": "valkana6666@gmail.com",
   "verified_at": "2026-10-24T19:16:53.978445+00:00",
   "safety_tests": {
@@ -27,9 +27,14 @@
   "drive_transfer_receipt_id": "1DodOsUGyZsyD9a445eVXlNkvy1RlpvnL",
   "remaining": [
     "First scheduled complete run and notification delivery",
-    "New SQL restore from actual Drive-downloaded bytes",
     "Owner independent key recovery readback",
     "Full hosted Auth/Edge/Storage/Vault/Netlify platform recovery",
     "Exposed dedicated backup OAuth client secret revocation by owner; unused by bridge"
-  ]
+  ],
+  "drive_sql_restore_run": 40125387830,
+  "drive_sql_restore_commit": "e1161695b083ba3a38d2002c81c3958dd35af037",
+  "drive_sql_restore_proof_artifact_id": 12573715153,
+  "drive_sql_restore_proof_drive_id": "1IAI9SI_cW4fY9gptMFEKMTXbbcJt-hoc",
+  "drive_sql_restore_tables": 49,
+  "relay_blob_sha": "b98749e4ea31a51841f25fed0073f17dde9149ff"
 }

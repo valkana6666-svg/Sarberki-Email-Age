@@ -56,7 +56,7 @@ A futásban javított hibák: Git telepítése checkout elé; pontos konténer-m
 
 ## Fennmaradó kapuk
 
-1. A ténylegesen Drive-ról visszatöltött bájtokból új SQL-restore még NEM FUTOTT. A GitHub-visszatöltés SQL-próbája és a Drive bájtszintű hash-egyezése külön bizonyíték. A Work futtató nem kapja meg a runner jelszavát, a runner nem kapja meg a Drive-csatlakozó hitelesítőjét; támogatott biztonságos bemenetátadás szükséges a külön próbához.
+1. LEZÁRVA: a tényleges Drive-visszatöltés bájtjainak változatlan titkosított Git-blob átadásából külön SQL-restore PASS, 49 tábla és verification_completed=true. Run 40125387830; commit e1161695b083ba3a38d2002c81c3958dd35af037; proof artifact 12573715153; Drive proof 1IAI9SI_cW4fY9gptMFEKMTXbbcJt-hoc. Forrás-export nem ismétlődött. A ciphertext blob nincs repository-fájlba/commitfába beágyazva; a runner pontos blob/SHA256/Drive-eredethez kötve olvasta. Csomagolt kódot nem futtatott. Részletes bizonyíték: BACKUP-V2-DRIVE-SQL-PROOF-2026-10-24.md.
 2. Első időzített teljes futás, hibaértesítés kézbesítése és tulajdonosi független kulcs-visszaolvasás még NEM IGAZOLT.
 3. GitHub-, Netlify-, Auth/Edge/Storage/Vault teljes platform-helyreállítás hiányai megmaradnak, a csomag RECOVERY-GAPS.json fájljában tételesen.
 4. A korábban képen megjelent, dedikált Google backup client secretet a tulajdonosnak vissza kell vonnia/cserélnie. Az új mentési út nem használja; Gmail-klienshez nem nyúltunk.
