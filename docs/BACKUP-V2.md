@@ -27,3 +27,7 @@ Implemented GitHub job summary is UI reporting, not immediate independent notifi
 Historical source/hash/archive evidence remains valid only for its original snapshots. New owner-key recovery, V2 DB export/restore/storage readback, full hosted Auth/RLS/Edge/Vault configuration, Storage binaries, Netlify contexts/secrets, provider reconnection, HTTPS service E2E, restart durability, daily freshness and independent owner copies require actual evidence. Full SQL proof is not full platform recovery.
 
 Code/test ZIP is an implementation package, not a fresh database backup. The owner only needs one-time provider access/secret setup; no PowerShell operation is requested.
+
+## 2026-10-24 integration evidence
+
+Implementation integrated at 92fa6ba5e0c6f4b7ae574dd97820a8ed70cbfe4b, preserving both Gmail commits on the test branch. Local targeted suite: 23 PASS, 0 FAIL. Python syntax and workflow YAML parsing passed. The integration commit skipped CI to avoid a full unrelated application regression after changing workflow path filters. This documentation-only follow-up triggers only the backup safety workflow. Cloud export/restore remains disabled; missing OAuth and new passphrase secrets were confirmed in GitHub UI. No live backup or owner key recovery is claimed.
