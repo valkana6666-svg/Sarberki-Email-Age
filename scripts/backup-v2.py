@@ -13,7 +13,12 @@ def validate(values):
     phrase=values.get('SARBERKI_V2_PASSPHRASE','')
     if not 32<=len(phrase)<=1024 or any(c in phrase for c in '\n\r'):raise ValueError('NEW_PROTECTED_PASSPHRASE_REQUIRED')
     if not values.get('SARBERKI_BACKUP_DB_URL'):raise ValueError('PROTECTED_DATABASE_ACCESS_REQUIRED')
-    if not values.get('SARBERKI_V2_BUCKET'):raise ValueError('APPROVED_DURABLE_BUCKET_REQUIRED')
+    provider=values.get('SARBERKI_V2_STORAGE_PROVIDER','s3')
+    if provider=='drive':
+        if values.get('SARBERKI_V2_DRIVE_FOLDER_ID')!='1EE2ioPs_8OwpnttT9hYHba_Y9_aWwcqz':raise ValueError('APPROVED_DRIVE_FOLDER_REQUIRED')
+    elif provider=='s3':
+        if not values.get('SARBERKI_V2_BUCKET'):raise ValueError('APPROVED_DURABLE_BUCKET_REQUIRED')
+    else:raise ValueError('UNAPPROVED_STORAGE_PROVIDER')
     return phrase
 def package(directory,evidence,destination):
     required={'database.dump.gpg','roles.sql.gpg','manifest.json.gpg','SHA256SUMS.txt','STATUS.txt','PROVENANCE.json'}
