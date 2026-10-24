@@ -7,17 +7,18 @@ OWNER='valkana6666@gmail.com'
 MAX=256*1024*1024
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,*args,**kwargs): return None
-def request(url,token=None,data=None,content_type=None):
+def request(url,token=None,data=None,content_type=None,method=None,extra_headers=None,with_headers=False):
     if not url.startswith(('https://www.googleapis.com/','https://oauth2.googleapis.com/')):
         raise ValueError('UNAPPROVED_ENDPOINT')
     headers={}
     if token:headers['Authorization']='Bearer '+token
     if content_type:headers['Content-Type']=content_type
-    req=urllib.request.Request(url,data=data,headers=headers)
+    headers.update(extra_headers or {})
+    req=urllib.request.Request(url,data=data,headers=headers,method=method)
     with urllib.request.build_opener(NoRedirect).open(req,timeout=120) as r:
         body=r.read(MAX+1)
         if len(body)>MAX:raise ValueError('RESPONSE_TOO_LARGE')
-        return body
+        return (body,dict(r.headers)) if with_headers else body
 def access_token(secret):
     config=json.loads(secret)
     if set(config)!={'client_id','client_secret','refresh_token'} or any(not isinstance(v,str) or not v for v in config.values()):
@@ -47,8 +48,18 @@ def upload(token,folder_id,name,data):
     body=(('--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n').encode()+metadata+
         ('\r\n--'+boundary+'\r\nContent-Type: application/octet-stream\r\n\r\n').encode()+data+
         ('\r\n--'+boundary+'--\r\n').encode())
-    result=json.loads(request('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size,webViewLink',
-        token,body,'multipart/related; boundary='+boundary))
+    if len(data)<=5*1024*1024:
+        result=json.loads(request('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size,webViewLink',
+            token,body,'multipart/related; boundary='+boundary))
+    else:
+        _,headers=request('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,size,webViewLink',
+            token,metadata,'application/json',extra_headers={'X-Upload-Content-Length':str(len(data)),
+            'X-Upload-Content-Type':'application/octet-stream'},with_headers=True)
+        session=next((v for k,v in headers.items() if k.lower()=='location'),'')
+        u=urllib.parse.urlsplit(session)
+        if u.scheme!='https' or u.netloc!='www.googleapis.com' or not u.path.startswith('/upload/drive/v3/files'):
+            raise ValueError('UNAPPROVED_UPLOAD_SESSION')
+        result=json.loads(request(session,token,data,'application/octet-stream',method='PUT'))
     fid=result['id']
     if not re.fullmatch(r'[A-Za-z0-9_-]+',fid):raise ValueError('INVALID_FILE_ID')
     # The exact returned ID, never a latest-by-name lookup.
