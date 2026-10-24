@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - gmail-test-subject-allowlist
+    paths-ignore:
+      - scripts/backup-v2*.py
+      - scripts/test_backup_v2*.py
+      - .github/workflows/sarberki-backup-v2.yml
+      - docs/BACKUP-V2*.md
   workflow_dispatch:
 
 jobs:
