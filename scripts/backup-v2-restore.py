@@ -123,6 +123,12 @@ def read_ciphertexts(directory, expected):
     return encrypted
 
 
+def temporary_source_roles(roles_sql, existing):
+    # Remove only source roles newly created in this disposable cluster.
+    names = re.findall(r'(?m)^CREATE ROLE ([a-z_][a-z0-9_]*);$', roles_sql)
+    return sorted(set(names) - set(existing) - {'restore_admin'})
+
+
 def main():
     validate_destination(os.environ)
     report['destination_identity_verified'] = True
@@ -171,6 +177,8 @@ def main():
             roles=re.sub(r' GRANTED BY [a-z_][a-z0-9_]*','',roles)
             report['role_bootstrap_adaptation']='membership grantor changed to restore_admin; role attributes and membership options preserved'
             report['original_membership_grantor_identity']='NOT_REPRODUCED_ON_STOCK_POSTGRESQL'
+        existing_roles = json.loads(sql('select json_agg(rolname) from pg_roles;'))
+        report['temporary_source_roles'] = temporary_source_roles(roles, existing_roles)
         sql(roles)
         report['roles_restore']='PASS_NO_ROLE_PASSWORDS'
         event_owners=sorted(set(re.findall(r'(?m)^.* EVENT TRIGGER - \S+ ([a-z_][a-z0-9_]*)$',toc)))
@@ -295,6 +303,8 @@ def entrypoint():
         if report.get('destination_identity_verified') and not (report.get('verification_completed') and os.environ.get('SARBERKI_KEEP_ISOLATED_DB')=='runtime-test'):
             os.environ['PGDATABASE']='postgres'
             run(['psql','-X','-w','-qAt','-c','DROP DATABASE IF EXISTS sc_restore WITH (FORCE);'],required=False)
+            for role in report.get('temporary_source_roles', []):
+                sql('DROP ROLE IF EXISTS '+role+';')
     if not report.get('verification_completed'):
         raise SystemExit(1)
 

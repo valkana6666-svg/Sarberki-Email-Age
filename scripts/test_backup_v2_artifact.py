@@ -28,6 +28,13 @@ class ArtifactBoundary(unittest.TestCase):
         self.meta = dict(id=456, name='sarberki-cloud-stage-123-1', expired=False,
             expires_at='2027-01-22T00:00:00Z', workflow_run=dict(id=123, head_sha='a'*40, head_branch=artifact.BRANCH))
 
+    def test_disposable_role_cleanup_preserves_bootstrap_and_preexisting(self):
+        roles = 'CREATE ROLE anon;\nCREATE ROLE postgres;\nCREATE ROLE restore_admin;\nCREATE ROLE existing;\n'
+        self.assertEqual(restore.temporary_source_roles(roles, ['restore_admin', 'existing']), ['anon', 'postgres'])
+
+    def test_disposable_role_cleanup_rejects_untrusted_identifiers(self):
+        self.assertEqual(restore.temporary_source_roles('CREATE ROLE x; DROP DATABASE postgres;\nCREATE ROLE "unsafe-name";', []), [])
+
     def test_exact_identity_and_actual_retention(self):
         self.assertIn('2027-01-22', artifact.validate_metadata(self.meta, self.values, self.now))
 
