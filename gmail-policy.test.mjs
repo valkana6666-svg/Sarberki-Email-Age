@@ -40,7 +40,7 @@ test('OAuth callback verifies the designated account before requesting any messa
   for(const emailAddress of ['wrong@example.invalid','sarberkiprojecttest@gmail.com']) {
     let callback; const calls=[],status={textContent:''},button={disabled:false,addEventListener(_type,fn){this.click=fn}};
     const oauth={initTokenClient(options){callback=options.callback;assert.equal(options.scope,'https://www.googleapis.com/auth/gmail.readonly');assert.equal(options.hint,'sarberkiprojecttest@gmail.com');return {requestAccessToken(){}}}};
-    const context=vm.createContext({
+    const context=vm.createContext({AbortController,setTimeout,clearTimeout,
       modules:{'sarberki-core.mjs':core,'business-config.mjs':business,'fishing-rules.mjs':fishing,'gmail-policy.mjs':policy,'split-units.mjs':splitUnits},
       document:{getElementById:id=>id==='read_gmail'?button:status,querySelector:()=>({content:'test-client'})},
       window:{google:{accounts:{oauth2:oauth}}},

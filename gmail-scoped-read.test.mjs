@@ -17,7 +17,7 @@ async function harness(search,{account=policy.TEST_GMAIL_ACCOUNT,status=200,mess
  const modules={'gmail-policy.mjs':policy};
  for(const name of ['sarberki-core.mjs','business-config.mjs','split-units.mjs','fishing-rules.mjs'])modules[name]=await import('./'+name);
  const window={location:{search}},button={addEventListener(){}};
- const context=vm.createContext({window,modules,URL,Date,Number,TextDecoder,Uint8Array,
+ const context=vm.createContext({AbortController,setTimeout,clearTimeout,window,modules,URL,Date,Number,TextDecoder,Uint8Array,
   document:{getElementById:()=>button,querySelector:()=>({content:'synthetic-client'})},
   fetch:async(url,options)=>{calls.push({url:String(url),method:options.method||'GET'});return String(url).endsWith('/profile')?{ok:true,json:async()=>({emailAddress:account})}:{ok:status===200,status,json:async()=>message};}
  });

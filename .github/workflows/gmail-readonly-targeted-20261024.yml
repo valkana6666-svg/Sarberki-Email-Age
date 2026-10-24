@@ -1,0 +1,24 @@
+name: Gmail readonly targeted acceptance
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gmail-readonly:
+    if: github.ref == 'refs/heads/gmail-test-subject-allowlist'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check Gmail browser syntax
+        run: node --check gmail-readonly.js
+      - name: Validate changed Gmail readonly boundary
+        run: node --test gmail-policy.test.mjs gmail-scoped-read.test.mjs tests/gmail-read-rate-limit.test.mjs
+      - name: Verify exact test deployment
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
+          TEST_NETLIFY_URL: https://leafy-chimera-2403e5.netlify.app
+        run: node tests/deployment-sync.mjs

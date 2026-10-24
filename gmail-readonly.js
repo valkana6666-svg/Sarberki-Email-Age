@@ -277,6 +277,28 @@
     const replyDraft = buildReplyDraft({language,name,original,arrival:normalizedDate?.arrival,departure:normalizedDate?.departure,guests:count,adults:adultCount,children:childCount,childAges,phone,cabin,pier,hotTub,dog,intent:'booking_request',brandName:BUSINESS.brandName,bookingRules:BUSINESS.bookingRules,operationalRules:BUSINESS.operationalRules,pricingRules:BUSINESS.pricingRules,knowledgeLines:fishingInfo?[fishingInfo.answer]:[]});
     return {source:{provider:'gmail',message_id:message.id,thread_id:message.threadId,rfc_message_id:headers['message-id']||null,in_reply_to:headers['in-reply-to']||null,references:(headers.references||'').match(/<[^>]+>/g)||[],subject:headers.subject || '',from:headers.from || '',from_email:emailAddress(headers.from || ''),to:headers.to || '',received_at:received.toISOString()},original_message:rawOriginal,normalized:{language,cabin,dates:normalizedDate,guests:count,adults:adultCount,children:childCount,child_ages:childAges,phone,nights:normalizedDate?(Date.parse(normalizedDate.departure)-Date.parse(normalizedDate.arrival))/86400000:null,special_requests:specialRequests,fishing_question:Boolean(fishingInfo),parking_question:/(?:parkol|parking|parkplatz|parkplätze|parkiriš|parkiris)/iu.test(original),units_requested:requestedUnits.count||null,units_open:requestedUnits.open,split_request:splitRequest,pier_requested:pier,hot_tub_requested:hotTub,pet_requested:dog},extracted,inferred,missing,human_review:humanReview,reply_draft:replyDraft};
   }
+  async function fetchGmailJson(url, options) {
+    const controller = new AbortController();
+    let timer;
+    const deadline = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(Error('A Gmail-olvasás időkorlátja lejárt; indítsa újra kézzel. Automatikus újrapróbálkozás nem történt.'));
+      }, 15000);
+    });
+    const operation = async () => {
+      const response = await fetch(url, {...options, signal:controller.signal});
+      // Preserve status handling without reading provider error bodies.
+      if (!response.ok) return response;
+      const body = await response.json();
+      return {ok:response.ok, status:response.status, json:async () => body};
+    };
+    try { return await Promise.race([operation(), deadline]); }
+    catch (error) {
+      if (controller.signal.aborted) throw Error('A Gmail-olvasás időkorlátja lejárt; indítsa újra kézzel. Automatikus újrapróbálkozás nem történt.');
+      throw Error('A Gmail-olvasás hálózati vagy válaszfeldolgozási hibával leállt; indítsa újra kézzel.');
+    } finally { clearTimeout(timer); }
+  }
   function assertGmailResponse(response, failure) {
     if (response.status === 429) throw Error('A Gmail átmenetileg korlátozta az olvasást (429). Várjon néhány percet, majd indítsa újra kézzel. Automatikus újrapróbálkozás és felhős mentés nem történt.');
     if (!response.ok) throw Error(failure);
@@ -284,11 +306,11 @@
   async function readWithToken(token) {
     const exactId=syntheticMessageIdFromSearch(window.location?.search||'');
     const headers = {Authorization:`Bearer ${token}`};
-    const profileResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {headers,cache:'no-store'});
+    const profileResponse = await fetchGmailJson('https://gmail.googleapis.com/gmail/v1/users/me/profile', {headers,cache:'no-store'});
     assertGmailResponse(profileResponse, `A Gmail tesztfiók nem ellenőrizhető (${profileResponse.status}).`);
     assertTestGmailAccount(await profileResponse.json());
     if(exactId){
-      const response=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(exactId)}?format=full`,{headers,cache:'no-store'});
+      const response=await fetchGmailJson(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(exactId)}?format=full`,{headers,cache:'no-store'});
       assertGmailResponse(response, `A kijelölt szintetikus Gmail-levél nem olvasható (${response.status}).`);
       const message=await response.json();
       if(message?.id!==exactId||!isTestInquiry(message))throw Error('A kijelölt szintetikus levél azonossága vagy Inbox-státusza nem igazolt.');
@@ -296,15 +318,35 @@
     }
     const candidates = [];
     let pageToken;
+    const seenPages = new Set(), seenMessages = new Set();
+    const MAX_LIST_PAGES = 10, MAX_MESSAGES = 1000;
     do {
+      if (seenPages.has(pageToken) || seenPages.size >= MAX_LIST_PAGES) {
+        throw Error('A Gmail-listázás ismétlődő vagy túl hosszú lapozást adott; a beolvasás leállt. Szűkítse a keresést vagy válasszon kijelölt szintetikus levelet.');
+      }
+      seenPages.add(pageToken);
       const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
       url.searchParams.set('q', INBOX_QUERY);
       url.searchParams.set('maxResults', '100');
       if (pageToken) url.searchParams.set('pageToken', pageToken);
-      const list = await fetch(url, {headers,cache:'no-store'});
+      const list = await fetchGmailJson(url, {headers,cache:'no-store'});
       assertGmailResponse(list, `Gmail-keresési hiba (${list.status}). Ellenőrizze a fiókot és a jogosultságot.`);
       const page = await list.json();
-      candidates.push(...(page.messages || []));
+      if (!page || typeof page !== 'object' || Array.isArray(page) ||
+          (page.messages !== undefined && !Array.isArray(page.messages)) ||
+          (page.nextPageToken !== undefined && (typeof page.nextPageToken !== 'string' || !page.nextPageToken.trim()))) {
+        throw Error('A Gmail-lista formátuma nem igazolt; a beolvasás leállt.');
+      }
+      for (const entry of page.messages || []) {
+        if (!entry || typeof entry.id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(entry.id)) {
+          throw Error('A Gmail-levélazonosító nem igazolt; a beolvasás leállt.');
+        }
+        if (!seenMessages.has(entry.id)) {
+          seenMessages.add(entry.id);
+          candidates.push({id:entry.id});
+        }
+      }
+      if (candidates.length > MAX_MESSAGES) throw Error('A Gmail-találatok száma túl nagy; szűkítse a keresést.');
       pageToken = page.nextPageToken;
     } while (pageToken);
     if (!candidates.length) throw Error('Nem található a tesztfeltételnek megfelelő beérkezett levél.');
@@ -312,9 +354,11 @@
     // Stop on the first failure; never automatically replay a rate-limited read.
     const messages = [];
     for (const {id} of candidates) {
-      const response = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(id)}?format=full`, {headers,cache:'no-store'});
+      const response = await fetchGmailJson(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(id)}?format=full`, {headers,cache:'no-store'});
       assertGmailResponse(response, `Gmail-olvasási hiba (${response.status}).`);
-      messages.push(await response.json());
+      const message = await response.json();
+      if (!message || message.id !== id) throw Error('A Gmail-válasz levélazonossága nem igazolt; a beolvasás leállt.');
+      messages.push(message);
     }
     const matching = messages.filter(isTestInquiry);
     if (!matching.length) throw Error('2026.09.25. után nem található beérkezett Gmail-üzenet a tesztfiók inboxában.');

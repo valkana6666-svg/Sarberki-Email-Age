@@ -37,7 +37,7 @@ Nincs igazolt, projektünkön kipróbált API-hitelesítés, teljes árajánlat-
 
 - Külön Reader és jóváhagyó fiók tényleges negatív jogosultságpróbája; aktuális fiókjogot nem szabad régi beszámolóból feltételezni.
 - Valódi iPhone Safari/PWA próba, hálózatvesztéssel és elavult jóváhagyással.
-- A 15 fős előlegküszöb, általános fizetési határidő és 2027-es árak egységes üzleti forrásának igazolása. A konfiguráció és a külön előlegszámító út eltérő szabályokat tartalmaz; új szabályt nem állítottunk be feltételezésből.
+- Frissítés 2026-10-24: az előleg- és lemondási eltérés a 2026-10-22-i tulajdonosi döntésekkel lezárult. 15 fő alatt 50%, legalább 15 főnél 80%; érkezésig legfeljebb 14 nap esetén 24 óra, azon túl 7 nap a fizetési ablak. Legalább 14 nappal érkezés előtt lemondva az előleg nem vész el; 14 napon belül elvész, külön emberi ellenőrzéssel. Nincs 30 napos csoportszabály. Forrás: `DEPOSIT-14-DAY-OWNER-DECISION-2026-10-22.md` és `CANCELLATION-14-DAY-OWNER-DECISION-2026-10-22.md`. A 2027-es árak szolgáltatói/üzleti egyeztetése továbbra külön kapu; az ár- és kapacitásigazolást a szabályszámító nem helyettesíti.
 - Titkosított DB-mentés visszafejtése a külön őrzött tulajdonosi kulccsal, majd új, elkülönített HTTPS/Auth környezetben helyreállítás. A forráskód helyreállítása ehhez nem elegendő.
 - Pushover polling marad kikapcsolva; értesítés és automatikus küldés külön felhatalmazással tesztelhető. Automatikus vendéglevél és Previo-írás jelenleg tiltott.
 
