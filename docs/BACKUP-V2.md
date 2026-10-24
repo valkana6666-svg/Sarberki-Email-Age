@@ -1,0 +1,29 @@
+# Issue #6: isolated cloud backup V2
+
+Only new backup files are added on backup/issue-6-cloud-recovery. No merge to main/development, deploy, source DB mutation, email/Pushover/Previo action.
+
+## Execution
+
+Push runs eight synthetic safety tests. Export requires SARBERKI_V2_ENABLED=yes plus workflow_dispatch export=true or a commit on this isolated branch containing [backup-v2-run]. Export reuses the existing read-only PostgreSQL 17 code, pinned test project/TLS CA, stable manifest and full archive checks. The new secret SARBERKI_BACKUP_V2_PASSPHRASE is mandatory; no old-password fallback. Existing secrets/archives are not overwritten.
+
+A separate restore entry point preserves the existing algorithm and changes only its approved branch identity. The disposable destination uses the previously verified pinned Vault source commit. Packaging requires full_restore=PASS and verification_completed=true. Public source history, ciphertext, evidence and explicit platform gaps are packaged.
+
+## Existing approved private S3 storage
+
+No bucket, subscription, lifecycle or public URL is created. Owner approval of target and costs is required. Upload rejects disabled versioning or missing public access blocks. It records VersionId and downloads the exact uploaded version for SHA256 readback. GPG ciphertext also receives server-side AES256. No delete permission is needed. Retention/lifecycle, owner recovery and independent account failure domain remain owner-verified requirements.
+
+Secrets: existing SARBERKI_BACKUP_DB_URL; NEW SARBERKI_BACKUP_V2_PASSPHRASE (32–1024 characters, owner recovery copy); SARBERKI_V2_STORAGE_ACCESS_KEY_ID and SARBERKI_V2_STORAGE_SECRET_ACCESS_KEY.
+Variables: SARBERKI_V2_BUCKET, SARBERKI_V2_STORAGE_REGION, SARBERKI_V2_ENABLED.
+Values belong only in provider Secrets UI, never issues/PR/chat.
+
+## Daily scheduling and notification: NOT ACTIVATED
+
+GitHub schedule normally uses default branch. No misleading schedule is added here and application main remains untouched. An approved external scheduler must dispatch this workflow against the isolated branch and verify acceptance. If default-branch dispatch restrictions prevent that, use a separately approved private backup-control repository. No scheduler or new paid service is activated implicitly.
+
+Implemented GitHub job summary is UI reporting, not immediate independent notification or expiry monitoring. Daily execution and a freshness monitor require an actual cloud run before PASS. No email/Pushover delivery is used as proof.
+
+## Recovery gates
+
+Historical source/hash/archive evidence remains valid only for its original snapshots. New owner-key recovery, V2 DB export/restore/storage readback, full hosted Auth/RLS/Edge/Vault configuration, Storage binaries, Netlify contexts/secrets, provider reconnection, HTTPS service E2E, restart durability, daily freshness and independent owner copies require actual evidence. Full SQL proof is not full platform recovery.
+
+Code/test ZIP is an implementation package, not a fresh database backup. The owner only needs one-time provider access/secret setup; no PowerShell operation is requested.
