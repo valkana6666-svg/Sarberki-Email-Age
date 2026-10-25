@@ -1,5 +1,13 @@
 # iPhone Safari/PWA elfogadási lap – 2026-10-24
 
+## Legfrissebb lezárás – 2026-10-25 13:43 Europe/Vienna
+
+A korábbi, alább történeti állapotot tartalmazó checklistet felülírja a [mai lezárási jelentés](V1-CLOUD-SAFARI-CLOSURE-2026-10-25.md).
+A kiadott build 75c2469f88589375310334f78b9b85708f38542b. A tulajdonosi iPhone-próbán kijelentkezés, vissza/előre, frissítés és közvetlen megnyitás belépést kért; a kézi újrabelépés és a v3 internally_approved audit visszaolvasása PASS. Ezeket ne kérjük újra. A Gmail-eredetjelzés külön készülékes bizonyítéka, Safari/PWA elkülönítés és hálózatvesztés ettől nem válik PASS-szá. Új deploy most nem szükséges.
+
+## Történeti előkészítés
+
+
 Kizárólag a leafy tesztoldal, meglévő tesztfiókok és szintetikus ügyek.
 
 Frissítés, 2026-10-25: a /api/health HTTP 200 válasza szerint a telepített alkalmazás `20c0c9dfd8e17f75bd54381db5268101c92ad91b`. A gmail-readonly.js, gmail-policy.mjs és operator-login-ui.mjs tényleges HTTPS-bájtjai megegyeznek a tesztelt forrással. A korábbi „NINCS telepítve” jelzés ezért elavult. A `55d9ea22bcace76c2af9efa534d6557fe02d6025` kreditvédelmi commit csak konfigurációt/CI-t/tesztet/dokumentációt változtatott, alkalmazásdeployt nem igényel. Az új Gmail readonly célzott GitHub-futás 40167974826: 21 PASS / 0 FAIL / 0 SKIP; a deploy-ellenőrzés szándékosan kihagyva. Ez szintetikus kódbizonyíték, nem új Google API-olvasás.
