@@ -24,6 +24,26 @@ revoke all on public.sc_pushover_delivery_claims from public, anon, authenticate
 -- Service role only; no RLS policies for browser users.
 grant select, insert, update on public.sc_pushover_delivery_claims to service_role;
 
+-- A privileged application client must not re-key a claim or reopen a terminal row.
+-- BYPASSRLS does not bypass ordinary row triggers. No SECURITY DEFINER is needed.
+create function public.sc_pushover_guard_update()
+returns trigger language plpgsql security invoker set search_path='' as $$
+begin
+ if row(new.tenant_id,new.mailbox,new.gmail_message_id,new.notification_type,new.claim_id,new.created_at)
+    is distinct from row(old.tenant_id,old.mailbox,old.gmail_message_id,old.notification_type,old.claim_id,old.created_at) then
+   raise exception 'notification claim identity is immutable' using errcode='23514';
+ end if;
+ if old.status <> 'sending' or new.status not in ('sent','outcome_unknown') then
+   raise exception 'notification claim transition is forbidden' using errcode='23514';
+ end if;
+ return new;
+end;
+$$;
+revoke all on function public.sc_pushover_guard_update() from public, anon, authenticated;
+create trigger sc_pushover_guard_update
+before update on public.sc_pushover_delivery_claims
+for each row execute function public.sc_pushover_guard_update();
+
 -- Atomic insert wins exactly once. NEVER reset or delete a claim on timeout.
 -- Only the server can call these SECURITY INVOKER functions with service role.
 create function public.sc_pushover_claim_once(p_tenant text,p_mailbox text,p_message text,p_kind text)
@@ -72,3 +92,4 @@ grant execute on function public.sc_pushover_claim_once(text,text,text,text) to 
 grant execute on function public.sc_pushover_mark_sent(uuid,text) to service_role;
 grant execute on function public.sc_pushover_mark_unknown(uuid) to service_role;
 commit;
+

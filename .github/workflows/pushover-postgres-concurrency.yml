@@ -2,7 +2,7 @@ name: Isolated Pushover PostgreSQL concurrency
 on:
   push:
     branches: [gmail-test-subject-allowlist]
-    paths: ['tests/pushover-postgres-concurrency.py', '.github/workflows/pushover-postgres-concurrency.yml']
+    paths: ['supabase/migrations/20261025173000_pushover_delivery_ledger.sql', 'tests/pushover-postgres-concurrency.py', '.github/workflows/pushover-postgres-concurrency.yml']
 permissions:
   contents: read
 jobs:
