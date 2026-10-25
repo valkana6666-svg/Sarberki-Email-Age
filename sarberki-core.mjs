@@ -134,7 +134,7 @@ export function partyCountsFromText(text=''){
   text=activeMessageText(text);
   const adults=adultCountFromText(text),explicitChildren=childCountFromText(text);
   const childMention=hasChildMention(text);
-  const children=explicitChildren;
+  const children=explicitChildren ?? (adults>0&&!childMention?BUSINESS.partyDefaults.adultOnlyChildren:null);
   const guests=guestCountFromText(text) ?? (adults>0&&!childMention?adults:null);
   return {guests,adults,children};
 }

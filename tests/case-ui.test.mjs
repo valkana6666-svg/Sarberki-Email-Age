@@ -129,7 +129,7 @@ test('Gmail adult-only missing list agrees with the reply and edits restore genu
  assert.doesNotMatch(missing(),/Érkezik-e gyermek/u);
  assert.doesNotMatch(h.node('issues').textContent,/Gyermekek száma nincs megadva/u);
  assert.doesNotMatch(h.node('draft').value,/Will any children/iu);
- assert.equal(h.window.SarberkiCaseController.snapshot().values.children,'');
+ assert.equal(h.window.SarberkiCaseController.snapshot().values.children,'0');
  assert.equal(h.node('approve').disabled,true);
  h.window.SarberkiCaseController.facts({children:'2',guests:'10'});
  assert.match(missing(),/Gyermekek pontos életkora/u);

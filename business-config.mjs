@@ -2,6 +2,7 @@
 // Keep reusable parsing/workflow code independent from these values so the same engine
 // can be reused for another accommodation business by replacing configuration/adapters.
 export const BUSINESS = Object.freeze({
+  partyDefaults: Object.freeze({ adultOnlyChildren: 0 }),
   brandName: 'Sárberki Horgásztó',
   bookingUrl: 'https://sarberkito.hu/foglalas/',
   currency: 'HUF',

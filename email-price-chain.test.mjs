@@ -335,7 +335,7 @@ for(const [language,message] of [
 test('adult-only inquiry does not copy total guests into child count',()=>{
   const h=harness('2027. október 16–18. között Deluxe házat szeretnénk 2 felnőtt részére.',()=>{});
   const analysis=vm.runInContext("extract(document.getElementById('message').value,'')",h.context);
-  assert.equal(analysis.fields.children.value,'');
+  assert.equal(analysis.fields.children.value,'0');
   assert.equal(analysis.fields.adults.value,'2');
 });
 

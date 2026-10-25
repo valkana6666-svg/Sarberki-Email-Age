@@ -26,7 +26,7 @@ test('actual Gmail transformer and canonical channels agree on an adult-only par
  for(const [language,phrase] of [['hu','8 felnőtt'],['en','8 adults'],['de','8 Erwachsene'],['si','8 odraslih']]){
   const text=`${phrase}. Deluxe. 2026-11-13 to 2026-11-15.`;
   const record=gmail(text);
-  assert.deepEqual(party(record.normalized),{guests:8,adults:8,children:null},language);
+  assert.deepEqual(party(record.normalized),{guests:8,adults:8,children:0},language);
   for(const sourceChannel of ['gmail','web_form','manual','phone_ai']){
    const n=normalizeInquiryInput({sourceChannel,rawText:text,now}).normalized;
    const decision=evaluateCentralInquiry({message:text,language,now,facts:n});

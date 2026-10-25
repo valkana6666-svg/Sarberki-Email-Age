@@ -208,7 +208,7 @@ function extract(s,sender){
  f.arrival=field(arrival?.v,arrival?.e,arrival?.inferred?'uncertain':arrival?.v?'confirmed':'uncertain');f.departure=field(departure?.v,departure?.e,departure?.inferred?'uncertain':departure?.v?'confirmed':'uncertain');
  let phone=phoneFromText(t),em=t.match(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/)?.[0]||'';let contact=em||phone||sender;f.phone=field(phone,'telefonszám a levélben','confirmed');f.cars=field(window.SarberkiCaseState?.carsFromText(t)??'','autók száma a levélben','confirmed');f.email=field(contact,em?'üzenet e-mail':phone?'üzenet telefonszám':sender?'feladó':'','confirmed');
  const parsedName=window.SarberkiNormalize?.nameFromText?.(t)||null;f.name=field(parsedName,parsedName?'aláírás':'',parsedName?'confirmed':'uncertain');
- const a=guestCount(t,'adult'),c=guestCount(t,'child'),g=guestCount(t,'total');
+ const a=guestCount(t,'adult'),explicitChild=guestCount(t,'child'),party=window.SarberkiNormalize?.partyCountsFromText?.(t),c=explicitChild??(party?.children===0?{value:0,evidence:'Sárberki szabály: egyértelmű felnőttcsoport, gyermekemlítés nélkül'}:null),g=guestCount(t,'total');
  const colloquial=/\bketten\b/iu.test(t)?2:/\bhárman\b/iu.test(t)?3:/\bnégyen\b/iu.test(t)?4:/\böten\b/iu.test(t)?5:/\bhatan\b/iu.test(t)?6:null;
  const total=g?.value??(a? a.value+(c?.value||0):colloquial);
  const adults=a?.value??(g&&c&&g.value>=c.value?g.value-c.value:null);
