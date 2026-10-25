@@ -62,3 +62,20 @@ test('Gmail reply with conflicting thread and matching reference is not automati
   assert.equal(store.get(first.bookingCase.id).messages.length,1);
   assert.equal(store.get(first.bookingCase.id).state.approval,'pending');
 });
+
+test('late-imported historical Gmail reply revokes approval with auditable event',()=>{
+  const {store,storage}=setup();
+  const first=store.ingest(mail('gmail-latest','thread-1','Foglalás 2 főre.'),values);
+  store.save(first.bookingCase.id,{...first.bookingCase.state,approval:'internally_approved'},'Jóváhagyott korábbi tervezet',{requirePersistent:true,event:{type:'Belső jóváhagyás'}});
+  const earlier={...mail('gmail-earlier','thread-1','Korábbi kiegészítő kérdés.'),received_at:'2026-10-24T16:00:00.000Z'};
+  const result=store.ingest(earlier,values);
+  assert.equal(result.resolution.status,'historical');
+  assert.equal(result.bookingCase.state.approval,'pending');
+  assert.equal(result.bookingCase.messages.length,2);
+  assert.equal(result.bookingCase.messages.at(-1).historical,true);
+  assert.ok(result.bookingCase.events.some(e=>e.previousApproval==='internally_approved'&&e.approval==='pending'&&e.type.includes('érvénytelenítve')));
+  const reloaded=createBookingCaseStore({storage,clock:()=> '2026-10-25T19:00:00.000Z'});
+  const saved=reloaded.get(first.bookingCase.id);
+  assert.equal(saved.state.approval,'pending');
+  assert.ok(saved.events.some(e=>e.previousApproval==='internally_approved'&&e.approval==='pending'));
+});
