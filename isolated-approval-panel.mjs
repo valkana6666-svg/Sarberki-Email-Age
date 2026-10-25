@@ -76,7 +76,7 @@ export function initIsolatedApprovalPanel({
    revisionField.value=String(value.revision);
    message('Tárolt tervezet betöltve. Olvasd el, majd külön erősítsd meg. Nincs e-mail-küldés.');
   }catch(error){
-   reset();message('A tervezet nem tölthető be: '+safeCode(error)+'. Nincs jóváhagyás.');
+   reset();message('A tervezet nem tölthető be: '+safeCode(error)+'. Ezzel a betöltéssel nem történt új jóváhagyás. A korábban tárolt állapotot az audit visszaolvasásával ellenőrizheted.');
   }finally{busy=false;locked();}
  });
  submit.addEventListener('click',async()=>{
