@@ -1,3 +1,4 @@
+import {createPushoverDeliveryCoordinator} from '../../shared-core/pushover-delivery-coordinator.mjs';
 import {TEST_GMAIL_ACCOUNT, isTestInquiry} from '../../gmail-policy.mjs';
 
 const ORIGIN = 'https://leafy-chimera-2403e5.netlify.app';
@@ -12,7 +13,7 @@ function clean(value='', limit=120) {
   return String(value).replace(/[\r\n]+/gu,' ').replace(/\s+/gu,' ').trim().slice(0,limit);
 }
 
-export function createHandler({env = process.env, send = fetch} = {}) {
+export function createHandler({env = process.env, send = fetch, ledger = null} = {}) {
   return async (request, context) => {
     if (new URL(request.url).origin !== ORIGIN || context?.site?.name !== 'leafy-chimera-2403e5') {
       return json({ok:false,code:'TEST_SITE_ONLY'},403);
@@ -31,6 +32,8 @@ export function createHandler({env = process.env, send = fetch} = {}) {
       return json({ok:false,code:'INVALID_EVENT'},400);
     }
 
+    if(env.PUSHOVER_ENABLED !== 'true')return json({ok:false,code:'NOT_ENABLED'},503);
+    if(!ledger)return json({ok:false,code:'LEDGER_REQUIRED'},503);
     const auth = request.headers.get('authorization') || '';
     if (!/^Bearer\s+\S+$/iu.test(auth)) return json({ok:false,code:'GMAIL_AUTH_REQUIRED'},401);
     const gmailHeaders = {authorization:auth};
@@ -63,6 +66,8 @@ export function createHandler({env = process.env, send = fetch} = {}) {
       const headers = headerMap(message);
       const subject = clean(headers.subject || '(nincs tárgy)');
       const from = clean(headers.from || '(ismeretlen feladó)');
+      if(message.id !== event.messageId)return json({ok:false,code:'MESSAGE_ID_MISMATCH'},409);
+      const coordinator=createPushoverDeliveryCoordinator({enabled:true,ledger,sender:async()=>{
       const result = await send('https://api.pushover.net/1/messages.json', {
         method:'POST',
         headers:{'content-type':'application/x-www-form-urlencoded'},
@@ -76,10 +81,11 @@ export function createHandler({env = process.env, send = fetch} = {}) {
         signal:AbortSignal.timeout(10000)
       });
       const data = await result.json();
-      if (!result.ok || data.status !== 1) {
-        return json({ok:false,code:'PUSHOVER_REJECTED',providerStatus:data.status ?? null},502);
-      }
-      return json({ok:true,providerStatus:1,requestId:data.request,messageId:message.id});
+      if (!result.ok || data.status !== 1)throw Error('PROVIDER_REJECTED');
+      return {accepted:true};
+      }});
+      const outcome=await coordinator.process({tenantId:'sarberki-test',mailbox:TEST_GMAIL_ACCOUNT,messageId:event.messageId,notificationType:'gmail-new-message'});
+      return json({ok:outcome.status==='accepted'||outcome.status==='suppressed',...outcome},outcome.status==='accepted'||outcome.status==='suppressed'?200:502);
     } catch {
       return json({ok:false,code:'PUSHOVER_UNAVAILABLE',deliveryUnknown:true},502);
     }

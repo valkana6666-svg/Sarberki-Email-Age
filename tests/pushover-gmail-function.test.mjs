@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createHandler,config} from '../netlify/functions/pushover-gmail.mjs';
+import {createHandler as baseHandler,config} from '../netlify/functions/pushover-gmail.mjs';
 
+function createHandler(options){let claimed=false;return baseHandler({...options,ledger:{async claimOnce(){if(claimed)return{status:'duplicate'};claimed=true;return{status:'claimed',claimId:'synthetic-claim'};},async markSent(){return true;},async markUnknown(){return true;}}});}
 const origin='https://leafy-chimera-2403e5.netlify.app';
 const site={site:{name:'leafy-chimera-2403e5'}};
-const env={PUSHOVER_USER_KEY:'u'.repeat(30),PUSHOVER_API_TOKEN:'a'.repeat(30)};
+const env={PUSHOVER_ENABLED:'true',PUSHOVER_USER_KEY:'u'.repeat(30),PUSHOVER_API_TOKEN:'a'.repeat(30)};
 const messageId='19abcdef12345';
 const request=(overrides={})=>new Request(origin+'/api/pushover-gmail',{
   method:'POST',
@@ -77,4 +78,19 @@ test('Pushover credentials stay server-side and provider rejection is reported',
   assert.ok(!body.includes(env.PUSHOVER_API_TOKEN));
   assert.ok(!body.includes(env.PUSHOVER_USER_KEY));
   assert.deepEqual(config.rateLimit,{windowLimit:60,windowSize:60,aggregateBy:'domain',action:'rate_limit'});
+});
+
+test('endpoint shares atomic ledger across parallel requests and restart',async()=>{
+ let claimed=false,sends=0;
+ const ledger={async claimOnce(){if(claimed)return{status:'duplicate'};claimed=true;return{status:'claimed',claimId:'synthetic-claim'};},async markSent(){return true;},async markUnknown(){return true;}};
+ const send=async(...args)=>{if(args[0].includes('api.pushover.net'))sends++;return mockFetch()(...args);};
+ const a=baseHandler({env,ledger,send}),b=baseHandler({env,ledger,send});
+ const responses=await Promise.all([a(request(),site),b(request(),site)]);
+ assert.ok(responses.every(r=>r.status===200));assert.equal(sends,1);
+ await baseHandler({env,ledger,send})(request(),site);assert.equal(sends,1);
+});
+test('disabled or missing ledger never makes external requests',async()=>{
+ const send=()=>assert.fail('external request forbidden');
+ assert.equal((await baseHandler({env:{},send})(request(),site)).status,503);
+ assert.equal((await baseHandler({env,send})(request(),site)).status,503);
 });
