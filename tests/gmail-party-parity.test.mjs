@@ -82,3 +82,23 @@ test('unknown adults and quoted adult counts never fabricate an adult-only party
   assert.ok(record.missing.includes('Felnőttek száma'));
  }
 });
+
+test('V1 acceptance matrix preserves adult-only, mixed, unknown and contradictory parties',()=>{
+ for(const adult of ['2 felnőtt','2 adults','2 Erwachsene','2 odrasla']){
+  assert.deepEqual(party(gmail(adult).normalized),{guests:2,adults:2,children:0});
+ }
+ for(const mixed of ['4 felnőtt, 2 gyermek','4 adults, 2 children','4 Erwachsene, 2 Kinder','4 odrasli, 2 otroka']){
+  assert.deepEqual(party(gmail(mixed).normalized),{guests:6,adults:4,children:2});
+ }
+ for(const unknown of ['3 felnőtt és gyermekek','3 adults and children','3 Erwachsene und Kinder','3 odrasli in otroci']){
+  const n=gmail(unknown).normalized;
+  assert.equal(n.children,null);assert.equal(n.guests,null);
+ }
+ for(const generic of ['2 fő','2 guests','2 Personen','2 osebi']){
+  const n=gmail(generic).normalized;
+  assert.equal(n.adults,null);assert.equal(n.children,null);
+ }
+ const contradiction=evaluateCentralInquiry({message:'9 guests: 8 adults and 0 children. Deluxe. 2026-11-13 to 2026-11-15.',now});
+ assert.ok(contradiction.contradictions.some(x=>x.code==='guest_total_mismatch'));
+ assert.equal(contradiction.readyForCapacityCheck,false);
+});
