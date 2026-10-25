@@ -2,10 +2,10 @@
 // Fail closed unless an operator-provided ledger implements an ATOMIC claimOnce.
 // Local simulation tests do not prove durable PostgreSQL isolation.
 const ID=/^[a-zA-Z0-9][a-zA-Z0-9_.:/-]{0,255}$/u;
-const own=Object.prototype.hasOwnProperty;
 function validIdentity(v) {
   return v&&typeof v==='object'&&!Array.isArray(v)&&
-    ['tenantId','mailbox','messageId','notificationType'].every(k=>typeof v[k]==='string'&&ID.test(v[k]))&&
+    ['tenantId','messageId','notificationType'].every(k=>typeof v[k]==='string'&&ID.test(v[k]))&&
+    typeof v.mailbox==='string'&&
     Object.keys(v).length===4&&
     v.mailbox==='sarberkiprojecttest@gmail.com'&&v.notificationType==='gmail-new-message';
 }
