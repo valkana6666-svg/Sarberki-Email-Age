@@ -7,18 +7,30 @@ export function parsePrevioTubNote(note,{accommodationHouse=null}={}) {
   const text=note.normalize('NFC').trim();
   if(!/dézsa|dezsa|dézsafürdő/iu.test(text))return unknown('NO_TUB_NOTE');
   if(/lemondva|törölve|visszamondva|módosítva/iu.test(text))return unknown('CANCELLATION_OR_CHANGE_REQUIRES_REVIEW');
-  // House number must explicitly identify the physical tub, not merely the guest's accommodation.
-  const patterns=[/(\d{1,2})\s*(?:-?es|-?os|-?as|-?ös)?\s*ház\s*(?:dézsa|dezsa)/giu,/(?:dézsa|dezsa)\s*(?:a\s*)?(\d{1,2})\s*(?:-?es|-?os|-?as|-?ös)?\s*ház/giu];
-  const houses=patterns.flatMap(re=>[...text.matchAll(re)].map(m=>Number(m[1])));
-  if(houses.length!==1)return unknown('TUB_HOUSE_UNVERIFIED');
-  const tubHouse=houses[0];
-  if(!HOUSES.has(tubHouse))return unknown('NO_FIXED_TUB_AT_HOUSE');
   const dates=[...text.matchAll(/\b(20\d{2})[.-](\d{1,2})[.-](\d{1,2})\b/gu)];
+  const times=[...text.matchAll(/\b([01]?\d|2[0-3]):([0-5]\d)\b/gu)];
+  // Keep independently parsed date/time tokens outside the house expression.
+  // Their strict count and calendar validation below remains mandatory.
+  const houseText=[...dates,...times].reduce((source,match)=>{
+    // A date/time-shaped value attached to 'ház' is an invalid house mention,
+    // not a schedule token that may be hidden beside a valid house.
+    const after=text.slice(match.index+match[0].length);
+    return /^\s*(?:-?(?:es|os|as|ös))?\s*ház/iu.test(after)?source:source.replace(match[0],' ');
+  },text);
+  // House number must explicitly identify the physical tub, not merely the guest's accommodation.
+  // Capture the whole numeric-bearing house token, including malformed prefixes,
+  // decimals and ranges, so an invalid mention cannot disappear beside a valid one.
+  const token='[^\\s;!?()\\[\\]]*\\d[^\\s;!?()\\[\\]]*';
+  const numberExpression=token+'(?:\\s+(?:[+\\-−–—.,/:]\\s*)?\\d[^\\s;!?()\\[\\]]*)*';
+  const patterns=[new RegExp('(?<!\\S)('+numberExpression+')\\s*(?:-?(?:es|os|as|ös))?\\s*ház\\s*(?:dézsa|dezsa)','giu'),new RegExp('(?:dézsa|dezsa)\\s*(?:a\\s*)?('+numberExpression+')\\s*(?:-?(?:es|os|as|ös))?\\s*ház','giu')];
+  const houses=patterns.flatMap(re=>[...houseText.matchAll(re)].map(m=>m[1].replace(/\s*-?(?:es|os|as|ös)$/iu,'').trim()));
+  if(houses.length!==1||!(/^[1-9]\d?$/.test(houses[0])))return unknown('TUB_HOUSE_UNVERIFIED');
+  const tubHouse=Number(houses[0]);
+  if(!HOUSES.has(tubHouse))return unknown('NO_FIXED_TUB_AT_HOUSE');
   if(dates.length!==1)return unknown('DATE_UNVERIFIED');
   const [,ys,ms,ds]=dates[0],year=Number(ys),month=Number(ms),day=Number(ds);
   const date=new Date(Date.UTC(year,month-1,day));
   if(date.getUTCFullYear()!==year||date.getUTCMonth()!==month-1||date.getUTCDate()!==day)return unknown('INVALID_DATE');
-  const times=[...text.matchAll(/\b([01]?\d|2[0-3]):([0-5]\d)\b/gu)];
   if(times.length!==1)return unknown('TIME_UNVERIFIED');
   // Consume an entire numeric duration before accepting a positive integer.
   // Never reinterpret fractional/signed/range notation or a grouped thousands
