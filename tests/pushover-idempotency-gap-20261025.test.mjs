@@ -2,11 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHandler } from '../netlify/functions/pushover-gmail.mjs';
 
-// Characterization only: this documents the EXISTING duplicate-send hazard.
-// It does not assert that server-side deduplication is implemented or safe.
+// Regression for the former duplicate-send hazard; synthetic atomic ledger only.
 const origin = 'https://leafy-chimera-2403e5.netlify.app';
 const context = {site:{name:'leafy-chimera-2403e5'}};
-const env = {PUSHOVER_USER_KEY:'u'.repeat(30),PUSHOVER_API_TOKEN:'a'.repeat(30)};
+const env = {PUSHOVER_ENABLED:'true',PUSHOVER_USER_KEY:'u'.repeat(30),PUSHOVER_API_TOKEN:'a'.repeat(30)};
 const messageId = '19abcdef12345';
 const makeRequest = () => new Request(origin+'/api/pushover-gmail',{
   method:'POST',
@@ -27,18 +26,20 @@ function harness(){
     }
     throw Error('Unexpected external request in synthetic test');
   };
-  return {handler:createHandler({env,send}),pushCalls:()=>pushCalls};
+  let claimed=false;
+  const ledger={async claimOnce(){if(claimed)return{status:'duplicate'};claimed=true;return{status:'claimed',claimId:'synthetic-claim'};},async markSent(){return true;},async markUnknown(){return true;}};
+  return {handler:createHandler({env,send,ledger}),pushCalls:()=>pushCalls};
 }
-test('SAFETY GAP: repeated valid message IDs currently cause repeated push requests',async()=>{
+test('Repeated valid message IDs share one notification claim',async()=>{
   const {handler,pushCalls}=harness();
   const first=await handler(makeRequest(),context),second=await handler(makeRequest(),context);
   assert.equal(first.status,200);
   assert.equal(second.status,200);
-  assert.equal(pushCalls(),2,'Current implementation does not offer server-side idempotency');
+  assert.equal(pushCalls(),1,'Repeated notification must be suppressed');
 });
-test('SAFETY GAP: concurrent valid requests both reach provider',async()=>{
+test('Concurrent valid requests share one notification claim',async()=>{
   const {handler,pushCalls}=harness();
   const responses=await Promise.all([handler(makeRequest(),context),handler(makeRequest(),context)]);
   assert.deepEqual(responses.map(r=>r.status),[200,200]);
-  assert.equal(pushCalls(),2,'No atomic server-side delivery claim exists yet');
+  assert.equal(pushCalls(),1,'Concurrent notification must be suppressed');
 });
