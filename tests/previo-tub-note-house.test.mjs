@@ -17,3 +17,17 @@ for(const house of ['12-es ház dézsa','dézsa a 12-es ház'])for(const text of
 });
 
 for(const text of ['11:12-es ház dézsa; 12-es ház dézsa','2026-11-14-es ház dézsa; 12-es ház dézsa'])test('date/time-shaped invalid house cannot be masked beside valid house: '+text,()=>assert.equal(parse(text).status,'UNKNOWN'));
+
+for(const intent of ['lemondás','lemondani','törlés','törölni','nem kérjük','nem kérem','nem kell','mégsem kérjük','visszamondás'])test('cancellation or negative tub intent requires human review: '+intent,()=>{
+ const r=parse('12-es ház dézsa '+intent);
+ assert.equal(r.status,'UNKNOWN');
+ assert.equal(r.reason,'CANCELLATION_OR_CHANGE_REQUIRES_REVIEW');
+ assert.equal(r.availabilityVerified,false);
+ assert.equal('tubHouse' in r,false);
+});
+for(const note of ['12-es ház dézsa','dézsa a 12-es ház'])test('positive tub note remains only candidate: '+note,()=>{
+ const r=parse(note);
+ assert.equal(r.status,'CANDIDATE');
+ assert.equal(r.tubHouse,12);
+ assert.equal(r.availabilityVerified,false);
+});
