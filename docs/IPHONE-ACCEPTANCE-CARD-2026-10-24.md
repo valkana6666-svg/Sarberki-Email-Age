@@ -23,7 +23,7 @@ A Reader főképernyős előnézet → háttér → törlés → új olvasás r�
 | Kilépés és visszagomb | Kijelentkezés, majd böngészős vissza | Nincs használható régi védett előnézet új hitelesítés nélkül | NEM FUTOTT |
 | Safari/PWA belépés | Mindkettő külön megnyitása | Szükség esetén külön login; közös sessiont nem feltételezünk | NEM FUTOTT |
 | Mobil használhatóság | Belépés és olvasófelület álló nézetben, billentyűzettel | Gombok elérhetők, nincs vízszintes túllógás | NEM FUTOTT |
-| Gmail eredetjelzés | A már ellenőrzött 20c0c9df builden a kijelölt, meglévő szintetikus levél egyszeri readonly megnyitása | Gmail readonly API-olvasás jelzés és olvasási idő; nincs küldés/Pushover vagy automatikus írás | KÉSZÜLÉKEN VÉGREHAJTHATÓ; új fizikai eredmény még nincs |
+| Gmail eredetjelzés | A már ellenőrzött 20c0c9df builden a kijelölt, meglévő szintetikus levél egyszeri readonly megnyitása | Gmail readonly API-olvasás jelzés és olvasási idő; nincs küldés/Pushover vagy automatikus írás | PASS – tulajdonosi képek, 2026-10-25 08:53:47 Europe/Vienna; csak böngészős eredet, részletek: GMAIL-IPHONE-EVIDENCE-2026-10-25.md |
 
 Gmail-időkorlát: tartósan elakadó kérés/JSON esetén 15 másodperc után kézi újraindítást kér, nem próbálkozik automatikusan. Ezt a hibát szolgáltatói forgalom vagy rate limit szándékos előidézésével nem teszteljük; az elakadást helyi VM-tesztek igazolták. A fizikai hálózatvesztés eltérő hibaágat is adhat.
 
