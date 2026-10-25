@@ -42,3 +42,13 @@ test('unverified sender cannot auto-merge even with matching thread',()=>{
  const result=resolveBookingCase([previous],{...envelope({thread_id:'gmail-thread-A'}),sender:''},values);
  assert.notEqual(result.status,'linked');
 });
+
+test('untrusted case_id alone cannot link a Gmail message',()=>{
+ const result=resolveBookingCase([previous],envelope({case_id:previous.id,thread_id:'other-thread'}),values);
+ assert.notEqual(result.status,'linked');
+ assert.equal(result.status,'ambiguous');
+});
+test('untrusted case_id alone without Gmail thread cannot link',()=>{
+ const result=resolveBookingCase([previous],envelope({case_id:previous.id}),values);
+ assert.notEqual(result.status,'linked');
+});
