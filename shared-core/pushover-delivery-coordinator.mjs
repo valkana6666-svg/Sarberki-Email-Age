@@ -37,11 +37,11 @@ export function createPushoverDeliveryCoordinator({ledger=null,sender=null,enabl
         const acknowledgement=await sender(key);
         if(acknowledgement?.accepted!==true)throw Error('PROVIDER_OUTCOME_UNVERIFIED');
         sent=true;
-        await ledger.markSent(key,receipt);
+        if(await ledger.markSent(key,receipt)===false)throw Error('LEDGER_REJECTED_TRANSITION');
         // API acceptance is not proof of delivery to a physical iPhone.
         return Object.freeze({status:'accepted',code:'PROVIDER_ACCEPTED',deliveryConfirmed:false});
       } catch {
-        try{await ledger.markUnknown(key,receipt);}catch{
+        try{if(await ledger.markUnknown(key,receipt)===false)throw Error('LEDGER_REJECTED_TRANSITION');}catch{
           // Persistently claiming before dispatch is essential here.
           return result('review','LEDGER_TRANSITION_FAILED');
         }
