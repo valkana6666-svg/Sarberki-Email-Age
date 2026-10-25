@@ -9,7 +9,7 @@ const el=id=>document.getElementById(id);
 const selectedCase=new URLSearchParams(location.search).get('caseId');
 if(isIsolatedReviewCaseId(selectedCase))el('isolated_approval_case_id').value=selectedCase;
 if(location.origin===origin){
- const session=createOperatorSession();let authenticated=false,epoch=0;
+ const session=createOperatorSession();let authenticated=false,epoch=0,explicitlyLoggedOut=false;
  const clear=()=>{epoch++;session.clear();authenticated=false;el('workspace').disabled=true;el('logout').disabled=true;el('password').value='';el('readback_status').textContent='';document.dispatchEvent(new Event('isolated-approval-session-changed'));};
  const queuedRequest=createEpochRequestQueue({getEpoch:()=>epoch,isAuthenticated:()=>authenticated,
   prepare:()=>session.restore(),
@@ -45,16 +45,16 @@ if(location.origin===origin){
  const restored=()=>{authenticated=true;el('workspace').disabled=false;el('logout').disabled=false;el('auth_status').textContent='Hitelesített szintetikus tesztmunkamenet.';};
  el('login').addEventListener('submit',async event=>{
   event.preventDefault();const email=el('email').value,password=el('password').value;clear();const turn=epoch;
-  try{await session.login(email,password);if(turn===epoch)restored();}catch(error){if(turn===epoch)el('auth_status').textContent=formatCloudApprovalFailure(error,'login');}finally{el('password').value='';}
+  try{await session.login(email,password);if(turn===epoch){explicitlyLoggedOut=false;restored();}}catch(error){if(turn===epoch)el('auth_status').textContent=formatCloudApprovalFailure(error,'login');}finally{el('password').value='';}
  });
- el('logout').addEventListener('click',async()=>{clear();try{await session.logout();el('auth_status').textContent='Kijelentkezve.';}catch(error){el('auth_status').textContent=formatCloudApprovalFailure(error,'logout');}});
+ el('logout').addEventListener('click',async()=>{explicitlyLoggedOut=true;clear();try{await session.logout();el('auth_status').textContent='Kijelentkezve.';}catch(error){el('auth_status').textContent=formatCloudApprovalFailure(error,'logout');}});
  el('readback').addEventListener('click',async()=>{
   const turn=epoch,id=el('isolated_approval_case_id').value.trim();el('readback_status').textContent='';
   try{if(!isIsolatedReviewCaseId(id))throw Error('INVALID_INPUT');const result=await request({tenantId:'sarberki-test',caseId:id,action:'approval-state'},'GET');if(turn===epoch)el('readback_status').textContent=JSON.stringify(result,null,2);}
   catch(error){if(turn===epoch)el('readback_status').textContent=formatCloudApprovalFailure(error,'approval-state');}
  });
  const resume=async()=>{
-  if(document.visibilityState==='hidden')return;
+  if(document.visibilityState==='hidden'||explicitlyLoggedOut)return;
   const turn=epoch;
   try{
    try{await session.restore();}catch(error){if(error.message!=='SESSION_CHANGED'||turn!==epoch)throw error;await session.restore();}

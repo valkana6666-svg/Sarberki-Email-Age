@@ -90,3 +90,19 @@ test('late authentication failure from old session cannot clear a new login',asy
  assert.match(h.get('auth_status').textContent,/Hitelesített/);
  assert.equal(h.get('isolated_approval_submit').disabled,true);
 });
+
+test('explicit logout stays locked on bfcache and visibility return even if server still offers a session',async()=>{
+ const calls=[];
+ const h=await harness(async(_url,options)=>{calls.push(options);return {ok:true,json:async()=>valid()};});
+ await h.get('logout').click();
+ const afterLogout=calls.length;
+ await h.listeners.pageshow({persisted:true});
+ await h.visibility('hidden');await h.visibility('visible');
+ assert.equal(h.get('workspace').disabled,true);
+ assert.equal(calls.length,afterLogout,'explicit logout must not silently restore');
+ await h.get('readback').click();
+ assert.equal(calls.length,afterLogout,'locked readback must not send protected requests');
+ h.get('email').value='synthetic@example.invalid';h.get('password').value='synthetic-only';
+ await h.get('login').submit({preventDefault(){}});
+ assert.equal(h.get('workspace').disabled,false,'explicit login can unlock again');
+});
