@@ -1,6 +1,8 @@
 # iPhone Safari/PWA elfogadási lap – 2026-10-24
 
-Kizárólag a leafy tesztoldal, meglévő tesztfiókok és szintetikus ügyek. A Gmail-javítás helyi commitja `cd57dcc8f3bbb202e2f7e5bb2921dca84cb703fb`; jelenleg NINCS telepítve. Az új Gmail-próba csak az integrált commit és a tesztoldal egyezése után minősíthető annak elfogadásává.
+Kizárólag a leafy tesztoldal, meglévő tesztfiókok és szintetikus ügyek.
+
+Frissítés, 2026-10-25: a /api/health HTTP 200 válasza szerint a telepített alkalmazás `20c0c9dfd8e17f75bd54381db5268101c92ad91b`. A gmail-readonly.js, gmail-policy.mjs és operator-login-ui.mjs tényleges HTTPS-bájtjai megegyeznek a tesztelt forrással. A korábbi „NINCS telepítve” jelzés ezért elavult. A `55d9ea22bcace76c2af9efa534d6557fe02d6025` kreditvédelmi commit csak konfigurációt/CI-t/tesztet/dokumentációt változtatott, alkalmazásdeployt nem igényel. Az új Gmail readonly célzott GitHub-futás 40167974826: 21 PASS / 0 FAIL / 0 SKIP; a deploy-ellenőrzés szándékosan kihagyva. Ez szintetikus kódbizonyíték, nem új Google API-olvasás.
 
 ## Már igazolt rész nem ismétlendő
 
@@ -21,7 +23,7 @@ A Reader főképernyős előnézet → háttér → törlés → új olvasás r�
 | Kilépés és visszagomb | Kijelentkezés, majd böngészős vissza | Nincs használható régi védett előnézet új hitelesítés nélkül | NEM FUTOTT |
 | Safari/PWA belépés | Mindkettő külön megnyitása | Szükség esetén külön login; közös sessiont nem feltételezünk | NEM FUTOTT |
 | Mobil használhatóság | Belépés és olvasófelület álló nézetben, billentyűzettel | Gombok elérhetők, nincs vízszintes túllógás | NEM FUTOTT |
-| Gmail új patch | Csak pontos új deploy után kijelölt szintetikus levél readonly megnyitása | Megfelelő levél; nincs küldés/Pushover; hibánál nincs téves siker | BLOKKOLT: NINCS ÚJ DEPLOY |
+| Gmail eredetjelzés | A már ellenőrzött 20c0c9df builden a kijelölt, meglévő szintetikus levél egyszeri readonly megnyitása | Gmail readonly API-olvasás jelzés és olvasási idő; nincs küldés/Pushover vagy automatikus írás | KÉSZÜLÉKEN VÉGREHAJTHATÓ; új fizikai eredmény még nincs |
 
 Gmail-időkorlát: tartósan elakadó kérés/JSON esetén 15 másodperc után kézi újraindítást kér, nem próbálkozik automatikusan. Ezt a hibát szolgáltatói forgalom vagy rate limit szándékos előidézésével nem teszteljük; az elakadást helyi VM-tesztek igazolták. A fizikai hálózatvesztés eltérő hibaágat is adhat.
 
