@@ -286,9 +286,9 @@ test('RFC reply references cannot automatically link different mailboxes',async(
  const other=await runtime.ingest(envelope('m2',{mailbox_id:'other-inbox',thread_id:'other',in_reply_to:'<original@example.invalid>',references:['<original@example.invalid>']}),values,{expectedRevision:0});
  assert.equal(other.resolution.status,'ambiguous');assert.notEqual(other.record.caseId,first.record.caseId);
  assert.deepEqual(other.record.data.messages[0].references,['<original@example.invalid>']);
- const reply=await runtime.ingest(envelope('m3',{thread_id:'new-provider-thread',in_reply_to:'<original@example.invalid>'}),{phone:'123'},{expectedRevision:1});
- assert.equal(reply.resolution.status,'linked');assert.equal(reply.record.caseId,first.record.caseId);
- assert.equal(reply.record.data.messages[0].rfc_message_id,'<original@example.invalid>');
+ const reply=await runtime.ingest(envelope('m3',{thread_id:'new-provider-thread',in_reply_to:'<original@example.invalid>'}),{phone:'123'},{expectedRevision:0});
+ assert.equal(reply.resolution.status,'ambiguous');assert.notEqual(reply.record.caseId,first.record.caseId);
+ assert.equal(reply.record.data.messages.length,1);
 });
 test('a supplied case ID cannot bypass separate human linking permission',async()=>{
  const {runtime}=fixture();const first=await runtime.ingest(envelope(),values,{expectedRevision:0});

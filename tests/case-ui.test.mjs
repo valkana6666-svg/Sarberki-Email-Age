@@ -197,10 +197,10 @@ test('manual Gmail JSON import runs the central analyzer and clears stale manual
  assert.equal(await importGmail(h,gmailFixture('gmail-one',gmailFirst)),true);
  const c=runtime.cases.list().find(c=>c.sender==='gmail-flow@example.invalid');assert.ok(c);assert.equal(c.state.values.arrival,'2026-10-23');assert.equal(c.state.values.adults,'2');assert.equal(c.state.values.child_ages,'7');assert.equal(h.node('booking_case_link').value,'');assert.doesNotMatch(h.node('draft').value,/IMPORTÁLT/u);assert.equal(h.node('draft').value,h.node('gmail_draft').value);
 });
-test('Gmail RFC reply in a new thread fills the remaining child age in the same case',async()=>{
+test('Gmail RFC reply in conflicting thread remains separate for operator review',async()=>{
  const runtime=createBookingRuntime({request:()=>{throw Error('network unused');}}),h=harness(runtime);await importGmail(h,gmailFixture('gmail-one',gmailFirst));
  await importGmail(h,gmailFixture('gmail-two','A másik gyermek 11 éves.',{thread:'another-thread',reply:'<gmail-one@example.invalid>',received:'2026-10-08T19:40:31.100Z'}));
- const cases=runtime.cases.list().filter(c=>c.sender==='gmail-flow@example.invalid');assert.equal(cases.length,1);assert.equal(cases[0].messages.length,2);assert.equal(cases[0].state.values.child_ages,'7, 11');assert.equal(cases[0].state.values.arrival,'2026-10-23');assert.doesNotMatch(h.node('draft').value,/gyermekek pontos életkorát/u);
+ const cases=runtime.cases.list().filter(c=>c.sender==='gmail-flow@example.invalid');assert.equal(cases.length,2);assert.equal(cases[0].messages.length,1);assert.equal(cases[0].state.values.child_ages,'7');assert.equal(cases[0].state.values.arrival,'2026-10-23');assert.equal(cases[1].messages.length,1);assert.equal(cases[1].status,'link_review_required');
 });
 test('Gmail source timestamps keep seconds and protect newer dates inside the same minute',async()=>{
  const runtime=createBookingRuntime({request:()=>{throw Error('network unused');}}),h=harness(runtime);
