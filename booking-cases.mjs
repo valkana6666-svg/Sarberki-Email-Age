@@ -43,7 +43,7 @@ export function resolveBookingCase(cases,envelope,values={}){
  const direct=owned.filter(c=>{
   const knownThreads=c.messages.map(m=>m.thread_id).filter(Boolean);
   if(envelope.thread_id&&knownThreads.length&&!knownThreads.includes(envelope.thread_id))return false;
-  return envelope.case_id===c.id||(envelope.thread_id&&c.messages.some(m=>m.thread_id===envelope.thread_id))||c.messages.some(m=>m.rfc_message_id&&refs.includes(m.rfc_message_id));
+  return (envelope.thread_id&&c.messages.some(m=>m.thread_id===envelope.thread_id))||c.messages.some(m=>m.rfc_message_id&&refs.includes(m.rfc_message_id));
  });
  if(direct.length&&/(?:\b(?:új|másik|külön)\s+(?:önálló\s+)?foglalá|\b(?:new|separate|another)\s+(?:booking|inquiry)|\b(?:neue|separate)\s+(?:Buchung|Anfrage)|\b(?:nova|ločena)\s+rezervacija)/iu.test(envelope.text||''))return {status:'ambiguous',candidates:direct.map(c=>c.id),evidence:'explicit_independent_request'};
  if(direct.length===1)return {status:'linked',caseId:direct[0].id,evidence:'thread_or_reference'};
