@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import {PGlite} from '@electric-sql/pglite';
 
 const migration=fs.readFileSync(new URL('../supabase/migrations/20261025173000_pushover_delivery_ledger.sql',import.meta.url),'utf8');
-const ddl=migration.split('-- BEGIN LEDGER DDL')[1]?.split('-- END LEDGER DDL')[0];
+const ddl=migration.match(/-- BEGIN LEDGER DDL[^\n]*\n([\s\S]*?)-- END LEDGER DDL/u)?.[1];
 const key=['sarberki-test','sarberkiprojecttest@gmail.com','19abcdef12345','gmail-new-message'];
 const insert=`insert into public.sc_pushover_delivery_claims (tenant_id,mailbox,gmail_message_id,notification_type)
  values($1,$2,$3,$4) on conflict (tenant_id,mailbox,gmail_message_id,notification_type) do nothing returning claim_id,status`;
