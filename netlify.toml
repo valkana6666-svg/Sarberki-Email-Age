@@ -1,4 +1,5 @@
 [build]
+  ignore = "node ./scripts/netlify-test-build-gate.cjs"
   publish = "dist"
   command = "node scripts/build-static.cjs"
   functions = "netlify/functions"

@@ -10,6 +10,15 @@ on:
       - .github/workflows/sarberki-backup-v2.yml
       - docs/BACKUP-V2*.md
   workflow_dispatch:
+    inputs:
+      verify_deployed:
+        description: 'Verify an already released test deployment (does not deploy)'
+        type: boolean
+        default: false
+        required: false
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -22,6 +31,19 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npm test
+  deployed-test-verification:
+    name: Verify explicitly released test site
+    if: github.ref == 'refs/heads/gmail-test-subject-allowlist' && github.event_name == 'workflow_dispatch' && inputs.verify_deployed == true
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Verify exact test Netlify commit
         env:
           EXPECTED_COMMIT: ${{ github.sha }}
