@@ -5,8 +5,8 @@ const messageId = value => norm(value).replace(/^<|>$/g, '').toLowerCase();
 const refs = value => (Array.isArray(value) ? value : norm(value).split(/\s+/))
   .map(messageId).filter(Boolean);
 export function sameBookingConversation(existing={}, incoming={}){
-  const previousSender=norm(existing.sender||existing.from_email).toLowerCase();
-  const replySender=norm(incoming.sender||incoming.from_email).toLowerCase();
+  const previousSender=norm(existing.from_email||existing.sender).toLowerCase();
+  const replySender=norm(incoming.from_email||incoming.sender).toLowerCase();
   if(!previousSender || !replySender) return {matched:false,reason:'SENDER_UNVERIFIED'};
   if(previousSender!==replySender) return {matched:false,reason:'SENDER_MISMATCH'};
   const a=norm(existing.threadId||existing.thread_id), b=norm(incoming.threadId||incoming.thread_id);
