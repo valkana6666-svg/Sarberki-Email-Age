@@ -6,7 +6,8 @@ export function parsePrevioTubNote(note,{accommodationHouse=null}={}) {
   if(typeof note!=='string'||note.length>4000)return unknown('INVALID_NOTE');
   const text=note.normalize('NFC').trim();
   if(!/dézsa|dezsa|dézsafürdő/iu.test(text))return unknown('NO_TUB_NOTE');
-  if(/lemondva|törölve|visszamondva|módosítva/iu.test(text))return unknown('CANCELLATION_OR_CHANGE_REQUIRES_REVIEW');
+  // Cancellation/negative intent always requires human review, never a tub candidate.
+  if(/lemondva|lemondás|lemondani|törölve|törlés|törölni|visszamondva|visszamondás|módosítva|nem\s+(?:kérjük|kérem|kéri|kérik|kell)|mégsem\s+(?:kérjük|kérem)/iu.test(text))return unknown('CANCELLATION_OR_CHANGE_REQUIRES_REVIEW');
   const dates=[...text.matchAll(/\b(20\d{2})[.-](\d{1,2})[.-](\d{1,2})\b/gu)];
   const times=[...text.matchAll(/\b([01]?\d|2[0-3]):([0-5]\d)\b/gu)];
   // Keep independently parsed date/time tokens outside the house expression.
