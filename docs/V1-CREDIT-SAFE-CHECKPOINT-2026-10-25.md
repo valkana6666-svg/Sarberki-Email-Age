@@ -22,9 +22,9 @@ Az iPhone következő szűk readonly próbája már a jelenlegi 20c0c9df builden
 
 A 49 táblás tényleges Drive-bájtból végzett SQL-próba PASS, run 40125387830; nem ismételtük meg. A napi vezérlő engedélyezve; az utolsó ellenőrzés a 08:00 előtti kapu miatt nem indított új exportot. Az első időzített export és Drive-átadás nem igazolt. A külön tulajdonosi recovery secret neve a korábbi frissített listában megjelent; az értéket nem olvastuk ki, független feloldási bizonyítékot ebből nem következtetünk. A régi Google backup secret visszavonása, teljes platformhelyreállítás és telefonos riasztáskézbesítés külön nyitott feladat. Ezek nem akadályozzák a Gmail offline fejlesztését.
 
-## Netlify adminakadály
+## Korábbi Netlify adminakadály – LEZÁRVA
 
-A tesztprojekt beállítási oldala loginfelületet mutat. A biztonságos belépési módszerválasztás után a Google origin megfigyelését az automatikus jóváhagyási ellenőrzés megtagadta. Nem kerültük meg, nem olvastunk tokent vagy jelszót. Emiatt a Netlify adminoldali Stop builds, a 1167 deploy pontos előzménye és a kreditmaradék BLOCKED. A repositoryoldali korlát és a GitHub-tesztek ettől függetlenül elkészültek. NETLIFY-CREDIT-GUARD-2026-10-25.md tartalmazza a pontos működést és a build hook kivételét.
+A korábbi munkamenetben a tesztprojekt beállítási oldala loginfelületet mutatott. A biztonságos belépési módszerválasztás után a Google origin megfigyelését az automatikus jóváhagyási ellenőrzés megtagadta. Nem kerültük meg, nem olvastunk tokent vagy jelszót. Ez az akadály a tulajdonos új jóváhagyása és a friss Google-belépés után megszűnt. A leafy tesztprojekt Build status: Stopped állapota mentve és visszaolvasva; a Trigger deploy gomb disabled. A kreditmaradék 500/500, auto recharge Disabled. A számlázott 1167 Production deploy 17505 kredit volt; a telepítési előzmények a dokumentációs és mentési commitok automatikus kiadását is igazolták. A teljes 1167 esemény egyedi auditja nem történt meg. A repositoryoldali korlát és a GitHub-tesztek ettől függetlenül elkészültek. NETLIFY-CREDIT-GUARD-2026-10-25.md tartalmazza a pontos működést és a build hook kivételét.
 
 Main és production nem módosult. A külön mentési ágat, PR #7-et, valódi levelezést és Previo-írást nem érintettük. V2/V3 érték: a CI, alkalmazáskiadás és külső műveleti jogosultság továbbra elkülönített; nincs új automatikus végrehajtási képesség.
 
