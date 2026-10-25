@@ -210,7 +210,7 @@ function extract(s,sender){
  const parsedName=window.SarberkiNormalize?.nameFromText?.(t)||null;f.name=field(parsedName,parsedName?'aláírás':'',parsedName?'confirmed':'uncertain');
  const a=guestCount(t,'adult'),explicitChild=guestCount(t,'child'),party=window.SarberkiNormalize?.partyCountsFromText?.(t),c=explicitChild??(party?.children===0?{value:0,evidence:'Sárberki szabály: egyértelmű felnőttcsoport, gyermekemlítés nélkül'}:null),g=guestCount(t,'total');
  const colloquial=/\bketten\b/iu.test(t)?2:/\bhárman\b/iu.test(t)?3:/\bnégyen\b/iu.test(t)?4:/\böten\b/iu.test(t)?5:/\bhatan\b/iu.test(t)?6:null;
- const total=g?.value??(a? a.value+(c?.value||0):colloquial);
+ const total=g?.value??(party?party.guests:(a&&c?a.value+c.value:colloquial));
  const adults=a?.value??(g&&c&&g.value>=c.value?g.value-c.value:null);
  f.adults=field(adults===null?'':String(adults),a?.evidence||(adults!==null?'összlétszám − gyermekek':'') ,a?'confirmed':'uncertain');
  f.children=field(c?String(c.value):'',c?.evidence,'confirmed');const childAges=childAgesFromText(t);f.child_ages=field(childAges.join(', '),childAges.length?'életkorok a levélben':'',childAges.length?'confirmed':'uncertain');

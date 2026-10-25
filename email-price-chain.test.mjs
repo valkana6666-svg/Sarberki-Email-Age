@@ -574,3 +574,12 @@ test('closed synthetic Gmail events and manual price check do not query provider
  await h.element('check_price').onclick();
  assert.equal(h.calls,0);assert.equal(h.element('price_result').textContent,'');assert.equal(h.element('approved_price_manual').value,'');assert.equal(h.element('manual_quote_confirmed').checked,false);assert.equal(h.element('approve_price').disabled,true);
 });
+
+test('UI never treats adults plus uncounted children as a complete party',()=>{
+ for(const text of ['3 felnőtt és gyermekek','3 adults and children','3 Erwachsene und Kinder','3 odrasli in otroci']){
+  const h=harness(text,()=>assert.fail('no external call'));
+  const a=vm.runInContext("extract(document.getElementById('message').value,'')",h.context);
+  assert.equal(a.fields.children.value,'',text);
+  assert.equal(a.fields.guests.value,'',text);
+ }
+});
