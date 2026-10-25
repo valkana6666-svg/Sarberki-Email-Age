@@ -13,7 +13,7 @@ Gmail 0.90; feldolgozás/ügyazonosítás 0.95; négy nyelv 0.95; Previo 0.50; k
 
 ## Lezárt és fennmaradó bizonyíték
 Safari logout, back/refresh/direct open és kézi re-login/audit: konkrét tulajdonosi folyamat PASS, nem újranyitva. V3 internally_approved megmaradt.
-Gmail: parser/policy/dedupe és korábbi szintetikus cloud lánc kész; új böngészős eredetjelzés készülékes elfogadása nyitott.
+Gmail: parser/policy/dedupe és korábbi szintetikus cloud lánc kész; új böngészős eredetjelzés készülékes elfogadása 2026-10-25 15:15:24 Europe/Vienna olvasással PASS; szerveroldali GET-bizonylatot ez nem helyettesít. Részletek: docs/GMAIL-ORIGIN-ACCEPTANCE-2026-10-24.md.
 Négy nyelv: meglévő szintetikus paritás és fordításbizonyíték; nem minden lehetséges vendéglevél garanciája.
 Previo: élő readonly mellékhatásmentességi és hozzáférési kapu nyitott; nem kapcsoltuk be. A típusszintű készlet nem bizonyít fizikai egységpárost.
 Dézsa: külön service-approval és bizonytalan összerendelési kapuk meglévők; valós ház/időszak szolgáltatói bizonyíték nem helyettesíthető fixture-rel.
@@ -21,7 +21,7 @@ Pushover: korábbi készülékjelzés és tesztek; új küldés nem történt, h
 Mentés: docs/BACKUP-V2-CLOUD-CONTROL.md és CLOUD-ALTERNATIVE.md olvasva, kapcsoló változatlan. Snapshot 2026-10-25 08:24 Europe/Vienna, run 40172605691, commit 817212439d3ac426ca4ce1b1005015054701e832, artifact 12590478636/12590413782, lejárat 2027-01-23T07:23:48Z. Korábban igazolt GitHub SQL-restore 49 tábla és Drive raw-byte SHA256 PASS. Mai Drive-bájtokból új SQL-restore nincs. Nem indult új export vagy restore.
 
 ## A lezárás feltétlen kapui, sorrend
-1. Előkészített, egy meglévő szintetikus levélre szűkített készülékes Gmail-eredetigazolás; nincs új levélküldés vagy deploy.
+1. Gmail készülékes eredetjelzés: LEZÁRVA a dokumentált böngészős körben. Következő biztonságos fejlesztési tétel a gyermeklétszám eredetének és csatornaparitásának egyértelműsítése; meglévő szabályt nem változtatunk hallgatólagosan.
 2. A hiányzó üzleti határértékek és a Previo mellékhatásmentes olvasási szerződés bizonyítása. Hozzáférés vagy bizonyíték nélkül ismeretlen kapacitás/ár marad; nem állítunk teljes funkcionális lezárást.
 3. Dézsa tényleges forráskötése és külön jóváhagyási szolgáltatói bizonyíték a kívánt V1-scope szerint.
 4. Üzemi értesítés megbízható futási és kézbesítési határának elfogadása; új küldéshez külön konkrét próba szükséges.

@@ -31,3 +31,18 @@ Célzott teljes érintett csomag: **116 PASS / 0 FAIL / 0 SKIP** (case UI, friss
 A korábbi 5a02c38 iPhone-levél konkrét Gmail API-eredete továbbra NEM IGAZOLT. A kliens közvetlen Google-olvasása nem ad utólag visszakereshető szerveroldali olvasási bizonylatot; a meglévő tárolt ügy/Writer-audit önmagában nem bizonyítja ezt a konkrét böngészős GET-et. Nem indítunk ismételt felhős mentést vagy jóváhagyást ennek pótlására.
 
 A következő fizikai eredetigazolás csak az új, pontosan ellenőrzött deploy után kérhető, a már létező szintetikus levélre. Az eddig sikeres UI-, háttér- és v3-jóváhagyási részpróbákat nem kell újrafuttatni. Új e-mailt nem készítünk vagy küldünk. A felhasználótól legfeljebb egyetlen, előkészített readonly megnyitás kérhető; az adott levél és a művelet előfeltételeit előtte azonosítani kell.
+
+
+## Készülékes lezárás – 2026-10-25
+
+**PASS, kizárólag a böngészőben megfigyelt Gmail-eredetjelzés elfogadási körében.** A tulajdonos iPhone-képernyőképei (IMG_9247, IMG_9254; 15:16 készülékidő) a kijelölt, már meglévő szintetikus levél sikeres readonly megnyitását igazolják. Az elvárt szintetikus tartalom: 2026-10-30–2026-11-01, 2 éjszaka, 8 felnőtt, angol levél. A forráskártyán és az eseménynaplóban is a „Gmail readonly API-olvasás · böngészőben megfigyelt, szerveroldalon nem igazolt” jelölés látható.
+
+Olvasás: **2026-10-25T14:15:24.298Z**, azaz 15:15:24 Europe/Vienna. Feldolgozási esemény: **2026-10-25T14:15:24.368Z**. A forráskártyán látható üzenetazonosság megfelel az előzetesen kijelölt levélnek. A magánlevél-azonosítót, feladói címet és teljes képernyőképeket nem másoljuk a dokumentumba.
+
+Ez lezárja az új eredetjelzés készülékes elfogadásának korábbi nyitott feladatát. Nem igazolja utólag a korábbi 5a02c38 próba konkrét GET-jét; nem szerveroldali vagy kriptográfiai Gmail-bizonylat, és nem teljes Gmail–adatbázis végrehajtási lánc. A kép nem bizonyít önmagában külső küldés hiányát, kapacitást, árat vagy új jóváhagyást. Az elfogadáshoz nem végeztünk új deployt, exportot, tesztlevélküldést vagy Safari-újratesztet.
+
+### Külön nyitott paritási kérdés
+
+IMG_9253: a helyi összesítő 8 felnőtt mellett „gyermek: ?” értéket mutat; az ármező gyermekadata is üres. Forrásellenőrzés: sarberki-core.mjs/partyCountsFromText szándékosan csak a kifejezetten megadott gyermeklétszámot vetíti ki; index.html/extract is üresen hagyja a nem megadott gyermeklétszámot. A központi intake/decision út ezzel szemben egyértelmű, gyermekemlítés nélküli felnőttcsoportnál nullát használ. tests/gmail-party-parity.test.mjs ezt a különbséget jelenleg kifejezetten rögzíti.
+
+Ezért ez nem új parserregressziónak nyilvánított hiba, hanem egységesítendő szerződés/UX-kérdés. A Gmail-eredetpróbát nem akadályozza. A következő fejlesztésnek meg kell különböztetnie a kifejezett 0 gyermeket, a felnőttlétszámból levezetett 0-t és a bizonytalan gyermekemlítést. Üzleti szabályt nem változtattunk; kapacitást érintő majdani változtatáshoz teljes npm test és negatív esetek szükségesek.
