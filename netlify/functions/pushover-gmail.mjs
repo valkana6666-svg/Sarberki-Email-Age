@@ -15,7 +15,17 @@ function clean(value='', limit=120) {
   return String(value).replace(/[\r\n]+/gu,' ').replace(/\s+/gu,' ').trim().slice(0,limit);
 }
 
-export function createHandler({env = process.env, send = fetch, ledger = null, ledgerFactory = null} = {}) {
+export function createHandler({env = process.env, send = fetch, ledger = null, ledgerFactory = null, gmailTimeoutMs = 10000} = {}) {
+  if(!Number.isInteger(gmailTimeoutMs)||gmailTimeoutMs<1||gmailTimeoutMs>15000)throw Error('INVALID_GMAIL_TIMEOUT');
+  async function gmailJson(url,headers) {
+    const controller=new AbortController();let timer;
+    try {
+      return await Promise.race([(async()=>{
+        const response=await send(url,{headers,cache:'no-store',redirect:'error',signal:controller.signal});
+        return {response,data:response.ok?await response.json():null};
+      })(),new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(Error('GMAIL_TIMEOUT'));},gmailTimeoutMs);})]);
+    } finally {clearTimeout(timer);}
+  }
   return async (request, context) => {
     if (new URL(request.url).origin !== ORIGIN || context?.site?.name !== 'leafy-chimera-2403e5') {
       return json({ok:false,code:'TEST_SITE_ONLY'},403);
@@ -43,21 +53,20 @@ export function createHandler({env = process.env, send = fetch, ledger = null, l
     if (!/^Bearer\s+\S+$/iu.test(auth)) return json({ok:false,code:'GMAIL_AUTH_REQUIRED'},401);
     const gmailHeaders = {authorization:auth};
     try {
-      const profileResponse = await send('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
-        headers:gmailHeaders, cache:'no-store'
-      });
-      if (!profileResponse.ok) return json({ok:false,code:'GMAIL_AUTH_REQUIRED'},401);
-      const profile = await profileResponse.json();
+      let profileResult;
+      try {profileResult=await gmailJson('https://gmail.googleapis.com/gmail/v1/users/me/profile',gmailHeaders);}
+      catch {return json({ok:false,code:'GMAIL_UNAVAILABLE',deliveryUnknown:false},503);}
+      if (!profileResult.response.ok) return json({ok:false,code:'GMAIL_AUTH_REQUIRED'},401);
+      const profile = profileResult.data;
       if (profile?.emailAddress?.trim().toLowerCase() !== TEST_GMAIL_ACCOUNT) {
         return json({ok:false,code:'WRONG_GMAIL_ACCOUNT'},403);
       }
-
-      const messageResponse = await send(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(event.messageId)}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`,
-        {headers:gmailHeaders, cache:'no-store'}
-      );
-      if (!messageResponse.ok) return json({ok:false,code:'GMAIL_MESSAGE_UNAVAILABLE'},404);
-      const message = await messageResponse.json();
+      let messageResult;
+      try {messageResult=await gmailJson(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(event.messageId)}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`,gmailHeaders);}
+      catch {return json({ok:false,code:'GMAIL_UNAVAILABLE',deliveryUnknown:false},503);}
+      if (!messageResult.response.ok) return json({ok:false,code:'GMAIL_MESSAGE_UNAVAILABLE'},404);
+      const message = messageResult.data;
       if (!isTestInquiry(message)) return json({ok:false,code:'MESSAGE_NOT_IN_INBOX'},409);
 
       const token = env.PUSHOVER_API_TOKEN?.trim();
