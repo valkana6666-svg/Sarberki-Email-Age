@@ -82,7 +82,7 @@ export function createHandler({env = process.env, send = fetch, ledger = null} =
       });
       const data = await result.json();
       if (!result.ok || data.status !== 1)throw Error('PROVIDER_REJECTED');
-      return {accepted:true};
+      return {accepted:true,requestId:data.request};
       }});
       const outcome=await coordinator.process({tenantId:'sarberki-test',mailbox:TEST_GMAIL_ACCOUNT,messageId:event.messageId,notificationType:'gmail-new-message'});
       return json({ok:outcome.status==='accepted'||outcome.status==='suppressed',...outcome},outcome.status==='accepted'||outcome.status==='suppressed'?200:502);
