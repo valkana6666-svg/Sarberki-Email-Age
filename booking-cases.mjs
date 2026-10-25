@@ -90,7 +90,13 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
    const eventAt=Date.parse(envelope.received_at||clock());
    const latestAt=target?Math.max(...target.messages.map(m=>Date.parse(m.received_at)).filter(Number.isFinite)):-Infinity;
    if(target&&Number.isFinite(eventAt)&&eventAt<latestAt){
-    target.state.approval='pending';delete target.serverApproval;appendTubRequest(target,envelope,service,resolution);
+    const previousApproval=target.state.approval;
+    target.state.approval='pending';delete target.serverApproval;
+    if(previousApproval==='internally_approved'){
+     target.events??=[];
+     target.events.push({time:clock(),type:'Jóváhagyás érvénytelenítve; korábbi vendégüzenet utólag beolvasva',approval:'pending',previousApproval,revision:target.state.revision,scope:'local_unverified_operator'});
+    }
+    appendTubRequest(target,envelope,service,resolution);
     target.messages.push({...envelope,historical:true,received_at:envelope.received_at});target.updatedAt=clock();persist();
     return {resolution:{...resolution,status:'historical',evidence:'older_message_preserved_without_overwrite'},bookingCase:copy(target)};
    }
