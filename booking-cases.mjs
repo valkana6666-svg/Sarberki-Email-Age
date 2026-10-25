@@ -83,10 +83,13 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
     if(existing.sender!==sender(envelope.sender))throw Error('Üzenetazonosító ütközés: eltérő feladó.');
     return {resolution:{status:'duplicate',caseId:existing.id},bookingCase:copy(existing)};
    }
-   let resolution=resolveBookingCase(cases,envelope,incoming);
+   // Stage the complete ingest on a detached snapshot: failed storage writes must
+   // never leak a new message, changed facts, or revoked approval into memory.
+   const working=copy(cases);
+   let resolution=resolveBookingCase(working,envelope,incoming);
    const service=tubServiceMessage(envelope.text||''),serviceOnly=service.kind==='tub_request'&&service.serviceOnly;
-   if(approvedCaseId){const found=cases.find(c=>c.id===approvedCaseId&&c.sender===sender(envelope.sender));if(!found)throw Error('Az ügyösszekapcsolás nem igazolható.');resolution={status:'linked',caseId:found.id,evidence:'human_approved',...(serviceOnly?{serviceOnly:true}:{})};}
-   const target=resolution.status==='linked'?cases.find(c=>c.id===resolution.caseId):null;
+   if(approvedCaseId){const found=working.find(c=>c.id===approvedCaseId&&c.sender===sender(envelope.sender));if(!found)throw Error('Az ügyösszekapcsolás nem igazolható.');resolution={status:'linked',caseId:found.id,evidence:'human_approved',...(serviceOnly?{serviceOnly:true}:{})};}
+   const target=resolution.status==='linked'?working.find(c=>c.id===resolution.caseId):null;
    const eventAt=Date.parse(envelope.received_at||clock());
    const latestAt=target?Math.max(...target.messages.map(m=>Date.parse(m.received_at)).filter(Number.isFinite)):-Infinity;
    if(target&&Number.isFinite(eventAt)&&eventAt<latestAt){
@@ -97,7 +100,7 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
      target.events.push({time:clock(),type:'Jóváhagyás érvénytelenítve; korábbi vendégüzenet utólag beolvasva',approval:'pending',previousApproval,revision:target.state.revision,scope:'local_unverified_operator'});
     }
     appendTubRequest(target,envelope,service,resolution);
-    target.messages.push({...envelope,historical:true,received_at:envelope.received_at});target.updatedAt=clock();persist();
+    target.messages.push({...envelope,historical:true,received_at:envelope.received_at});target.updatedAt=clock();persist(working);
     return {resolution:{...resolution,status:'historical',evidence:'older_message_preserved_without_overwrite'},bookingCase:copy(target)};
    }
    if(target&&!/[\p{L}]/u.test(envelope.text||'')){incoming={...incoming};delete incoming.language;}
@@ -132,7 +135,7 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
    appendTubRequest(c,envelope,service,resolution);
    c.messages.push({...envelope,received_at:envelope.received_at||clock()});c.updatedAt=clock();
    c.status=resolution.status==='ambiguous'?'link_review_required':'preparing';c.linkReview=resolution.status==='ambiguous'?resolution:null;
-   if(!target)cases.push(c);persist();return {resolution,bookingCase:copy(c)};
+   if(!target)working.push(c);persist(working);return {resolution,bookingCase:copy(c)};
   },
   save(caseId,state,draft='',{event=null,requirePersistent=false}={}){
    if(requirePersistent&&typeof storage?.setItem!=='function')throw Error('Tartós helyi ügytár nem érhető el.');

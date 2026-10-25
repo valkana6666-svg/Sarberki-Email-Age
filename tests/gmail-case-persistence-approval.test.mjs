@@ -79,3 +79,56 @@ test('late-imported historical Gmail reply revokes approval with auditable event
   assert.equal(saved.state.approval,'pending');
   assert.ok(saved.events.some(e=>e.previousApproval==='internally_approved'&&e.approval==='pending'));
 });
+
+function quotaStorage(){
+ const data=new Map();
+ let fail=false;
+ return {
+   getItem:key=>data.get(key)??null,
+   setItem:(key,value)=>{if(fail)throw Error('QUOTA_EXCEEDED');data.set(key,value);},
+   failNext:()=>{fail=true;},
+   allow:()=>{fail=false;},
+ };
+}
+test('failed first Gmail import leaves no ghost case and can be retried',()=>{
+ const storage=quotaStorage();
+ let n=0;
+ const store=createBookingCaseStore({storage,id:()=>`case-${++n}`,clock:()=> '2026-10-25T18:00:00Z'});
+ storage.failNext();
+ assert.throws(()=>store.ingest(mail('new-message','thread-a','Foglalás 2 főre.'),values),/QUOTA_EXCEEDED/);
+ assert.equal(store.list().length,0);
+ assert.equal(createBookingCaseStore({storage}).list().length,0);
+ storage.allow();
+ assert.equal(store.ingest(mail('new-message','thread-a','Foglalás 2 főre.'),values).resolution.status,'new');
+ assert.equal(store.list().length,1);
+});
+test('failed linked Gmail reply preserves approved memory and disk state',()=>{
+ const storage=quotaStorage(),store=createBookingCaseStore({storage,id:()=> 'case-1',clock:()=> '2026-10-25T18:00:00Z'});
+ const first=store.ingest(mail('first','thread-a','Foglalás 2 főre.'),values);
+ store.save(first.bookingCase.id,{...first.bookingCase.state,approval:'internally_approved'},'Jóváhagyott tervezet');
+ const before=store.get(first.bookingCase.id);
+ storage.failNext();
+ assert.throws(()=>store.ingest(mail('second','thread-a','Kérdésem van.'),{unit:'Deluxe'}),/QUOTA_EXCEEDED/);
+ assert.deepEqual(store.get(first.bookingCase.id),before);
+ assert.deepEqual(createBookingCaseStore({storage}).get(first.bookingCase.id),before);
+ storage.allow();
+ const result=store.ingest(mail('second','thread-a','Kérdésem van.'),{unit:'Deluxe'});
+ assert.equal(result.bookingCase.state.approval,'pending');
+ assert.equal(result.bookingCase.messages.length,2);
+});
+test('failed historical Gmail reply does not revoke approval or add audit event',()=>{
+ const storage=quotaStorage(),store=createBookingCaseStore({storage,id:()=> 'case-1',clock:()=> '2026-10-25T18:00:00Z'});
+ const first=store.ingest(mail('latest','thread-a','Foglalás 2 főre.'),values);
+ store.save(first.bookingCase.id,{...first.bookingCase.state,approval:'internally_approved'},'Jóváhagyott tervezet');
+ const before=store.get(first.bookingCase.id);
+ const old={...mail('historical','thread-a','Régebbi kérdés.'),received_at:'2026-10-24T16:00:00Z'};
+ storage.failNext();
+ assert.throws(()=>store.ingest(old,values),/QUOTA_EXCEEDED/);
+ assert.deepEqual(store.get(first.bookingCase.id),before);
+ assert.deepEqual(createBookingCaseStore({storage}).get(first.bookingCase.id),before);
+ storage.allow();
+ const result=store.ingest(old,values);
+ assert.equal(result.resolution.status,'historical');
+ assert.equal(result.bookingCase.state.approval,'pending');
+ assert.equal(result.bookingCase.messages.length,2);
+});
