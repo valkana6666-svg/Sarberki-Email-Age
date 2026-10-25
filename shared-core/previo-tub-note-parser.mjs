@@ -20,9 +20,16 @@ export function parsePrevioTubNote(note,{accommodationHouse=null}={}) {
   if(date.getUTCFullYear()!==year||date.getUTCMonth()!==month-1||date.getUTCDate()!==day)return unknown('INVALID_DATE');
   const times=[...text.matchAll(/\b([01]?\d|2[0-3]):([0-5]\d)\b/gu)];
   if(times.length!==1)return unknown('TIME_UNVERIFIED');
-  const durations=[...text.matchAll(/\b(\d{1,3})\s*(?:órára|órás|óra|h)\b/giu)];
+  // Consume an entire numeric duration before accepting a positive integer.
+  // Never reinterpret fractional/signed/range notation or a grouped thousands
+  // suffix as a smaller duration. The preceding note's date/time stays separate.
+  const durationText=text.replace(dates[0][0],' ').replace(times[0][0],' ');
+  const durations=[...durationText.matchAll(/(?<![\p{L}\p{N}.,:/+\-−–—±])([+\-−–—±]?\s*\d+(?:(?:\s*[.,:/+\-−–—]\s*\d+)|(?:\s+\d+))*)\s*(?:órára|órás|óra|h)\b/giu)];
   if(durations.length!==1)return unknown('DURATION_UNVERIFIED');
-  const durationHours=Number(durations[0][1]);
+  const numericDuration=durations[0][1].trim();
+  if(!/^\d{1,3}$/.test(numericDuration))return unknown('INVALID_DURATION');
+  const durationHours=Number(numericDuration);
   if(durationHours<1||durationHours>72)return unknown('INVALID_DURATION');
   return Object.freeze({status:'CANDIDATE',tubHouse,tubResourceId:`tub-house-${tubHouse}`,accommodationHouse,startLocal:`${ys}-${pad(month)}-${pad(day)}T${pad(times[0][1])}:${times[0][2]}`,durationHours,timezone:'Europe/Budapest',availabilityVerified:false});
 }
+
