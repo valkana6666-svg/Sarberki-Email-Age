@@ -9,7 +9,15 @@ A telepített kapu és a böngészős összehasonlítás csak külön ellenőrz�
 - E-mail küldése, valódi foglalás létrehozása vagy módosítása továbbra is tiltott.
 - A nyilvános kapacitás típus-pool, nem konkrét szabad ház vagy egyező A/B/C-ház bizonyítéka.
 
-## Biztonságos megnyitás – kizárólag tesztprojekten
+## Kötelező előfeltétel – 2026-10-25-i pontosítás
+
+Az alábbi konfigurációs lépések jelenleg NEM végrehajtható aktiválási utasítások. Előbb a konkrét kapacitásművelet dokumentált mellékhatásmentességét kell igazolni: nem hoz létre foglalást, ideiglenes készletzárolást vagy egyéb írást. A teszthost, a readonly elnevezés, a token megléte vagy egy korábbi sikeres válasz önmagában nem bizonyítja ezt. Árlekérdezésre külön szerződés és bizonyíték szükséges.
+
+Szükséges átadási bizonyíték: választott API-család és verzió, konkrét művelet dokumentációja, a Sárberki hozzáférése és tesztkörnyezete, szolgáltatói mellékhatásmentességi igazolás, fizikai egység–szobatípus megfeleltetés. Titkos kulcsot nem kell és nem szabad a dokumentációba vagy chatbe másolni. Részletes lista: PREVIO-API-HANDOFF-2026-10-21.md.
+
+Ezek hiányában a kapu zárt marad; nincs élő lekérés, workflow-újraindítás vagy deploy. A V1 offline fejlesztése ettől folytatható. A történeti kapacitás-összevetéseket nem töröljük, de nem tekintjük jelenlegi aktiválási engedélynek.
+
+## Későbbi konfiguráció – csak az előfeltételek igazolása után, tesztprojekten
 1. Netlify **tesztprojekt** (leafy-chimera-2403e5) → Environment variables:
    `PREVIO_CAPACITY_READ_SAFETY_VERIFIED=true`.
 2. Ugyanott egy másik, titkos, véletlenszerű, legalább 32 karakteres érték:
