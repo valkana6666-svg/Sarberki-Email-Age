@@ -22,7 +22,8 @@ const mail=(id,thread,text)=>({
 });
 const setup=()=>{
   const storage=memoryStorage();
-  const store=createBookingCaseStore({storage,clock:()=> '2026-10-25T17:00:00.000Z',id:()=> 'case-1'});
+  let nextId=0;
+  const store=createBookingCaseStore({storage,clock:()=> '2026-10-25T17:00:00.000Z',id:()=> `case-${++nextId}`});
   return {store,storage};
 };
 test('new Gmail reply revokes approval and keeps the persisted case pending',()=>{
