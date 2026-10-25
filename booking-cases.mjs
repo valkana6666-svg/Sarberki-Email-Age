@@ -7,6 +7,9 @@ const copy=v=>JSON.parse(JSON.stringify(v));
 const list=v=>String(v||'').match(/<[^>]+>/g)||[];
 const sender=v=>String(v||'').trim().toLowerCase();
 const present=v=>v!==''&&v!=null;
+// Provider message/thread identifiers are scoped to the mailbox that supplied them.
+// Legacy envelopes without a mailbox remain compatible with existing local data.
+const sameMailbox=(a,b)=>!a?.mailbox_id||!b?.mailbox_id||String(a.mailbox_id)===String(b.mailbox_id);
 function resolveTubCase(cases,envelope,request){
  const from=sender(envelope.sender),owned=cases.filter(c=>c.sender===from&&from&&c.caseKind!=='service_link_review');
  const uncertain=(evidence,candidates=owned)=>({status:'ambiguous',candidates:candidates.map(c=>c.id),evidence,serviceOnly:true});
@@ -15,7 +18,7 @@ function resolveTubCase(cases,envelope,request){
  const refs=[...list(envelope.in_reply_to),...(Array.isArray(envelope.references)?envelope.references:list(envelope.references))];
  const ref=request.requestedBookingReference;
  const byReference=owned.filter(c=>ref&&String(trustedTubContext(c)?.reference||'').toUpperCase()===ref);
- const direct=owned.filter(c=>envelope.thread_id&&c.messages.some(m=>m.thread_id===envelope.thread_id)||c.messages.some(m=>m.rfc_message_id&&refs.includes(m.rfc_message_id)));
+ const direct=owned.filter(c=>c.messages.some(m=>sameMailbox(m,envelope)&&((envelope.thread_id&&m.thread_id===envelope.thread_id)||(m.rfc_message_id&&refs.includes(m.rfc_message_id)))));
  if(direct.length>1||byReference.length>1)return uncertain('conflicting_service_identity');
  const chosen=direct[0]||byReference[0];
  if(!chosen)return uncertain('service_link_unverified');
@@ -41,9 +44,10 @@ export function resolveBookingCase(cases,envelope,values={}){
  const owned=cases.filter(c=>c.sender===from&&from);
  // An explicit different Gmail thread ID cannot be overridden by RFC reply references.
  const direct=owned.filter(c=>{
-  const knownThreads=c.messages.map(m=>m.thread_id).filter(Boolean);
+  const scopedMessages=c.messages.filter(m=>sameMailbox(m,envelope));
+  const knownThreads=scopedMessages.map(m=>m.thread_id).filter(Boolean);
   if(envelope.thread_id&&knownThreads.length&&!knownThreads.includes(envelope.thread_id))return false;
-  return (envelope.thread_id&&c.messages.some(m=>m.thread_id===envelope.thread_id))||c.messages.some(m=>m.rfc_message_id&&refs.includes(m.rfc_message_id));
+  return (envelope.thread_id&&scopedMessages.some(m=>m.thread_id===envelope.thread_id))||scopedMessages.some(m=>m.rfc_message_id&&refs.includes(m.rfc_message_id));
  });
  if(direct.length&&/(?:\b(?:új|másik|külön)\s+(?:önálló\s+)?foglalá|\b(?:new|separate|another)\s+(?:booking|inquiry)|\b(?:neue|separate)\s+(?:Buchung|Anfrage)|\b(?:nova|ločena)\s+rezervacija)/iu.test(envelope.text||''))return {status:'ambiguous',candidates:direct.map(c=>c.id),evidence:'explicit_independent_request'};
  if(direct.length===1)return {status:'linked',caseId:direct[0].id,evidence:'thread_or_reference'};
@@ -78,7 +82,7 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
   list:()=>copy(cases),get:caseId=>copy(cases.find(c=>c.id===caseId)||null),
   ingest(envelope,incoming,{intent='booking_request',approvedCaseId=null}={}){
    if(envelope.tenantId&&envelope.tenantId!==tenantId)throw Error('Idegen vállalkozás üzenete.');
-   const existing=cases.find(c=>envelope.message_id&&c.messages.some(m=>m.message_id===envelope.message_id));
+   const existing=cases.find(c=>envelope.message_id&&c.messages.some(m=>sameMailbox(m,envelope)&&m.message_id===envelope.message_id));
    if(existing){
     if(existing.sender!==sender(envelope.sender))throw Error('Üzenetazonosító ütközés: eltérő feladó.');
     return {resolution:{status:'duplicate',caseId:existing.id},bookingCase:copy(existing)};

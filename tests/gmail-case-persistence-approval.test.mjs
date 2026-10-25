@@ -132,3 +132,27 @@ test('failed historical Gmail reply does not revoke approval or add audit event'
  assert.equal(result.bookingCase.state.approval,'pending');
  assert.equal(result.bookingCase.messages.length,2);
 });
+
+test('same provider message ID in separate mailboxes is not treated as a duplicate',()=>{
+ const {store}=setup();
+ const a=store.ingest({...mail('provider-id','thread-a','Foglalás 2 főre.'),mailbox_id:'inbox-a'},values);
+ const b=store.ingest({...mail('provider-id','thread-a','Második postafiók üzenete.'),mailbox_id:'inbox-b'},values);
+ assert.notEqual(b.resolution.status,'duplicate');
+ assert.notEqual(a.bookingCase.id,b.bookingCase.id);
+ assert.equal(store.list().length,2);
+});
+test('same sender and Gmail thread string in distinct mailboxes cannot auto-link',()=>{
+ const {store}=setup();
+ const a=store.ingest({...mail('id-a','same-thread','Első levél.'),mailbox_id:'inbox-a'},values);
+ const b=store.ingest({...mail('id-b','same-thread','Második postafiók.'),mailbox_id:'inbox-b'},values);
+ assert.notEqual(b.resolution.status,'linked');
+ assert.notEqual(a.bookingCase.id,b.bookingCase.id);
+ assert.equal(store.get(a.bookingCase.id).messages.length,1);
+});
+test('same mailbox thread and sender still link normally',()=>{
+ const {store}=setup();
+ const a=store.ingest({...mail('id-a','same-thread','Első levél.'),mailbox_id:'inbox-a'},values);
+ const b=store.ingest({...mail('id-b','same-thread','Második levél.'),mailbox_id:'inbox-a'},values);
+ assert.equal(b.resolution.status,'linked');
+ assert.equal(a.bookingCase.id,b.bookingCase.id);
+});
