@@ -1,4 +1,6 @@
 import {createPushoverDeliveryCoordinator} from '../../shared-core/pushover-delivery-coordinator.mjs';
+import {createPushoverLedger} from './_shared/pushover-ledger.mjs';
+import {createPushoverRpc} from './_shared/pushover-rpc.mjs';
 import {TEST_GMAIL_ACCOUNT, isTestInquiry} from '../../gmail-policy.mjs';
 
 const ORIGIN = 'https://leafy-chimera-2403e5.netlify.app';
@@ -13,7 +15,7 @@ function clean(value='', limit=120) {
   return String(value).replace(/[\r\n]+/gu,' ').replace(/\s+/gu,' ').trim().slice(0,limit);
 }
 
-export function createHandler({env = process.env, send = fetch, ledger = null} = {}) {
+export function createHandler({env = process.env, send = fetch, ledger = null, ledgerFactory = null} = {}) {
   return async (request, context) => {
     if (new URL(request.url).origin !== ORIGIN || context?.site?.name !== 'leafy-chimera-2403e5') {
       return json({ok:false,code:'TEST_SITE_ONLY'},403);
@@ -33,7 +35,10 @@ export function createHandler({env = process.env, send = fetch, ledger = null} =
     }
 
     if(env.PUSHOVER_ENABLED !== 'true')return json({ok:false,code:'NOT_ENABLED'},503);
-    if(!ledger)return json({ok:false,code:'LEDGER_REQUIRED'},503);
+    let activeLedger=ledger;
+    try { if(!activeLedger && ledgerFactory)activeLedger=ledgerFactory(); }
+    catch { return json({ok:false,code:'INVALID_LEDGER_CONFIGURATION'},503); }
+    if(!activeLedger)return json({ok:false,code:'LEDGER_REQUIRED'},503);
     const auth = request.headers.get('authorization') || '';
     if (!/^Bearer\s+\S+$/iu.test(auth)) return json({ok:false,code:'GMAIL_AUTH_REQUIRED'},401);
     const gmailHeaders = {authorization:auth};
@@ -67,7 +72,7 @@ export function createHandler({env = process.env, send = fetch, ledger = null} =
       const subject = clean(headers.subject || '(nincs tárgy)');
       const from = clean(headers.from || '(ismeretlen feladó)');
       if(message.id !== event.messageId)return json({ok:false,code:'MESSAGE_ID_MISMATCH'},409);
-      const coordinator=createPushoverDeliveryCoordinator({enabled:true,ledger,sender:async()=>{
+      const coordinator=createPushoverDeliveryCoordinator({enabled:true,ledger:activeLedger,sender:async()=>{
       const result = await send('https://api.pushover.net/1/messages.json', {
         method:'POST',
         headers:{'content-type':'application/x-www-form-urlencoded'},
@@ -92,8 +97,21 @@ export function createHandler({env = process.env, send = fetch, ledger = null} =
   };
 }
 
-export default createHandler();
+// Only the protected server entry point resolves credentials. Both switches default off.
+// Dedicated notification configuration must never be shared with browser/case-store clients.
+export function createRuntimeHandler({env=process.env,send=fetch}={}) {
+  return createHandler({env,send,ledgerFactory:()=>{
+    if(env.PUSHOVER_LEDGER_ENABLED !== 'true')return null;
+    return createPushoverLedger({rpc:createPushoverRpc({
+      url:env.PUSHOVER_SUPABASE_URL,
+      key:env.PUSHOVER_SUPABASE_SERVICE_ROLE_KEY,
+      send
+    })});
+  }});
+}
+export default createRuntimeHandler();
 export const config = {
   path:'/api/pushover-gmail',
   rateLimit:{windowLimit:60,windowSize:60,aggregateBy:'domain',action:'rate_limit'}
 };
+
