@@ -19,3 +19,19 @@ for(const [name,a,b] of [
   ['reference without existing sender',{rfc_message_id:'<x@y>'},{in_reply_to:'<x@y>',from_email:sender}],
 ])test(name+' fails closed',()=>assert.deepEqual(sameBookingConversation(a,b),{matched:false,reason:'SENDER_UNVERIFIED'}));
 test('sender normalization keeps safe positive match',()=>assert.equal(sameBookingConversation({threadId:'t1',from_email:' Alice@Example.test '},{threadId:'t1',from_email:'alice@example.test'}).matched,true));
+
+test('normalized Gmail from_email wins over display-name sender for legitimate reply',()=>assert.deepEqual(
+  sameBookingConversation(
+    {thread_id:'t-from-header',sender:'Alice Example <alice@example.test>',from_email:'alice@example.test'},
+    {thread_id:'t-from-header',from_email:'alice@example.test'}
+  ),{matched:true,reason:'THREAD_ID'}));
+test('normalized Gmail from_email still prevents cross-sender merge',()=>assert.deepEqual(
+  sameBookingConversation(
+    {thread_id:'t-from-header',sender:'Alice Example <alice@example.test>',from_email:'alice@example.test'},
+    {thread_id:'t-from-header',sender:'Alice Example <alice@example.test>',from_email:'bob@example.test'}
+  ),{matched:false,reason:'SENDER_MISMATCH'}));
+test('missing from_email keeps strict sender mismatch',()=>assert.deepEqual(
+  sameBookingConversation(
+    {thread_id:'t-from-header',sender:'Alice Example <alice@example.test>'},
+    {thread_id:'t-from-header',sender:'alice@example.test'}
+  ),{matched:false,reason:'SENDER_MISMATCH'}));
