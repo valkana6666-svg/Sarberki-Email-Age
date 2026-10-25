@@ -156,3 +156,27 @@ test('same mailbox thread and sender still link normally',()=>{
  assert.equal(b.resolution.status,'linked');
  assert.equal(a.bookingCase.id,b.bookingCase.id);
 });
+
+
+test('known mailbox cannot treat legacy missing-mailbox message ID as duplicate',()=>{
+ const {store}=setup();
+ const first=store.ingest(mail('same-id','legacy-thread','Régi üzenet.'),values);
+ const second=store.ingest({...mail('same-id','legacy-thread','Másik postafiók.'),mailbox_id:'known-inbox'},values);
+ assert.notEqual(second.resolution.status,'duplicate');
+ assert.notEqual(second.bookingCase.id,first.bookingCase.id);
+ assert.equal(store.list().length,2);
+});
+test('legacy missing mailbox does not auto-link to known mailbox thread',()=>{
+ const {store}=setup();
+ const a=store.ingest({...mail('known-a','thread-x','Első üzenet.'),mailbox_id:'known-inbox'},values);
+ const b=store.ingest(mail('legacy-b','thread-x','Régi levél.'),values);
+ assert.notEqual(b.resolution.status,'linked');
+ assert.notEqual(a.bookingCase.id,b.bookingCase.id);
+});
+test('two legacy missing-mailbox messages preserve local same-thread behavior',()=>{
+ const {store}=setup();
+ const a=store.ingest(mail('legacy-1','thread-old','Első levél.'),values);
+ const b=store.ingest(mail('legacy-2','thread-old','Második levél.'),values);
+ assert.equal(b.resolution.status,'linked');
+ assert.equal(a.bookingCase.id,b.bookingCase.id);
+});

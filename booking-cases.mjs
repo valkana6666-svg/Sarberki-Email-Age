@@ -8,8 +8,11 @@ const list=v=>String(v||'').match(/<[^>]+>/g)||[];
 const sender=v=>String(v||'').trim().toLowerCase();
 const present=v=>v!==''&&v!=null;
 // Provider message/thread identifiers are scoped to the mailbox that supplied them.
-// Legacy envelopes without a mailbox remain compatible with existing local data.
-const sameMailbox=(a,b)=>!a?.mailbox_id||!b?.mailbox_id||String(a.mailbox_id)===String(b.mailbox_id);
+// Two legacy envelopes with no mailbox may still match; mixed known/unknown must not.
+const sameMailbox=(a,b)=>{
+ const left=String(a?.mailbox_id||'').trim(),right=String(b?.mailbox_id||'').trim();
+ return left===right;
+};
 function resolveTubCase(cases,envelope,request){
  const from=sender(envelope.sender),owned=cases.filter(c=>c.sender===from&&from&&c.caseKind!=='service_link_review');
  const uncertain=(evidence,candidates=owned)=>({status:'ambiguous',candidates:candidates.map(c=>c.id),evidence,serviceOnly:true});
