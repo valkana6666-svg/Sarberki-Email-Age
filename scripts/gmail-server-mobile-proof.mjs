@@ -43,7 +43,7 @@ try{
   assert.match(await page.locator('#server_preview_capacity').innerText(),/NEM IGAZOLT/);report.checks.push({engine,test:'revision-edit-invalidates-preview',result:'PASS'});
   // Full Gmail manager login -> synthetic case picker -> stored draft preview -> logout,
   // exercised in both 390px Chromium and WebKit; only an intercepted mock transport.
-  const mock={authenticated:false,calls:[]},csrf='ab'.repeat(32),caseId='case-synthetic-mobile';
+  const mock={authenticated:false,calls:[],expiresAt:null},csrf='ab'.repeat(32),caseId='case-synthetic-mobile';
   await context.route('**/.netlify/functions/**',async route=>{
    const req=route.request(),url=new URL(req.url()),method=req.method();
    const body=method==='POST'?JSON.parse(req.postData()||'{}'):null;
@@ -54,8 +54,10 @@ try{
     if(method==='POST'&&body?.action==='login'){
      assert.equal(body.email,'reader@synthetic.invalid');
      assert.equal(body.password,'SYNTHETIC_BROWSER_PASSWORD_NOT_REAL');
-     mock.authenticated=true;
-     payload={authenticated:true,tenantId:'sarberki-test',csrfToken:csrf,expiresAt:new Date(Date.now()+3600000).toISOString()};
+     mock.authenticated=true;mock.expiresAt=new Date(Date.now()+3600000).toISOString();
+     payload={authenticated:true,tenantId:'sarberki-test',csrfToken:csrf,expiresAt:mock.expiresAt};
+    }else if(method==='GET'&&mock.authenticated){
+     record.action='restore';payload={authenticated:true,tenantId:'sarberki-test',csrfToken:csrf,expiresAt:mock.expiresAt};
     }else if(method==='POST'&&body?.action==='logout'){
      assert.equal(req.headers()['x-csrf-token'],csrf);
      mock.authenticated=false;payload={authenticated:false};
@@ -110,8 +112,8 @@ try{
   assert.equal(await page.locator('#server_edit_text').inputValue(),'');
   assert.equal(await page.locator('#operator_case_select').isDisabled(),true);
   assert.equal(await page.evaluate(()=>window.SarberkiCaseStoreSession===null),true);
-  assert.deepEqual(mock.calls.map(x=>x.method),['POST','GET','GET','POST']);
-  assert.deepEqual(mock.calls.map(x=>x.action),['login','list','preview-draft','logout']);
+  assert.deepEqual(mock.calls.map(x=>x.method),['POST','GET','GET','GET','POST']);
+  assert.deepEqual(mock.calls.map(x=>x.action),['login','restore','list','preview-draft','logout']);
   report.apiMethods.push(...mock.calls.map(x=>x.method));
   report.checks.push({engine,test:'mock-logout-clears-preview-and-prevents-write',result:'PASS',auth:'synthetic'});
   await browser.close();browser=null;

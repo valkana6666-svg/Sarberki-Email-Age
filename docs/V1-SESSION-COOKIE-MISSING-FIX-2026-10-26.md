@@ -40,11 +40,11 @@ Elsődleges Netlify-szerződés: https://docs.netlify.com/build/functions/lambda
 
 Célzott: `node --test tests/operator-cookie-session.test.mjs tests/operator-login-ui.test.mjs tests/chatbot-operator-session.test.mjs tests/cookie-json-request.test.mjs tests/exact-receipt-offline.test.mjs` → **113 PASS / 0 FAIL / 0 SKIP**. Az exact-receipt teszt elkülönített PostgreSQL-motoros, a session Auth/REST szintetikus.
 
-Böngésző: `scripts/operator-cookie-browser-proof.mjs` valódi Chromium → **6 PASS / 0 FAIL**, külső kérés **0**. Cookie-létrehozás, reload/új context, védett Reader, revoke/logout, kétlapos késői401 és natív Web Locks. Nem tényleges iPhone- vagy hosted-bizonyíték.
+Böngésző: `scripts/operator-cookie-browser-proof.mjs` valódi Chromium → **6 PASS / 0 FAIL**, külső kérés **0**. Cookie-létrehozás, reload/új context, védett Reader, revoke/logout, kétlapos késői401 és natív Web Locks. Nem tényleges iPhone- vagy hosted-bizonyíték. A meglévő Gmail és Writer/Approver mobilproof mockjait az új kötelező restore-hoz és a session változatlan abszolút lejáratához igazítottuk; helyi Chromiumon a két script külön 6 és 14 PASS. Ezek csak mock UI-bizonyítékok, nem új hosted mentések/jóváhagyások. A CI mindkét motort futtatja.
 
 Teljes helyi `npm test`: **2224 PASS / 0 FAIL / 0 SKIP**. Az adott commit GitHub CI-je a végleges átadási jelentésben. A teljes regresszió részeként a meglévő tesztek futnak, külön ár-/mentésfejlesztés vagy új mentés nem indul.
 
-Programfájlok: `shared-core/operator-cookie-session.mjs`, `shared-core/cookie-json-request.mjs`, `operator-login-ui.mjs`, `sarberki-chatbot-project/operator-session.mjs`. Bizonyíték: a fenti négy célzott tesztfájl és `scripts/operator-cookie-browser-proof.mjs`; az exact-receipt tesztet nem módosítottuk. Ár-, mentési-, Netlify-konfigurációs, main- és production-fájl nincs módosítva. A korábbi 2027-es munka elkülönített stashben megmaradt.
+Programfájlok: `shared-core/operator-cookie-session.mjs`, `shared-core/cookie-json-request.mjs`, `operator-login-ui.mjs`, `sarberki-chatbot-project/operator-session.mjs`. Bizonyíték: a fenti négy célzott tesztfájl, `scripts/operator-cookie-browser-proof.mjs`, `scripts/gmail-server-mobile-proof.mjs` és `scripts/operator-write-approval-mobile-proof.mjs`; az exact-receipt tesztet nem módosítottuk. Ár-, mentési-, Netlify-konfigurációs, main- és production-fájl nincs módosítva. A korábbi 2027-es munka elkülönített stashben megmaradt.
 
 ## Egyetlen Work tesztkiadás
 

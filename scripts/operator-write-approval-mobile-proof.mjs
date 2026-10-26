@@ -27,9 +27,9 @@ try{
     if(url.pathname.endsWith('/operator-session')){
      if(action==='login'){
       assert.equal(body.password,'SYNTHETIC_NOT_A_REAL_PASSWORD');
-      state.role=body.email.split('@')[0];assert.ok(['writer','reader','approver'].includes(state.role));
+      state.role=body.email.split('@')[0];state.expiresAt=new Date(Date.now()+3600000).toISOString();assert.ok(['writer','reader','approver'].includes(state.role));
      }else if(action==='logout'){assert.equal(req.headers()['x-csrf-token'],csrf);state.role=null;}
-     if(state.role)result={authenticated:true,tenantId:'sarberki-test',csrfToken:csrf,expiresAt:new Date(Date.now()+3600000).toISOString()};
+     if(state.role)result={authenticated:true,tenantId:'sarberki-test',csrfToken:csrf,expiresAt:state.expiresAt};
      else{status=action==='logout'?200:401;result=action==='logout'?{authenticated:false}:{error:'AUTH_REQUIRED'};}
     }else if(url.pathname.endsWith('/booking-cases')){
      assert.equal(req.headers()['x-csrf-token'],csrf);
