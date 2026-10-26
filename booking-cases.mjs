@@ -88,6 +88,8 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
    const existing=cases.find(c=>envelope.message_id&&c.messages.some(m=>sameMailbox(m,envelope)&&m.message_id===envelope.message_id));
    if(existing){
     if(existing.sender!==sender(envelope.sender))throw Error('Üzenetazonosító ütközés: eltérő feladó.');
+    const original=existing.messages.find(m=>sameMailbox(m,envelope)&&m.message_id===envelope.message_id);
+    if(original.text!==envelope.text)throw Error('Üzenetazonosító ütközés: eltérő levéltartalom.');
     return {resolution:{status:'duplicate',caseId:existing.id},bookingCase:copy(existing)};
    }
    // Stage the complete ingest on a detached snapshot: failed storage writes must
