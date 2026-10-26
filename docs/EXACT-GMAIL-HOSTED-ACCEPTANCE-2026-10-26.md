@@ -1,0 +1,13 @@
+# Exact Gmail hosted acceptance — 2026-10-26
+
+Source d0709d7d58895734582f6d02eade87d02b4bac5b: CI 40323778435 SUCCESS, reported complete suite 2176 PASS / 0 FAIL / 0 SKIP. Work independently read CI status. One explicit release 556d20f6e0b80e1a1932108f1e63896e485e85cf, same source tree; hosted browser BUILD 556d20f verified.
+
+Work reused its own operator browser. Existing Gmail readonly consent renewed with prior owner permission; no owner browser login needed. The historically authorized synthetic Gmail message was selected through the application's Gmail list. Dates 2026-10-30 to 2026-11-01, 2 nights, 8 adults, 0 children. No body, header or private configuration values are included here.
+
+Exact Writer action returned: existing privately authorized synthetic cloud case 13c8ecb7-f836-4e2c-9833-d58ee96f2dda, revision 1. This is successful authorized dedup, NOT a new insertion. A first click immediately after asynchronous message opening left the default status unchanged; no success was inferred. A subsequent explicit click after loaded readiness produced the result above.
+
+After a full page reload Work manually entered the same case ID in the Reader UI, checked it, and requested the server preview. Actual server read: case revision 1, facts revision 0, stored draft revision matches. Creation audit v1 read back, SHA256 b04dc79ee54c1de22db89e3936b8ee631ef4f3347ba160a14a8eac6878e92b3c. Preview approval pending; capacity and price unverified. No approval action was initiated.
+
+Observed exact Gmail -> authorized cloud dedup -> full reload -> Reader revision/draft/audit readback: PASS on this build. Original historical FORBIDDEN root field cause is NOT established: it did not reproduce on the authenticated new release, so no mismatch category or field was returned. Do not assert a private-config repair, body/header normalization, new SQL write or generic platform completion. No private config changed. The code change moved diagnosis behind fresh Auth/CSRF/Writer, but this observation alone cannot distinguish stale session from earlier request readiness or other historical cause.
+
+Unauthorized/modified-message and byte equality rejection: source CI evidence only in this run; no new hosted negative test claimed. Main, production and restore untouched; no approval, email, Pushover, Previo action, booking or restore. Remaining: historical root-cause attribution if reproducible, cached legacy intent issue and broader V1 acceptance gates. The 85% engineering estimate is not increased by assigning arbitrary weights; this particular combined hosted evidence gap is now closed.
