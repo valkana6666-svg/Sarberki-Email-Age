@@ -23,3 +23,9 @@ test('push CI has no hosted dependency and deployed verification is explicit opt
   assert.match(workflow, /github\.event_name == 'workflow_dispatch' && inputs\.verify_deployed == true/);
   assert.doesNotMatch(workflow, /netlify deploy|api\.netlify\.com|build_hooks/);
 });
+
+test('restore site skips routine pushes and V1 releases on every branch', () => {
+  for (const BRANCH of ['gmail-test-subject-allowlist', 'main', ''])
+    for (const message of ['', 'Routine update', '[skip netlify] Update', '[netlify-test-release] Verified V1 release'])
+      assert.equal(shouldSkip({ SITE_NAME: 'sarberki-v1-restore-20261024', BRANCH }, message), true);
+});
