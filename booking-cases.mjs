@@ -90,6 +90,17 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
     if(existing.sender!==sender(envelope.sender))throw Error('Üzenetazonosító ütközés: eltérő feladó.');
     const original=existing.messages.find(m=>sameMailbox(m,envelope)&&m.message_id===envelope.message_id);
     if(original.text!==envelope.text)throw Error('Üzenetazonosító ütközés: eltérő levéltartalom.');
+    // A corrected parser must not reuse a legacy general-question approval path.
+    // Reclassify only a single, byte-identical message; never overwrite follow-ups.
+    if(existing.messages.length===1&&['other','general_question'].includes(existing.state.intent)&&intent==='booking_request'){
+     const working=copy(cases),target=working.find(c=>c.id===existing.id);
+     const previousRevision=target.state.revision;
+     target.state=createCaseState({original:target.state.original,intent,values:target.state.values,now:target.state.now});
+     target.state.revision=previousRevision+1;delete target.serverApproval;
+     target.events??=[];target.events.push({time:clock(),type:'Régi helyi szállásigény újraosztályozva; új ellenőrzés szükséges',approval:'pending',revision:target.state.revision,scope:'local_unverified_operator'});
+     target.updatedAt=clock();persist(working);
+     return {resolution:{status:'duplicate',caseId:target.id},bookingCase:copy(target)};
+    }
     return {resolution:{status:'duplicate',caseId:existing.id},bookingCase:copy(existing)};
    }
    // Stage the complete ingest on a detached snapshot: failed storage writes must

@@ -1,0 +1,5 @@
+# Legacy local intent repair
+
+Exact duplicate ingest previously reused general_question state even when the corrected browser parser classified the same message as booking_request. Only a single byte-identical message is reclassified; sender/mailbox/body collision checks remain before migration. Existing values are preserved in a newly pending case state; prior quote, availability, terms and server approval are not reused. Revision and local audit advance. Persistence uses a detached snapshot: failure does not change in-memory state. Follow-up cases and already-correct booking states are not reclassified. This is local storage only, not cloud Auth/RLS or server approval.
+
+Full local suite 2178 PASS / 0 FAIL / 0 SKIP with first two new tests. An additional targeted persistence-failure and prior-approval invalidation test then added: targeted final suite 3 PASS / 0 FAIL / 0 SKIP. No need to add these overlapping totals. git diff --check PASS. Hosted acceptance remains pending; no deploy in this commit. No live Previo, email, notification or SQL operation.
