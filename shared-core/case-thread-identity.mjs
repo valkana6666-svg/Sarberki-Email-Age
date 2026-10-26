@@ -6,6 +6,12 @@ const refs = value => (Array.isArray(value) ? value : norm(value).split(/\s+/))
   .map(messageId).filter(Boolean);
 const record = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const stringList = value => Array.isArray(value) && Array.from(value).every(item => typeof item === 'string');
+function scopeValue(value,keys){
+  const supplied=keys.map(key=>value[key]).filter(item=>item!=null);
+  if(supplied.some(item=>typeof item!=='string'))return {valid:false};
+  const known=[...new Set(supplied.map(norm).filter(Boolean))];
+  return {valid:known.length<=1,value:known[0]||''};
+}
 export function sameBookingConversation(existing={}, incoming={}){
   // Validate collection shapes before any early thread match. A string must
   // never be spread into individual message-ID characters, or bad data thrown.
@@ -13,6 +19,13 @@ export function sameBookingConversation(existing={}, incoming={}){
     (existing.messageIds!=null&&!stringList(existing.messageIds))||
     (incoming.references!=null&&typeof incoming.references!=='string'&&!stringList(incoming.references)))
     return {matched:false,reason:'INVALID_IDENTITY_DATA'};
+  // Provider IDs are not global. Optional legacy scopes may both be absent,
+  // but known/unknown, conflicting aliases or different scopes never match.
+  for(const [name,keys] of [['TENANT',['tenantId','tenant_id']],['MAILBOX',['mailboxId','mailbox_id']]]){
+    const previous=scopeValue(existing,keys),reply=scopeValue(incoming,keys);
+    if(!previous.valid||!reply.valid)return {matched:false,reason:'INVALID_'+name+'_IDENTITY'};
+    if(previous.value!==reply.value)return {matched:false,reason:name+'_MISMATCH'};
+  }
   const previousSender=norm(existing.from_email||existing.sender).toLowerCase();
   const replySender=norm(incoming.from_email||incoming.sender).toLowerCase();
   if(!previousSender || !replySender) return {matched:false,reason:'SENDER_UNVERIFIED'};
