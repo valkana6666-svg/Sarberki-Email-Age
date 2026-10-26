@@ -35,3 +35,10 @@ Ez a fájl kizárólag bizonyíték- és teendőnyilvántartás. Nem tartalmaz f
 ## Biztonságos következő végrehajtási lépés
 
 A meglévő backup-workflow és a `github-bridge` relay implementációjának feltárása után olyan felhős folyamat szükséges, amely minden nap **titkosított artifactot** másol Drive-ra, majd pontosan azt visszaolvassa és ellenőrzi. Új OAuth köröket, helyi Windows-függőséget, GitHub-szekret publikálást, automatikus vendéglevél-küldést és Netlify-deployt nem szabad indítani. A GitHub staging artifact 2027-01-23-ig jelzett elérhetősége nem hosszú távú backup-garancia.
+
+
+## 2026-10-26 – pontosított fájlazonosítás, új olvasási bizonyíték
+
+A fenti keresési megfigyelés történeti, és önmagában nem bizonyította az önálló ciphertext hiányát. A Drive mappa teljes listája megmutatta a már 2026-10-25 07:27 UTC-kor létrehozott `1ZMFd9AKqC3XFGSQ2fdvCetNUQo62tMia` állományt: `sarberki-40172605691-1-2318f15062a770c3.zip.gpg`, 3 365 494 bájt. A pontos ID szerinti 2026-10-26-i új visszatöltés SHA256-ja `2318f15062a770c37aadf034bb04a6f421aef0aa42bb40ea4eada105c37ef9f7`; bájtonként egyezik a pontos GitHub staging artifact ciphertextjével. Az extra staging ZIP kézi átadásának történeti ténye megmarad, de új duplikátum nem szükséges.
+
+A Drive search ebben az ellenőrzésben is csak szöveges fájlokat mutatott; a mappa fetch listája binárisokat is. Üres keresési találatból ne következtess hiányzó mentésre. A meglévő fájl igazolása továbbra sem bizonyítja, hogy a napi automatikus átadás emberi közreműködés nélkül lefutott. A két napi feladat szigorításának és teljes helyreállítási korlátainak friss eredménye: `BACKUP-V2-DAILY-GATE-2026-10-26.md` és `V1-PROGRESS-2026-10-26.md`.
