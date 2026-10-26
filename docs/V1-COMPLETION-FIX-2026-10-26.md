@@ -25,6 +25,10 @@ Netlify recovery configuration opened at the exact existing project URL but show
 
 Source fix and tests complete locally; hosted acceptance and GitHub publication pending. Existing 85% estimate is retained; new tests alone do not increase it. Next action: authorize Google sign-in to Netlify, inspect/stop recovery auto-builds as needed, then publish the tested changes to the authorized branch and deploy only the intended V1 test release. Verify the corrected exact Slovenian fixture and finish the existing Gmail write/approval chain. No backup/SQL restore rerun is required.
 
-## Follow-up after owner Google sign-in approval
+## Published acceptance result
 
-Netlify sign-in succeeded. Recovery project is linked to the expected repository and gmail-test-subject-allowlist branch; branch deploys limited to that branch. Builds were Active and were changed to Stopped, then read back. Project environment page confirms no environment variables set. Recovery is not functional yet; no secrets copied. Git push lacked CLI credentials, so the connected GitHub API published identical tested tree df61d074813b59a2183dbd887747c2e563ff4ec9 as afe8b9af65024f340e86c62522e43d5ec67b04b9 on the authorized branch, using expected-head compare and no force.
+Superseding local-only delivery statements: connected GitHub publication is afe8b9af65024f340e86c62522e43d5ec67b04b9, identical tested source tree. CI 40320997514 completed SUCCESS. Release b682d6dea6ab836ff8966182144e83dc785a11b8 published on leafy-chimera-2403e5 in 18 seconds; browser BUILD b682d6d verified. Fresh Slovenian manual synthetic inquiry for 2026-11-13 to 15, 2 adults / 0 children / Deluxe shows full price, capacity and terms warnings and disabled approval, plus Slovenian reservation-status paragraph. The previously saved closed fixture remains wrongly classified because duplicate ingestion reuses its historical local case intent; this cached-case migration is still open. Do not call all closed fixtures accepted.
+
+Recovery admin confirmed expected repository and branch, build settings Active -> Stopped and persisted Stopped. No project environment variables set, confirmed authenticated. No restore deployment and no secrets copied.
+
+Gmail read button opened Google unverified-app warning. Continue was rejected by automatic security review for lack of specific approval of that warning. No bypass. Complete current Gmail write/approval/reload chain remains NOT VERIFIED. Owner approval is needed for that exact warning step. Current estimate remains 85%; no 100% acceptance claimed.
