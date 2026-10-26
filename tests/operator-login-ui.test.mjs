@@ -626,3 +626,23 @@ test('late failure from manual case A→B→A cannot overwrite the new verificat
  assert.match(h.get('operator_case_status').textContent,/Új ellenőrzés szükséges/u);
  assert.doesNotMatch(h.get('operator_case_status').textContent,/nem nyitható meg/u);
 });
+
+test('first protected list 401 clears the authenticated UI; 403 stays a permission denial',async()=>{
+ for(const status of [401,403]){
+  const h=await harness(async url=>url.includes('booking-cases')?{ok:false,status,json:async()=>({error:status===401?'AUTH_REQUIRED':'FORBIDDEN'})}:{ok:true,status:200,json:async()=>valid()});
+  assert.ok(h.globalRef.SarberkiCaseStoreSession);
+  await h.get('operator_list_cases').click();
+  assert.match(h.get('operator_case_status').textContent,status===401?/AUTH_REQUIRED/:/FORBIDDEN/);
+  if(status===401){assert.equal(h.globalRef.SarberkiCaseStoreSession,null);assert.equal(h.get('operator_list_cases').disabled,true);assert.doesNotMatch(h.get('operator_login_status').textContent,/olvasás aktív/u);}
+  else assert.ok(h.globalRef.SarberkiCaseStoreSession);
+ }
+});
+test('protected list displays only safe HTTP/category diagnostics, never arbitrary server data',async()=>{
+ for(const category of ['SESSION_COOKIE_MISSING','CSRF_REJECTED','MEMBERSHIP_DENIED','AUTH_REFRESH_REJECTED','SENSITIVE_SYNTHETIC_DO_NOT_DISPLAY']){
+  const h=await harness(async url=>url.includes('booking-cases')?{ok:false,status:401,json:async()=>({error:'AUTH_REQUIRED',diagnostic:{category},secret:'SENSITIVE_SYNTHETIC_DO_NOT_DISPLAY'})}:{ok:true,status:200,json:async()=>valid()});
+  await h.get('operator_list_cases').click();
+  assert.match(h.get('operator_case_status').textContent,/HTTP 401/);
+  if(category!=='SENSITIVE_SYNTHETIC_DO_NOT_DISPLAY')assert.ok(h.get('operator_case_status').textContent.includes(category));
+  assert.doesNotMatch(h.get('operator_case_status').textContent,/SENSITIVE_SYNTHETIC_DO_NOT_DISPLAY/);
+ }
+});

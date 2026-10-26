@@ -349,3 +349,37 @@ test('detached exact review fixture requires current closed target and Writer; r
  f.state.fixtureRows.get(result.record.caseId).revision=2;assert.equal((await call(input)).statusCode,409);assert.equal(f.state.fixtureRows.size,2);
  f.state.revoked=true;assert.equal((await call(input)).statusCode,401);
 });
+
+test('same cookie jar: login -> first protected list -> page refresh/restore -> list -> logout rejects access',async()=>{
+ const f=fixture(),cases=createCaseHandler({env:f.env,fetchImpl:f.fetchImpl});let cookie;
+ const browser=async(handler,input={})=>{
+  const response=await handler(event({...input,cookie}));
+  if(response.headers['Set-Cookie'])cookie=cookieHeader(response.headers['Set-Cookie']);
+  return {status:response.statusCode,body:JSON.parse(response.body)};
+ };
+ const login=await browser(f.handler,{method:'POST',body:{action:'login',email:'operator@synthetic.invalid',password:'SYNTHETIC_NOT_A_REAL_PASSWORD'}});
+ assert.equal(login.status,200);const csrf=login.body.csrfToken;
+ const list=()=>browser(cases,{csrf,query:{tenantId:'sarberki-test'}});
+ assert.equal((await list()).status,200);
+ // A new handler instance has no process/session state; only the browser jar persists.
+ const restored=await browser(createOperatorSessionHandler({env:f.env,fetchImpl:f.fetchImpl,now:f.now}));
+ assert.equal(restored.status,200);assert.equal(restored.body.csrfToken,csrf);
+ assert.equal((await list()).status,200);
+ assert.equal((await browser(f.handler,{method:'POST',csrf,body:{action:'logout'}})).status,200);
+ const denied=await list();assert.equal(denied.status,401);assert.equal(denied.body.diagnostic.category,'SESSION_COOKIE_INVALID');
+ assert.equal((await browser(f.handler)).status,401);
+});
+test('fixed diagnostic categories distinguish session, CSRF, membership and upstream Auth failure without secrets',async()=>{
+ for(const mode of ['missing','csrf','membership','revoked','transient']){
+  const f=fixture(),login=await f.login();
+  if(mode==='membership')f.state.membershipRead=false;
+  if(mode==='revoked')f.state.revoked=true;
+  if(mode==='transient')f.state.networkFailure=true;
+  f.state.calls=[];
+  const result=await createCaseHandler({env:f.env,fetchImpl:f.fetchImpl})(event({cookie:mode==='missing'?undefined:cookieHeader(login.setCookie),csrf:mode==='csrf'?'00'.repeat(32):login.metadata.csrfToken,query:{tenantId:'sarberki-test'}}));
+  const expected={missing:[401,'SESSION_COOKIE_MISSING'],csrf:[403,'CSRF_REJECTED'],membership:[403,'MEMBERSHIP_DENIED'],revoked:[401,'AUTH_REFRESH_REJECTED'],transient:[503,'SESSION_SERVICE_UNAVAILABLE']}[mode];
+  assert.equal(result.statusCode,expected[0]);const body=JSON.parse(result.body);assert.equal(body.diagnostic.category,expected[1]);
+  assert.doesNotMatch(result.body,/synthetic_refresh|synthetic_signature|csrfToken|password|Set-Cookie|Bearer|@/);
+  assert.equal(f.state.calls.some(c=>c.url.includes('/rest/v1/sc_cases')),false);
+ }
+});

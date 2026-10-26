@@ -1,4 +1,4 @@
-import {createOperatorCookieSession,OperatorSessionError} from '../../shared-core/operator-cookie-session.mjs';
+import {createOperatorCookieSession,OperatorSessionError,operatorSessionErrorBody} from '../../shared-core/operator-cookie-session.mjs';
 const headers={'Content-Type':'application/json','Cache-Control':'private, no-store','Pragma':'no-cache','Expires':'0','X-Content-Type-Options':'nosniff'};
 export function createOperatorSessionHandler({env=process.env,fetchImpl=fetch,now=Date.now}={}){
  const session=createOperatorCookieSession({env,fetchImpl,now});
@@ -17,7 +17,7 @@ export function createOperatorSessionHandler({env=process.env,fetchImpl=fetch,no
    else if(input?.action==='logout'&&Object.keys(input).length===1)result=await session.logout(event);
    else return reply(400,{error:'INVALID_INPUT'});
    return reply(200,result.metadata,result.setCookie);
-  }catch(error){return error instanceof OperatorSessionError?reply(error.status,{error:error.code},error.setCookie):reply(503,{error:'SESSION_SERVICE_UNAVAILABLE'});}
+  }catch(error){return error instanceof OperatorSessionError?reply(error.status,operatorSessionErrorBody(error),error.setCookie):reply(503,{error:'SESSION_SERVICE_UNAVAILABLE'});}
  };
 }
 export const handler=createOperatorSessionHandler();

@@ -11,7 +11,7 @@ export function createOperatorSession({request=fetch,now=()=>Date.now()}={}){
  const invalidate=()=>{epoch++;metadata=null;};
  const current=()=>{if(!metadata||now()>=Date.parse(metadata.expiresAt)){invalidate();throw Error('AUTH_REQUIRED');}return metadata;};
  const parse=async response=>{
-  if(!response.ok){const error=Error(response.status===401||response.status===403?'AUTH_REQUIRED':response.status===503?'SESSION_SETUP_REQUIRED':'SERVICE_UNAVAILABLE');error.status=response.status;throw error;}
+  if(!response.ok){const error=Error(response.status===401?'AUTH_REQUIRED':response.status===403?'FORBIDDEN':response.status===503?'SESSION_SETUP_REQUIRED':'SERVICE_UNAVAILABLE');error.status=response.status;throw error;}
   const body=await response.json();
   if(body?.authenticated!==true||body.tenantId!==tenant||!/^[a-f0-9]{64}$/.test(body.csrfToken)||!Number.isFinite(Date.parse(body.expiresAt))||Date.parse(body.expiresAt)<=now()||Date.parse(body.expiresAt)>now()+7*86400000+60000||'access_token' in body||'refresh_token' in body)throw Error('INVALID_SESSION');
   revocationCsrf=body.csrfToken;return {authenticated:true,tenantId:tenant,expiresAt:body.expiresAt,csrfToken:body.csrfToken};
@@ -33,7 +33,7 @@ export function createOperatorSession({request=fetch,now=()=>Date.now()}={}){
    const turn=epoch;if(!isIsolatedReviewCaseId(caseId))return Promise.reject(Error('INVALID_INPUT'));
    return enqueue(async()=>{
    current();const assertSession=()=>{if(turn!==epoch)throw Error('SESSION_CHANGED');return current().csrfToken;};
-   const client=createCaseStoreClient({cookieReadOnly:true,getCsrfToken:assertSession,request:async(url,options)=>{const response=await request(url,options);if(response.status===401||response.status===403){if(turn===epoch)invalidate();throw Error('AUTH_REQUIRED');}return response;}});
+   const client=createCaseStoreClient({cookieReadOnly:true,getCsrfToken:assertSession,request:async(url,options)=>{const response=await request(url,options);if(response.status===401){if(turn===epoch)invalidate();throw Error('AUTH_REQUIRED');}if(response.status===403)throw Error('FORBIDDEN');return response;}});
    // The Reader API exposes only synthetic summaries and a protected preview.
    // Do not request raw case data through the intentionally forbidden GET path.
    const summaries=await client.list(tenant);if(turn!==epoch)throw Error('SESSION_CHANGED');
@@ -77,7 +77,7 @@ export function initOperatorPanel({documentRef=document,windowRef=typeof window=
  const stop=()=>{if(timer!==null)clearTimer?.(timer);timer=null;};
  const schedule=()=>{stop();if(active&&setTimer){timer=setTimer(()=>restore(),300000);timer?.unref?.();}};
  const status=()=>{get('operator_status').textContent='Hitelesített tartós tesztmunkamenet; az ügyhozzáférést a szerver ellenőrzi.';};
- const failed=error=>{clear();get('operator_status').textContent=error.message==='AUTH_REQUIRED'?'Új bejelentkezés szükséges: a munkamenet lejárt vagy nem érvényes.':'A munkamenet jelenleg nem ellenőrizhető. Újrapróbálható; a szerveres sütit nem töröltük.';};
+ const failed=error=>{clear();get('operator_status').textContent=error.message==='FORBIDDEN'?'A szerver megtagadta a hozzáférést; jogosultság vagy kérésvédelem ellenőrzése szükséges.':error.message==='AUTH_REQUIRED'?'Új bejelentkezés szükséges: a munkamenet lejárt vagy nem érvényes.':'A munkamenet jelenleg nem ellenőrizhető. Újrapróbálható; a szerveres sütit nem töröltük.';};
  const restore=async()=>{if(!active)return;const turn=epoch;let retry=true;clear();try{await session.restore();if(turn===epoch&&active)status();}catch(error){if(error.message==='AUTH_REQUIRED')retry=false;if(turn===epoch&&active)failed(error);}finally{if(turn===epoch&&retry)schedule();}};
  const reset=async()=>{epoch++;stop();clear();get('operator_password').value='';get('operator_status').textContent='Kijelentkezés ellenőrzése…';try{await session.logout();get('operator_status').textContent='Kijelentkezve.';}catch{get('operator_status').textContent='A helyi nézet törölve; a szerveres kijelentkezés NEM IGAZOLT. Próbálja újra.';}};
  form.addEventListener('submit',async event=>{event.preventDefault();const turn=++epoch;stop();clear();const password=get('operator_password').value;get('operator_password').value='';get('operator_status').textContent='Belépés ellenőrzése…';try{await session.login(get('operator_email').value.trim(),password);if(turn===epoch){status();schedule();}}catch(error){if(turn===epoch)failed(error);}});

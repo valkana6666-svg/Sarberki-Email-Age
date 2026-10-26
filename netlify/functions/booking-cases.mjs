@@ -2,7 +2,7 @@ import {createTubServiceApproval,createServiceApprovalAttestor} from '../../shar
 import {createServerCaseService} from '../../shared-core/server-case-service.mjs';
 import {createSupabaseTransport,createSupabaseAuthority,createSupabaseCaseRepository} from '../../shared-core/supabase-case-repository.mjs';
 import {createServerBookingRuntime} from '../../shared-core/server-booking-runtime.mjs';
-import {createOperatorCookieSession,OperatorSessionError,clearOperatorCookie} from '../../shared-core/operator-cookie-session.mjs';
+import {createOperatorCookieSession,OperatorSessionError,operatorSessionErrorBody,clearOperatorCookie} from '../../shared-core/operator-cookie-session.mjs';
 import {createIsolatedApprovalAttestor} from '../../shared-core/isolated-approval-attestation.mjs';
 import {isIsolatedReviewCaseId} from '../../shared-core/isolated-review-case-id.mjs';
 import {cloudSyntheticApprovalEnabled,cloudSyntheticReviewProviders,assertCloudSyntheticReviewCase,assertCloudSyntheticReadCase} from '../../shared-core/cloud-synthetic-approval.mjs';
@@ -177,7 +177,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    }
    return cookieResponse(200,{result});
   }catch(error){
-   if(error instanceof OperatorSessionError)return cookieResponse(error.status,{error:error.code},error.setCookie);
+   if(error instanceof OperatorSessionError)return cookieResponse(error.status,operatorSessionErrorBody(error),error.setCookie);
    const code=error.code;
    const status=code==='FORBIDDEN'?403:code==='CASE_CONFLICT'||code==='REVIEW_CHANGED'?409:['REVIEW_NOT_READY','SERVICE_AVAILABILITY_UNKNOWN'].includes(code)?422:code?.startsWith('INVALID_')||error instanceof SyntaxError?400:503;
    return cookieResponse(status,{error:status===503?'SERVICE_UNAVAILABLE':code||'INVALID_INPUT'});

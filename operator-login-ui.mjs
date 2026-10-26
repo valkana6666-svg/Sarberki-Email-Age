@@ -1,3 +1,4 @@
+import {attachOperatorRequestFailure,operatorFailureSummary} from './shared-core/operator-request-error.mjs';
 // Explicit, read-only operator login for the synthetic Sárberki test case store.
 // The password travels only to the Auth server; access/refresh tokens never enter the browser.
 import {createCaseStoreClient} from './shared-core/case-store-client.mjs';
@@ -111,7 +112,7 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
   if(!response.ok){
    const error=Error(['AUTH_REQUIRED','FORBIDDEN','SESSION_SETUP_REQUIRED','SESSION_SERVICE_UNAVAILABLE','CASE_STORE_DISABLED','SYNTHETIC_FIXTURE_UNVERIFIED','CASE_CONFLICT','INVALID_INPUT','SERVICE_UNAVAILABLE'].includes(data?.error)?data.error:'SESSION_UNAVAILABLE');
    if(path==='/.netlify/functions/booking-cases'&&body?.action==='ingest-and-draft'&&body?.sourceReceipt)error.exactReceiptDiagnostic=exactReceiptDiagnosticMessage(data?.diagnostic);
-   throw error;
+   throw attachOperatorRequestFailure(error,response,data);
   }
   return data;
  }
@@ -275,7 +276,7 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
   }catch(e){
    if(turn!==authEpoch||!visible)return;
    clear();
-   status.textContent=kind==='logout'?'A helyi hozzáférés lezárva; a szerveroldali kijelentkezés nem igazolt.':problem(e);
+   status.textContent=(kind==='logout'?'A helyi hozzáférés lezárva; a szerveroldali kijelentkezés nem igazolt.':problem(e))+operatorFailureSummary(e);
   }finally{password.value='';waiting(false);}
  }
  async function loadCases(){
@@ -308,8 +309,10 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
    openCase.disabled=listed.length===0;
    caseStatus.textContent=listed.length?'Összesen '+listed.length+' ellenőrzött tesztügy betöltve.':'Nincs megfelelő szintetikus tesztügy az elérhető listában.';
   }catch(e){
+   if(globalRef.SarberkiCaseStoreSession!==session)return;
+   if(e.status===401){clear();status.textContent=problem(e)+operatorFailureSummary(e);}
    resetCases();
-   caseStatus.textContent='A tesztügylista nem tölthető be ('+(['AUTH_REQUIRED','FORBIDDEN','CASE_STORE_DISABLED','SERVICE_UNAVAILABLE'].includes(e?.message)?e.message:'ellenőrzés szükséges')+').';
+   caseStatus.textContent='A tesztügylista nem tölthető be ('+(['AUTH_REQUIRED','FORBIDDEN','CASE_STORE_DISABLED','SERVICE_UNAVAILABLE'].includes(e?.message)?e.message:'ellenőrzés szükséges')+').'+operatorFailureSummary(e);
   }finally{waiting(false);}
  }
  async function openManualCase(){

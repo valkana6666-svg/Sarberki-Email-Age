@@ -9,9 +9,11 @@ const name='__Host-sarberki-operator',ttl=7*24*60*60*1000;
 const aad=Buffer.from(name+'|'+origin+'|'+project+'|v1');
 export const clearOperatorCookie=name+'=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
 export class OperatorSessionError extends Error{
- constructor(status,code,setCookie=null){super(code);this.status=status;this.code=code;this.setCookie=setCookie;}
+ constructor(status,code,setCookie=null,category=code){super(code);this.status=status;this.code=code;this.setCookie=setCookie;this.category=category;}
 }
-const fail=(status,code,setCookie=null)=>{throw new OperatorSessionError(status,code,setCookie);};
+const fail=(status,code,setCookie=null,category=code)=>{throw new OperatorSessionError(status,code,setCookie,category);};
+// Fixed error categories only; no credential/header/configuration values or upstream text.
+export const operatorSessionErrorBody=error=>({error:error.code,diagnostic:{category:error.category}});
 function header(event,key){
  const values=Object.entries(event.headers||{}).filter(([k])=>k.toLowerCase()===key).map(([,v])=>v);
  const multiEntries=Object.entries(event.multiValueHeaders||{}).filter(([k])=>k.toLowerCase()===key);
@@ -45,28 +47,29 @@ export function createOperatorCookieSession({env=process.env,fetchImpl=fetch,now
  function read(event){
   const raw=header(event,'cookie')||'';if(raw.length>8192)fail(401,'AUTH_REQUIRED',clearOperatorCookie);
   const found=raw.split(';').map(x=>x.trim()).filter(x=>x.startsWith(name+'='));
-  if(found.length!==1)fail(401,'AUTH_REQUIRED',clearOperatorCookie);
+  if(found.length!==1)fail(401,'AUTH_REQUIRED',clearOperatorCookie,found.length?'SESSION_COOKIE_INVALID':'SESSION_COOKIE_MISSING');
   try{
    const parts=found[0].slice(name.length+1).split('.');
    if(parts.length!==4||parts[0]!=='v1'||parts.slice(1).some(x=>! /^[A-Za-z0-9_-]+$/.test(x)))throw Error();
    const iv=Buffer.from(parts[1],'base64url'),tag=Buffer.from(parts[3],'base64url');if(iv.length!==12||tag.length!==16)throw Error();
    const decipher=createDecipheriv('aes-256-gcm',setup(),iv);decipher.setAAD(aad);decipher.setAuthTag(tag);
    const payload=JSON.parse(Buffer.concat([decipher.update(Buffer.from(parts[2],'base64url')),decipher.final()]).toString('utf8'));
+   if(Number.isSafeInteger(payload?.expiresAt)&&payload.expiresAt<=now())fail(401,'AUTH_REQUIRED',clearOperatorCookie,'SESSION_EXPIRED');
    if(Object.keys(payload).sort().join(',')!=='csrfToken,expiresAt,refreshToken'||! /^[A-Za-z0-9_-]{10,512}$/.test(payload.refreshToken)||
     ! /^[a-f0-9]{64}$/.test(payload.csrfToken)||!Number.isSafeInteger(payload.expiresAt)||payload.expiresAt<=now()||payload.expiresAt-now()>ttl)throw Error();
    return payload;
-  }catch{fail(401,'AUTH_REQUIRED',clearOperatorCookie);}
+  }catch(error){if(error instanceof OperatorSessionError)throw error;fail(401,'AUTH_REQUIRED',clearOperatorCookie,'SESSION_COOKIE_INVALID');}
  }
  function csrf(event,payload){
   const value=header(event,'x-csrf-token');
-  if(typeof value!=='string'||! /^[a-f0-9]{64}$/.test(value)||!timingSafeEqual(Buffer.from(value,'hex'),Buffer.from(payload.csrfToken,'hex')))fail(403,'FORBIDDEN');
+  if(typeof value!=='string'||! /^[a-f0-9]{64}$/.test(value)||!timingSafeEqual(Buffer.from(value,'hex'),Buffer.from(payload.csrfToken,'hex')))fail(403,'FORBIDDEN',null,'CSRF_REJECTED');
  }
  async function auth(path,{body,token,logout=false}={}){
   let response;
   try{response=await fetchImpl(project+'/auth/v1/'+path,{method:'POST',redirect:'error',signal:AbortSignal.timeout(10000),headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});}
   catch{fail(503,'SESSION_SERVICE_UNAVAILABLE');}
   if(!response.ok){
-   if([400,401,403].includes(response.status))fail(response.status===403?403:401,response.status===403?'FORBIDDEN':'AUTH_REQUIRED',clearOperatorCookie);
+   if([400,401,403].includes(response.status))fail(response.status===403?403:401,response.status===403?'FORBIDDEN':'AUTH_REQUIRED',clearOperatorCookie,path.includes('grant_type=refresh_token')?'AUTH_REFRESH_REJECTED':'AUTH_LOGIN_REJECTED');
    fail(503,'SESSION_SERVICE_UNAVAILABLE');
   }
   if(logout)return;
@@ -83,9 +86,9 @@ export function createOperatorCookieSession({env=process.env,fetchImpl=fetch,now
   const transport=createSupabaseTransport({url:project,publishableKey:env.SUPABASE_PUBLISHABLE_KEY,token,fetchImpl});
   let resolved;
   try{resolved=await createSupabaseAuthority(transport)();}
-  catch(error){if(error.code==='FORBIDDEN')fail(403,'FORBIDDEN',clearOperatorCookie);fail(503,'SESSION_SERVICE_UNAVAILABLE');}
+  catch(error){if(error.code==='FORBIDDEN')fail(403,'FORBIDDEN',clearOperatorCookie,'AUTHORITY_REJECTED');fail(503,'SESSION_SERVICE_UNAVAILABLE');}
   let subject;try{subject=JSON.parse(Buffer.from(token.split('.')[1],'base64url').toString()).sub;}catch{}
-  if(resolved.subject!==subject||!resolved.tenants?.['sarberki-test']?.includes('read'))fail(403,'FORBIDDEN',clearOperatorCookie);
+  if(resolved.subject!==subject||!resolved.tenants?.['sarberki-test']?.includes('read'))fail(403,'FORBIDDEN',clearOperatorCookie,'MEMBERSHIP_DENIED');
   return {authority:resolved,transport};
  }
  const metadata=payload=>({authenticated:true,tenantId:'sarberki-test',expiresAt:new Date(payload.expiresAt).toISOString(),csrfToken:payload.csrfToken});
