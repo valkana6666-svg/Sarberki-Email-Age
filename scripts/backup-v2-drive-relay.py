@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import sys
 import tempfile
@@ -26,6 +27,30 @@ def module(name):
     result = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(result)
     return result
+
+def configure_selection(values):
+    """Load public snapshot identity only; no credentials or executable content."""
+    global BLOB, HASH, BYTES, DRIVE_ID, SNAPSHOT_COMMIT, SNAPSHOT_RUN
+    selected = values.get('SARBERKI_DRIVE_RESTORE_SELECTION')
+    if selected is None:
+        return  # Preserve the historical, pinned recovery route.
+    try:
+        item = json.loads(selected)
+        fields = {'relay_blob_sha', 'sha256', 'bytes', 'file_id', 'snapshot_commit', 'snapshot_run'}
+        if not isinstance(item, dict) or set(item) != fields:
+            raise ValueError()
+        patterns = {'relay_blob_sha': r'[0-9a-f]{40}', 'sha256': r'[0-9a-f]{64}',
+                    'file_id': r'[A-Za-z0-9_-]{10,200}', 'snapshot_commit': r'[0-9a-f]{40}',
+                    'snapshot_run': r'[1-9][0-9]{0,19}'}
+        if any(not isinstance(item[k], str) or not re.fullmatch(pattern, item[k])
+               for k, pattern in patterns.items()):
+            raise ValueError()
+        if type(item['bytes']) is not int or not 1 <= item['bytes'] <= 5 * 1024 * 1024:
+            raise ValueError()
+    except (ValueError, TypeError):
+        raise ValueError('RESTORE_SELECTION_INVALID') from None
+    BLOB, HASH, BYTES = item['relay_blob_sha'], item['sha256'], item['bytes']
+    DRIVE_ID, SNAPSHOT_COMMIT, SNAPSHOT_RUN = item['file_id'], item['snapshot_commit'], item['snapshot_run']
 
 def validate_relay(meta, data):
     if meta.get('sha') != BLOB or meta.get('size') != BYTES:
@@ -54,6 +79,7 @@ def main():
         raise ValueError('UNAPPROVED_EXECUTION_IDENTITY')
     if any(os.environ.get(k) for k in os.environ if k.startswith('SARBERKI_BACKUP_DB_')):
         raise ValueError('SOURCE_CREDENTIALS_FORBIDDEN')
+    configure_selection(os.environ)
     probe, phrase = protected_phrase(os.environ)
     req = urllib.request.Request('https://api.github.com/repos/'+REPO+'/git/blobs/'+BLOB,
         headers={'Authorization':'Bearer '+os.environ['GITHUB_TOKEN'], 'Accept':'application/vnd.github+json',

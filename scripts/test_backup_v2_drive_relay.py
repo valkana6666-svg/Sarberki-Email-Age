@@ -1,4 +1,5 @@
 import hashlib
+import json
 import importlib.util
 from pathlib import Path
 import unittest
@@ -14,6 +15,30 @@ class DriveRelayBoundary(unittest.TestCase):
         self.meta={'sha':self.blob,'size':len(self.data)}
         self.patches=patch.multiple(relay,BLOB=self.blob,HASH=hashlib.sha256(self.data).hexdigest(),BYTES=len(self.data))
         self.patches.start();self.addCleanup(self.patches.stop)
+
+    def test_selected_snapshot_identity_and_bytes(self):
+        item = dict(relay_blob_sha=self.blob, sha256=hashlib.sha256(self.data).hexdigest(),
+                    bytes=len(self.data), file_id='synthetic-drive-id', snapshot_commit='c'*40,
+                    snapshot_run='12345')
+        with patch.multiple(relay, DRIVE_ID=relay.DRIVE_ID, SNAPSHOT_COMMIT=relay.SNAPSHOT_COMMIT,
+                            SNAPSHOT_RUN=relay.SNAPSHOT_RUN):
+            relay.configure_selection({'SARBERKI_DRIVE_RESTORE_SELECTION':json.dumps(item)})
+            relay.validate_relay(self.meta,self.data)
+            self.assertEqual(relay.DRIVE_ID,item['file_id'])
+            self.assertEqual(relay.snapshot_identity({})['GITHUB_RUN_ID'],'12345')
+            with self.assertRaises(ValueError):
+                relay.validate_relay(self.meta,b'X'+self.data[1:])
+
+    def test_invalid_selection_fails_without_falling_back(self):
+        valid = dict(relay_blob_sha=self.blob, sha256='a'*64, bytes=42,
+                     file_id='synthetic-drive-id', snapshot_commit='c'*40, snapshot_run='12345')
+        cases = ['', '{}', '[]', 'null', json.dumps(dict(valid,bytes=True)),
+                 json.dumps(dict(valid,bytes=6*1024*1024)), json.dumps(dict(valid,sha256='bad')),
+                 json.dumps(dict(valid,snapshot_run='0')), json.dumps(dict(valid,unexpected='x'))]
+        for value in cases:
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError,'RESTORE_SELECTION_INVALID'):
+                relay.configure_selection({'SARBERKI_DRIVE_RESTORE_SELECTION':value})
+        self.assertEqual(relay.BLOB,self.blob)
 
     def test_owner_probe_cannot_receive_or_fall_back_to_normal_key(self):
         with self.assertRaisesRegex(ValueError,'OWNER_PROBE_REGULAR_KEY_FORBIDDEN'):
