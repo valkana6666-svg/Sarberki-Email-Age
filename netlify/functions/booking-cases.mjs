@@ -177,7 +177,12 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    }
    return cookieResponse(200,{result});
   }catch(error){
-   if(error instanceof OperatorSessionError)return cookieResponse(error.status,operatorSessionErrorBody(error),error.setCookie);
+   if(error instanceof OperatorSessionError){
+    // Preserve exact-receipt/write gates: no unauthenticated diagnostic oracle.
+    const query=event.queryStringParameters;
+    const listOnly=event.httpMethod==='GET'&&query?.tenantId==='sarberki-test'&&Object.keys(query).sort().join(',')==='tenantId';
+    return cookieResponse(error.status,listOnly?operatorSessionErrorBody(error):{error:error.code},error.setCookie);
+   }
    const code=error.code;
    const status=code==='FORBIDDEN'?403:code==='CASE_CONFLICT'||code==='REVIEW_CHANGED'?409:['REVIEW_NOT_READY','SERVICE_AVAILABILITY_UNKNOWN'].includes(code)?422:code?.startsWith('INVALID_')||error instanceof SyntaxError?400:503;
    return cookieResponse(status,{error:status===503?'SERVICE_UNAVAILABLE':code||'INVALID_INPUT'});
