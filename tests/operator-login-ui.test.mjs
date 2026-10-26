@@ -5,7 +5,8 @@ import {syntheticMailEnvelope,closedMailRequestFromGmailRecord,syntheticTubFollo
 import {initOperatorLoginPanel} from '../operator-login-ui.mjs';
 const ui=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const names=['operator_manual_case_id','operator_open_manual_case','operator_manual_audit','operator_login_form','operator_login_email','operator_login_password','operator_login','operator_restore','operator_logout','operator_login_status','operator_list_cases','operator_case_select','operator_open_case','operator_case_status','server_preview_case_id','server_preview_revision','operator_create_fixture','operator_fixture_status','gmail_cloud_fixture_language','gmail_cloud_fixture_load','gmail_cloud_fixture_save','gmail_cloud_fixture_status','gmail_cloud_fixture_approval','gmail_cloud_tub_followup','gmail_cloud_tub_review','service_link_target','service_link_target_revision','gmail_json','message'];
-const valid=()=>({authenticated:true,tenantId:'sarberki-test',csrfToken:'ab'.repeat(32),expiresAt:new Date(Date.now()+3600_000).toISOString()});
+const sessionExpiry=new Date(Date.now()+3600_000).toISOString();
+const valid=()=>({authenticated:true,tenantId:'sarberki-test',csrfToken:'ab'.repeat(32),expiresAt:sessionExpiry});
 async function harness(request){
  const map=new Map(),events=[];
  for(const name of names){
@@ -46,7 +47,8 @@ test('login uses same-origin POST and only exposes read-only cookie-mode case cl
  h.get('operator_login_password').value='SYNTHETIC_PASSWORD_NOT_A_REAL_SECRET';
  await h.get('operator_login_form').submit();
  assert.equal(h.get('operator_login_password').value,'');
- assert.equal(requests.length,1);
+ assert.equal(requests.length,2);
+ assert.equal(requests[1].options.method,'GET','login must prove that the browser returns its cookie');
  const {url,options}=requests[0];
  assert.equal(url,'/.netlify/functions/operator-session');
  assert.equal(options.method,'POST');
@@ -645,4 +647,27 @@ test('protected list displays only safe HTTP/category diagnostics, never arbitra
   if(category!=='SENSITIVE_SYNTHETIC_DO_NOT_DISPLAY')assert.ok(h.get('operator_case_status').textContent.includes(category));
   assert.doesNotMatch(h.get('operator_case_status').textContent,/SENSITIVE_SYNTHETIC_DO_NOT_DISPLAY/);
  }
+});
+
+test('login stays locked until a follow-up request proves browser cookie acceptance',async()=>{
+ let posts=0,gets=0;
+ const h=await harness(async(_url,options)=>{
+  assert.equal(options.credentials,'same-origin');
+  if(options.method==='POST'){posts++;return {ok:true,status:200,json:async()=>valid()};}
+  gets++;return {ok:false,status:401,json:async()=>({error:'AUTH_REQUIRED',diagnostic:{category:'SESSION_COOKIE_MISSING'}})};
+ });
+ h.get('operator_login_email').value='reader@synthetic.invalid';h.get('operator_login_password').value='SYNTHETIC_PASSWORD';
+ await h.get('operator_login_form').submit();
+ assert.equal(posts,1);assert.equal(gets,2);assert.equal(h.globalRef.SarberkiCaseStoreSession,null);
+ assert.equal(h.get('operator_list_cases').disabled,true);assert.doesNotMatch(h.get('operator_login_status').textContent,/olvasás aktív/u);
+ assert.match(h.get('operator_login_status').textContent,/SESSION_COOKIE_MISSING/);
+});
+test('login confirmation for another cookie session cannot enable the original metadata',async()=>{
+ let logged=false;
+ const h=await harness(async(_url,options)=>{
+  if(options.method==='POST'){logged=true;return {ok:true,status:200,json:async()=>valid()};}
+  return logged?{ok:true,status:200,json:async()=>({...valid(),csrfToken:'cd'.repeat(32)})}:{ok:false,status:401,json:async()=>({error:'AUTH_REQUIRED'})};
+ });
+ h.get('operator_login_email').value='reader@synthetic.invalid';h.get('operator_login_password').value='SYNTHETIC_PASSWORD';
+ await h.get('operator_login_form').submit();assert.equal(h.globalRef.SarberkiCaseStoreSession,null);assert.equal(h.get('operator_list_cases').disabled,true);
 });

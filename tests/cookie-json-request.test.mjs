@@ -30,3 +30,26 @@ test('late write success cannot replace timeout, and the next explicit request m
  assert.deepEqual(await (await f.send('/synthetic',{method:'GET'})).json(),{result:'fresh-read'});
  assert.equal(count,2);
 });
+
+function sharedLocks(){
+ let tail=Promise.resolve();
+ return {request(name,{mode,signal},callback){
+  assert.equal(name,'sarberki-operator-cookie-request-v1');assert.equal(mode,'exclusive');
+  const next=tail.then(()=>{if(signal.aborted)throw Error('ABORTED');return callback();});tail=next.catch(()=>{});return next;
+ }};
+}
+test('independent UI transports share the cookie lock through complete JSON/rotation',async()=>{
+ const lockManager=sharedLocks();let bodyReady,started=0;
+ const first=createCookieJsonRequest({lockManager,request:async()=>{started++;return {ok:true,status:200,json:()=>new Promise(resolve=>bodyReady=resolve)};}});
+ const second=createCookieJsonRequest({lockManager,request:async()=>{started++;return {ok:true,status:200,json:async()=>({second:true})};}});
+ const a=first('/session'),b=second('/cases');await new Promise(r=>setImmediate(r));
+ assert.equal(started,1);bodyReady({first:true});await Promise.all([a,b]);assert.equal(started,2);
+});
+test('timeout while waiting for another tab cancels queued request without network/retry',async()=>{
+ const lockManager=sharedLocks();let release,fire,calls=0;
+ const first=createCookieJsonRequest({lockManager,request:async()=>({ok:true,status:200,json:()=>new Promise(r=>release=r)})});
+ const waiting=createCookieJsonRequest({lockManager,setTimer:fn=>{fire=fn;return 1;},clearTimer:()=>{},request:async()=>{calls++;throw Error('MUST_NOT_SEND');}});
+ const a=first('/session');await new Promise(r=>setImmediate(r));
+ const b=waiting('/cases');fire();await assert.rejects(b,/SERVICE_UNAVAILABLE/);
+ release({});await a;await new Promise(r=>setImmediate(r));assert.equal(calls,0);
+});

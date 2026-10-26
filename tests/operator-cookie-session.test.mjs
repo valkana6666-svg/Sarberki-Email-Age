@@ -112,7 +112,7 @@ test('restore refreshes even an unexpired access session, preserves CSRF/absolut
 test('missing, duplicate, malformed, tampered or expired cookie fails closed before any Auth/DB call',async()=>{
  const f=fixture(),logged=await f.login(),header=cookieHeader(logged.setCookie);f.state.calls=[];
  for(const cookie of [undefined,name+'=broken',header+'; '+header,header.replace('v1.','v2.'),header.slice(0,-10)+'AAAAAAAAAA']){
-  await assert.rejects(f.session.restore(event({cookie})),error=>error.status===401&&error.setCookie===clearOperatorCookie);assert.equal(f.state.calls.length,0);
+  await assert.rejects(f.session.restore(event({cookie})),error=>error.status===401&&error.setCookie===null);assert.equal(f.state.calls.length,0);
  }
  f.state.time+=7*86400000;await assert.rejects(f.session.restore(event({cookie:header})),error=>error.status===401);assert.equal(f.state.calls.length,0);
 });
@@ -142,17 +142,17 @@ test('invalid credentials and malformed Auth tokens cannot create a cookie; anon
   const f=fixture();Object.assign(f.state,change);await assert.rejects(f.login(),error=>[401,403].includes(error.status));assert.equal(f.state.calls.some(x=>x.url.includes('/sc_cases')),false);
  }
 });
-test('revoked session rejects refresh and clears cookie despite originally unexpired access token',async()=>{
+test('revoked session rejects refresh without deleting a newer browser cookie despite originally unexpired access token',async()=>{
  const f=fixture(),logged=await f.login();f.state.revoked=true;f.state.calls=[];
- await assert.rejects(f.session.protectedRead(event({cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken})),error=>error.status===401&&error.setCookie===clearOperatorCookie);
+ await assert.rejects(f.session.protectedRead(event({cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken})),error=>error.status===401&&error.setCookie===null);
  assert.equal(f.state.calls.length,1);assert.ok(f.state.calls[0].url.includes('grant_type=refresh_token'));
 });
-test('transient refresh failure preserves cookie but denies data, and removed read membership clears cookie',async()=>{
+test('transient refresh failure preserves cookie but denies data, and removed read membership denies without deleting a newer browser cookie',async()=>{
  for(const change of [{networkFailure:true},{authStatus:500}]){
   const f=fixture(),logged=await f.login();Object.assign(f.state,change);f.state.calls=[];
   await assert.rejects(f.session.restore(event({cookie:cookieHeader(logged.setCookie)})),error=>error.status===503&&!error.setCookie);assert.equal(f.state.calls.length,1);
  }
- const f=fixture(),logged=await f.login();f.state.membershipRead=false;await assert.rejects(f.session.restore(event({cookie:cookieHeader(logged.setCookie)})),error=>error.status===403&&error.setCookie===clearOperatorCookie);
+ const f=fixture(),logged=await f.login();f.state.membershipRead=false;await assert.rejects(f.session.restore(event({cookie:cookieHeader(logged.setCookie)})),error=>error.status===403&&error.setCookie===null);
 });
 test('logout refreshes and revokes only current session, always clears local cookie on upstream failure',async()=>{
  for(const logoutStatus of [204,500]){
@@ -382,4 +382,19 @@ test('fixed diagnostic categories distinguish session, CSRF, membership and upst
   assert.doesNotMatch(result.body,/synthetic_refresh|synthetic_signature|csrfToken|password|Set-Cookie|Bearer|@/);
   assert.equal(f.state.calls.some(c=>c.url.includes('/rest/v1/sc_cases')),false);
  }
+});
+
+test('late anonymous restore response cannot erase a newer successful login cookie',async()=>{
+ const f=fixture(),cases=createCaseHandler({env:f.env,fetchImpl:f.fetchImpl});
+ // Tab B started this restore with no cookie; its HTTP response is delayed.
+ const stale=await f.handler(event());
+ assert.equal(stale.statusCode,401);assert.equal(JSON.parse(stale.body).diagnostic.category,'SESSION_COOKIE_MISSING');
+ const login=await f.handler(event({method:'POST',body:{action:'login',email:'operator@synthetic.invalid',password:'SYNTHETIC_NOT_A_REAL_PASSWORD'}}));
+ assert.equal(login.statusCode,200);assert.ok(login.headers['Set-Cookie']);
+ let jar=cookieHeader(login.headers['Set-Cookie']);
+ // HTTP cookie processing precedes JavaScript's epoch/stale-response check.
+ if(stale.headers['Set-Cookie'])jar=/Max-Age=0(?:;|$)/i.test(stale.headers['Set-Cookie'])?undefined:cookieHeader(stale.headers['Set-Cookie']);
+ const first=await cases(event({cookie:jar,csrf:JSON.parse(login.body).csrfToken,query:{tenantId:'sarberki-test'}}));
+ assert.equal(first.statusCode,200,'a late anonymous 401 must not delete the new login cookie');
+ assert.equal(stale.headers['Set-Cookie'],undefined);
 });

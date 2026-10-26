@@ -259,7 +259,11 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
     if(!value||value.length>254||!secret||secret.length>1024)throw Error('INVALID_INPUT');
     const result=await call('POST',{action:'login',email:value,password:secret});
     if(turn!==authEpoch||!visible)return;
-    enable(result);
+    // Metadata alone does not prove the browser accepted the HttpOnly cookie.
+    const confirmed=await call('GET');
+    if(turn!==authEpoch||!visible)return;
+    if(!tokenPattern.test(result?.csrfToken||'')||confirmed?.csrfToken!==result.csrfToken||confirmed.expiresAt!==result.expiresAt)throw Error('SESSION_CHANGED');
+    enable(confirmed);
    }else if(kind==='restore'){
     const result=await call('GET');
     if(turn!==authEpoch||!visible)return;

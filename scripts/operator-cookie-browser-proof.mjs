@@ -12,6 +12,7 @@ const origin='https://leafy-chimera-2403e5.netlify.app';
 const project='https://mojnqizbcaczstguikpv.supabase.co';
 const cookieName='__Host-sarberki-operator';
 export async function runOperatorCookieBrowserProof({browser,engine,root,report}){
+ let anonymousSeen,releaseAnonymous;
  const state={login:0,refresh:0,caseReads:0,logout:0,revoked:false,http:[]};
  const store=createBookingCaseStore({tenantId:'sarberki-test',id:()=> 'case-synthetic'});
  const data=store.ingest({sender:'guest@synthetic.invalid',text:'Synthetic Deluxe inquiry',message_id:'synthetic-message',thread_id:'synthetic-thread',mailbox_id:'synthetic-box',received_at:new Date().toISOString()},
@@ -56,6 +57,10 @@ export async function runOperatorCookieBrowserProof({browser,engine,root,report}
     const event={httpMethod:request.method(),headers:eventHeaders,body:request.postData()||'',queryStringParameters:Object.fromEntries(url.searchParams)};
     const result=await handler(event);
     state.http.push({path:url.pathname,status:result.statusCode,fetchMetadataFromBrowser:headers['sec-fetch-site']!==undefined,originFromBrowser:headers.origin!==undefined,error:JSON.parse(result.body).error||null});
+    if(headers['x-synthetic-delayed-restore']==='1'){
+     assert.equal(result.statusCode,401);assert.equal(JSON.parse(result.body).diagnostic.category,'SESSION_COOKIE_MISSING');
+     await new Promise(resolve=>{releaseAnonymous=resolve;anonymousSeen();});
+    }
     return route.fulfill({status:result.statusCode,headers:result.headers,body:result.body});
    }
    if(request.method()!=='GET'||!/^\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_.-]+\.(?:mjs|html|webmanifest|png|json)$/.test(url.pathname))return route.fulfill({status:404,body:''});
@@ -90,6 +95,32 @@ export async function runOperatorCookieBrowserProof({browser,engine,root,report}
   await page.reload();await page.locator('#operator_panel summary').click();await page.locator('#operator_status').filter({hasText:'Új bejelentkezés szükséges'}).waitFor();
   assert.equal(await page.locator('#server_chat_reply').inputValue(),'');
   report.checks.push({engine,test:'revoked-refresh-and-explicit-logout-prevent-readback-and-reopening',result:'PASS'});
+  // Two tabs share the browser's native cookie jar. This raw, older-tab request
+  // deliberately does not use the new Web Lock: late pre-fix tabs must be safe too.
+  const olderTab=await context.newPage();await olderTab.goto(origin+'/sarberki-chatbot-project/index.html');
+  const seen=new Promise(resolve=>anonymousSeen=resolve);
+  await olderTab.evaluate(()=>{window.syntheticLateRestore=fetch('/.netlify/functions/operator-session',{
+   credentials:'same-origin',headers:{'X-Sarberki-Operator':'1','X-Synthetic-Delayed-Restore':'1'}
+  }).then(r=>r.status);});
+  await seen;await page.bringToFront();await login();
+  assert.equal((await context.cookies()).some(c=>c.name===cookieName),true);
+  releaseAnonymous();assert.equal(await olderTab.evaluate(()=>window.syntheticLateRestore),401);
+  assert.equal((await context.cookies()).some(c=>c.name===cookieName),true,'late anonymous 401 must preserve the newer native cookie');
+  await page.locator('#server_case_id').fill('case-synthetic');await page.locator('#server_case_load').click();
+  await page.locator('#server_data_status').filter({hasText:'Friss ügyolvasás'}).waitFor();
+  await olderTab.close();
+  report.checks.push({engine,test:'two-tab-late-anonymous-401-preserves-new-login-cookie-and-first-protected-read',result:'PASS',cookieJar:'native-browser'});
+  const locking=await page.evaluate(async()=>{
+   const {createCookieJsonRequest}=await import('/shared-core/cookie-json-request.mjs');
+   let active=0,maximum=0;
+   const request=async(url,options)=>{active++;maximum=Math.max(maximum,active);await new Promise(r=>setTimeout(r,20));const response=await fetch(url,options);active--;return response;};
+   const options={credentials:'same-origin',headers:{'X-Sarberki-Operator':'1'}};
+   const results=await Promise.all([createCookieJsonRequest({request})('/.netlify/functions/operator-session',options),createCookieJsonRequest({request})('/.netlify/functions/operator-session',options)]);
+   return {maximum,statuses:results.map(r=>r.status),nativeLocks:typeof navigator.locks?.request==='function'};
+  });
+  assert.equal(locking.nativeLocks,true);assert.equal(locking.maximum,1);assert.deepEqual(locking.statuses,[200,200]);
+  report.checks.push({engine,test:'native-Web-Locks-serialize-independent-restore-and-cookie-rotation',result:'PASS'});
+
  }catch(error){throw Error(error.message+'; synthetic-boundary-status='+JSON.stringify({login:state.login,refresh:state.refresh,http:state.http.slice(-8)}));}
  finally{await context?.close();}
 }

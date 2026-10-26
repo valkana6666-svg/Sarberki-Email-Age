@@ -40,25 +40,29 @@ export function createOperatorCookieSession({env=process.env,fetchImpl=fetch,now
   return ['v1',iv.toString('base64url'),encrypted.toString('base64url'),cipher.getAuthTag().toString('base64url')].join('.');
  }
  function cookie(payload){
-  const remaining=payload.expiresAt-now();if(remaining<=0||remaining>ttl)fail(401,'AUTH_REQUIRED',clearOperatorCookie);
+  const remaining=payload.expiresAt-now();if(remaining<=0||remaining>ttl)fail(401,'AUTH_REQUIRED',null);
   const value=encrypt(payload);if(value.length>3800)fail(503,'SESSION_SERVICE_UNAVAILABLE');
   return name+'='+value+'; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age='+Math.ceil(remaining/1000)+'; Expires='+new Date(payload.expiresAt).toUTCString();
  }
+ // A denial describes the REQUEST cookie, which may already be stale. Never
+ // delete the browser's current cookie on read/login/refresh failure: a later
+ // response could otherwise erase a successful login in another tab. Only
+ // explicit logout clears it; every failed request still denies access.
  function read(event){
-  const raw=header(event,'cookie')||'';if(raw.length>8192)fail(401,'AUTH_REQUIRED',clearOperatorCookie);
+  const raw=header(event,'cookie')||'';if(raw.length>8192)fail(401,'AUTH_REQUIRED',null);
   const found=raw.split(';').map(x=>x.trim()).filter(x=>x.startsWith(name+'='));
-  if(found.length!==1)fail(401,'AUTH_REQUIRED',clearOperatorCookie,found.length?'SESSION_COOKIE_INVALID':'SESSION_COOKIE_MISSING');
+  if(found.length!==1)fail(401,'AUTH_REQUIRED',null,found.length?'SESSION_COOKIE_INVALID':'SESSION_COOKIE_MISSING');
   try{
    const parts=found[0].slice(name.length+1).split('.');
    if(parts.length!==4||parts[0]!=='v1'||parts.slice(1).some(x=>! /^[A-Za-z0-9_-]+$/.test(x)))throw Error();
    const iv=Buffer.from(parts[1],'base64url'),tag=Buffer.from(parts[3],'base64url');if(iv.length!==12||tag.length!==16)throw Error();
    const decipher=createDecipheriv('aes-256-gcm',setup(),iv);decipher.setAAD(aad);decipher.setAuthTag(tag);
    const payload=JSON.parse(Buffer.concat([decipher.update(Buffer.from(parts[2],'base64url')),decipher.final()]).toString('utf8'));
-   if(Number.isSafeInteger(payload?.expiresAt)&&payload.expiresAt<=now())fail(401,'AUTH_REQUIRED',clearOperatorCookie,'SESSION_EXPIRED');
+   if(Number.isSafeInteger(payload?.expiresAt)&&payload.expiresAt<=now())fail(401,'AUTH_REQUIRED',null,'SESSION_EXPIRED');
    if(Object.keys(payload).sort().join(',')!=='csrfToken,expiresAt,refreshToken'||! /^[A-Za-z0-9_-]{10,512}$/.test(payload.refreshToken)||
     ! /^[a-f0-9]{64}$/.test(payload.csrfToken)||!Number.isSafeInteger(payload.expiresAt)||payload.expiresAt<=now()||payload.expiresAt-now()>ttl)throw Error();
    return payload;
-  }catch(error){if(error instanceof OperatorSessionError)throw error;fail(401,'AUTH_REQUIRED',clearOperatorCookie,'SESSION_COOKIE_INVALID');}
+  }catch(error){if(error instanceof OperatorSessionError)throw error;fail(401,'AUTH_REQUIRED',null,'SESSION_COOKIE_INVALID');}
  }
  function csrf(event,payload){
   const value=header(event,'x-csrf-token');
@@ -69,7 +73,7 @@ export function createOperatorCookieSession({env=process.env,fetchImpl=fetch,now
   try{response=await fetchImpl(project+'/auth/v1/'+path,{method:'POST',redirect:'error',signal:AbortSignal.timeout(10000),headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});}
   catch{fail(503,'SESSION_SERVICE_UNAVAILABLE');}
   if(!response.ok){
-   if([400,401,403].includes(response.status))fail(response.status===403?403:401,response.status===403?'FORBIDDEN':'AUTH_REQUIRED',clearOperatorCookie,path.includes('grant_type=refresh_token')?'AUTH_REFRESH_REJECTED':'AUTH_LOGIN_REJECTED');
+   if([400,401,403].includes(response.status))fail(response.status===403?403:401,response.status===403?'FORBIDDEN':'AUTH_REQUIRED',null,path.includes('grant_type=refresh_token')?'AUTH_REFRESH_REJECTED':'AUTH_LOGIN_REJECTED');
    fail(503,'SESSION_SERVICE_UNAVAILABLE');
   }
   if(logout)return;
@@ -79,16 +83,16 @@ export function createOperatorCookieSession({env=process.env,fetchImpl=fetch,now
   let claims;try{claims=JSON.parse(Buffer.from(result.access_token.split('.')[1],'base64url').toString());}catch{}
   if(typeof result?.access_token!=='string'||! /^[A-Za-z0-9._-]{20,8192}$/.test(result.access_token)||claims?.role!=='authenticated'||
     typeof claims.sub!=='string'||!claims.sub||claims.sub!==result.user?.id||!Number.isFinite(claims.exp)||claims.exp*1000<=now()||
-    ! /^[A-Za-z0-9_-]{10,512}$/.test(result.refresh_token||''))fail(401,'AUTH_REQUIRED',clearOperatorCookie);
+    ! /^[A-Za-z0-9_-]{10,512}$/.test(result.refresh_token||''))fail(401,'AUTH_REQUIRED',null);
   return result;
  }
  async function authority(token){
   const transport=createSupabaseTransport({url:project,publishableKey:env.SUPABASE_PUBLISHABLE_KEY,token,fetchImpl});
   let resolved;
   try{resolved=await createSupabaseAuthority(transport)();}
-  catch(error){if(error.code==='FORBIDDEN')fail(403,'FORBIDDEN',clearOperatorCookie,'AUTHORITY_REJECTED');fail(503,'SESSION_SERVICE_UNAVAILABLE');}
+  catch(error){if(error.code==='FORBIDDEN')fail(403,'FORBIDDEN',null,'AUTHORITY_REJECTED');fail(503,'SESSION_SERVICE_UNAVAILABLE');}
   let subject;try{subject=JSON.parse(Buffer.from(token.split('.')[1],'base64url').toString()).sub;}catch{}
-  if(resolved.subject!==subject||!resolved.tenants?.['sarberki-test']?.includes('read'))fail(403,'FORBIDDEN',clearOperatorCookie,'MEMBERSHIP_DENIED');
+  if(resolved.subject!==subject||!resolved.tenants?.['sarberki-test']?.includes('read'))fail(403,'FORBIDDEN',null,'MEMBERSHIP_DENIED');
   return {authority:resolved,transport};
  }
  const metadata=payload=>({authenticated:true,tenantId:'sarberki-test',expiresAt:new Date(payload.expiresAt).toISOString(),csrfToken:payload.csrfToken});

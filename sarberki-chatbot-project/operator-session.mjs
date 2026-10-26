@@ -27,7 +27,7 @@ export function createOperatorSession({request=fetch,now=()=>Date.now()}={}){
   async login(email,password){
    invalidate();const turn=epoch;
    if(typeof email!=='string'||!email.includes('@')||email.length>254||typeof password!=='string'||!password||password.length>1024)throw Error('INVALID_INPUT');
-   return enqueue(async()=>{const value=await parse(await request(endpoint,options('POST',{action:'login',email,password})));if(turn!==epoch)throw Error('SESSION_CHANGED');metadata=value;return {...value};});
+   return enqueue(async()=>{const value=await parse(await request(endpoint,options('POST',{action:'login',email,password})));if(turn!==epoch)throw Error('SESSION_CHANGED');const confirmed=await parse(await request(endpoint,options('GET')));if(turn!==epoch||confirmed.csrfToken!==value.csrfToken||confirmed.expiresAt!==value.expiresAt)throw Error('SESSION_CHANGED');metadata=confirmed;return {...confirmed};});
   },
   loadCase(caseId){
    const turn=epoch;if(!isIsolatedReviewCaseId(caseId))return Promise.reject(Error('INVALID_INPUT'));

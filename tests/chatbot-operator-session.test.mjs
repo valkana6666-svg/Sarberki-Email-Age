@@ -15,7 +15,7 @@ test('persistent restore survives new client without login and GETs use cookie a
  assert.equal(f.calls.length,6);for(const c of f.calls){assert.equal(c.options.method,'GET');assert.equal(c.options.credentials,'same-origin');assert.equal(c.options.redirect,'error');assert.equal(c.options.cache,'no-store');assert.equal(c.options.headers.Authorization,undefined);assert.equal(c.options.headers['X-Sarberki-Operator'],'1');assert.equal(c.options.body,undefined);if(c.url.includes('booking-cases'))assert.equal(c.options.headers['X-CSRF-Token'],metadata.csrfToken);}
 });
 test('login sends password only to same-origin server; logout removes readable metadata immediately',async()=>{
- const f=fixture(),s=createOperatorSession({request:f.request,now:()=>at});await s.login('operator@synthetic.invalid','synthetic-password');assert.equal(f.calls[0].url,'/.netlify/functions/operator-session');assert.equal(f.calls[0].options.method,'POST');assert.equal(JSON.parse(f.calls[0].options.body).action,'login');const logout=s.logout();await assert.rejects(s.loadCase(id),/AUTH_REQUIRED|SESSION_CHANGED/);await logout;assert.equal(JSON.parse(f.calls[1].options.body).action,'logout');assert.equal(f.calls[1].options.headers['X-CSRF-Token'],metadata.csrfToken);
+ const f=fixture(),s=createOperatorSession({request:f.request,now:()=>at});await s.login('operator@synthetic.invalid','synthetic-password');assert.equal(f.calls[0].url,'/.netlify/functions/operator-session');assert.equal(f.calls[0].options.method,'POST');assert.equal(JSON.parse(f.calls[0].options.body).action,'login');const logout=s.logout();await assert.rejects(s.loadCase(id),/AUTH_REQUIRED|SESSION_CHANGED/);await logout;assert.equal(JSON.parse(f.calls[2].options.body).action,'logout');assert.equal(f.calls[2].options.headers['X-CSRF-Token'],metadata.csrfToken);
 });
 test('coalesced restore and case reads serialize refresh-cookie rotation',async()=>{
  const f=fixture();let release,active=0,max=0;const s=createOperatorSession({now:()=>at,request:async(url,options)=>{active++;max=Math.max(max,active);if(url.includes('operator-session'))await new Promise(r=>release=r);const result=await f.request(url,options);active--;return result;}});const a=s.restore(),b=s.restore(),c=s.loadCase(id);await new Promise(r=>setImmediate(r));release();await Promise.all([a,b,c]);assert.equal(max,1);assert.equal(f.calls.length,3);
@@ -83,4 +83,13 @@ test('bounded refresh timer stops on explicit logout and failed revocation is ne
 
 test('hidden panels never poll or render private data until visible again',async()=>{
  const f=fixture(),d=dom();d.visibilityState='hidden';let timerCount=0;initOperatorPanel({documentRef:d,windowRef:null,now:()=>at,setTimer:()=>{timerCount++;return 1;},clearTimer:()=>{},request:f.request});await settle();assert.equal(f.calls.length,0);assert.equal(timerCount,0);d.visibilityState='visible';await d.events.visibilitychange();await settle();assert.equal(f.calls.length,1);assert.equal(timerCount,1);d.visibilityState='hidden';d.events.visibilitychange();assert.equal(d.data.get('server_chat_reply').value,'');
+});
+test('successful password response without accepted cookie cannot establish a chatbot session',async()=>{
+ const f=fixture();let calls=0;
+ const session=createOperatorSession({now:()=>at,request:async(url,options)=>{
+  calls++;assert.equal(options.credentials,'same-origin');
+  return options.method==='POST'?f.request(url,options):{ok:false,status:401,json:async()=>({error:'AUTH_REQUIRED'})};
+ }});
+ await assert.rejects(session.login('operator@synthetic.invalid','synthetic'),/AUTH_REQUIRED/);
+ await assert.rejects(session.loadCase(id),/AUTH_REQUIRED/);assert.equal(calls,2);
 });
