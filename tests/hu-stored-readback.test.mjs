@@ -43,10 +43,10 @@ test('authenticated Reader cookie reads stored HU text and historical audit thro
  };
  const api=createCaseHandler({env,fetchImpl}),operator=createOperatorSessionHandler({env,fetchImpl});
  const call=async(input,{method='GET',headers={},handler=api}={})=>{
-  const res=await handler({httpMethod:method,headers:{host:new URL(origin).host,origin,'sec-fetch-site':'same-origin','x-sarberki-operator':'1',...(cookie?{cookie}:{}),...(csrf?{'x-csrf-token':csrf}:{}),...headers},body:method==='POST'?JSON.stringify(input):'',queryStringParameters:method==='GET'?input:{}});
+  const res=await handler({httpMethod:method,headers:{'content-type':'application/json',host:new URL(origin).host,origin,'sec-fetch-site':'same-origin','x-sarberki-operator':'1',...(cookie?{cookie}:{}),...(csrf?{'x-csrf-token':csrf}:{}),...headers},body:method==='POST'?JSON.stringify(input):'',queryStringParameters:method==='GET'?input:{}});
   if(res.headers['Set-Cookie'])cookie=res.headers['Set-Cookie'].split(';')[0];return {...res,json:JSON.parse(res.body)};
  };
- const login=async name=>{role=name;cookie='';csrf='';const r=await call({action:'login',email:'fictional@synthetic.invalid',password:'synthetic-only'},{method:'POST',handler:operator});assert.equal(r.statusCode,200);csrf=r.json.csrfToken;};
+ const login=async name=>{role=name;cookie='';csrf='';const r=await call({action:'login',email:'fictional@synthetic.invalid',password:'synthetic-only'},{method:'POST',handler:operator});assert.equal(r.statusCode,200,r.body);csrf=r.json.csrfToken;};
  const input={tenantId:'sarberki-test',caseId:id,action:'approval-state'};
  try{
   await db.exec("create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;grant usage on schema auth to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;");
