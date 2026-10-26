@@ -24,3 +24,7 @@ Netlify recovery configuration opened at the exact existing project URL but show
 ## Delivery status
 
 Source fix and tests complete locally; hosted acceptance and GitHub publication pending. Existing 85% estimate is retained; new tests alone do not increase it. Next action: authorize Google sign-in to Netlify, inspect/stop recovery auto-builds as needed, then publish the tested changes to the authorized branch and deploy only the intended V1 test release. Verify the corrected exact Slovenian fixture and finish the existing Gmail write/approval chain. No backup/SQL restore rerun is required.
+
+## Follow-up after owner Google sign-in approval
+
+Netlify sign-in succeeded. Recovery project is linked to the expected repository and gmail-test-subject-allowlist branch; branch deploys limited to that branch. Builds were Active and were changed to Stopped, then read back. Project environment page confirms no environment variables set. Recovery is not functional yet; no secrets copied. Git push lacked CLI credentials, so the connected GitHub API published identical tested tree df61d074813b59a2183dbd887747c2e563ff4ec9 as afe8b9af65024f340e86c62522e43d5ec67b04b9 on the authorized branch, using expected-head compare and no force.
