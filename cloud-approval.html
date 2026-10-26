@@ -24,5 +24,12 @@
 <label class="confirmation"><input id="isolated_approval_confirm" type="checkbox"><span>Ezt a tárolt tervezetet elolvastam és jóváhagyom.</span></label>
 <button id="isolated_approval_submit" disabled>Belső jóváhagyás mentése</button>
 <p id="isolated_approval_status" role="status"></p>
-<button id="readback">Tárolt állapot és audit visszaolvasása</button><pre id="readback_status" role="status"></pre>
+<button id="readback">Tárolt állapot, tervezet és audit visszaolvasása</button>
+<p>A visszaolvasás nem készít új tervezetet és nem ad jóváhagyási jogot. A korábbi audit nem az aktuális tervezet jóváhagyása.</p>
+<p id="stored_readback_status" role="status"></p>
+<label for="stored_readback_text">Ténylegesen tárolt választervezet – csak olvasható</label>
+<textarea id="stored_readback_text" rows="14" readonly></textarea>
+<label for="stored_readback_hu">Tárolt magyar ellenőrző szöveg – csak olvasható</label>
+<textarea id="stored_readback_hu" rows="10" readonly></textarea>
+<pre id="readback_status" role="status"></pre>
 </fieldset></main><script type="module" src="./cloud-approval-session.mjs"></script></body></html>

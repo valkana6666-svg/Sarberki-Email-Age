@@ -9,8 +9,12 @@ const el=id=>document.getElementById(id);
 const selectedCase=new URLSearchParams(location.search).get('caseId');
 if(isIsolatedReviewCaseId(selectedCase))el('isolated_approval_case_id').value=selectedCase;
 if(location.origin===origin){
- const session=createOperatorSession();let authenticated=false,epoch=0,explicitlyLoggedOut=false;
- const clear=()=>{epoch++;session.clear();authenticated=false;el('workspace').disabled=true;el('logout').disabled=true;el('password').value='';el('readback_status').textContent='';document.dispatchEvent(new Event('isolated-approval-session-changed'));};
+ const session=createOperatorSession();let authenticated=false,epoch=0,explicitlyLoggedOut=false,readbackEpoch=0;
+ const clearReadback=()=>{
+  readbackEpoch++;el('readback_status').textContent='';
+  el('stored_readback_status').textContent='';el('stored_readback_text').value='';el('stored_readback_hu').value='';
+ };
+ const clear=()=>{epoch++;session.clear();authenticated=false;el('workspace').disabled=true;el('logout').disabled=true;el('password').value='';clearReadback();document.dispatchEvent(new Event('isolated-approval-session-changed'));};
  const queuedRequest=createEpochRequestQueue({getEpoch:()=>epoch,isAuthenticated:()=>authenticated,
   prepare:()=>session.restore(),
   execute:createCloudCaseRequest()
@@ -28,6 +32,7 @@ if(location.origin===origin){
  const client={get:(tenantId,caseId)=>request({tenantId,caseId,action:'review-record'},'GET'),
   approve:(tenantId,caseId,expectedRevision,reviewedDraftHash)=>request({tenantId,caseId,action:'approve',expectedRevision,reviewedDraftHash})};
  el('cloud_prepare').addEventListener('click',async()=>{
+  clearReadback();
   const turn=epoch,id=el('isolated_approval_case_id').value.trim();
   document.dispatchEvent(new Event('isolated-approval-session-changed'));
   let stage='case-id';
@@ -48,10 +53,26 @@ if(location.origin===origin){
   try{await session.login(email,password);if(turn===epoch){explicitlyLoggedOut=false;restored();}}catch(error){if(turn===epoch)el('auth_status').textContent=formatCloudApprovalFailure(error,'login');}finally{el('password').value='';}
  });
  el('logout').addEventListener('click',async()=>{explicitlyLoggedOut=true;clear();try{await session.logout();el('auth_status').textContent='Kijelentkezve.';}catch(error){el('auth_status').textContent=formatCloudApprovalFailure(error,'logout');}});
+ el('isolated_approval_case_id').addEventListener('input',clearReadback);
+ el('isolated_approval_submit').addEventListener('click',clearReadback);
  el('readback').addEventListener('click',async()=>{
-  const turn=epoch,id=el('isolated_approval_case_id').value.trim();el('readback_status').textContent='';
-  try{if(!isIsolatedReviewCaseId(id))throw Error('INVALID_INPUT');const result=await request({tenantId:'sarberki-test',caseId:id,action:'approval-state'},'GET');if(turn===epoch)el('readback_status').textContent=JSON.stringify(result,null,2);}
-  catch(error){if(turn===epoch)el('readback_status').textContent=formatCloudApprovalFailure(error,'approval-state');}
+  const turn=epoch,id=el('isolated_approval_case_id').value.trim();clearReadback();const readTurn=readbackEpoch;
+  // An informational read never retains consent for an earlier loaded review.
+  document.dispatchEvent(new Event('isolated-approval-session-changed'));
+  try{
+   if(!isIsolatedReviewCaseId(id))throw Error('INVALID_INPUT');
+   const result=await request({tenantId:'sarberki-test',caseId:id,action:'approval-state'},'GET');
+   if(turn!==epoch||readTurn!==readbackEpoch||el('isolated_approval_case_id').value.trim()!==id)return;
+   if(result?.caseId!==id||result.readOnly!==true||!Number.isSafeInteger(result.revision)||result.revision<1||!Array.isArray(result.audit))throw Error('INVALID_INPUT');
+   const stored=result.storedDraft;
+   if(stored!==null&&(!stored||typeof stored.text!=='string'||typeof stored.operatorReviewText!=='string'||typeof stored.current!=='boolean'))throw Error('INVALID_INPUT');
+   el('stored_readback_text').value=stored?.text||'';el('stored_readback_hu').value=stored?.operatorReviewText||'';
+   el('stored_readback_status').textContent='Tárolt ügy: '+id+' · v'+result.revision+' · '+result.approval+'. '+
+    (stored?(stored.current?'A tárolt tervezet az aktuális üzenetszámhoz kötött.':'A tárolt tervezet korábbi állapothoz tartozik; nem aktuális jóváhagyási bizonyíték.'):'Nincs tárolt tervezet.')+
+    ' Csak olvasás; a korábbi audit nem hagyja jóvá az új üzenetet.';
+   const {storedDraft,...metadata}=result;
+   el('readback_status').textContent=JSON.stringify(metadata,null,2);
+  }catch(error){if(turn===epoch&&readTurn===readbackEpoch){el('stored_readback_text').value='';el('stored_readback_hu').value='';el('stored_readback_status').textContent='';el('readback_status').textContent=formatCloudApprovalFailure(error,'approval-state');}}
  });
  const resume=async()=>{
   if(document.visibilityState==='hidden'||explicitlyLoggedOut)return;

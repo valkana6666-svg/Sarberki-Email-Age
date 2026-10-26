@@ -5,7 +5,7 @@ import {createServerBookingRuntime} from '../../shared-core/server-booking-runti
 import {createOperatorCookieSession,OperatorSessionError,clearOperatorCookie} from '../../shared-core/operator-cookie-session.mjs';
 import {createIsolatedApprovalAttestor} from '../../shared-core/isolated-approval-attestation.mjs';
 import {isIsolatedReviewCaseId} from '../../shared-core/isolated-review-case-id.mjs';
-import {cloudSyntheticApprovalEnabled,cloudSyntheticReviewProviders,assertCloudSyntheticReviewCase} from '../../shared-core/cloud-synthetic-approval.mjs';
+import {cloudSyntheticApprovalEnabled,cloudSyntheticReviewProviders,assertCloudSyntheticReviewCase,assertCloudSyntheticReadCase} from '../../shared-core/cloud-synthetic-approval.mjs';
 import {createExactGmailReceipt,readExactReceiptAudit,diagnoseExactGmailReceiptRequest} from '../../shared-core/server-exact-gmail-receipt.mjs';
 import {closedSyntheticMailLanguage,isClosedTubFollowup,isClosedTubPreviousRecord,isClosedTubReview,isClosedTubReviewRecord} from '../../shared-core/synthetic-mail-fixtures.mjs';
 import {resolveBookingCase} from '../../booking-cases.mjs';
@@ -80,7 +80,9 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    const service=createServerCaseService({repository:createSupabaseCaseRepository(transport,{approvalAttestor}),resolveAuthority:cookieSession?async()=>cookieSession.authority:createSupabaseAuthority(transport)});
    if(cloudApproval&&['review-draft','approve','approval-state','review-record'].includes(input.action)){
     if(input.tenantId!=='sarberki-test'||!isIsolatedReviewCaseId(input.caseId))return cookieResponse(403,{error:'FORBIDDEN'});
-    assertCloudSyntheticReviewCase(await service.getCase({tenantId:input.tenantId,caseId:input.caseId}));
+    const candidate=await service.getCase({tenantId:input.tenantId,caseId:input.caseId});
+    if(event.httpMethod==='GET'&&input.action==='approval-state')assertCloudSyntheticReadCase(candidate);
+    else assertCloudSyntheticReviewCase(candidate);
    }
    if(cookieMode&&closedTub){
     const previous=await service.getCase({tenantId:input.tenantId,caseId:input.caseId});
@@ -114,11 +116,17 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      assertCloudSyntheticReviewCase(result);
     }else if(input.action==='approval-state'&&cloudApproval){
      const record=await service.getCase({tenantId:input.tenantId,caseId:input.caseId});
-     assertCloudSyntheticReviewCase(record);
-     const audit=await transport('/rest/v1/sc_audit?'+new URLSearchParams({tenant_id:'eq.sarberki-test',case_id:'eq.'+input.caseId,kind:'eq.approve_isolated_synthetic',select:'revision,actor,kind,data_hash'}));
-     const approval=record.data.serverApproval;
+     assertCloudSyntheticReadCase(record);
+     const audit=await transport('/rest/v1/sc_audit?'+new URLSearchParams({tenant_id:'eq.sarberki-test',case_id:'eq.'+input.caseId,kind:'eq.approve_isolated_synthetic',select:'revision,actor,at,kind,data_hash',order:'revision.asc'}));
+     const approval=record.data.serverApproval,latest=record.data.drafts?.at(-1);
+     const storedDraft=latest&&typeof latest.text==='string'?{
+      text:latest.text,operatorReviewText:typeof latest.operatorReviewText==='string'?latest.operatorReviewText:'',
+      factsRevision:latest.revision??null,basedOnMessageCount:latest.basedOnMessageCount??null,
+      current:latest.revision===record.data.state.revision&&latest.basedOnMessageCount===record.data.messages.length
+     }:null;
      result={caseId:record.caseId,revision:record.revision,approval:record.data.state.approval,
-      serverApproval:approval?{actor:approval.actor,at:approval.at,reviewedRevision:approval.reviewedRevision,draftHash:approval.draftHash}:null,audit};
+      serverApproval:approval?{actor:approval.actor,at:approval.at,reviewedRevision:approval.reviewedRevision,draftHash:approval.draftHash}:null,
+      readOnly:true,auditScope:'approval-history',storedDraft,audit};
     }else if(input.action==='preview-draft'){
      let candidate=null;
      if(cookieMode){

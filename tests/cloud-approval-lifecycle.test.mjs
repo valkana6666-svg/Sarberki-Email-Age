@@ -106,3 +106,36 @@ test('explicit logout stays locked on bfcache and visibility return even if serv
  await h.get('login').submit({preventDefault(){}});
  assert.equal(h.get('workspace').disabled,false,'explicit login can unlock again');
 });
+
+const storedReadback=()=>({caseId:'case-fixture',revision:4,approval:'pending',serverApproval:null,readOnly:true,auditScope:'approval-history',
+ storedDraft:{text:'Actual stored reply\r\nSecond line',operatorReviewText:'Tárolt magyar szöveg',factsRevision:1,basedOnMessageCount:1,current:false},
+ audit:[{revision:3,kind:'approve_isolated_synthetic',actor:'synthetic-actor',data_hash:'a'.repeat(64)}]});
+test('readback renders historical stored content separately and never enables approval or writes',async()=>{
+ const calls=[],h=await harness(async(url,options)=>{calls.push({url,method:options.method});return {ok:true,json:async()=>url.includes('operator-session')?valid():{result:storedReadback()}};});
+ h.get('isolated_approval_confirm').checked=true;
+ await h.get('readback').click();
+ assert.equal(h.get('stored_readback_text').value,storedReadback().storedDraft.text);
+ assert.equal(h.get('stored_readback_hu').value,storedReadback().storedDraft.operatorReviewText);
+ assert.match(h.get('stored_readback_status').textContent,/korábbi állapothoz/);
+ assert.match(h.get('readback_status').textContent,/approval-history/);
+ assert.doesNotMatch(h.get('readback_status').textContent,/Actual stored reply/);
+ assert.equal(h.get('isolated_approval_confirm').checked,false);assert.equal(h.get('isolated_approval_submit').disabled,true);
+ assert.ok(calls.every(c=>c.method==='GET'));
+ h.listeners.pagehide();assert.equal(h.get('stored_readback_text').value,'');assert.equal(h.get('stored_readback_hu').value,'');
+});
+test('late stored readback cannot render after case selection changes',async()=>{
+ let release;const h=await harness(async(url)=>url.includes('operator-session')?{ok:true,json:async()=>valid()}:new Promise(resolve=>{release=resolve;}));
+ const pending=h.get('readback').click();await settle();assert.ok(release);
+ h.get('isolated_approval_case_id').value='case-other';h.get('isolated_approval_case_id').input();
+ release({ok:true,json:async()=>({result:storedReadback()})});await pending;
+ assert.equal(h.get('stored_readback_text').value,'');assert.equal(h.get('readback_status').textContent,'');
+});
+test('stored readback rejects wrong case response and clears previous content',async()=>{
+ const h=await harness(async(url)=>({ok:true,json:async()=>url.includes('operator-session')?valid():{result:{...storedReadback(),caseId:'case-other'}}}));
+ h.get('stored_readback_text').value='old stored content';await h.get('readback').click();
+ assert.equal(h.get('stored_readback_text').value,'');assert.equal(h.get('isolated_approval_submit').disabled,true);
+});
+test('stored readback fields are readonly in hosted HTML',()=>{
+ const html=readFileSync(new URL('../cloud-approval.html',import.meta.url),'utf8');
+ for(const id of ['stored_readback_text','stored_readback_hu'])assert.match(html,new RegExp('<textarea[^>]*id="'+id+'"[^>]*readonly'));
+});
