@@ -25,6 +25,13 @@ export function gmailReceiptRequestFromRecord(record,currentMessage){
   envelope:{sender:source.from_email,text,mailbox_id,message_id:source.message_id,thread_id:source.thread_id,
    rfc_message_id:source.rfc_message_id,references:[],received_at:source.received_at}};
 }
+// Accept only server-defined categories/field names; never render arbitrary diagnostics.
+export function exactReceiptDiagnosticMessage(value){
+ const categories=['CONFIG_INVALID','REQUEST_SHAPE_INVALID','ENVELOPE_MISMATCH','SOURCE_RECEIPT_MISMATCH','WRITER_DENIED','MATCH'];
+ const fields=['request','tenantId','action','expectedRevision','envelope','sourceReceipt','sender','text','provider','mailbox_id','message_id','thread_id','rfc_message_id','in_reply_to','references','subject','to','from','from_email','received_at'];
+ if(!value||Object.keys(value).sort().join(',')!=='category,fields'||!categories.includes(value.category)||!Array.isArray(value.fields)||value.fields.length>fields.length||value.fields.some(k=>!fields.includes(k)))return '';
+ return 'Exact Gmail: '+value.category+(value.fields.length?' · '+[...new Set(value.fields)].join(', '):'');
+}
 export function initOperatorLoginPanel({documentRef=document,globalRef=window,request=fetch}={}){
  request=createCookieJsonRequest({request});
  const get=id=>documentRef.getElementById(id);
@@ -101,7 +108,11 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
    });
   });
   const data=await response.json();
-  if(!response.ok)throw Error(['AUTH_REQUIRED','FORBIDDEN','SESSION_SETUP_REQUIRED','SESSION_SERVICE_UNAVAILABLE','CASE_STORE_DISABLED','SYNTHETIC_FIXTURE_UNVERIFIED','CASE_CONFLICT','INVALID_INPUT','SERVICE_UNAVAILABLE'].includes(data?.error)?data.error:'SESSION_UNAVAILABLE');
+  if(!response.ok){
+   const error=Error(['AUTH_REQUIRED','FORBIDDEN','SESSION_SETUP_REQUIRED','SESSION_SERVICE_UNAVAILABLE','CASE_STORE_DISABLED','SYNTHETIC_FIXTURE_UNVERIFIED','CASE_CONFLICT','INVALID_INPUT','SERVICE_UNAVAILABLE'].includes(data?.error)?data.error:'SESSION_UNAVAILABLE');
+   if(path==='/.netlify/functions/booking-cases'&&body?.action==='ingest-and-draft'&&body?.sourceReceipt)error.exactReceiptDiagnostic=exactReceiptDiagnosticMessage(data?.diagnostic);
+   throw error;
+  }
   return data;
  }
  async function loadClosedMail(){
@@ -204,7 +215,7 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
    if(id&&revision){id.value=record.caseId;id.dispatchEvent(new Event('input'));revision.value=String(record.revision);revision.dispatchEvent(new Event('input'));}
    if(mailApproval){mailApproval.hidden=true;mailApproval.removeAttribute?.('href');}
    receiptStatus.textContent=(r.resolution.status==='duplicate'?'Meglévő':'Mentett')+' privátan engedélyezett szintetikus tesztügy: '+record.caseId+' · v'+record.revision+'. Reader-előnézet kiválasztva. Kapacitás és ár nem igazolt; nincs jóváhagyás, küldés vagy foglalás.';
-  }catch(error){if(globalRef.SarberkiCaseStoreSession===session&&receiptEpoch===turn)receiptStatus.textContent=formatCloudApprovalFailure(error,'review-draft');}
+  }catch(error){if(globalRef.SarberkiCaseStoreSession===session&&receiptEpoch===turn)receiptStatus.textContent=error.exactReceiptDiagnostic||formatCloudApprovalFailure(error,'review-draft');}
   finally{waiting(false);}
  }
  async function createReaderFixture(){

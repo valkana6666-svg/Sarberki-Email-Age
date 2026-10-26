@@ -17,8 +17,30 @@ export function createExactGmailReceipt(env){
   if(m.sender!==s.from_email||['mailbox_id','message_id','thread_id','rfc_message_id','received_at'].some(k=>m[k]!==s[k])||createHash('sha256').update(m.text,'utf8').digest('hex')!==config.bodySha256)return null;
   return Object.freeze({caseId:config.caseId,
    matches:(envelope,source)=>isDeepStrictEqual(envelope,m)&&isDeepStrictEqual(source,s),
+   diagnose:(envelope,source)=>{
+    const envelopeFields=messageKeys.filter(k=>!isDeepStrictEqual(envelope?.[k],m[k]));
+    const sourceFields=sourceKeys.filter(k=>!isDeepStrictEqual(source?.[k],s[k]));
+    return envelopeFields.length?{category:'ENVELOPE_MISMATCH',fields:envelopeFields}:
+     sourceFields.length?{category:'SOURCE_RECEIPT_MISMATCH',fields:sourceFields}:{category:'MATCH',fields:[]};
+   },
    matchesRecord:record=>record?.tenantId==='sarberki-test'&&record.caseId===config.caseId&&record.data?.sender===m.sender&&isDeepStrictEqual(record.data?.messages,[m])&&isDeepStrictEqual(record.data?.sourceReceipt,s)});
  }catch{return null;}
+}
+
+// Call only AFTER fresh cookie Auth, same-origin/CSRF and Writer checks.
+// Output is a fixed vocabulary: never values, hashes, private config or caller keys.
+export function diagnoseExactGmailReceiptRequest(env,input){
+ const receipt=createExactGmailReceipt(env);
+ if(!receipt)return {category:'CONFIG_INVALID',fields:[]};
+ if(!keys(input,['tenantId','action','expectedRevision','envelope','sourceReceipt']))return {category:'REQUEST_SHAPE_INVALID',fields:['request']};
+ const invalid=[];
+ if(input.tenantId!=='sarberki-test')invalid.push('tenantId');
+ if(!['ingest-and-draft','diagnose-exact-receipt'].includes(input.action))invalid.push('action');
+ if(input.expectedRevision!==0)invalid.push('expectedRevision');
+ if(!keys(input.envelope,messageKeys))invalid.push('envelope');
+ if(!keys(input.sourceReceipt,sourceKeys))invalid.push('sourceReceipt');
+ if(invalid.length)return {category:'REQUEST_SHAPE_INVALID',fields:invalid};
+ return receipt.diagnose(input.envelope,input.sourceReceipt);
 }
 
 // Existing user transport + sc_audit RLS only. The PostgreSQL text cast avoids

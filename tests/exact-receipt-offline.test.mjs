@@ -113,6 +113,32 @@ test('offline SQL candidate + cookie Writer/runtime/Reader preserve actual sourc
    authMismatch=true;try{assert.equal((await call(input)).statusCode,403);}finally{authMismatch=false;}await login('writer');
    assert.equal((await db.query('select count(*)::int n from sc_cases')).rows[0].n,0);
   });
+  await t.test('authenticated diagnostic distinguishes all gates without writing or exposing values',async()=>{
+   const probe={...input,action:'diagnose-exact-receipt'};
+   const cases=[
+    [probe,{category:'MATCH',fields:[]}],
+    [{...probe,extra:'DO_NOT_ECHO'},{category:'REQUEST_SHAPE_INVALID',fields:['request']}],
+    [{...probe,expectedRevision:1},{category:'REQUEST_SHAPE_INVALID',fields:['expectedRevision']}],
+    [{...probe,envelope:{...envelope,text:envelope.text+'DO_NOT_ECHO'}},{category:'ENVELOPE_MISMATCH',fields:['text']}],
+    [{...probe,sourceReceipt:{...source,subject:'DO_NOT_ECHO'}},{category:'SOURCE_RECEIPT_MISMATCH',fields:['subject']}],
+   ];
+   for(const [body,expected] of cases){
+    const r=await call(body);assert.equal(r.statusCode,expected.category==='MATCH'?200:403);assert.deepEqual(r.json.diagnostic,expected);
+    assert.deepEqual(Object.keys(r.json).sort(),expected.category==='MATCH'?['diagnostic']:['diagnostic','error']);
+    assert.doesNotMatch(r.body,/DO_NOT_ECHO|Fictional|fictional|bodySha256|CASE_EXACT_RECEIPT/);
+   }
+   const disabled=await call(probe,{handler:createCaseHandler({env:{...env,CASE_EXACT_RECEIPT_ENABLED:''},fetchImpl})});
+   assert.deepEqual(disabled.json.diagnostic,{category:'CONFIG_INVALID',fields:[]});
+   for(const headers of [{cookie:''},{origin:'https://wrong.example'},{'x-csrf-token':'0'.repeat(64)}]){
+    const r=await call(probe,{headers});assert.notEqual(r.statusCode,200);assert.equal(r.json.diagnostic,undefined);
+   }
+   await login('reader');
+   const denied=await call({...probe,envelope:{...envelope,text:'DO_NOT_ECHO'}});
+   assert.equal(denied.statusCode,403);assert.deepEqual(denied.json.diagnostic,{category:'WRITER_DENIED',fields:[]});
+   await login('writer');
+   assert.equal((await db.query('select count(*)::int n from sc_cases')).rows[0].n,0);
+   assert.equal((await db.query('select count(*)::int n from sc_audit')).rows[0].n,0);
+  });
   let record;
   await t.test('explicit Writer uses the real runtime/repository and replay stays at revision one',async()=>{
    const saved=await call(input);assert.equal(saved.statusCode,200,JSON.stringify(saved.json));record=saved.json.result.record;

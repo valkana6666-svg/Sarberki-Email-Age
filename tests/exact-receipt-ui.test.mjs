@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {initOperatorLoginPanel,gmailReceiptRequestFromRecord} from '../operator-login-ui.mjs';
+import {initOperatorLoginPanel,gmailReceiptRequestFromRecord,exactReceiptDiagnosticMessage} from '../operator-login-ui.mjs';
 // Fictional sender, header, IDs, and body only; no private config is imported.
 const record=()=>({source:{provider:'gmail',message_id:'fake-message',thread_id:'fake-thread',rfc_message_id:'<fake@example.test>',in_reply_to:null,references:[],subject:'Fictional inquiry',from:'Fictional Sender <sender@example.test>',from_email:'sender@example.test',to:'sarberkiprojecttest@gmail.com',received_at:'2030-10-03T09:23:06.000Z'},original_message:'Fictional inquiry.\r\nSecond line.',normalized:{guests:999},reply_draft:'MUST NOT UPLOAD'});
 const metadata=()=>({authenticated:true,tenantId:'sarberki-test',csrfToken:'ab'.repeat(32),expiresAt:new Date(Date.now()+3600000).toISOString()});
@@ -74,4 +74,14 @@ test('awaited CSRF cannot post stale content or a replaced session',async()=>{
 test('response after a new normalized record cannot overwrite selected Reader case',async()=>{
  let release;const h=await harness({onPost:()=>new Promise(resolve=>{release=resolve;})});h.load();const pending=h.save();for(let i=0;i<20&&!release;i++)await Promise.resolve();assert.ok(release);
  h.load({...record(),source:{...record().source,message_id:'another-id'}});release({ok:true,json:async()=>result('new')});await pending;assert.equal(h.get('server_preview_case_id').value,'');assert.doesNotMatch(h.get('gmail_exact_receipt_status').textContent,/Mentett/);
+});
+
+test('exact diagnostic renderer only accepts fixed categories and field names',()=>{
+ assert.equal(exactReceiptDiagnosticMessage({category:'ENVELOPE_MISMATCH',fields:['text']}),'Exact Gmail: ENVELOPE_MISMATCH · text');
+ for(const value of [{category:'secret',fields:[]},{category:'ENVELOPE_MISMATCH',fields:['private-content']},{category:'CONFIG_INVALID',fields:[],secret:'no'}])assert.equal(exactReceiptDiagnosticMessage(value),'');
+});
+test('authenticated exact denial displays only safe category and differing field',async()=>{
+ const h=await harness({onPost:async()=>({ok:false,json:async()=>({error:'FORBIDDEN',diagnostic:{category:'SOURCE_RECEIPT_MISMATCH',fields:['from']},secret:'NEVER DISPLAY'})})});
+ h.load();await h.save();assert.equal(h.get('gmail_exact_receipt_status').textContent,'Exact Gmail: SOURCE_RECEIPT_MISMATCH · from');
+ assert.equal(h.get('server_preview_case_id').value,'');
 });
