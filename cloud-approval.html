@@ -5,7 +5,7 @@
 <body><main>
 <h1>Felhős szintetikus jóváhagyás</h1>
 <p>Csak a rögzített Writer mintatesztügy belső jóváhagyása. Az ár és kapacitás kitalált tesztadat. A művelet nem küld levelet és nem hoz létre foglalást.</p>
-<p><strong>Saját tesztüzenetet írnál vagy illesztenél be?</strong> <a href="./index.html">Nyisd meg a Sárberki tesztkezelő főoldalát</a>, és használd az <strong>1. Vendégüzenet</strong> részt. Ott szabadon szerkesztheted a szöveget és az Elemzés gombbal kipróbálhatod. Ez nem ment automatikusan felhős ügyet, nem küld e-mailt és nem készít foglalást. Az ezen az oldalon látható mentett tervezet továbbra is szándékosan csak olvasható.</p>
+<p><strong>Saját tesztüzenetet írnál vagy illesztenél be?</strong> <a href="./index.html">Nyisd meg a Sárberki tesztkezelő főoldalát</a>, és használd az <strong>1. Vendégüzenet</strong> részt. Ott szabadon szerkesztheted a szöveget és az Elemzés gombbal kipróbálhatod. Ez nem ment automatikusan felhős ügyet, nem küld e-mailt és nem készít foglalást. Az engedélyezett, függő szintetikus ügy vendégszövegét a Writer külön mezőben szerkesztheti és mentheti; ezt független jóváhagyónak újra be kell töltenie.</p>
 <section class="card">
 <form id="login"><label>Operátor e-mail <input id="email" type="email" required autocomplete="off"></label>
 <label>Jelszó <input id="password" type="password" required autocomplete="off"></label>
@@ -19,6 +19,10 @@
 <label>Aktuális tárolt verzió <input id="isolated_approval_revision" readonly></label>
 <label for="isolated_approval_text">Átnézendő tervezet</label>
 <textarea id="isolated_approval_text" rows="14" readonly></textarea>
+<label for="cloud_edit_text">Writer: módosított vendégszöveg</label>
+<textarea id="cloud_edit_text" rows="14" disabled></textarea>
+<button id="cloud_edit_save" disabled>Módosítás mentése jóváhagyás nélkül</button>
+<p>A magyar ellenőrző szöveg módosítás után nem igazolt fordítás. Mentés után a jóváhagyónak az aktuális vendégszöveget kell elolvasnia.</p>
 <label for="isolated_approval_hu">Magyar ellenőrző szöveg – nem küldhető külön tervezetként</label>
 <textarea id="isolated_approval_hu" rows="10" readonly></textarea>
 <label class="confirmation"><input id="isolated_approval_confirm" type="checkbox"><span>Ezt a tárolt tervezetet elolvastam és jóváhagyom.</span></label>

@@ -29,7 +29,7 @@ if(location.origin===origin){
    throw error;
   }
  };
- const client={get:(tenantId,caseId)=>request({tenantId,caseId,action:'review-record'},'GET'),
+ const client={edit:(tenantId,caseId,expectedRevision,expectedDraftHash,editedDraftText)=>request({tenantId,caseId,action:'edit-draft',expectedRevision,expectedDraftHash,editedDraftText}),get:(tenantId,caseId)=>request({tenantId,caseId,action:'review-record'},'GET'),
   approve:(tenantId,caseId,expectedRevision,reviewedDraftHash)=>request({tenantId,caseId,action:'approve',expectedRevision,reviewedDraftHash})};
  el('cloud_prepare').addEventListener('click',async()=>{
   clearReadback();

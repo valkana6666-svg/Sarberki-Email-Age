@@ -23,11 +23,13 @@ export function initIsolatedApprovalPanel({
  if(found.some(x=>!x))return false;
  const [caseInput,loadButton,reviewText,revisionField,confirmation,submit,status]=found;
  const translation=element('isolated_approval_hu');
+ const editor=cloudSyntheticApproval===true?element('cloud_edit_text'):null,save=cloudSyntheticApproval===true?element('cloud_edit_save'):null;
+ let editBase=null;
  let loaded=null,busy=false,epoch=0;
  const message=text=>{status.textContent=text;};
- const locked=()=>{submit.disabled=busy||!loaded||confirmation.checked!==true;loadButton.disabled=busy;};
+ const locked=()=>{submit.disabled=busy||!loaded||confirmation.checked!==true;loadButton.disabled=busy;if(editor)editor.disabled=busy||!editBase;if(save)save.disabled=busy||!editBase||editor.value===editBase.text;};
  const reset=()=>{
-  epoch++;loaded=null;confirmation.checked=false;
+  epoch++;loaded=null;editBase=null;confirmation.checked=false;if(editor){editor.value='';editor.disabled=true;}if(save)save.disabled=true;
   reviewText.value='';if(translation)translation.value='';revisionField.value='';submit.disabled=true;
   bridge?.clear();
  };
@@ -56,7 +58,7 @@ export function initIsolatedApprovalPanel({
   reset();message('Munkamenet változott. Új hitelesített betöltés szükséges.');
  });
  const clearOnChange=()=>{
-  if(!busy){reset();message('Az ügyazonosító megváltozott. Új betöltés szükséges.');}
+  reset();message('Az ügyazonosító megváltozott. Új betöltés szükséges.');
  };
  caseInput.addEventListener('input',clearOnChange);
  confirmation.addEventListener('change',locked);
@@ -69,8 +71,8 @@ export function initIsolatedApprovalPanel({
   message('Tárolt szintetikus tervezet hitelesített lekérése…');
   try{
    const value=await bridge.load(id);
-   if(epoch!==generation)throw Error('REVIEW_CANCELLED');
-   loaded=value;
+   if(epoch!==generation||caseInput.value.trim()!==id)throw Error('REVIEW_CANCELLED');
+   loaded=value;if(editor&&save&&typeof client.edit==='function'&&value.canEditDraft===true){editBase=value;editor.value=value.text;}
    reviewText.value=value.text;
    if(translation)translation.value=value.operatorReviewText||'Magyar ellenőrző szöveg: NEM IGAZOLT ehhez a korábbi tervezethez.';
    revisionField.value=String(value.revision);
@@ -79,6 +81,27 @@ export function initIsolatedApprovalPanel({
    reset();message('A tervezet nem tölthető be: '+safeCode(error)+'. Ezzel a betöltéssel nem történt új jóváhagyás. A korábban tárolt állapotot az audit visszaolvasásával ellenőrizheted.');
   }finally{busy=false;locked();}
  });
+ if(editor&&save&&typeof client.edit==='function'){
+  editor.addEventListener('input',()=>{
+   loaded=null;confirmation.checked=false;bridge.clear();locked();
+   message('Módosított szöveg: még nincs mentve vagy jóváhagyva.');
+  });
+  save.addEventListener('click',async()=>{
+   if(busy)return;
+   const selected=editBase,text=editor.value;
+   if(!selected||caseInput.value.trim()!==selected.caseId||text===selected.text){reset();locked();return;}
+   reset();busy=true;locked();const generation=epoch;
+   message('Módosított vendégszöveg mentése…');
+   try{
+    const record=await client.edit('sarberki-test',selected.caseId,selected.revision,selected.hash,text);
+    if(epoch!==generation||caseInput.value.trim()!==selected.caseId)return;
+    const draft=record?.data?.drafts?.at(-1);
+    if(record?.tenantId!=='sarberki-test'||record.caseId!==selected.caseId||record.revision!==selected.revision+1||record.data?.state?.approval!=='pending'||record.data?.serverApproval||draft?.text!==text||draft.edited!==true)throw Error('INVALID_DRAFT');
+    message('Módosítás mentve, verzió: '+record.revision+'. A független jóváhagyó külön töltse be és olvassa el. Nincs e-mail-küldés.');
+   }catch(error){if(epoch===generation){reset();message('A mentés nem igazolt: '+safeCode(error)+'. Új betöltés szükséges; jóváhagyás nincs.');}}
+   finally{busy=false;locked();}
+  });
+ }
  submit.addEventListener('click',async()=>{
   if(busy)return;
   if(!loaded||confirmation.checked!==true||reviewText.value!==loaded.text||
@@ -89,7 +112,7 @@ export function initIsolatedApprovalPanel({
   const selected=loaded,generation=epoch;
   // Invalidate only the rendered UI. bridge.approve consumes the persisted review itself.
   // Calling bridge.clear here would discard the required server-loaded hash and revision.
-  loaded=null;confirmation.checked=false;reviewText.value='';revisionField.value='';locked();
+  loaded=null;editBase=null;if(editor)editor.value='';confirmation.checked=false;reviewText.value='';revisionField.value='';locked();
   message('Hitelesített szerveres jóváhagyás ellenőrzése…');
   try{
    const approved=await bridge.approve({

@@ -1,3 +1,4 @@
+import {createServerBookingRuntime} from '../shared-core/server-booking-runtime.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -70,9 +71,9 @@ test('authenticated Reader cookie reads stored HU text and historical audit thro
   });
   await t.test('read access cannot be reused for review-record, Writer or approval',async()=>{
    assert.equal((await call({...input,action:'review-record'})).statusCode,403);
-   for(const action of ['review-draft','approve'])assert.equal((await call({...input,action,expectedRevision:4,reviewedDraftHash:'a'.repeat(64)},{method:'POST'})).statusCode,403);
+   for(const action of ['edit-draft','review-draft','approve'])assert.equal((await call({...input,action,expectedRevision:4,...(action==='edit-draft'?{expectedDraftHash:'a'.repeat(64),editedDraftText:'Synthetic forbidden edit'}:{reviewedDraftHash:'a'.repeat(64)})},{method:'POST'})).statusCode,403);
    await db.query('update sc_memberships set can_write=true,can_approve=true where user_id=$1',[reader]);
-   for(const action of ['review-draft','approve'])assert.equal((await call({...input,action,expectedRevision:4,reviewedDraftHash:'a'.repeat(64)},{method:'POST'})).statusCode,403,'even full test permission does not expand case review scope');
+   for(const action of ['edit-draft','review-draft','approve'])assert.equal((await call({...input,action,expectedRevision:4,...(action==='edit-draft'?{expectedDraftHash:'a'.repeat(64),editedDraftText:'Synthetic forbidden edit'}:{reviewedDraftHash:'a'.repeat(64)})},{method:'POST'})).statusCode,403,'even full test permission does not expand case review scope');
    await db.query('update sc_memberships set can_write=false,can_approve=false where user_id=$1',[reader]);
    assert.equal(rpcCalls,0);
   });
@@ -87,7 +88,7 @@ test('authenticated Reader cookie reads stored HU text and historical audit thro
  }finally{await db.close();}
 });
 
-test('an exact Gmail receipt match does not grant synthetic approval/review access',()=>{
+test('an exact Gmail receipt match does not grant synthetic approval/review/edit access',async()=>{
  const source={provider:'gmail',mailbox_id:'fictional_mailbox',message_id:'fictional-id',thread_id:'fictional-thread',rfc_message_id:'<fictional@example.test>',in_reply_to:null,references:[],subject:'Fictional',to:'test@example.test',from:'Fictional <sender@example.test>',from_email:'sender@example.test',received_at:'2026-10-26T10:00:00Z'};
  const envelope={sender:source.from_email,text:'Fictional exact message',mailbox_id:source.mailbox_id,message_id:source.message_id,thread_id:source.thread_id,rfc_message_id:source.rfc_message_id,references:[],received_at:source.received_at};
  const config={caseId:'13c8ecb7-f836-4e2c-9833-d58ee96f2dda',source,envelope,bodySha256:createHash('sha256').update(envelope.text).digest('hex')};
@@ -96,4 +97,6 @@ test('an exact Gmail receipt match does not grant synthetic approval/review acce
  assert.equal(receipt.matchesRecord(exact),true);
  assert.throws(()=>assertCloudSyntheticReviewCase(exact),/FORBIDDEN/);
  assert.throws(()=>assertCloudSyntheticReadCase(exact),/FORBIDDEN/);
+ const runtime=createServerBookingRuntime({tenantId:'sarberki-test',cloudSyntheticEditing:true,service:{requireWrite:async()=> 'writer',getCase:async()=>exact,updateCase:async()=>{throw Error('UNEXPECTED_WRITE');}}});
+ await assert.rejects(runtime.editDraft(exact.caseId,1,'Forbidden edited Gmail','a'.repeat(64)),/FORBIDDEN/);
 });

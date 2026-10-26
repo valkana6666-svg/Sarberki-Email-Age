@@ -93,9 +93,36 @@ test('generated managed binding reuses existing approval SQL and real PostgreSQL
     assert.equal(created.record.data.state.values.language,language);assert.ok(created.record.data.state.values.phone);
     const same=await call({action:'ingest-and-draft',envelope:syntheticMailEnvelope(language),expectedRevision:0});assert.equal(same.record.revision,1);
     const review=await call({action:'review-draft',caseId:created.record.caseId,expectedRevision:1});assert.equal(review.review.status,'internal_review_required');
-    const hash=createHash('sha256').update(review.record.data.drafts.at(-1).text).digest('hex');
-    const approved=await call({action:'approve',caseId:created.record.caseId,expectedRevision:2,reviewedDraftHash:hash},'synthetic-approver-token-0003');
-    assert.equal(approved.revision,3);assert.equal(approved.data.state.approval,'internally_approved');
+    let hash=createHash('sha256').update(review.record.data.drafts.at(-1).text).digest('hex'),revision=2;
+    if(language==='en'){
+     const edit={action:'edit-draft',caseId:created.record.caseId,expectedRevision:2,expectedDraftHash:hash,editedDraftText:review.record.data.drafts.at(-1).text+'\nHuman synthetic clarification.  '};
+     await t.test('Reader, stale revision, wrong base hash and arbitrary edit fields cannot mutate PostgreSQL',async()=>{
+      await call(edit,'synthetic-reader-token-0002',403);
+      await call({...edit,expectedRevision:1},undefined,409);
+      await call({...edit,expectedDraftHash:'0'.repeat(64)},undefined,400);
+      await call({...edit,actor:approver},undefined,400);
+      assert.equal((await db.query('select revision from sc_cases where case_id=$1',[edit.caseId])).rows[0].revision,2);
+     });
+     const saved=await call(edit);revision=3;
+     hash=createHash('sha256').update(edit.editedDraftText).digest('hex');
+     assert.equal(saved.revision,3);assert.equal(saved.data.drafts.at(-1).text,edit.editedDraftText);
+     assert.equal(saved.data.drafts.at(-1).draftHash,hash);assert.equal(saved.data.drafts.at(-1).editedBy,user);
+     assert.equal(saved.data.drafts.at(-1).operatorReviewText,'');assert.equal(saved.data.serverApproval,undefined);
+     await call(edit,undefined,409);
+     const read=await handler({httpMethod:'GET',headers:{authorization:'Bearer synthetic-reader-token-0002'},queryStringParameters:{tenantId:'sarberki-test',caseId:edit.caseId,action:'review-record'}});
+     assert.equal(read.statusCode,200);assert.equal(JSON.parse(read.body).result.data.drafts.at(-1).text,edit.editedDraftText);
+     const updateAudit=(await db.query("select * from sc_audit where case_id=$1 and revision=3 and kind='update'",[edit.caseId])).rows;
+     assert.equal(updateAudit.length,1);assert.equal(updateAudit[0].actor,user);
+     await t.test('same editor with both roles cannot approve edited text; old hash also fails',async()=>{
+      await db.query("update sc_memberships set can_approve=true where user_id=$1",[user]);
+      try{await call({action:'approve',caseId:edit.caseId,expectedRevision:3,reviewedDraftHash:hash},undefined,403);}
+      finally{await db.query("update sc_memberships set can_approve=false where user_id=$1",[user]);}
+      await call({action:'approve',caseId:edit.caseId,expectedRevision:3,reviewedDraftHash:edit.expectedDraftHash},'synthetic-approver-token-0003',400);
+     });
+    }
+    const approved=await call({action:'approve',caseId:created.record.caseId,expectedRevision:revision,reviewedDraftHash:hash},'synthetic-approver-token-0003');
+    assert.equal(approved.revision,revision+1);assert.equal(approved.data.state.approval,'internally_approved');
+    if(language==='en')await call({action:'edit-draft',caseId:created.record.caseId,expectedRevision:approved.revision,expectedDraftHash:hash,editedDraftText:'forbidden approved edit'},undefined,400);
    }
    const old=(await db.query('select * from sc_cases where case_id=$1',[caseId])).rows[0];assert.equal(old.revision,3);assert.equal(old.data.serverApproval.draftHash,reviewedDraftHash);
    assert.equal((await db.query("select count(*)::int n from sc_audit where kind='approve_isolated_synthetic'")).rows[0].n,5);

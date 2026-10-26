@@ -1,3 +1,4 @@
+import {assertCloudSyntheticReviewCase} from './cloud-synthetic-approval.mjs';
 import { createBookingCaseStore } from '../booking-cases.mjs';
 import {tubServiceMessage,tubServiceProjection} from './tub-request.mjs';
 import {tubServiceDraft} from '../central-reply.mjs';
@@ -35,11 +36,11 @@ function scopeMessage(message, reverse=false){
   ...(message.references?{references:message.references.map(refs)}:{})};
 }
 // Reuses the existing engine. Only persistence is asynchronous; no new booking rules.
-export function createServerBookingRuntime({service,tenantId,requestContext,clock=()=>new Date().toISOString(),id=randomUUID,reviewProviders=null,isolatedApproval=false,exactReceipt=null}){
+export function createServerBookingRuntime({service,tenantId,requestContext,clock=()=>new Date().toISOString(),id=randomUUID,reviewProviders=null,isolatedApproval=false,exactReceipt=null,cloudSyntheticEditing=false}){
  return {
   async approve(caseId,expectedRevision,draftHash){
    if(!isolatedApproval||tenantId!=='sarberki-test'||!reviewProviders)reject('SETUP_REQUIRED');
-   await service.requireApproval({requestContext,tenantId});
+   const approver=await service.requireApproval({requestContext,tenantId});
    const current=await service.getCase({requestContext,tenantId,caseId});
    if(!current)reject('CASE_NOT_FOUND');if(current.revision!==expectedRevision)reject('CASE_CONFLICT');
    const draft=current.data.drafts.at(-1);
@@ -48,7 +49,12 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    if(createHash('sha256').update(draft.text,'utf8').digest('hex')!==draftHash)reject('INVALID_DRAFT');
    const review=await prepareSyntheticBookingReview({...reviewProviders,record:current,now:()=>Date.parse(clock())});
    if(review.status!=='internal_review_required')reject('REVIEW_NOT_READY');
-   if(review.draft!==draft.text)reject('REVIEW_CHANGED');
+   if(draft.edited===true&&cloudSyntheticEditing){
+    assertCloudSyntheticReviewCase(current);
+    if(current.updatedBy===approver||draft.editedBy!==current.updatedBy)reject('FORBIDDEN');
+    const base=current.data.drafts.find(d=>d.edited!==true&&d.synthetic===true&&d.reviewStatus==='internal_review_required'&&createHash('sha256').update(d.text,'utf8').digest('hex')===draft.baseDraftHash);
+    if(!base||createHash('sha256').update(review.draft,'utf8').digest('hex')!==draft.baseDraftHash||draft.draftHash!==draftHash)reject('REVIEW_CHANGED');
+   }else if(review.draft!==draft.text)reject('REVIEW_CHANGED');
    // No caller-supplied actor/evidence is accepted. Authority and DB session are rechecked after providers.
    return service.approveCase({requestContext,tenantId,caseId,expectedRevision,draftHash,evidence:review.evidence});
   },
@@ -103,21 +109,29 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    const serviceOnly=request.kind==='tub_request'&&request.serviceOnly===true;
    return {caseId,revision:current.revision,text:serviceScopedDraft(planned.text,planned.decision.facts.language,request,serviceRequest),operatorReviewText:serviceScopedDraft(planned.operatorReviewText,'hu',request,serviceRequest),decision:planned.decision,reviewState,readOnlyFreshness,storedDraft,approval:'pending',persisted:false,serviceOnly,serviceRequest,serviceLink,serviceLinkReview:current.data.caseKind==='service_link_review'?{reason:current.data.linkReview?.evidence||'human_association_required'}:null,canResolveServiceLink};
   },
-  async editDraft(caseId,expectedRevision,editedText){
+  async editDraft(caseId,expectedRevision,editedText,expectedDraftHash){
    // Synthetic-only, operator-authenticated edit; append a pending version, never authorize a guest send.
    if(tenantId!=='sarberki-test')reject('FORBIDDEN');
    if(typeof editedText!=='string'||!editedText.trim()||editedText.length>20000||/\u0000/u.test(editedText))reject('INVALID_DRAFT');
-   await service.requireWrite({requestContext,tenantId});
+   const editor=await service.requireWrite({requestContext,tenantId});
    const current=await service.getCase({requestContext,tenantId,caseId});
    if(!current)reject('CASE_NOT_FOUND');
    if(current.revision!==expectedRevision)reject('CASE_CONFLICT');
+   if(cloudSyntheticEditing)assertCloudSyntheticReviewCase(current);
    const data=current.data,last=data?.drafts?.at(-1);
+   if(cloudSyntheticEditing&&(!last?.synthetic||last.reviewStatus!=='internal_review_required'||
+      typeof expectedDraftHash!=='string'||!/^[a-f0-9]{64}$/.test(expectedDraftHash)||
+      createHash('sha256').update(last.text,'utf8').digest('hex')!==expectedDraftHash))reject('INVALID_DRAFT');
    if(!data?.sender?.endsWith('.invalid')||data.state?.approval!=='pending'||data.serverApproval||
       !last||typeof last.text!=='string'||last.text===editedText||
       last.revision!==data.state.revision||last.basedOnMessageCount!==data.messages.length)reject('INVALID_DRAFT');
    const updated=structuredClone(data);
    updated.drafts.push({text:editedText,at:clock(),revision:updated.state.revision,
-      basedOnMessageCount:updated.messages.length,edited:true,reviewStatus:'manual_edit_requires_review'});
+      basedOnMessageCount:updated.messages.length,edited:true,
+      ...(cloudSyntheticEditing?{synthetic:true,reviewStatus:'internal_review_required',editedBy:editor,
+        baseDraftHash:last.edited===true?last.baseDraftHash:expectedDraftHash,
+        draftHash:createHash('sha256').update(editedText,'utf8').digest('hex'),
+        operatorReviewText:'',operatorReviewStatus:'manual_edit_translation_unverified'}:{reviewStatus:'manual_edit_requires_review'})});
    updated.state.approval='pending';
    // CAS + server-side write authority are rechecked by the existing case service.
    return service.updateCase({requestContext,tenantId,caseId,expectedRevision,bookingCase:updated});

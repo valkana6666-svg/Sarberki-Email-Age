@@ -14,7 +14,7 @@ export function createIsolatedApprovalReview({client,enabled=false,cryptoProvide
    try{
     const record=await client.get('sarberki-test',caseId),draft=record?.data?.drafts?.at(-1);
     if(record?.caseId!==caseId||record?.tenantId!=='sarberki-test'||!Number.isSafeInteger(record.revision)||record.revision<1||record.data?.state?.approval!=='pending'||draft?.synthetic!==true||draft.reviewStatus!=='internal_review_required'||typeof draft.text!=='string'||!draft.text.trim())throw Error('INVALID_DRAFT');
-    const value={caseId,revision:record.revision,text:draft.text,operatorReviewText:typeof draft.operatorReviewText==='string'?draft.operatorReviewText:null,hash:await digest(draft.text)};
+    const value={caseId,canEditDraft:record.canEditDraft===true,revision:record.revision,text:draft.text,operatorReviewText:typeof draft.operatorReviewText==='string'?draft.operatorReviewText:null,hash:await digest(draft.text)};
     if(generation!==currentGeneration)throw Error('REVIEW_CANCELLED');
     review=value;return Object.freeze({...value});
    }finally{busy=false;}
