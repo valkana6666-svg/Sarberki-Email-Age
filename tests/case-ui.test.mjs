@@ -326,3 +326,16 @@ test('failed Gmail processing does not log API success or leak origin into the n
  h.analyze('4 adults. Deluxe. 2026-12-04 to 2026-12-06.');
  assert.match(h.node('events').textContent,/Kézi beillesztés/u);
 });
+
+
+test('labelled Hungarian ISO dates populate the actual analyzer fields',()=>{
+ const h=harness();
+ h.analyze('Szintetikus teszt: 2 felnőtt részére szeretnék Deluxe faházat. Érkezés: 2027-05-10. Távozás: 2027-05-12.');
+ assert.equal(h.node('f_arrival').value,'2027-05-10');
+ assert.equal(h.node('f_departure').value,'2027-05-12');
+ assert.equal(h.node('f_adults').value,'2');
+ assert.equal(h.node('f_children').value,'0');
+ assert.equal(h.node('f_unit').value,'Deluxe');
+ assert.equal(h.node('price_arrival').value,'2027-05-10');
+ assert.equal(h.node('price_departure').value,'2027-05-12');
+});
