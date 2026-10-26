@@ -1,31 +1,53 @@
-# Sárberki 2027 árak – nyilvános forrásellenőrzés (2026-10-26)
+# Sárberki 2027 – VÉGLEGES tulajdonosi árforrás (2026-10-26)
 
-## Státusz: a tulajdonosi oldalon 2026-10-26-án a hat alapárat 2027-re jóváhagyták; automatikus végár még nem engedhető
+Elsődleges forrás: a tulajdonos által feltöltött „2027. évi végleges árak” PDF, Rezidencia 96 Kft., Lenti, 2026-09-30., Kovács László tógazda (2 oldal). A tulajdonos 2026-10-26-án kifejezetten elrendelte, hogy az alábbi 2027-es adatok **felülírják** a korábban honlap alapján feltételezett 2027-es árakat.
 
-Forrás: https://sarberkito.hu/accomodation/ (2026-10-26-i nyilvános oldalszöveg).
-A szállásoldalon ezek az alapárak szerepelnek, de **a honlap önmagában nem tüntet fel 2027-es érvényességet, de a tulajdonosi oldali felhasználó 2026-10-26-án megerősítette: ezek lesznek a 2027-es alapárak**. A foglalási oldal https://sarberkito.hu/foglalas/ Previo-beágyazást tartalmaz; a dátumra és létszámra számolt 2027-es tarifák nem voltak hitelesen kiolvashatók a vizsgálat során.
+**2026: VÁLTOZATLAN.** A 2026-os árakat és díjszabást nem módosítjuk. Ez a fájl 2027-es árforrás-dokumentáció; önmagában nem változtatja meg a futó kalkulációt vagy a Previót. A korábban 2027-re rögzített 60 000 / 52 000 / 44 000 / 23 000 / 30 000 Ft-os alapárak ezennel 2027-re érvénytelenek.
 
-| Típus | Honlapon megjelenő induló ár | Alaplétszám | 2027-es érvényesség |
-|---|---:|---:|---|
-| Családi faház (2–6) | 52 000 Ft/éj | 4 fő | TULAJDONOSI JÓVÁHAGYÁS 2026-10-26 |
-| VIP (1) | 60 000 Ft/éj | 4 fő | TULAJDONOSI JÓVÁHAGYÁS 2026-10-26 |
-| Deluxe (11–14) | 60 000 Ft/éj | 4 fő | TULAJDONOSI JÓVÁHAGYÁS 2026-10-26 |
-| Osztott C (7–10 C) | 44 000 Ft/éj | 4 fő | TULAJDONOSI JÓVÁHAGYÁS 2026-10-26 |
-| Osztott A/B (7–10 A/B) | 23 000 Ft/éj | 2 fő | TULAJDONOSI JÓVÁHAGYÁS 2026-10-26 |
-| Különálló (15) | 30 000 Ft/éj | 2 fő | TULAJDONOSI JÓVÁHAGYÁS 2026-10-26 |
+## Szállásdíjak 2027 – Ft/éjszaka
 
-**Adatminőség:** a honlap különálló ház blokkjának egyik ismétlésében tévesen „4 fő” szerepel, másikban „2 fő”; a háztípus és a projekt logikája alapján 2 fős alaplétszámmal jegyezzük, de a pontos foglalómotor-ár az irányadó. A honlap külön említ +10% főszezoni (július 1.–augusztus 20.) és +20% egyéjszakás felárat, 20% törzsvendégkedvezményt, valamint az energia rezsi külön díját. Ezeket **nem** szabad automatikusan összeszorozva, Previo-tarifa helyett 2027-es végárként ajánlani; ünnepnap, létszám, gyermekek, IFA és szolgáltatások is számítanak.
+| Ház | Fő | Normál | Főszezon |
+|---|---:|---:|---:|
+| VIP | 1–4 | 63 000 | 69 300 |
+| VIP | 5 | 73 000 | 80 300 |
+| VIP | 6 | 83 000 | 91 300 |
+| VIP | 7 | 93 000 | 102 300 |
+| Deluxe | 1–4 | 63 000 | 69 300 |
+| Deluxe | 5 | 73 000 | 80 300 |
+| Deluxe | 6 | 83 000 | 91 300 |
+| Családi | 1–4 | 55 000 | 60 500 |
+| Családi | 5 | 65 000 | 71 500 |
+| Családi | 6 | 75 000 | 82 500 |
+| Családi | 7 | 85 000 | 93 500 |
+| Családi | 8 | 95 000 | 104 500 |
+| Osztott C (4 fős apartman) | 1–4 | 46 000 | 50 600 |
+| Osztott C | 5 | 56 000 | 61 600 |
+| Osztott A/B (2 fős apartman) | 1–2 | 24 000 | 26 400 |
+| Kis ház / 15 | 1–2 | 31 500 | 34 650 |
+| Kis ház / 15 | 3 | 41 500 | 45 650 |
 
-## Biztonságos beépítési szabály
+Alaplétszámok változatlanok: VIP, Deluxe, Családi, Osztott C: 4 fő. Osztott A/B, 15-ös: 2 fő. A 2027-es táblázatban a megengedett többletlétszám **10 000 Ft/fő/éj** normál időszakban, főszezonban **11 000 Ft/fő/éj** különbséget eredményez. A kétfős A/B-re nem szerepel 3 fős opció.
 
-1. A hat 2027-es alapár tulajdonosi oldalon jóváhagyott forrásadat; ez **nem végrehajtott Previo- vagy éles tarifafrissítés**.
-2. Az alapárak `owner_confirmed_2027_base` státuszúak. Egyik sem `verified_previo_total`: vendégnek szóló konkrét 2027-es végárhoz továbbra is időszak, létszám, pótdíjak, kedvezmények, adók és elérhetőség igazolása kell.
-3. A `PRICE_SOURCE_STATUS.md` Previo hold/lock kapuját tilos feloldani; éles Previo művelet, foglalás, küldés és PMS-írás tilos.
-4. Következő lépés: a tulajdonos által megerősített 2027-es alapárak dátumhatályos konfigurációjának és tesztjeinek elkészítése, valamint a Previo-val való egyeztetés. A 2026-os tarifák változatlanul maradnak.
-5. Netlify deploy nem szükséges ehhez a dokumentációs mentéshez; éles/main ágat nem módosítunk.
+**Kis ház 3. fő:** a PDF-ben 41 500 Ft, illetve főszezonban 45 650 Ft szerepel, de nem részletezi, hogy a 3. fő lehet-e felnőtt. A korábbi kód szerint csak gyermek-pótágy lehetséges. Felnőtt számára ne engedélyezz automatikusan 3. férőhelyet a szabály pontosítása nélkül.
 
-## Nyitott kérdés – 2027-es pótvendégdíjak (2026-10-26)
+## További 2027-es árak és feltételek a PDF-ből
 
-A tulajdonosi oldali felhasználó 2026-10-26-án jelezte, hogy a 2027-es extra felnőtt és gyermek pótvendégdíjakat este egyezteti; **egyelőre nincs jóváhagyott összeg**. A korábbi árlistából származó 4 500 Ft/felnőtt/éj és 2 250 Ft/gyermek/éj kizárólag történeti referencia, nem tekinthető 2027-es tarifának. A 2027-es pótvendégdíjat a rendszer nem becsülheti és nem adhat automatikus végárat, ha ilyen díj szükséges.
+- 1 éjszaka: +20% szállásfelár.
+- Főszezon: +10%. **Belső ellentmondás:** az általános szöveg július 1.–augusztus 22.-t, a szállásártábla július 1.–augusztus 20.-át jelöli. 2027. augusztus 21–22. napi automatizált árazása tisztázásig tiltott; 2026-os szezonhatár változatlan.
+- Egész évben a hetedik éjszaka ajándék. Az alkalmazási sorrendet és korlátozásokat külön kell ellenőrizni.
+- 0–3 éves korig díjmentes; 3–8 éves korig 5 000 Ft/fő/éj. **3 éves kor a PDF két kategóriájában átfed**; a pontos határ egyeztetendő. Nyolc év feletti gyermekek árkategóriáját sem definiálja egyértelműen a PDF. Gyermekárat ne találj ki.
+- Törzsvendég: 20% a szállás és dézsa árából, a jogosultság külön ellenőrzendő.
+- IFA: a PDF szerint jelenleg 550 Ft/fő/nap, külön fizetendő; 2027-es adóhatály külön ellenőrzendő.
+- Kisállat: 2 100 Ft/db/nap kizárólag szálló vendégeknek.
+- Energia: 180 Ft/kWh.
+- Dézsa: 30 000 Ft / 24 óra. A PDF nem részletezi a korábbi 6 fő feletti +4 000 Ft/fő szabály 2027-es alkalmazását; tisztázandó.
+- SZÉP kártya elfogadott. A PDF 1 EUR = 350 Ft kijelzése statikus tájékoztató érték, nem automatikusan alkalmazható aktuális banki devizaárfolyam.
+- A PDF 2. oldalán 2027-es horgászati és kempingdíjak is szerepelnek. Ezeket külön évhatályos horgász/kemping tarifakészletként kell átvezetni, a 2026-os számok érintése nélkül.
 
-A 2026-os tarifák és működés változatlanok; 2027-ben a jóváhagyott hat alapár és az eredeti alaplétszám-szabályok (VIP/Családi/Deluxe/Osztott C: 4 fő, Osztott A/B/15: 2 fő) érvényesek. Az év szerinti elkülönítést és pótvendégdíj-hiány esetén a biztonságos megállást külön kód- és tesztmódosítással kell majd igazolni. Ez a bejegyzés csak dokumentáció, nem aktív árkalkulációs változtatás.
+## Fejlesztési és biztonsági feltételek
+
+1. A 2027-es szállás-, személy-, gyermek-, horgászati és kempingtarifákat dátumhatályos elkülönített adatszerkezetben kell kezelni. A 2026-os aktív árakat és üzleti szabályokat tilos felülírni.
+2. Évhatáron átnyúló foglalásnál az egyes éjszakákat a saját évük tarifájával kell értékelni; külön regressziós tesztek szükségesek.
+3. A PDF-ben ellentmondásos vagy hiányzó szabályoknál a 2027-es automatikus végár emberi ellenőrzés nélkül nem adható ki.
+4. A Previo biztonsági kapu, a Gmail jóváhagyási tiltás és a felhős ügyek védelme változatlan. Nincs vendéglevél-küldés, foglalás vagy PMS-írás.
+5. Ez csak dokumentációs frissítés; a Codex által fejlesztett szerkesztési funkció programfájljait nem érinti. Nincs Netlify-telepítés.
