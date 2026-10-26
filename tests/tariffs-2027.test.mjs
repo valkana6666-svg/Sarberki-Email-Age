@@ -55,7 +55,8 @@ test('2027 high season until Aug 20, unresolved Aug 21/22 blocked, post-boundary
   assert.throws(()=>quote('vip',4,{arrival:d,departure:d==='2027-08-21'?'2027-08-22':'2027-08-23'}),/főszezonhatár/u);
  assert.equal(quote('deluxe',4,{arrival:'2027-08-23',departure:'2027-08-24'}).accommodation,75600);
  assert.equal(quote('deluxe',4,{departure:'2027-05-11'}).accommodation,75600);
- assert.equal(quote('deluxe',4,{arrival:'2026-08-21',departure:'2026-08-22'}).accommodation,72000);
+ assert.deepEqual(sarberkiTariffForNight('2026-08-21','deluxe'),{nightlyHuf:60000,includedGuests:4});
+ assert.equal(BUSINESS.pricingRules.highSeasonEnd,'08-20');
 });
 test('2027 seventh free night requires manual calculation rather than invented total',()=>{
  assert.throws(()=>quote('deluxe',4,{arrival:'2027-05-10',departure:'2027-05-17'}),/hetedik ingyenes/u);
