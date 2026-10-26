@@ -32,3 +32,13 @@ Superseding local-only delivery statements: connected GitHub publication is afe8
 Recovery admin confirmed expected repository and branch, build settings Active -> Stopped and persisted Stopped. No project environment variables set, confirmed authenticated. No restore deployment and no secrets copied.
 
 Gmail read button opened Google unverified-app warning. Continue was rejected by automatic security review for lack of specific approval of that warning. No bypass. Complete current Gmail write/approval/reload chain remains NOT VERIFIED. Owner approval is needed for that exact warning step. Current estimate remains 85%; no 100% acceptance claimed.
+
+## Gmail follow-up after explicit warning approval
+
+Gmail readonly OAuth succeeded on hosted b682d6d. The November 13–15 synthetic message parsed as 2 adults + 2 children, 4 total, 2 nights; missing child ages and phone were flagged. Exact Writer save returned FORBIDDEN. The historically approved October 30–November 1 Test Guest synthetic message was independently located, opened via the application's Gmail list and parsed as 8 adults, 0 children, 2 nights; exact Writer save also returned FORBIDDEN. No private allowlist changes or permission bypass.
+
+The historical exact case 13c8ecb7-f836-4e2c-9833-d58ee96f2dda v1 and creation audit were successfully read through the normal operator UI. Audit SHA256 remains b04dc79ee54c1de22db89e3936b8ee631ef4f3347ba160a14a8eac6878e92b3c.
+
+A closed English MIME fixture through its existing normal Writer action succeeded as an existing-cloud-case dedup: 926cc81d-16a1-435f-bfd3-41e874c1b1bc v3. This establishes the closed Writer route works in the current session, not a new insert or approval. Exact-receipt-specific gates/configuration/request equality remain the narrowed blocker. CASE_EXACT_RECEIPT_ENABLED and CASE_EXACT_RECEIPT_PRIVATE_JSON exist; enabled key is configured in Production context (the test site's published branch). Secret values were not revealed. A transient browser transport error recovered on a single retry.
+
+No source fix or new deploy in this follow-up. No email, notification, Previo write, or new booking. Full exact Gmail -> cloud approval/reload is still not verified. Next concrete task: diagnose exact receipt/request equality versus deployed private configuration without logging secrets, preserve strict single-message authorization and repair only the proven mismatch. Existing cached-case intent issue also remains open.
