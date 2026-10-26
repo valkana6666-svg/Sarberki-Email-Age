@@ -1,5 +1,6 @@
 import {validateQuote} from '../price-quote.mjs';
 import {SARBERKI_PROFILE} from '../business/sarberki/profile.mjs';
+import {sarberkiTariffForNight} from '../business/sarberki/tariffs.mjs';
 
 function nights(arrival,departure){
   return Math.round((Date.parse(departure+'T00:00:00Z')-Date.parse(arrival+'T00:00:00Z'))/86400000);
@@ -8,11 +9,11 @@ function highSeason(date){
   const md=date.slice(5);
   return md>=SARBERKI_PROFILE.pricingRules.highSeasonStart&&md<=SARBERKI_PROFILE.pricingRules.highSeasonEnd;
 }
-function dailyBasePrice(arrival,count,type){
+function dailyBasePrice(arrival,count,tariffs){
   let accommodation=0;
   for(let i=0;i<count;i++){
     const date=new Date(Date.parse(arrival+'T00:00:00Z')+i*86400000).toISOString().slice(0,10);
-    accommodation+=Math.round(type.publicListedNightlyHuf*(highSeason(date)?1+SARBERKI_PROFILE.pricingRules.highSeasonSurchargePct/100:1));
+    accommodation+=Math.round(tariffs[i].nightlyHuf*(highSeason(date)?1+SARBERKI_PROFILE.pricingRules.highSeasonSurchargePct/100:1));
   }
   if(count===1) accommodation=Math.round(accommodation*(1+SARBERKI_PROFILE.pricingRules.oneNightSurchargePct/100));
   return accommodation;
@@ -27,9 +28,11 @@ export function fetchPublicPriceReference(raw){
   const count=nights(input.arrival,input.departure);
   if(count<1)throw Error('Érvénytelen éjszakaszám.');
   const units=input.units||1;
-  const included=type.basePriceGuests;
+  // Select each occupied night independently, including a stay across New Year.
+  const tariffs=Array.from({length:count},(_,i)=>sarberkiTariffForNight(new Date(Date.parse(input.arrival+'T00:00:00Z')+i*86400000).toISOString().slice(0,10),input.cabin));
+  const included=Math.min(...tariffs.map(t=>t.includedGuests));
   const guests=input.adults+input.children.length;
-  if(!Number.isSafeInteger(type.publicListedNightlyHuf)||type.publicListedNightlyHuf<=0||!Number.isInteger(included)||included<1)throw Error('A választott ház publikus alapára nem igazolt.');
+  if(tariffs.some(t=>!Number.isSafeInteger(t.nightlyHuf)||t.nightlyHuf<=0)||!Number.isInteger(included)||included<1)throw Error('A választott ház publikus alapára nem igazolt.');
   if(guests>included*units||input.adults>included*units)
     throw Error('A publikus pótvendég-/gyermekár nem hitelesített aktuális díj; kézi vagy Previo-ellenőrzés szükséges.');
 
@@ -44,7 +47,7 @@ export function fetchPublicPriceReference(raw){
     if(!unit)throw Error('A vendégek az alapárban foglalt férőhelyekre nem oszthatók el.');
     unit.children.push(age);
   }
-  const basePerUnit=dailyBasePrice(input.arrival,count,type);
+  const basePerUnit=dailyBasePrice(input.arrival,count,tariffs);
   const taxPerAdult=count*SARBERKI_PROFILE.pricingRules.tourismTaxAdultNightlyHuf;
   const unitBreakdown=parties.map((p,index)=>{
     const tourismTax=p.adults*taxPerAdult;
