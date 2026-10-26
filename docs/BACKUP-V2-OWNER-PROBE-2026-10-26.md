@@ -9,3 +9,18 @@ A meglévő, változatlan workflow rögzített történeti bemenete: Drive 1Q2Fn
 Kizárólag az owner-recovery secret kapható meg; normál V2-kulcsra nincs fallback. Nincs forrás-DB credential, export, éles DML, Netlify, Pushover, vendégküldés vagy automatizálásmódosítás. Nincs új kulcs vagy OAuth-kliens. Az ütemezett napi exportkérés fájlja nem változik.
 
 Elvárt bizonyíték: pontos run/attempt/verification commit, VALIDATED-INPUT.json independent_owner_key_probe=PASS, rögzített Drive/hash azonosság, ISOLATED-RESTORE.json full_restore=PASS és verification_completed=true. A commit csak kérés; eredmény jelenleg NEM IGAZOLT. Teljes platform-helyreállítást nem bizonyít.
+
+## Tényleges eredmény
+
+LEZÁRVA az október 24-i, fent azonosított snapshot és a tulajdonos által külön megőrzöttnek megerősített kulcspéldány körében. A meglévő owner-secretet a GitHub runner használta, az asszisztens a titkos értéket nem olvasta. A secret eredetének külön megőrzését a tulajdonos nyilatkozata támasztja alá, nem a secret metaadata.
+
+- Kéréscommit: 32b61691ac7fe0e2028e3da0a55eb126887db41f.
+- Ellenőrzési run: https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/40269163858, attempt 1.
+- safety SUCCESS; drive-acceptance SUCCESS; export-restore SKIPPED (nem új export).
+- Pontos proof artifact-ID: 12626918991; sarberki-drive-restore-proof-40269163858-1; lejárat 2027-01-24T04:27:26Z.
+- Pontos artifact-ID letöltés és a két JSON-tag vizsgálata megtörtént.
+- VALIDATED-INPUT.json: independent_owner_key_probe=PASS, whole_package_decryption=PASS, owner_key_source=independently_reentered_owner_secret; normál V2-kulcs üres, nincs fallback. A verification_run és verification_commit a fenti futáshoz kötött.
+- ISOLATED-RESTORE.json: full_restore=PASS, verification_completed=true, tables_compared=49, case_manifest=PASS, portable_decryption=PASS_ON_NEW_LINUX_RUNNER_NO_DPAPI.
+- A VALIDATED-INPUT.json sql_restore=NOT_YET_RUN mezője a feloldás utáni, SQL előtti időpillanat; a későbbi ISOLATED-RESTORE.json bizonyítja az SQL PASS-t. Az eredeti proofot nem írtuk át.
+
+Bizonyítékhatár: a korábban pontos Drive-ID alapján letöltött ciphertext változatlan Git blob relay-e, nem mostani közvetlen Drive-letöltés. Nem október 25-i/26-i snapshot; nem a napi ütemezett lánc próbája; nem Netlify/Auth/Edge teljes platform-restore. Az első owner-key probe új elfogadási kaput zárt, ezért nem indokolatlanul ismételtük a történeti SQL-próbát. A napi automatizálás és a BACKUP-V2-RUN-REQUEST.md nem változott. Nincs production, cloud DDL/DML, vendégküldés, Pushover vagy Netlify-deploy.
