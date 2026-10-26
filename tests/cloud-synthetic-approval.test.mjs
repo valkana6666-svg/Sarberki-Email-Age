@@ -87,7 +87,7 @@ test('generated managed binding reuses existing approval SQL and real PostgreSQL
    const r=await handler({httpMethod:'GET',headers:{authorization:'Bearer synthetic-writer-token-0001'},queryStringParameters:{tenantId:'sarberki-test',caseId,action:'approval-state'}});
    assert.equal(r.statusCode,200,r.body);const back=JSON.parse(r.body).result;assert.equal(back.approval,'internally_approved');assert.equal(back.audit[0].actor,approver);assert.equal(back.serverApproval.draftHash,reviewedDraftHash);assert.equal(back.serverApproval.evidence,undefined);
   });
-  await t.test('exact four-language mail registry reuses existing SQL/runtime without touching original approved case',async()=>{
+  await t.test('exact four-language mail registry reuses existing SQL/runtime without touching original approved case',async t=>{
    for(const language of syntheticMailLanguages){
     const created=await call({action:'ingest-and-draft',envelope:syntheticMailEnvelope(language),expectedRevision:0});
     assert.equal(created.record.data.state.values.language,language);assert.ok(created.record.data.state.values.phone);

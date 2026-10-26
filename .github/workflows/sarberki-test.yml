@@ -31,6 +31,7 @@ jobs:
           node-version: 22
       - run: npm install
       - name: Targeted cloud draft edit and authorization regression
+        timeout-minutes: 5
         run: node --test tests/cloud-edit-panel.test.mjs tests/cloud-synthetic-approval.test.mjs tests/hu-stored-readback.test.mjs
       - run: npm test
   deployed-test-verification:
