@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "valid_from": "2027-01-01",
+  "valid_to": "2027-12-31",
+  "currency": "HUF",
+  "source": "Rezidencia 96 Kft. — 2027. évi árak, 2026-09-30, page 2; owner-approved 2026-10-26",
+  "scope": "2027 only; independent pricing data, NOT activated in runtime",
+  "ticket_prices": {
+    "normal": {
+      "adult": {
+        "12h": 5000,
+        "24h": 7500,
+        "week": 32500,
+        "year": 86000,
+        "first_half_year": 43000,
+        "second_half_year": 53000
+      },
+      "child": {
+        "12h": 2500,
+        "24h": 3750,
+        "week": 16250,
+        "year": 43000,
+        "first_half_year": 21500,
+        "second_half_year": 26500
+      }
+    },
+    "record": {
+      "adult": {
+        "12h": 7500,
+        "24h": 11250,
+        "week": 48750,
+        "year": 129000,
+        "first_half_year": 64500,
+        "second_half_year": 80000
+      },
+      "child": {
+        "12h": 3750,
+        "24h": 5650,
+        "week": 24500,
+        "year": 64500,
+        "first_half_year": 32250,
+        "second_half_year": 39750
+      }
+    }
+  },
+  "ticket_rules": {
+    "record_ticket_valid_on_normal_lake": true,
+    "overnight_guest_may_purchase_12h_ticket": false,
+    "child_ticket_age_limit": "UNSPECIFIED_IN_SOURCE"
+  },
+  "rental_per_item_per_day": {
+    "fishing_cart": 600,
+    "carp_cradle": 1000
+  },
+  "fish_takeaway_per_kg": {
+    "zander_or_pike": 4500,
+    "catfish_angler": 1500,
+    "catfish_non_angler": 3500,
+    "carp_or_grass_carp_under_5kg_per_fish": 2000,
+    "bream_or_crucian_carp": 1350
+  },
+  "fish_takeaway_rules": {
+    "other_species_takeaway_prohibited": true,
+    "weighing_round_down_kg_increment": 0.1,
+    "carp_or_grass_carp_5kg_and_over": "NOT_PRICED_NO_AUTOMATIC_QUOTE"
+  },
+  "camping_per_day": {
+    "tent_per_unit": 2200,
+    "caravan_per_unit": 2200,
+    "motorhome_per_unit": 3600,
+    "passenger_car_or_motorcycle_per_unit": 2200,
+    "electricity_per_unit": 2600,
+    "person_per_person": 1850,
+    "local_tax": "ADDITIONAL_RATE_REQUIRES_DATE_VERIFICATION"
+  },
+  "ev_charging_per_vehicle_per_24h": 26000,
+  "implementation_guards": [
+    "Do not change any 2026 price or business rule.",
+    "Do not load or advertise these prices for a 2026 service date.",
+    "Date-scope all prices by service date, not request date.",
+    "For 2026–2027 cross-year service periods, split by service date.",
+    "Do not silently invent ticket child age rules or fish prices for >=5kg carp/grass carp.",
+    "Do not include campsite tax in total without a verified effective tax rate.",
+    "No emails, bookings, Previo writes or live deploy; Codex owns cloud draft editing."
+  ],
+  "verification_status": "SOURCE_TRANSCRIBED_NOT_RUNTIME_INTEGRATED"
+}
