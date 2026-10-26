@@ -339,3 +339,22 @@ test('labelled Hungarian ISO dates populate the actual analyzer fields',()=>{
  assert.equal(h.node('price_arrival').value,'2027-05-10');
  assert.equal(h.node('price_departure').value,'2027-05-12');
 });
+
+
+test('real browser adapter carries adult-only party defaults through manual processing',()=>{
+ const imported=html.match(/import\s*\{([^}]+)\}\s*from '\.\/sarberki-core\.mjs/);
+ const wired=html.match(/window\.SarberkiNormalize=\{([^}]+)\};/);
+ assert.ok(imported&&wired,'Actual browser adapter wiring must be present');
+ assert.match(imported[1],/\bpartyCountsFromText\b/u);
+ const names=wired[1].split(',').map(entry=>entry.split(':')[0].trim());
+ assert.ok(names.includes('partyCountsFromText'),'The browser must expose the shared party projection');
+ const runtimeAdapter=Object.fromEntries(names.map(name=>[name,core[name]]));
+ assert.equal(typeof runtimeAdapter.partyCountsFromText,'function');
+ const h=harness();
+ h.window.SarberkiNormalize=runtimeAdapter;
+ h.analyze('Szintetikus teszt: 2 felnőtt részére szeretnék Deluxe faházat. Érkezés: 2027-05-10. Távozás: 2027-05-12.');
+ assert.equal(h.node('f_guests').value,'2');
+ assert.equal(h.node('f_adults').value,'2');
+ assert.equal(h.node('f_children').value,'0');
+ assert.doesNotMatch(h.node('issues').textContent,/Hiányzik: vendéglétszám/u);
+});
