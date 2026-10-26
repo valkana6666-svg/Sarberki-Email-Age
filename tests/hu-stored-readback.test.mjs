@@ -52,6 +52,7 @@ test('authenticated Reader cookie reads stored HU text and historical audit thro
   await db.exec("create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;grant usage on schema auth to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;");
   await db.exec(await readFile(new URL('../supabase/migrations/202610090001_case_store.sql',import.meta.url),'utf8'));
   await db.exec("insert into sc_tenants values('sarberki-test','Fictional',true),('demo-test','Other',true)");
+  await db.query('insert into auth.users(id) values($1),($2)',[reader,other]);
   await db.query("insert into sc_memberships values('sarberki-test',$1,true,false,false),('demo-test',$2,true,false,false)",[reader,other]);
   const r=record();await db.query('insert into sc_cases(tenant_id,case_id,revision,data,updated_by) values($1,$2,$3,$4,$5)',[r.tenantId,id,4,JSON.stringify(r.data),reader]);
   await db.query('insert into sc_audit(tenant_id,case_id,revision,actor,kind,data_hash) values($1,$2,3,$3,$4,$5)',['sarberki-test',id,reader,'approve_isolated_synthetic','a'.repeat(64)]);

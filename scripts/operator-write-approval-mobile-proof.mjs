@@ -51,7 +51,7 @@ try{
       assert.equal(state.role,'approver');assert.equal(body.caseId,caseId);assert.equal(body.expectedRevision,state.revision);assert.equal(body.reviewedDraftHash,hash);
       if(!state.verified){status=409;result={error:'REVIEW_NOT_READY'};}
       else{state.approved=true;const before=state.revision++;result={result:{...record(state.revision),data:{state:{approval:'internally_approved'},serverApproval:{draftHash:hash,reviewedRevision:before}}}};}
-     }else if(action==='approval-state')result={result:{caseId,revision:state.revision,approval:state.approved?'internally_approved':'pending',audit:state.approved?[{kind:'approve_isolated_synthetic',revision:state.revision,data_hash:hash}]:[]}};
+     }else if(action==='approval-state')result={result:{caseId,revision:state.revision,approval:state.approved?'internally_approved':'pending',readOnly:true,auditScope:'approval-history',storedDraft:{text,operatorReviewText:'Szintetikus magyar ellenőrzés.',factsRevision:1,basedOnMessageCount:1,current:true},audit:state.approved?[{kind:'approve_isolated_synthetic',revision:state.revision,data_hash:hash}]:[]}};
      else throw Error('Unexpected case API action: '+action);
     }else{status=404;result={error:'UNKNOWN_ROUTE'};}
     return route.fulfill({status,contentType:'application/json',headers:{'Cache-Control':'no-store'},body:JSON.stringify(result)});
@@ -174,11 +174,18 @@ try{
   state.verified=true;await load();await page.locator('#isolated_approval_confirm').check();await page.locator('#isolated_approval_submit').click();
   await page.locator('#isolated_approval_status').filter({hasText:'jóváhagyás mentve'}).waitFor();assert.equal(state.approved,true);assert.equal(state.revision,3);
   await page.locator('#readback').click();await page.locator('#readback_status').filter({hasText:'approve_isolated_synthetic'}).waitFor();
-  report.checks.push({engine,test:'Separate approver exact draft hash and synthetic audit readback',result:'PASS'});
+  assert.equal(await page.locator('#stored_readback_text').inputValue(),text);
+  assert.equal(await page.locator('#stored_readback_hu').inputValue(),'Szintetikus magyar ellenőrzés.');
+  assert.equal(await page.locator('#stored_readback_text').evaluate(el=>el.readOnly),true);
+  assert.equal(await page.locator('#isolated_approval_submit').isDisabled(),true);
+  assert.equal(await page.locator('#isolated_approval_confirm').isChecked(),false);
+  report.checks.push({engine,test:'Separate approver audit and readonly exact stored-content readback without retained consent',result:'PASS'});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   for(const id of ['isolated_approval_load','isolated_approval_submit','readback'])assert.ok(await page.locator('#'+id).evaluate(el=>el.getBoundingClientRect().height)>=44);
   await page.locator('#logout').click();await page.locator('#auth_status').filter({hasText:'Kijelentkezve'}).waitFor();
   assert.equal(await page.locator('#isolated_approval_text').inputValue(),'');
+  assert.equal(await page.locator('#stored_readback_text').inputValue(),'');
+  assert.equal(await page.locator('#stored_readback_hu').inputValue(),'');
   assert.equal(await page.locator('#workspace').evaluate(el=>el.disabled),true);
   assert.equal(await page.locator('#isolated_approval_load').isDisabled(),true);
   report.checks.push({engine,test:'390px approval layout, touch targets and logout clear',result:'PASS'});
