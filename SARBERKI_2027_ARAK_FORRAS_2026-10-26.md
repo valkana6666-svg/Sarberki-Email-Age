@@ -33,7 +33,7 @@ Alaplétszámok változatlanok: VIP, Deluxe, Családi, Osztott C: 4 fő. Osztott
 ## További 2027-es árak és feltételek a PDF-ből
 
 - 1 éjszaka: +20% szállásfelár.
-- Főszezon: +10%. **Belső ellentmondás:** az általános szöveg július 1.–augusztus 22.-t, a szállásártábla július 1.–augusztus 20.-át jelöli. 2027. augusztus 21–22. napi automatizált árazása tisztázásig tiltott; 2026-os szezonhatár változatlan.
+- Főszezon: +10%. **TULAJDONOSI DÖNTÉS 2026-10-26:** a 2027-es főszezon **július 1-től augusztus 22-ig (augusztus 22. éjszakáját beleértve)** tart. A PDF szövegében augusztus 22., a táblázat fejlécében augusztus 20. szerepel, de a tulajdonos a felmerült ellentmondást kifejezetten **augusztus 22.** javára tisztázta. 2027. augusztus 21–22. immár főszezoni nap; augusztus 23. normál időszak. **2026 továbbra is augusztus 20-ig főszezon; 2026-os ár vagy szabály nem módosul.**
 - Egész évben a hetedik éjszaka ajándék. Az alkalmazási sorrendet és korlátozásokat külön kell ellenőrizni.
 - 0–3 éves korig díjmentes; 3–8 éves korig 5 000 Ft/fő/éj. **3 éves kor a PDF két kategóriájában átfed**; a pontos határ egyeztetendő. Nyolc év feletti gyermekek árkategóriáját sem definiálja egyértelműen a PDF. Gyermekárat ne találj ki.
 - Törzsvendég: 20% a szállás és dézsa árából, a jogosultság külön ellenőrzendő.

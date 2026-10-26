@@ -9,13 +9,13 @@ function dateOfNight(arrival,index){
   return new Date(Date.parse(arrival+'T00:00:00Z')+index*86400000).toISOString().slice(0,10);
 }
 const is2027=date=>date>=SARBERKI_TARIFF_2027.validFrom&&date<=SARBERKI_TARIFF_2027.validThrough;
-function highSeason(date){
-  // Signed PDF: prose says Aug 22, tariff table says Aug 20.
-  // No guess for Aug 21/22 in 2027. Leave 2026 as it was.
-  if(date==='2027-08-21'||date==='2027-08-22')
-    throw Error('A 2027. augusztus 21–22-i főszezonhatár tisztázandó; kézi ármegállapítás szükséges.');
+export function highSeason(date){
   const md=date.slice(5);
-  return md>=SARBERKI_PROFILE.pricingRules.highSeasonStart&&md<=SARBERKI_PROFILE.pricingRules.highSeasonEnd;
+  // The owner explicitly confirmed that 2027-08-22 is the last high-season night.
+  // 2026 continues using its existing, unchanged 08-20 boundary.
+  const start=is2027(date)?SARBERKI_TARIFF_2027.highSeasonStart:SARBERKI_PROFILE.pricingRules.highSeasonStart;
+  const end=is2027(date)?SARBERKI_TARIFF_2027.highSeasonEnd:SARBERKI_PROFILE.pricingRules.highSeasonEnd;
+  return md>=start&&md<=end;
 }
 function dailyBasePrice(arrival,count,tariffs,extraAdultNightlyHuf=0){
   let accommodation=0;

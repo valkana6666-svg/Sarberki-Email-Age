@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {BUSINESS} from '../business-config.mjs';
 import {SARBERKI_TARIFF_2027,sarberkiTariffForNight} from '../business/sarberki/tariffs.mjs';
-import {fetchPublicPriceReference} from '../price-source/public-price-fallback.mjs';
+import {fetchPublicPriceReference,highSeason} from '../price-source/public-price-fallback.mjs';
 const approved={vip:[63000,4],family:[55000,4],deluxe:[63000,4],splitC:[46000,4],splitA:[24000,2],splitB:[24000,2],small:[31500,2]};
 const old={vip:[60000,4],family:[52000,4],deluxe:[60000,4],splitC:[44000,4],splitA:[23000,2],splitB:[23000,2],small:[30000,2]};
 const quote=(cabin,adults,extra={})=>fetchPublicPriceReference({arrival:'2027-05-10',departure:'2027-05-12',cabin,adults,children:[],...extra});
@@ -48,13 +48,21 @@ test('2027 0–2y children are free; age >=3 is held for explicit child-price cl
  assert.throws(()=>quote('deluxe',2,{children:[12]}),/gyermekár/u);
  assert.throws(()=>quote('deluxe',4,{children:[2]}),/pótvendég-\/gyermekár/u);
 });
-test('2027 high season until Aug 20, unresolved Aug 21/22 blocked, post-boundary normal',()=>{
+test('2027 owner-confirmed high season includes August 22, 2026 remains August 20',()=>{
+ assert.equal(SARBERKI_TARIFF_2027.highSeasonStart,'07-01');
+ assert.equal(SARBERKI_TARIFF_2027.highSeasonEnd,'08-22');
  assert.equal(quote('deluxe',4,{arrival:'2027-07-01',departure:'2027-07-03'}).accommodation,138600);
  assert.equal(quote('vip',5,{arrival:'2027-08-20',departure:'2027-08-21'}).accommodation,96360);
- for(const d of ['2027-08-21','2027-08-22'])
-  assert.throws(()=>quote('vip',4,{arrival:d,departure:d==='2027-08-21'?'2027-08-22':'2027-08-23'}),/főszezonhatár/u);
+ // Both previously blocked dates now use the published 10% high-season surcharge.
+ assert.equal(quote('vip',4,{arrival:'2027-08-21',departure:'2027-08-22'}).accommodation,83160);
+ assert.equal(quote('vip',4,{arrival:'2027-08-22',departure:'2027-08-23'}).accommodation,83160);
+ assert.equal(quote('vip',4,{arrival:'2027-08-21',departure:'2027-08-24'}).accommodation,201600);
  assert.equal(quote('deluxe',4,{arrival:'2027-08-23',departure:'2027-08-24'}).accommodation,75600);
  assert.equal(quote('deluxe',4,{departure:'2027-05-11'}).accommodation,75600);
+ assert.equal(highSeason('2027-08-22'),true);
+ assert.equal(highSeason('2027-08-23'),false);
+ assert.equal(highSeason('2026-08-20'),true);
+ assert.equal(highSeason('2026-08-21'),false);
  assert.deepEqual(sarberkiTariffForNight('2026-08-21','deluxe'),{nightlyHuf:60000,includedGuests:4});
  assert.equal(BUSINESS.pricingRules.highSeasonEnd,'08-20');
 });

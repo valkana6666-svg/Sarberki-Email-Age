@@ -6,6 +6,7 @@ const rate=(nightlyHuf,includedGuests)=>Object.freeze({nightlyHuf,includedGuests
 export const SARBERKI_TARIFF_2027=Object.freeze({
  validFrom:'2027-01-01',validThrough:'2027-12-31',
  source:'Rezidencia 96 Kft., 2027. évi árak, signed 2026-09-30',
+ highSeasonStart:'07-01',highSeasonEnd:'08-22',
  extraAdultNightlyHuf:10000,
  // The PDF says 3-8y 5000 HUF, but its 3y overlap and base-occupancy
  // interplay still need clarification before an automated child total.
