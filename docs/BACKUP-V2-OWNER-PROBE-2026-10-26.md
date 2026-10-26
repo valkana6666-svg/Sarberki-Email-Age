@@ -24,3 +24,7 @@ LEZÁRVA az október 24-i, fent azonosított snapshot és a tulajdonos által k�
 - A VALIDATED-INPUT.json sql_restore=NOT_YET_RUN mezője a feloldás utáni, SQL előtti időpillanat; a későbbi ISOLATED-RESTORE.json bizonyítja az SQL PASS-t. Az eredeti proofot nem írtuk át.
 
 Bizonyítékhatár: a korábban pontos Drive-ID alapján letöltött ciphertext változatlan Git blob relay-e, nem mostani közvetlen Drive-letöltés. Nem október 25-i/26-i snapshot; nem a napi ütemezett lánc próbája; nem Netlify/Auth/Edge teljes platform-restore. Az első owner-key probe új elfogadási kaput zárt, ezért nem indokolatlanul ismételtük a történeti SQL-próbát. A napi automatizálás és a BACKUP-V2-RUN-REQUEST.md nem változott. Nincs production, cloud DDL/DML, vendégküldés, Pushover vagy Netlify-deploy.
+
+## Proof tartós Drive-megőrzése
+
+A 12626918991 artifact változatlan ZIP-bájtjai új fájlként a kijelölt mappába kerültek. Drive-ID: 1h6qfJCxrFWojbDlIXE5tZaPMtW6FUj2V; link: https://drive.google.com/file/d/1h6qfJCxrFWojbDlIXE5tZaPMtW6FUj2V/view?usp=drivesdk . Méret 4627 bájt; SHA256 95843daf9fdce25c892a9d2bb4d4729ff68d6f779ba0a3f7e0d3db0b1ac95a12. A mappa és új fájl ACL-je kizárólag valkana6666@gmail.com owner. Pontos Drive-ID szerinti tényleges bináris visszatöltés és SHA256-egyezés PASS. Nincs korábbi fájl felülírás/törlés vagy megosztásmódosítás. Ez proof-archívum, nem új adatbázismentés és nem ebből a proof ZIP-ből végzett új SQL-restore.
