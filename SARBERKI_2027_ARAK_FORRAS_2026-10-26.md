@@ -23,3 +23,9 @@ A szállásoldalon ezek az alapárak szerepelnek, de **a honlap önmagában nem 
 3. A `PRICE_SOURCE_STATUS.md` Previo hold/lock kapuját tilos feloldani; éles Previo művelet, foglalás, küldés és PMS-írás tilos.
 4. Következő lépés: a tulajdonos által megerősített 2027-es alapárak dátumhatályos konfigurációjának és tesztjeinek elkészítése, valamint a Previo-val való egyeztetés. A 2026-os tarifák változatlanul maradnak.
 5. Netlify deploy nem szükséges ehhez a dokumentációs mentéshez; éles/main ágat nem módosítunk.
+
+## Nyitott kérdés – 2027-es pótvendégdíjak (2026-10-26)
+
+A tulajdonosi oldali felhasználó 2026-10-26-án jelezte, hogy a 2027-es extra felnőtt és gyermek pótvendégdíjakat este egyezteti; **egyelőre nincs jóváhagyott összeg**. A korábbi árlistából származó 4 500 Ft/felnőtt/éj és 2 250 Ft/gyermek/éj kizárólag történeti referencia, nem tekinthető 2027-es tarifának. A 2027-es pótvendégdíjat a rendszer nem becsülheti és nem adhat automatikus végárat, ha ilyen díj szükséges.
+
+A 2026-os tarifák és működés változatlanok; 2027-ben a jóváhagyott hat alapár és az eredeti alaplétszám-szabályok (VIP/Családi/Deluxe/Osztott C: 4 fő, Osztott A/B/15: 2 fő) érvényesek. Az év szerinti elkülönítést és pótvendégdíj-hiány esetén a biztonságos megállást külön kód- és tesztmódosítással kell majd igazolni. Ez a bejegyzés csak dokumentáció, nem aktív árkalkulációs változtatás.
