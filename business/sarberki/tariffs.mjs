@@ -1,15 +1,18 @@
 import {BUSINESS} from '../../business-config.mjs';
 
-// Owner-approved base accommodation prices for occupied nights in 2027 only.
-// Extra-guest rates were explicitly deferred; never inherit the legacy numbers.
+// 2027 only: owner-approved signed "2027. évi árak" PDF (2026-09-30).
+// Do not change any 2026 BUSINESS values.
 const rate=(nightlyHuf,includedGuests)=>Object.freeze({nightlyHuf,includedGuests});
 export const SARBERKI_TARIFF_2027=Object.freeze({
  validFrom:'2027-01-01',validThrough:'2027-12-31',
- source:'Owner approval 2026-10-26',
- extraAdultNightlyHuf:null,extraChildNightlyHuf:null,
+ source:'Rezidencia 96 Kft., 2027. évi árak, signed 2026-09-30',
+ extraAdultNightlyHuf:10000,
+ // The PDF says 3-8y 5000 HUF, but its 3y overlap and base-occupancy
+ // interplay still need clarification before an automated child total.
+ child3to8NightlyHuf:5000,extraChildNightlyHuf:null,
  rates:Object.freeze({
-  vip:rate(60000,4),family:rate(52000,4),deluxe:rate(60000,4),
-  splitC:rate(44000,4),splitA:rate(23000,2),splitB:rate(23000,2),small:rate(30000,2)
+  vip:rate(63000,4),family:rate(55000,4),deluxe:rate(63000,4),
+  splitC:rate(46000,4),splitA:rate(24000,2),splitB:rate(24000,2),small:rate(31500,2)
  })
 });
 export function sarberkiTariffForNight(date,cabin){
