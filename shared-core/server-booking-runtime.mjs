@@ -1,3 +1,4 @@
+import {CLARIFICATION_TEMPLATE,CLARIFICATION_TEXT,CLARIFICATION_HU,clarificationHash,assertClarificationScope,assertClarificationDraft} from './server-clarification-review.mjs';
 import {matchesExactGmailEditRecord} from './server-exact-gmail-receipt.mjs';
 import {assertCloudSyntheticReviewCase} from './cloud-synthetic-approval.mjs';
 import { createBookingCaseStore } from '../booking-cases.mjs';
@@ -37,8 +38,31 @@ function scopeMessage(message, reverse=false){
   ...(message.references?{references:message.references.map(refs)}:{})};
 }
 // Reuses the existing engine. Only persistence is asynchronous; no new booking rules.
-export function createServerBookingRuntime({service,tenantId,requestContext,clock=()=>new Date().toISOString(),id=randomUUID,reviewProviders=null,isolatedApproval=false,exactReceipt=null,exactEditReceipt=null,cloudSyntheticEditing=false}){
+export function createServerBookingRuntime({service,tenantId,requestContext,clock=()=>new Date().toISOString(),id=randomUUID,reviewProviders=null,isolatedApproval=false,exactReceipt=null,exactEditReceipt=null,cloudSyntheticEditing=false,clarificationAllowed=false}){
  return {
+  async prepareClarification(caseId,expectedRevision){
+   if(!clarificationAllowed)reject('SETUP_REQUIRED');
+   const editor=await service.requireWrite({requestContext,tenantId});
+   const current=await service.getCase({requestContext,tenantId,caseId});
+   if(!current||current.revision!==expectedRevision)reject('CASE_CONFLICT');
+   assertClarificationScope(current,exactEditReceipt);
+   const data=structuredClone(current.data);delete data.clarificationApproval;
+   data.drafts.push({text:CLARIFICATION_TEXT,operatorReviewText:CLARIFICATION_HU,at:clock(),revision:data.state.revision,
+    basedOnMessageCount:1,reviewStatus:'clarification_review_required',clarification:{templateId:CLARIFICATION_TEMPLATE,factsRevision:data.state.revision,preparedBy:editor}});
+   return service.updateCase({requestContext,tenantId,caseId,expectedRevision,bookingCase:data});
+  },
+  async approveClarification(caseId,expectedRevision,draftHash){
+   if(!clarificationAllowed)reject('SETUP_REQUIRED');
+   const actor=await service.requireApproval({requestContext,tenantId});
+   const current=await service.getCase({requestContext,tenantId,caseId});
+   if(!current||current.revision!==expectedRevision)reject('CASE_CONFLICT');
+   const d=assertClarificationDraft(current,exactEditReceipt);
+   if(current.data.clarificationApproval)reject('REVIEW_NOT_READY');
+   if(actor===current.updatedBy||actor===d.clarification.preparedBy)reject('FORBIDDEN');
+   if(clarificationHash(d.text)!==draftHash)reject('INVALID_DRAFT');
+   return service.approveClarification({requestContext,tenantId,caseId,expectedRevision,draftHash,
+    evidence:{scope:'clarification-only-v1',templateId:CLARIFICATION_TEMPLATE,factsRevision:d.revision,messageCount:1,checkedAt:clock()}});
+  },
   async approve(caseId,expectedRevision,draftHash){
    if(!isolatedApproval||tenantId!=='sarberki-test'||!reviewProviders)reject('SETUP_REQUIRED');
    const approver=await service.requireApproval({requestContext,tenantId});
@@ -135,7 +159,7 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    if((!exactEdit&&!data?.sender?.endsWith('.invalid'))||data.state?.approval!=='pending'||data.serverApproval||
       !last||typeof last.text!=='string'||last.text===editedText||
       last.revision!==data.state.revision||last.basedOnMessageCount!==data.messages.length)reject('INVALID_DRAFT');
-   const updated=structuredClone(data);
+   const updated=structuredClone(data);delete updated.clarificationApproval;
    updated.drafts.push({text:editedText,at:clock(),revision:updated.state.revision,
       basedOnMessageCount:updated.messages.length,edited:true,
       ...(exactEdit?{reviewStatus:'manual_edit_requires_review',editedBy:editor,

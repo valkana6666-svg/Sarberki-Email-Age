@@ -68,6 +68,11 @@ export function createSupabaseCaseRepository(transport,{approvalAttestor=null}={
    const row=await transport('/rest/v1/rpc/sc_resolve_service_link',{method:'POST',body:{p_tenant:tenant,p_case:caseId,p_expected:expected,p_target:targetCaseId,p_target_expected:targetExpected,p_reason:reason}});
    return row===null?null:mapRecord(row);
   },
+  async approveClarification(tenant,caseId,expected,draftHash,evidence){
+   if(typeof approvalAttestor!=='function')fail('SETUP_REQUIRED');
+   const row=await transport('/rest/v1/rpc/sc_approve_clarification',{method:'POST',body:{p_tenant:tenant,p_case:caseId,p_expected:expected,p_draft_hash:draftHash,p_evidence:approvalAttestor(tenant,caseId,expected,draftHash,evidence)}});
+   return row===null?null:mapRecord(row);
+  },
   async approve(tenant,caseId,expected,draftHash,evidence){
    if(typeof approvalAttestor!=='function')fail('SETUP_REQUIRED');
    const signedEvidence=approvalAttestor(tenant,caseId,expected,draftHash,evidence);

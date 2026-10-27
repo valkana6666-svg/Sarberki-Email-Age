@@ -54,7 +54,7 @@ export function initIsolatedApprovalPanel({
   request,isolatedApproval:true,approvalTarget
  });
  const bridge=createIsolatedApprovalReview({client,enabled:true,cryptoProvider});
- documentRef.addEventListener?.('isolated-approval-session-changed',()=>{
+ for(const event of ['isolated-approval-session-changed','clarification-draft-changed'])documentRef.addEventListener?.(event,()=>{
   reset();message('Munkamenet változott. Új hitelesített betöltés szükséges.');
  });
  const clearOnChange=()=>{
@@ -97,6 +97,7 @@ export function initIsolatedApprovalPanel({
     if(epoch!==generation||caseInput.value.trim()!==selected.caseId)return;
     const draft=record?.data?.drafts?.at(-1);
     if(record?.tenantId!=='sarberki-test'||record.caseId!==selected.caseId||record.revision!==selected.revision+1||record.data?.state?.approval!=='pending'||record.data?.serverApproval||draft?.text!==text||draft.edited!==true)throw Error('INVALID_DRAFT');
+    documentRef.dispatchEvent?.(new Event('cloud-draft-edited'));
     message('Módosítás mentve, verzió: '+record.revision+(selected.approvalBlockedReason?'. Jóváhagyás továbbra is tiltva: nincs ügyre kötött kapacitás-, ár- és review-bizonyíték.':'. A független jóváhagyó külön töltse be és olvassa el. Nincs e-mail-küldés.'));
    }catch(error){if(epoch===generation){reset();message('A mentés nem igazolt: '+safeCode(error)+'. Új betöltés szükséges; jóváhagyás nincs.');}}
    finally{busy=false;locked();}

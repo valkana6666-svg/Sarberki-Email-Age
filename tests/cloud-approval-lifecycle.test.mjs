@@ -1,3 +1,4 @@
+import {initClarificationPanel} from '../clarification-panel.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -21,6 +22,7 @@ async function harness(request){
  const document={visibilityState:'visible',getElementById:get,addEventListener(e,f){(documentListeners[e]??=[]).push(f);},dispatchEvent(e){for(const f of documentListeners[e.type]||[])f(e);}};
  const sandbox={document,location:{origin:'https://leafy-chimera-2403e5.netlify.app',search:'?caseId=case-fixture'},URLSearchParams,Event,
   addEventListener:(e,f)=>listeners[e]=f,createOperatorSession:()=>createOperatorSession({request}),
+  initClarificationPanel:args=>initClarificationPanel({...args,documentRef:document,cryptoProvider:webcrypto}),
   initIsolatedApprovalPanel:args=>initIsolatedApprovalPanel({...args,documentRef:document,cryptoProvider:webcrypto}),createEpochRequestQueue,
   createCloudCaseRequest:()=>createCloudCaseRequest({request}),formatCloudApprovalFailure,isIsolatedReviewCaseId};
  vm.runInNewContext(source,sandbox);await settle();return {get,listeners,document,async visibility(state){document.visibilityState=state;await Promise.all((documentListeners.visibilitychange||[]).map(f=>f()));}};

@@ -1,3 +1,4 @@
+import {initClarificationPanel} from './clarification-panel.mjs';
 import {createOperatorSession} from './sarberki-chatbot-project/operator-session.mjs';
 import {initIsolatedApprovalPanel} from './isolated-approval-panel.mjs';
 import {createEpochRequestQueue} from './shared-core/epoch-request-queue.mjs';
@@ -46,7 +47,10 @@ if(location.origin===origin){
    if(turn===epoch)el('readback_status').textContent='Tervezet mentve, verzió: '+result.record.revision+'. A jóváhagyó külön töltse be és olvassa el.';
   }catch(error){if(turn===epoch)el('readback_status').textContent=formatCloudApprovalFailure(error,stage);}
  });
+ initClarificationPanel({client:{get:caseId=>request({tenantId:'sarberki-test',caseId,action:'review-record'},'GET'),prepare:(caseId,expectedRevision)=>request({tenantId:'sarberki-test',caseId,expectedRevision,action:'prepare-clarification'}),approve:(caseId,expectedRevision,reviewedDraftHash)=>request({tenantId:'sarberki-test',caseId,expectedRevision,reviewedDraftHash,action:'approve-clarification'})}});
  initIsolatedApprovalPanel({enabled:true,approvalTarget:'https://mojnqizbcaczstguikpv.supabase.co',cloudSyntheticApproval:true,cloudClient:client});
+ document.addEventListener('clarification-draft-changed',clearReadback);
+ document.addEventListener('cloud-draft-edited',clearReadback);
  const restored=()=>{authenticated=true;el('workspace').disabled=false;el('logout').disabled=false;el('auth_status').textContent='Hitelesített szintetikus tesztmunkamenet.';};
  el('login').addEventListener('submit',async event=>{
   event.preventDefault();const email=el('email').value,password=el('password').value;clear();const turn=epoch;

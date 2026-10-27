@@ -1,3 +1,4 @@
+import {clarificationEnabled} from '../../shared-core/server-clarification-review.mjs';
 import {createTubServiceApproval,createServiceApprovalAttestor} from '../../shared-core/server-tub-approval.mjs';
 import {createServerCaseService} from '../../shared-core/server-case-service.mjs';
 import {createSupabaseTransport,createSupabaseAuthority,createSupabaseCaseRepository} from '../../shared-core/supabase-case-repository.mjs';
@@ -72,18 +73,19 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     const cookiePost=event.httpMethod==='POST';
     const closedIngest=cookiePost&&input.action==='ingest-and-draft';
     if(input.tenantId!=='sarberki-test'||Object.keys(input).some(key=>!(closedIngest?(closedTub||closedTubReview?['tenantId','caseId','action','envelope','expectedRevision']:['tenantId','action','envelope','expectedRevision','sourceReceipt']):cookiePost?(input.action==='edit-draft'?['tenantId','caseId','action','expectedRevision','expectedDraftHash','editedDraftText']:['tenantId','caseId','action','expectedRevision','reviewedDraftHash','targetCaseId','targetRevision','reason','servicePreviewHash']):['tenantId','caseId','action','expectedRevision']).includes(key))||
-      (cookiePost?!['edit-draft','review-draft','approve','ingest-and-draft','resolve-service-link','approve-service'].includes(input.action):!(cloudApproval?['preview-draft','approval-state','review-record','service-approval-state',undefined]:['preview-draft','service-approval-state',undefined]).includes(input.action))||
+      (cookiePost?!['prepare-clarification','approve-clarification','edit-draft','review-draft','approve','ingest-and-draft','resolve-service-link','approve-service'].includes(input.action):!(cloudApproval?['preview-draft','approval-state','review-record','service-approval-state',undefined]:['preview-draft','service-approval-state',undefined]).includes(input.action))||
       (!cookiePost&&input.caseId!==undefined&&!['preview-draft','approval-state','review-record','service-approval-state'].includes(input.action)))return cookieResponse(403,{error:'FORBIDDEN'});
     if(closedIngest&&(!cloudApproval||(closedTub||closedTubReview?(!isIsolatedReviewCaseId(input.caseId)||!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<1):(input.expectedRevision!==0||!(input.sourceReceipt===undefined?closedSyntheticMailLanguage(input.envelope):exactReceipt?.matches(input.envelope,input.sourceReceipt))))))return cookieResponse(403,{error:'FORBIDDEN'});
     const session=createOperatorCookieSession({env,fetchImpl});
-    cookieSession=cookieSession||await (cookiePost?(['approve','resolve-service-link','approve-service'].includes(input.action)?session.protectedApproval(event):session.protectedWrite(event)):session.protectedRead(event));
+    cookieSession=cookieSession||await (cookiePost?(['approve-clarification','approve','resolve-service-link','approve-service'].includes(input.action)?session.protectedApproval(event):session.protectedWrite(event)):session.protectedRead(event));
     rotatedCookie=cookieSession.setCookie;
    }
+   if(['prepare-clarification','approve-clarification'].includes(input.action)&&(!cookieMode||!clarificationEnabled(env)||!exactEditReceipt||Object.keys(input).some(k=>!['tenantId','caseId','action','expectedRevision','reviewedDraftHash'].includes(k))))return cookieResponse(403,{error:'FORBIDDEN'});
    const transport=cookieSession?.transport||createSupabaseTransport({url:env.SUPABASE_URL,publishableKey:env.SUPABASE_PUBLISHABLE_KEY,token:authorization.slice(7),fetchImpl});
    const approvalEnabled=cloudApproval||isolatedApproval===true&&env.SUPABASE_URL==='https://isolated-approval.supabase.co';
    const approvalAttestor=approvalEnabled&&/^[a-f0-9]{64}$/.test(env.ISOLATED_APPROVAL_ATTESTATION_KEY||'')?createIsolatedApprovalAttestor(env.ISOLATED_APPROVAL_ATTESTATION_KEY):null;
    const service=createServerCaseService({repository:createSupabaseCaseRepository(transport,{approvalAttestor}),resolveAuthority:cookieSession?async()=>cookieSession.authority:createSupabaseAuthority(transport)});
-   if(cloudApproval&&['edit-draft','review-draft','approve','approval-state','review-record'].includes(input.action)){
+   if(cloudApproval&&['prepare-clarification','approve-clarification','edit-draft','review-draft','approve','approval-state','review-record'].includes(input.action)){
     if(input.tenantId!=='sarberki-test'||!isIsolatedReviewCaseId(input.caseId))return cookieResponse(403,{error:'FORBIDDEN'});
     const candidate=await service.getCase({tenantId:input.tenantId,caseId:input.caseId});
     if(event.httpMethod==='GET'&&input.action==='approval-state')assertReadAccess(candidate);
@@ -139,6 +141,10 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      result={caseId:record.caseId,revision:record.revision,approval:record.data.state.approval,
       serverApproval:approval?{actor:approval.actor,at:approval.at,reviewedRevision:approval.reviewedRevision,draftHash:approval.draftHash}:null,
       readOnly:true,auditScope:'approval-history',storedDraft,audit};
+     if(exactEditable(record)&&clarificationEnabled(env)){
+      result.clarificationApproval=record.data.clarificationApproval||null;
+      result.clarificationAudit=await transport('/rest/v1/sc_audit?'+new URLSearchParams({tenant_id:'eq.sarberki-test',case_id:'eq.'+input.caseId,kind:'eq.approve_clarification_only',select:'revision,actor,at,kind,data_hash',order:'revision.asc'}));
+     }
     }else if(input.action==='preview-draft'){
      let candidate=null;
      if(cookieMode){
@@ -164,7 +170,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     }else return response(400,{error:'INVALID_INPUT'});
    }
    else {
-    const runtime=createServerBookingRuntime({service,tenantId:input.tenantId,isolatedApproval:approvalEnabled,cloudSyntheticEditing:cloudApproval,exactReceipt,exactEditReceipt,reviewProviders:cloudApproval?cloudSyntheticReviewProviders():approvalEnabled?reviewProviders:null});
+    const runtime=createServerBookingRuntime({service,tenantId:input.tenantId,isolatedApproval:approvalEnabled,cloudSyntheticEditing:cloudApproval,exactReceipt,exactEditReceipt,clarificationAllowed:cloudApproval&&clarificationEnabled(env),reviewProviders:cloudApproval?cloudSyntheticReviewProviders():approvalEnabled?reviewProviders:null});
     if(input.action==='approve-service'){
      if(input.tenantId!=='sarberki-test'||!isIsolatedReviewCaseId(input.caseId))return cookieResponse(403,{error:'FORBIDDEN'});
      result=await serviceFlow().approve(input.caseId,input.expectedRevision,input.servicePreviewHash);
@@ -173,6 +179,8 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      result=await service.resolveServiceLink({tenantId:input.tenantId,caseId:input.caseId,expectedRevision:input.expectedRevision,targetCaseId:input.targetCaseId,targetRevision:input.targetRevision,reason:input.reason});
     }
     else if(input.action==='draft')result=await runtime.draft(input.caseId,input.expectedRevision);
+    else if(input.action==='prepare-clarification')result=await runtime.prepareClarification(input.caseId,input.expectedRevision);
+    else if(input.action==='approve-clarification')result=await runtime.approveClarification(input.caseId,input.expectedRevision,input.reviewedDraftHash);
     else if(input.action==='edit-draft')result=await runtime.editDraft(input.caseId,input.expectedRevision,input.editedDraftText,input.expectedDraftHash);
     else if(input.action==='review-draft'&&approvalEnabled)result=await runtime.reviewAndDraft(input.caseId,input.expectedRevision);
     else if(input.action==='approve'&&approvalEnabled)result=await runtime.approve(input.caseId,input.expectedRevision,input.reviewedDraftHash);

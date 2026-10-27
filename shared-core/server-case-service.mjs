@@ -100,6 +100,16 @@ export function createServerCaseService({ repository, resolveAuthority, clock = 
       reject('STORAGE_FAILURE','Érvénytelen jóváhagyási ügytárválasz.');
     return copy(record);
   }
+  async function approveClarification({requestContext,tenantId,caseId,expectedRevision,draftHash,evidence}){
+    const actor=await authorize(requestContext,tenantId,'approve');
+    if(!validCaseId(caseId)||!Number.isSafeInteger(expectedRevision)||expectedRevision<1||typeof draftHash!=='string'||!/^[a-f0-9]{64}$/.test(draftHash))reject('INVALID_DRAFT','INVALID_DRAFT');
+    if(typeof repository.approveClarification!=='function')reject('SETUP_REQUIRED','SETUP_REQUIRED');
+    const record=validateStored(await repository.approveClarification(tenantId,caseId,expectedRevision,draftHash,copy(evidence)),tenantId,caseId);
+    if(!record)reject('CASE_CONFLICT','CASE_CONFLICT');
+    const proof=record.data?.clarificationApproval;
+    if(record.revision!==expectedRevision+1||record.updatedBy!==actor||record.data?.state?.approval!=='pending'||record.data.serverApproval||proof?.actor!==actor||proof?.reviewedRevision!==expectedRevision||proof?.draftHash!==draftHash||proof?.scope!=='clarification-only-v1')reject('STORAGE_FAILURE','STORAGE_FAILURE');
+    return copy(record);
+  }
   async function serviceLinkState({requestContext,tenantId,caseId}){
     const review=await getCase({requestContext,tenantId,caseId});
     if(!review||review.data.caseKind!=='service_link_review')return null;
@@ -137,7 +147,7 @@ export function createServerCaseService({ repository, resolveAuthority, clock = 
     if(row.tenant_id!==tenantId||row.case_id!==caseId||row.actor!==actor||row.payload?.caseRevision!==expectedRevision)reject('STORAGE_FAILURE','Eltérő jóváhagyási eredmény.');
     return copy(row);
   }
-  return Object.freeze({ getCase, listCases, createCase, updateCase, approveCase, serviceLinkState, resolveServiceLink, getServiceApproval, approveService,
+  return Object.freeze({ getCase, listCases, createCase, updateCase, approveCase, approveClarification, serviceLinkState, resolveServiceLink, getServiceApproval, approveService,
     requireRead: ({requestContext,tenantId}) => authorize(requestContext,tenantId,'read'),
     requireWrite: ({requestContext,tenantId}) => authorize(requestContext,tenantId,'write'),
     requireApproval: ({requestContext,tenantId}) => authorize(requestContext,tenantId,'approve') });

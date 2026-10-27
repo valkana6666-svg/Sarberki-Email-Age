@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {readFile,access,writeFile,rm} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
+import {CLARIFICATION_TEXT,CLARIFICATION_TEMPLATE} from '../shared-core/server-clarification-review.mjs';
+import {createIsolatedApprovalAttestor} from '../shared-core/isolated-approval-attestation.mjs';
 import {PGlite} from '@electric-sql/pglite';
 import {createExactGmailReceipt,exactGmailEditReceipt,matchesExactGmailEditRecord,EXACT_EDIT_CASE_ID} from '../shared-core/server-exact-gmail-receipt.mjs';
 import {createServerBookingRuntime} from '../shared-core/server-booking-runtime.mjs';
@@ -12,6 +14,7 @@ import {createCaseHandler} from '../netlify/functions/booking-cases.mjs';
 import {createOperatorSessionHandler} from '../netlify/functions/operator-session.mjs';
 const read=p=>readFile(new URL('../'+p,import.meta.url),'utf8');
 const origin='https://leafy-chimera-2403e5.netlify.app',project='https://mojnqizbcaczstguikpv.supabase.co';
+const sessions={writer:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',reader:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',approver:'cccccccc-cccc-4ccc-8ccc-cccccccccccc'};
 const actors={writer:'11111111-1111-4111-8111-111111111111',reader:'22222222-2222-4222-8222-222222222222',approver:'33333333-3333-4333-8333-333333333333'};
 // FICTIONAL equivalent only; neither personal source address nor real RFC/IDs.
 const source={provider:'gmail',mailbox_id:'fictional_mailbox',message_id:'fake-google-id',thread_id:'fake-google-thread',rfc_message_id:'<fictional@example.test>',in_reply_to:null,references:[],subject:'Fictional inquiry',to:'mailbox@example.test',from:'Fictional Sender <sender@example.test>',from_email:'sender@example.test',received_at:'2026-10-03T09:23:06.000Z'};
@@ -37,14 +40,15 @@ test('private configuration is default closed and every exact field is bound',()
 
 test('offline SQL candidate + cookie Writer/runtime/Reader preserve actual source and remain unapprovable',async t=>{
  let db=new PGlite(),cookie='',csrf,authMismatch=false;const tokens=new Map();let providerCalls=0;
- const asActor=async(role,fn)=>{await db.exec('set role authenticated');await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({sub:actors[role],role:'authenticated',iss:project+'/auth/v1'})]);try{return await fn();}finally{await db.exec('reset role');}};
+ const asActor=async(role,fn)=>{await db.exec('set role authenticated');await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({sub:actors[role],role:'authenticated',iss:project+'/auth/v1',session_id:sessions[role],exp:Math.floor(Date.now()/1000)+3600})]);try{return await fn();}finally{await db.exec('reset role');}};
  const transport=role=>async(path,{body}={})=>{
   if(path==='/auth/v1/user')return {id:actors[authMismatch?'reader':role]};
   return asActor(role,async()=>{
    const url=new URL(path,project);
    if(path.includes('/sc_memberships'))return (await db.query('select * from sc_memberships where user_id=$1',[url.searchParams.get('user_id')?.slice(3)||actors[role]])).rows;
+   if(path.includes('/sc_approve_clarification'))return (await db.query('select sc_approve_clarification($1,$2,$3,$4,$5) result',[body.p_tenant,body.p_case,body.p_expected,body.p_draft_hash,JSON.stringify(body.p_evidence)])).rows[0].result;
    if(path.includes('/sc_write_case'))return (await db.query('select sc_write_case($1,$2,$3,$4) result',[body.p_tenant,body.p_case,body.p_expected,JSON.stringify(body.p_data)])).rows[0].result;
-   if(path.includes('/sc_audit'))return (await db.query("select * from sc_audit where tenant_id='sarberki-test' and kind='approve_isolated_synthetic'")).rows;
+   if(path.includes('/sc_audit'))return (await db.query("select * from sc_audit where tenant_id='sarberki-test' and kind=$1",[url.searchParams.get('kind')?.slice(3)||'approve_isolated_synthetic'])).rows;
    assert.ok(path.includes('/sc_cases'),path);const id=url.searchParams.get('case_id')?.slice(3);
    return (await db.query('select * from sc_cases where tenant_id=$1'+(id?' and case_id=$2':''),id?['sarberki-test',id]:['sarberki-test'])).rows;
   });
@@ -53,7 +57,7 @@ test('offline SQL candidate + cookie Writer/runtime/Reader preserve actual sourc
   const url=new URL(raw);assert.equal(url.origin,project,'no external provider network');
   if(url.pathname.endsWith('/token')){
    const b=JSON.parse(options.body),role=url.searchParams.get('grant_type')==='password'?b.email.split('@')[0]:b.refresh_token.replace('fake_refresh_','');assert.ok(actors[role]);
-   const token='eyJhbGciOiJIUzI1NiJ9.'+Buffer.from(JSON.stringify({sub:actors[role],role:'authenticated',iss:project+'/auth/v1',exp:Math.floor(Date.now()/1000)+3600})).toString('base64url')+'.fictional';tokens.set(token,role);
+   const token='eyJhbGciOiJIUzI1NiJ9.'+Buffer.from(JSON.stringify({sub:actors[role],role:'authenticated',iss:project+'/auth/v1',session_id:sessions[role],exp:Math.floor(Date.now()/1000)+3600,exp:Math.floor(Date.now()/1000)+3600})).toString('base64url')+'.fictional';tokens.set(token,role);
    return {ok:true,json:async()=>({access_token:token,refresh_token:'fake_refresh_'+role,user:{id:actors[role]}})};
   }
   const role=tokens.get(options.headers.Authorization?.slice(7));assert.ok(role);
@@ -74,13 +78,14 @@ test('offline SQL candidate + cookie Writer/runtime/Reader preserve actual sourc
   await db.exec(await read('deployment/cloud-approval/install.sql'));
   await db.exec(await read('deployment/cloud-approval/separate-approver-permission.sql'));
   await db.exec('alter default privileges grant all on tables to anon,authenticated,service_role');
-  for(const [role,id] of Object.entries(actors)){await db.query('insert into auth.users values($1)',[id]);await db.query("insert into sc_memberships values('sarberki-test',$1,true,$2,$3)",[id,role==='writer',role==='approver']);}
+  for(const [role,id] of Object.entries(actors)){await db.query('insert into auth.users values($1)',[id]);await db.query('insert into auth.sessions values($1,$2,null)',[sessions[role],id]);await db.query("insert into sc_memberships values('sarberki-test',$1,true,$2,$3)",[id,role==='writer',role==='approver']);}
   await db.query("select set_config('sarberki.receipt_install_project_ref',$1,false),set_config('sarberki.receipt_backup_sha256',$2,false)",['mojnqizbcaczstguikpv','b'.repeat(64)]);
   const install=await read('deployment/exact-receipt/install.sql');
   await db.query("select set_config('sarberki.receipt_install_project_ref','wrong',false)");
   await assert.rejects(db.exec(install),/verified test project/);await db.exec('rollback');
   await db.query("select set_config('sarberki.receipt_install_project_ref','mojnqizbcaczstguikpv',false)");
   await db.exec(install);
+  const exactWriterDefinition=(await db.query("select pg_get_functiondef('sc_write_case(text,text,bigint,jsonb)'::regprocedure) definition")).rows[0].definition;
   const installedWriter=(await db.query("select prosrc from pg_proc where oid='sc_write_case(text,text,bigint,jsonb)'::regprocedure")).rows[0].prosrc;
   const guardStart=baselineWriter.indexOf(" if coalesce(p_data->>'sender','')"),guardEnd=baselineWriter.indexOf(" if coalesce(p_data->'state'->>'approval'");
   assert.ok(installedWriter.startsWith(baselineWriter.slice(0,guardStart)));
@@ -232,10 +237,85 @@ test('offline SQL candidate + cookie Writer/runtime/Reader preserve actual sourc
    assert.equal(audit[1].data_hash,createHash('sha256').update(snapshot).digest('hex'));
    assert.equal((await db.query('select revision from sc_cases')).rows[0].revision,2);
   });
+  await t.test('closed phone clarification: Writer -> independent Approver -> durable audit; later edit invalidates it',async()=>{
+   await db.query('insert into sc_isolated_approval_key(key_hex) values($1)',[env.ISOLATED_APPROVAL_ATTESTATION_KEY]);
+   await db.exec(await read('deployment/cloud-approval/clarification-only.sql'));
+   const clarifyEnv={...env,CASE_EXACT_EDIT_ENABLED:'sarberki-test-one-exact-record',CASE_CLARIFICATION_ENABLED:'sarberki-test-exact-phone-only-v1'};
+   const handler=createCaseHandler({env:clarifyEnv,fetchImpl});
+   const base={tenantId:'sarberki-test',caseId:config.caseId,action:'prepare-clarification',expectedRevision:2};
+   await login('writer');
+   assert.equal((await call(base,{handler:createCaseHandler({env:{...clarifyEnv,CASE_CLARIFICATION_ENABLED:''},fetchImpl})})).statusCode,403);
+   for(const body of [{...base,editedDraftText:'arbitrary'}, {...base,tenantId:'demo-test'},{...base,caseId:'case-other'}])assert.equal((await call(body,{handler})).statusCode,403);
+   assert.equal((await call(base,{handler,headers:{'x-csrf-token':'0'.repeat(64)}})).statusCode,403);
+   await login('reader');assert.equal((await call(base,{handler})).statusCode,403);
+   await login('writer');const prepared=await call(base,{handler});assert.equal(prepared.statusCode,200,JSON.stringify(prepared.json));
+   const draft=prepared.json.result.data.drafts.at(-1);assert.equal(draft.text,CLARIFICATION_TEXT);assert.equal(draft.clarification.templateId,CLARIFICATION_TEMPLATE);
+   const draftHash=createHash('sha256').update(draft.text).digest('hex');
+   const approval={...base,action:'approve-clarification',expectedRevision:3,reviewedDraftHash:draftHash};
+   assert.equal((await call(approval,{handler})).statusCode,403,'Writer even with approve flag cannot self-approve');
+   await login('reader');assert.equal((await call(approval,{handler})).statusCode,403);
+   const loaded=await call({...base,action:'review-record'},{get:true,handler});assert.equal(loaded.json.result.data.drafts.at(-1).text,CLARIFICATION_TEXT);
+   await login('approver');
+   assert.equal((await call({...approval,expectedRevision:2},{handler})).statusCode,409);
+   assert.equal((await call({...approval,reviewedDraftHash:'0'.repeat(64)},{handler})).statusCode,400);
+   assert.equal((await call(approval,{handler,headers:{'x-csrf-token':'0'.repeat(64)}})).statusCode,403);
+   const signed=createIsolatedApprovalAttestor(env.ISOLATED_APPROVAL_ATTESTATION_KEY);
+   const evidence={scope:'clarification-only-v1',templateId:CLARIFICATION_TEMPLATE,factsRevision:draft.revision,messageCount:1,checkedAt:new Date().toISOString()};
+   const rpc=async(evidence,hash=draftHash)=>asActor('approver',()=>db.query('select sc_approve_clarification($1,$2,$3,$4,$5) result',['sarberki-test',config.caseId,3,hash,JSON.stringify(evidence)]));
+   await assert.rejects(rpc(evidence),e=>e.code==='42501','missing attestation');
+   for(const role of ['reader','writer'])await assert.rejects(asActor(role,()=>db.query('select sc_approve_clarification($1,$2,$3,$4,$5)',['sarberki-test',config.caseId,3,draftHash,JSON.stringify(signed('sarberki-test',config.caseId,3,draftHash,evidence))])),e=>e.code==='42501');
+   await assert.rejects(asActor('approver',()=>db.query('select sc_approve_clarification($1,$2,$3,$4,$5)',['demo-test',config.caseId,3,draftHash,JSON.stringify(signed('demo-test',config.caseId,3,draftHash,evidence))])),e=>e.code==='42501');
+   await assert.rejects(rpc(signed('sarberki-test',config.caseId,3,draftHash,{...evidence,checkedAt:'2000-01-01T00:00:00Z'})),e=>e.code==='42501');
+   await db.exec('update sc_private_exact_receipt set enabled=false');await assert.rejects(rpc(signed('sarberki-test',config.caseId,3,draftHash,evidence)),e=>e.code==='42501');await db.exec('update sc_private_exact_receipt set enabled=true');
+   const snapshot=(await db.query('select data from sc_cases where case_id=$1',[config.caseId])).rows[0].data;
+   // Simulate corrupt/hostile persisted draft in an isolated owner transaction.
+   // Neither a valid signing key nor a caller label can approve arbitrary claims.
+   for(const text of ['The price is 120000 HUF.','A cabin is available.','Your booking is confirmed.',CLARIFICATION_TEXT+' Discount 20%.']){
+    try{
+     const changed=structuredClone(snapshot);changed.drafts.at(-1).text=text;
+     await db.query('update sc_cases set data=$1 where case_id=$2',[JSON.stringify(changed),config.caseId]);
+     const h=createHash('sha256').update(text).digest('hex');
+     await assert.rejects(rpc(signed('sarberki-test',config.caseId,3,h,evidence),h),e=>e.code==='42501');
+    }finally{await db.query('update sc_cases set data=$1 where case_id=$2',[JSON.stringify(snapshot),config.caseId]);}
+   }
+   for(const mutate of [r=>r.sourceReceipt.subject+='changed',r=>r.messages.push({...r.messages[0]}),r=>r.messages[0].text+='changed',r=>r.id='different-case',r=>r.tenantId='demo-test',r=>r.state.values.phone='+36 00 000 0000',r=>delete r.drafts.at(-1).clarification]){
+    const changed=structuredClone(snapshot);mutate(changed);
+    try{
+     try{await db.query('update sc_cases set data=$1 where case_id=$2',[JSON.stringify(changed),config.caseId]);}
+     catch(error){assert.equal(error.code,'23514','table identity constraint independently rejects the corruption');continue;}
+     await assert.rejects(rpc(signed('sarberki-test',config.caseId,3,draftHash,evidence)),e=>e.code==='42501');
+    }
+    finally{await db.query('update sc_cases set data=$1 where case_id=$2',[JSON.stringify(snapshot),config.caseId]);}
+   }
+   await db.query("update auth.sessions set not_after=now()-interval '1 second' where id=$1",[sessions.approver]);
+   await assert.rejects(rpc(signed('sarberki-test',config.caseId,3,draftHash,evidence)),e=>e.code==='42501');
+   await db.query('update auth.sessions set not_after=null where id=$1',[sessions.approver]);
+   const approved=await call(approval,{handler});assert.equal(approved.statusCode,200,JSON.stringify(approved.json));
+   const result=approved.json.result;assert.equal(result.revision,4);assert.equal(result.data.state.approval,'pending');assert.equal(result.data.serverApproval,undefined);
+   assert.equal(result.data.clarificationApproval.scope,'clarification-only-v1');assert.equal(result.data.clarificationApproval.actor,actors.approver);assert.equal(result.data.clarificationApproval.reviewedRevision,3);assert.equal(result.data.clarificationApproval.draftHash,draftHash);
+   assert.equal((await call(approval,{handler})).statusCode,409);
+   await login('reader');const state=await call({...base,action:'approval-state'},{get:true,handler:createCaseHandler({env:clarifyEnv,fetchImpl})});
+   assert.equal(state.statusCode,200);assert.equal(state.json.result.clarificationApproval.draftHash,draftHash);assert.equal(state.json.result.clarificationAudit.length,1);
+   const approvalAudit=state.json.result.clarificationAudit[0];
+   assert.equal(approvalAudit.actor,actors.approver);assert.equal(approvalAudit.revision,4);assert.equal(approvalAudit.kind,'approve_clarification_only');
+   const approvedSnapshot=(await db.query('select data::text snapshot from sc_cases where case_id=$1',[config.caseId])).rows[0].snapshot;
+   assert.equal(approvalAudit.data_hash,createHash('sha256').update(approvedSnapshot,'utf8').digest('hex'));
+   assert.equal(state.json.result.storedDraft.text,CLARIFICATION_TEXT);
+   // Ordinary authenticated Writer SQL cannot forge or carry this approval.
+   await assert.rejects(writeDb(result.data,4),e=>e.code==='42501');
+   await login('writer');const edited=await call({...base,action:'edit-draft',expectedRevision:4,expectedDraftHash:draftHash,editedDraftText:'Manually edited clarification.'},{handler});
+   assert.equal(edited.statusCode,200);assert.equal(edited.json.result.revision,5);assert.equal(edited.json.result.data.clarificationApproval,undefined);
+   await login('approver');assert.equal((await call({...approval,expectedRevision:5,reviewedDraftHash:createHash('sha256').update('Manually edited clarification.').digest('hex')},{handler})).statusCode,422);
+   await login('reader');const after=await call({...base,action:'approval-state'},{get:true,handler});assert.equal(after.json.result.clarificationApproval,null);assert.equal(after.json.result.clarificationAudit.length,1,'historical audit retained without current consent');
+   assert.equal((await db.query('select count(*)::int n from sc_audit')).rows[0].n,5);
+  });
   await t.test('rollback preserves the case and audit while restoring the original fail-closed sender guard',async()=>{
+   // Existing rollback remains guarded: new Writer definition must be reviewed separately.
+   await assert.rejects(db.exec(await read('deployment/exact-receipt/rollback.sql')),/unexpected project or Writer definition/);await db.exec('rollback');
+   await db.exec(exactWriterDefinition); // isolated test teardown, never a hosted operation
    await db.exec(await read('deployment/exact-receipt/rollback.sql'));
-   await assert.rejects(writeDb(record.data,2),e=>e.code==='22023');
-   assert.equal((await db.query('select count(*)::int n from sc_cases')).rows[0].n,1);assert.equal((await db.query('select count(*)::int n from sc_audit')).rows[0].n,2);
+   await assert.rejects(writeDb(record.data,5),e=>e.code==='22023');
+   assert.equal((await db.query('select count(*)::int n from sc_cases')).rows[0].n,1);assert.equal((await db.query('select count(*)::int n from sc_audit')).rows[0].n,5);
    assert.equal((await db.query("select prosrc from pg_proc where oid='sc_write_case(text,text,bigint,jsonb)'::regprocedure")).rows[0].prosrc,baselineWriter);
   });
  }finally{await db.close();}
