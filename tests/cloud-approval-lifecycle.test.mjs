@@ -10,7 +10,10 @@ import {createCloudCaseRequest} from '../shared-core/cloud-case-request.mjs';
 import {formatCloudApprovalFailure} from '../shared-core/cloud-approval-errors.mjs';
 import {isIsolatedReviewCaseId} from '../shared-core/isolated-review-case-id.mjs';
 const source=readFileSync(new URL('../cloud-approval-session.mjs',import.meta.url),'utf8').replace(/^import .*;\n/gm,'');
-const valid=()=>({authenticated:true,tenantId:'sarberki-test',csrfToken:'ab'.repeat(32),expiresAt:new Date(Date.now()+3600000).toISOString()});
+// Login POST and confirmation GET represent the same server session. A new
+// Date per response makes confirmation randomly fail across millisecond boundaries.
+const sessionExpiresAt=new Date(Date.now()+3600000).toISOString();
+const valid=()=>({authenticated:true,tenantId:'sarberki-test',csrfToken:'ab'.repeat(32),expiresAt:sessionExpiresAt});
 const settle=()=>new Promise(r=>setImmediate(r));
 async function harness(request){
  const nodes=new Map(),listeners={},documentListeners={};
