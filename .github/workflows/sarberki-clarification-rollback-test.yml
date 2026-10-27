@@ -1,0 +1,33 @@
+name: Sarberki synthetic clarification rollback on PostgreSQL
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths: [.github/workflows/sarberki-clarification-rollback-test.yml]
+permissions:
+  contents: read
+jobs:
+  rollback:
+    if: github.ref == 'refs/heads/gmail-test-subject-allowlist' && contains(github.event.head_commit.message, '[clarification-rollback-test]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Actual disposable PostgreSQL snapshot, install and rollback
+        env:
+          PGHOST: localhost
+          PGUSER: postgres
+          PGPASSWORD: synthetic-only
+          PGDATABASE: postgres
+        run: psql -X -w -v ON_ERROR_STOP=1 -f scripts/clarification-rollback-fixture.sql
