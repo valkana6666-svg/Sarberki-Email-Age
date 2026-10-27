@@ -4,7 +4,7 @@ import {readFile,access,writeFile,rm} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {PGlite} from '@electric-sql/pglite';
-import {createExactGmailReceipt} from '../shared-core/server-exact-gmail-receipt.mjs';
+import {createExactGmailReceipt,exactGmailEditReceipt,matchesExactGmailEditRecord,EXACT_EDIT_CASE_ID} from '../shared-core/server-exact-gmail-receipt.mjs';
 import {createServerBookingRuntime} from '../shared-core/server-booking-runtime.mjs';
 import {createServerCaseService} from '../shared-core/server-case-service.mjs';
 import {createSupabaseCaseRepository,createSupabaseAuthority} from '../shared-core/supabase-case-repository.mjs';
@@ -16,7 +16,7 @@ const actors={writer:'11111111-1111-4111-8111-111111111111',reader:'22222222-222
 // FICTIONAL equivalent only; neither personal source address nor real RFC/IDs.
 const source={provider:'gmail',mailbox_id:'fictional_mailbox',message_id:'fake-google-id',thread_id:'fake-google-thread',rfc_message_id:'<fictional@example.test>',in_reply_to:null,references:[],subject:'Fictional inquiry',to:'mailbox@example.test',from:'Fictional Sender <sender@example.test>',from_email:'sender@example.test',received_at:'2026-10-03T09:23:06.000Z'};
 const envelope={sender:source.from_email,text:'Hello! We would like to stay October 30 to November 1, 2026. We are 8\r\nadults and would prefer separate sleeping units if possible. Please\r\nlet us know what options are available. Best regards, Fictional Guest',mailbox_id:source.mailbox_id,message_id:source.message_id,thread_id:source.thread_id,rfc_message_id:source.rfc_message_id,references:[],received_at:source.received_at};
-const config={caseId:'44444444-4444-4444-8444-444444444444',source,envelope,bodySha256:createHash('sha256').update(envelope.text).digest('hex')};
+const config={caseId:EXACT_EDIT_CASE_ID,source,envelope,bodySha256:createHash('sha256').update(envelope.text).digest('hex')};
 const env={URL:origin,SUPABASE_URL:project,SUPABASE_PUBLISHABLE_KEY:'sb_publishable_SYNTHETIC_PUBLIC_KEY_12345',CASE_STORE_ENABLED:'synthetic-only',CASE_STORE_TEST_TENANTS:'sarberki-test,demo-test',CASE_APPROVAL_ENABLED:'sarberki-test-synthetic-only',ISOLATED_APPROVAL_ATTESTATION_KEY:'a1'.repeat(32),SARBERKI_OPERATOR_SESSION_KEY:'ab'.repeat(32),CASE_EXACT_RECEIPT_ENABLED:'sarberki-test-one-receipt',CASE_EXACT_RECEIPT_PRIVATE_JSON:JSON.stringify(config)};
 const input={tenantId:'sarberki-test',action:'ingest-and-draft',expectedRevision:0,envelope,sourceReceipt:source};
 const tamper=value=>typeof value==='string'?value+'x':value===null?'changed':['changed'];
@@ -44,6 +44,7 @@ test('offline SQL candidate + cookie Writer/runtime/Reader preserve actual sourc
    const url=new URL(path,project);
    if(path.includes('/sc_memberships'))return (await db.query('select * from sc_memberships where user_id=$1',[url.searchParams.get('user_id')?.slice(3)||actors[role]])).rows;
    if(path.includes('/sc_write_case'))return (await db.query('select sc_write_case($1,$2,$3,$4) result',[body.p_tenant,body.p_case,body.p_expected,JSON.stringify(body.p_data)])).rows[0].result;
+   if(path.includes('/sc_audit'))return (await db.query("select * from sc_audit where tenant_id='sarberki-test' and kind='approve_isolated_synthetic'")).rows;
    assert.ok(path.includes('/sc_cases'),path);const id=url.searchParams.get('case_id')?.slice(3);
    return (await db.query('select * from sc_cases where tenant_id=$1'+(id?' and case_id=$2':''),id?['sarberki-test',id]:['sarberki-test'])).rows;
   });
@@ -171,10 +172,66 @@ test('offline SQL candidate + cookie Writer/runtime/Reader preserve actual sourc
    await assert.rejects(runtime.approve(config.caseId,1,createHash('sha256').update(record.data.drafts[0].text).digest('hex')),e=>e.code==='INVALID_DRAFT');
    assert.equal(providerCalls,0);assert.equal((await db.query('select revision from sc_cases')).rows[0].revision,1);
   });
+  await t.test('explicit exact editing preserves RLS/CAS/hash/audit and never borrows fixture approval evidence',async()=>{
+   const editEnv={...env,CASE_EXACT_EDIT_ENABLED:'sarberki-test-one-exact-record'};
+   const editApi=createCaseHandler({env:editEnv,fetchImpl});
+   const receipt=exactGmailEditReceipt(editEnv);
+   assert.ok(matchesExactGmailEditRecord(record,receipt));
+   for(const [k,v] of Object.entries(source)){const changed=structuredClone(record);changed.data.sourceReceipt[k]=tamper(v);assert.equal(matchesExactGmailEditRecord(changed,receipt),false,k);}
+   for(const [k,v] of Object.entries(envelope)){const changed=structuredClone(record);changed.data.messages[0][k]=tamper(v);assert.equal(matchesExactGmailEditRecord(changed,receipt),false,k);}
+   assert.equal(exactGmailEditReceipt(env),null);
+   assert.equal(exactGmailEditReceipt({...editEnv,CASE_EXACT_RECEIPT_ENABLED:''}),null);
+   assert.equal(exactGmailEditReceipt({...editEnv,CASE_EXACT_RECEIPT_PRIVATE_JSON:JSON.stringify({...config,caseId:'another-case'})}),null);
+   for(const mutate of [r=>r.caseId='another-case',r=>r.tenantId='demo-test',r=>r.data.tenantId='demo-test',r=>r.data.id='another-case',r=>r.data.sender='other@example.test',r=>r.data.messages.push({...envelope}),r=>r.data.messages[0].text+='changed',r=>r.data.sourceReceipt.subject+='changed',r=>r.data.caseKind='service_link_review']){
+    const changed=structuredClone(record);mutate(changed);assert.equal(matchesExactGmailEditRecord(changed,receipt),false);
+   }
+   const get={tenantId:'sarberki-test',caseId:config.caseId,action:'review-record'};
+   const hash=createHash('sha256').update(record.data.drafts.at(-1).text).digest('hex');
+   const edit={...get,action:'edit-draft',expectedRevision:1,expectedDraftHash:hash,editedDraftText:'Fictional manually edited pending text.  '};
+   await login('writer');
+   assert.equal((await call(get,{get:true})).statusCode,403,'receipt alone is not edit permission');
+   const loaded=await call(get,{get:true,handler:editApi});assert.equal(loaded.statusCode,200);assert.equal(loaded.json.result.canEditDraft,true);assert.equal(loaded.json.result.approvalBlockedReason,'EXACT_REVIEW_EVIDENCE_REQUIRED');
+   for(const [body,headers,status] of [[edit,{'x-csrf-token':'0'.repeat(64)},403],[{...edit,expectedRevision:99},{},409],[{...edit,expectedDraftHash:'0'.repeat(64)},{},400],[{...edit,tenantId:'demo-test'},{},403],[{...edit,caseId:'other-case'},{},403]])assert.equal((await call(body,{headers,handler:editApi})).statusCode,status);
+   await login('reader');assert.equal((await call(edit,{handler:editApi})).statusCode,403);
+   assert.equal((await call(get,{get:true,handler:editApi})).json.result.canEditDraft,false);
+   await login('writer');const saved=await call(edit,{handler:editApi});assert.equal(saved.statusCode,200,JSON.stringify(saved.json));
+   const updated=saved.json.result;assert.equal(updated.revision,2);assert.equal(updated.data.state.approval,'pending');assert.equal(updated.data.serverApproval,undefined);
+   const last=updated.data.drafts.at(-1),newHash=createHash('sha256').update(edit.editedDraftText).digest('hex');
+   assert.equal(last.previousDraftHash,hash);assert.equal(last.draftHash,newHash);assert.equal(last.editedBy,actors.writer);assert.equal(last.reviewStatus,'manual_edit_requires_review');assert.notEqual(last.synthetic,true);
+   assert.deepEqual(updated.data.drafts.slice(0,-1),record.data.drafts);assert.deepEqual(updated.data.messages,record.data.messages);
+   assert.equal((await call(edit,{handler:editApi})).statusCode,409);
+   await login('reader');const readback=await call(get,{get:true,handler:createCaseHandler({env:editEnv,fetchImpl})});
+   assert.equal(readback.json.result.data.drafts.at(-1).text,edit.editedDraftText);assert.equal(readback.json.result.revision,2);assert.equal(readback.json.result.canEditDraft,false);
+   const auditRead=await call({...get,action:'approval-state'},{get:true,handler:editApi});assert.equal(auditRead.statusCode,200);assert.equal(auditRead.json.result.storedDraft.text,edit.editedDraftText);assert.deepEqual(auditRead.json.result.audit,[]);
+   await login('approver');
+   const approve={...get,action:'approve',expectedRevision:2,reviewedDraftHash:newHash};
+   assert.equal((await call({...approve,expectedRevision:1},{handler:editApi})).statusCode,409);
+   assert.equal((await call({...approve,reviewedDraftHash:'0'.repeat(64)},{handler:editApi})).statusCode,400);
+   assert.equal((await call(approve,{handler:editApi,headers:{'x-csrf-token':'0'.repeat(64)}})).statusCode,403);
+   const blocked=await call(approve,{handler:editApi});assert.equal(blocked.statusCode,422);assert.equal(blocked.json.error,'REVIEW_NOT_READY');
+   const blockedReview=await call({...approve,action:'review-draft'},{handler:editApi});assert.equal(blockedReview.statusCode,403,'Approver has no write');
+   await login('writer');assert.equal((await call({...get,action:'review-draft',expectedRevision:2},{handler:editApi})).statusCode,422);
+   // Even a same editor with a fresh approve membership cannot approve their edit.
+   await db.query("update sc_memberships set can_approve=true where user_id=$1",[actors.writer]);await login('writer');
+   assert.equal((await call(approve,{handler:editApi})).statusCode,403);
+   const tr=transport('approver'),service=createServerCaseService({repository:createSupabaseCaseRepository(tr),resolveAuthority:createSupabaseAuthority(tr)});
+   // Missing, stale, wrong or superficially positive provider data never crosses the absent exact evidence contract.
+   for(const value of [null,{source:'synthetic-fixture',checkedAt:'2000-01-01T00:00:00Z'},{source:'synthetic-fixture',guests:2},{source:'synthetic-fixture',guests:8,availability:'available',verified:true}]){
+    const provider=async()=>{providerCalls++;return value;};
+    const runtime=createServerBookingRuntime({service,tenantId:'sarberki-test',isolatedApproval:true,cloudSyntheticEditing:true,exactEditReceipt:receipt,reviewProviders:{availability:provider,pricing:provider}});
+    await assert.rejects(runtime.approve(config.caseId,2,newHash),e=>e.code==='REVIEW_NOT_READY');
+   }
+   assert.equal(providerCalls,0);
+   const audit=(await db.query('select revision,actor,kind,data_hash from sc_audit order by revision')).rows;
+   assert.equal(audit.length,2);assert.deepEqual(audit.map(r=>r.kind),['insert','update']);assert.equal(audit[1].actor,actors.writer);assert.equal(audit[1].revision,2);
+   const snapshot=(await db.query('select data::text snapshot from sc_cases')).rows[0].snapshot;
+   assert.equal(audit[1].data_hash,createHash('sha256').update(snapshot).digest('hex'));
+   assert.equal((await db.query('select revision from sc_cases')).rows[0].revision,2);
+  });
   await t.test('rollback preserves the case and audit while restoring the original fail-closed sender guard',async()=>{
    await db.exec(await read('deployment/exact-receipt/rollback.sql'));
-   await assert.rejects(writeDb(record.data,1),e=>e.code==='22023');
-   assert.equal((await db.query('select count(*)::int n from sc_cases')).rows[0].n,1);assert.equal((await db.query('select count(*)::int n from sc_audit')).rows[0].n,1);
+   await assert.rejects(writeDb(record.data,2),e=>e.code==='22023');
+   assert.equal((await db.query('select count(*)::int n from sc_cases')).rows[0].n,1);assert.equal((await db.query('select count(*)::int n from sc_audit')).rows[0].n,2);
    assert.equal((await db.query("select prosrc from pg_proc where oid='sc_write_case(text,text,bigint,jsonb)'::regprocedure")).rows[0].prosrc,baselineWriter);
   });
  }finally{await db.close();}

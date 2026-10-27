@@ -27,7 +27,7 @@ export function initIsolatedApprovalPanel({
  let editBase=null;
  let loaded=null,busy=false,epoch=0;
  const message=text=>{status.textContent=text;};
- const locked=()=>{submit.disabled=busy||!loaded||confirmation.checked!==true;loadButton.disabled=busy;if(editor)editor.disabled=busy||!editBase;if(save)save.disabled=busy||!editBase||editor.value===editBase.text;};
+ const locked=()=>{submit.disabled=busy||!loaded||Boolean(loaded.approvalBlockedReason)||confirmation.checked!==true;loadButton.disabled=busy;if(editor)editor.disabled=busy||!editBase;if(save)save.disabled=busy||!editBase||editor.value===editBase.text;};
  const reset=()=>{
   epoch++;loaded=null;editBase=null;confirmation.checked=false;if(editor){editor.value='';editor.disabled=true;}if(save)save.disabled=true;
   reviewText.value='';if(translation)translation.value='';revisionField.value='';submit.disabled=true;
@@ -76,7 +76,7 @@ export function initIsolatedApprovalPanel({
    reviewText.value=value.text;
    if(translation)translation.value=value.operatorReviewText||'Magyar ellenőrző szöveg: NEM IGAZOLT ehhez a korábbi tervezethez.';
    revisionField.value=String(value.revision);
-   message('Tárolt tervezet betöltve. Olvasd el, majd külön erősítsd meg. Nincs e-mail-küldés.');
+   message(value.approvalBlockedReason?'Tárolt tervezet betöltve. Szerkesztés és visszaolvasás engedélyezett; jóváhagyás tiltva: nincs ügyre kötött kapacitás-, ár- és review-bizonyíték.':'Tárolt tervezet betöltve. Olvasd el, majd külön erősítsd meg. Nincs e-mail-küldés.');
   }catch(error){
    reset();message('A tervezet nem tölthető be: '+safeCode(error)+'. Ezzel a betöltéssel nem történt új jóváhagyás. A korábban tárolt állapotot az audit visszaolvasásával ellenőrizheted.');
   }finally{busy=false;locked();}
@@ -97,7 +97,7 @@ export function initIsolatedApprovalPanel({
     if(epoch!==generation||caseInput.value.trim()!==selected.caseId)return;
     const draft=record?.data?.drafts?.at(-1);
     if(record?.tenantId!=='sarberki-test'||record.caseId!==selected.caseId||record.revision!==selected.revision+1||record.data?.state?.approval!=='pending'||record.data?.serverApproval||draft?.text!==text||draft.edited!==true)throw Error('INVALID_DRAFT');
-    message('Módosítás mentve, verzió: '+record.revision+'. A független jóváhagyó külön töltse be és olvassa el. Nincs e-mail-küldés.');
+    message('Módosítás mentve, verzió: '+record.revision+(selected.approvalBlockedReason?'. Jóváhagyás továbbra is tiltva: nincs ügyre kötött kapacitás-, ár- és review-bizonyíték.':'. A független jóváhagyó külön töltse be és olvassa el. Nincs e-mail-küldés.'));
    }catch(error){if(epoch===generation){reset();message('A mentés nem igazolt: '+safeCode(error)+'. Új betöltés szükséges; jóváhagyás nincs.');}}
    finally{busy=false;locked();}
   });

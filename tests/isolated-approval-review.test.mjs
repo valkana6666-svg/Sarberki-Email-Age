@@ -62,3 +62,10 @@ test('HTTP authority denial is preserved without retry or local approval',async(
  const input={caseId:'case-review',revision:2,reviewedText:text,confirmed:true};await assert.rejects(review.approve(input),/FORBIDDEN/);
  await assert.rejects(review.approve(input),/REVIEW_REQUIRED/);assert.deepEqual(calls,['GET','POST']);
 });
+
+test('explicit edit-only server capability permits read but never invokes approval transport',async()=>{
+ const f=fixture({get:async()=>{const r=record();r.approvalBlockedReason='EXACT_REVIEW_EVIDENCE_REQUIRED';r.canEditDraft=true;delete r.data.drafts[0].synthetic;r.data.drafts[0].reviewStatus='manual_edit_requires_review';return r;}});
+ const loaded=await f.review.load('case-review');assert.equal(loaded.canEditDraft,true);assert.equal(loaded.hash,hash);
+ await assert.rejects(f.review.approve({caseId:loaded.caseId,revision:loaded.revision,reviewedText:loaded.text,confirmed:true}),/REVIEW_NOT_READY/);
+ assert.equal(f.calls.filter(x=>x[0]==='approve').length,0);
+});

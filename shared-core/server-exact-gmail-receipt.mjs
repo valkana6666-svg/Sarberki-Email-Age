@@ -27,6 +27,17 @@ export function createExactGmailReceipt(env){
  }catch{return null;}
 }
 
+// Separate, explicit edit authorization for ONE pre-authorized stored record.
+// Receipt identity proves provenance, never capacity, price or approval eligibility.
+export const EXACT_EDIT_CASE_ID='13c8ecb7-f836-4e2c-9833-d58ee96f2dda';
+export function exactGmailEditReceipt(env,receipt=createExactGmailReceipt(env)){
+ return env.CASE_EXACT_EDIT_ENABLED==='sarberki-test-one-exact-record'&&receipt?.caseId===EXACT_EDIT_CASE_ID?receipt:null;
+}
+export function matchesExactGmailEditRecord(record,receipt){
+ return record?.data?.tenantId==='sarberki-test'&&record.data.id===EXACT_EDIT_CASE_ID&&
+  !record.data.caseKind&&!record.data.linkReview&&receipt?.caseId===EXACT_EDIT_CASE_ID&&receipt.matchesRecord(record)===true;
+}
+
 // Call only AFTER fresh cookie Auth, same-origin/CSRF and Writer checks.
 // Output is a fixed vocabulary: never values, hashes, private config or caller keys.
 export function diagnoseExactGmailReceiptRequest(env,input){

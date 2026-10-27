@@ -6,7 +6,7 @@ import {createOperatorCookieSession,OperatorSessionError,operatorSessionErrorBod
 import {createIsolatedApprovalAttestor} from '../../shared-core/isolated-approval-attestation.mjs';
 import {isIsolatedReviewCaseId} from '../../shared-core/isolated-review-case-id.mjs';
 import {cloudSyntheticApprovalEnabled,cloudSyntheticReviewProviders,assertCloudSyntheticReviewCase,assertCloudSyntheticReadCase} from '../../shared-core/cloud-synthetic-approval.mjs';
-import {createExactGmailReceipt,readExactReceiptAudit,diagnoseExactGmailReceiptRequest} from '../../shared-core/server-exact-gmail-receipt.mjs';
+import {createExactGmailReceipt,exactGmailEditReceipt,matchesExactGmailEditRecord,readExactReceiptAudit,diagnoseExactGmailReceiptRequest} from '../../shared-core/server-exact-gmail-receipt.mjs';
 import {closedSyntheticMailLanguage,isClosedTubFollowup,isClosedTubPreviousRecord,isClosedTubReview,isClosedTubReviewRecord} from '../../shared-core/synthetic-mail-fixtures.mjs';
 import {resolveBookingCase} from '../../booking-cases.mjs';
 const headers={'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
@@ -28,6 +28,10 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
   const authorization=event.headers?.authorization||event.headers?.Authorization;
   const cloudApproval=cloudSyntheticApprovalEnabled(env);
   const exactReceipt=createExactGmailReceipt(env);
+  const exactEditReceipt=cloudApproval?exactGmailEditReceipt(env,exactReceipt):null;
+  const exactEditable=record=>matchesExactGmailEditRecord(record,exactEditReceipt);
+  const assertReviewAccess=record=>{if(!exactEditable(record))assertCloudSyntheticReviewCase(record);};
+  const assertReadAccess=record=>{if(!exactEditable(record))assertCloudSyntheticReadCase(record);};
   const cookieMode=authorization===undefined&&(event.httpMethod==='GET'||cloudApproval&&event.httpMethod==='POST')&&
    Object.keys(event.headers||{}).some(key=>['cookie','x-sarberki-operator'].includes(key.toLowerCase()));
   if(!cookieMode&&(typeof authorization!=='string'||!/^Bearer [A-Za-z0-9._-]{20,8192}$/.test(authorization)))return response(401,{error:'AUTH_REQUIRED'});
@@ -82,8 +86,12 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    if(cloudApproval&&['edit-draft','review-draft','approve','approval-state','review-record'].includes(input.action)){
     if(input.tenantId!=='sarberki-test'||!isIsolatedReviewCaseId(input.caseId))return cookieResponse(403,{error:'FORBIDDEN'});
     const candidate=await service.getCase({tenantId:input.tenantId,caseId:input.caseId});
-    if(event.httpMethod==='GET'&&input.action==='approval-state')assertCloudSyntheticReadCase(candidate);
-    else assertCloudSyntheticReviewCase(candidate);
+    if(event.httpMethod==='GET'&&input.action==='approval-state')assertReadAccess(candidate);
+    else {
+     assertReviewAccess(candidate);
+     // Editing authorization cannot authorize a review provider or approval.
+     if(exactEditable(candidate)&&input.action==='review-draft')return cookieResponse(422,{error:'REVIEW_NOT_READY'});
+    }
    }
    if(cookieMode&&closedTub){
     const previous=await service.getCase({tenantId:input.tenantId,caseId:input.caseId});
@@ -114,13 +122,13 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      result=await serviceFlow().state(input.caseId,Number(input.expectedRevision));
     }else if(input.action==='review-record'&&cloudApproval){
      result=await service.getCase({tenantId:input.tenantId,caseId:input.caseId});
-     assertCloudSyntheticReviewCase(result);
+     assertReviewAccess(result);
      let canEditDraft=false;
      try{await service.requireWrite({tenantId:input.tenantId});canEditDraft=result.data.state?.approval==='pending'&&!result.data.serverApproval;}catch(error){if(error.code!=='FORBIDDEN')throw error;}
-     result={...result,canEditDraft};
+     result={...result,canEditDraft,...(exactEditable(result)?{approvalBlockedReason:'EXACT_REVIEW_EVIDENCE_REQUIRED'}:{})};
     }else if(input.action==='approval-state'&&cloudApproval){
      const record=await service.getCase({tenantId:input.tenantId,caseId:input.caseId});
-     assertCloudSyntheticReadCase(record);
+     assertReadAccess(record);
      const audit=await transport('/rest/v1/sc_audit?'+new URLSearchParams({tenant_id:'eq.sarberki-test',case_id:'eq.'+input.caseId,kind:'eq.approve_isolated_synthetic',select:'revision,actor,at,kind,data_hash',order:'revision.asc'}));
      const approval=record.data.serverApproval,latest=record.data.drafts?.at(-1);
      const storedDraft=latest&&typeof latest.text==='string'?{
@@ -156,7 +164,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     }else return response(400,{error:'INVALID_INPUT'});
    }
    else {
-    const runtime=createServerBookingRuntime({service,tenantId:input.tenantId,isolatedApproval:approvalEnabled,cloudSyntheticEditing:cloudApproval,exactReceipt,reviewProviders:cloudApproval?cloudSyntheticReviewProviders():approvalEnabled?reviewProviders:null});
+    const runtime=createServerBookingRuntime({service,tenantId:input.tenantId,isolatedApproval:approvalEnabled,cloudSyntheticEditing:cloudApproval,exactReceipt,exactEditReceipt,reviewProviders:cloudApproval?cloudSyntheticReviewProviders():approvalEnabled?reviewProviders:null});
     if(input.action==='approve-service'){
      if(input.tenantId!=='sarberki-test'||!isIsolatedReviewCaseId(input.caseId))return cookieResponse(403,{error:'FORBIDDEN'});
      result=await serviceFlow().approve(input.caseId,input.expectedRevision,input.servicePreviewHash);

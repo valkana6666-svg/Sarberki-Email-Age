@@ -1,3 +1,4 @@
+import {matchesExactGmailEditRecord} from './server-exact-gmail-receipt.mjs';
 import {assertCloudSyntheticReviewCase} from './cloud-synthetic-approval.mjs';
 import { createBookingCaseStore } from '../booking-cases.mjs';
 import {tubServiceMessage,tubServiceProjection} from './tub-request.mjs';
@@ -36,7 +37,7 @@ function scopeMessage(message, reverse=false){
   ...(message.references?{references:message.references.map(refs)}:{})};
 }
 // Reuses the existing engine. Only persistence is asynchronous; no new booking rules.
-export function createServerBookingRuntime({service,tenantId,requestContext,clock=()=>new Date().toISOString(),id=randomUUID,reviewProviders=null,isolatedApproval=false,exactReceipt=null,cloudSyntheticEditing=false}){
+export function createServerBookingRuntime({service,tenantId,requestContext,clock=()=>new Date().toISOString(),id=randomUUID,reviewProviders=null,isolatedApproval=false,exactReceipt=null,exactEditReceipt=null,cloudSyntheticEditing=false}){
  return {
   async approve(caseId,expectedRevision,draftHash){
    if(!isolatedApproval||tenantId!=='sarberki-test'||!reviewProviders)reject('SETUP_REQUIRED');
@@ -44,6 +45,13 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    const current=await service.getCase({requestContext,tenantId,caseId});
    if(!current)reject('CASE_NOT_FOUND');if(current.revision!==expectedRevision)reject('CASE_CONFLICT');
    const draft=current.data.drafts.at(-1);
+   if(matchesExactGmailEditRecord(current,exactEditReceipt)){
+    if(current.updatedBy===approver||draft?.editedBy===approver)reject('FORBIDDEN');
+    if(typeof draft?.text!=='string'||createHash('sha256').update(draft.text,'utf8').digest('hex')!==draftHash)reject('INVALID_DRAFT');
+    // No exact case-bound capacity/price/review evidence has been authorized.
+    // Never call the unrelated two-person fixture providers for this record.
+    reject('REVIEW_NOT_READY');
+   }
    if(!draft?.synthetic||draft.reviewStatus!=='internal_review_required'||current.data.state.approval!=='pending'||draft.revision!==current.data.state.revision||
     draft.basedOnMessageCount!==current.data.messages.length)reject('INVALID_DRAFT');
    if(createHash('sha256').update(draft.text,'utf8').digest('hex')!==draftHash)reject('INVALID_DRAFT');
@@ -117,18 +125,21 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
    const current=await service.getCase({requestContext,tenantId,caseId});
    if(!current)reject('CASE_NOT_FOUND');
    if(current.revision!==expectedRevision)reject('CASE_CONFLICT');
-   if(cloudSyntheticEditing)assertCloudSyntheticReviewCase(current);
+   const exactEdit=cloudSyntheticEditing&&matchesExactGmailEditRecord(current,exactEditReceipt);
+   if(cloudSyntheticEditing&&!exactEdit)assertCloudSyntheticReviewCase(current);
    const data=current.data,last=data?.drafts?.at(-1);
-   if(cloudSyntheticEditing&&(!last?.synthetic||last.reviewStatus!=='internal_review_required'||
+   if(cloudSyntheticEditing&&(!last||typeof last.text!=='string'||(!exactEdit&&(!last?.synthetic||last.reviewStatus!=='internal_review_required'))||
       typeof expectedDraftHash!=='string'||!/^[a-f0-9]{64}$/.test(expectedDraftHash)||
       createHash('sha256').update(last.text,'utf8').digest('hex')!==expectedDraftHash))reject('INVALID_DRAFT');
-   if(!data?.sender?.endsWith('.invalid')||data.state?.approval!=='pending'||data.serverApproval||
+   if((!exactEdit&&!data?.sender?.endsWith('.invalid'))||data.state?.approval!=='pending'||data.serverApproval||
       !last||typeof last.text!=='string'||last.text===editedText||
       last.revision!==data.state.revision||last.basedOnMessageCount!==data.messages.length)reject('INVALID_DRAFT');
    const updated=structuredClone(data);
    updated.drafts.push({text:editedText,at:clock(),revision:updated.state.revision,
       basedOnMessageCount:updated.messages.length,edited:true,
-      ...(cloudSyntheticEditing?{synthetic:true,reviewStatus:'internal_review_required',editedBy:editor,
+      ...(exactEdit?{reviewStatus:'manual_edit_requires_review',editedBy:editor,
+        previousDraftHash:expectedDraftHash,draftHash:createHash('sha256').update(editedText,'utf8').digest('hex'),
+        operatorReviewText:'',operatorReviewStatus:'manual_edit_translation_unverified'}:cloudSyntheticEditing?{synthetic:true,reviewStatus:'internal_review_required',editedBy:editor,
         baseDraftHash:last.edited===true?last.baseDraftHash:expectedDraftHash,
         draftHash:createHash('sha256').update(editedText,'utf8').digest('hex'),
         operatorReviewText:'',operatorReviewStatus:'manual_edit_translation_unverified'}:{reviewStatus:'manual_edit_requires_review'})});

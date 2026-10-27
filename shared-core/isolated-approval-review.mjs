@@ -13,8 +13,8 @@ export function createIsolatedApprovalReview({client,enabled=false,cryptoProvide
    busy=true;review=null;const currentGeneration=++generation;
    try{
     const record=await client.get('sarberki-test',caseId),draft=record?.data?.drafts?.at(-1);
-    if(record?.caseId!==caseId||record?.tenantId!=='sarberki-test'||!Number.isSafeInteger(record.revision)||record.revision<1||record.data?.state?.approval!=='pending'||draft?.synthetic!==true||draft.reviewStatus!=='internal_review_required'||typeof draft.text!=='string'||!draft.text.trim())throw Error('INVALID_DRAFT');
-    const value={caseId,canEditDraft:record.canEditDraft===true,revision:record.revision,text:draft.text,operatorReviewText:typeof draft.operatorReviewText==='string'?draft.operatorReviewText:null,hash:await digest(draft.text)};
+    if(record?.caseId!==caseId||record?.tenantId!=='sarberki-test'||!Number.isSafeInteger(record.revision)||record.revision<1||record.data?.state?.approval!=='pending'||(record.approvalBlockedReason!=='EXACT_REVIEW_EVIDENCE_REQUIRED'&&(draft?.synthetic!==true||draft.reviewStatus!=='internal_review_required'))||typeof draft.text!=='string'||!draft.text.trim())throw Error('INVALID_DRAFT');
+    const value={caseId,approvalBlockedReason:record.approvalBlockedReason==='EXACT_REVIEW_EVIDENCE_REQUIRED'?record.approvalBlockedReason:null,canEditDraft:record.canEditDraft===true,revision:record.revision,text:draft.text,operatorReviewText:typeof draft.operatorReviewText==='string'?draft.operatorReviewText:null,hash:await digest(draft.text)};
     if(generation!==currentGeneration)throw Error('REVIEW_CANCELLED');
     review=value;return Object.freeze({...value});
    }finally{busy=false;}
@@ -23,6 +23,7 @@ export function createIsolatedApprovalReview({client,enabled=false,cryptoProvide
    requireEnabled();if(busy)throw Error('REVIEW_BUSY');
    if(!review||confirmed!==true||caseId!==review.caseId||revision!==review.revision||reviewedText!==review.text)throw Error('REVIEW_REQUIRED');
    // Clear before the write: failures and uncertain responses require a fresh load.
+   if(review.approvalBlockedReason)throw Error('REVIEW_NOT_READY');
    const selected=review;review=null;busy=true;
    try{
     const record=await client.approve('sarberki-test',caseId,revision,selected.hash);

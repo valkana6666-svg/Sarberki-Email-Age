@@ -55,3 +55,11 @@ test('Reader record has no editor capability and cannot initiate a save',async()
  assert.equal(s.node('cloud_edit_text').disabled,true);assert.equal(s.node('cloud_edit_save').disabled,true);
  await s.fire('cloud_edit_save');assert.equal(s.calls.length,0);
 });
+
+test('exact receipt edit-only record can be edited but confirmation never enables approval',async()=>{
+ const s=setup({get:async()=>{const r=original();r.approvalBlockedReason='EXACT_REVIEW_EVIDENCE_REQUIRED';delete r.data.drafts[0].synthetic;r.data.drafts[0].reviewStatus='manual_edit_requires_review';return r;}});
+ await s.fire('isolated_approval_load');assert.equal(s.node('cloud_edit_text').disabled,false);
+ assert.match(s.node('isolated_approval_status').textContent,/jóváhagyás tiltva/);
+ s.node('isolated_approval_confirm').checked=true;await s.fire('isolated_approval_confirm','change');assert.equal(s.node('isolated_approval_submit').disabled,true);
+ await s.type();assert.equal(s.node('cloud_edit_save').disabled,false);
+});
