@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {createVerifiedGmailSendPreview} from '../shared-core/gmail-send-verified-preview.mjs';
+import {createVerifiedGmailSendPreview,createOfflineJoinedGmailSendPreview} from '../shared-core/gmail-send-verified-preview.mjs';
 import {EXACT_CASE,TEST_DESTINATION} from '../shared-core/gmail-send-dry-run.mjs';
 const text='Hello,\n\nPlease provide a contact phone number.\n\nThank you.';
 const hash=createHash('sha256').update(text).digest('hex');
@@ -37,4 +37,12 @@ test('rejects stale record after authenticated fetch',async()=>{
 test('denies on read error',async()=>{
  const preview=createVerifiedGmailSendPreview({getCase:async()=>{throw Error('unavailable')},requireSender:auth});
  assert.equal((await preview(req)).reason,'TRUSTED_READ_FAILED');
+});
+
+test('joined offline authority checks synthetic independent send permission',async()=>{
+ const identity={environment:'TEST_ONLY_DISABLED_BY_DEFAULT',authenticated:true,subject:'test-user',tenant:'sarberki-test',caseId:EXACT_CASE,independentSendPermission:true,explicitOperatorConsent:true,csrfVerified:true};
+ const p=createOfflineJoinedGmailSendPreview({getCase:async()=>record(),resolveVerifiedIdentity:async()=>identity});
+ const ok=await p(req);assert.equal(ok.eligible,true);assert.equal(ok.willSend,false);
+ identity.independentSendPermission=false;
+ assert.equal((await p(req)).reason,'SENDER_AUTH_REQUIRED');
 });
