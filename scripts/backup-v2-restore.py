@@ -60,6 +60,7 @@ def restore_input_identity(mode, values):
     if mode == 'drive-relay-v1':
         spec = importlib.util.spec_from_file_location('drive_relay', ROOT/'backup-v2-drive-relay.py')
         relay = importlib.util.module_from_spec(spec); spec.loader.exec_module(relay)
+        relay.configure_selection(values)
         return relay.snapshot_identity(values), None
     if mode in ('current-export-v1', *REMOTE_MODES):
         return values, None

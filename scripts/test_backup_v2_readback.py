@@ -129,6 +129,18 @@ class ReadbackBoundary(unittest.TestCase):
         self.assertIsNone(pins)
         self.assertEqual(restore.REMOTE_MODES['drive-relay-40466496030'][2], 'exact_id_drive_download_via_ciphertext_relay')
 
+    def test_dynamic_drive_relay_snapshot_identity(self):
+        selection = dict(relay_blob_sha='a'*40, sha256='b'*64, bytes=123,
+                         file_id='synthetic-drive-id', snapshot_commit='c'*40, snapshot_run='12345')
+        values = dict(self.values, SARBERKI_DRIVE_RESTORE_SELECTION=json.dumps(selection))
+        identity, pins = restore.restore_input_identity('drive-relay-v1', values)
+        self.assertEqual(identity['GITHUB_SHA'], 'c'*40)
+        self.assertEqual(identity['GITHUB_RUN_ID'], '12345')
+        self.assertIsNone(pins)
+        values['SARBERKI_DRIVE_RESTORE_SELECTION'] = '{}'
+        with self.assertRaisesRegex(ValueError, 'RESTORE_SELECTION_INVALID'):
+            restore.restore_input_identity('drive-relay-v1', values)
+
     def test_expansion_limit_rejected(self):
         self.build()
         # ZIP size passes, but declared total expansion exceeds the bound.
