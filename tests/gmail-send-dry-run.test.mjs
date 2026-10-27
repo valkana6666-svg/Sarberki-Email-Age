@@ -42,3 +42,18 @@ test('forged matching but incorrect hash is rejected',()=>{
  const v=valid();v.latestDraft.hash='a'.repeat(64);v.approval.draftHash='a'.repeat(64);
  assert.equal(check(v).reason,'DRAFT_MISMATCH');
 });
+
+test('stored approval revoked by manual edit denies simulation',()=>{
+ const v=valid();
+ const record={tenantId:v.tenant,caseId:v.caseId,revision:7,data:{state:{approval:'pending'},clarificationApproval:null,drafts:[{text:v.latestDraft.text,clarification:{templateId:'missing-phone-en-v1'},reviewStatus:'clarification_review_required'}]}};
+ const opts={destination:v.destination,sourceAccount:v.sourceAccount,operator:v.operator};
+ assert.equal(stored(record,opts).eligible,false);
+});
+test('stale stored approval after revision increase denies simulation',()=>{
+ const v=valid();const record={tenantId:v.tenant,caseId:v.caseId,revision:7,data:{state:{approval:'pending'},clarificationApproval:v.approval,drafts:[{text:v.latestDraft.text,clarification:{templateId:'missing-phone-en-v1'},reviewStatus:'clarification_review_required'}]}};
+ assert.equal(stored(record,{destination:v.destination,sourceAccount:v.sourceAccount,operator:v.operator}).reason,'STALE_REVISION');
+});
+test('repeat dispatch is refused even for approved stored state',()=>{
+ const v=valid();const record={tenantId:v.tenant,caseId:v.caseId,revision:6,data:{state:{approval:'pending'},clarificationApproval:v.approval,drafts:[{text:v.latestDraft.text,clarification:{templateId:'missing-phone-en-v1'},reviewStatus:'clarification_review_required'}]}};
+ assert.equal(stored(record,{destination:v.destination,sourceAccount:v.sourceAccount,operator:v.operator,alreadyDispatched:true}).reason,'ALREADY_DISPATCHED');
+});
