@@ -11,7 +11,7 @@ export function initClarificationPanel({documentRef=document,client,cryptoProvid
  input.addEventListener('input',()=>{clear();busy=false;lock();});
  for(const event of ['isolated-approval-session-changed','sarberki:session-changed','cloud-draft-edited'])documentRef.addEventListener?.(event,()=>{clear();busy=false;lock();});
  confirm.addEventListener('change',lock);text.readOnly=true;
- const fail=error=>{clear();status.textContent='Pontosító művelet nem igazolt: '+(['FORBIDDEN','AUTH_REQUIRED','CASE_CONFLICT','REVIEW_NOT_READY','INVALID_DRAFT','SERVICE_UNAVAILABLE'].includes(error?.message)?error.message:'ellenőrzés szükséges')+'. Nincs küldés vagy szállásjóváhagyás.';};
+ const fail=error=>{clear();busy=false;lock();status.textContent='Pontosító művelet nem igazolt: '+(['FORBIDDEN','AUTH_REQUIRED','CASE_CONFLICT','REVIEW_NOT_READY','INVALID_DRAFT','SERVICE_UNAVAILABLE'].includes(error?.message)?error.message:'ellenőrzés szükséges')+'. Nincs küldés vagy szállásjóváhagyás.';};
  prepare.addEventListener('click',async()=>{
   if(busy)return;clear();const turn=epoch;busy=true;lock();
   try{const caseId=id(),r=await client.get(caseId);if(turn!==epoch)return;

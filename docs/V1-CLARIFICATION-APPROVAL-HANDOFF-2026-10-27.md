@@ -37,4 +37,6 @@ The legacy exact-receipt rollback deliberately refuses a changed Writer definiti
 
 Targeted tests use isolated PGlite PostgreSQL semantics, actual Writer/exact-receipt SQL, cookie API/runtime/repository, role-isolated sessions, CAS, hashes and audit. Hostile owner-row changes exist only in disposable negative tests. UI tests exercise separate preparation/consent, fixed text, rejection of claims, session/case/edit invalidation and no replay. Full CI results accompany delivery.
 
+Follow-up local Chromium proof: 8 PASS at 390px using the actual HTML/module and an intercepted fictional transport. It covers preparation, Reader denial, explicit reload after denial, independent clarification approval, stored approval readback without replay, manual-edit invalidation, session clearing and layout. This exposed and fixed a UI busy-state issue: denial cleared consent but left reload disabled. The Node regression now checks that explicit reload/preparation remain available while approval stays disabled. Work should include denial → explicit reload in acceptance. This browser proof is not hosted Auth/SQL or WebKit acceptance.
+
 V2/V3 value: a closed versioned classification and separately scoped approval reuse the common case service. This does not enable arbitrary clarification, multilingual free text, accommodation approval, sending, booking or Previo execution.

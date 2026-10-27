@@ -42,6 +42,7 @@ test('changing displayed text, selection or session cannot retain approval conse
 });
 test('denied/uncertain approval clears consent and cannot retry; existing approval loads readonly',async()=>{
  const s=setup({approve:async()=>{throw Error('FORBIDDEN');}});await s.fire('clarification_load');s.get('clarification_confirm').checked=true;await s.fire('clarification_approve');await s.fire('clarification_approve');assert.equal(s.calls.length,2);assert.equal(s.get('clarification_text').value,'');assert.match(s.get('clarification_status').textContent,/FORBIDDEN/);
+ assert.equal(s.get('clarification_load').disabled,false,'explicit reload stays available after denial');assert.equal(s.get('clarification_prepare').disabled,false);assert.equal(s.get('clarification_approve').disabled,true);
  const a=setup({get:async()=>{const r=record();r.data.clarificationApproval={scope:'clarification-only-v1'};return r;}});await a.fire('clarification_load');assert.equal(a.get('clarification_approve').disabled,true);
 });
 test('late load cannot restore an earlier case or session; simultaneous approval clicks write once',async()=>{
