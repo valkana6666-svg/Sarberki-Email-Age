@@ -208,7 +208,7 @@ test('Writer fixture button sends fixed CSRF-protected request without granting 
  });
  calls.length=0;await h.get('operator_create_fixture').click();
  assert.equal(calls.length,1);assert.equal(calls[0].url,'/.netlify/functions/writer-reader-fixture');
- assert.deepEqual(JSON.parse(calls[0].opt.body),{action:'create-reader-fixture'});
+ assert.deepEqual(JSON.parse(calls[0].opt.body),{action:'prepare-editable-fixture'});
  assert.equal(calls[0].opt.credentials,'same-origin');assert.equal(calls[0].opt.redirect,'error');
  assert.equal(calls[0].opt.headers['X-CSRF-Token'],'ab'.repeat(32));assert.equal(calls[0].opt.headers.Authorization,undefined);
  assert.equal(h.get('server_preview_case_id').value,id);assert.equal(h.get('server_preview_revision').value,'1');

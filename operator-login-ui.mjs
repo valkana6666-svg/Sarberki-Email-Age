@@ -110,7 +110,7 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
   });
   const data=await response.json();
   if(!response.ok){
-   const error=Error(['AUTH_REQUIRED','FORBIDDEN','SESSION_SETUP_REQUIRED','SESSION_SERVICE_UNAVAILABLE','CASE_STORE_DISABLED','SYNTHETIC_FIXTURE_UNVERIFIED','CASE_CONFLICT','INVALID_INPUT','SERVICE_UNAVAILABLE'].includes(data?.error)?data.error:'SESSION_UNAVAILABLE');
+   const error=Error(['AUTH_REQUIRED','FORBIDDEN','SESSION_SETUP_REQUIRED','SESSION_SERVICE_UNAVAILABLE','CASE_STORE_DISABLED','SYNTHETIC_FIXTURE_UNVERIFIED','SYNTHETIC_FIXTURE_ALREADY_APPROVED','SYNTHETIC_FIXTURE_EXPIRED','CASE_CONFLICT','INVALID_INPUT','SERVICE_UNAVAILABLE'].includes(data?.error)?data.error:'SESSION_UNAVAILABLE');
    if(path==='/.netlify/functions/booking-cases'&&body?.action==='ingest-and-draft'&&body?.sourceReceipt)error.exactReceiptDiagnostic=exactReceiptDiagnosticMessage(data?.diagnostic);
    throw attachOperatorRequestFailure(error,response,data);
   }
@@ -226,16 +226,17 @@ export function initOperatorLoginPanel({documentRef=document,globalRef=window,re
   try{
    const csrf=await session?.getCsrfToken?.();
    if(!tokenPattern.test(csrf||''))throw Error('AUTH_REQUIRED');
-   const body=await call('POST',{action:'create-reader-fixture'},csrf,'/.netlify/functions/writer-reader-fixture');
+   const body=await call('POST',{action:'prepare-editable-fixture'},csrf,'/.netlify/functions/writer-reader-fixture');
    if(globalRef.SarberkiCaseStoreSession!==session)return;
    const r=body?.result;
    if(!r||Object.keys(r).sort().join(',')!=='caseId,duplicate,readyForReaderPreview,revision,tenantId'||r.tenantId!=='sarberki-test'||
     !isIsolatedReviewCaseId(r.caseId)||!Number.isSafeInteger(r.revision)||r.revision<1||r.readyForReaderPreview!==true||typeof r.duplicate!=='boolean')throw Error('INVALID_FIXTURE');
-   fixtureStatus.textContent=(r.duplicate?'Meglévő':'Létrehozott')+' szintetikus ügy: '+r.caseId+' · v'+r.revision+'. Mentett, ellenőrzésre váró tervezet; nincs küldés vagy foglalás.';
+   fixtureStatus.textContent=(r.duplicate?'Meglévő':'Létrehozott')+' szintetikus ügy: '+r.caseId+' · v'+r.revision+'. Mentett, függő szerkesztési tervezet; nincs küldés vagy foglalás.';
    get('server_preview_case_id').value=r.caseId;get('server_preview_case_id').dispatchEvent(new Event('input'));
    get('server_preview_revision').value=String(r.revision);get('server_preview_revision').dispatchEvent(new Event('input'));
+   if(manualAudit){manualAudit.href='/cloud-approval.html?caseId='+encodeURIComponent(r.caseId);manualAudit.hidden=false;}
   }catch(e){
-   if(globalRef.SarberkiCaseStoreSession===session)fixtureStatus.textContent=({FORBIDDEN:'Writer-jogosultság szükséges vagy a szerver elutasította a kérést. Reader hozzáférése változatlan, csak olvasás.',AUTH_REQUIRED:'Writer-munkamenet nem igazolt. Ellenőrizd a tesztbelépést.',SESSION_SETUP_REQUIRED:'A tesztkörnyezet kezelői munkamenete nincs megfelelően beállítva.',SESSION_SERVICE_UNAVAILABLE:'A hitelesítési szolgáltatás nem elérhető.',SERVICE_UNAVAILABLE:'A Writer-mentési szolgáltatás nem elérhető.',SYNTHETIC_FIXTURE_UNVERIFIED:'A szerver válaszolt, de a szintetikus tesztügy függőben lévő tervezete NEM IGAZOLT. Korábbi jóváhagyott ügy nem írható felül.',SESSION_UNAVAILABLE:'A Writer-végpont válasza nem ellenőrizhető.',INVALID_INPUT:'A Writer-tesztkérés nem megfelelő.',CASE_CONFLICT:'A tesztügy időközben megváltozott.'})[e.message]||'A szintetikus ügy létrehozása NEM IGAZOLT. Ismeretlen szerverhiba; titkot ne másolj a chatbe.';
+   if(globalRef.SarberkiCaseStoreSession===session)fixtureStatus.textContent=({FORBIDDEN:'Writer-jogosultság szükséges vagy a szerver elutasította a kérést. Reader hozzáférése változatlan, csak olvasás.',AUTH_REQUIRED:'Writer-munkamenet nem igazolt. Ellenőrizd a tesztbelépést.',SESSION_SETUP_REQUIRED:'A tesztkörnyezet kezelői munkamenete nincs megfelelően beállítva.',SESSION_SERVICE_UNAVAILABLE:'A hitelesítési szolgáltatás nem elérhető.',SERVICE_UNAVAILABLE:'A Writer-mentési szolgáltatás nem elérhető.',SYNTHETIC_FIXTURE_ALREADY_APPROVED:'A rögzített tesztügy már jóváhagyott. Nem nyitjuk újra és nem írjuk felül.',SYNTHETIC_FIXTURE_EXPIRED:'A tesztminta időszaka elmúlt. Új, pontosan engedélyezett minta szükséges.',SYNTHETIC_FIXTURE_UNVERIFIED:'A szerver válaszolt, de a szintetikus tesztügy függőben lévő tervezete NEM IGAZOLT. Korábbi jóváhagyott ügy nem írható felül.',SESSION_UNAVAILABLE:'A Writer-végpont válasza nem ellenőrizhető.',INVALID_INPUT:'A Writer-tesztkérés nem megfelelő.',CASE_CONFLICT:'A tesztügy időközben megváltozott.'})[e.message]||'A szintetikus ügy létrehozása NEM IGAZOLT. Ismeretlen szerverhiba; titkot ne másolj a chatbe.';
   }finally{waiting(false);}
  }
  const problem=e=>{
