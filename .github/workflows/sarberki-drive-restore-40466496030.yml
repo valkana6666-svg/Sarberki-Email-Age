@@ -1,0 +1,64 @@
+name: Sarberki direct Drive isolated restore 40466496030
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths: [.github/workflows/sarberki-drive-restore-40466496030.yml]
+permissions:
+  contents: read
+jobs:
+  restore:
+    if: github.ref == 'refs/heads/gmail-test-subject-allowlist' && contains(github.event.head_commit.message, '[drive-restore-40466496030]')
+    runs-on: ubuntu-24.04
+    container: postgres:17-bookworm
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_USER: restore_admin
+          POSTGRES_PASSWORD: ephemeral-isolated-test-only
+        options: >-
+          --health-cmd "pg_isready -U restore_admin"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - name: Install tools
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 gnupg ca-certificates git docker.io
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Read exact Drive file and decrypt without source credentials
+        env:
+          SARBERKI_V2_DRIVE_OAUTH_JSON: ${{ secrets.SARBERKI_V2_DRIVE_OAUTH_JSON }}
+          SARBERKI_BACKUP_V2_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_V2_PASSPHRASE }}
+        run: python3 scripts/drive-stage-40466496030.py
+      - name: Install matching Vault in disposable destination
+        env:
+          ISOLATED_SERVICE_ID: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$ISOLATED_SERVICE_ID" sh -ec '
+            apt-get update -qq
+            apt-get install -y -qq --no-install-recommends ca-certificates curl make gcc postgresql-server-dev-17 libsodium-dev
+            mkdir /tmp/vault-build
+            curl -fsSL https://github.com/supabase/vault/archive/6e0cd916242d922a646e4d611cc215e09dd429f4.tar.gz | tar -xz --strip-components=1 -C /tmp/vault-build
+            cd /tmp/vault-build
+            make && make install
+          '
+      - name: Restore actual Drive download into isolated PostgreSQL
+        env:
+          PGHOST: postgres
+          PGUSER: restore_admin
+          PGPASSWORD: ephemeral-isolated-test-only
+          PGDATABASE: postgres
+          SARBERKI_RESTORE_INPUT: drive-stage-40466496030
+          SARBERKI_BACKUP_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_V2_PASSPHRASE }}
+        run: python3 scripts/backup-v2-restore.py
+      - name: Preserve sanitized proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sarberki-direct-drive-restore-${{ github.run_id }}
+          path: |
+            /tmp/sarberki-v2-drive-readback/VALIDATED-INPUT.json
+            /tmp/sarberki-v2-delivery/drive-restore-evidence/ISOLATED-RESTORE.json
+          retention-days: 90
+          if-no-files-found: warn
