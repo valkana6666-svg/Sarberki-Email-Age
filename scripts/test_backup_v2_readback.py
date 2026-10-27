@@ -122,6 +122,13 @@ class ReadbackBoundary(unittest.TestCase):
         self.assertIs(identity,values);self.assertIsNone(pins)
         with self.assertRaises(RuntimeError):restore.fresh_identity(restore.FRESH_DIRECTORY,values)
 
+    def test_pinned_drive_relay_uses_snapshot_identity(self):
+        identity, pins = restore.restore_input_identity('drive-relay-40466496030', self.values)
+        self.assertEqual(identity['GITHUB_RUN_ID'], '40466496030')
+        self.assertEqual(identity['GITHUB_SHA'], '2ca4f322eaa2878c2b62164a4b6d7fc50c4b0e67')
+        self.assertIsNone(pins)
+        self.assertEqual(restore.REMOTE_MODES['drive-relay-40466496030'][2], 'exact_id_drive_download_via_ciphertext_relay')
+
     def test_expansion_limit_rejected(self):
         self.build()
         # ZIP size passes, but declared total expansion exceeds the bound.

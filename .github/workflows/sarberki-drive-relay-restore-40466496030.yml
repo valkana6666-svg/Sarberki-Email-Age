@@ -50,7 +50,7 @@ jobs:
           PGUSER: restore_admin
           PGPASSWORD: ephemeral-isolated-test-only
           PGDATABASE: postgres
-          SARBERKI_RESTORE_INPUT: drive-relay-v1
+          SARBERKI_RESTORE_INPUT: drive-relay-40466496030
           SARBERKI_BACKUP_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_V2_PASSPHRASE }}
         run: python3 scripts/backup-v2-restore.py
       - name: Preserve sanitized proof
