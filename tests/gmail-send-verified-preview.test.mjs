@@ -9,40 +9,49 @@ const record=()=>({tenantId:'sarberki-test',caseId:EXACT_CASE,revision:6,data:{s
 const req={tenantId:'sarberki-test',caseId:EXACT_CASE};
 const auth=async()=>({authorized:true,role:'sender',tenant:'sarberki-test'});
 test('trusted read-only preview is eligible but never sends',async()=>{
- const preview=createVerifiedGmailSendPreview({getCase:async()=>record(),requireSender:auth});
+ const preview=createVerifiedGmailSendPreview({getCase:async()=>record(),requireSender:auth,verifyExactReceipt:async()=>true});
  const result=await preview(req);assert.equal(result.eligible,true);assert.equal(result.willSend,false);
 });
 test('rejects missing trusted providers',()=>assert.throws(()=>createVerifiedGmailSendPreview({}),/TRUSTED_READ/));
 test('rejects unauthorized user before calling database',async()=>{
  let called=false;
- const preview=createVerifiedGmailSendPreview({getCase:async()=>{called=true;return record()},requireSender:async()=>({authorized:false})});
+ const preview=createVerifiedGmailSendPreview({getCase:async()=>{called=true;return record()},requireSender:async()=>({authorized:false}),verifyExactReceipt:async()=>true});
  assert.equal((await preview(req)).reason,'SENDER_AUTH_REQUIRED');assert.equal(called,false);
 });
 test('rejects forged client-supplied record',async()=>{
- const preview=createVerifiedGmailSendPreview({getCase:async()=>null,requireSender:auth});
+ const preview=createVerifiedGmailSendPreview({getCase:async()=>null,requireSender:auth,verifyExactReceipt:async()=>true});
  assert.equal((await preview({...req,record:record()})).reason,'RECORD_NOT_FOUND');
 });
 test('rejects cross tenant before authority check',async()=>{
- let called=false;const preview=createVerifiedGmailSendPreview({getCase:async()=>record(),requireSender:async()=>{called=true;return auth()}});
+ let called=false;const preview=createVerifiedGmailSendPreview({getCase:async()=>record(),requireSender:async()=>{called=true;return auth()},verifyExactReceipt:async()=>true});
  assert.equal((await preview({...req,tenantId:'different'})).reason,'SCOPE_DENIED');assert.equal(called,false);
 });
 test('rejects destination override before authority check',async()=>{
- let called=false;const preview=createVerifiedGmailSendPreview({getCase:async()=>record(),requireSender:async()=>{called=true;return auth()}});
+ let called=false;const preview=createVerifiedGmailSendPreview({getCase:async()=>record(),requireSender:async()=>{called=true;return auth()},verifyExactReceipt:async()=>true});
  assert.equal((await preview({...req,destination:'guest@example.test'})).reason,'DESTINATION_DENIED');assert.equal(called,false);
 });
 test('rejects stale record after authenticated fetch',async()=>{
- const stale=record();stale.revision=7;const preview=createVerifiedGmailSendPreview({getCase:async()=>stale,requireSender:auth});
+ const stale=record();stale.revision=7;const preview=createVerifiedGmailSendPreview({getCase:async()=>stale,requireSender:auth,verifyExactReceipt:async()=>true});
  assert.equal((await preview(req)).reason,'STALE_REVISION');
 });
 test('denies on read error',async()=>{
- const preview=createVerifiedGmailSendPreview({getCase:async()=>{throw Error('unavailable')},requireSender:auth});
+ const preview=createVerifiedGmailSendPreview({getCase:async()=>{throw Error('unavailable')},requireSender:auth,verifyExactReceipt:async()=>true});
  assert.equal((await preview(req)).reason,'TRUSTED_READ_FAILED');
 });
 
 test('joined offline authority checks synthetic independent send permission',async()=>{
  const identity={environment:'TEST_ONLY_DISABLED_BY_DEFAULT',authenticated:true,subject:'test-user',tenant:'sarberki-test',caseId:EXACT_CASE,independentSendPermission:true,explicitOperatorConsent:true,csrfVerified:true};
- const p=createOfflineJoinedGmailSendPreview({getCase:async()=>record(),resolveVerifiedIdentity:async()=>identity});
+ const p=createOfflineJoinedGmailSendPreview({getCase:async()=>record(),resolveVerifiedIdentity:async()=>identity,verifyExactReceipt:async()=>true});
  const ok=await p(req);assert.equal(ok.eligible,true);assert.equal(ok.willSend,false);
  identity.independentSendPermission=false;
  assert.equal((await p(req)).reason,'SENDER_AUTH_REQUIRED');
+});
+
+test('denies when exact Gmail receipt is absent or mismatched',async()=>{
+ const preview=createVerifiedGmailSendPreview({getCase:async()=>record(),requireSender:auth,verifyExactReceipt:async()=>false});
+ assert.equal((await preview(req)).reason,'EXACT_RECEIPT_UNVERIFIED');
+});
+test('denies when trusted receipt verification throws',async()=>{
+ const preview=createVerifiedGmailSendPreview({getCase:async()=>record(),requireSender:auth,verifyExactReceipt:async()=>{throw Error('bad receipt')}});
+ assert.equal((await preview(req)).reason,'EXACT_RECEIPT_UNVERIFIED');
 });
