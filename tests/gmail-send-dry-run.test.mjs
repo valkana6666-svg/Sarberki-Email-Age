@@ -1,8 +1,10 @@
+import {createHash} from 'node:crypto';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { simulateGmailClarificationSend as check, TEST_DESTINATION, EXACT_CASE } from '../shared-core/gmail-send-dry-run.mjs';
+import { simulateGmailClarificationSend as check, simulateStoredClarification as stored, TEST_DESTINATION, EXACT_CASE } from '../shared-core/gmail-send-dry-run.mjs';
 
-const hash='a'.repeat(64);
+const text='Hello,\n\nPlease provide a contact phone number.\n\nThank you.';
+const hash=createHash('sha256').update(text,'utf8').digest('hex');
 const valid = () => ({
   tenant:'sarberki-test',caseId:EXACT_CASE,destination:TEST_DESTINATION,sourceAccount:TEST_DESTINATION,
   approval:{scope:'clarification-only-v1',templateId:'missing-phone-en-v1',reviewedRevision:5,approvedRevision:6,draftHash:hash},
@@ -29,3 +31,14 @@ for(const [name,change,reason] of [
   ['already dispatched',v=>v.alreadyDispatched=true,'ALREADY_DISPATCHED'],
 ]) test(name+' denied without sending',()=>{const v=valid();change(v);const r=check(v);assert.equal(r.eligible,false);assert.equal(r.reason,reason);assert.equal(r.willSend,false)});
 test('missing input fails closed',()=>assert.equal(check(null).eligible,false));
+
+test('stored server record maps to offline simulator without Gmail operations',()=>{
+ const v=valid(); const record={tenantId:v.tenant,caseId:v.caseId,revision:v.caseRevision,data:{state:{approval:'pending'},clarificationApproval:v.approval,drafts:[{text:v.latestDraft.text,clarification:{templateId:'missing-phone-en-v1'},reviewStatus:'clarification_review_required'}]}};
+ const result=stored(record,{destination:v.destination,sourceAccount:v.sourceAccount,operator:v.operator});
+ assert.equal(result.eligible,true);assert.equal(result.willSend,false);
+ record.data.drafts[0].text+='tampered';assert.equal(stored(record,{destination:v.destination,sourceAccount:v.sourceAccount,operator:v.operator}).eligible,false);
+});
+test('forged matching but incorrect hash is rejected',()=>{
+ const v=valid();v.latestDraft.hash='a'.repeat(64);v.approval.draftHash='a'.repeat(64);
+ assert.equal(check(v).reason,'DRAFT_MISMATCH');
+});
