@@ -25,7 +25,7 @@ test('client read-only preview sends bearer-protected GET without POST or body',
 });
 function elements(){
  const data=new Map();
- for(const id of ['server_preview_action','server_preview_status','server_preview_text','server_preview_case_id','server_preview_revision','server_preview_hu','server_preview_details','server_preview_capacity','server_preview_price','server_preview_revision_state','server_preview_approval','server_preview_audit','server_edit_text','server_edit_action','server_edit_status','service_link_controls','service_link_action','service_link_status','service_link_target','service_link_target_revision','service_link_reason','server_preview_service_link']){
+ for(const id of ['server_preview_action','server_preview_status','server_preview_text','server_preview_generated_text','server_preview_generated_hu','server_preview_case_id','server_preview_revision','server_preview_hu','server_preview_details','server_preview_capacity','server_preview_price','server_preview_revision_state','server_preview_approval','server_preview_audit','server_edit_text','server_edit_action','server_edit_status','service_link_controls','service_link_action','service_link_status','service_link_target','service_link_target_revision','service_link_reason','server_preview_service_link']){
   const e={id,value:'',textContent:'',disabled:false,listeners:{},addEventListener(event,callback){this.listeners[event]=callback;},async click(){await this.listeners.click();}};
   data.set(id,e);
  }
@@ -38,7 +38,7 @@ test('opt-in operator saves edited synthetic draft as pending new server revisio
   calls.push({url,options});
   if(options.method==='GET')return {ok:true,json:async()=>({result:{caseId:'case-1234',revision:2,
    persisted:false,approval:'pending',text:'Újragenerált előnézet',
-   reviewState:{caseRevision:2,storedApproval:'pending'},
+   reviewState:{caseRevision:2,factsRevision:1,latestDraftRevision:1,latestDraftMessageCount:1,messageCount:1,storedApproval:'pending'},
    storedDraft:{text:original,caseRevision:2,edited:false,status:'pending'}}})};
   const body=JSON.parse(options.body);
   assert.equal(body.action,'edit-draft');assert.equal(body.expectedRevision,2);
@@ -66,7 +66,7 @@ test('reader or absent stored draft never unlocks synthetic editor',async()=>{
   initSyntheticPreviewPanel({documentRef,sessionProvider:()=>({canEditDraft:false,getAccessToken:async()=> 'reader',request:async(_url,options)=>{
    calls.push(options.method);
    return {ok:true,json:async()=>({result:{caseId:'case-1234',revision:2,persisted:false,approval:'pending',text:'READONLY',
-    reviewState:{caseRevision:2,storedApproval:'pending'},storedDraft:stored}})};
+    reviewState:{caseRevision:2,factsRevision:1,latestDraftRevision:1,latestDraftMessageCount:1,messageCount:1,storedApproval:'pending'},storedDraft:stored}})};
   }})});
   await documentRef.data.get('server_preview_action').click();
   assert.equal(documentRef.data.get('server_edit_action').disabled,true);
@@ -82,7 +82,7 @@ test('edit CAS conflict clears stale draft and requires a fresh preview',async()
  initSyntheticPreviewPanel({documentRef,sessionProvider:()=>({canEditDraft:true,getAccessToken:async()=> 'writer',request:async(_url,options)=>{
   calls.push(options.method);
   if(options.method==='GET')return {ok:true,json:async()=>({result:{caseId:'case-1234',revision:2,persisted:false,approval:'pending',text:'PREVIEW',
-   reviewState:{caseRevision:2,storedApproval:'pending'},storedDraft:{text:'SAVED',caseRevision:2}}})};
+   reviewState:{caseRevision:2,factsRevision:1,latestDraftRevision:1,latestDraftMessageCount:1,messageCount:1,storedApproval:'pending'},storedDraft:{text:'SAVED',caseRevision:2}}})};
   return {ok:false,json:async()=>({error:'CASE_CONFLICT'})};
  }})});
  await documentRef.data.get('server_preview_action').click();
@@ -100,12 +100,13 @@ test('cookie reader can preview synthetic server case, never unlock editor or se
   request:async(url,options)=>{
    calls.push({url,options});
    return {ok:true,json:async()=>({result:{caseId:'case-1234',revision:2,persisted:false,approval:'pending',text:'Szintetikus biztonságos előnézet',
-    reviewState:{caseRevision:2,storedApproval:'pending'},
+    reviewState:{caseRevision:2,factsRevision:1,latestDraftRevision:1,latestDraftMessageCount:1,messageCount:1,storedApproval:'pending'},
     storedDraft:{text:'Korábbi szintetikus tervezet',caseRevision:2,edited:false}}})};
   }
  })});
  await documentRef.data.get('server_preview_action').click();
- assert.equal(documentRef.data.get('server_preview_text').value,'Szintetikus biztonságos előnézet');
+ assert.equal(documentRef.data.get('server_preview_text').value,'Korábbi szintetikus tervezet');
+ assert.equal(documentRef.data.get('server_preview_generated_text').value,'Szintetikus biztonságos előnézet');
  assert.equal(calls.length,1);
  assert.equal(calls[0].options.method,'GET');
  assert.equal(calls[0].options.credentials,'same-origin');
@@ -125,7 +126,7 @@ test('cookie session refuses even a caller-provided edit toggle and suppresses o
   request:async(_url,options)=>{
    calls.push(options.method);
    return {ok:true,json:async()=>({result:{caseId:'case-1234',revision:2,persisted:false,approval:'pending',text:'Reader only',
-    reviewState:{caseRevision:2,storedApproval:'pending'},storedDraft:{text:'Old',caseRevision:2}}})};
+    reviewState:{caseRevision:2,factsRevision:1,latestDraftRevision:1,latestDraftMessageCount:1,messageCount:1,storedApproval:'pending'},storedDraft:{text:'Old',caseRevision:2}}})};
   }
  })});
  await documentRef.data.get('server_preview_action').click();
@@ -152,7 +153,8 @@ test('UI displays verified read-only synthetic preview and never sends email or 
   calls.push({url,options});return {ok:true,json:async()=>({result:{caseId:'case-1234',revision:2,approval:'pending',persisted:false,text:'SYNTHETIC - NO SEND'}})};
  }})});
  await documentRef.data.get('server_preview_action').click();
- assert.equal(documentRef.data.get('server_preview_text').value,'SYNTHETIC - NO SEND');
+ assert.equal(documentRef.data.get('server_preview_text').value,'');
+ assert.equal(documentRef.data.get('server_preview_generated_text').value,'SYNTHETIC - NO SEND');
  assert.equal(calls.length,1);assert.equal(calls[0].options.method,'GET');
 });
 test('UI rejects malformed API response and clears previous preview',async()=>{
@@ -170,7 +172,7 @@ test('common decision states are Hungarian and cannot claim unknown capacity or 
  assert.match(view.revision,/NEM IGAZOLT/);assert.match(view.audit,/NEM IGAZOLT/);assert.match(view.approval,/függőben/);
 });
 test('stored revision requires matching facts and message count; does not create approval or audit',()=>{
- const data={revision:3,reviewState:{caseRevision:3,factsRevision:2,latestDraftRevision:2,latestDraftMessageCount:1,messageCount:2}};
+ const data={revision:3,storedDraft:{caseRevision:3,text:'SAVED'},reviewState:{caseRevision:3,factsRevision:2,latestDraftRevision:2,latestDraftMessageCount:1,messageCount:2,storedApproval:'pending'}};
  assert.match(syntheticPreviewState(data).revision,/Új ellenőrzés/);
  data.reviewState.latestDraftMessageCount=2;assert.match(syntheticPreviewState(data).revision,/verziója egyezik/);
  data.reviewState.caseRevision=4;assert.match(syntheticPreviewState(data).revision,/NEM IGAZOLT/);
@@ -188,7 +190,7 @@ test('changing case or session suppresses late responses and clears prior output
 test('UUID test case from existing server runtime is accepted and token callback keeps session receiver',async()=>{
  const documentRef=elements(),id='d52ae811-9cf3-4cdb-8c74-022ef4b4d4f0';documentRef.data.get('server_preview_case_id').value=id;
  const session={token:'fixture',getAccessToken(){return this.token;},request:async()=>({ok:true,json:async()=>({result:{caseId:id,revision:2,persisted:false,approval:'pending',text:'UUID'}})})};
- initSyntheticPreviewPanel({documentRef,sessionProvider:()=>session});await documentRef.data.get('server_preview_action').click();assert.equal(documentRef.data.get('server_preview_text').value,'UUID');
+ initSyntheticPreviewPanel({documentRef,sessionProvider:()=>session});await documentRef.data.get('server_preview_action').click();assert.equal(documentRef.data.get('server_preview_text').value,'');assert.equal(documentRef.data.get('server_preview_generated_text').value,'UUID');
 });
 
 test('unverified AVAILABLE label never becomes positive central operator status',()=>{
@@ -200,8 +202,8 @@ test('full panel renders server-bound current revision without touching the revi
  const documentRef=elements();
  initSyntheticPreviewPanel({documentRef,sessionProvider:()=>({getAccessToken:async()=> 'fixture',request:async()=>({ok:true,json:async()=>({result:{caseId:'case-1234',revision:2,persisted:false,approval:'pending',text:'TEST',operatorReviewText:'Magyar szöveg',decision,reviewState:{caseRevision:2,factsRevision:1,latestDraftRevision:1,latestDraftMessageCount:1,messageCount:1}}})})})});
  await documentRef.data.get('server_preview_action').click();
- assert.equal(documentRef.data.get('server_preview_revision').value,'2');assert.match(documentRef.data.get('server_preview_revision_state').textContent,/verziója egyezik/);
- assert.equal(documentRef.data.get('server_preview_hu').value,'Magyar szöveg');assert.match(documentRef.data.get('server_preview_capacity').textContent,/NEM IGAZOLT/);
+ assert.equal(documentRef.data.get('server_preview_revision').value,'2');assert.match(documentRef.data.get('server_preview_revision_state').textContent,/Nincs aktuális/);
+ assert.match(documentRef.data.get('server_preview_hu').value,/NEM IGAZOLT/);assert.equal(documentRef.data.get('server_preview_generated_hu').value,'Magyar szöveg');assert.match(documentRef.data.get('server_preview_capacity').textContent,/NEM IGAZOLT/);
 });
 test('reselecting unchanged case and revision preserves the Reader preview without false invalidation',async()=>{
  const documentRef=elements();
@@ -209,7 +211,7 @@ test('reselecting unchanged case and revision preserves the Reader preview witho
  await documentRef.data.get('server_preview_action').click();
  const status=documentRef.data.get('server_preview_status').textContent;
  for(const id of ['server_preview_case_id','server_preview_revision'])documentRef.data.get(id).listeners.input();
- assert.equal(documentRef.data.get('server_preview_text').value,'SAVED READER PREVIEW');
+ assert.equal(documentRef.data.get('server_preview_text').value,'');assert.equal(documentRef.data.get('server_preview_generated_text').value,'SAVED READER PREVIEW');
  assert.equal(documentRef.data.get('server_preview_status').textContent,status);
  assert.doesNotMatch(status,/megváltozott/);
  documentRef.data.get('server_preview_revision').value='3';documentRef.data.get('server_preview_revision').listeners.input();
@@ -283,4 +285,54 @@ test('withdrawal and contradictions remain visible in service-only details',()=>
  assert.match(view.details,/visszavonása emberi ellenőrzést/);
  assert.match(view.details,/synthetic_schedule_conflict/);
  assert.doesNotMatch(view.details,/Pontosítandó:/);
+});
+
+function savedPreview(revision=2){
+ return {caseId:'13c8ecb7-f836-4e2c-9833-d58ee96f2dda',revision,persisted:false,approval:'pending',
+  text:'FICTIONAL regenerated original',operatorReviewText:'Újragenerált magyar eredeti',
+  reviewState:{caseRevision:revision,factsRevision:1,latestDraftRevision:1,latestDraftMessageCount:1,messageCount:1,storedApproval:'pending'},
+  storedDraft:{caseRevision:revision,text:revision===1?'FICTIONAL saved v1':'FICTIONAL edited v2.  \n',edited:revision===2,operatorReviewText:revision===1?'Tárolt magyar v1':'Régi magyar – nem a szerkesztés fordítása'}};
+}
+async function loadSaved(result){
+ const documentRef=elements();documentRef.data.get('server_preview_case_id').value=result.caseId;documentRef.data.get('server_preview_revision').value=String(result.revision);
+ initSyntheticPreviewPanel({documentRef,sessionProvider:()=>({cookieReadOnly:true,getCsrfToken:async()=> 'fictional-csrf',request:async()=>({ok:true,json:async()=>({result})})})});
+ await documentRef.data.get('server_preview_action').click();return documentRef;
+}
+test('exact Gmail v1 -> edited stored v2 -> fresh Reader uses exact saved text and never old Hungarian translation',async()=>{
+ for(const revision of [1,2,2]){ // third load is a fresh page/Reader, not cached text
+  const result=savedPreview(revision),d=await loadSaved(result);
+  assert.equal(d.data.get('server_preview_text').value,result.storedDraft.text);
+  assert.equal(d.data.get('server_preview_generated_text').value,result.text);
+  assert.equal(d.data.get('server_preview_generated_hu').value,result.operatorReviewText);
+  assert.equal(d.data.get('server_edit_text').value,result.storedDraft.text);
+  assert.equal(d.data.get('server_edit_action').disabled,true);
+  assert.match(d.data.get('server_preview_revision_state').textContent,/verziója egyezik/);
+  if(revision===1)assert.equal(d.data.get('server_preview_hu').value,'Tárolt magyar v1');
+  else{assert.match(d.data.get('server_preview_hu').value,/NEM IGAZOLT/);assert.doesNotMatch(d.data.get('server_preview_hu').value,/Régi magyar/);}
+ }
+});
+test('missing, stale or inconsistent saved snapshots never claim or display current saved text',async()=>{
+ for(const mutate of [r=>r.storedDraft=null,r=>delete r.storedDraft,r=>r.storedDraft.caseRevision=1,r=>r.reviewState.caseRevision=1,r=>r.reviewState.latestDraftRevision=0,r=>r.reviewState.latestDraftMessageCount=0,r=>r.reviewState.messageCount=2,r=>r.reviewState.storedApproval='internally_approved',r=>r.storedDraft.text='',r=>delete r.reviewState]){
+  const r=savedPreview();mutate(r);const d=await loadSaved(r);
+  assert.equal(d.data.get('server_preview_text').value,'');assert.equal(d.data.get('server_edit_text').value,'');
+  assert.equal(d.data.get('server_preview_generated_text').value,r.text);
+  assert.doesNotMatch(d.data.get('server_preview_revision_state').textContent,/verziója egyezik/);
+  assert.match(d.data.get('server_preview_hu').value,/NEM IGAZOLT/);
+  assert.equal(d.data.get('server_edit_action').disabled,true);
+ }
+});
+test('case/revision and either session event clear saved/generated texts and suppress late saved snapshots',async()=>{
+ for(const event of ['case','revision','sarberki:session-changed','isolated-approval-session-changed']){
+  const d=await loadSaved(savedPreview());
+  if(event==='case'||event==='revision'){
+   const n=d.data.get(event==='case'?'server_preview_case_id':'server_preview_revision');n.value=event==='case'?'case-other':'3';n.listeners.input();
+  }else d.listeners[event]();
+  for(const id of ['server_preview_text','server_preview_hu','server_preview_generated_text','server_preview_generated_hu','server_edit_text'])assert.equal(d.data.get(id).value,'');
+ }
+ const d=elements(),r=savedPreview();let release;
+ d.data.get('server_preview_case_id').value=r.caseId;
+ initSyntheticPreviewPanel({documentRef:d,sessionProvider:()=>({getAccessToken:async()=> 'fictional',request:()=>new Promise(resolve=>release=resolve)})});
+ const pending=d.data.get('server_preview_action').click();await new Promise(resolve=>setImmediate(resolve));
+ d.listeners['sarberki:session-changed']();release({ok:true,json:async()=>({result:r})});await pending;
+ for(const id of ['server_preview_text','server_preview_hu','server_preview_generated_text','server_preview_generated_hu','server_edit_text'])assert.equal(d.data.get(id).value,'');
 });

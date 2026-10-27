@@ -29,8 +29,8 @@ try{
    const result={caseId:'case-synthetic-mobile',revision:2,persisted:false,approval:'pending',text:'Synthetic English guest draft: <img src=x onerror="window.__unsafe=true">',operatorReviewText:'Magyar ellenőrzés: 2 felnőtt, pontosítandó időpont.',decision:{facts:{language:'en',guests:2},missing:['dates'],contradictions:[],requiresHumanReview:true,capacity:{status:'UNKNOWN',verified:false},pricing:{verified:false}},reviewState:{caseRevision:2,factsRevision:1,latestDraftRevision:0,latestDraftMessageCount:0,messageCount:1,auditStatus:'not_verified'}};
    window.SarberkiCaseStoreSession={getAccessToken:async()=> 'synthetic-local-token',request:async(url,options)=>{window.__previewRequests.push({method:options.method,bodyPresent:options.body!==undefined});return {ok:true,json:async()=>({result})};}};
   });
-  await page.locator('#server_preview_action').click();await page.locator('#server_preview_status').filter({hasText:'Belső előnézet kész'}).waitFor();
-  assert.match(await page.locator('#server_preview_details').innerText(),/érkezési/);assert.match(await page.locator('#server_preview_hu').inputValue(),/Magyar ellenőrzés/);
+  await page.locator('#server_preview_action').click();await page.locator('#server_preview_status').filter({hasText:'Nincs mentés, jóváhagyás'}).waitFor();
+  assert.match(await page.locator('#server_preview_details').innerText(),/érkezési/);assert.match(await page.locator('#server_preview_generated_hu').inputValue(),/Magyar ellenőrzés/);
   assert.match(await page.locator('#server_preview_capacity').innerText(),/NEM IGAZOLT/);assert.match(await page.locator('#server_preview_price').innerText(),/NEM IGAZOLT/);
   assert.match(await page.locator('#server_preview_revision_state').innerText(),/Új ellenőrzés/);assert.match(await page.locator('#server_preview_audit').innerText(),/NEM IGAZOLT/);
   assert.equal(await page.locator('#server_preview_text').getAttribute('readonly'),'');assert.equal(await page.locator('#server_preview_panel img').count(),0);assert.equal(await page.evaluate(()=>window.__unsafe===true),false);
@@ -100,8 +100,8 @@ try{
   assert.equal(await page.locator('#server_preview_case_id').inputValue(),caseId);
   assert.equal(await page.locator('#server_preview_revision').inputValue(),'2');
   await page.locator('#server_preview_action').click();
-  await page.locator('#server_preview_status').filter({hasText:'Belső előnézet kész'}).waitFor();
-  assert.match(await page.locator('#server_preview_text').inputValue(),/SYNTHETIC read-only reply/);
+  await page.locator('#server_preview_status').filter({hasText:'Nincs mentés, jóváhagyás'}).waitFor();
+  assert.match(await page.locator('#server_preview_text').inputValue(),/SYNTHETIC stored draft/);
   assert.match(await page.locator('#server_edit_text').inputValue(),/SYNTHETIC stored draft/);
   assert.equal(await page.locator('#server_edit_action').isDisabled(),true);
   assert.match(await page.locator('#server_preview_capacity').innerText(),/NEM IGAZOLT/);

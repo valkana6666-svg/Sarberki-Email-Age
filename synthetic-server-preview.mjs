@@ -2,6 +2,16 @@ import {createCaseStoreClient} from './shared-core/case-store-client.mjs';
 import {isIsolatedReviewCaseId} from './shared-core/isolated-review-case-id.mjs';
 import {renderCentralConversation} from './shared-core/inquiry-channel-adapters.mjs';
 
+// Use the same bound snapshot for the visible text, editor and current-status claim.
+function currentStoredDraft(result){
+ const s=result?.reviewState,d=result?.storedDraft;
+ return s&&Number.isSafeInteger(s.caseRevision)&&s.caseRevision===result.revision&&
+  Number.isSafeInteger(s.factsRevision)&&Number.isSafeInteger(s.messageCount)&&s.messageCount>0&&
+  s.latestDraftRevision===s.factsRevision&&s.latestDraftMessageCount===s.messageCount&&
+  s.storedApproval==='pending'&&d?.caseRevision===result.revision&&
+  typeof d.text==='string'&&d.text.length<=20000&&d.text.trim()?d:null;
+}
+
 // Read-only server projection. Unknown evidence is never converted to success.
 export function syntheticPreviewState(result){
  const d=result?.decision,s=result?.reviewState;
@@ -13,7 +23,7 @@ export function syntheticPreviewState(result){
  const capacity=d?.capacity?.verified===true&&d.capacity.status==='AVAILABLE'?'Igazolt típusszintű pillanatfelvétel; nem foglalás.':d?.capacity?.verified===true&&d.capacity.status==='UNAVAILABLE'?'Nincs elegendő igazolt kapacitás.':'NEM IGAZOLT – jóváhagyás tiltott.';
  const price=d?.pricing?.verified===true?'Belső számítás ellenőrzött; vendégár nincs jóváhagyva.':'NEM IGAZOLT – nincs jóváhagyott vendégár.';
  const valid=s&&Number.isSafeInteger(s.caseRevision)&&s.caseRevision===result.revision&&Number.isSafeInteger(s.factsRevision)&&Number.isSafeInteger(s.messageCount);
- const current=valid&&s.latestDraftRevision===s.factsRevision&&s.latestDraftMessageCount===s.messageCount;
+ const current=Boolean(currentStoredDraft(result));
  const a=result?.auditProof;
  const auditVerified=valid&&s.auditStatus==='verified'&&s.storedApproval==='pending'&&a?.verified===true&&a.scope==='stored-case-write'&&
   a.tenantId==='sarberki-test'&&a.caseId===result.caseId&&a.revision===result.revision&&
@@ -42,7 +52,7 @@ export function syntheticPreviewState(result){
   service_case:service?.linkedCaseId||'Nem igazolt – emberi ügyazonosítás szükséges.',
   service_verification:service?.verificationStatus==='intent_unverified'?'Szándék NEM IGAZOLT – nincs visszaigazolás.':service?.verificationStatus==='not_available'?'A szállásegységhez nincs dézsa. Nincs visszaigazolás.':service?.verificationStatus==='cancelled_unverified'?'Visszavonás – emberi ellenőrzés szükséges.':'Elérhetőség NEM IGAZOLT – nincs visszaigazolás.',
   service_human:service?'Igen – külön emberi jóváhagyás szükséges.':'Nem alkalmazható – nincs aktuális dézsaigény.'};
- return {details,capacity,price,...serviceFields,service_link:linkStatus,revision:valid?'Ügyverzió: '+s.caseRevision+' · tényverzió: '+s.factsRevision+' · '+(current?'Tárolt tervezet verziója egyezik; külön kezelői ellenőrzés szükséges.':'Nincs aktuális, az üzenetekhez kötött tárolt tervezet. Új ellenőrzés szükséges.'):'Tárolt tervezet verziója: NEM IGAZOLT.',approval:'Az előnézet függőben van; itt nincs jóváhagyás.',audit};
+ return {details,capacity,price,...serviceFields,service_link:linkStatus,revision:valid?'Ügyverzió: '+s.caseRevision+' · tényverzió: '+s.factsRevision+' · '+(current?'Az aktuális tárolt szöveg visszaolvasva; a tárolt tervezet verziója egyezik. Ez nem jóváhagyás.':'Nincs aktuális, az üzenetekhez kötött tárolt tervezet. Új ellenőrzés szükséges.'):'Tárolt tervezet verziója: NEM IGAZOLT.',approval:'Az előnézet függőben van; itt nincs jóváhagyás.',audit};
 }
 export function initSyntheticPreviewPanel({documentRef=document,sessionProvider=()=>window.SarberkiCaseStoreSession}={}){
  const get=id=>documentRef.getElementById(id),action=get('server_preview_action'),status=get('server_preview_status'),output=get('server_preview_text');
@@ -52,7 +62,7 @@ export function initSyntheticPreviewPanel({documentRef=document,sessionProvider=
  let epoch=0,editableCase=null,resolvableCase=null;
  const selectionKey=()=>JSON.stringify([get('server_preview_case_id')?.value.trim()||'',Number(get('server_preview_revision')?.value)]);
  let selection=selectionKey();
- const clear=()=>{editableCase=null;resolvableCase=null;if(linkPanel)linkPanel.hidden=true;if(linkAction)linkAction.disabled=true;if(editText){editText.value='';editText.disabled=true;}if(editAction)editAction.disabled=true;if(editStatus)editStatus.textContent='Nincs aktív, szerkeszthető szerveres tervezet.';output.value='';if(get('server_preview_hu'))get('server_preview_hu').value='';for(const field of ['details','capacity','price','revision','approval','audit','service_requested','service_date','service_time','service_duration','service_case','service_verification','service_human','service_link'])if(get('server_preview_'+(field==='revision'?'revision_state':field)))get('server_preview_'+(field==='revision'?'revision_state':field)).textContent='NEM IGAZOLT.';};
+ const clear=()=>{editableCase=null;resolvableCase=null;if(linkPanel)linkPanel.hidden=true;if(linkAction)linkAction.disabled=true;if(editText){editText.value='';editText.disabled=true;}if(editAction)editAction.disabled=true;if(editStatus)editStatus.textContent='Nincs aktív, szerkeszthető szerveres tervezet.';output.value='';for(const id of ['server_preview_generated_text','server_preview_generated_hu'])if(get(id))get(id).value='';if(get('server_preview_hu'))get('server_preview_hu').value='';for(const field of ['details','capacity','price','revision','approval','audit','service_requested','service_date','service_time','service_duration','service_case','service_verification','service_human','service_link'])if(get('server_preview_'+(field==='revision'?'revision_state':field)))get('server_preview_'+(field==='revision'?'revision_state':field)).textContent='NEM IGAZOLT.';};
  const invalidate=()=>{epoch++;selection=selectionKey();clear();action.disabled=false;status.textContent='A tesztügy vagy munkamenet megváltozott. Új előnézet szükséges.';};
  for(const id of ['server_preview_case_id','server_preview_revision'])get(id)?.addEventListener('input',()=>{if(selectionKey()!==selection)invalidate();});
  for(const event of ['sarberki:session-changed','isolated-approval-session-changed'])documentRef.addEventListener?.(event,invalidate);
@@ -74,10 +84,12 @@ export function initSyntheticPreviewPanel({documentRef=document,sessionProvider=
     linkPanel.hidden=false;linkAction.disabled=false;resolvableCase={id,revision,epoch:attempt,session};
    }
    const view=syntheticPreviewState(result);
-   output.value=result.text;
+   const stored=currentStoredDraft(result);
+   output.value=stored?stored.text:'';
+   if(get('server_preview_generated_text'))get('server_preview_generated_text').value=result.text;
+   if(get('server_preview_generated_hu'))get('server_preview_generated_hu').value=typeof result.operatorReviewText==='string'?result.operatorReviewText:'Magyar újragenerált ellenőrző szöveg: NEM IGAZOLT.';
    if(editText&&editAction&&editStatus){
-    const stored=result.storedDraft;
-    if(stored&&stored.caseRevision===revision&&typeof stored.text==='string'&&stored.text.length<=20000&&stored.text.trim()&&result.reviewState?.storedApproval==='pending'){
+    if(stored){
      editText.value=stored.text;
      const permitted=!cookieRead&&session.canEditDraft===true;
      editText.disabled=!permitted;editAction.disabled=!permitted;
@@ -85,9 +97,9 @@ export function initSyntheticPreviewPanel({documentRef=document,sessionProvider=
      editStatus.textContent=permitted?'A mentett tervezet szerkeszthető, a változtatás nem jóváhagyás.':'Mentett tervezet betöltve – szerkesztéshez külön írási jogosultság szükséges.';
     }else editStatus.textContent='Nincs aktuális, szerveresen mentett tervezet. Szerkesztés nem engedélyezett.';
    }
-   if(get('server_preview_hu'))get('server_preview_hu').value=typeof result.operatorReviewText==='string'?result.operatorReviewText:'Magyar ellenőrző szöveg: NEM IGAZOLT.';
+   if(get('server_preview_hu'))get('server_preview_hu').value=stored&&!stored.edited&&typeof stored.operatorReviewText==='string'&&stored.operatorReviewText.trim()?stored.operatorReviewText:'A tárolt szöveg magyar ellenőrző változata: NEM IGAZOLT. Az újragenerált magyar szöveg nem a szerkesztés fordítása.';
    for(const [field,text]of Object.entries(view))if(get('server_preview_'+(field==='revision'?'revision_state':field)))get('server_preview_'+(field==='revision'?'revision_state':field)).textContent=text;
-   status.textContent='Belső előnézet kész. Nincs mentés, jóváhagyás vagy e-mail-küldés.';
+   status.textContent=(stored?'Aktuális mentett tervezet visszaolvasva · v'+revision+'.':'Nincs aktuális tárolt szöveg; az elsődleges szövegmező üres. Csak külön újragenerált előnézet érhető el.')+' Nincs mentés, jóváhagyás vagy e-mail-küldés.';
   }catch(e){if(attempt===epoch){clear();status.textContent='Az előnézet nem kérhető le: '+(['AUTH_REQUIRED','FORBIDDEN','CASE_CONFLICT','CASE_STORE_DISABLED','SERVICE_UNAVAILABLE'].includes(e?.message)?e.message:'ellenőrzés szükséges')+'. Semmi nem lett elküldve.';}}
   finally{if(attempt===epoch)action.disabled=false;}
  });

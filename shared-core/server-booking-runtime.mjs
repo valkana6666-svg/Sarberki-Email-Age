@@ -97,6 +97,7 @@ export function createServerBookingRuntime({service,tenantId,requestContext,cloc
      latestDraft.revision===current.data.state.revision &&
      latestDraft.basedOnMessageCount===current.data.messages.length);
    const storedDraft=savedDraftCurrent?{text:latestDraft.text,edited:latestDraft.edited===true,
+     operatorReviewText:latestDraft.edited!==true&&typeof latestDraft.operatorReviewText==='string'?latestDraft.operatorReviewText:'',
      status:latestDraft.reviewStatus||'pending',caseRevision:current.revision}:null;
    const reviewState={caseRevision:current.revision,factsRevision:current.data.state.revision,
     latestDraftRevision:latestDraft?.revision??null,

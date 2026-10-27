@@ -201,6 +201,10 @@ test('offline SQL candidate + cookie Writer/runtime/Reader preserve actual sourc
    assert.deepEqual(updated.data.drafts.slice(0,-1),record.data.drafts);assert.deepEqual(updated.data.messages,record.data.messages);
    assert.equal((await call(edit,{handler:editApi})).statusCode,409);
    await login('reader');const readback=await call(get,{get:true,handler:createCaseHandler({env:editEnv,fetchImpl})});
+   const preview=await call({...get,action:'preview-draft',expectedRevision:'2'},{get:true,handler:editApi});
+   assert.equal(preview.statusCode,200);assert.equal(preview.json.result.storedDraft.text,edit.editedDraftText);
+   assert.equal(preview.json.result.storedDraft.caseRevision,2);assert.equal(preview.json.result.storedDraft.edited,true);
+   assert.equal(preview.json.result.storedDraft.operatorReviewText,'');assert.notEqual(preview.json.result.text,edit.editedDraftText);
    assert.equal(readback.json.result.data.drafts.at(-1).text,edit.editedDraftText);assert.equal(readback.json.result.revision,2);assert.equal(readback.json.result.canEditDraft,false);
    const auditRead=await call({...get,action:'approval-state'},{get:true,handler:editApi});assert.equal(auditRead.statusCode,200);assert.equal(auditRead.json.result.storedDraft.text,edit.editedDraftText);assert.deepEqual(auditRead.json.result.audit,[]);
    await login('approver');

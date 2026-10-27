@@ -40,7 +40,7 @@ try{
       assert.match(body.envelope.text,/2026/);assert.ok(body.envelope.sender);
       state.saves++;result={result:{resolution:{status:state.saves===1?'new':'duplicate'},record:record(1)}};
      }else if(action==='list')result={result:[{tenantId:'sarberki-test',caseId,revision:state.revision}]};
-     else if(action==='preview-draft')result={result:{caseId,revision:state.revision,persisted:false,approval:'pending',text,operatorReviewText:'Szintetikus magyar ellenőrzés.'}};
+     else if(action==='preview-draft')result={result:{caseId,revision:state.revision,persisted:false,approval:'pending',text,operatorReviewText:'Szintetikus magyar ellenőrzés.',storedDraft:{text,caseRevision:state.revision,edited:false,operatorReviewText:'Tárolt magyar ellenőrzés.'},reviewState:{caseRevision:state.revision,factsRevision:1,latestDraftRevision:1,latestDraftMessageCount:1,messageCount:1,storedApproval:'pending'}}};
      else if(action==='review-draft'){
       assert.equal(state.role,'writer');assert.equal(body.expectedRevision,state.revision);
       state.revision++;result={result:{record:record(state.revision)}};
@@ -77,7 +77,7 @@ try{
   await page.locator('#operator_login_status').filter({hasText:'olvasás aktív'}).waitFor();
   await page.locator('#server_preview_panel > details > summary').click();
   await page.locator('#server_preview_case_id').fill(caseId);await page.locator('#server_preview_revision').fill('1');
-  await page.locator('#server_preview_action').click();await page.locator('#server_preview_status').filter({hasText:'Belső előnézet kész'}).waitFor();
+  await page.locator('#server_preview_action').click();await page.locator('#server_preview_status').filter({hasText:'Nincs mentés, jóváhagyás'}).waitFor();
   assert.equal(await page.locator('#server_preview_text').inputValue(),text);
   const beforeFocus=state.calls.length;
   // Explicit synthetic focus without visibility/pagehide: not a real iOS OS event.
