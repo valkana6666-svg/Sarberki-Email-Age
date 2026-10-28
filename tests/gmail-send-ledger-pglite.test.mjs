@@ -8,7 +8,8 @@ const cid='13c8ecb7-f836-4e2c-9833-d58ee96f2dda';
 const user='11111111-1111-4111-8111-111111111111';
 async function makeDb(){
  const db=new PGlite();
- await db.exec(`create table public.sc_cloud_approval_binding(singleton boolean,project_ref text);
+ await db.exec(`create role anon; create role authenticated;
+ create table public.sc_cloud_approval_binding(singleton boolean,project_ref text);
  create table public.sc_tenants(tenant_id text primary key,test_only boolean);
  create table public.sc_memberships(tenant_id text,user_id uuid,primary key(tenant_id,user_id));
  create table public.sc_cases(tenant_id text,case_id text,primary key(tenant_id,case_id));
@@ -26,7 +27,12 @@ async function reviewed(db) {
 const found=async(db,table)=>(await db.query(`select count(*)::int as n from information_schema.tables where table_schema='public' and table_name='${table}'`)).rows[0].n===1;
 test('without explicit reviewed gate SQL aborts and leaves no tables',async()=>{
  const db=await makeDb();
- try{await assert.rejects(db.exec(migration));assert.equal(await found(db,'sc_mail_dispatches'),false)}finally{await db.close()}
+ try{
+ await assert.rejects(db.exec(migration),/test-only reviewed migration and verified restore proof required/);
+ await db.exec('rollback');
+ assert.equal(await found(db,'sc_mail_dispatches'),false);
+ assert.equal(await found(db,'sc_mail_send_memberships'),false);
+ }finally{await db.close()}
 });
 test('approved isolated schema creates locked-down tables and blocks duplicate ledger keys',async()=>{
  const db=await makeDb();
