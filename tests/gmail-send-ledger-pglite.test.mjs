@@ -48,5 +48,15 @@ test('approved isolated schema creates locked-down tables and blocks duplicate l
  await assert.rejects(db.query(`insert into public.sc_mail_dispatches(tenant_id,case_id,approval_revision,draft_sha256,destination,actor) values('sarberki-test',$1,7,$2,'guest@example.test',$3)`,[cid,hash,user]),/check|constraint/i);
  const rl=await db.query(`select relrowsecurity,relforcerowsecurity from pg_class where oid='public.sc_mail_dispatches'::regclass`);
  assert.equal(rl.rows[0].relrowsecurity,true);assert.equal(rl.rows[0].relforcerowsecurity,true);
+ for(const role of ['anon','authenticated']){
+  for(const table of ['sc_mail_send_memberships','sc_mail_dispatches']){
+   for(const privilege of ['SELECT','INSERT','UPDATE','DELETE']){
+    const result=await db.query('select has_table_privilege($1,$2,$3) as allowed',[role,`public.${table}`,privilege]);
+    assert.equal(result.rows[0].allowed,false,`${role} must not have ${privilege} on ${table}`);
+   }
+  }
+ }
+ assert.equal((await db.query('select count(*)::int as n from public.sc_mail_send_memberships')).rows[0].n,0);
+ assert.equal((await db.query("select count(*)::int as n from pg_policies where schemaname='public' and tablename in ('sc_mail_send_memberships','sc_mail_dispatches')")).rows[0].n,0);
  }finally{await db.close()}
 });
