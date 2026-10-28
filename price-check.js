@@ -632,7 +632,11 @@
           referenceMode=true;
         }
       }
-      let response=await fetch(referenceMode?'/api/price-reference':'/api/price-quote',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input),cache:'no-store'});
+      const priceSession=!referenceMode?window.SarberkiCaseStoreSession:null;
+      const priceHeaders={'content-type':'application/json'};
+      if(priceSession){priceHeaders['X-Sarberki-Operator']='1';priceHeaders['X-CSRF-Token']=await priceSession.getCsrfToken();}
+      const priceRequest=priceSession?.request?priceSession.request.bind(priceSession):fetch;
+      let response=await priceRequest(referenceMode?'/api/price-reference':'/api/price-quote',{method:'POST',headers:priceHeaders,body:JSON.stringify(input),cache:'no-store',credentials:'same-origin',redirect:'error'});
       if (!response.headers.get('content-type')?.includes('application/json')) throw Error('Az árlekérő szerver nincs ehhez az oldalhoz csatlakoztatva.');
       let result=await response.json();
       if(skipClosedSyntheticMail(message))return;

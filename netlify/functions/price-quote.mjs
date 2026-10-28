@@ -1,3 +1,4 @@
+import {createOperatorCookieSession,OperatorSessionError} from '../../shared-core/operator-cookie-session.mjs';
 import {buildAvailabilityOptions} from './availability-options.mjs';
 import {fetchPublicBookingAvailability} from '../../price-source/sarberki-public-booking.mjs';
 import {canPriceOption} from '../../booking-filter.mjs';
@@ -71,7 +72,8 @@ export async function fetchMnbEurRate(request=fetch) {
 
 export function isLivePrevioEnabled(request,safetyVerified=process.env.PREVIO_READ_SAFETY_VERIFIED==='true') {
   try {
-    return safetyVerified===true&&LIVE_TEST_HOSTS.has(new URL(request.url).hostname);
+    const url=new URL(request.url);
+    return safetyVerified===true&&url.protocol==='https:'&&url.port===''&&LIVE_TEST_HOSTS.has(url.hostname);
   } catch {
     return false;
   }
@@ -114,8 +116,37 @@ export async function handlePriceQuote(request,source=previoReadOnlyAdapter.getQ
   }
 }
 
-export default (request) => handlePriceQuote(
-  request,
-  previoReadOnlyAdapter.getQuote,
-  isLivePrevioEnabled(request)
-);
+// HTTP entry point: the internal calculator above is not an authentication boundary.
+// Reuse fresh Auth + DB read membership and the established encrypted-cookie/CSRF path.
+export function createPriceQuoteHandler({env=process.env,fetchImpl=fetch,
+  source=previoReadOnlyAdapter.getQuote,fxSource=fetchMnbEurRate,
+  capacitySource=fetchPublicBookingAvailability}={}) {
+  return async request=>{
+    if(request.method!=='POST')return Response.json({error:'POST szükséges.'},{status:405,headers:{'cache-control':'no-store','allow':'POST'}});
+    const enabled=isLivePrevioEnabled(request,env.PREVIO_READ_SAFETY_VERIFIED==='true');
+    if(!enabled)return handlePriceQuote(request,source,false,fxSource,capacitySource);
+    let session;
+    try {
+      // Read-only lookup: no Writer/Approver role and no client-supplied tenant grant.
+      // Do not accept Bearer or a partner API token as an operator session.
+      if(request.headers.has('authorization'))return Response.json({error:'AUTH_REQUIRED'},{status:401,headers:{'cache-control':'no-store'}});
+      if(request.headers.get('origin')!==new URL(request.url).origin)return Response.json({error:'FORBIDDEN'},{status:403,headers:{'cache-control':'no-store'}});
+      session=await createOperatorCookieSession({env,fetchImpl}).protectedRead({
+        httpMethod:'POST',headers:{...Object.fromEntries(request.headers),host:new URL(request.url).host}
+      });
+    } catch(error) {
+      // Fixed local codes only; never return Auth responses, credentials or configuration.
+      return Response.json({error:error instanceof OperatorSessionError?error.code:'SESSION_SERVICE_UNAVAILABLE'},
+        {status:error instanceof OperatorSessionError?error.status:503,headers:{'cache-control':'no-store'}});
+    }
+    const response=await handlePriceQuote(request,source,true,fxSource,capacitySource);
+    response.headers.set('set-cookie',session.setCookie);
+    response.headers.set('cache-control','private, no-store');
+    return response;
+  };
+}
+
+export default createPriceQuoteHandler();
+// Distributed edge protection, per IP and domain; not an account-wide billing cap.
+// Applies to the function, including its direct /.netlify/functions/ URL.
+export const config={rateLimit:{windowLimit:10,windowSize:60,aggregateBy:['ip','domain'],action:'rate_limit'}};

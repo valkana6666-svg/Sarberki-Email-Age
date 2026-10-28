@@ -358,3 +358,18 @@ test('real browser adapter carries adult-only party defaults through manual proc
  assert.equal(h.node('f_children').value,'0');
  assert.doesNotMatch(h.node('issues').textContent,/Hiányzik: vendéglétszám/u);
 });
+
+test('price lookup reuses the serialized operator cookie session and CSRF metadata',async()=>{
+ const h=harness();let calls=0;
+ h.window.SarberkiCaseStoreSession={getCsrfToken:async()=> 'a'.repeat(64),request:async(url,options)=>{
+  calls++;assert.equal(url,'/api/price-quote');assert.equal(options.credentials,'same-origin');assert.equal(options.redirect,'error');
+  assert.equal(options.headers['X-Sarberki-Operator'],'1');assert.equal(options.headers['X-CSRF-Token'],'a'.repeat(64));
+  assert.equal(options.headers.authorization,undefined);return quoteResponse(JSON.parse(options.body));
+ }};
+ await h.node('check_price').onclick();assert.equal(calls,1);assert.match(h.node('price_result').textContent,/122/);
+});
+test('expired operator session stops price lookup without an anonymous retry',async()=>{
+ const h=harness();let calls=0;h.context.fetch=async()=>{calls++;throw Error('UNEXPECTED_REQUEST');};
+ h.window.SarberkiCaseStoreSession={getCsrfToken:async()=>{throw Error('AUTH_REQUIRED');},request:async()=>{calls++;}};
+ await h.node('check_price').onclick();assert.equal(calls,0);assert.match(h.node('price_status').textContent,/AUTH_REQUIRED/);
+});
