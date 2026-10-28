@@ -94,8 +94,25 @@ export function cabinClarificationRequired(text='',guests=null){
   return count===2||(count===4&&/(?:apartman|apartment|appartement)/iu.test(activeMessageText(text)));
 }
 
+// An alternative or range is not a verified party size. Keep the marker in
+// the shared parser so email, chat and retained case facts fail closed alike.
+const ambiguousCountNumber='(?:\\d{1,2}|egy|két|ket|kettő|ketto|három|harom|négy|negy|öt|ot|hat|hét|het|nyolc|one|two|three|four|five|six|seven|eight|ein|eine|zwei|drei|vier|fünf|fuenf|sechs|sieben|acht|en|ena|eno|dva|dve|trije|tri|štirje|stirje|štiri|stiri|pet|šest|sest|sedem|osem)';
+const ambiguousCountSeparator='(?:vagy|or|oder|ali|bis|to|do|[-–—/])';
+const partyKinds={
+ adults:'(?:felnőtt\\p{L}*|felnott\\p{L}*|adults?|erwachsene\\p{L}*|odrasl\\p{L}*)',
+ children:'(?:gyerek\\p{L}*|gyermek\\p{L}*|children|child|kids?|kinder\\p{L}*|kind|otrok\\p{L}*|otroc\\p{L}*)',
+ guests:'(?:fő|fo|személy\\p{L}*|szemely\\p{L}*|persons?|people|guests?|gäste|personen|oseb\\p{L}*)'
+};
+const ambiguousPartyPatterns=Object.fromEntries(Object.entries(partyKinds).map(([key,kind])=>[key,
+ new RegExp('(?<![\\p{L}\\d])'+ambiguousCountNumber+'\\s*(?:'+kind+'\\s*)?'+ambiguousCountSeparator+'\\s*'+ambiguousCountNumber+'\\s*'+kind+'(?!\\p{L})','iu')]));
+export function ambiguousPartyFieldsFromText(text=''){
+ const current=activeMessageText(text);
+ return Object.keys(ambiguousPartyPatterns).filter(key=>ambiguousPartyPatterns[key].test(current));
+}
+
 export function guestCountFromText(text=''){
   text=activeMessageText(text);
+  if(ambiguousPartyFieldsFromText(text).length)return null;
   const wordTotal=text.match(/(?:összesen|osszesen)\s+(ketten|hárman|harman|négyen|negyen|öten|oten|hatan|heten|nyolcan|kilencen|tízen|tizen)\b/iu);
   if(wordTotal)return ({ketten:2,hárman:3,harman:3,négyen:4,negyen:4,öten:5,oten:5,hatan:6,heten:7,nyolcan:8,kilencen:9,tízen:10,tizen:10})[wordTotal[1].toLowerCase()];
   const explicitTotal=
@@ -148,6 +165,7 @@ export function partyCountsFromText(text=''){
 }
 export function adultCountFromText(text=''){
   text=activeMessageText(text);
+  if(ambiguousPartyFieldsFromText(text).includes('adults'))return null;
   const deWords={ein:1,eine:1,einen:1,einem:1,einer:1,eines:1,eins:1,zwei:2,drei:3,vier:4,fünf:5,fuenf:5,sechs:6,sieben:7,acht:8,neun:9,zehn:10,elf:11,zwölf:12,zwoelf:12};
   const deNumber='(?:\\d{1,2}|'+Object.keys(deWords).join('|')+')';
   const deAdult='erwachsene(?:[rnms])?\\b';
@@ -167,6 +185,7 @@ export function adultCountFromText(text=''){
 }
 export function childCountFromText(text=''){
   text=activeMessageText(text);
+  if(ambiguousPartyFieldsFromText(text).includes('children'))return null;
   if(/\b(?:nincs(?:enek)?\s+(?:gyerek|gyermek)|(?:gyermek|gyerek)\s+(?:nélkül|nelkul)|no\s+children|without\s+children|keine\s+kinder|ohne\s+kinder|brez\s+otrok|ni\s+otrok)\b/iu.test(text))return 0;
   const m=text.match(/\b(\d{1,2})\s*(?:gyerek\w*|gyermek\w*|children|child|kinder|kind|(?:otrok|otroc)\w*)\b/iu);
   if(m) return Number(m[1]);

@@ -136,6 +136,13 @@ try{
   await submit('2 adults and no children.');
   assert.match(await page.locator('.operator-review').last().innerText(),/kapacitás ellenőrzése még nem igazolt/);
   report.checks.push({engine,test:'multiturn-retains-known-facts',result:'PASS'});
+  await submit('We might be 2 or 3 adults.');
+  const unclearParty=await page.locator('#conversation .entry').last().innerText();
+  assert.match(unclearParty,/how many adults/i);
+  assert.doesNotMatch(unclearParty,/with [23] guests/);
+  await submit('2 adults and no children.');
+  assert.match(await page.locator('#conversation .entry').last().innerText(),/with 2 guests/);
+  report.checks.push({engine,test:'ambiguous-party-clears-old-count-until-clarified',result:'PASS'});
   await submit('What time is check-in and check-out?');
   let faq=await page.locator('#conversation .entry').last().innerText();
   assert.match(faq,/Check-in from 2 PM and check-out by 10 AM/);

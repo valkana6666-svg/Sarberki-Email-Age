@@ -1,6 +1,7 @@
 // Pure channel-independent decision. Evidence is injected; no network, booking,
 // sending, operator authorization or guest-price approval happens here.
 import {normalizeInquiryInput} from '../intake-normalize.mjs';
+import {ambiguousPartyFieldsFromText} from '../sarberki-core.mjs';
 import {assessAccommodationInquiry} from './inquiry-assessment.mjs';
 import {stageFacts,capacityInput,capacityFresh,selectedCapacityOptions,wholeCabinCandidates} from '../booking-filter.mjs';
 import {normalizeAvailability,EVIDENCE_TTL_MS} from './availability-model.mjs';
@@ -119,6 +120,10 @@ export function evaluateCentralInquiry({message='',language='hu',now=new Date(),
  const time=now instanceof Date?now:new Date(now),timestamp=time.getTime();
  const parsed=String(message).trim()&&Number.isFinite(timestamp)?normalizeInquiryInput({sourceChannel:'manual',rawText:message,now:time}).normalized:{};
  const n={...parsed,...structuredClone(facts||{}),language,originalText:String(message)};
+ const uncertain=ambiguousPartyFieldsFromText(message);
+ if(uncertain.length)n.guests=null;
+ if(uncertain.includes('adults')||uncertain.includes('guests'))n.adults=null;
+ if(uncertain.includes('children')){n.children=null;n.child_ages=[];}
  n.adults=number(n.adults);n.children=number(n.children);n.guests=number(n.guests);
  if(n.guests===null&&n.adults!==null&&n.children!==null)n.guests=n.adults+n.children;
  n.child_ages=Array.isArray(n.child_ages)?n.child_ages:[];

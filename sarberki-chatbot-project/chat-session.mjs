@@ -2,7 +2,7 @@ import {normalizeInquiryInput} from '../intake-normalize.mjs';
 import {buildChatInquiryReply} from '../shared-core/inquiry-channel-adapters.mjs';
 import {chatbotReply,renderChatbotIntent} from '../chatbot-v1.mjs';
 import {mergeBookingFacts} from '../booking-cases.mjs';
-import {childAgesFromText,languageFromText,hasPotentialStayDate} from '../sarberki-core.mjs';
+import {childAgesFromText,languageFromText,hasPotentialStayDate,ambiguousPartyFieldsFromText} from '../sarberki-core.mjs';
 // Explicit in-memory conversation, no cross-session or browser storage. Each
 // new turn invalidates external evidence; facts never imply verified capacity.
 export function createChatInquirySession({language='auto',clock=()=>new Date()}={}){
@@ -25,7 +25,8 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
    // Informational detours do not replace the active stay or its missing facts.
    const bookingUpdate=['booking','cabins','checkin'].includes(faq.intent)?normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized:null;
    const unparsedStayDate=!bookingUpdate?.dates&&hasPotentialStayDate(message);
-   const hasBookingUpdate=bookingUpdate&&(unparsedStayDate||['dates','adults','children','guests','units_requested'].some(key=>bookingUpdate[key]!=null)||(bookingUpdate.cabin&&!bookingUpdate.cabin.startsWith('?')));
+   const uncertainParty=ambiguousPartyFieldsFromText(message);
+   const hasBookingUpdate=bookingUpdate&&(unparsedStayDate||uncertainParty.length>0||['dates','adults','children','guests','units_requested'].some(key=>bookingUpdate[key]!=null)||(bookingUpdate.cabin&&!bookingUpdate.cabin.startsWith('?')));
    if(['welcome','hotTub','deposit','fishing','booking','cabins','checkin'].includes(faq.intent)&&!hasBookingUpdate)
     return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};
    const n=bookingUpdate||normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized;
@@ -49,6 +50,9 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
    const merged=mergeBookingFacts(priorParty,incomingParty,message);
    for(const key of ['guests','adults','children'])if(merged[key]!==undefined)next[key]=Number(merged[key]);
    if(merged.child_ages!==undefined)next.child_ages=String(merged.child_ages).split(',').map(x=>x.trim()).filter(Boolean).map(Number);
+   if(uncertainParty.length)next.guests=null;
+   if(uncertainParty.includes('adults')||uncertainParty.includes('guests'))next.adults=null;
+   if(uncertainParty.includes('children')){next.children=null;next.child_ages=[];}
    if(n.cabin&&!n.cabin.startsWith('?'))next.cabin=n.cabin;
    if(n.children===0&&!ages.length&&next.children===0)next.child_ages=[];
    if(n.split_request?.isSplit)next.split_request=structuredClone(n.split_request);

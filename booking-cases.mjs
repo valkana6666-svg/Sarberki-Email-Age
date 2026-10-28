@@ -1,5 +1,5 @@
 import {createCaseState,updateCaseState} from './case-state.mjs';
-import {childAgesFromText,languageFromText} from './sarberki-core.mjs';
+import {childAgesFromText,languageFromText,ambiguousPartyFieldsFromText} from './sarberki-core.mjs';
 import {stageFacts} from './booking-filter.mjs';
 import {followupDateUpdate} from './booking-followup.mjs';
 import {tubServiceMessage,tubServiceProjection,trustedTubContext,assessTubEligibility} from './shared-core/tub-request.mjs';
@@ -73,6 +73,10 @@ export function mergeBookingFacts(previous,incoming,text=''){
  if(present(incoming.adults)||present(incoming.children)){
   if(!present(incoming.guests)&&present(next.adults)&&present(next.children))next.guests=String(Number(next.adults)+Number(next.children));
  }
+ const uncertain=ambiguousPartyFieldsFromText(text);
+ if(uncertain.length)next.guests='';
+ if(uncertain.includes('adults')||uncertain.includes('guests'))next.adults='';
+ if(uncertain.includes('children')){next.children='';next.child_ages='';}
  if(!present(incoming.nights)&&next.arrival&&next.departure)next.nights=String((Date.parse(next.departure)-Date.parse(next.arrival))/86400000);
  return next;
 }
@@ -133,7 +137,8 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
    }
    const dateUpdate=target&&!serviceOnly?followupDateUpdate(envelope.text,target.state.values):{status:'none'};
    if(dateUpdate.status==='updated')incoming={...incoming,...dateUpdate.values,nights:String((Date.parse(dateUpdate.values.departure)-Date.parse(dateUpdate.values.arrival))/86400000)};
-   const values=target?mergeBookingFacts(target.state.values,incoming,envelope.text):incoming;
+   // A service-only question cannot rewrite the accommodation party.
+   const values=target?mergeBookingFacts(target.state.values,incoming,serviceOnly?'':envelope.text):incoming;
    if(dateUpdate.status==='unverified'){values.arrival='';values.departure='';values.nights='';}
    const previousDates=target?{arrival:target.state.values.arrival,departure:target.state.values.departure}:null;
    const c=target||{id:id(),sender:sender(envelope.sender),messages:[],drafts:[],createdAt:clock(),...(serviceOnly?{caseKind:'service_link_review'}:{}),state:createCaseState({original:envelope.text,values,intent:serviceOnly?'service_request':intent,now:clock()})};
