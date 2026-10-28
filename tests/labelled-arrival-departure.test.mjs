@@ -25,3 +25,30 @@ test('adults, children and named cabin types retain their existing interpretatio
   assert.equal(dateRangeFromText(s,now).arrival,'2027-05-10');
  }
 });
+
+test('four-language labelled dates are shared by chat and email decisions',async()=>{
+ const {buildChatInquiryReply,buildEmailInquiryDraft}=await import('../shared-core/inquiry-channel-adapters.mjs');
+ for(const [language,labels] of Object.entries({
+  hu:'Érkezés: 2027-05-10, távozás: 2027-05-12.',
+  de:'Anreise ist 2027-05-10, Abreise ist 2027-05-12.',
+  en:'Arrival is 2027-05-10 and departure is 2027-05-12.',
+  si:'Prihod je 2027-05-10, odhod je 2027-05-12.'
+ })){
+  assert.deepEqual(dateRangeFromText(labels,now),{arrival:'2027-05-10',departure:'2027-05-12',inferredYear:false});
+  const input={message:labels,language,now};
+  const chat=buildChatInquiryReply(input),email=buildEmailInquiryDraft(input);
+  assert.deepEqual(chat.decision,email.decision);
+  assert.equal(chat.decision.facts.dates.arrival,'2027-05-10');
+  assert.equal(chat.decision.capacity.verified,false);
+ }
+});
+test('four-language incomplete, repeated, reversed and impossible labelled dates fail closed',()=>{
+ for(const [a,b,link] of [['arrival','departure','is'],['anreise','abreise','ist'],['prihod','odhod','je']]){
+  for(const text of [
+   `${a} ${link} 2027-05-10.`,
+   `${a} ${link} 2027-05-10, ${a} ${link} 2027-05-11, ${b} ${link} 2027-05-12.`,
+   `${a} ${link} 2027-05-12, ${b} ${link} 2027-05-10.`,
+   `${a} ${link} 2027-02-30, ${b} ${link} 2027-03-02.`
+  ])assert.equal(dateRangeFromText(text,now),null,text);
+ }
+});

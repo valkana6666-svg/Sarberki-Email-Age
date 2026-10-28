@@ -23,12 +23,16 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
    if(faq.intent==='availability')bookingContext=true;
    if(!bookingContext)return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};
    // Informational detours do not replace the active stay or its missing facts.
-   const bookingUpdate=['booking','cabins'].includes(faq.intent)?normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized:null;
-   const hasBookingUpdate=bookingUpdate&&(['dates','adults','children','guests','units_requested'].some(key=>bookingUpdate[key]!=null)||(bookingUpdate.cabin&&!bookingUpdate.cabin.startsWith('?')));
-   if(['welcome','hotTub','deposit','fishing','booking','cabins'].includes(faq.intent)&&!hasBookingUpdate)
+   const bookingUpdate=['booking','cabins','checkin'].includes(faq.intent)?normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized:null;
+   const unparsedStayDate=!bookingUpdate?.dates&&/\b20\d{2}[-./]\d{1,2}[-./]\d{1,2}\b/u.test(message);
+   const hasBookingUpdate=bookingUpdate&&(unparsedStayDate||['dates','adults','children','guests','units_requested'].some(key=>bookingUpdate[key]!=null)||(bookingUpdate.cabin&&!bookingUpdate.cabin.startsWith('?')));
+   if(['welcome','hotTub','deposit','fishing','booking','cabins','checkin'].includes(faq.intent)&&!hasBookingUpdate)
     return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};
    const n=bookingUpdate||normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized;
    const next={...facts};
+   // A newly supplied date that cannot form a validated range must not leave
+   // the earlier stay silently active. Ask for the complete dates again.
+   if(!n.dates&&/\b20\d{2}[-./]\d{1,2}[-./]\d{1,2}\b/u.test(message))next.dates=null;
    for(const key of ['dates','phone','units_requested'])if(n[key]!==null&&n[key]!==undefined&&n[key]!=='')next[key]=structuredClone(n[key]);
    const priorParty={},incomingParty={};
    for(const key of ['guests','adults','children']){

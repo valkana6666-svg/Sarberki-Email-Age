@@ -172,10 +172,10 @@ export function childCountFromText(text=''){
 function parseDateRange(text='', now=new Date(), timeZone='Europe/Budapest'){
   // Explicit form labels are a pair, not an unlabelled date-range separator.
   // Reject incomplete/repeated labels instead of guessing a different range.
-  const labelled=[...text.matchAll(/(?<!\p{L})(érkezés|erkezes|távozás|tavozas)\s*[:：]?\s*(20\d{2})[-./](\d{1,2})[-./](\d{1,2})(?!\d)/giu)];
+  const labelled=[...text.matchAll(/(?<!\p{L})(érkezés|erkezes|távozás|tavozas|arrival|departure|anreise|abreise|prihod|odhod)\s*(?:(?:is|on|ist|am|je)\s*)?[:：]?\s*(20\d{2})[-./](\d{1,2})[-./](\d{1,2})(?!\d)/giu)];
   if(labelled.length){
-    const arrivals=labelled.filter(m=>/^(?:érkezés|erkezes)$/iu.test(m[1]));
-    const departures=labelled.filter(m=>/^(?:távozás|tavozas)$/iu.test(m[1]));
+    const arrivals=labelled.filter(m=>/^(?:érkezés|erkezes|arrival|anreise|prihod)$/iu.test(m[1]));
+    const departures=labelled.filter(m=>/^(?:távozás|tavozas|departure|abreise|odhod)$/iu.test(m[1]));
     if(arrivals.length!==1||departures.length!==1)return null;
     const iso=m=>m[2]+'-'+m[3].padStart(2,'0')+'-'+m[4].padStart(2,'0');
     return {arrival:iso(arrivals[0]),departure:iso(departures[0]),inferredYear:false};

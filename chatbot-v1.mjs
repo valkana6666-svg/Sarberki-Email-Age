@@ -20,9 +20,11 @@ export function chatbotReply({message='',language='hu'}={}){
  const mentionsStay=/(?:faház|fahaz|apartman|cabin|accommodat|ferienhaus|hišk|apartma|deluxe|vip|családi|family|familien|družinsk)/u.test(text);
  const hasStayDates=/(?:20\d{2}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}[./]\s*\d{1,2}[./](?:\s*20\d{2})?|\b(?:november|október|december|január|február|március|április|május|június|július|augusztus|szeptember|january|february|march|april|may|june|july|august|september|october|november|december)\b)/u.test(text);
  const asksBooking=/(?:foglal|reserv|buch|booking|potrditev|confirmation)/u.test(text);
+ const mentionsHotTub=/(?:dézsa|dezsa|hot tub|badezuber|masažna kad|masazna kad)/u.test(text);
  if(!text.trim())intent='welcome';
+ else if(mentionsHotTub&&!mentionsStay)intent='hotTub';
  else if(asksAvailability||(mentionsStay&&(hasStayDates||asksBooking)))intent='availability';
- else if(/dézsa|dezsa|hot tub|badezuber|masažna kad|masazna kad/u.test(text))intent='hotTub';
+ else if(mentionsHotTub)intent='hotTub';
  else if(/előleg|eloleg|deposit|anzahlung|akontacij/u.test(text))intent='deposit';
  else if(/horgász|horgasz|angeln|fishing|ribolov|ribišk/u.test(text))intent='fishing';
  else if(asksBooking)intent='booking';
