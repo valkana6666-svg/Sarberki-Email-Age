@@ -5,11 +5,6 @@
   functions = "netlify/functions"
 
 [[redirects]]
-  from = "/api/price-quote"
-  to = "/.netlify/functions/price-quote"
-  status = 200
-
-[[redirects]]
   from = "/api/manual-fx"
   to = "/.netlify/functions/manual-fx"
   status = 200

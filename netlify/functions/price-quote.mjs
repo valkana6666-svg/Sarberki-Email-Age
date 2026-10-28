@@ -148,5 +148,5 @@ export function createPriceQuoteHandler({env=process.env,fetchImpl=fetch,
 
 export default createPriceQuoteHandler();
 // Distributed edge protection, per IP and domain; not an account-wide billing cap.
-// Applies to the function, including its direct /.netlify/functions/ URL.
-export const config={rateLimit:{windowLimit:10,windowSize:60,aggregateBy:['ip','domain'],action:'rate_limit'}};
+// Explicit path is required for edge rate limiting. Netlify disables the default function URL.
+export const config={path:'/api/price-quote',rateLimit:{windowLimit:10,windowSize:60,aggregateBy:['ip','domain'],action:'rate_limit'}};

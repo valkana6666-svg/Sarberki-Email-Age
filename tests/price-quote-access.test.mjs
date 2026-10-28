@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {createPriceQuoteHandler,config} from '../netlify/functions/price-quote.mjs';
 import {createOperatorCookieSession} from '../shared-core/operator-cookie-session.mjs';
 const origin='https://leafy-chimera-2403e5.netlify.app';
@@ -66,8 +67,10 @@ test('closed gate, production and unsupported methods never authenticate or call
  assert.equal((await f.handler(f.request({},origin.replace('https:','http:')+'/api/price-quote'))).status,503);
  assert.equal(f.state.auth,0);noSources(f);
 });
-test('direct function URL has the same cookie boundary and platform rate limit',async()=>{
+test('explicit rate-limited route replaces the default function URL; handler still denies anonymous calls',async()=>{
  const f=fixture();assert.equal((await f.handler(f.request({},origin+'/.netlify/functions/price-quote'))).status,401);noSources(f);
+ assert.equal(config.path,'/api/price-quote');
+ assert.doesNotMatch(readFileSync(new URL('../netlify.toml',import.meta.url),'utf8'),/from = "\/api\/price-quote"/);
  assert.deepEqual(config.rateLimit,{windowLimit:10,windowSize:60,aggregateBy:['ip','domain'],action:'rate_limit'});
 });
 test('invalid authenticated input preserves rotated cookie and never reaches sources',async()=>{

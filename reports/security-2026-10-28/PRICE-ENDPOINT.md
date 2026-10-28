@@ -9,7 +9,7 @@ Kiinduló tesztági commit: `6af528500b4c32a937b9c3384df070b69ff77dac`.
 - HTTPS és engedélyezett teszthost szükséges. A meglévő Previo-biztonsági kapcsoló zárva maradhat, és elsőbbséget élvez. A tesztkérés nem nyitja meg.
 - Bearer/partner-token, hamis vagy hiányzó süti, hiányzó CSRF, idegen eredet, visszavont munkamenet, hiányzó vagy idegen tenant-tagság és Auth-hiba esetén nincs külső lekérdezés.
 - A frissített süti a válasz fejlécébe kerül, token nem kerül a JSON-ba. Auth-hiba csak rögzített hibakódot ad.
-- Netlify function rateLimit: 10 kérés / 60 másodperc, IP + domain szerinti csoportosítással. A közvetlen function URL ugyanahhoz a funkcióhoz tartozik. Ez nem tenant-szintű vagy teljes költségplafon.
+- Netlify function rateLimit: 10 kérés / 60 másodperc, IP + domain szerinti csoportosítással. Az explicit `config.path` az `/api/price-quote` útvonalat védi; Netlify szerint ez a korábbi közvetlen function URL-t megszünteti. A régi TOML-átirányítást eltávolítottuk. Ez nem tenant-szintű vagy teljes költségplafon.
 - `price-check.js`: az árlekérés a meglévő sorosított kezelői kéréskezelést és CSRF-adatot használja, ha van aktív kezelői munkamenet. Lejárt munkamenet után nincs névtelen újrapróbálás. A nyilvános referenciaár útvonala külön marad, nem ad élő Previo-engedélyt.
 
 ## Bizonyíték
@@ -29,3 +29,9 @@ Kiinduló tesztági commit: `6af528500b4c32a937b9c3384df070b69ff77dac`.
 4. Külső válaszok, timeout/retry és az összes többi integráció külön célzott ellenőrzése. Nem teljes biztonsági audit.
 
 V2/V3 érték: a meglévő hitelesítési és tenant-határ újrahasznosítható marad. Reader-árlekérés nem ad jóváhagyási, küldési vagy foglalási jogosultságot.
+
+## Telepítési ellenőrzés és útvonaljavítás
+
+Az első telepített commit (`ba8842f0699aa021609d5bd6fc4167d0c81b073c`) build SHA-ja igazolt; mindkét GitHub CI-je sikeres. A Previo-kapu HTTP 503-at adott. A 15 kéréses, 13,6 másodperces névtelen próba nem adott 429-et. A hivatalos Netlify dokumentáció alapján a rateLimit mellé explicit config.path is szükséges: ezt a következő javítás pótolja, a régi TOML-átirányítás eltávolításával. A közvetlen function URL-re és az edge 429-re új telepítési próba szükséges.
+
+Forrás: https://docs.netlify.com/manage/security/secure-access-to-sites/rate-limiting/ és https://docs.netlify.com/build/functions/configuration/ .
