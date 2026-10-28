@@ -16,3 +16,7 @@ Kiindulópont: `34430892bfff860d114872e724a70adbcac15147`, tesztág: `gmail-test
 - Külső Previo/Gmail-művelet, levélküldés, valós foglalás, új üzleti szabály vagy kulcs nem történt. A fizikai iPhone- és külső integrációs kapuk változatlanul nyitottak.
 
 V2/V3 érték: a négy nyelv címkézett dátumait a meglévő közös parser kezeli, az állapot frissítése csatornaadapterben történik. A biztosíték nem garantál minden természetes nyelvű dátumfordulatot: ilyen esetben további pontosítás szükséges.
+
+## További negatív dátumpróba
+
+Az első javítás után újabb rés vált reprodukálhatóvá: egyes hónapnévvel és napszámmal írt módosításoknál a parser nem talált időszakot, és a korábbi dátum maradhatott aktív. A meglévő közös hónapszókészletből képzett konzervatív dátumjelzés ilyenkor törli a korábbi időszakot, és a teljes dátumot kéri. A négy nyelvű minták és a 14.00 időpontot tartalmazó, változatlan ügyadatú FAQ negatív próbája elkészült. A jelzés nem állítja, hogy minden természetes nyelvű dátumot felismer; ahol nincs megbízható felismerés, további korlát marad.

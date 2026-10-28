@@ -15,6 +15,14 @@ function monthNumber(raw){
   if (MONTHS[k]) return MONTHS[k];
   return MONTHS[k+'_si'] || null;
 }
+// Conservative signal only: an unparsed date-like update must trigger
+// clarification rather than silently retaining the previous stay.
+const dateMonthNames=Object.keys(MONTHS).filter(name=>!name.endsWith('_si')).sort((a,b)=>b.length-a.length).join('|');
+const dateMonthMention=new RegExp('(?<!\\p{L})(?:'+dateMonthNames+')(?!\\p{L})\\s+\\d{1,2}\\b|\\b\\d{1,2}\\.?\\s+(?:'+dateMonthNames+')(?!\\p{L})','iu');
+export function hasPotentialStayDate(text=''){
+  const active=activeMessageText(text);
+  return /\b20\d{2}[-./]\d{1,2}[-./]\d{1,2}\b|\b\d{1,2}[-./]\d{1,2}[-./]20\d{2}\b/u.test(active)||dateMonthMention.test(active);
+}
 // Csak az aktuális üzenet tényeit használjuk, az idézett előzményt megőrzi a hívó.
 export function activeMessageText(text=''){
   const lines=String(text).replace(/\r\n?/g,'\n').split('\n');

@@ -53,3 +53,32 @@ test('an incomplete or invalid changed date removes the old stay and asks again'
   assert.doesNotMatch(result.text,/20 November 2026 to 22 November 2026/);
  }
 });
+
+test('unparsed month-name and day-first date changes do not silently retain the previous stay',()=>{
+ const cases={
+  hu:'Módosítás: november 21-én érkeznénk és november 23-án távoznánk.',
+  de:'Die Anreise ist am 21. November 2026 und die Abreise am 23. November 2026.',
+  en:'We changed our dates to November 21 and November 23, 2026.',
+  si:'Prihod 21. novembra in odhod 23. novembra 2026.'
+ };
+ for(const [language,message] of Object.entries(cases)){
+  const chat=createChatInquirySession({language});
+  chat.reply('Van szabad Deluxe faház 2026.11.20-22 között 2 felnőtt részére?');
+  const result=chat.reply(message);
+  assert.ok(result.decision,language);
+  if(result.decision.facts.dates){
+   assert.equal(result.decision.facts.dates.arrival,'2026-11-21',language);
+   assert.equal(result.decision.facts.dates.departure,'2026-11-23',language);
+  }else{
+   assert.ok(result.decision.missing.includes('dates'),language);
+   assert.equal(result.decision.readyForCapacityCheck,false,language);
+  }
+  assert.equal(result.decision.capacity.verified,false,language);
+ }
+});
+test('an ordinary check-in time question does not erase the stay',()=>{
+ const chat=createChatInquirySession({language:'en'});
+ chat.reply('Is a Deluxe cabin available from 2026-11-20 to 2026-11-22 for 2 adults?');
+ const before=chat.snapshot();const result=chat.reply('Can we check in at 14.00?');
+ assert.equal(result.response.intent,'checkin');assert.deepEqual(chat.snapshot(),before);
+});

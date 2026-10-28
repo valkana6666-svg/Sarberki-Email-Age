@@ -150,6 +150,11 @@ try{
   assert.match(corrected,/13 November 2026 to 15 November 2026 with 2 guests/);
   assert.match(corrected,/Availability has not yet been verified/);
   report.checks.push({engine,test:'cabin-correction-retains-stay-without-availability-promise',result:'PASS'});
+  await submit('We changed our dates to November 21 and November 23, 2026.');
+  const uncertain=await page.locator('#conversation .entry').last().innerText();
+  assert.doesNotMatch(uncertain,/13 November 2026 to 15 November 2026/);
+  assert.match(uncertain,/arrival and departure dates/i);
+  report.checks.push({engine,test:'unparsed-month-date-does-not-keep-old-stay',result:'PASS'});
   await submit('Check-in 2026-02-30 to 2026-03-02.');
   const invalid=await page.locator('#conversation .entry').last().innerText();
   assert.doesNotMatch(invalid,/13 November 2026 to 15 November 2026/);
