@@ -180,6 +180,15 @@ try{
   assert.doesNotMatch(invalid,/13 November 2026 to 15 November 2026/);
   assert.match(invalid,/arrival and departure dates/i);
   report.checks.push({engine,test:'invalid-date-does-not-keep-old-stay',result:'PASS'});
+  await page.locator('#resetChat').click();
+  await submit('Is a Deluxe cabin available from 2026-11-13 to 2026-11-15 for 2 adults and 1 child?');
+  assert.match(await page.locator('#conversation .entry').last().innerText(),/children.s ages/i);
+  await submit('7');
+  const childAge=await page.locator('#conversation .entry').last().innerText();
+  assert.match(childAge,/2 adults and 1 child, aged 7/i);
+  assert.match(childAge,/Availability has not yet been verified/i);
+  assert.doesNotMatch(childAge,/please tell us the children.s ages/i);
+  report.checks.push({engine,test:'one-outstanding-child-age-accepts-bare-number',result:'PASS'});
   await page.locator('#resetChat').click();assert.equal(await page.locator('#conversation .entry').count(),1);
   await submit('Is there availability?');
   assert.match(await page.locator('.operator-review').last().innerText(),/érkez|távoz|időpont/i);

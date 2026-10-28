@@ -151,12 +151,13 @@ test('a bare numeric response to a completed party does not silently retain the 
  assert.equal(clarified.decision.facts.guests,3);
  assert.equal(clarified.decision.facts.dates.arrival,'2026-11-20');
 });
-test('a bare answer during an outstanding child-age question preserves the known party',()=>{
+test('a sole outstanding child age accepts a bare answer while preserving the party',()=>{
  const chat=createChatInquirySession({clock:()=>now});
  chat.reply('Van szabad Deluxe faház 2026.11.20-22 között 2 felnőtt és 1 gyermek részére?');
  const result=chat.reply('7');
  assert.equal(result.decision.facts.adults,2);
  assert.equal(result.decision.facts.children,1);
- assert.ok(result.decision.missing.includes('child_ages'));
- assert.equal(result.decision.readyForCapacityCheck,false);
+ assert.deepEqual(result.decision.facts.child_ages,[7]);
+ assert.equal(result.decision.missing.includes('child_ages'),false);
+ assert.equal(result.decision.capacity.verified,false);
 });

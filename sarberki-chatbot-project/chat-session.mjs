@@ -9,12 +9,12 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
  const mode=value=>value==='sl'?'si':['auto','hu','de','en','si'].includes(value)?value:'auto';
  let languageMode=mode(language);
  language=languageMode==='auto'?'hu':languageMode;
- let facts={},bookingContext=false,turns=0;
+ let facts={},bookingContext=false,turns=0,lastDecision=null;
  return Object.freeze({
   get language(){return language;},
   get languageMode(){return languageMode;},
   setLanguage(value){languageMode=mode(value);if(languageMode!=='auto')language=languageMode;},
-  reset(){facts={};bookingContext=false;turns=0;language=languageMode==='auto'?'hu':languageMode;},
+  reset(){facts={};bookingContext=false;turns=0;lastDecision=null;language=languageMode==='auto'?'hu':languageMode;},
   reply(message,{language:nextLanguage}={}){
    if(typeof message!=='string'||message.length>1000||++turns>100)throw Error('CHAT_INPUT_LIMIT');
    if(nextLanguage!==undefined){languageMode=mode(nextLanguage);if(languageMode!=='auto')language=languageMode;}
@@ -33,8 +33,11 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
    if(bareNumber&&facts.dates&&Number.isInteger(facts.adults)&&Number.isInteger(facts.children)&&!childAgesPending&&!facts.units_open_request)
     uncertainParty.push('adults','children','guests');
    const hasBookingUpdate=bookingUpdate&&(unparsedStayDate||uncertainParty.length>0||['dates','adults','children','guests','units_requested'].some(key=>bookingUpdate[key]!=null)||(bookingUpdate.cabin&&!bookingUpdate.cabin.startsWith('?')));
-   if(['welcome','hotTub','deposit','fishing','booking','cabins','checkin'].includes(faq.intent)&&!hasBookingUpdate)
+   if(['welcome','hotTub','deposit','fishing','booking','cabins','checkin'].includes(faq.intent)&&!hasBookingUpdate){
+    // A standalone number after an informational answer has no clear referent.
+    lastDecision=null;
     return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};
+   }
    const n=bookingUpdate||normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized;
    const next={...facts};
    // A newly supplied date that cannot form a validated range must not leave
@@ -50,6 +53,12 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
    }
    if(facts.child_ages?.length)priorParty.child_ages=facts.child_ages.join(',');
    let ages=n.child_ages||[];
+   // A bare integer is an age only when exactly one age is the only pending
+   // field and no contradictory facts require a human review.
+   const onlyAgeMissing=lastDecision?.missing.length===1&&lastDecision.missing[0]==='child_ages'&&lastDecision.contradictions.length===0;
+   const ageMatch=message.match(/^\s*(\d{1,2})\s*[.!?]?\s*$/u);
+   if(!ages.length&&onlyAgeMissing&&Number(facts.children)-Number(facts.child_ages?.length||0)===1&&ageMatch&&Number(ageMatch[1])<=17)
+    ages=[Number(ageMatch[1])];
    if(!ages.length&&Number(facts.children)>Number(facts.child_ages?.length||0))
     ages=childAgesFromText('gyermek '+message);
    if(ages.length)incomingParty.child_ages=ages.join(',');
@@ -68,6 +77,7 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
    next.language=language;next.originalText=message;
    facts=next;
    const result=buildChatInquiryReply({message,language,now,facts});
+   lastDecision=result.decision;
    return {...result,response:{...faq,reply:result.text},extracted:structuredClone(result.decision.facts)};
   },
   snapshot(){return structuredClone(facts);}
