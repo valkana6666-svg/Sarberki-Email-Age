@@ -89,3 +89,19 @@ test('a tub-only question with an uncertain service party preserves accommodatio
  assert.equal(next.bookingCase.state.values.guests,'2');
  assert.equal(next.bookingCase.id,first.bookingCase.id);
 });
+
+for(const [language,message] of Object.entries({hu:'2 vagy 3',de:'zwei oder drei',en:'2 or 3',si:'dva ali tri'})){
+ test('bare ambiguous reply clears prior party until clarified: '+language,()=>{
+  const chat=createChatInquirySession({language,clock:()=>now});
+  chat.reply('Van szabad Deluxe faház 2026.11.20-22 között 2 felnőtt részére?');
+  const result=chat.reply(message);
+  assert.equal(result.decision.facts.adults,null);
+  assert.equal(result.decision.facts.children,null);
+  assert.equal(result.decision.facts.guests,null);
+  assert.ok(result.decision.missing.includes('adults'));
+  assert.ok(result.decision.missing.includes('children_status'));
+  assert.equal(result.decision.readyForCapacityCheck,false);
+  assert.equal(result.decision.capacity.verified,false);
+  assert.equal(result.decision.facts.dates.arrival,'2026-11-20');
+ });
+}

@@ -136,7 +136,7 @@ try{
   await submit('2 adults and no children.');
   assert.match(await page.locator('.operator-review').last().innerText(),/kapacitás ellenőrzése még nem igazolt/);
   report.checks.push({engine,test:'multiturn-retains-known-facts',result:'PASS'});
-  await submit('We might be 2 or 3 adults.');
+  await submit('2 or 3');
   const unclearParty=await page.locator('#conversation .entry').last().innerText();
   assert.match(unclearParty,/how many adults/i);
   assert.doesNotMatch(unclearParty,/with [23] guests/);

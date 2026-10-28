@@ -15,3 +15,5 @@ A közös adatértelmező felismeri a tesztelt HU/DE/EN/SI alternatív és inter
 A célzott regresszió a négy nyelvű csatornaparitást, aktív többüzenetes beszélgetést, gyermek-/teljes létszám kétértelműségét, egyértelmű válasszal helyreállítást és a szintetikus kapcsolt e-mail ügyet ellenőrzi. Kötelező teljes `npm test` és a tesztági kapacitás-/négynyelvű CI; külön Chromium/WebKit 390px mobilpróba. A fizikai iPhone nem helyettesíthető a mobil-emulációval.
 
 Nincs védett üzleti szabályváltoztatás, automatikus levél, valódi foglalás, Previo-lekérdezés vagy éles módosítás. V2/V3 szempontból ugyanaz a központi bizonytalansági értelmezés és csatornafüggetlen döntés marad az alap.
+
+Az utólag reprodukált, kategória nélküli rövid válasz (például `2 vagy 3`) többértelmű: felnőttre, gyermekre vagy életkorra is vonatkozhat. A rendszer az ilyen választ nem rendeli önkényesen a régi adathoz; a szükséges létszámokat újból pontosítja.

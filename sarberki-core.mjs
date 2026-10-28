@@ -105,8 +105,12 @@ const partyKinds={
 };
 const ambiguousPartyPatterns=Object.fromEntries(Object.entries(partyKinds).map(([key,kind])=>[key,
  new RegExp('(?<![\\p{L}\\d])'+ambiguousCountNumber+'\\s*(?:'+kind+'\\s*)?'+ambiguousCountSeparator+'\\s*'+ambiguousCountNumber+'\\s*'+kind+'(?!\\p{L})','iu')]));
+const bareAmbiguousParty=new RegExp('^\\s*'+ambiguousCountNumber+'\\s*'+ambiguousCountSeparator+'\\s*'+ambiguousCountNumber+'\\s*[.!?]?\\s*$','iu');
 export function ambiguousPartyFieldsFromText(text=''){
  const current=activeMessageText(text);
+ // A bare alternative may refer to adults, children, or an outstanding age.
+ // Require clarification of the party rather than retaining either old value.
+ if(bareAmbiguousParty.test(current))return ['adults','children','guests'];
  return Object.keys(ambiguousPartyPatterns).filter(key=>ambiguousPartyPatterns[key].test(current));
 }
 
