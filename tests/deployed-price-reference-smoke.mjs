@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 // Synthetic price-list calculation on the deployed isolated test site.
 // DO NOT call any Previo or availability endpoint. This cannot confirm a free cabin.
 const base='https://leafy-chimera-2403e5.netlify.app';
-const input={arrival:'2027-10-01',departure:'2027-10-03',cabin:'deluxe',adults:2,children:[5,8]};
+const input={arrival:'2027-10-01',departure:'2027-10-03',cabin:'deluxe',adults:2,children:[]};
 const response=await fetch(base+'/api/price-reference',{
   method:'POST',headers:{'content-type':'application/json',accept:'application/json'},
   body:JSON.stringify(input),cache:'no-store',signal:AbortSignal.timeout(70000)
@@ -23,11 +23,11 @@ assert.equal(quote.departure,input.departure);
 assert.equal(quote.cabin,input.cabin);
 assert.equal(quote.adults,input.adults);
 assert.deepEqual(quote.children,input.children);
-assert.equal(quote.accommodation,120000);
+assert.equal(quote.accommodation,126000);
 assert.equal(quote.tourismTax,2200);
-assert.equal(quote.total,122200);
+assert.equal(quote.total,128200);
 assert.equal(quote.currency,'HUF');
-assert.match(quote.source,/publikus árlista/u);
+assert.match(quote.source,/Sárberki 2027.*árlista.*tájékoztató/u);
 if(quote.eurConversion.status==='available'){
   assert.equal(quote.eurConversion.source,'Magyar Nemzeti Bank');
   assert.ok(quote.eurConversion.rateHufPerEur>0);
@@ -35,3 +35,15 @@ if(quote.eurConversion.status==='available'){
   assert.ok(Math.abs(quote.eurConversion.totalEur-Math.round(quote.total/quote.eurConversion.rateHufPerEur*100)/100)<0.001);
 }else assert.equal(quote.eurConversion.status,'unavailable');
 console.log('DEPLOYED PUBLIC PRICE REFERENCE PASS',JSON.stringify({httpStatus:response.status,accommodation:quote.accommodation,tourismTax:quote.tourismTax,total:quote.total,availability:quote.availability,eurStatus:quote.eurConversion.status,eurTotal:quote.eurConversion.totalEur??null}));
+
+// Ambiguous 2027 child tariffs must remain unavailable for automatic totals.
+const held=await fetch(base+'/api/price-reference',{
+ method:'POST',headers:{'content-type':'application/json',accept:'application/json'},
+ body:JSON.stringify({...input,children:[5,8]}),cache:'no-store',signal:AbortSignal.timeout(70000)
+});
+const heldQuote=await held.json();
+assert.equal(held.status,422);
+assert.equal(heldQuote.status,'unverified');
+assert.match(heldQuote.error,/2027.*gyermekár/u);
+assert.equal(heldQuote.total,undefined);
+console.log('DEPLOYED CHILD PRICE SAFETY PASS: ambiguous 2027 tariff held for review.');
