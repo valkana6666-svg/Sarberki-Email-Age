@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="hu">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+ <meta name="theme-color" content="#ff7a00">
+ <meta name="apple-mobile-web-app-capable" content="yes">
+ <meta name="apple-mobile-web-app-title" content="Sárberki Napi">
+ <title>Sárberki – Napi kezelő</title>
+ <link rel="manifest" href="./manifest.webmanifest">
+ <link rel="stylesheet" href="./napi.css">
+</head>
+<body>
+<header class="top"><div class="brand"><img src="../sarberki-logo-orange.svg" alt="" width="74" height="52"><div><p class="eyebrow">SÁRBERKI HORGÁSZTÓ</p><h1>Napi kezelő</h1></div></div><span class="badge">TESZT</span></header>
+<main>
+ <section class="intro"><p class="eyebrow">ÜDVÖZÖLJÜK</p><h2>Ügyek egyszerűen.</h2><p>Áttekintés és ellenőrzés egy helyen.</p><p class="notice">Tesztfelület: kizárólag tesztadatokkal használható. A külön kezdőképernyős ikon még készül.</p></section>
+ <nav aria-label="Ügyek kategóriái" class="menu">
+  <button type="button" data-section="incoming" aria-pressed="true"><span class="number">01</span><span>Beérkezett<br>ügyek</span><span class="arrow" aria-hidden="true">↗</span></button>
+  <button type="button" data-section="approval" aria-pressed="false"><span class="number">02</span><span>Jóváhagyásra<br>vár</span><span class="arrow" aria-hidden="true">↗</span></button>
+  <button type="button" data-section="progress" aria-pressed="false"><span class="number">03</span><span>Folyamatban</span><span class="arrow" aria-hidden="true">↗</span></button>
+  <button type="button" data-section="closed" aria-pressed="false"><span class="number">04</span><span>Lezárt<br>ügyek</span><span class="arrow" aria-hidden="true">↗</span></button>
+ </nav>
+ <section class="card section-card" aria-labelledby="section-heading"><div class="section-title"><div><p class="eyebrow">KATEGÓRIA</p><h2 id="section-heading">Beérkezett ügyek</h2></div><span class="dot" aria-hidden="true"></span></div><p id="section-description">Új vendégüzenetek és feldolgozásra váró megkeresések.</p><p class="muted">Az állapot szerinti besorolás még nem érhető el. Az alábbi lista ezért nem a kiválasztott kategória szerinti szűrés.</p></section>
+ <section class="card" aria-labelledby="access-title"><p class="eyebrow">HOZZÁFÉRÉS</p><h2 id="access-title">Belépés</h2><p id="session-status" role="status" aria-live="polite">Munkamenet ellenőrzése…</p>
+  <form id="login" autocomplete="on"><label for="email">E-mail-cím</label><input id="email" name="email" type="email" autocomplete="username" required><label for="password">Jelszó</label><input id="password" name="password" type="password" autocomplete="current-password" required><button class="primary" type="submit">Bejelentkezés</button></form>
+  <button class="secondary" type="button" id="logout" hidden>Kijelentkezés</button>
+ </section>
+ <section class="card" aria-labelledby="cases-title"><div class="section-title"><div><p class="eyebrow">OLVASHATÓ ÜGYEK</p><h2 id="cases-title">Elérhető tesztügyek</h2></div></div><p class="muted">A listában az elérhető tesztügyek láthatók; állapotuk még nincs besorolva.</p><button class="primary" type="button" id="load-cases" disabled>Ügyek betöltése</button><p id="list-status" role="status" aria-live="polite">A listához jelentkezzen be.</p><ul id="case-list" class="case-list"></ul></section>
+ <section class="card" id="case-detail" hidden aria-labelledby="detail-title"><p class="eyebrow">ÜGY ÁTTEKINTÉSE</p><h2 id="detail-title">Kiválasztott ügy</h2><p id="detail-status" role="status" aria-live="polite"></p><h3>Rendszeres ellenőrzés</h3><p id="detail-summary" class="readout"></p><p id="detail-capacity" class="readout"></p><p id="detail-price" class="readout"></p><h3>Választervezet</h3><p id="detail-draft" class="readout"></p><p class="muted">Az eredeti vendégüzenet és a teljes előzmény a napi nézetben még nem érhető el.</p><div class="unavailable-actions"><button type="button" disabled>Szerkesztés</button><button type="button" disabled>Jóváhagyás</button><button type="button" disabled>Elutasítás</button></div><p class="muted">Ezek a műveletek a napi nézetben még nem érhetők el.</p><a class="text-link" id="detail-link" href="../cloud-approval.html">Részletes ellenőrző felület megnyitása <span aria-hidden="true">↗</span></a></section>
+</main>
+<footer><span>Sárberki Horgásztó</span><a href="../index.html">Részletes tesztfelület ↗</a></footer>
+<script type="module" src="./napi.mjs"></script>
+</body></html>

@@ -1,0 +1,45 @@
+name: Sarberki daily UI synthetic mobile proof
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths:
+      - napi-kezelo/**
+      - scripts/napi-kezelo-browser-proof.mjs
+      - scripts/build-static.cjs
+      - .github/workflows/sarberki-daily-ui.yml
+  workflow_dispatch:
+    inputs:
+      confirm_synthetic_only:
+        description: 'Run isolated synthetic UI checks'
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  mobile:
+    if: github.ref == 'refs/heads/gmail-test-subject-allowlist' && ((github.event_name == 'workflow_dispatch' && inputs.confirm_synthetic_only == true) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[sarberki-daily-proof]')))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Build existing and daily test assets
+        env:
+          COMMIT_REF: ${{ github.sha }}
+        run: node scripts/build-static.cjs
+      - name: Synthetic daily UI proof
+        run: node scripts/napi-kezelo-browser-proof.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sarberki-daily-ui-proof
+          path: /tmp/sarberki-daily-proof/DAILY-PROOF.json
+          if-no-files-found: error
+          retention-days: 7

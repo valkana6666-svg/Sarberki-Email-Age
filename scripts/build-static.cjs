@@ -5,14 +5,16 @@ require('./write-build-info.cjs');
 const output = path.resolve('dist');
 fs.rmSync(output, {recursive:true, force:true});
 fs.mkdirSync(output);
-const allowedDirectories = new Set(['business','guest-reply','shared-core','price-source','sarberki-chatbot-project']);
+const allowedDirectories = new Set(['business','guest-reply','shared-core','price-source','sarberki-chatbot-project','napi-kezelo']);
 const chatbotAssets = new Set(['index.html','chat-session.mjs','chat-view.mjs','inquiry-preview.mjs','operator-session.mjs','version-status.mjs','manifest.webmanifest','icons']);
+const dailyAssets = new Set(['index.html','napi.mjs','napi.css','manifest.webmanifest']);
 function copyDirectory(source, relative='') {
  for (const entry of fs.readdirSync(source,{withFileTypes:true})) {
   const rel=path.join(relative,entry.name);
   if(relative==='sarberki-chatbot-project'&&!chatbotAssets.has(entry.name))continue;
+  if(relative==='napi-kezelo'&&!dailyAssets.has(entry.name))continue;
   if(relative==='sarberki-chatbot-project/icons'&&!['icon-192.png','icon-512.png','apple-touch-icon.png'].includes(entry.name))continue;
-  if(/\.(?:png|webmanifest)$/.test(entry.name)&&!relative.startsWith('sarberki-chatbot-project')&&!(relative===''&&entry.name==='operator.webmanifest'))continue;
+  if(/\.(?:png|webmanifest)$/.test(entry.name)&&!relative.startsWith('sarberki-chatbot-project')&&!(relative==='napi-kezelo'&&entry.name==='manifest.webmanifest')&&!(relative===''&&entry.name==='operator.webmanifest'))continue;
   if(entry.isSymbolicLink()) continue;
   if(entry.isDirectory()) {
    if(relative==='' && !allowedDirectories.has(entry.name))continue;
