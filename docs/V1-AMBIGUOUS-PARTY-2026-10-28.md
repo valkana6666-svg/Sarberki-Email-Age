@@ -17,3 +17,7 @@ A célzott regresszió a négy nyelvű csatornaparitást, aktív többüzenetes 
 Nincs védett üzleti szabályváltoztatás, automatikus levél, valódi foglalás, Previo-lekérdezés vagy éles módosítás. V2/V3 szempontból ugyanaz a központi bizonytalansági értelmezés és csatornafüggetlen döntés marad az alap.
 
 Az utólag reprodukált, kategória nélküli rövid válasz (például `2 vagy 3`) többértelmű: felnőttre, gyermekre vagy életkorra is vonatkozhat. A rendszer az ilyen választ nem rendeli önkényesen a régi adathoz; a szükséges létszámokat újból pontosítja.
+
+## Kiegészítés: módosítás és rövid számválasz
+
+További reprodukált esetek: `2 felnőtt helyett 3`, `nicht 2 Erwachsene, sondern 3 Erwachsene`, `2 felnőtt jön, vagy talán 3`, `2–3 vendég` és egy korábban teljes létszám után küldött puszta `3`. Ezek korábban a régi létszámot tarthatták meg. A két szám kapcsolatának bizonytalanságát a közös parser felismeri, a chat és az e-mail ügy pontosítást kér. Teljes korábbi chat-létszám után a kategória nélküli szám esetén a chat is tisztázza a létszámot; ez nem vonatkozik arra a korábbi ismert szülői/gyermekadatra, amelynél gyermekéletkor vagy egységszám tisztázása még folyamatban van. A konkrét minta támogatása nem általános természetes nyelvi garancia.

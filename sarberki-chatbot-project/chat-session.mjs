@@ -26,6 +26,12 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
    const bookingUpdate=['booking','cabins','checkin'].includes(faq.intent)?normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized:null;
    const unparsedStayDate=!bookingUpdate?.dates&&hasPotentialStayDate(message);
    const uncertainParty=ambiguousPartyFieldsFromText(message);
+   // An isolated number has no reliable category once the prior party is
+   // complete. Preserve an outstanding child-age or unit-count question.
+   const bareNumber=/^\s*\d{1,2}\s*[.!?]?\s*$/u.test(message);
+   const childAgesPending=Number(facts.children)>Number(facts.child_ages?.length||0);
+   if(bareNumber&&facts.dates&&Number.isInteger(facts.adults)&&Number.isInteger(facts.children)&&!childAgesPending&&!facts.units_open_request)
+    uncertainParty.push('adults','children','guests');
    const hasBookingUpdate=bookingUpdate&&(unparsedStayDate||uncertainParty.length>0||['dates','adults','children','guests','units_requested'].some(key=>bookingUpdate[key]!=null)||(bookingUpdate.cabin&&!bookingUpdate.cabin.startsWith('?')));
    if(['welcome','hotTub','deposit','fishing','booking','cabins','checkin'].includes(faq.intent)&&!hasBookingUpdate)
     return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};

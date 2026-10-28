@@ -105,3 +105,58 @@ for(const [language,message] of Object.entries({hu:'2 vagy 3',de:'zwei oder drei
   assert.equal(result.decision.facts.dates.arrival,'2026-11-20');
  });
 }
+
+for(const [language,message] of Object.entries({
+ hu:'Bocsánat, 2 felnőtt helyett 3 jön.',
+ de:'Nicht 2 Erwachsene, sondern 3 Erwachsene.',
+ en:'2 adults instead of 3 adults.',
+ si:'Ne 2 odrasli, ampak 3 odrasli.'
+}))test('a party correction with conflicting old and new numbers is clarified: '+language,()=>{
+ const facts={dates:{arrival:'2026-11-20',departure:'2026-11-22'},cabin:'Deluxe',adults:2,children:0,guests:2};
+ const input={language,message,now,facts};
+ const mail=buildEmailInquiryDraft(input),chat=buildChatInquiryReply(input);
+ assert.deepEqual(chat.decision,mail.decision);
+ assert.equal(chat.decision.facts.adults,null);
+ assert.equal(chat.decision.facts.guests,null);
+ assert.ok(chat.decision.missing.includes('adults'));
+ assert.equal(chat.decision.readyForCapacityCheck,false);
+ const session=createChatInquirySession({language,clock:()=>now});
+ session.reply('Van szabad Deluxe faház 2026.11.20-22 között 2 felnőtt részére?');
+ const answer=session.reply(message);
+ assert.equal(answer.decision.facts.adults,null);
+ assert.equal(answer.decision.facts.guests,null);
+ assert.equal(answer.decision.facts.dates.arrival,'2026-11-20');
+ assert.equal(answer.decision.capacity.verified,false);
+ assert.equal(mergeBookingFacts({adults:'2',children:'0',guests:'2'},{},message).adults,'');
+});
+for(const message of ['2–3 vendég','2-3 vendég','2 felnőtt jön, vagy talán 3.'])test('additional ambiguous party phrasing does not retain old count: '+message,()=>{
+ const chat=createChatInquirySession({clock:()=>now});
+ chat.reply('Van szabad Deluxe faház 2026.11.20-22 között 2 felnőtt részére?');
+ const result=chat.reply(message);
+ assert.equal(result.decision.facts.guests,null);
+ assert.equal(result.decision.facts.adults,null);
+ assert.ok(result.decision.missing.includes('adults'));
+ assert.equal(result.decision.readyForCapacityCheck,false);
+});
+test('a bare numeric response to a completed party does not silently retain the old count',()=>{
+ const chat=createChatInquirySession({clock:()=>now});
+ chat.reply('Van szabad Deluxe faház 2026.11.20-22 között 2 felnőtt részére?');
+ const result=chat.reply('3');
+ assert.equal(result.decision.facts.adults,null);
+ assert.equal(result.decision.facts.guests,null);
+ assert.ok(result.decision.missing.includes('adults'));
+ assert.equal(result.decision.readyForCapacityCheck,false);
+ const clarified=chat.reply('3 felnőtt, gyermek nélkül.');
+ assert.equal(clarified.decision.facts.adults,3);
+ assert.equal(clarified.decision.facts.guests,3);
+ assert.equal(clarified.decision.facts.dates.arrival,'2026-11-20');
+});
+test('a bare answer during an outstanding child-age question preserves the known party',()=>{
+ const chat=createChatInquirySession({clock:()=>now});
+ chat.reply('Van szabad Deluxe faház 2026.11.20-22 között 2 felnőtt és 1 gyermek részére?');
+ const result=chat.reply('7');
+ assert.equal(result.decision.facts.adults,2);
+ assert.equal(result.decision.facts.children,1);
+ assert.ok(result.decision.missing.includes('child_ages'));
+ assert.equal(result.decision.readyForCapacityCheck,false);
+});

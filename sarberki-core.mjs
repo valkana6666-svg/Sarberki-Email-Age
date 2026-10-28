@@ -101,17 +101,21 @@ const ambiguousCountSeparator='(?:vagy|or|oder|ali|bis|to|do|[-–—/])';
 const partyKinds={
  adults:'(?:felnőtt\\p{L}*|felnott\\p{L}*|adults?|erwachsene\\p{L}*|odrasl\\p{L}*)',
  children:'(?:gyerek\\p{L}*|gyermek\\p{L}*|children|child|kids?|kinder\\p{L}*|kind|otrok\\p{L}*|otroc\\p{L}*)',
- guests:'(?:fő|fo|személy\\p{L}*|szemely\\p{L}*|persons?|people|guests?|gäste|personen|oseb\\p{L}*)'
+ guests:'(?:fő|fo|személy\\p{L}*|szemely\\p{L}*|vendég\\p{L}*|vendeg\\p{L}*|persons?|people|guests?|gäste|personen|oseb\\p{L}*)'
 };
 const ambiguousPartyPatterns=Object.fromEntries(Object.entries(partyKinds).map(([key,kind])=>[key,
  new RegExp('(?<![\\p{L}\\d])'+ambiguousCountNumber+'\\s*(?:'+kind+'\\s*)?'+ambiguousCountSeparator+'\\s*'+ambiguousCountNumber+'\\s*'+kind+'(?!\\p{L})','iu')]));
+// A replacement/alternative can name the category only once (e.g. “2
+// adults instead of 3”). Without a proven direction, ask rather than select.
+const revisedPartyPatterns=Object.fromEntries(Object.entries(partyKinds).map(([key,kind])=>[key,
+ new RegExp('(?<![\\p{L}\\d])'+ambiguousCountNumber+'\\s*'+kind+'(?!\\p{L})[^.!?\\n]{0,40}?(?<!\\p{L})(?:helyett|hanem|vagy|instead(?:\\s+of)?|rather\\s+than|but|or|sondern|oder|statt|ali|ampak)(?!\\p{L})\\s*(?:(?:talán|talan|maybe|perhaps|vielleicht|morda)\\s+)?'+ambiguousCountNumber+'(?![\\p{L}\\d])','iu')]));
 const bareAmbiguousParty=new RegExp('^\\s*'+ambiguousCountNumber+'\\s*'+ambiguousCountSeparator+'\\s*'+ambiguousCountNumber+'\\s*[.!?]?\\s*$','iu');
 export function ambiguousPartyFieldsFromText(text=''){
  const current=activeMessageText(text);
  // A bare alternative may refer to adults, children, or an outstanding age.
  // Require clarification of the party rather than retaining either old value.
  if(bareAmbiguousParty.test(current))return ['adults','children','guests'];
- return Object.keys(ambiguousPartyPatterns).filter(key=>ambiguousPartyPatterns[key].test(current));
+ return Object.keys(ambiguousPartyPatterns).filter(key=>ambiguousPartyPatterns[key].test(current)||revisedPartyPatterns[key].test(current));
 }
 
 export function guestCountFromText(text=''){
