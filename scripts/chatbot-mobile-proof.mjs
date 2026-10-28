@@ -136,6 +136,12 @@ try{
   await submit('2 adults and no children.');
   assert.match(await page.locator('.operator-review').last().innerText(),/kapacitás ellenőrzése még nem igazolt/);
   report.checks.push({engine,test:'multiturn-retains-known-facts',result:'PASS'});
+  await submit('Instead we would like a VIP cabin.');
+  const corrected=await page.locator('#conversation .entry').last().innerText();
+  assert.match(corrected,/Requested cabin type: VIP/);
+  assert.match(corrected,/13 November 2026 to 15 November 2026 with 2 guests/);
+  assert.match(corrected,/Availability has not yet been verified/);
+  report.checks.push({engine,test:'cabin-correction-retains-stay-without-availability-promise',result:'PASS'});
   await page.locator('#resetChat').click();assert.equal(await page.locator('#conversation .entry').count(),1);
   await submit('Is there availability?');
   assert.match(await page.locator('.operator-review').last().innerText(),/érkez|távoz|időpont/i);
