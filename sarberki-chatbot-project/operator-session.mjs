@@ -29,6 +29,17 @@ export function createOperatorSession({request=fetch,now=()=>Date.now()}={}){
    if(typeof email!=='string'||!email.includes('@')||email.length>254||typeof password!=='string'||!password||password.length>1024)throw Error('INVALID_INPUT');
    return enqueue(async()=>{const value=await parse(await request(endpoint,options('POST',{action:'login',email,password})));if(turn!==epoch)throw Error('SESSION_CHANGED');const confirmed=await parse(await request(endpoint,options('GET')));if(turn!==epoch||confirmed.csrfToken!==value.csrfToken||confirmed.expiresAt!==value.expiresAt)throw Error('SESSION_CHANGED');metadata=confirmed;return {...confirmed};});
   },
+  syntheticChat(step){
+   const turn=epoch;if(![1,2].includes(step))return Promise.reject(Error('INVALID_INPUT'));
+   return enqueue(async()=>{
+    const csrf=current().csrfToken;if(turn!==epoch)throw Error('SESSION_CHANGED');
+    const response=await request('/.netlify/functions/decision-parity-fixture',options('POST',{language:'hu',scenario:'chat-step',step},csrf));
+    if(!response.ok)throw Error(response.status===401?'AUTH_REQUIRED':response.status===403?'FORBIDDEN':'FIXTURE_UNAVAILABLE');
+    const body=await response.json();if(turn!==epoch)throw Error('SESSION_CHANGED');current();
+    if(body?.fixture!=='fixed-synthetic-chat'||body.step!==step||body.language!=='hu'||typeof body.text!=='string'||!body.text||body.text.length>12000||Object.keys(body).sort().join(',')!=='fixture,language,step,text')throw Error('INVALID_DATA');
+    return body.text;
+   });
+  },
   loadCase(caseId){
    const turn=epoch;if(!isIsolatedReviewCaseId(caseId))return Promise.reject(Error('INVALID_INPUT'));
    return enqueue(async()=>{
@@ -73,7 +84,15 @@ export function createOperatorSession({request=fetch,now=()=>Date.now()}={}){
 export function initOperatorPanel({documentRef=document,windowRef=typeof window==='undefined'?null:window,request=fetch,now=()=>Date.now(),setTimer=typeof setTimeout==='undefined'?null:setTimeout,clearTimer=typeof clearTimeout==='undefined'?null:clearTimeout}={}){
  const get=id=>documentRef.getElementById(id),form=get('operator_login');if(!form)return false;
  const session=createOperatorSession({request,now});let epoch=0,timer=null,active=documentRef.visibilityState!=='hidden';
- const clear=()=>{for(const id of ['server_chat_reply','server_operator_hu','server_guest_draft'])get(id).value='';get('server_data_status').textContent='Nincs hitelesített szerveres adat.';};
+ const clear=()=>{if(get('server_fixture_status'))get('server_fixture_status').textContent='';for(const id of ['server_chat_reply','server_operator_hu','server_guest_draft'])get(id).value='';get('server_data_status').textContent='Nincs hitelesített szerveres adat.';};
+ const fixtureStatus=get('server_fixture_status');
+ const fixtureButton=get('server_fixture_run');
+ if(fixtureButton&&fixtureStatus)fixtureButton.addEventListener('click',async()=>{
+  const turn=++epoch;fixtureButton.disabled=true;fixtureStatus.textContent='Szintetikus szerveres próba…';
+  try{const first=await session.syntheticChat(1),second=await session.syntheticChat(2);if(turn!==epoch||!active)return;fixtureStatus.textContent='1. válasz: '+first+'\n\n2. válasz: '+second;}
+  catch(error){if(turn===epoch)fixtureStatus.textContent='Szerveres próba nem elérhető; belépés és tesztengedély szükséges.';}
+  finally{fixtureButton.disabled=false;}
+ });
  const stop=()=>{if(timer!==null)clearTimer?.(timer);timer=null;};
  const schedule=()=>{stop();if(active&&setTimer){timer=setTimer(()=>restore(),300000);timer?.unref?.();}};
  const status=()=>{get('operator_status').textContent='Hitelesített tartós tesztmunkamenet; az ügyhozzáférést a szerver ellenőrzi.';};

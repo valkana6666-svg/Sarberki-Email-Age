@@ -93,3 +93,26 @@ test('successful password response without accepted cookie cannot establish a ch
  await assert.rejects(session.login('operator@synthetic.invalid','synthetic'),/AUTH_REQUIRED/);
  await assert.rejects(session.loadCase(id),/AUTH_REQUIRED/);assert.equal(calls,2);
 });
+test('synthetic server chat uses existing session and rejects malformed or stale response',async()=>{
+ const f=fixture();let mode='good';let calls=0;
+ const s=createOperatorSession({now:()=>at,request:async(url,options)=>{
+  if(!url.includes('decision-parity-fixture'))return f.request(url,options);
+  calls++;assert.equal(options.headers['X-CSRF-Token'],metadata.csrfToken);assert.equal(options.credentials,'same-origin');
+  const body=JSON.parse(options.body);assert.deepEqual(body,{language:'hu',scenario:'chat-step',step:2});
+  return {ok:true,status:200,json:async()=>({fixture:'fixed-synthetic-chat',step:mode==='good'?2:1,language:'hu',text:'SYNTHETIC'})};
+ }});
+ await assert.rejects(s.syntheticChat(2),/AUTH_REQUIRED/);await s.restore();
+ assert.equal(await s.syntheticChat(2),'SYNTHETIC');mode='bad';await assert.rejects(s.syntheticChat(2),/INVALID_DATA/);
+ await assert.rejects(s.syntheticChat(3),/INVALID_INPUT/);assert.equal(calls,2);
+});
+test('operator client and real server fixture complete both synthetic turns',async()=>{
+ const {createDecisionParityHandler}=await import('../netlify/functions/decision-parity-fixture.mjs');
+ const f=fixture(),origin='https://leafy-chimera-2403e5.netlify.app';let checked=0;
+ const handler=createDecisionParityHandler({env:{URL:origin,DECISION_PARITY_FIXTURE_ENABLED:'true'},sessionFactory:()=>({protectedRead:async event=>{assert.equal(event.headers['x-csrf-token'],metadata.csrfToken);checked++;return {setCookie:'synthetic'};}})});
+ const s=createOperatorSession({now:()=>at,request:async(url,options)=>{
+  if(!url.includes('decision-parity-fixture'))return f.request(url,options);
+  const headers=Object.fromEntries(Object.entries(options.headers).map(([k,v])=>[k.toLowerCase(),v]));headers.origin=origin;
+  const result=await handler({httpMethod:options.method,headers,body:options.body});return {ok:result.statusCode===200,status:result.statusCode,json:async()=>JSON.parse(result.body)};
+ }});
+ await s.restore();const first=await s.syntheticChat(1),second=await s.syntheticChat(2);assert.equal(checked,2);assert.notEqual(first,second);
+});

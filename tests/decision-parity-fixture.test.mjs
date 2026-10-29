@@ -33,3 +33,13 @@ test('fixed synthetic server route replays an isolated multi-turn conversation',
  assert.equal((await handler(event({language:'de',scenario:'multi-turn'}))).statusCode,400);
  assert.equal((await handler(event({language:'hu',scenario:'multi-turn',message:'private'}))).statusCode,400);
 });
+test('preset server chat steps retain context and reject arbitrary message injection',async()=>{
+ const handler=createDecisionParityHandler({env,sessionFactory,fetchImpl:()=>{throw Error('network forbidden');}});
+ const first=await handler(event({language:'hu',scenario:'chat-step',step:1}));
+ const second=await handler(event({language:'hu',scenario:'chat-step',step:2}));
+ assert.equal(first.statusCode,200);assert.equal(second.statusCode,200);
+ const a=JSON.parse(first.body),b=JSON.parse(second.body);
+ assert.equal(a.fixture,'fixed-synthetic-chat');assert.equal(b.step,2);assert.notEqual(a.text,b.text);
+ assert.deepEqual(Object.keys(b).sort(),['fixture','language','step','text']);
+ for(const body of [{language:'hu',scenario:'chat-step',step:3},{language:'hu',scenario:'chat-step',step:2,message:'private'},{language:'hu',scenario:'multi-turn',step:1}])assert.equal((await handler(event(body))).statusCode,400);
+});
