@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createHandler, TEST_MESSAGE, config} from '../netlify/functions/pushover-test.mjs';
+import deployed, {createHandler, TEST_MESSAGE, config} from '../netlify/functions/pushover-test.mjs';
 
 const origin = 'https://leafy-chimera-2403e5.netlify.app';
 const site = {site: {name: 'leafy-chimera-2403e5'}};
@@ -59,5 +59,11 @@ test('provider failure and timeout do not leak secrets or retry', async () => {
     assert.ok(!body.includes(env.PUSHOVER_USER_KEY));
     assert.equal(calls, 1);
   }
-  assert.deepEqual(config.rateLimit, {windowLimit:1, windowSize:180, aggregateBy:['ip','domain'], action:'rate_limit'});
+  assert.equal(config.rateLimit, undefined);
+});
+
+test('deployed standalone test is disabled and does not send', async()=>{
+  const response=await deployed(request(),site);
+  assert.equal(response.status,503);
+  assert.equal((await response.json()).code,'TEST_TEMPORARILY_DISABLED');
 });

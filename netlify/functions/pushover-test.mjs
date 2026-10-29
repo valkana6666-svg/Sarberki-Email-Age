@@ -52,8 +52,8 @@ export function createHandler({env = process.env, send = fetch} = {}) {
   };
 }
 
-export default createHandler();
+// The standalone notification test remains closed while the free tier has only two rate-limit rules.
+export default async () => json({ok:false,code:'TEST_TEMPORARILY_DISABLED'},503);
 export const config = {
-  path: '/api/pushover-test',
-  rateLimit: {windowLimit: 1, windowSize: 180, aggregateBy: ['ip','domain'], action: 'rate_limit'}
+  path: '/api/pushover-test'
 };
