@@ -10,9 +10,15 @@ let browser;
 const check=(engine,name)=>report.checks.push({engine,test:name,result:'PASS'});
 try{
  for(const [engine,launcher] of [['chromium',chromium],['webkit',webkit]]){
-  browser=await launcher.launch({headless:true});
+  if(process.env.NAPI_PROOF_ENGINE&&process.env.NAPI_PROOF_ENGINE!==engine)continue;
+  browser=await launcher.launch({headless:true,...(engine==='chromium'&&process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{})});
   const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block'});
-  const state={authenticated:false,revision:1,allowRead:true,caseMethods:[],previewRevisions:[],chatStatus:200,chatMessages:[]};
+  const state={authenticated:false,revision:1,allowRead:true,caseMethods:[],previewRevisions:[],chatStatus:200,chatMessages:[],role:'reader',editable:false,draftText:'Kitalált, tárolt válasz.',approval:'pending',draftHash:null};
+  const record=()=>({tenantId:'sarberki-test',caseId:'case-synthetic',revision:state.revision,
+   canEditDraft:state.role==='writer'&&state.approval==='pending',canApproveDraft:state.role==='approver'&&state.approval==='pending',
+   data:{state:{approval:state.approval,revision:0,values:{arrival:'2026-11-20',departure:'2026-11-22',guests:2,unit:'Deluxe'}},
+    messages:[{text:'Kitalált vendégüzenet'}],drafts:state.editable?[{text:state.draftText,synthetic:true,reviewStatus:'internal_review_required',revision:0,basedOnMessageCount:1}]:[],
+    ...(state.approval==='internally_approved'?{serverApproval:{draftHash:state.draftHash}}:{})}});
   const session={authenticated:true,tenantId:'sarberki-test',csrfToken:'a'.repeat(64),expiresAt:new Date(Date.now()+3600000).toISOString()};
   const chatHandler=createServerChatPreview({env:{URL:origin,SERVER_CHAT_SYNTHETIC_ONLY:'true'},
    sessionFactory:()=>({protectedRead:async event=>{assert.equal(state.authenticated,true);assert.equal(event.headers['x-csrf-token'],session.csrfToken);return {};}}),
@@ -49,15 +55,23 @@ try{
     state.caseMethods.push(request.method());
     if(!state.authenticated)return json(401,{error:'AUTH_REQUIRED'});
     if(!state.allowRead)return json(403,{error:'FORBIDDEN'});
-    if(request.method()!=='GET'||url.searchParams.get('tenantId')!=='sarberki-test')return json(403,{error:'FORBIDDEN'});
-    if(url.searchParams.get('action')==='preview-draft'){
-     state.previewRevisions.push(Number(url.searchParams.get('expectedRevision')));
-     if(Number(url.searchParams.get('expectedRevision'))!==state.revision)return json(409,{error:'CASE_CONFLICT'});
-     return json(200,{result:{caseId:'case-synthetic',revision:state.revision,persisted:false,approval:'pending',text:'SYNTHETIC_DRAFT_MUST_NOT_DISPLAY',
-     decision:{facts:{dates:{arrival:'2026-11-20',departure:'2026-11-22'},adults:null,children:0,guests:null,child_ages:[],language:'hu'},missing:['adults'],contradictions:[],capacity:{verified:false,status:'UNKNOWN'},pricing:{verified:false},safety:{emailSent:false,bookingCreated:false,approval:'pending'}},
-     readOnlyFreshness:{verified:true,syntheticOnly:true,source:'stored-synthetic-case',tenantId:'sarberki-test',caseId:'case-synthetic',revision:state.revision,checkedAt:new Date().toISOString()}}});
+    if(request.method()==='POST'){
+     const input=request.postDataJSON();
+     assert.equal(request.headers()['x-csrf-token'],session.csrfToken);
+     if(input.tenantId!=='sarberki-test'||input.caseId!=='case-synthetic')return json(403,{error:'FORBIDDEN'});
+     if(input.expectedRevision!==state.revision)return json(409,{error:'CASE_CONFLICT'});
+     if(input.action==='edit-draft'&&state.role==='writer'){state.draftText=input.editedDraftText;state.draftHash=input.expectedDraftHash;state.revision++;}
+     else if(input.action==='approve'&&state.role==='approver'){state.draftHash=input.reviewedDraftHash;state.approval='internally_approved';state.revision++;}
+     else return json(403,{error:'FORBIDDEN'});
+     return json(200,{result:record()});
     }
-    return json(200,{result:[{tenantId:'sarberki-test',caseId:'case-synthetic',revision:state.revision}]});
+    if(url.searchParams.get('tenantId')!=='sarberki-test')return json(403,{error:'FORBIDDEN'});
+    if(url.searchParams.get('action')==='review-record'){
+     state.previewRevisions.push(state.revision);
+
+     return json(200,{result:record()});
+    }
+    return json(200,{result:[{tenantId:'sarberki-test',caseId:'case-synthetic',revision:state.revision,category:state.editable?(state.approval==='pending'?'approval':'progress'):'incoming'}]});
    }
    if(request.method()!=='GET')return route.abort();
    let path=url.pathname.endsWith('/')?url.pathname+'index.html':url.pathname;
@@ -75,7 +89,8 @@ try{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.getByRole('button',{name:/Jóváhagyásra vár/}).click();
   assert.equal(await page.locator('#section-heading').innerText(),'Jóváhagyásra vár');
-  assert.match(await page.locator('.section-card').innerText(),/még nem érhető el/);
+  assert.match(await page.locator('.section-card').innerText(),/közös ügytár/);
+  await page.locator('[data-section=incoming]').click();
   check(engine,'navigation-no-fabricated-category-state');
   await page.locator('#email').fill('reader@synthetic.invalid');await page.locator('#password').fill('SYNTHETIC_PASSWORD_ONLY');
   await page.locator('#login button').click();await page.locator('#session-status').filter({hasText:'Bejelentkezve'}).waitFor();
@@ -93,23 +108,25 @@ try{
   assert.equal(state.chatMessages[3].length,1);
   check(engine,'daily-server-chat-existing-engine-multi-turn-reset-rate-limit');
   await page.locator('#load-cases').click();await page.locator('#case-list button').waitFor();
-  assert.match(await page.locator('#list-status').innerText(),/nem szűrik/);
+  assert.match(await page.locator('#list-status').innerText(),/kategória/);
   // The other surface changes the synthetic backing revision after listing.
   // Opening must re-read the shared current revision before requesting preview.
   state.revision=2;
-  await page.locator('#case-list button').click();await page.locator('#detail-status').filter({hasText:'Ellenőrzött olvasói előnézet'}).waitFor();
+  await page.locator('#case-list button').click();await page.locator('#detail-status').filter({hasText:'közös ügytárból'}).waitFor();
   assert.deepEqual(state.previewRevisions,[2]);
-  assert.match(await page.locator('#detail-summary').innerText(),/felnőtt/);
-  assert.match(await page.locator('#detail-capacity').innerText(),/NEM IGAZOLT/);
+  assert.match(await page.locator('#detail-facts').innerText(),/2026-11-20/);
+  assert.match(await page.locator('#detail-messages').innerText(),/Kitalált vendégüzenet/);
+  assert.match(await page.locator('#detail-capacity').innerText(),/nem igazolt/);
   assert.doesNotMatch(await page.locator('#detail-draft').innerText(),/SYNTHETIC_DRAFT_MUST_NOT_DISPLAY/);
-  assert.equal(await page.locator('.unavailable-actions button:disabled').count(),3);
+  assert.equal(await page.locator('#save-draft').isDisabled(),true);
+  assert.equal(await page.locator('#approve-draft').isDisabled(),true);
   assert.match(await page.locator('#detail-link').getAttribute('href'),/caseId=case-synthetic/);
   check(engine,'synthetic-cookie-reader-no-unauthorized-actions');
   await page.locator('#list-status').filter({hasText:'frissessége nem igazolt'}).waitFor({timeout:5000});
   assert.equal(await page.locator('#case-detail').isHidden(),true);assert.equal(await page.locator('#case-list li').count(),0);
   check(engine,'stale-data-cleared');
   state.revision=3;await page.locator('#load-cases').click();await page.locator('#case-list button').waitFor();
-  await page.locator('#case-list button').click();await page.locator('#detail-status').filter({hasText:'Ellenőrzött olvasói előnézet'}).waitFor();
+  await page.locator('#case-list button').click();await page.locator('#detail-status').filter({hasText:'közös ügytárból'}).waitFor();
   assert.deepEqual(state.previewRevisions,[2,3]);
   check(engine,'reloads-synthetic-new-revision');
   await page.reload();await page.locator('#session-status').filter({hasText:'Bejelentkezve'}).waitFor();
@@ -121,6 +138,21 @@ try{
   assert.ok(state.caseMethods.every(method=>method==='GET'));
   assert.equal(await page.evaluate(()=>localStorage.length+sessionStorage.length),0);
   assert.deepEqual(errors,[]);check(engine,'reload-denied-reader-no-cache-or-writes');
+  state.allowRead=true;state.editable=true;state.role='writer';
+  await page.reload();await page.locator('#session-status').filter({hasText:'Bejelentkezve'}).waitFor();
+  await page.locator('[data-section=approval]').click();await page.locator('#load-cases').click();await page.locator('#case-list button').click();
+  await page.locator('#draft-editor:not([disabled])').waitFor();
+  assert.equal(await page.locator('#approve-confirm').isDisabled(),true);
+  await page.locator('#draft-editor').fill('Kitalált szerkesztett válasz.');await page.locator('#save-draft').click();
+  await page.locator('#detail-status').filter({hasText:'Módosítás mentve és visszaolvasva'}).waitFor();
+  assert.equal(state.draftText,'Kitalált szerkesztett válasz.');
+  state.role='approver';await page.reload();await page.locator('#session-status').filter({hasText:'Bejelentkezve'}).waitFor();
+  await page.locator('[data-section=approval]').click();await page.locator('#load-cases').click();await page.locator('#case-list button').click();
+  await page.locator('#approve-confirm:not([disabled])').waitFor();assert.equal(await page.locator('#save-draft').isDisabled(),true);
+  await page.locator('#approve-confirm').check();await page.locator('#approve-draft').click();
+  await page.locator('#detail-status').filter({hasText:'Belső jóváhagyás mentve és visszaolvasva'}).waitFor();
+  await page.locator('[data-section=progress]').click();await page.locator('#load-cases').click();await page.locator('#case-list button').waitFor();
+  assert.equal(state.approval,'internally_approved');check(engine,'writer-edit-readback-independent-approval-shared-progress');
   await page.goto(origin+'/index.html');assert.equal(await page.locator('body').count(),1);
   check(engine,'existing-test-page-still-served');
   await context.close();await browser.close();browser=null;

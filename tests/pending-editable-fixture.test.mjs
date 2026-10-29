@@ -74,6 +74,16 @@ test('real PostgreSQL: fixed Writer preparation -> exact saved edit -> Reader re
   const again=(await call('writer',prepare,input)).result;assert.deepEqual(again,{...first,duplicate:true});
   assert.equal((await db.query('select count(*)::int n from sc_cases')).rows[0].n,1);
   const opened=(await readRecord('writer')).result;assert.equal(opened.canEditDraft,true);assert.equal(opened.data.state.approval,'pending');assert.equal(opened.data.messages.length,1);
+  await t.test('daily categories and permissions use the same protected PostgreSQL records',async()=>{
+   const listed=(await call('reader',api(),{tenantId:'sarberki-test',action:'daily-list'},{method:'GET'})).result;
+   assert.deepEqual(listed,[{tenantId:'sarberki-test',caseId:first.caseId,revision:2,category:'approval'}]);
+   assert.equal(opened.canApproveDraft,false);
+   assert.equal((await readRecord('reader')).result.canApproveDraft,false);
+   assert.equal((await readRecord('approver')).result.canApproveDraft,true);
+   await call('reader',api(),{tenantId:'demo-test',action:'daily-list'},{method:'GET',status:403});
+   await call('reader',api(),{tenantId:'sarberki-test',caseId:first.caseId,action:'daily-list'},{method:'GET',status:403});
+   await call('reader',api(),{tenantId:'sarberki-test',action:'daily-list'},{method:'GET',headers:{'x-csrf-token':''},status:403});
+  });
   const original=opened.data.drafts.at(-1).text,edited=original+'\nSynthetic human clarification.  ';
   const edit={tenantId:'sarberki-test',caseId:first.caseId,action:'edit-draft',expectedRevision:2,expectedDraftHash:hash(original),editedDraftText:edited};
   await t.test('Reader, other tenant, missing CSRF, stale revision and wrong hash cannot edit',async()=>{
@@ -90,6 +100,9 @@ test('real PostgreSQL: fixed Writer preparation -> exact saved edit -> Reader re
    await call('writer',api(),approve,{status:403});await call('reader',api(),approve,{status:403});await call('approver',api(),{...approve,expectedRevision:2},{status:409});await call('approver',api(),{...approve,tenantId:'demo-test'},{status:403});
   });
   const approved=(await call('approver',api(),approve)).result;assert.equal(approved.revision,4);assert.equal(approved.data.state.approval,'internally_approved');
+  const dailyApproved=(await call('reader',api(),{tenantId:'sarberki-test',action:'daily-list'},{method:'GET'})).result;
+  assert.equal(dailyApproved[0].revision,4);assert.equal(dailyApproved[0].category,'progress');
+  assert.equal((await readRecord('approver')).result.canApproveDraft,false);
   const durable=(await call('reader',api(),{tenantId:'sarberki-test',caseId:first.caseId,action:'approval-state'},{method:'GET'})).result;
   assert.equal(durable.storedDraft.text,edited);assert.equal(durable.serverApproval.actor,actors.approver);assert.equal(durable.serverApproval.reviewedRevision,3);assert.equal(durable.serverApproval.draftHash,hash(edited));assert.equal(durable.audit.length,1);assert.equal(durable.audit[0].actor,actors.approver);assert.equal(durable.audit[0].revision,4);
   const auditCount=(await db.query('select count(*)::int n from sc_audit')).rows[0].n;

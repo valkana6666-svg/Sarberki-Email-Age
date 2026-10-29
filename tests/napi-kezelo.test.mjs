@@ -13,7 +13,7 @@ class Element {
  async dispatch(type,event={}){for(const fn of this.listeners[type]||[])await fn({preventDefault(){},...event});}
 }
 function fakeDocument(){
- const ids=['chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','detail-link','section-heading','section-description'];
+ const ids=['draft-editor','save-draft','approve-draft','approve-confirm','detail-messages','detail-facts','chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','detail-link','section-heading','section-description'];
  const elements=Object.fromEntries(ids.map(id=>[id,new Element()]));
  const nav=['incoming','approval','progress','closed'].map(section=>{const e=new Element();e.dataset.section=section;return e;});
  const listeners={};
@@ -48,11 +48,11 @@ test('daily view reuses protected cookie reader, clears stale data and rejects l
   }
   if(u.pathname.endsWith('/booking-cases')){
    if(!loggedIn)return response({error:'AUTH_REQUIRED'},401);
-   if(u.searchParams.get('action')==='preview-draft'){
+   if(u.searchParams.get('action')==='review-record'){
     if(delayed)await new Promise(resolve=>{release=resolve;});
-    return response({result:preview()});
+    return response({result:{tenantId:'sarberki-test',caseId:'case-synthetic',revision:1,canEditDraft:false,canApproveDraft:false,data:{state:{approval:'pending',revision:0,values:{arrival:'2026-11-20',departure:'2026-11-22',guests:2,unit:'Deluxe'}},messages:[{text:'Kitalált vendég eredeti üzenete'}],drafts:[]}}});
    }
-   return response({result:[{tenantId:'sarberki-test',caseId:'case-synthetic',revision:1}]});
+   return response({result:[{tenantId:'sarberki-test',caseId:'case-synthetic',revision:1,category:'incoming'}]});
   }
   throw Error('unexpected endpoint');
  };
@@ -74,12 +74,13 @@ test('daily view reuses protected cookie reader, clears stale data and rejects l
   await doc.elements['chat-reset'].dispatch('click');assert.equal(doc.elements['chat-output'].textContent,'');
   doc.elements['chat-input'].value='Új szintetikus kérés';await doc.elements['chat-form'].dispatch('submit');
   assert.deepEqual(chats[3].messages,['Új szintetikus kérés']);
-  await doc.elements['load-cases'].dispatch('click');assert.equal(doc.elements['case-list'].children.length,1);
-  assert.match(doc.elements['list-status'].textContent,/nem szűrik/);
+  await doc.nav[0].dispatch('click');await doc.elements['load-cases'].dispatch('click');assert.equal(doc.elements['case-list'].children.length,1);
+  assert.match(doc.elements['list-status'].textContent,/kategória/);
   const row=doc.elements['case-list'].children[0];await row.children[1].dispatch('click');
   assert.equal(doc.elements['case-detail'].hidden,false);
-  assert.match(doc.elements['detail-summary'].textContent,/felnőtt/iu);
-  assert.match(doc.elements['detail-capacity'].textContent,/NEM IGAZOLT/);
+  assert.match(doc.elements['detail-facts'].textContent,/2026-11-20/);
+  assert.equal(doc.elements['detail-messages'].children[0].textContent,'Kitalált vendég eredeti üzenete');
+  assert.match(doc.elements['detail-capacity'].textContent,/nem igazolt/);
   assert.doesNotMatch(doc.elements['detail-draft'].textContent,/UNVERIFIED_DRAFT/);
   assert.match(doc.elements['detail-link'].href,/cloud-approval\.html\?caseId=case-synthetic/);
   const expiry=[...timers.values()].find(t=>t.ms===30000);assert.ok(expiry);expiry.fn();
@@ -99,11 +100,11 @@ test('daily view reuses protected cookie reader, clears stale data and rejects l
 
 test('distinct daily PWA route retains original test app and never invents statuses or active write buttons',()=>{
  const html=fs.readFileSync('napi-kezelo/index.html','utf8'),manifest=JSON.parse(fs.readFileSync('napi-kezelo/manifest.webmanifest','utf8'));
- for(const text of ['Beérkezett','Jóváhagyásra','Folyamatban','Lezárt','Szerkesztés','Elutasítás'])assert.ok(html.includes(text));
+ for(const text of ['Beérkezett','Jóváhagyásra','Folyamatban','Lezárt','Válasz szerkesztése','Elutasítás'])assert.ok(html.includes(text));
  assert.equal(manifest.id,'/napi-kezelo/');assert.equal(manifest.scope,'/napi-kezelo/');assert.equal(manifest.start_url,'/napi-kezelo/');
- assert.match(html,/állapot szerinti besorolás még nem érhető el/iu);
- assert.match(html,/<button type="button" disabled>Szerkesztés<\/button>/u);
- assert.match(html,/<button type="button" disabled>Jóváhagyás<\/button>/u);
+ assert.match(html,/közös ügytár tárolt állapotát/iu);
+ assert.match(html,/<textarea id="draft-editor"[^>]+disabled>/u);
+ assert.match(html,/<button id="approve-draft"[^>]+disabled>/u);
  assert.match(html,/<button type="button" disabled>Elutasítás<\/button>/u);
  assert.ok(fs.existsSync('index.html'));assert.ok(fs.existsSync('cloud-approval.html'));
 });

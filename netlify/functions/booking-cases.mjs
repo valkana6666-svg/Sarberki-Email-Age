@@ -10,6 +10,7 @@ import {cloudSyntheticApprovalEnabled,cloudSyntheticReviewProviders,assertCloudS
 import {createExactGmailReceipt,exactGmailEditReceipt,matchesExactGmailEditRecord,readExactReceiptAudit,diagnoseExactGmailReceiptRequest} from '../../shared-core/server-exact-gmail-receipt.mjs';
 import {closedSyntheticMailLanguage,isClosedTubFollowup,isClosedTubPreviousRecord,isClosedTubReview,isClosedTubReviewRecord} from '../../shared-core/synthetic-mail-fixtures.mjs';
 import {resolveBookingCase} from '../../booking-cases.mjs';
+import {dailyCaseSummary} from '../../shared-core/server-daily-case-view.mjs';
 const headers={'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 const response=(statusCode,body)=>({statusCode,headers,body:JSON.stringify(body)});
 // Cookie-reader case picker gets metadata only, never raw inquiry content.
@@ -73,7 +74,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     const cookiePost=event.httpMethod==='POST';
     const closedIngest=cookiePost&&input.action==='ingest-and-draft';
     if(input.tenantId!=='sarberki-test'||Object.keys(input).some(key=>!(closedIngest?(closedTub||closedTubReview?['tenantId','caseId','action','envelope','expectedRevision']:['tenantId','action','envelope','expectedRevision','sourceReceipt']):cookiePost?(input.action==='edit-draft'?['tenantId','caseId','action','expectedRevision','expectedDraftHash','editedDraftText']:['tenantId','caseId','action','expectedRevision','reviewedDraftHash','targetCaseId','targetRevision','reason','servicePreviewHash']):['tenantId','caseId','action','expectedRevision']).includes(key))||
-      (cookiePost?!['prepare-clarification','approve-clarification','edit-draft','review-draft','approve','ingest-and-draft','resolve-service-link','approve-service'].includes(input.action):!(cloudApproval?['preview-draft','approval-state','review-record','service-approval-state',undefined]:['preview-draft','service-approval-state',undefined]).includes(input.action))||
+      (cookiePost?!['prepare-clarification','approve-clarification','edit-draft','review-draft','approve','ingest-and-draft','resolve-service-link','approve-service'].includes(input.action):!(cloudApproval?['daily-list','preview-draft','approval-state','review-record','service-approval-state',undefined]:['preview-draft','service-approval-state',undefined]).includes(input.action))||
       (!cookiePost&&input.caseId!==undefined&&!['preview-draft','approval-state','review-record','service-approval-state'].includes(input.action)))return cookieResponse(403,{error:'FORBIDDEN'});
     if(closedIngest&&(!cloudApproval||(closedTub||closedTubReview?(!isIsolatedReviewCaseId(input.caseId)||!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<1):(input.expectedRevision!==0||!(input.sourceReceipt===undefined?closedSyntheticMailLanguage(input.envelope):exactReceipt?.matches(input.envelope,input.sourceReceipt))))))return cookieResponse(403,{error:'FORBIDDEN'});
     const session=createOperatorCookieSession({env,fetchImpl});
@@ -119,15 +120,20 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     attestor:/^[a-f0-9]{64}$/.test(env.ISOLATED_APPROVAL_ATTESTATION_KEY||'')?createServiceApprovalAttestor(env.ISOLATED_APPROVAL_ATTESTATION_KEY):null});
    let result;
    if(event.httpMethod==='GET'){
-    if(input.action==='service-approval-state'){
+    if(input.action==='daily-list'&&cloudApproval){
+     if(!cookieMode||Object.keys(input).sort().join(',')!=='action,tenantId')return cookieResponse(403,{error:'FORBIDDEN'});
+     const records=await service.listCases({tenantId:input.tenantId});
+     result=records.filter(record=>{try{assertReviewAccess(record);return true;}catch(error){if(error.code==='FORBIDDEN')return false;throw error;}}).slice(0,100).map(dailyCaseSummary);
+    }else if(input.action==='service-approval-state'){
      if(!isIsolatedReviewCaseId(input.caseId))return cookieResponse(403,{error:'FORBIDDEN'});
      result=await serviceFlow().state(input.caseId,Number(input.expectedRevision));
     }else if(input.action==='review-record'&&cloudApproval){
      result=await service.getCase({tenantId:input.tenantId,caseId:input.caseId});
      assertReviewAccess(result);
-     let canEditDraft=false;
+     let canEditDraft=false,canApproveDraft=false;
      try{await service.requireWrite({tenantId:input.tenantId});canEditDraft=result.data.state?.approval==='pending'&&!result.data.serverApproval;}catch(error){if(error.code!=='FORBIDDEN')throw error;}
-     result={...result,canEditDraft,...(exactEditable(result)?{approvalBlockedReason:'EXACT_REVIEW_EVIDENCE_REQUIRED'}:{})};
+     try{const actor=await service.requireApproval({tenantId:input.tenantId});canApproveDraft=result.data.state?.approval==='pending'&&!result.data.serverApproval&&actor!==result.updatedBy&&actor!==result.data.drafts?.at(-1)?.editedBy&&!exactEditable(result);}catch(error){if(error.code!=='FORBIDDEN')throw error;}
+     result={...result,canEditDraft,canApproveDraft,...(exactEditable(result)?{approvalBlockedReason:'EXACT_REVIEW_EVIDENCE_REQUIRED'}:{})};
     }else if(input.action==='approval-state'&&cloudApproval){
      const record=await service.getCase({tenantId:input.tenantId,caseId:input.caseId});
      assertReadAccess(record);
