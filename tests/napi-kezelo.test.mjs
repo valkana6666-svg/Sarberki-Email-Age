@@ -13,7 +13,7 @@ class Element {
  async dispatch(type,event={}){for(const fn of this.listeners[type]||[])await fn({preventDefault(){},...event});}
 }
 function fakeDocument(){
- const ids=['login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','detail-link','section-heading','section-description'];
+ const ids=['chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','detail-link','section-heading','section-description'];
  const elements=Object.fromEntries(ids.map(id=>[id,new Element()]));
  const nav=['incoming','approval','progress','closed'].map(section=>{const e=new Element();e.dataset.section=section;return e;});
  const listeners={};
@@ -31,12 +31,17 @@ const preview=()=>({caseId:'case-synthetic',revision:1,persisted:false,approval:
 
 test('daily view reuses protected cookie reader, clears stale data and rejects late responses',async()=>{
  const previous={document:globalThis.document,location:globalThis.location,fetch:globalThis.fetch,addEventListener:globalThis.addEventListener,setTimeout:globalThis.setTimeout,clearTimeout:globalThis.clearTimeout};
- const doc=fakeDocument(),timers=new Map(),events={},calls=[],sessionMeta=meta();let loggedIn=false,clock=0,delayed=false,release;
+ const doc=fakeDocument(),timers=new Map(),events={},calls=[],sessionMeta=meta();let loggedIn=false,clock=0,delayed=false,release,chatStatus=200;
+ const chats=[];
  globalThis.document=doc;globalThis.location={origin:'https://leafy-chimera-2403e5.netlify.app'};
  globalThis.addEventListener=(type,fn)=>(events[type]??=[]).push(fn);
  globalThis.setTimeout=(fn,ms)=>{const id=++clock;timers.set(id,{fn,ms});return id;};globalThis.clearTimeout=id=>timers.delete(id);
  globalThis.fetch=async(url,options={})=>{
   const u=new URL(url,'https://leafy-chimera-2403e5.netlify.app'),method=options.method||'GET';calls.push({path:u.pathname,method,query:u.search});
+  if(u.pathname==='/api/server-chat-preview'){
+   chats.push(JSON.parse(options.body));assert.equal(options.headers['X-CSRF-Token'],sessionMeta.csrfToken);
+   return response(chatStatus===200?{synthetic:true,text:'Szintetikus szerverválasz',language:'hu'}:{error:'UNAVAILABLE'},chatStatus);
+  }
   if(u.pathname.endsWith('/operator-session')){
    if(method==='POST'){const payload=JSON.parse(options.body);if(payload.action==='login')loggedIn=true;if(payload.action==='logout')loggedIn=false;}
    return loggedIn?response(sessionMeta):response({error:'AUTH_REQUIRED'},401);
@@ -59,6 +64,16 @@ test('daily view reuses protected cookie reader, clears stale data and rejects l
   await doc.nav[1].dispatch('click');assert.equal(doc.elements['section-heading'].textContent,'Jóváhagyásra vár');
   doc.elements.email.value='reader@synthetic.invalid';doc.elements.password.value='SYNTHETIC_ONLY';
   await doc.elements.login.dispatch('submit');assert.equal(doc.elements.password.value,'');assert.equal(doc.elements['load-cases'].disabled,false);
+  assert.equal(doc.elements['chat-send'].disabled,false);
+  doc.elements['chat-input'].value='Kitalált első üzenet';await doc.elements['chat-form'].dispatch('submit');
+  assert.equal(doc.elements['chat-output'].textContent,'Szintetikus szerverválasz');
+  doc.elements['chat-input'].value='Kitalált második üzenet';chatStatus=429;await doc.elements['chat-form'].dispatch('submit');
+  assert.match(doc.elements['chat-output'].textContent,/Várjon egy percet/);
+  chatStatus=200;await doc.elements['chat-form'].dispatch('submit');
+  assert.deepEqual(chats[2].messages,['Kitalált első üzenet','Kitalált második üzenet']);
+  await doc.elements['chat-reset'].dispatch('click');assert.equal(doc.elements['chat-output'].textContent,'');
+  doc.elements['chat-input'].value='Új szintetikus kérés';await doc.elements['chat-form'].dispatch('submit');
+  assert.deepEqual(chats[3].messages,['Új szintetikus kérés']);
   await doc.elements['load-cases'].dispatch('click');assert.equal(doc.elements['case-list'].children.length,1);
   assert.match(doc.elements['list-status'].textContent,/nem szűrik/);
   const row=doc.elements['case-list'].children[0];await row.children[1].dispatch('click');
@@ -76,6 +91,7 @@ test('daily view reuses protected cookie reader, clears stale data and rejects l
   assert.equal(typeof release,'function');doc.visibilityState='hidden';await doc.dispatch('visibilitychange');release();await pending;
   assert.equal(doc.elements['case-detail'].hidden,true);assert.equal(doc.elements['detail-summary'].textContent,'');
   assert.equal(doc.elements['case-list'].children.length,0);assert.equal(doc.elements['load-cases'].disabled,true);
+  assert.equal(doc.elements['chat-output'].textContent,'');assert.equal(doc.elements['chat-send'].disabled,true);
   assert.ok(calls.filter(x=>x.path.endsWith('/booking-cases')).every(x=>x.method==='GET'));
   assert.ok(calls.filter(x=>x.path.endsWith('/booking-cases')).every(x=>new URLSearchParams(x.query).get('tenantId')==='sarberki-test'));
  }finally{Object.assign(globalThis,previous);}

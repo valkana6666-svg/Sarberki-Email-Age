@@ -2,6 +2,7 @@ import {createOperatorSession} from '../sarberki-chatbot-project/operator-sessio
 import {createCaseStoreClient} from '../shared-core/case-store-client.mjs';
 import {createCookieJsonRequest} from '../shared-core/cookie-json-request.mjs';
 import {isIsolatedReviewCaseId} from '../shared-core/isolated-review-case-id.mjs';
+import {createServerChatClient} from '../sarberki-chatbot-project/remote-chat-client.mjs';
 
 const TEST_ORIGIN='https://leafy-chimera-2403e5.netlify.app';
 const TENANT='sarberki-test';
@@ -24,6 +25,30 @@ const client=createCaseStoreClient({cookieReadOnly:true,
  getCsrfToken:async()=>(await session.restore()).csrfToken,
  request:createCookieJsonRequest()});
 let authenticated=false,epoch=0,expiryTimer=null;
+let chatEpoch=0,chatBusy=false;
+const chat=createServerChatClient({language:'hu',getCsrfToken:async()=>(await session.restore()).csrfToken});
+function resetChat(){
+ chatEpoch++;chat.reset();el('chat-input').value='';el('chat-output').textContent='';
+}
+el('chat-form').addEventListener('submit',async event=>{
+ event.preventDefault();if(!authenticated||chatBusy||document.visibilityState==='hidden')return;
+ const message=el('chat-input').value.trim();if(!message)return;
+ const turn=chatEpoch;chatBusy=true;el('chat-send').disabled=true;
+ el('chat-output').textContent='Szerveres tesztválasz készül…';
+ try{
+  const result=await chat.reply(message);
+  if(turn!==chatEpoch||!authenticated||document.visibilityState==='hidden')return;
+  el('chat-output').textContent=result.text;el('chat-input').value='';
+ }catch(error){
+  if(turn!==chatEpoch)return;
+  if(['AUTH_REQUIRED','FORBIDDEN'].includes(error.message)){failed(error);return;}
+  el('chat-output').textContent=error.message==='RATE_LIMITED'?
+   'Túl sok kérés. Várjon egy percet, majd próbálja újra.':
+   error.message==='INVALID_CHAT_INPUT'?'A beszélgetés elérte a méretkorlátot. Indítson új beszélgetést.':
+   'A szerveres teszt most nem elérhető. Próbálja újra később.';
+ }finally{chatBusy=false;el('chat-send').disabled=!authenticated;}
+});
+el('chat-reset').addEventListener('click',resetChat);
 function clearDetail(){
  el('case-detail').hidden=true;
  for(const id of ['detail-status','detail-summary','detail-capacity','detail-price','detail-draft'])el(id).textContent='';
@@ -39,9 +64,11 @@ function sessionUI(isAuthenticated,message){
  authenticated=isAuthenticated;el('session-status').textContent=message;
  el('login').hidden=isAuthenticated;el('logout').hidden=!isAuthenticated;
  el('load-cases').disabled=!isAuthenticated;
+ el('chat-input').disabled=!isAuthenticated;el('chat-send').disabled=!isAuthenticated||chatBusy;
+ el('chat-reset').disabled=!isAuthenticated;
 }
 function lockSession(message){
- session.clear();clearData();el('password').value='';
+ resetChat();session.clear();clearData();el('password').value='';
  sessionUI(false,message);
 }
 function current(turn){return turn===epoch&&authenticated&&document.visibilityState!=='hidden';}
@@ -61,13 +88,13 @@ el('login').addEventListener('submit',async event=>{
  event.preventDefault();
  if(location.origin!==TEST_ORIGIN){lockSession('A kapcsolat csak a kijelölt tesztoldalon használható.');return;}
  const email=el('email').value.trim(),password=el('password').value;
- el('password').value='';session.clear();clearData();const turn=epoch;
+ el('password').value='';resetChat();session.clear();clearData();const turn=epoch;
  sessionUI(false,'Bejelentkezés ellenőrzése…');
  try{await session.login(email,password);if(turn===epoch&&document.visibilityState!=='hidden')sessionUI(true,'Bejelentkezve. Az ügyeket külön kell betölteni.');}
  catch(error){if(turn===epoch)failed(error);}
 });
 el('logout').addEventListener('click',async()=>{
- clearData();const turn=epoch;sessionUI(false,'Kijelentkezés ellenőrzése…');
+ resetChat();clearData();const turn=epoch;sessionUI(false,'Kijelentkezés ellenőrzése…');
  try{await session.logout();if(turn===epoch&&!authenticated)el('session-status').textContent='Kijelentkezve.';}
  catch{if(turn===epoch&&!authenticated)el('session-status').textContent='A kijelentkezés nem ellenőrizhető. Próbálja újra.';}
 });

@@ -3,6 +3,7 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {resolve,sep} from 'node:path';
 import assert from 'node:assert/strict';
 import {chromium,webkit} from 'playwright';
+import {createServerChatPreview} from '../shared-core/server-chat-preview.mjs';
 const origin='https://leafy-chimera-2403e5.netlify.app',root=resolve(process.env.NAPI_PROOF_ROOT||'dist');
 const report={syntheticOnly:true,externalRequests:0,bookingCreated:false,emailSent:false,actualIPhoneVerified:false,checks:[]};
 let browser;
@@ -11,8 +12,11 @@ try{
  for(const [engine,launcher] of [['chromium',chromium],['webkit',webkit]]){
   browser=await launcher.launch({headless:true});
   const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
-  const state={authenticated:false,revision:1,allowRead:true,caseMethods:[],previewRevisions:[]};
+  const state={authenticated:false,revision:1,allowRead:true,caseMethods:[],previewRevisions:[],chatStatus:200,chatMessages:[]};
   const session={authenticated:true,tenantId:'sarberki-test',csrfToken:'a'.repeat(64),expiresAt:new Date(Date.now()+3600000).toISOString()};
+  const chatHandler=createServerChatPreview({env:{URL:origin,SERVER_CHAT_SYNTHETIC_ONLY:'true'},
+   sessionFactory:()=>({protectedRead:async event=>{assert.equal(state.authenticated,true);assert.equal(event.headers['x-csrf-token'],session.csrfToken);return {};}}),
+   fetchImpl:()=>{throw Error('NO_EXTERNAL_PROVIDER');}});
   await context.addInitScript(()=>{
    const timer=window.setTimeout;window.setTimeout=(fn,ms,...rest)=>timer(fn,ms===30000?1500:ms,...rest);
   });
@@ -20,6 +24,12 @@ try{
    const request=route.request(),url=new URL(request.url());
    if(url.origin!==origin){report.externalRequests++;return route.abort();}
    const json=(status,body)=>route.fulfill({status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify(body)});
+   if(url.pathname==='/api/server-chat-preview'){
+    state.chatMessages.push(request.postDataJSON().messages);
+    if(state.chatStatus!==200)return json(state.chatStatus,{error:'SYNTHETIC_FAILURE'});
+    const result=await chatHandler(new Request(request.url(),{method:request.method(),headers:{...request.headers(),origin},body:request.postData()}));
+    return json(result.status,await result.json());
+   }
    if(url.pathname==='/.netlify/functions/operator-session'){
     if(request.method()==='POST'){
      const body=request.postDataJSON();
@@ -64,6 +74,18 @@ try{
   await page.locator('#email').fill('reader@synthetic.invalid');await page.locator('#password').fill('SYNTHETIC_PASSWORD_ONLY');
   await page.locator('#login button').click();await page.locator('#session-status').filter({hasText:'Bejelentkezve'}).waitFor();
   assert.equal(await page.locator('#password').inputValue(),'');
+  await page.locator('#chat-input').fill('Van szabad Deluxe faház 2027.06.10-12 között?');
+  await page.locator('#chat-send').click();await page.locator('#chat-output').filter({hasText:'felnőtt'}).waitFor();
+  await page.locator('#chat-input').fill('2 felnőtt, gyermek nélkül.');state.chatStatus=429;
+  await page.locator('#chat-send').click();await page.locator('#chat-output').filter({hasText:'Várjon egy percet'}).waitFor();
+  state.chatStatus=200;await page.locator('#chat-send').click();
+  await page.locator('#chat-output').filter({hasText:/2027/}).waitFor();
+  assert.equal(state.chatMessages.length,3);assert.equal(state.chatMessages[2].length,2);
+  await page.locator('#chat-reset').click();assert.equal(await page.locator('#chat-output').innerText(),'');
+  await page.locator('#chat-input').fill('2 felnőtt, gyermek nélkül.');await page.locator('#chat-send').click();
+  await page.locator('#chat-output').filter({hasText:'hitelesen'}).waitFor();
+  assert.equal(state.chatMessages[3].length,1);
+  check(engine,'daily-server-chat-existing-engine-multi-turn-reset-rate-limit');
   await page.locator('#load-cases').click();await page.locator('#case-list button').waitFor();
   assert.match(await page.locator('#list-status').innerText(),/nem szűrik/);
   // The other surface changes the synthetic backing revision after listing.
@@ -85,7 +107,9 @@ try{
   assert.deepEqual(state.previewRevisions,[2,3]);
   check(engine,'reloads-synthetic-new-revision');
   await page.reload();await page.locator('#session-status').filter({hasText:'Bejelentkezve'}).waitFor();
+  assert.equal(await page.locator('#chat-output').innerText(),'');
   assert.equal(await page.locator('#case-list li').count(),0);assert.equal(await page.locator('#case-detail').isHidden(),true);
+  assert.equal(await page.locator('#chat-send').isDisabled(),true);
   state.allowRead=false;await page.locator('#load-cases').click();await page.locator('#session-status').filter({hasText:'jogosultság'}).waitFor();
   assert.equal(await page.locator('#case-list li').count(),0);assert.equal(await page.locator('#case-detail').isHidden(),true);
   assert.ok(state.caseMethods.every(method=>method==='GET'));

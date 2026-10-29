@@ -4,6 +4,9 @@ on:
     branches: [gmail-test-subject-allowlist]
     paths:
       - napi-kezelo/**
+      - sarberki-chatbot-project/remote-chat-client.mjs
+      - sarberki-chatbot-project/operator-session.mjs
+      - shared-core/server-chat-*.mjs
       - scripts/napi-kezelo-browser-proof.mjs
       - scripts/build-static.cjs
       - .github/workflows/sarberki-daily-ui.yml

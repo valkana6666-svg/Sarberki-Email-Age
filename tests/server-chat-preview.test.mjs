@@ -25,6 +25,32 @@ test('reset invalidates delayed response and failed requests do not add history'
  let release;const client=createServerChatClient({getCsrfToken:async()=>'synthetic',request:async()=>new Promise(r=>release=r)});
  const pending=client.reply('teszt');await new Promise(r=>setImmediate(r));client.reset();release(Response.json({synthetic:true,text:'válasz',language:'hu'}));await assert.rejects(pending,/SESSION_CHANGED/);
 });
+test('client reports rate limit and auth denial without retry or retaining failed turns',async()=>{
+ for(const [status,code] of [[429,'RATE_LIMITED'],[401,'AUTH_REQUIRED'],[403,'FORBIDDEN'],[503,'PREVIEW_UNAVAILABLE']]){
+  const payloads=[];let deny=true;
+  const client=createServerChatClient({getCsrfToken:async()=>'synthetic',request:async(_url,opts)=>{
+   payloads.push(JSON.parse(opts.body));return deny?new Response('Edge failure is not JSON',{status}):Response.json({synthetic:true,text:'teszt',language:'hu'});
+  }});
+  await assert.rejects(client.reply('elutasított'),new RegExp(code));assert.equal(payloads.length,1);
+  deny=false;await client.reply('következő');assert.deepEqual(payloads[1].messages,['következő']);
+ }
+});
+test('client enforces UTF-8 and aggregate limits before requesting auth or network',async()=>{
+ for(const text of ['a'.repeat(1000),'ő'.repeat(1000)]){
+  let requests=0,auth=0;
+  const client=createServerChatClient({getCsrfToken:async()=>{auth++;return 'synthetic';},request:async()=>{requests++;return Response.json({synthetic:true,text:'teszt',language:'hu'});}});
+  const accepted=text[0]==='a'?12:7;
+  for(let i=0;i<accepted;i++)await client.reply(text);
+  await assert.rejects(client.reply(text),/INVALID_CHAT_INPUT/);
+  assert.equal(requests,accepted);assert.equal(auth,accepted);
+ }
+});
+test('public chat accepts no client-selected case, tenant, role or evidence',async()=>{
+ for(const field of ['caseId','tenantId','role','evidence','action','access_token']){
+  const response=await handler(request({messages:['kitalált teszt'],language:'hu',[field]:'forged'}));
+  assert.equal(response.status,400);assert.deepEqual(Object.keys(await response.json()),['error']);
+ }
+});
 test('shared gateway owns both paths and direct function always stays closed',async()=>{
  const {createPriceQuoteHandler,config}=await import('../netlify/functions/price-quote.mjs');
  const {default:direct}=await import('../netlify/functions/server-chat-preview.mjs');

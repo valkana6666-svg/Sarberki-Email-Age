@@ -101,7 +101,10 @@ export function initOperatorPanel({documentRef=document,windowRef=typeof window=
   const turn=epoch,message=previewInput.value.trim();if(!message)return;
   previewOutput.textContent='Szerveres tesztválasz készül…';
   try{const answer=await serverChat.reply(message);if(turn!==epoch||!active)return;previewOutput.textContent=answer.text;previewInput.value='';}
-  catch{if(turn===epoch&&active)previewOutput.textContent='A szerveres próba nem elérhető; belépés és tesztengedély szükséges.';}
+  catch(error){if(turn===epoch&&active){
+   if(['AUTH_REQUIRED','FORBIDDEN'].includes(error.message)){session.clear();clear();failed(error);}
+   else previewOutput.textContent=error.message==='RATE_LIMITED'?'Túl sok kérés. Várjon egy percet, majd próbálja újra.':error.message==='INVALID_CHAT_INPUT'?'A beszélgetés elérte a méretkorlátot. Indítson új beszélgetést.':'A szerveres próba nem elérhető; belépés és tesztengedély szükséges.';
+  }}
  });
  get('server_live_preview_reset')?.addEventListener('click',()=>{serverChat.reset();if(previewInput)previewInput.value='';if(previewOutput)previewOutput.textContent='';});
  const stop=()=>{if(timer!==null)clearTimer?.(timer);timer=null;};
