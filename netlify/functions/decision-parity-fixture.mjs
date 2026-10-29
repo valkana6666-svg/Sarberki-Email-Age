@@ -1,6 +1,7 @@
 // Server-only migration proof: fixed synthetic data, no provider or persistence.
 // The public chatbot is not routed here and real messages are never accepted.
 import {createOperatorCookieSession,OperatorSessionError} from '../../shared-core/operator-cookie-session.mjs';
+import {replayServerChat} from '../../shared-core/server-chat-conversation.mjs';
 import {buildChatInquiryReply,buildEmailInquiryDraft} from '../../shared-core/inquiry-channel-adapters.mjs';
 const origin='https://leafy-chimera-2403e5.netlify.app';
 const messages=Object.freeze({hu:'2027-06-10 - 2027-06-12, 2 felnőtt, Deluxe faház.',de:'2027-06-10 - 2027-06-12, 2 Erwachsene, Deluxe Hütte.',en:'2027-06-10 - 2027-06-12, 2 adults, Deluxe cabin.',si:'2027-06-10 - 2027-06-12, 2 odrasla, Deluxe hiška.'});
@@ -11,12 +12,20 @@ export function createDecisionParityHandler({env=process.env,fetchImpl=fetch,ses
   if(event.httpMethod!=='POST')return reply(405,{error:'METHOD_NOT_ALLOWED'});
   if(event.isBase64Encoded||Buffer.byteLength(event.body||'')>128||Object.keys(event.queryStringParameters||{}).length)return reply(400,{error:'INVALID_INPUT'});
   let input;try{input=JSON.parse(event.body||'');}catch{return reply(400,{error:'INVALID_INPUT'});}
-  if(!input||Array.isArray(input)||Object.keys(input).join(',')!=='language'||!Object.hasOwn(messages,input.language))return reply(400,{error:'INVALID_INPUT'});
+  if(!input||Array.isArray(input)||!['language','language,scenario','scenario,language'].includes(Object.keys(input).join(','))||!Object.hasOwn(messages,input.language)||(input.scenario!==undefined&&(input.scenario!=='multi-turn'||input.language!=='hu')))return reply(400,{error:'INVALID_INPUT'});
   let session;try{
    if(event.headers?.origin!==origin)return reply(403,{error:'FORBIDDEN'});
    session=await sessionFactory({env,fetchImpl}).protectedRead(event);
   }catch(error){return reply(error instanceof OperatorSessionError?error.status:503,{error:error instanceof OperatorSessionError?error.code:'SESSION_UNAVAILABLE'});}
   try{
+   if(input.scenario==='multi-turn'){
+    const clock=()=>new Date('2026-10-29T12:00:00Z');
+    const first='Van szabad Deluxe faház 2027.06.10-12 között?';
+    const second='2 felnőtt, gyermek nélkül.';
+    const complete=replayServerChat({messages:[first,second],language:'hu'},{clock});
+    const isolated=replayServerChat({messages:[second],language:'hu'},{clock});
+    return reply(200,{fixture:'fixed-synthetic-multi-turn',language:'hu',contextRetained:complete.text!==isolated.text},session.setCookie);
+   }
    const message=messages[input.language];
    const options={message,language:input.language,now:new Date('2026-10-29T12:00:00Z'),tenantId:'sarberki-test'};
    const chat=buildChatInquiryReply(options),email=buildEmailInquiryDraft(options);

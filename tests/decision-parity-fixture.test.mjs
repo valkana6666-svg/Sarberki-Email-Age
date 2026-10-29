@@ -25,3 +25,11 @@ test('authentication failure cannot invoke the decision or return internal detai
  const handler=createDecisionParityHandler({env,sessionFactory:()=>({protectedRead:async()=>{throw Error('PRIVATE_ERROR');}})});
  const result=await handler(event({language:'hu'}));assert.equal(result.statusCode,503);assert.doesNotMatch(result.body,/PRIVATE_ERROR|decision|rules/);
 });
+
+test('fixed synthetic server route replays an isolated multi-turn conversation',async()=>{
+ const handler=createDecisionParityHandler({env,sessionFactory,fetchImpl:()=>{throw Error('network forbidden');}});
+ const result=await handler(event({language:'hu',scenario:'multi-turn'}));
+ assert.equal(result.statusCode,200);assert.deepEqual(JSON.parse(result.body),{fixture:'fixed-synthetic-multi-turn',language:'hu',contextRetained:true});
+ assert.equal((await handler(event({language:'de',scenario:'multi-turn'}))).statusCode,400);
+ assert.equal((await handler(event({language:'hu',scenario:'multi-turn',message:'private'}))).statusCode,400);
+});
