@@ -20,11 +20,14 @@ for(const button of document.querySelectorAll('[data-section]'))button.addEventL
  for(const item of document.querySelectorAll('[data-section]'))item.setAttribute('aria-pressed',String(item===button));
  el('section-heading').textContent=value[0];el('section-description').textContent=value[1];
  selectedSection=button.dataset.section;renderRows();
+ el('cases-title').focus({preventScroll:true});
+ el('cases-panel').scrollIntoView({behavior:globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});
 });
 
 const session=createOperatorSession();
 let authenticated=false,epoch=0;
 const emailReader=createDailyEmailReader({canRead:()=>authenticated,restoreSession:()=>session.restore(),clientId:document.querySelector('meta[name="google-oauth-client-id"]')?.content});
+let listLoaded=false;
 let selectedSection='incoming',rows=[],selected=null,editBase=null,canApprove=false,actionBusy=false;
 const request=createEpochRequestQueue({getEpoch:()=>epoch,isAuthenticated:()=>authenticated,
  prepare:()=>session.restore(),execute:createCloudCaseRequest()});
@@ -36,7 +39,11 @@ function resetActions(){
  el('draft-editor').value='';el('draft-editor').disabled=true;el('save-draft').disabled=true;
  el('approve-draft').disabled=true;el('approve-confirm').checked=false;el('approve-confirm').disabled=true;
 }
+function updateCounts(){
+ for(const section of Object.keys(sections))el('count-'+section).textContent=listLoaded?rows.filter(row=>row.category===section).length+' ügy':'Nincs betöltve';
+}
 function renderRows(){
+ updateCounts();el('cases-title').textContent=sections[selectedSection][0]+' – tárolt tesztügyek';
  const visible=rows.filter(row=>row.category===selectedSection),fragment=document.createDocumentFragment();
  visible.forEach((row,index)=>{
   const li=document.createElement('li'),label=document.createElement('span'),button=document.createElement('button');
@@ -45,7 +52,9 @@ function renderRows(){
   button.addEventListener('click',()=>openCase(row.caseId));li.append(label,button);fragment.append(li);
  });
  el('case-list').replaceChildren(fragment);
- if(authenticated&&rows.length)el('list-status').textContent=visible.length?'A kiválasztott kategória ügyei.':'Ebben a kategóriában nincs elérhető ügy.';
+ if(!authenticated)el('list-status').textContent='Az ügylistához jelentkezzen be a Belépés részben.';
+ else if(!listLoaded)el('list-status').textContent='A kategória ügylistája még nincs betöltve. Nyomja meg az Ügyek frissítése gombot.';
+ else el('list-status').textContent=visible.length?'A kiválasztott kategória: '+visible.length+' tárolt tesztügy.':'Ebben a kategóriában nincs elérhető tárolt tesztügy.';
 }
 
 let chatEpoch=0,chatBusy=false;
@@ -80,7 +89,7 @@ function clearDetail(){
  el('detail-link').href='../cloud-approval.html';
 }
 function clearData(message='A listához jelentkezzen be.'){
- epoch++;rows=[];
+ epoch++;rows=[];listLoaded=false;updateCounts();
  el('case-list').replaceChildren();clearDetail();el('list-status').textContent=message;
 }
 function sessionUI(isAuthenticated,message){
@@ -179,7 +188,7 @@ async function mutate(kind){
     (record.data?.state?.approval!=='internally_approved'||record.data.serverApproval?.draftHash!==base.hash)))throw Error('INVALID_DATA');
   const back=await request({tenantId:TENANT,caseId:base.caseId,action:'review-record'},'GET');if(!current(turn))return;
   if(back.revision!==record.revision)throw Error('CASE_CONFLICT');
-  rows=[];el('case-list').replaceChildren();
+  rows=[];listLoaded=false;updateCounts();el('case-list').replaceChildren();
   el('detail-status').textContent=kind==='edit'?'Módosítás mentve és visszaolvasva. A jóváhagyó külön nyissa meg újra.':'Belső jóváhagyás mentve és visszaolvasva. Nincs levélküldés vagy foglalás.';
   el('detail-draft').textContent=back.data.drafts.at(-1).text;
  }catch(error){if(current(turn)){
@@ -197,14 +206,14 @@ async function loadCases({selectAvailable=false}={}){
   if(!Array.isArray(result)||result.length>100)throw Error('INVALID_DATA');
   const seen=new Set();
   for(const row of result){if(row?.tenantId!==TENANT||!isIsolatedReviewCaseId(row.caseId)||!Number.isSafeInteger(row.revision)||row.revision<1||!sections[row.category]||seen.has(row.caseId))throw Error('INVALID_DATA');seen.add(row.caseId);}
-  rows=result;
+  rows=result;listLoaded=true;
   if(selectAvailable&&rows.length&&!rows.some(row=>row.category===selectedSection)){
    selectedSection=rows[0].category;
    for(const item of document.querySelectorAll('[data-section]'))item.setAttribute('aria-pressed',String(item.dataset.section===selectedSection));
    el('section-heading').textContent=sections[selectedSection][0];el('section-description').textContent=sections[selectedSection][1];
   }
   renderRows();
-  if(!rows.length)el('list-status').textContent='Az elérhető tesztügyek listája jelenleg üres.';
+
  }catch(error){if(current(turn)){
   if(['AUTH_REQUIRED','FORBIDDEN'].includes(error.message))failed(error);
   else {clearData('Az ügykezelési backend most nem elérhető. Később próbálja újra.');}

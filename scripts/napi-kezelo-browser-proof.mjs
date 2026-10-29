@@ -115,6 +115,19 @@ try{
   check(engine,'daily-gmail-readonly-list-and-open');
   await page.locator('#case-list button').waitFor();
   check(engine,'login-automatically-loads-cases');
+  assert.equal(await page.locator('#count-incoming').innerText(),'1 ügy');
+  assert.equal(await page.locator('#count-closed').innerText(),'0 ügy');
+  for(const section of ['approval','progress','closed']){
+   await page.locator('[data-section='+section+']').click();
+   assert.equal(await page.locator('[data-section='+section+']').getAttribute('aria-pressed'),'true');
+   assert.equal(await page.locator('#case-list li').count(),0);
+   assert.match(await page.locator('#list-status').innerText(),/nincs elérhető tárolt tesztügy/);
+   assert.equal(await page.evaluate(()=>document.activeElement.id),'cases-title');
+   await page.waitForFunction(()=>{const y=document.getElementById('cases-panel').getBoundingClientRect().top;return y>=0&&y<innerHeight-100;});
+  }
+  assert.equal(await page.locator('#email-list button').count(),3);
+  await page.locator('[data-section=incoming]').click();await page.locator('#case-list button').waitFor();
+  check(engine,'category-counts-empty-state-focus-scroll-and-mailbox-separation');
   assert.match(await page.locator('#list-status').innerText(),/kategória/);
   // The other surface changes the synthetic backing revision after listing.
   // Opening must re-read the shared current revision before requesting preview.

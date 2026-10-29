@@ -6,6 +6,8 @@ import {resolve} from 'node:path';
 
 class Element {
  constructor(){this.textContent='';this.value='';this.hidden=false;this.disabled=false;this.href='';this.dataset={};this.listeners={};this.children=[];this.attributes={};}
+ focus(){this.focused=true;}
+ scrollIntoView(options){this.scrollOptions=options;}
  addEventListener(type,fn){(this.listeners[type]??=[]).push(fn);}
  setAttribute(key,value){this.attributes[key]=value;}
  append(...children){this.children.push(...children);}
@@ -13,7 +15,7 @@ class Element {
  async dispatch(type,event={}){for(const fn of this.listeners[type]||[])await fn({preventDefault(){},...event});}
 }
 function fakeDocument(){
- const ids=['email-picker','email-picker-wrap','email-previous','email-next','read-email','email-status','email-list','email-detail','draft-editor','save-draft','approve-draft','approve-confirm','detail-messages','detail-facts','chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','detail-link','section-heading','section-description'];
+ const ids=['count-incoming','count-approval','count-progress','count-closed','cases-panel','cases-title','email-picker','email-picker-wrap','email-previous','email-next','read-email','email-status','email-list','email-detail','draft-editor','save-draft','approve-draft','approve-confirm','detail-messages','detail-facts','chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','detail-link','section-heading','section-description'];
  const elements=Object.fromEntries(ids.map(id=>[id,new Element()]));
  const nav=['incoming','approval','progress','closed'].map(section=>{const e=new Element();e.dataset.section=section;return e;});
  const listeners={};
@@ -62,10 +64,16 @@ test('daily view reuses protected cookie reader, keeps reading open, auto-loads 
   assert.equal(doc.elements['load-cases'].disabled,true);
   assert.match(doc.elements['session-status'].textContent,/bejelentkezés/iu);
   await doc.nav[1].dispatch('click');assert.equal(doc.elements['section-heading'].textContent,'Jóváhagyásra vár');
+  assert.equal(doc.elements['cases-title'].focused,true);assert.equal(doc.elements['cases-panel'].scrollOptions.block,'start');
+  assert.match(doc.elements['list-status'].textContent,/jelentkezzen be/);assert.equal(doc.elements['count-approval'].textContent,'Nincs betöltve');
   doc.elements.email.value='reader@synthetic.invalid';doc.elements.password.value='SYNTHETIC_ONLY';
   await doc.elements.login.dispatch('submit');assert.equal(doc.elements.password.value,'');assert.equal(doc.elements['load-cases'].disabled,false);
   assert.equal(doc.elements['chat-send'].disabled,false);
   assert.equal(doc.elements['case-list'].children.length,1);
+  assert.equal(doc.elements['count-incoming'].textContent,'1 ügy');assert.equal(doc.elements['count-closed'].textContent,'0 ügy');
+  await doc.nav[3].dispatch('click');assert.equal(doc.elements['case-list'].children.length,0);
+  assert.match(doc.elements['list-status'].textContent,/nincs elérhető tárolt tesztügy/);
+  assert.match(doc.elements['cases-title'].textContent,/Lezárt ügyek/);await doc.nav[0].dispatch('click');
   assert.doesNotMatch(doc.elements['list-status'].textContent,/jelentkezzen be/iu);
   doc.elements['chat-input'].value='Kitalált első üzenet';await doc.elements['chat-form'].dispatch('submit');
   assert.equal(doc.elements['chat-output'].textContent,'Szintetikus szerverválasz');
