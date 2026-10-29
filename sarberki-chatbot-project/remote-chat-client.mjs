@@ -11,7 +11,7 @@ export function createServerChatClient({request=fetch,getCsrfToken,language='aut
    const id=epoch, pending=[...turns,message];busy=true;
    try{
     const csrf=await getCsrfToken();if(id!==epoch)throw Error('SESSION_CHANGED');
-    const response=await send('/.netlify/functions/server-chat-preview',{method:'POST',credentials:'same-origin',cache:'no-store',redirect:'error',headers:{'content-type':'application/json','X-Sarberki-Operator':'1','X-CSRF-Token':csrf},body:JSON.stringify({language,messages:pending})});
+    const response=await send('/api/server-chat-preview',{method:'POST',credentials:'same-origin',cache:'no-store',redirect:'error',headers:{'content-type':'application/json','X-Sarberki-Operator':'1','X-CSRF-Token':csrf},body:JSON.stringify({language,messages:pending})});
     if(id!==epoch)throw Error('SESSION_CHANGED');if(!response.ok)throw Error('PREVIEW_UNAVAILABLE');
     const result=await response.json();if(id!==epoch)throw Error('SESSION_CHANGED');
     if(result?.synthetic!==true||typeof result.text!=='string'||!result.text||result.text.length>12000||!['hu','de','en','si'].includes(result.language)||Object.keys(result).sort().join(',')!=='language,synthetic,text')throw Error('INVALID_RESPONSE');

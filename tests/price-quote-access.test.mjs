@@ -69,7 +69,7 @@ test('closed gate, production and unsupported methods never authenticate or call
 });
 test('explicit rate-limited route replaces the default function URL; handler still denies anonymous calls',async()=>{
  const f=fixture();assert.equal((await f.handler(f.request({},origin+'/.netlify/functions/price-quote'))).status,401);noSources(f);
- assert.equal(config.path,'/api/price-quote');
+ assert.deepEqual(config.path,['/api/price-quote','/api/server-chat-preview']);
  assert.doesNotMatch(readFileSync(new URL('../netlify.toml',import.meta.url),'utf8'),/from = "\/api\/price-quote"/);
  assert.deepEqual(config.rateLimit,{windowLimit:10,windowSize:60,aggregateBy:['ip','domain'],action:'rate_limit'});
 });

@@ -1,3 +1,4 @@
+import {createServerChatPreview} from '../../shared-core/server-chat-preview.mjs';
 import {createOperatorCookieSession,OperatorSessionError} from '../../shared-core/operator-cookie-session.mjs';
 import {buildAvailabilityOptions} from './availability-options.mjs';
 import {fetchPublicBookingAvailability} from '../../price-source/sarberki-public-booking.mjs';
@@ -121,7 +122,9 @@ export async function handlePriceQuote(request,source=previoReadOnlyAdapter.getQ
 export function createPriceQuoteHandler({env=process.env,fetchImpl=fetch,
   source=previoReadOnlyAdapter.getQuote,fxSource=fetchMnbEurRate,
   capacitySource=fetchPublicBookingAvailability}={}) {
+  const chatPreview=createServerChatPreview({env,fetchImpl});
   return async request=>{
+    if(new URL(request.url).pathname==='/api/server-chat-preview')return chatPreview(request);
     if(request.method!=='POST')return Response.json({error:'POST szükséges.'},{status:405,headers:{'cache-control':'no-store','allow':'POST'}});
     const enabled=isLivePrevioEnabled(request,env.PREVIO_READ_SAFETY_VERIFIED==='true');
     if(!enabled)return handlePriceQuote(request,source,false,fxSource,capacitySource);
@@ -149,4 +152,4 @@ export function createPriceQuoteHandler({env=process.env,fetchImpl=fetch,
 export default createPriceQuoteHandler();
 // Distributed edge protection, per IP and domain; not an account-wide billing cap.
 // Explicit path is required for edge rate limiting. Netlify disables the default function URL.
-export const config={path:'/api/price-quote',rateLimit:{windowLimit:10,windowSize:60,aggregateBy:['ip','domain'],action:'rate_limit'}};
+export const config={path:['/api/price-quote','/api/server-chat-preview'],rateLimit:{windowLimit:10,windowSize:60,aggregateBy:['ip','domain'],action:'rate_limit'}};
