@@ -89,6 +89,10 @@ try{
   await page.goto(origin+'/napi-kezelo/');
   await page.locator('#session-status').filter({hasText:'bejelentkezés'}).waitFor();
   assert.equal(await page.locator('#load-cases').isDisabled(),true);
+  assert.equal(await page.locator('#email-picker-wrap').isVisible(),true);
+  assert.equal(await page.locator('#email-picker').isDisabled(),true);
+  assert.match(await page.locator('#email-picker').innerText(),/Még nincs beolvasott e-mail/);
+  check(engine,'mail-picker-visible-before-reading');
   assert.equal(await page.locator('nav button').count(),4);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.getByRole('button',{name:/Jóváhagyásra vár/}).click();

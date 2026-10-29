@@ -99,8 +99,8 @@ function sessionUI(isAuthenticated,message){
  el('chat-input').disabled=!isAuthenticated;el('chat-send').disabled=!isAuthenticated||chatBusy;
  el('chat-reset').disabled=!isAuthenticated;
 }
-function lockSession(message){
- emailReader.clear();resetChat();session.clear();clearData();el('password').value='';
+function lockSession(message,{preserveEmailConsent=false}={}){
+ if(preserveEmailConsent)emailReader.suspend();else emailReader.clear();resetChat();session.clear();clearData();el('password').value='';
  sessionUI(false,message);
 }
 function current(turn){return turn===epoch&&authenticated&&document.visibilityState!=='hidden';}
@@ -220,8 +220,8 @@ async function loadCases({selectAvailable=false}={}){
  }}finally{if(authenticated)el('load-cases').disabled=false;}
 }
 el('load-cases').addEventListener('click',()=>loadCases());
-function suspend(){lockSession('A nézet lezárult. Visszatéréskor a munkamenetet újra ellenőrizzük.');}
+function suspend({preserveEmailConsent=false}={}){lockSession('A nézet lezárult. Visszatéréskor a munkamenetet újra ellenőrizzük.',{preserveEmailConsent});}
 addEventListener('pagehide',suspend);
 addEventListener('pageshow',event=>{if(event.persisted)void resume();});
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')suspend();else void resume();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')suspend({preserveEmailConsent:true});else void resume();});
 void resume();

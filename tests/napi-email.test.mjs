@@ -15,7 +15,7 @@ function setup(){
  let authenticated=true,callback,reads=0,restores=0,release;
  const google={accounts:{oauth2:{initTokenClient(options){assert.equal(options.scope,'https://www.googleapis.com/auth/gmail.readonly');assert.equal(options.include_granted_scopes,false);callback=options.callback;return {requestAccessToken(){}};}}}};
  const reader=createDailyEmailReader({documentImpl:doc,canRead:()=>authenticated,restoreSession:async()=>{restores++;if(!authenticated)throw Error('AUTH_REQUIRED');},loadGoogleImpl:async()=>google,clientId:'synthetic',readInbox:async token=>{assert.equal(token,'SYNTHETIC_TOKEN');reads++;if(release)await release;return [0,1,2].map(index=>({payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Kitalált levél '+(index+1)},{name:'From',value:'guest@synthetic.invalid'}],body:{data:Buffer.from('Kitalált érdeklődés. Levél '+(index+1)).toString('base64url')}}}));}});
- return {reader,e:elements,doc,get callback(){return callback;},get reads(){return reads;},get restores(){return restores;},logout(){authenticated=false;reader.clear();},delay(p){release=p;}};
+ return {reader,e:elements,doc,get callback(){return callback;},get reads(){return reads;},get restores(){return restores;},hideForConsent(){doc.visibilityState='hidden';authenticated=false;reader.suspend();reader.setEnabled(false);},returnFromConsent(){doc.visibilityState='visible';authenticated=true;reader.setEnabled(true);},logout(){authenticated=false;reader.clear();},delay(p){release=p;}};
 }
 test('daily Gmail uses readonly consent and shared reader, opens original without persisting or submitting a case',async()=>{
  const h=setup();h.reader.setEnabled(true);await Promise.resolve();await h.e['read-email'].click();
@@ -30,7 +30,7 @@ test('daily Gmail uses readonly consent and shared reader, opens original withou
  await h.e['email-list'].children[0].children[0].click();assert.equal(h.e['email-picker'].value,'0');
  assert.equal(h.e['email-list'].children[0].children[0].attributes['aria-pressed'],'true');
  assert.match(h.e['email-detail'].textContent,/Levél 1/);assert.match(h.e['email-status'].textContent,/átadás még nem/);
- h.logout();assert.equal(h.e['email-picker'].children.length,0);assert.equal(h.e['email-picker-wrap'].hidden,true);assert.equal(h.e['email-list'].children.length,0);assert.equal(h.e['email-detail'].textContent,'');assert.equal(h.e['read-email'].disabled,true);
+ h.logout();assert.equal(h.e['email-picker'].children.length,1);assert.equal(h.e['email-picker-wrap'].hidden,false);assert.equal(h.e['email-list'].children.length,0);assert.equal(h.e['email-detail'].textContent,'');assert.equal(h.e['read-email'].disabled,true);
 });
 test('late OAuth and mailbox responses cannot reopen messages after logout',async()=>{
  for(const stage of ['consent','reading']){
@@ -43,5 +43,21 @@ test('late OAuth and mailbox responses cannot reopen messages after logout',asyn
 });
 test('failed consent allows manual retry without claiming successful reading',async()=>{
  const h=setup();h.reader.setEnabled(true);await Promise.resolve();await h.e['read-email'].click();await h.callback({error:'access_denied'});
- assert.equal(h.reads,0);assert.equal(h.e['read-email'].disabled,false);assert.match(h.e['email-status'].textContent,/nem sikerült/);
+ assert.equal(h.reads,0);assert.equal(h.e['read-email'].disabled,false);assert.match(h.e['email-status'].textContent,/engedélyt nem adta/);
+});
+
+test('Google consent survives popup visibility change but waits for restored operator authentication',async()=>{
+ const h=setup();h.reader.setEnabled(true);await Promise.resolve();await h.e['read-email'].click();
+ h.hideForConsent();assert.equal(h.e['email-list'].children.length,0);
+ await h.callback({access_token:'SYNTHETIC_TOKEN'});assert.equal(h.reads,0);assert.equal(h.e['read-email'].disabled,true);
+ h.returnFromConsent();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(h.reads,1);assert.equal(h.restores,1);assert.equal(h.e['email-list'].children.length,3);
+ assert.match(h.e['email-detail'].textContent,/Kitalált érdeklődés/);
+ h.logout();
+});
+test('logout invalidates consent queued while the Google popup hides the page',async()=>{
+ const h=setup();h.reader.setEnabled(true);await Promise.resolve();await h.e['read-email'].click();
+ h.hideForConsent();await h.callback({access_token:'SYNTHETIC_TOKEN'});h.logout();h.returnFromConsent();
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(h.reads,0);assert.equal(h.e['email-list'].children.length,0);
+ assert.equal(h.e['email-picker-wrap'].hidden,false);assert.equal(h.e['email-picker'].disabled,true);
 });
