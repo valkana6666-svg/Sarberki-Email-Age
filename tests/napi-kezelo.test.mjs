@@ -13,11 +13,11 @@ class Element {
  async dispatch(type,event={}){for(const fn of this.listeners[type]||[])await fn({preventDefault(){},...event});}
 }
 function fakeDocument(){
- const ids=['draft-editor','save-draft','approve-draft','approve-confirm','detail-messages','detail-facts','chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','detail-link','section-heading','section-description'];
+ const ids=['read-email','email-status','email-list','email-detail','draft-editor','save-draft','approve-draft','approve-confirm','detail-messages','detail-facts','chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','detail-link','section-heading','section-description'];
  const elements=Object.fromEntries(ids.map(id=>[id,new Element()]));
  const nav=['incoming','approval','progress','closed'].map(section=>{const e=new Element();e.dataset.section=section;return e;});
  const listeners={};
- return {elements,nav,visibilityState:'visible',getElementById:id=>elements[id],querySelectorAll:()=>nav,
+ return {elements,nav,visibilityState:'visible',getElementById:id=>elements[id],querySelectorAll:()=>nav,querySelector:()=>({content:'synthetic-client'}),
   createDocumentFragment(){const e=new Element();e.fragment=true;return e;},createElement:()=>new Element(),
   addEventListener(type,fn){(listeners[type]??=[]).push(fn);},async dispatch(type){for(const fn of listeners[type]||[])await fn();}};
 }
@@ -29,7 +29,7 @@ const preview=()=>({caseId:'case-synthetic',revision:1,persisted:false,approval:
  safety:{emailSent:false,bookingCreated:false,approval:'pending'}},
  readOnlyFreshness:{verified:true,syntheticOnly:true,source:'stored-synthetic-case',tenantId:'sarberki-test',caseId:'case-synthetic',revision:1,checkedAt:new Date().toISOString()}});
 
-test('daily view reuses protected cookie reader, clears stale data and rejects late responses',async()=>{
+test('daily view reuses protected cookie reader, keeps reading open, auto-loads after login and rejects late responses',async()=>{
  const previous={document:globalThis.document,location:globalThis.location,fetch:globalThis.fetch,addEventListener:globalThis.addEventListener,setTimeout:globalThis.setTimeout,clearTimeout:globalThis.clearTimeout};
  const doc=fakeDocument(),timers=new Map(),events={},calls=[],sessionMeta=meta();let loggedIn=false,clock=0,delayed=false,release,chatStatus=200;
  const chats=[];
@@ -65,6 +65,8 @@ test('daily view reuses protected cookie reader, clears stale data and rejects l
   doc.elements.email.value='reader@synthetic.invalid';doc.elements.password.value='SYNTHETIC_ONLY';
   await doc.elements.login.dispatch('submit');assert.equal(doc.elements.password.value,'');assert.equal(doc.elements['load-cases'].disabled,false);
   assert.equal(doc.elements['chat-send'].disabled,false);
+  assert.equal(doc.elements['case-list'].children.length,1);
+  assert.doesNotMatch(doc.elements['list-status'].textContent,/jelentkezzen be/iu);
   doc.elements['chat-input'].value='Kitalált első üzenet';await doc.elements['chat-form'].dispatch('submit');
   assert.equal(doc.elements['chat-output'].textContent,'Szintetikus szerverválasz');
   doc.elements['chat-input'].value='Kitalált második üzenet';chatStatus=429;await doc.elements['chat-form'].dispatch('submit');
@@ -83,9 +85,9 @@ test('daily view reuses protected cookie reader, clears stale data and rejects l
   assert.match(doc.elements['detail-capacity'].textContent,/nem igazolt/);
   assert.doesNotMatch(doc.elements['detail-draft'].textContent,/UNVERIFIED_DRAFT/);
   assert.match(doc.elements['detail-link'].href,/cloud-approval\.html\?caseId=case-synthetic/);
-  const expiry=[...timers.values()].find(t=>t.ms===30000);assert.ok(expiry);expiry.fn();
-  assert.equal(doc.elements['case-detail'].hidden,true);assert.equal(doc.elements['case-list'].children.length,0);
-  assert.match(doc.elements['list-status'].textContent,/frissessége nem igazolt/iu);
+  assert.equal([...timers.values()].some(t=>t.ms===30000),false);
+  for(const timer of [...timers.values()])timer.fn();
+  assert.equal(doc.elements['case-detail'].hidden,false);assert.equal(doc.elements['case-list'].children.length,1);
   await doc.elements['load-cases'].dispatch('click');const btn=doc.elements['case-list'].children[0].children[1];
   delayed=true;const pending=btn.dispatch('click');
   for(let i=0;i<10&&!release;i++)await new Promise(resolve=>setImmediate(resolve));
@@ -93,6 +95,10 @@ test('daily view reuses protected cookie reader, clears stale data and rejects l
   assert.equal(doc.elements['case-detail'].hidden,true);assert.equal(doc.elements['detail-summary'].textContent,'');
   assert.equal(doc.elements['case-list'].children.length,0);assert.equal(doc.elements['load-cases'].disabled,true);
   assert.equal(doc.elements['chat-output'].textContent,'');assert.equal(doc.elements['chat-send'].disabled,true);
+  delayed=false;doc.visibilityState='visible';await doc.dispatch('visibilitychange');
+  for(let i=0;i<10&&!doc.elements['case-list'].children.length;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(doc.elements['case-list'].children.length,1);
+  assert.equal(doc.elements['case-detail'].hidden,true);
   assert.ok(calls.filter(x=>x.path.endsWith('/booking-cases')).every(x=>x.method==='GET'));
   assert.ok(calls.filter(x=>x.path.endsWith('/booking-cases')).every(x=>new URLSearchParams(x.query).get('tenantId')==='sarberki-test'));
  }finally{Object.assign(globalThis,previous);}

@@ -7,7 +7,7 @@ fs.rmSync(output, {recursive:true, force:true});
 fs.mkdirSync(output);
 const allowedDirectories = new Set(['business','guest-reply','shared-core','price-source','sarberki-chatbot-project','napi-kezelo']);
 const chatbotAssets = new Set(['index.html','chat-session.mjs','chat-view.mjs','remote-chat-client.mjs','inquiry-preview.mjs','operator-session.mjs','version-status.mjs','manifest.webmanifest','icons']);
-const dailyAssets = new Set(['index.html','napi.mjs','napi.css','manifest.webmanifest','icons']);
+const dailyAssets = new Set(['index.html','napi.mjs','napi-email.mjs','napi.css','manifest.webmanifest','icons']);
 function copyDirectory(source, relative='') {
  for (const entry of fs.readdirSync(source,{withFileTypes:true})) {
   const rel=path.join(relative,entry.name);

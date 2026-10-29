@@ -1,3 +1,4 @@
+import {createDailyEmailReader} from './napi-email.mjs';
 import {createOperatorSession} from '../sarberki-chatbot-project/operator-session.mjs';
 import {isIsolatedReviewCaseId} from '../shared-core/isolated-review-case-id.mjs';
 import {createCloudCaseRequest} from '../shared-core/cloud-case-request.mjs';
@@ -7,7 +8,6 @@ import {createServerChatClient} from '../sarberki-chatbot-project/remote-chat-cl
 
 const TEST_ORIGIN='https://leafy-chimera-2403e5.netlify.app';
 const TENANT='sarberki-test';
-const MAX_DISPLAY_MS=30000;
 const sections=Object.freeze({
  incoming:['Beérkezett ügyek','Új vendégüzenetek és feldolgozásra váró megkeresések.'],
  approval:['Jóváhagyásra vár','Átnézendő választervezetek.'],
@@ -23,7 +23,8 @@ for(const button of document.querySelectorAll('[data-section]'))button.addEventL
 });
 
 const session=createOperatorSession();
-let authenticated=false,epoch=0,expiryTimer=null;
+let authenticated=false,epoch=0;
+const emailReader=createDailyEmailReader({canRead:()=>authenticated,restoreSession:()=>session.restore(),clientId:document.querySelector('meta[name="google-oauth-client-id"]')?.content});
 let selectedSection='incoming',rows=[],selected=null,editBase=null,canApprove=false,actionBusy=false;
 const request=createEpochRequestQueue({getEpoch:()=>epoch,isAuthenticated:()=>authenticated,
  prepare:()=>session.restore(),execute:createCloudCaseRequest()});
@@ -79,20 +80,18 @@ function clearDetail(){
  el('detail-link').href='../cloud-approval.html';
 }
 function clearData(message='A listához jelentkezzen be.'){
- epoch++;rows=[];if(expiryTimer!==null)clearTimeout(expiryTimer);expiryTimer=null;
+ epoch++;rows=[];
  el('case-list').replaceChildren();clearDetail();el('list-status').textContent=message;
 }
-function expireData(){clearData('Az adatok frissessége nem igazolt. Töltse be újra az ügyeket.');}
-function startExpiry(){if(expiryTimer!==null)clearTimeout(expiryTimer);expiryTimer=setTimeout(expireData,MAX_DISPLAY_MS);}
 function sessionUI(isAuthenticated,message){
- authenticated=isAuthenticated;el('session-status').textContent=message;
+ authenticated=isAuthenticated;emailReader.setEnabled(isAuthenticated);el('session-status').textContent=message;
  el('login').hidden=isAuthenticated;el('logout').hidden=!isAuthenticated;
  el('load-cases').disabled=!isAuthenticated;
  el('chat-input').disabled=!isAuthenticated;el('chat-send').disabled=!isAuthenticated||chatBusy;
  el('chat-reset').disabled=!isAuthenticated;
 }
 function lockSession(message){
- resetChat();session.clear();clearData();el('password').value='';
+ emailReader.clear();resetChat();session.clear();clearData();el('password').value='';
  sessionUI(false,message);
 }
 function current(turn){return turn===epoch&&authenticated&&document.visibilityState!=='hidden';}
@@ -105,20 +104,23 @@ async function resume(){
  if(document.visibilityState==='hidden')return;
  const turn=epoch;
  try{await session.restore();if(turn!==epoch||document.visibilityState==='hidden')return;
-  sessionUI(true,'Bejelentkezve. Az ügyeket külön kell betölteni.');
+  sessionUI(true,'Bejelentkezve.');
+  await loadCases({selectAvailable:true});
  }catch(error){if(turn===epoch)failed(error);}
 }
 el('login').addEventListener('submit',async event=>{
  event.preventDefault();
  if(location.origin!==TEST_ORIGIN){lockSession('A kapcsolat csak a kijelölt tesztoldalon használható.');return;}
  const email=el('email').value.trim(),password=el('password').value;
- el('password').value='';resetChat();session.clear();clearData();const turn=epoch;
+ el('password').value='';emailReader.clear();resetChat();session.clear();clearData();const turn=epoch;
  sessionUI(false,'Bejelentkezés ellenőrzése…');
- try{await session.login(email,password);if(turn===epoch&&document.visibilityState!=='hidden')sessionUI(true,'Bejelentkezve. Az ügyeket külön kell betölteni.');}
+ try{await session.login(email,password);if(turn===epoch&&document.visibilityState!=='hidden'){
+  sessionUI(true,'Bejelentkezve.');await loadCases({selectAvailable:true});
+ }}
  catch(error){if(turn===epoch)failed(error);}
 });
 el('logout').addEventListener('click',async()=>{
- resetChat();clearData();const turn=epoch;sessionUI(false,'Kijelentkezés ellenőrzése…');
+ emailReader.clear();resetChat();clearData();const turn=epoch;sessionUI(false,'Kijelentkezés ellenőrzése…');
  try{await session.logout();if(turn===epoch&&!authenticated)el('session-status').textContent='Kijelentkezve.';}
  catch{if(turn===epoch&&!authenticated)el('session-status').textContent='A kijelentkezés nem ellenőrizhető. Próbálja újra.';}
 });
@@ -155,7 +157,6 @@ async function openCase(caseId){
    el('approve-confirm').disabled=!canApprove;
    if(loaded.canEditDraft){editBase=loaded;el('draft-editor').value=loaded.text;el('draft-editor').disabled=false;}
   }
-  startExpiry();
  }catch(error){if(current(turn)){clearDetail();if(['AUTH_REQUIRED','FORBIDDEN'].includes(error.message))failed(error);else el('list-status').textContent='Az ügy most nem tölthető be. Töltse be újra az ügyeket.';}}
 }
 el('draft-editor').addEventListener('input',()=>{
@@ -188,7 +189,7 @@ async function mutate(kind){
 }
 el('save-draft').addEventListener('click',()=>mutate('edit'));
 el('approve-draft').addEventListener('click',()=>mutate('approve'));
-el('load-cases').addEventListener('click',async()=>{
+async function loadCases({selectAvailable=false}={}){
  if(!authenticated||actionBusy)return;
  clearData('Ügyek ellenőrzése…');const turn=epoch;el('load-cases').disabled=true;
  try{
@@ -196,14 +197,20 @@ el('load-cases').addEventListener('click',async()=>{
   if(!Array.isArray(result)||result.length>100)throw Error('INVALID_DATA');
   const seen=new Set();
   for(const row of result){if(row?.tenantId!==TENANT||!isIsolatedReviewCaseId(row.caseId)||!Number.isSafeInteger(row.revision)||row.revision<1||!sections[row.category]||seen.has(row.caseId))throw Error('INVALID_DATA');seen.add(row.caseId);}
-  rows=result;renderRows();
+  rows=result;
+  if(selectAvailable&&rows.length&&!rows.some(row=>row.category===selectedSection)){
+   selectedSection=rows[0].category;
+   for(const item of document.querySelectorAll('[data-section]'))item.setAttribute('aria-pressed',String(item.dataset.section===selectedSection));
+   el('section-heading').textContent=sections[selectedSection][0];el('section-description').textContent=sections[selectedSection][1];
+  }
+  renderRows();
   if(!rows.length)el('list-status').textContent='Az elérhető tesztügyek listája jelenleg üres.';
-  startExpiry();
  }catch(error){if(current(turn)){
   if(['AUTH_REQUIRED','FORBIDDEN'].includes(error.message))failed(error);
   else {clearData('Az ügykezelési backend most nem elérhető. Később próbálja újra.');}
  }}finally{if(authenticated)el('load-cases').disabled=false;}
-});
+}
+el('load-cases').addEventListener('click',()=>loadCases());
 function suspend(){lockSession('A nézet lezárult. Visszatéréskor a munkamenetet újra ellenőrizzük.');}
 addEventListener('pagehide',suspend);
 addEventListener('pageshow',event=>{if(event.persisted)void resume();});

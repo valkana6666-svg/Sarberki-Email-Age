@@ -23,11 +23,15 @@ try{
   const chatHandler=createServerChatPreview({env:{URL:origin,SERVER_CHAT_SYNTHETIC_ONLY:'true'},
    sessionFactory:()=>({protectedRead:async event=>{assert.equal(state.authenticated,true);assert.equal(event.headers['x-csrf-token'],session.csrfToken);return {};}}),
    fetchImpl:()=>{throw Error('NO_EXTERNAL_PROVIDER');}});
-  await context.addInitScript(()=>{
-   const timer=window.setTimeout;window.setTimeout=(fn,ms,...rest)=>timer(fn,ms===30000?1500:ms,...rest);
-  });
+
   await context.route('**/*',async route=>{
    const request=route.request(),url=new URL(request.url());
+   if(url.href==='https://accounts.google.com/gsi/client'&&new URL(request.frame().url()).pathname==='/napi-kezelo/')return route.fulfill({status:200,contentType:'text/javascript',body:'window.google={accounts:{oauth2:{initTokenClient(options){return {requestAccessToken(){options.callback({access_token:"SYNTHETIC_TOKEN"});}};}}}};'});
+   if(url.origin==='https://gmail.googleapis.com'){
+    assert.equal(request.method(),'GET');assert.equal(request.headers().authorization,'Bearer SYNTHETIC_TOKEN');
+    const body=url.pathname.endsWith('/profile')?{emailAddress:'sarberkiprojecttest@gmail.com'}:url.pathname.endsWith('/messages')?{messages:[{id:'abcdef1234567890'}]}:{id:'abcdef1234567890',internalDate:String(Date.parse('2026-10-20T12:00:00Z')),labelIds:['INBOX'],payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Kitalált napi e-mail'},{name:'From',value:'guest@synthetic.invalid'}],body:{data:Buffer.from('Kitalált eredeti e-mail.').toString('base64url')}}};
+    return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
+   }
    if(url.origin!==origin){
     report.blockedExternalRequests++;
     // The unchanged legacy test page declares Google GSI. Abort it locally;
@@ -97,7 +101,13 @@ try{
   assert.equal(await page.locator('#password').inputValue(),'');
   assert.equal(await page.locator('#chat-form').isVisible(),false);
   check(engine,'daily-hides-developer-chat-tool');
-  await page.locator('#load-cases').click();await page.locator('#case-list button').waitFor();
+  await page.waitForFunction(()=>Boolean(window.google?.accounts?.oauth2?.initTokenClient));
+  await page.locator('#read-email').click();await page.locator('#email-list button').waitFor();
+  await page.locator('#email-list button').click();
+  assert.match(await page.locator('#email-detail').innerText(),/Kitalált eredeti e-mail/);
+  check(engine,'daily-gmail-readonly-list-and-open');
+  await page.locator('#case-list button').waitFor();
+  check(engine,'login-automatically-loads-cases');
   assert.match(await page.locator('#list-status').innerText(),/kategória/);
   // The other surface changes the synthetic backing revision after listing.
   // Opening must re-read the shared current revision before requesting preview.
@@ -112,19 +122,22 @@ try{
   assert.equal(await page.locator('#approve-draft').isDisabled(),true);
   assert.match(await page.locator('#detail-link').getAttribute('href'),/caseId=case-synthetic/);
   check(engine,'synthetic-cookie-reader-no-unauthorized-actions');
-  await page.locator('#list-status').filter({hasText:'frissessége nem igazolt'}).waitFor({timeout:5000});
-  assert.equal(await page.locator('#case-detail').isHidden(),true);assert.equal(await page.locator('#case-list li').count(),0);
-  check(engine,'stale-data-cleared');
+  await page.clock.install();await page.clock.fastForward(31000);
+  assert.equal(await page.locator('#case-detail').isVisible(),true);assert.equal(await page.locator('#case-list li').count(),1);
+  assert.match(await page.locator('#detail-messages').innerText(),/Kitalált vendégüzenet/);
+  check(engine,'reading-remains-open-beyond-thirty-seconds');
   state.revision=3;await page.locator('#load-cases').click();await page.locator('#case-list button').waitFor();
   await page.locator('#case-list button').click();await page.locator('#detail-status').filter({hasText:'közös ügytárból'}).waitFor();
   assert.deepEqual(state.previewRevisions,[2,3]);
   check(engine,'reloads-synthetic-new-revision');
   await page.reload();await page.locator('#session-status').filter({hasText:'Bejelentkezve'}).waitFor();
   assert.equal(await page.locator('#chat-output').innerText(),'');
-  assert.equal(await page.locator('#case-list li').count(),0);assert.equal(await page.locator('#case-detail').isHidden(),true);
+  await page.locator('#case-list button').waitFor();
+  assert.equal(await page.locator('#case-list li').count(),1);assert.equal(await page.locator('#case-detail').isHidden(),true);
   state.allowRead=false;await page.locator('#load-cases').click();await page.locator('#session-status').filter({hasText:'jogosultság'}).waitFor();
   assert.equal(await page.locator('#case-list li').count(),0);assert.equal(await page.locator('#case-detail').isHidden(),true);
   assert.equal(await page.locator('#chat-send').isDisabled(),true);
+  assert.equal(await page.locator('#email-list li').count(),0);assert.equal(await page.locator('#email-detail').innerText(),'');
   assert.ok(state.caseMethods.every(method=>method==='GET'));
   assert.equal(await page.evaluate(()=>localStorage.length+sessionStorage.length),0);
   assert.deepEqual(errors,[]);check(engine,'reload-denied-reader-no-cache-or-writes');
@@ -133,6 +146,17 @@ try{
   await page.locator('[data-section=approval]').click();await page.locator('#load-cases').click();await page.locator('#case-list button').click();
   await page.locator('#draft-editor:not([disabled])').waitFor();
   assert.equal(await page.locator('#approve-confirm').isDisabled(),true);
+  await page.locator('#draft-editor').fill('Elavult verzióból nem menthető.');
+  await page.clock.fastForward(31000);
+  assert.equal(await page.locator('#case-detail').isVisible(),true);
+  assert.equal(await page.locator('#draft-editor').inputValue(),'Elavult verzióból nem menthető.');
+  const oldDraft=state.draftText;state.revision++;
+  await page.locator('#save-draft').click();
+  await page.locator('#list-status').filter({hasText:'közben megváltozott'}).waitFor();
+  assert.equal(state.draftText,oldDraft);
+  check(engine,'long-reading-preserves-edits-and-rejects-stale-version');
+  await page.locator('#load-cases').click();await page.locator('#case-list button').click();
+  await page.locator('#draft-editor:not([disabled])').waitFor();
   await page.locator('#draft-editor').fill('Kitalált szerkesztett válasz.');await page.locator('#save-draft').click();
   await page.locator('#detail-status').filter({hasText:'Módosítás mentve és visszaolvasva'}).waitFor();
   assert.equal(state.draftText,'Kitalált szerkesztett válasz.');

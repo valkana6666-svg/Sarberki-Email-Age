@@ -44,8 +44,10 @@ test('approved subject variants and descriptive inquiry subjects work while unre
 
 test('Gmail bridge enforces the predicate after inbox listing', () => {
   assert.match(source, /import\('\.\/gmail-policy\.mjs'\)/u);
-  assert.match(source, /messages\.filter\(isTestInquiry\)/u);
-  assert.match(source, /assertTestGmailAccount\(await profileResponse\.json\(\)\)/u);
+  const transport=fs.readFileSync(new URL('./gmail-policy.mjs',import.meta.url),'utf8');
+  assert.match(source,/readTestGmailInbox\(token/u);
+  assert.match(transport, /messages\.filter\(isTestInquiry\)/u);
+  assert.match(transport, /assertTestGmailAccount\(await profileResponse\.json\(\)\)/u);
   assert.match(source, /gmail\.readonly/u);
   assert.equal(source.includes('gmail.send'), false);
   assert.equal(source.includes('gmail.modify'), false);
@@ -106,10 +108,11 @@ test('parsed child ages are not falsely marked missing',()=>{
 
 
 test('Gmail bridge can read HTML-only inquiries',()=>{
-  assert.match(source,/function htmlText\(part\)/u);
-  assert.match(source,/mimeType === 'text\/html'/u);
-  assert.match(source,/new DOMParser\(\)\.parseFromString/u);
-  assert.match(source,/return plainText\(part\) \|\| htmlText\(part\)/u);
+  const mime=fs.readFileSync(new URL('./gmail-policy.mjs',import.meta.url),'utf8');
+  assert.match(mime,/function htmlText\(part\)/u);
+  assert.match(mime,/mimeType === 'text\/html'/u);
+  assert.match(mime,/new DOMParser\(\)\.parseFromString/u);
+  assert.match(mime,/return plainText\(part\) \|\| htmlText\(part\)/u);
   assert.match(source,/readableBody\(message\.payload\)/u);
 });
 
