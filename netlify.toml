@@ -40,3 +40,8 @@
   for = "/sarberki-chatbot-project/manifest.webmanifest"
   [headers.values]
     Content-Type = "application/manifest+json; charset=utf-8"
+
+[[headers]]
+  for = "/napi-kezelo/manifest.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json; charset=utf-8"
