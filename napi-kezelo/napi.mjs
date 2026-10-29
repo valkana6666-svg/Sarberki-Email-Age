@@ -145,7 +145,9 @@ async function openCase(caseId){
   el('detail-capacity').textContent='Tesztadat. Valós foglalhatóság ebből nem igazolt.';
   el('detail-price').textContent=record.approvalBlockedReason?'A jóváhagyáshoz szükséges ügyre kötött ár- és kapacitásbizonyíték hiányzik.':'';
   el('detail-link').href='../cloud-approval.html?'+new URLSearchParams({caseId});
-  if(record.data.state.approval==='pending'&&draft?.text&&
+  const draftCurrent=draft?.revision===record.data.state.revision&&draft?.basedOnMessageCount===record.data.messages.length;
+  if(draft&&!draftCurrent)el('detail-price').textContent='A tárolt válasz korábbi ügyállapothoz tartozik. Új ellenőrzött tervezet szükséges; szerkesztése és jóváhagyása itt tiltott.';
+  if(draftCurrent&&record.data.state.approval==='pending'&&draft?.text&&
    (record.approvalBlockedReason==='EXACT_REVIEW_EVIDENCE_REQUIRED'||draft.synthetic===true&&draft.reviewStatus==='internal_review_required')){
    const loaded=await review.load(caseId);if(!current(turn))return;
    if(loaded.revision!==record.revision)throw Error('CASE_CONFLICT');

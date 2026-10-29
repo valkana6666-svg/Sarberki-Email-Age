@@ -95,18 +95,8 @@ try{
   await page.locator('#email').fill('reader@synthetic.invalid');await page.locator('#password').fill('SYNTHETIC_PASSWORD_ONLY');
   await page.locator('#login button').click();await page.locator('#session-status').filter({hasText:'Bejelentkezve'}).waitFor();
   assert.equal(await page.locator('#password').inputValue(),'');
-  await page.locator('#chat-input').fill('Van szabad Deluxe faház 2027.06.10-12 között?');
-  await page.locator('#chat-send').click();await page.locator('#chat-output').filter({hasText:'felnőtt'}).waitFor();
-  await page.locator('#chat-input').fill('2 felnőtt, gyermek nélkül.');state.chatStatus=429;
-  await page.locator('#chat-send').click();await page.locator('#chat-output').filter({hasText:'Várjon egy percet'}).waitFor();
-  state.chatStatus=200;await page.locator('#chat-send').click();
-  await page.locator('#chat-output').filter({hasText:/2027/}).waitFor();
-  assert.equal(state.chatMessages.length,3);assert.equal(state.chatMessages[2].length,2);
-  await page.locator('#chat-reset').click();assert.equal(await page.locator('#chat-output').innerText(),'');
-  await page.locator('#chat-input').fill('2 felnőtt, gyermek nélkül.');await page.locator('#chat-send').click();
-  await page.locator('#chat-output').filter({hasText:'hitelesen'}).waitFor();
-  assert.equal(state.chatMessages[3].length,1);
-  check(engine,'daily-server-chat-existing-engine-multi-turn-reset-rate-limit');
+  assert.equal(await page.locator('#chat-form').isVisible(),false);
+  check(engine,'daily-hides-developer-chat-tool');
   await page.locator('#load-cases').click();await page.locator('#case-list button').waitFor();
   assert.match(await page.locator('#list-status').innerText(),/kategória/);
   // The other surface changes the synthetic backing revision after listing.
