@@ -54,3 +54,20 @@ A rövid „Van szabad Deluxe faház 2027.06.10-12 között?” üzenet az auto 
 A napi mobil próba a változatlan eredeti TESZT megnyitásakor deklarált Google GSI scriptet helyben blokkolja, ahogy minden külső kérést. A diagnosztika külön számolja a blokkolt kérést és az ismeretlen külső próbálkozást; a napi oldal külső próbája továbbra hiba. Az első két CI hibás tesztelvárását javítottuk, nem alkalmazáshibát fedtünk el.
 
 Napi mobil SUCCESS: https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/40831898713 , 14 PASS (Chromium + WebKit), 0 tényleges külső kérés, 2 blokkolt régi GSI loader, 0 váratlan külső próbálkozás. A nyelvi javítás utáni új mobil futás külön ellenőrizendő.
+
+## Kiadás előtti végleges bizonyíték
+
+Alkalmazáscommit: `fbe80a8e2a375f37743517301b7de24f4e96e040`.
+
+- Teljes CI SUCCESS, 2402 PASS: https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/40832118448 .
+- Kapacitásregresszió SUCCESS: https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/40832118405 .
+- Napi kezelő Chromium/WebKit SUCCESS: https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/40832118452 .
+- Chatbot mobil/cookie SUCCESS: https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/40832118364 .
+- Négynyelvű paritás SUCCESS: https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/40832118374 .
+- A változatlan meglévő Gmail/Writer/Reader/külön approver mobil UI 12 + 28 PASS: https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/40831767393 . Ez szintetikus böngészőtransport; nem friss hosted Writer/Approver-mentés.
+
+Második, időmért rate-limit próba: 11 kérés 13,11 s alatt, majd 12 s várakozás után két további kérés; összesen 35,23 s. Mind a 13 válasz 503, 429 továbbra sincs. A Netlify hivatalos dokumentáció legfeljebb 10 s késést ír az érvényesítésre; ezt a próba kivárta. Stabil kliens-IP nem igazolt. A hosted rate-limit lezárás továbbra NEM IGAZOLT, a chat aktiválása nem történt meg.
+
+A biztonsági advisor figyelmeztetéseinek hivatalos értelmezése: https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable és https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection . A definer RPC-k belső jogosultsági ellenőrzése külön vizsgálandó; nem vontuk vissza vakon a működéshez szükséges jogokat.
+
+Ez az összegyűjtött, ellenőrzött változáscsomag egyetlen engedélyezett Netlify TESZT-kiadást kér. A tényleges új `/api/health` SHA, statikus assetek és zárt chatkapu a telepítés után ellenőrizendő. Az alkalmazás üzleti szabályai, production, vendégküldés és valódi foglalások érintetlenek.
