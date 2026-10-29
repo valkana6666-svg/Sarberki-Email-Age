@@ -77,7 +77,7 @@ test('Pushover credentials stay server-side and provider rejection is reported',
   const body=await response.text();
   assert.ok(!body.includes(env.PUSHOVER_API_TOKEN));
   assert.ok(!body.includes(env.PUSHOVER_USER_KEY));
-  assert.deepEqual(config.rateLimit,{windowLimit:60,windowSize:60,aggregateBy:'domain',action:'rate_limit'});
+  assert.deepEqual(config.rateLimit,{windowLimit:60,windowSize:60,aggregateBy:['ip','domain'],action:'rate_limit'});
 });
 
 test('endpoint shares atomic ledger across parallel requests and restart',async()=>{

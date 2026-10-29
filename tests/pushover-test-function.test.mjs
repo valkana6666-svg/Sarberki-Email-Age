@@ -59,5 +59,5 @@ test('provider failure and timeout do not leak secrets or retry', async () => {
     assert.ok(!body.includes(env.PUSHOVER_USER_KEY));
     assert.equal(calls, 1);
   }
-  assert.deepEqual(config.rateLimit, {windowLimit:1, windowSize:180, aggregateBy:'domain', action:'rate_limit'});
+  assert.deepEqual(config.rateLimit, {windowLimit:1, windowSize:180, aggregateBy:['ip','domain'], action:'rate_limit'});
 });

@@ -55,5 +55,5 @@ export function createHandler({env = process.env, send = fetch} = {}) {
 export default createHandler();
 export const config = {
   path: '/api/pushover-test',
-  rateLimit: {windowLimit: 1, windowSize: 180, aggregateBy: 'domain', action: 'rate_limit'}
+  rateLimit: {windowLimit: 1, windowSize: 180, aggregateBy: ['ip','domain'], action: 'rate_limit'}
 };

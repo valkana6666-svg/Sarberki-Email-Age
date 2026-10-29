@@ -121,6 +121,6 @@ export function createRuntimeHandler({env=process.env,send=fetch}={}) {
 export default createRuntimeHandler();
 export const config = {
   path:'/api/pushover-gmail',
-  rateLimit:{windowLimit:60,windowSize:60,aggregateBy:'domain',action:'rate_limit'}
+  rateLimit:{windowLimit:60,windowSize:60,aggregateBy:['ip','domain'],action:'rate_limit'}
 };
 
