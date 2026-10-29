@@ -109,9 +109,9 @@ try{
   await page.reload();await page.locator('#session-status').filter({hasText:'Bejelentkezve'}).waitFor();
   assert.equal(await page.locator('#chat-output').innerText(),'');
   assert.equal(await page.locator('#case-list li').count(),0);assert.equal(await page.locator('#case-detail').isHidden(),true);
-  assert.equal(await page.locator('#chat-send').isDisabled(),true);
   state.allowRead=false;await page.locator('#load-cases').click();await page.locator('#session-status').filter({hasText:'jogosultság'}).waitFor();
   assert.equal(await page.locator('#case-list li').count(),0);assert.equal(await page.locator('#case-detail').isHidden(),true);
+  assert.equal(await page.locator('#chat-send').isDisabled(),true);
   assert.ok(state.caseMethods.every(method=>method==='GET'));
   assert.equal(await page.evaluate(()=>localStorage.length+sessionStorage.length),0);
   assert.deepEqual(errors,[]);check(engine,'reload-denied-reader-no-cache-or-writes');
