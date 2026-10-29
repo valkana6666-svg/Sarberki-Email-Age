@@ -5,13 +5,13 @@ import assert from 'node:assert/strict';
 import {chromium,webkit} from 'playwright';
 import {createServerChatPreview} from '../shared-core/server-chat-preview.mjs';
 const origin='https://leafy-chimera-2403e5.netlify.app',root=resolve(process.env.NAPI_PROOF_ROOT||'dist');
-const report={syntheticOnly:true,externalRequests:0,bookingCreated:false,emailSent:false,actualIPhoneVerified:false,checks:[]};
+const report={syntheticOnly:true,externalRequests:0,blockedExternalRequests:0,unexpectedExternalRequests:0,bookingCreated:false,emailSent:false,actualIPhoneVerified:false,checks:[]};
 let browser;
 const check=(engine,name)=>report.checks.push({engine,test:name,result:'PASS'});
 try{
  for(const [engine,launcher] of [['chromium',chromium],['webkit',webkit]]){
   browser=await launcher.launch({headless:true});
-  const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+  const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block'});
   const state={authenticated:false,revision:1,allowRead:true,caseMethods:[],previewRevisions:[],chatStatus:200,chatMessages:[]};
   const session={authenticated:true,tenantId:'sarberki-test',csrfToken:'a'.repeat(64),expiresAt:new Date(Date.now()+3600000).toISOString()};
   const chatHandler=createServerChatPreview({env:{URL:origin,SERVER_CHAT_SYNTHETIC_ONLY:'true'},
@@ -22,7 +22,13 @@ try{
   });
   await context.route('**/*',async route=>{
    const request=route.request(),url=new URL(request.url());
-   if(url.origin!==origin){report.externalRequests++;return route.abort();}
+   if(url.origin!==origin){
+    report.blockedExternalRequests++;
+    // The unchanged legacy test page declares Google GSI. Abort it locally;
+    // any other external attempt, or one from the daily UI, remains a failure.
+    if(url.href!=='https://accounts.google.com/gsi/client'||new URL(request.frame().url()).pathname!=='/index.html')report.unexpectedExternalRequests++;
+    return route.abort();
+   }
    const json=(status,body)=>route.fulfill({status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify(body)});
    if(url.pathname==='/api/server-chat-preview'){
     state.chatMessages.push(request.postDataJSON().messages);
@@ -119,6 +125,6 @@ try{
   check(engine,'existing-test-page-still-served');
   await context.close();await browser.close();browser=null;
  }
- assert.equal(report.externalRequests,0);report.result='PASS';
+ assert.equal(report.externalRequests,0);assert.equal(report.unexpectedExternalRequests,0);report.result='PASS';
 }catch(error){report.result='FAIL';report.error=String(error?.stack||error);process.exitCode=1;}
 finally{if(browser)await browser.close();mkdirSync('/tmp/sarberki-daily-proof',{recursive:true});writeFileSync('/tmp/sarberki-daily-proof/DAILY-PROOF.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));}
