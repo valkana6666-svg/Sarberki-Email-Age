@@ -1,3 +1,4 @@
+import {createServerChatClient} from './remote-chat-client.mjs';
 import {createCaseStoreClient} from '../shared-core/case-store-client.mjs';
 import {createCookieJsonRequest} from '../shared-core/cookie-json-request.mjs';
 import {isIsolatedReviewCaseId} from '../shared-core/isolated-review-case-id.mjs';
@@ -23,7 +24,7 @@ export function createOperatorSession({request=fetch,now=()=>Date.now()}={}){
   restorePending=pending;pending.finally(()=>{if(restorePending===pending)restorePending=null;}).catch(()=>{});return pending;
  };
  const logout=()=>{invalidate();return enqueue(async()=>{const response=await request(endpoint,options('POST',{action:'logout'},revocationCsrf));if(!response.ok)throw Error('LOGOUT_NOT_VERIFIED');revocationCsrf=null;return {authenticated:false};});};
- return Object.freeze({logout,restore,clear:invalidate,
+ return Object.freeze({logout,restore,clear:invalidate, getCsrfToken:async()=>current().csrfToken,
   async login(email,password){
    invalidate();const turn=epoch;
    if(typeof email!=='string'||!email.includes('@')||email.length>254||typeof password!=='string'||!password||password.length>1024)throw Error('INVALID_INPUT');
@@ -84,7 +85,8 @@ export function createOperatorSession({request=fetch,now=()=>Date.now()}={}){
 export function initOperatorPanel({documentRef=document,windowRef=typeof window==='undefined'?null:window,request=fetch,now=()=>Date.now(),setTimer=typeof setTimeout==='undefined'?null:setTimeout,clearTimer=typeof clearTimeout==='undefined'?null:clearTimeout}={}){
  const get=id=>documentRef.getElementById(id),form=get('operator_login');if(!form)return false;
  const session=createOperatorSession({request,now});let epoch=0,timer=null,active=documentRef.visibilityState!=='hidden';
- const clear=()=>{if(get('server_fixture_status'))get('server_fixture_status').textContent='';for(const id of ['server_chat_reply','server_operator_hu','server_guest_draft'])get(id).value='';get('server_data_status').textContent='Nincs hitelesített szerveres adat.';};
+ const serverChat=createServerChatClient({request,getCsrfToken:()=>session.getCsrfToken()});
+ const clear=()=>{serverChat.reset();if(get('server_live_preview_output'))get('server_live_preview_output').textContent='';if(get('server_fixture_status'))get('server_fixture_status').textContent='';for(const id of ['server_chat_reply','server_operator_hu','server_guest_draft'])get(id).value='';get('server_data_status').textContent='Nincs hitelesített szerveres adat.';};
  const fixtureStatus=get('server_fixture_status');
  const fixtureButton=get('server_fixture_run');
  if(fixtureButton&&fixtureStatus)fixtureButton.addEventListener('click',async()=>{
@@ -93,6 +95,15 @@ export function initOperatorPanel({documentRef=document,windowRef=typeof window=
   catch(error){if(turn===epoch)fixtureStatus.textContent='Szerveres próba nem elérhető; belépés és tesztengedély szükséges.';}
   finally{fixtureButton.disabled=false;}
  });
+ const previewForm=get('server_live_preview_form'),previewInput=get('server_live_preview_input'),previewOutput=get('server_live_preview_output');
+ previewForm?.addEventListener('submit',async event=>{
+  event.preventDefault();if(!active||!previewInput||!previewOutput)return;
+  const turn=epoch,message=previewInput.value.trim();if(!message)return;
+  previewOutput.textContent='Szerveres tesztválasz készül…';
+  try{const answer=await serverChat.reply(message);if(turn!==epoch||!active)return;previewOutput.textContent=answer.text;previewInput.value='';}
+  catch{if(turn===epoch&&active)previewOutput.textContent='A szerveres próba nem elérhető; belépés és tesztengedély szükséges.';}
+ });
+ get('server_live_preview_reset')?.addEventListener('click',()=>{serverChat.reset();if(previewInput)previewInput.value='';if(previewOutput)previewOutput.textContent='';});
  const stop=()=>{if(timer!==null)clearTimer?.(timer);timer=null;};
  const schedule=()=>{stop();if(active&&setTimer){timer=setTimer(()=>restore(),300000);timer?.unref?.();}};
  const status=()=>{get('operator_status').textContent='Hitelesített tartós tesztmunkamenet; az ügyhozzáférést a szerver ellenőrzi.';};

@@ -116,3 +116,17 @@ test('operator client and real server fixture complete both synthetic turns',asy
  }});
  await s.restore();const first=await s.syntheticChat(1),second=await s.syntheticChat(2);assert.equal(checked,2);assert.notEqual(first,second);
 });
+test('operator preview form sends a bounded synthetic multi-turn chat to server and resets history',async()=>{
+ const {createServerChatPreview}=await import('../netlify/functions/server-chat-preview.mjs');
+ const f=fixture(),d=dom(),origin='https://leafy-chimera-2403e5.netlify.app';let sent=[];
+ for(const key of ['server_live_preview_form','server_live_preview_input','server_live_preview_output','server_live_preview_reset'])d.data.set(key,{value:'',textContent:'',listeners:{},addEventListener(event,callback){this.listeners[event]=callback;}});
+ const server=createServerChatPreview({env:{URL:origin,SERVER_CHAT_SYNTHETIC_ONLY:'true'},clock:()=>new Date('2026-10-29T12:00:00Z'),sessionFactory:()=>({protectedRead:async event=>{assert.equal(event.headers['x-csrf-token'],metadata.csrfToken);return {setCookie:'synthetic-cookie'};}})});
+ initOperatorPanel({documentRef:d,windowRef:null,now:()=>at,setTimer:null,request:async(url,options)=>{
+  if(!url.includes('server-chat-preview'))return f.request(url,options);
+  sent.push(JSON.parse(options.body));return server(new Request(origin+url,{...options,headers:{...options.headers,origin}}));
+ }});
+ await settle();const input=d.data.get('server_live_preview_input'),form=d.data.get('server_live_preview_form'),output=d.data.get('server_live_preview_output');
+ input.value='Van szabad Deluxe faház 2027.06.10-12 között?';await form.listeners.submit({preventDefault(){}});assert.ok(output.textContent.length);
+ input.value='2 felnőtt, gyermek nélkül.';await form.listeners.submit({preventDefault(){}});assert.equal(sent[1].messages.length,2);assert.ok(output.textContent.length);
+ d.data.get('server_live_preview_reset').listeners.click();input.value='2 felnőtt, gyermek nélkül.';await form.listeners.submit({preventDefault(){}});assert.equal(sent[2].messages.length,1);
+});
