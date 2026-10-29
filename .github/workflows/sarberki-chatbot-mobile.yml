@@ -3,6 +3,8 @@ on:
   push:
     branches: [gmail-test-subject-allowlist]
     paths:
+      - sarberki-core.mjs
+      - tests/chatbot-auto-language.test.mjs
       - scripts/chatbot-mobile-proof.mjs
       - scripts/operator-cookie-browser-proof.mjs
       - scripts/build-static.cjs

@@ -31,7 +31,7 @@ Hivatalos konfigurációs referencia: https://docs.netlify.com/build/functions/a
 ## Tesztek
 
 - Célzott Node: 36 PASS / 0 FAIL / 0 SKIP.
-- Teljes helyi Node: 2401 PASS / 0 FAIL / 0 SKIP, benne PGlite/PostgreSQL-szemantikájú jogosultság-, CAS-, audit- és csatornaparitás-próbák. Ez nem friss hosted négynyelvű Gmail E2E.
+- Teljes helyi Node: 2402 PASS / 0 FAIL / 0 SKIP, benne PGlite/PostgreSQL-szemantikájú jogosultság-, CAS-, audit- és csatornaparitás-próbák. Ez nem friss hosted négynyelvű Gmail E2E.
 - Helyi Chromium/WebKit: SKIP, a CDN böngészőcsomag sérült ZIP-pel érkezett. GitHub mobil CI külön igazolandó.
 - Build és diff whitespace ellenőrzés PASS. Új commit CI és pontos új tesztdeploy csak sikeres futás után állítható.
 
@@ -46,3 +46,11 @@ Hivatalos konfigurációs referencia: https://docs.netlify.com/build/functions/a
 A jelen bővített scope-ra körülbelül **80% mérnöki készültségi becslés** adható; nem mért százalék, nincs elfogadott súlyozott mérőszám és nincs 100%-os bizonyíték. A korábbi, eltérő scope-ú 91% nem vihető át automatikusan. Hátralévő aktív munka becslése **20–35 óra**, hozzáférésekre várakozás nélkül: szerver-chat/limit hosted lezárás 2–4; napi ügyéletciklus 8–14; integrált hosted négynyelvű és eszközteszt 4–7; Previo olvasási integráció 6–10. Ez a tartomány az ismert API-képességektől és hibáktól függ.
 
 Következő legfontosabb feladat a rate limit tényleges érvényesülésének bizonyítása, majd a meglévő hitelesített chat előnézet hosted próbája. V2/V3 érték: ugyanaz a kliens, session és közös motor, külön műveleti jogosultságokkal; új platform nem készült.
+
+## Kiegészítő nyelvfelismerési javítás és mobil bizonyíték
+
+A rövid „Van szabad Deluxe faház 2027.06.10-12 között?” üzenet az auto nyelvben német választ adott: a magyar ö/ü német ékezetbónusza felülírta a magyar lexikai bizonyítékot. A közös nyelvfelismerőben a megosztott ö/ü önmagában nem ad német bónuszt, ha van magyar kulcsszó; az ä/ß és a német szöveg felismerése megmarad. Nincs ár-, foglalási vagy egyéb üzleti szabályváltozás. Az új regresszió magyar és német mintákat is tartalmaz. Nyelvi/szerveres célzott: 25 PASS; a teljes helyi csomag az új teszttel 2402 PASS / 0 FAIL / 0 SKIP.
+
+A napi mobil próba a változatlan eredeti TESZT megnyitásakor deklarált Google GSI scriptet helyben blokkolja, ahogy minden külső kérést. A diagnosztika külön számolja a blokkolt kérést és az ismeretlen külső próbálkozást; a napi oldal külső próbája továbbra hiba. Az első két CI hibás tesztelvárását javítottuk, nem alkalmazáshibát fedtünk el.
+
+Napi mobil SUCCESS: https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/40831898713 , 14 PASS (Chromium + WebKit), 0 tényleges külső kérés, 2 blokkolt régi GSI loader, 0 váratlan külső próbálkozás. A nyelvi javítás utáni új mobil futás külön ellenőrizendő.

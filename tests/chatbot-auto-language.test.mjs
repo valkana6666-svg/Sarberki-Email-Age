@@ -10,6 +10,15 @@ const messages={
  en:'Is a Deluxe cabin available from 2026-11-26 to 2026-11-28 for 2 adults and no children?',
  si:'Ali je Deluxe hiška prosta od 2026-11-26 do 2026-11-28 za 2 odrasli osebi brez otrok?'
 };
+test('Hungarian ö/ü in a short cabin inquiry cannot force German auto-language',()=>{
+ for(const message of ['Van szabad Deluxe faház 2027.06.10-12 között?','Szállás ügyében érdeklődöm.','Faházat keresünk.']){
+  assert.equal(languageFromText(message),'hu');
+  const chat=createChatInquirySession({clock});const result=chat.reply(message);
+  assert.equal(chat.language,'hu');assert.equal(result.response.language,'hu');
+  assert.doesNotMatch(result.text,/Guten Tag|Erwachsene|Verfügbarkeit/);
+ }
+ for(const message of ['Für 2 Erwachsene suchen wir eine Unterkunft.','Ich möchte ein Haus für zwei Personen.'])assert.equal(languageFromText(message),'de');
+});
 for(const [language,message] of Object.entries(messages))test('automatic first inquiry uses '+language,()=>{
  const chat=createChatInquirySession({clock}),result=chat.reply(message);
  assert.equal(chat.language,language);assert.equal(result.response.language,language);
