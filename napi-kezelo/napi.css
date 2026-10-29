@@ -3,3 +3,5 @@
 textarea{font:inherit;width:100%;padding:12px;background:#090909;color:var(--text);border:1px solid #5d5750;border-radius:9px;resize:vertical}textarea:focus-visible{outline:3px solid #ffac5b;outline-offset:3px}.confirmation{display:flex;align-items:flex-start;gap:12px;min-height:48px}.confirmation input{width:24px;min-height:24px;flex:0 0 24px}.readout,li span{overflow-wrap:anywhere}button:disabled{cursor:not-allowed;opacity:.45}
 
 #email-list button{max-width:100%;overflow-wrap:anywhere;text-align:left}
+
+#email-picker{font:inherit;width:100%;min-height:48px;padding:10px;background:#090909;color:var(--text);border:1px solid #5d5750;border-radius:9px}#email-picker:focus-visible{outline:3px solid #ffac5b;outline-offset:3px}.email-navigation{display:flex;gap:12px;flex-wrap:wrap}#email-list{max-height:240px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}#email-list button{width:100%}#email-list button[aria-pressed="true"]{background:#542b0b;border-color:var(--orange);color:#fff}

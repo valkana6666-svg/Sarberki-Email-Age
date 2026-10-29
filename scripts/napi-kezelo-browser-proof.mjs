@@ -29,7 +29,7 @@ try{
    if(url.href==='https://accounts.google.com/gsi/client'&&new URL(request.frame().url()).pathname==='/napi-kezelo/')return route.fulfill({status:200,contentType:'text/javascript',body:'window.google={accounts:{oauth2:{initTokenClient(options){return {requestAccessToken(){options.callback({access_token:"SYNTHETIC_TOKEN"});}};}}}};'});
    if(url.origin==='https://gmail.googleapis.com'){
     assert.equal(request.method(),'GET');assert.equal(request.headers().authorization,'Bearer SYNTHETIC_TOKEN');
-    const body=url.pathname.endsWith('/profile')?{emailAddress:'sarberkiprojecttest@gmail.com'}:url.pathname.endsWith('/messages')?{messages:[{id:'abcdef1234567890'}]}:{id:'abcdef1234567890',internalDate:String(Date.parse('2026-10-20T12:00:00Z')),labelIds:['INBOX'],payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Kitalált napi e-mail'},{name:'From',value:'guest@synthetic.invalid'}],body:{data:Buffer.from('Kitalált eredeti e-mail.').toString('base64url')}}};
+    const body=url.pathname.endsWith('/profile')?{emailAddress:'sarberkiprojecttest@gmail.com'}:url.pathname.endsWith('/messages')?{messages:[{id:'abcdef1234567890'},{id:'abcdef1234567891'},{id:'abcdef1234567892'}]}:{id:url.pathname.split('/').at(-1),internalDate:String(Date.parse('2026-10-20T12:00:00Z')),labelIds:['INBOX'],payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Kitalált napi e-mail '+url.pathname.split('/').at(-1)},{name:'From',value:'guest@synthetic.invalid'}],body:{data:Buffer.from('Kitalált eredeti e-mail.').toString('base64url')}}};
     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
    }
    if(url.origin!==origin){
@@ -102,9 +102,16 @@ try{
   assert.equal(await page.locator('#chat-form').isVisible(),false);
   check(engine,'daily-hides-developer-chat-tool');
   await page.waitForFunction(()=>Boolean(window.google?.accounts?.oauth2?.initTokenClient));
-  await page.locator('#read-email').click();await page.locator('#email-list button').waitFor();
-  await page.locator('#email-list button').click();
+  await page.locator('#read-email').click();await page.locator('#email-list button').first().waitFor();
+  await page.locator('#email-list button').first().click();
   assert.match(await page.locator('#email-detail').innerText(),/Kitalált eredeti e-mail/);
+  assert.equal(await page.locator('#email-list button').count(),3);
+  await page.locator('#email-next').click();assert.equal(await page.locator('#email-picker').inputValue(),'1');
+  await page.locator('#email-picker').selectOption('2');assert.equal(await page.locator('#email-next').isDisabled(),true);
+  await page.locator('#email-previous').click();assert.equal(await page.locator('#email-picker').inputValue(),'1');
+  assert.equal(await page.locator('#email-list button').count(),3);
+  assert.match(await page.locator('#email-detail').innerText(),/abcdef1234567891/);
+  check(engine,'daily-gmail-persistent-picker-and-previous-next');
   check(engine,'daily-gmail-readonly-list-and-open');
   await page.locator('#case-list button').waitFor();
   check(engine,'login-automatically-loads-cases');
