@@ -1,5 +1,21 @@
 # Sárberki foglaltságkezelési kötelező ellenőrzési pont
 
+## KÖTELEZŐ FEJLESZTÉSI DÖNTÉSI PROTOKOLL – 2026-10-30
+
+Ez a szabály a Sárberki V1/V2 valamennyi új feladatára, hibajavítására, refaktorálására és Codex-munkamenetére érvényes. A meglévő biztonsági, jogosultsági, adatvédelmi és jóváhagyási korlátokat nem gyengítheti.
+
+1. **Előbb bizonyítsd a kiindulási állapotot.** Vizsgáld meg a felhasználói célt, a már meglévő kódot, teszteket, konfigurációt, szolgáltatásokat és működő funkciókat. Ne indíts új architektúrát feltételezésekből.
+2. **Alternatívák, majd döntés.** Mérlegeld a meglévő beállítás javítását, a célzott kódjavítást és szükség esetén a kész, bevált megoldást vagy új fejlesztést. Legalább két érdemi út esetén röviden hasonlítsd össze a megvalósíthatóságot, időt, költséget, kockázatot és karbantartást; ne készíts mesterségesen három alternatívát, ha nincs három.
+3. **A legkisebb igazoltan megfelelő beavatkozást válaszd.** Nem feltétlenül a legkevesebb kódsor vagy legrövidebb becsült idő a legjobb: a biztonság, működőképesség, stabilitás és szükséges bővíthetőség kötelező feltétel. Ne építs újra működő rendszert, ne hozz létre párhuzamos motort.
+4. **Csak a valódi hibát javítsd.** Előbb reprodukáld és azonosítsd a kiváltó okot. Különítsd el az OAuth-/jogosultsági/konfigurációs hibát a programhibától és a kezelőfelületi hibától. Őrizd meg a jóváhagyott üzleti szabályokat, a központi AI-motort és a részletes tesztkezelőt.
+5. **Tény, feltételezés, becslés elkülönítése.** Ne állíts bizonyítatlan működést, elkészültséget vagy gyökérokot. Időbecslést csak azonos készültségi célra, tételes feltételekkel adj; felhasználói nyomásra bizonyíték nélkül ne változtasd meg.
+6. **Élő működési igazolás.** A unit/mock/CI teszt nem egyenlő a valódi Gmail → AI → kezelő → jóváhagyás folyamattal. A szükséges E2E, iPhone és jogosultsági ellenőrzést külön jelöld: PASS / FAIL / NOT_VERIFIED. Ha külső engedély hiányzik, ne kerüld meg.
+7. **Eszköz és munkamód a feladathoz igazodjon.** Work a jogosult környezeti és felhasználói folyamat-ellenőrzéshez, Codex a célzott kódfeladathoz, de ne köss feladatot automatikusan egyikhez sem. Minimalizáld a fölösleges hívásokat, módosításokat, újrafuttatásokat.
+8. **Végrehajtás előtti rövid döntési napló:** meglévő eszközök / bizonyítékok; érdemi alternatívák; választás indoka; mihez NEM nyúlunk; ellenőrzési terv. Végrehajtás után a módosított fájlokat, tesztbizonyítékokat és megmaradt korlátokat sorold fel.
+
+**Aktuális elsőbbség:** A Gmail-tesztfiók saját alkalmazási OAuth és olvasási láncának bizonyítása, AI-válaszjavaslat és napi kezelői megjelenítés. Ne építsd újra a Gmail-részt, amíg a tényleges hibapont nem igazolt. Az éles levelezés, automatikus küldés, Previo-írás és production változatlanul tiltott külön felhatalmazás nélkül.
+
+
 - Kizárólag a `gmail-test-subject-allowlist` tesztág módosítható. Main és production nem módosítható.
 - Tilos valódi e-mail küldése, valódi foglalás létrehozása és Previo-adatok módosítása.
 - A vendégnek foglalhatóként csak a kért teljes időszakra és szükséges egységszámra ténylegesen ellenőrzött elhelyezés ajánlható. Ismeretlen, hibás vagy más dátumhoz tartozó adat nem szabad kapacitás.
