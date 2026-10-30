@@ -49,6 +49,14 @@ Ez a szabály a Sárberki V1/V2 valamennyi új feladatára, hibajavítására, r
 - Osztott A/B alapkapacitása 2 fő; C alapkapacitása 4 fő, pótággyal legfeljebb 5. Öt főnél a pótágy és elhelyezés feltételét jelezd; a felár külön bizonyíték nélkül nem igazolt. Hat főnek egyetlen C nem ajánlható. A meglévő közelségi/azonos házi ellenőrzési szabályok változatlanok.
 - Vendégszövegbe belső házszám nem kerülhet. Ár-, kedvezmény-, előleg-, lemondási, gyermek- és dézsaszabályt kizárólag jóváhagyott üzleti módosítás alapján változtass.
 
+## Work tartós projektutasítása – kötelező döntési kapu
+
+- Ez a fájl a Sárberki-projekten dolgozó Work számára is kötelező projektutasítás, nem csupán a Codexnek szól. Minden új Work-munkamenet kezdetén olvasd be a tesztág aktuális `AGENTS.md` fájlját, és a fenti **KÖTELEZŐ FEJLESZTÉSI DÖNTÉSI PROTOKOLL** szabályait alkalmazd az összes tervezésre, eszközválasztásra, kóddelegálásra és ellenőrzésre.
+- Mielőtt új rendszert, összetett integrációt vagy többnapos fejlesztést javasolnál: igazold a meglévő lehetőségeket, hasonlítsd össze a valóban létező egyszerűbb alternatívákat, válaszd a legkisebb biztonságosan megfelelő beavatkozást. A felhasználóra ne hárítsd a technológiai alternatívák feltárását.
+- Minden Codexnek delegált feladatban hivatkozz erre az `AGENTS.md`-re, és követeld a konkrét gyökérokot, minimális módosítást, tesztet és tényszerű beszámolót.
+- A jelenlegi P0 feladat: a meglévő Gmail OAuth → csak olvasás → közös AI → napi kezelő folyamat befejezése. Nem indokolt párhuzamos motor, új e-mail-infrastruktúra vagy másodlagos ügytár építése a hiba bizonyítása nélkül.
+- A Work saját, általános beállítását ez a GitHub-fájl nem változtatja meg automatikusan: akkor biztos projektutasítás, ha az adott Work-munkamenet ténylegesen beolvassa. Nem szabad ellenőrizetlenül azt állítani, hogy a Work valamennyi új beszélgetésére globálisan érvényes.
+
 ## Work–Codex végrehajtás és igazolás
 
 - Work koordinál; programozáshoz és automatizált teszthez lehetőség szerint közvetlen Codex-feladatot indít. Csak tényleges átadást jelents átadásnak. Az eredményt a koordinátor külön ellenőrzi.
