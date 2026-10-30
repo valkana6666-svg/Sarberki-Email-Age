@@ -38,7 +38,10 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
    el('email-picker').value=String(index);
    buttons.forEach((button,i)=>button.setAttribute('aria-pressed',String(i===index)));
    el('email-previous').disabled=index===0;el('email-next').disabled=index===messages.length-1;
-   el('email-detail').textContent='Feladó: '+(header.from||'Nincs megadva')+'\nTárgy: '+(header.subject||'(nincs tárgy)')+'\n\n'+(gmailReadableBody(message.payload)||'A levélnek nincs olvasható szöveges része.');
+   let body;
+   try{body=gmailReadableBody(message.payload)||'A levélnek nincs olvasható szöveges része.';}
+   catch{body='A levél szövege nem jeleníthető meg. Válasszon másik levelet a listából.';}
+   el('email-detail').textContent='Feladó: '+(header.from||'Nincs megadva')+'\nTárgy: '+(header.subject||'(nincs tárgy)')+'\n\n'+body;
   };
   messages.forEach((message,index)=>{
    const li=documentImpl.createElement('li'),button=documentImpl.createElement('button'),option=documentImpl.createElement('option');button.type='button';

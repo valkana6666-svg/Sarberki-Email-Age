@@ -9,12 +9,12 @@ class Element{
  setAttribute(key,value){this.attributes[key]=value;}
  async click(){await this.listeners.click?.();}
 }
-function setup(){
+function setup({unreadableIndex=-1}={}){
  const elements=Object.fromEntries(['read-email','email-list','email-status','email-detail','email-picker','email-picker-wrap','email-previous','email-next'].map(id=>[id,new Element()]));
  const doc={getElementById:id=>elements[id],visibilityState:'visible',createElement:()=>new Element(),createDocumentFragment:()=>Object.assign(new Element(),{fragment:true})};
  let authenticated=true,callback,reads=0,restores=0,release;
  const google={accounts:{oauth2:{initTokenClient(options){assert.equal(options.scope,'https://www.googleapis.com/auth/gmail.readonly');assert.equal(options.include_granted_scopes,false);callback=options.callback;return {requestAccessToken(){}};}}}};
- const reader=createDailyEmailReader({documentImpl:doc,canRead:()=>authenticated,restoreSession:async()=>{restores++;if(!authenticated)throw Error('AUTH_REQUIRED');},loadGoogleImpl:async()=>google,clientId:'synthetic',readInbox:async token=>{assert.equal(token,'SYNTHETIC_TOKEN');reads++;if(release)await release;return [0,1,2].map(index=>({payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Kitalált levél '+(index+1)},{name:'From',value:'guest@synthetic.invalid'}],body:{data:Buffer.from('Kitalált érdeklődés. Levél '+(index+1)).toString('base64url')}}}));}});
+ const reader=createDailyEmailReader({documentImpl:doc,canRead:()=>authenticated,restoreSession:async()=>{restores++;if(!authenticated)throw Error('AUTH_REQUIRED');},loadGoogleImpl:async()=>google,clientId:'synthetic',readInbox:async token=>{assert.equal(token,'SYNTHETIC_TOKEN');reads++;if(release)await release;return [0,1,2].map(index=>({payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Kitalált levél '+(index+1)},{name:'From',value:'guest@synthetic.invalid'}],body:{data:index===unreadableIndex?'%%%':Buffer.from('Kitalált érdeklődés. Levél '+(index+1)).toString('base64url')}}}));}});
  return {reader,e:elements,doc,get callback(){return callback;},get reads(){return reads;},get restores(){return restores;},hideForConsent(){doc.visibilityState='hidden';authenticated=false;reader.suspend();reader.setEnabled(false);},returnFromConsent(){doc.visibilityState='visible';authenticated=true;reader.setEnabled(true);},logout(){authenticated=false;reader.clear();},delay(p){release=p;}};
 }
 test('daily Gmail uses readonly consent and shared reader, opens original without persisting or submitting a case',async()=>{
@@ -60,4 +60,21 @@ test('logout invalidates consent queued while the Google popup hides the page',a
  h.hideForConsent();await h.callback({access_token:'SYNTHETIC_TOKEN'});h.logout();h.returnFromConsent();
  await new Promise(resolve=>setImmediate(resolve));assert.equal(h.reads,0);assert.equal(h.e['email-list'].children.length,0);
  assert.equal(h.e['email-picker-wrap'].hidden,false);assert.equal(h.e['email-picker'].disabled,true);
+});
+
+test('unreadable original is isolated during automatic opening and manual selection',async()=>{
+ for(const unreadableIndex of [0,1]){
+  const h=setup({unreadableIndex});h.reader.setEnabled(true);await Promise.resolve();await h.e['read-email'].click();
+  await h.callback({access_token:'SYNTHETIC_TOKEN'});
+  assert.equal(h.e['email-list'].children.length,3);
+  if(unreadableIndex===0)assert.match(h.e['email-detail'].textContent,/nem jeleníthető meg/);
+  else assert.match(h.e['email-detail'].textContent,/Levél 1/);
+  await assert.doesNotReject(()=>h.e['email-list'].children[unreadableIndex].children[0].click());
+  assert.match(h.e['email-detail'].textContent,/nem jeleníthető meg/);
+  assert.doesNotMatch(h.e['email-detail'].textContent,/Kitalált érdeklődés/);
+  assert.equal(h.e['email-picker'].disabled,false);
+  const validIndex=2;h.e['email-picker'].value=String(validIndex);await h.e['email-picker'].listeners.change();
+  assert.match(h.e['email-detail'].textContent,/Levél 3/);
+  assert.equal(h.e['read-email'].disabled,false);h.logout();
+ }
 });

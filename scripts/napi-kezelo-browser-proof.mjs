@@ -13,7 +13,7 @@ try{
   if(process.env.NAPI_PROOF_ENGINE&&process.env.NAPI_PROOF_ENGINE!==engine)continue;
   browser=await launcher.launch({headless:true,...(engine==='chromium'&&process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{})});
   const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block'});
-  const state={authenticated:false,revision:1,allowRead:true,caseMethods:[],previewRevisions:[],chatStatus:200,chatMessages:[],role:'reader',editable:false,draftText:'Kitalált, tárolt válasz.',approval:'pending',draftHash:null};
+  const state={authenticated:false,revision:1,allowRead:true,caseMethods:[],previewRevisions:[],chatStatus:200,chatMessages:[],unreadableMail:false,role:'reader',editable:false,draftText:'Kitalált, tárolt válasz.',approval:'pending',draftHash:null};
   const record=()=>({tenantId:'sarberki-test',caseId:'case-synthetic',revision:state.revision,
    canEditDraft:state.role==='writer'&&state.approval==='pending',canApproveDraft:state.role==='approver'&&state.approval==='pending',
    data:{state:{approval:state.approval,revision:0,values:{arrival:'2026-11-20',departure:'2026-11-22',guests:2,unit:'Deluxe'}},
@@ -29,7 +29,7 @@ try{
    if(url.href==='https://accounts.google.com/gsi/client'&&new URL(request.frame().url()).pathname==='/napi-kezelo/')return route.fulfill({status:200,contentType:'text/javascript',body:'window.google={accounts:{oauth2:{initTokenClient(options){return {requestAccessToken(){options.callback({access_token:"SYNTHETIC_TOKEN"});}};}}}};'});
    if(url.origin==='https://gmail.googleapis.com'){
     assert.equal(request.method(),'GET');assert.equal(request.headers().authorization,'Bearer SYNTHETIC_TOKEN');
-    const body=url.pathname.endsWith('/profile')?{emailAddress:'sarberkiprojecttest@gmail.com'}:url.pathname.endsWith('/messages')?{messages:[{id:'abcdef1234567890'},{id:'abcdef1234567891'},{id:'abcdef1234567892'}]}:{id:url.pathname.split('/').at(-1),internalDate:String(Date.parse('2026-10-20T12:00:00Z')),labelIds:['INBOX'],payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Kitalált napi e-mail '+url.pathname.split('/').at(-1)},{name:'From',value:'guest@synthetic.invalid'}],body:{data:Buffer.from('Kitalált eredeti e-mail.').toString('base64url')}}};
+    const body=url.pathname.endsWith('/profile')?{emailAddress:'sarberkiprojecttest@gmail.com'}:url.pathname.endsWith('/messages')?{messages:[{id:'abcdef1234567890'},{id:'abcdef1234567891'},{id:'abcdef1234567892'}]}:{id:url.pathname.split('/').at(-1),internalDate:String(Date.parse('2026-10-20T12:00:00Z')),labelIds:['INBOX'],payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Kitalált napi e-mail '+url.pathname.split('/').at(-1)},{name:'From',value:'guest@synthetic.invalid'}],body:{data:state.unreadableMail&&url.pathname.endsWith('abcdef1234567890')?'%%%':Buffer.from('Kitalált eredeti e-mail.').toString('base64url')}}};
     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
    }
    if(url.origin!==origin){
@@ -117,6 +117,21 @@ try{
   assert.match(await page.locator('#email-detail').innerText(),/abcdef1234567891/);
   check(engine,'daily-gmail-persistent-picker-and-previous-next');
   check(engine,'daily-gmail-readonly-list-and-open');
+  state.unreadableMail=true;
+  await page.locator('#read-email').click();
+  await page.locator('#email-detail').filter({hasText:'nem jeleníthető meg'}).waitFor();
+  assert.equal(await page.locator('#email-list button').count(),3);
+  await page.locator('#email-next').click();
+  assert.match(await page.locator('#email-detail').innerText(),/Kitalált eredeti e-mail/);
+  await page.locator('#email-picker').selectOption('0');
+  assert.match(await page.locator('#email-detail').innerText(),/nem jeleníthető meg/);
+  assert.doesNotMatch(await page.locator('#email-detail').innerText(),/Kitalált eredeti e-mail/);
+  await page.locator('#email-list button').last().click();
+  assert.match(await page.locator('#email-detail').innerText(),/Kitalált eredeti e-mail/);
+  assert.deepEqual(errors,[]);
+  state.unreadableMail=false;
+  check(engine,'unreadable-mail-auto-open-manual-selection-and-recovery');
+
   await page.locator('#case-list button').waitFor();
   check(engine,'login-automatically-loads-cases');
   assert.equal(await page.locator('#count-incoming').innerText(),'1 ügy');
