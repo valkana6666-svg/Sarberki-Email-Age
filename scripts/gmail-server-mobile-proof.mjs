@@ -116,6 +116,29 @@ try{
   assert.deepEqual(mock.calls.map(x=>x.action),['login','restore','list','preview-draft','logout']);
   report.apiMethods.push(...mock.calls.map(x=>x.method));
   report.checks.push({engine,test:'mock-logout-clears-preview-and-prevents-write',result:'PASS',auth:'synthetic'});
+  // Exercise the actual message picker: conversion failures must be recoverable
+  // on manual reopening too, without any real OAuth or Gmail network access.
+  const pageErrors=[];page.on('pageerror',error=>pageErrors.push(error.message));
+  await page.route('https://gmail.googleapis.com/**',async route=>{
+   assert.equal(route.request().method(),'GET');
+   const path=new URL(route.request().url()).pathname;
+   const payload=path.endsWith('/profile')?{emailAddress:'sarberkiprojecttest@gmail.com'}:
+    path.endsWith('/messages')?{messages:[{id:'synthetic-empty-body'}]}:
+    {id:'synthetic-empty-body',threadId:'synthetic-empty-thread',labelIds:['INBOX'],internalDate:String(Date.parse('2026-10-30T08:00:00Z')),payload:{headers:[],mimeType:'text/plain',body:{}}};
+   await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(payload)});
+  });
+  await page.evaluate(()=>{
+   localStorage.removeItem('sarberki.gmail.read-message-ids.v1');
+   window.google={accounts:{oauth2:{initTokenClient:options=>({requestAccessToken:()=>{void options.callback({access_token:'SYNTHETIC_LOCAL_ONLY'});}})}}};
+  });
+  await page.locator('#read_gmail').click();
+  await page.locator('#gmail_auth_status').filter({hasText:'nincs olvasható szöveges része'}).waitFor();
+  await page.evaluate(()=>{document.getElementById('gmail_auth_status').textContent='Megnyitás ellenőrzése';});
+  await page.locator('#gmail_open_selected').click();
+  await page.locator('#gmail_auth_status').filter({hasText:'nincs olvasható szöveges része'}).waitFor();
+  assert.equal(await page.evaluate(()=>localStorage.getItem('sarberki.gmail.read-message-ids.v1')),null);
+  assert.deepEqual(pageErrors,[]);
+  report.checks.push({engine,test:'unreadable-mail-manual-reopen-reports-error-without-read-marker',result:'PASS',auth:'synthetic'});
   await browser.close();browser=null;
  }
  report.result='PASS';

@@ -4,6 +4,9 @@ on:
     branches: [gmail-test-subject-allowlist]
     paths:
       - index.html
+      - gmail-readonly.js
+      - gmail-policy.mjs
+      - gmail-scoped-read.test.mjs
       - sarberki-chatbot-project/operator-session.mjs
       - sarberki-chatbot-project/remote-chat-client.mjs
       - synthetic-server-preview.mjs

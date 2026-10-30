@@ -17,14 +17,27 @@ async function harness(search,{account=policy.TEST_GMAIL_ACCOUNT,status=200,mess
  const modules={'gmail-policy.mjs':policy};
  for(const name of ['sarberki-core.mjs','business-config.mjs','split-units.mjs','fishing-rules.mjs'])modules[name]=await import('./'+name);
  let captured,proof;
- const window={location:{search}},button={addEventListener(){}};
+ const window={location:{search}},button={addEventListener(){}},statusElement={textContent:''},writes=[];
  const context=vm.createContext({atob,AbortController,setTimeout,clearTimeout,window,modules,URL,Date,Number,TextDecoder,Uint8Array,
   displayGmailRecord:async record=>{captured=record;proof=window.SarberkiGmailReadOrigin.consume(record);return false;},
-  document:{getElementById:()=>button,querySelector:()=>({content:'synthetic-client'})},
+  localStorage:{getItem:()=>null,setItem:(...args)=>writes.push(args)},
+  document:{getElementById:key=>key==='gmail_auth_status'?statusElement:button,querySelector:()=>({content:'synthetic-client'})},
   fetch:async(url,options)=>{calls.push({url:String(url),method:options.method||'GET'});return String(url).endsWith('/profile')?{ok:true,json:async()=>({emailAddress:account})}:{ok:status===200,status,json:async()=>message};}
  });
- await vm.runInContext(source,context);return {calls,read:()=>window.testRead('synthetic-not-real-token'),display:message=>window.testDisplay(message),observation:()=>({captured,proof}),origin:window.SarberkiGmailReadOrigin,transform:window.sarberkiGmailTransform};
+ await vm.runInContext(source,context);return {calls,writes,status:()=>statusElement.textContent,read:()=>window.testRead('synthetic-not-real-token'),display:message=>window.testDisplay(message),observation:()=>({captured,proof}),origin:window.SarberkiGmailReadOrigin,transform:window.sarberkiGmailTransform};
 }
+test('unreadable Gmail message reports a recoverable failure without marking read or blocking another message',async()=>{
+ const f=await harness('?syntheticGmailMessageId='+id);
+ assert.equal(await f.display({id,payload:{}}),false);
+ assert.match(f.status(),/nincs olvasható szöveges része/u);
+ assert.equal(f.observation().captured,undefined);
+ assert.equal(f.writes.length,0);
+ const message={id,internalDate:String(Date.parse('2026-10-03T10:00:00Z')),payload:{mimeType:'text/plain',body:{data:Buffer.from('2 adults. VIP. 2026-11-13 to 2026-11-15.').toString('base64url')},headers:[]}};
+ assert.equal(await f.display(message),false);
+ assert.equal(f.observation().captured.source.message_id,id);
+ assert.equal(f.writes.length,0);
+ assert.match(f.status(),/nem jelöltük helyileg olvasottnak/u);
+});
 test('scoped OAuth read verifies account then GETs only the selected message; no list or writes',async()=>{
  const f=await harness('?syntheticGmailMessageId='+id);
  const result=await f.read();assert.equal(result.length,1);assert.equal(result[0].id,id);

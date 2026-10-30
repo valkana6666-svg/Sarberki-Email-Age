@@ -178,9 +178,11 @@
     return messages.filter(m => !isLocallyRead(m.id)).length;
   }
   async function displayMessage(message) {
-    const record = transform(message);
-    if (apiMessages.has(message)) apiRecords.set(record, apiMessages.get(message));
-    try{if(await displayGmailRecord(record)===false){say('A levél központi feldolgozása nem sikerült; nem jelöltük helyileg olvasottnak.');return false;}}catch(error){say('A levél feldolgozása sikertelen: '+error.message);return false;}
+    try{
+      const record = transform(message);
+      if (apiMessages.has(message)) apiRecords.set(record, apiMessages.get(message));
+      if(await displayGmailRecord(record)===false){say('A levél központi feldolgozása nem sikerült; nem jelöltük helyileg olvasottnak.');return false;}
+    }catch(error){say('A levél feldolgozása sikertelen: '+error.message);return false;}
     markRead(message.id);
     renderPicker(currentMessages);
     const left = unreadCount();
