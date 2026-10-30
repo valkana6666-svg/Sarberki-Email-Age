@@ -12,13 +12,14 @@ class Element{
 function setup({unreadableIndex=-1}={}){
  const elements=Object.fromEntries(['read-email','email-list','email-status','email-detail','email-picker','email-picker-wrap','email-previous','email-next'].map(id=>[id,new Element()]));
  const doc={getElementById:id=>elements[id],visibilityState:'visible',createElement:()=>new Element(),createDocumentFragment:()=>Object.assign(new Element(),{fragment:true})};
- let authenticated=true,callback,reads=0,restores=0,release;
- const google={accounts:{oauth2:{initTokenClient(options){assert.equal(options.scope,'https://www.googleapis.com/auth/gmail.readonly');assert.equal(options.include_granted_scopes,false);callback=options.callback;return {requestAccessToken(){}};}}}};
+ let authenticated=true,callback,reads=0,restores=0,release;const consentRequests=[];
+ const google={accounts:{oauth2:{initTokenClient(options){assert.equal(options.scope,'https://www.googleapis.com/auth/gmail.readonly');assert.equal(options.include_granted_scopes,false);callback=options.callback;return {requestAccessToken(input){consentRequests.push(input);}};}}}};
  const reader=createDailyEmailReader({documentImpl:doc,canRead:()=>authenticated,restoreSession:async()=>{restores++;if(!authenticated)throw Error('AUTH_REQUIRED');},loadGoogleImpl:async()=>google,clientId:'synthetic',readInbox:async token=>{assert.equal(token,'SYNTHETIC_TOKEN');reads++;if(release)await release;return [0,1,2].map(index=>({payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Kitalált levél '+(index+1)},{name:'From',value:'guest@synthetic.invalid'}],body:{data:index===unreadableIndex?'%%%':Buffer.from('Kitalált érdeklődés. Levél '+(index+1)).toString('base64url')}}}));}});
- return {reader,e:elements,doc,get callback(){return callback;},get reads(){return reads;},get restores(){return restores;},hideForConsent(){doc.visibilityState='hidden';authenticated=false;reader.suspend();reader.setEnabled(false);},returnFromConsent(){doc.visibilityState='visible';authenticated=true;reader.setEnabled(true);},logout(){authenticated=false;reader.clear();},delay(p){release=p;}};
+ return {reader,e:elements,doc,consentRequests,get callback(){return callback;},get reads(){return reads;},get restores(){return restores;},hideForConsent(){doc.visibilityState='hidden';authenticated=false;reader.suspend();reader.setEnabled(false);},returnFromConsent(){doc.visibilityState='visible';authenticated=true;reader.setEnabled(true);},logout(){authenticated=false;reader.clear();},delay(p){release=p;}};
 }
 test('daily Gmail uses readonly consent and shared reader, opens original without persisting or submitting a case',async()=>{
  const h=setup();h.reader.setEnabled(true);await Promise.resolve();await h.e['read-email'].click();
+ assert.deepEqual(h.consentRequests,[{prompt:''}]);
  await h.callback({access_token:'SYNTHETIC_TOKEN'});assert.equal(h.reads,1);assert.equal(h.restores,1);
  assert.equal(h.e['email-list'].children.length,3);await h.e['email-list'].children[0].children[0].click();
  assert.match(h.e['email-detail'].textContent,/Kitalált érdeklődés/);

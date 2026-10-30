@@ -289,7 +289,7 @@
         }
       } catch (error) { say(error.message); } finally { button.disabled = false; }
     },error_callback:error => { say(`A Google-belépés megszakadt: ${error.type || 'ismeretlen hiba'}`); button.disabled=false; }});
-    client.requestAccessToken({prompt:'consent'});
+    client.requestAccessToken({prompt:''});
   });
   window.sarberkiGmailTransform = transform; // Local test harness only; no token exposure.
 })();

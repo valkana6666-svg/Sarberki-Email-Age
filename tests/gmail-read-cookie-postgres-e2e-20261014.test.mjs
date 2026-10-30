@@ -45,7 +45,7 @@ function dom(){
 }
 async function gmailReadHarness({ui=dom(),onDisplay,messages,account=policy.TEST_GMAIL_ACCOUNT}){
  const storage=new Map(),calls=[],oauthOptions=[];let callback;
- const oauth={initTokenClient(options){oauthOptions.push(options);callback=options.callback;return {requestAccessToken(input){assert.equal(input.prompt,'consent');assert.equal(Object.keys(input).length,1);}};}};
+ const oauth={initTokenClient(options){oauthOptions.push(options);callback=options.callback;return {requestAccessToken(input){assert.equal(input.prompt,'');assert.equal(Object.keys(input).length,1);}};}};
  const window={google:{accounts:{oauth2:oauth}},addEventListener(){}};
  const fakeToken='SYNTHETIC_READONLY_GMAIL_TOKEN_TEST_ONLY';
  const fetchImpl=async(raw,options={})=>{

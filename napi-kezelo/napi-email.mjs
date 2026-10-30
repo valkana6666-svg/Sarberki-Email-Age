@@ -101,7 +101,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
     },error_callback:failure});
    pendingConsent=true;el('email-status').textContent='A Google-ablakban válassza a sarberkiprojecttest@gmail.com fiókot, és engedélyezze a levelek olvasását.';
    consentTimer=setTimeout(()=>failure(Error('CONSENT_TIMEOUT')),120000);
-   client.requestAccessToken({prompt:'consent'});
+   client.requestAccessToken({prompt:''});
   }catch(error){failure(error);}
  });
  return {clear,setEnabled,suspend};

@@ -39,7 +39,7 @@ test('OAuth callback verifies the designated account before requesting any messa
   const source=(await fs.readFile(new URL('./gmail-readonly.js',import.meta.url),'utf8')).replace(/await import\('\.\/([^']+)'\)/gu,(_,name)=>`modules[${JSON.stringify(name.split('?')[0])}]`);
   for(const emailAddress of ['wrong@example.invalid','sarberkiprojecttest@gmail.com']) {
     let callback; const calls=[],status={textContent:''},button={disabled:false,addEventListener(_type,fn){this.click=fn}};
-    const oauth={initTokenClient(options){callback=options.callback;assert.equal(options.scope,'https://www.googleapis.com/auth/gmail.readonly');assert.equal(options.hint,'sarberkiprojecttest@gmail.com');return {requestAccessToken(){}}}};
+    const oauth={initTokenClient(options){callback=options.callback;assert.equal(options.scope,'https://www.googleapis.com/auth/gmail.readonly');assert.equal(options.hint,'sarberkiprojecttest@gmail.com');return {requestAccessToken(input){assert.equal(input.prompt,'','reuse prior consent; Google still decides whether login/consent is required');assert.deepEqual(Object.keys(input),['prompt']);}}}};
     const context=vm.createContext({AbortController,setTimeout,clearTimeout,
       modules:{'sarberki-core.mjs':core,'business-config.mjs':business,'fishing-rules.mjs':fishing,'gmail-policy.mjs':policy,'split-units.mjs':splitUnits},
       document:{getElementById:id=>id==='read_gmail'?button:status,querySelector:()=>({content:'test-client'})},
