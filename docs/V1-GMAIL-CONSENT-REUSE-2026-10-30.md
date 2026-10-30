@@ -80,3 +80,16 @@ No new completion percentage is justified; full V1 acceptance is not PASS.
 No email/Pushover send, Previo call, booking, cloud schema/role change, main or
 production mutation. V2/V3 value: preserves the existing shared transport and
 authority boundaries without adding a second engine or authentication system.
+
+
+## Publication, release and later browser observation
+
+- Published source: `59c236bccfb48294c2c4c93d8ad5402a733b2251`.
+- Full CI https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41124482699 completed SUCCESS; logs independently confirm 2410 PASS, 0 FAIL, 0 SKIP.
+- Targeted Gmail run 41124482688 and capacity run 41124482690 completed SUCCESS.
+- Synthetic Gmail/operator mobile run 41124482674 completed SUCCESS: 14 + 28 checks. The separate daily mobile run 41124482778 was SKIPPED by its explicit commit-marker condition; it is not a new daily-mobile PASS.
+- Exact same-tree test release: `1dcbe7c0cb4e861d0eeadbad5926b5463ae6ca94`. A fresh browser health page returned that complete deployed SHA, with autoSend=false and autoBookingModification=false. Only the existing test release was requested.
+- At final live verification, the browser inventory had no remaining old tabs and the earlier JavaScript bindings were unavailable. A fresh canonical Gmail navigation showed the designated account as signed out. No model-initiated cookie deletion, browser-profile reset or Google logout occurred. These observations do not prove why the website session became unavailable or that a new independent Work task was created.
+- Consequently, password-free browser access is NOT currently reverified, cross-Work persistence is NOT VERIFIED, and the post-patch live Gmail/Google grant-reuse test is BLOCKED at sign-in. The code/configuration fix must not be called a repair of Work's session expiry. No new credential request or repeated sign-in attempt was made.
+- The direct ChatGPT Gmail connection was freshly rechecked after that observation: account identity and matching synthetic inbox-message search PASS without browser authentication. This does not verify the application's own OAuth or substitute for its hosted approval chain.
+- Full Gmail -> hosted Writer -> independent Approver remains NOT VERIFIED; separate authorized operator sessions and the existing evidence gates remain necessary. No approval override, send, booking, Previo or production change occurred.
