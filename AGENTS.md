@@ -49,6 +49,15 @@ Ez a szabály a Sárberki V1/V2 valamennyi új feladatára, hibajavítására, r
 - Osztott A/B alapkapacitása 2 fő; C alapkapacitása 4 fő, pótággyal legfeljebb 5. Öt főnél a pótágy és elhelyezés feltételét jelezd; a felár külön bizonyíték nélkül nem igazolt. Hat főnek egyetlen C nem ajánlható. A meglévő közelségi/azonos házi ellenőrzési szabályok változatlanok.
 - Vendégszövegbe belső házszám nem kerülhet. Ár-, kedvezmény-, előleg-, lemondási, gyermek- és dézsaszabályt kizárólag jóváhagyott üzleti módosítás alapján változtass.
 
+## Work-keret utáni kötelező GitHub-beolvasási ellenőrzés – 2026-10-30
+
+- **Állapot: NEM IGAZOLT.** A Work-keret elfogyása előtt a ChatGPT-projektutasítások felismerését kipróbáltuk, de a Work új munkamenetben történő tényleges GitHub-`AGENTS.md`-beolvasását és az utasítások tartós Work-mentését nem igazoltuk. Ezeket tilos késznek vagy automatikusnak jelenteni.
+- **A következő elérhető Work-munkamenet első feladata:** nyissa meg a `valkana6666-svg/Sarberki-Email-Age` repository `gmail-test-subject-allowlist` ágának aktuális `AGENTS.md` fájlját, és olvassa be teljesen. Közölje a pontos ágat, az ellenőrzött teljes commit SHA-t, az olvasás időpontját és a forráshivatkozást; külön jelezze, ha bármely adat nem ellenőrizhető.
+- Hasonlítsa össze a ténylegesen beolvasott szabályokat a Sárberki AI Agent ChatGPT-projektutasításaival, sorolja fel az eltéréseket. Mutassa be saját szavaival a meglévő megoldások ellenőrzésének, a legegyszerűbb biztonságos javítás kiválasztásának, a tesztbizonyítékoknak és a production-tilalomnak a szabályait.
+- Ellenőrizze, hogy saját tartós Work-utasítás ténylegesen el van-e mentve és új Work-munkamenetben betöltődik-e. Ha nincs hozzáférése a beállításhoz vagy a megismételt ellenőrzéshez, eredmény: **NEM IGAZOLT**, nem PASS. A GitHub-fájl létezése önmagában nem igazolja az automatikus Work-beolvasást.
+- A két ellenőrzésről adjon **PASS / FAIL / NEM IGAZOLT** státuszt, konkrét bizonyítékot és szükséges további lépést. A fenti ellenőrzéshez ne módosítson kódot, Gmail-fiókot vagy éles rendszert.
+- Az ellenőrzés után a meglévő Gmail OAuth → olvasás → központi AI → napi kezelő → jóváhagyás lánc, valamint a mentés és **valóban kipróbált visszaállítás** marad a P0 feladat. Csak célzott, a bizonyított hiba okához illő minimális javítás engedett.
+
 ## Work tartós projektutasítása – kötelező döntési kapu
 
 - Ez a fájl a Sárberki-projekten dolgozó Work számára is kötelező projektutasítás, nem csupán a Codexnek szól. Minden új Work-munkamenet kezdetén olvasd be a tesztág aktuális `AGENTS.md` fájlját, és a fenti **KÖTELEZŐ FEJLESZTÉSI DÖNTÉSI PROTOKOLL** szabályait alkalmazd az összes tervezésre, eszközválasztásra, kóddelegálásra és ellenőrzésre.
