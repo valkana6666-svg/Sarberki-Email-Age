@@ -101,7 +101,7 @@ function sessionUI(isAuthenticated,message){
  el('chat-reset').disabled=!isAuthenticated;
 }
 function lockSession(message){
- setConcealed(false);emailReader.clear();resetChat();session.clear();clearData();el('password').value='';
+ forgetSwitch();setConcealed(false);emailReader.clear();resetChat();session.clear();clearData();el('password').value='';
  sessionUI(false,message);
 }
 // The view may be concealed during an app switch; results still land in memory and stay hidden.
@@ -116,6 +116,7 @@ async function resume(){
  const turn=epoch;
  try{await session.restore();if(turn!==epoch||document.visibilityState==='hidden')return;
   sessionUI(true,'Bejelentkezve.');
+  if(reloadedAfterSwitch){reloadedAfterSwitch=false;el('email-status').textContent='Az alkalmazásváltás közben a böngésző újratöltötte az oldalt. A leveleket és a helyi AI-javaslatot biztonsági okból nem tároljuk, ezért olvassa be újra a leveleket.';}
   await loadCases({selectAvailable:true});
  }catch(error){if(turn===epoch)failed(error);}
 }
@@ -225,24 +226,40 @@ el('load-cases').addEventListener('click',()=>loadCases());
 // App switch (iPhone): conceal, keep in-memory state, and on return let the server decide.
 // The server enforces the 30 minute inactivity limit; a rejected restore locks and clears.
 let concealed=false,lastActivity=0;
-const ACTIVITY_REFRESH_MS=5*60*1000;
-function setConcealed(value){concealed=value;document.body?.classList.toggle('concealed',value);}
-function conceal(){if(!authenticated||concealed)return;setConcealed(true);emailReader.conceal();}
+const ACTIVITY_REFRESH_MS=5*60*1000,SWITCH_MARK='sarberki-napi-concealed-at';
+const authError=error=>['AUTH_REQUIRED','FORBIDDEN'].includes(error?.message);
+// Only a timestamp is kept, to tell an iOS tab reload apart from a normal return. No mail, AI text or token.
+function markSwitch(){try{sessionStorage.setItem(SWITCH_MARK,String(Date.now()));}catch{}}
+function forgetSwitch(){try{sessionStorage.removeItem(SWITCH_MARK);}catch{}}
+function setConcealed(value,message='Munkamenet ellenőrzése…'){
+ concealed=value;document.body?.classList.toggle('concealed',value);if(document.body?.dataset)document.body.dataset.concealedMessage=message;
+}
+function conceal(){if(!authenticated||concealed)return;setConcealed(true);markSwitch();emailReader.conceal();}
 async function reveal(){
  if(!concealed){void resume();return;}
  if(document.visibilityState==='hidden')return;
  const turn=epoch;
  try{await session.restore();if(turn!==epoch||!authenticated||document.visibilityState==='hidden')return;
-  lastActivity=Date.now();setConcealed(false);el('session-status').textContent='Bejelentkezve.';emailReader.reveal();
- }catch(error){if(turn===epoch)failed(error);}
+  lastActivity=Date.now();forgetSwitch();setConcealed(false);el('session-status').textContent='Bejelentkezve.';emailReader.reveal();
+ }catch(error){
+  if(turn!==epoch)return;
+  // Only an authorization failure locks and clears. A transient network error (common right after
+  // iOS resumes the page) keeps the data hidden and retries on the next tap or return.
+  if(authError(error))failed(error);else setConcealed(true,'A kapcsolat még nem ellenőrizhető. Érintse meg a képernyőt az újrapróbáláshoz.');
+ }
 }
 // Real operator activity slides the server idle deadline, at most once per interval.
 function activity(){
- if(!authenticated||concealed||document.visibilityState==='hidden'||Date.now()-lastActivity<ACTIVITY_REFRESH_MS)return;
+ if(!authenticated||document.visibilityState==='hidden')return;
+ if(concealed){void reveal();return;}
+ if(Date.now()-lastActivity<ACTIVITY_REFRESH_MS)return;
  lastActivity=Date.now();const turn=epoch;
- session.restore().catch(error=>{if(turn===epoch&&authenticated)failed(error);});
+ session.restore().catch(error=>{if(turn===epoch&&authenticated&&authError(error))failed(error);});
 }
 for(const type of ['pointerdown','keydown'])document.addEventListener(type,activity,{capture:true,passive:true});
+let reloadedAfterSwitch=false;
+try{reloadedAfterSwitch=Boolean(Number(sessionStorage.getItem(SWITCH_MARK)));}catch{}
+forgetSwitch();
 addEventListener('pagehide',conceal);
 addEventListener('pageshow',event=>{if(event.persisted)void reveal();});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')conceal();else void reveal();});

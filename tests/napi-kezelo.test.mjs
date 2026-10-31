@@ -205,3 +205,70 @@ assert.equal(doc.elements['case-list'].children.length,1);
   assert.equal(doc.elements.login.hidden,false);assert.equal(doc.elements['case-list'].children.length,0);
  }finally{Object.assign(globalThis,{document:previous.document,location:previous.location,fetch:previous.fetch,addEventListener:previous.addEventListener,setTimeout:previous.setTimeout,clearTimeout:previous.clearTimeout});Date.now=previous.now;}
 });
+
+test('iPhone return with a transient session-check failure must not wipe mail/case state; a later tap retries; reload is detected without storing data',async()=>{
+ const previous={document:globalThis.document,location:globalThis.location,fetch:globalThis.fetch,addEventListener:globalThis.addEventListener,setTimeout:globalThis.setTimeout,clearTimeout:globalThis.clearTimeout,sessionStorage:globalThis.sessionStorage,now:Date.now};
+ const doc=fakeDocument(),events={},calls=[],sessionMeta=meta(),stored=new Map();let loggedIn=false,networkDown=false,clock=Date.now();
+ const storage={getItem:k=>stored.has(k)?stored.get(k):null,setItem:(k,v)=>stored.set(k,String(v)),removeItem:k=>stored.delete(k)};
+ globalThis.document=doc;globalThis.location={origin:'https://leafy-chimera-2403e5.netlify.app'};globalThis.sessionStorage=storage;
+ globalThis.addEventListener=(type,fn)=>(events[type]??=[]).push(fn);globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};Date.now=()=>clock;
+ const settle=async()=>{for(let i=0;i<20;i++)await new Promise(resolve=>setImmediate(resolve));};
+ globalThis.fetch=async(url,options={})=>{
+  const u=new URL(url,'https://leafy-chimera-2403e5.netlify.app'),method=options.method||'GET';calls.push({path:u.pathname,method,query:u.search});
+  if(networkDown)throw new TypeError('Load failed');
+  if(u.pathname.endsWith('/operator-session')){
+   if(method==='POST'){const payload=JSON.parse(options.body);if(payload.action==='login')loggedIn=true;if(payload.action==='logout')loggedIn=false;}
+   return loggedIn?response({...sessionMeta,expiresAt:new Date(clock+3600000).toISOString()}):response({error:'AUTH_REQUIRED'},401);
+  }
+  if(u.pathname.endsWith('/booking-cases')){
+   const action=u.searchParams.get('action');
+   if(action==='daily-list')return response({result:[{tenantId:'sarberki-test',caseId:'case-synthetic',revision:1,category:'incoming'}]});
+   if(action==='review-record')return response({result:{tenantId:'sarberki-test',caseId:'case-synthetic',revision:1,canEditDraft:true,canApproveDraft:false,data:{state:{approval:'pending',revision:0,values:{arrival:'2026-11-20',departure:'2026-11-22',guests:2,unit:'Deluxe'}},messages:[{text:'Kitalált vendég eredeti üzenete'}],drafts:[{text:'Kitalált, tárolt válasz.',operatorReviewText:'Kitalált ellenőrző összefoglaló',synthetic:true,reviewStatus:'internal_review_required',revision:0,basedOnMessageCount:1}]}}});
+   return response({error:'INVALID_INPUT'},400);
+  }
+  throw Error('unexpected endpoint');
+ };
+ try{
+  await import(pathToFileURL(resolve('napi-kezelo/napi.mjs')).href+'?synthetic=transient-return');await settle();
+  doc.elements.email.value='writer@synthetic.invalid';doc.elements.password.value='SYNTHETIC_ONLY';await doc.elements.login.dispatch('submit');await settle();
+  await doc.elements['case-list'].children[0].children[1].dispatch('click');await settle();
+  doc.elements['draft-editor'].value='Proba123';await doc.elements['draft-editor'].dispatch('input');
+  const mailStatus=doc.elements['email-status'].textContent;
+  // App switch; on return the first session check fails transiently (iOS network not yet up).
+  doc.visibilityState='hidden';await doc.dispatch('visibilitychange');
+  assert.ok(stored.size<=1&&[...stored.values()].every(v=>/^\d+$/.test(v)),'only a non-sensitive timestamp may be stored');
+  networkDown=true;clock+=60000;doc.visibilityState='visible';await doc.dispatch('visibilitychange');await settle();
+  assert.equal(doc.body.classList.contains('concealed'),true,'stays concealed, not wiped');
+  assert.equal(doc.elements['draft-editor'].value,'Proba123');assert.equal(doc.elements['case-list'].children.length,1);
+  assert.equal(doc.elements['email-status'].textContent,mailStatus,'mail reader not cleared');assert.equal(doc.elements.logout.hidden,false);
+  // Repeated visibility while still offline must not silently relogin into an empty view either.
+  await doc.dispatch('visibilitychange');await settle();assert.equal(doc.elements['draft-editor'].value,'Proba123');
+  // A tap retries once the network is back; state is intact.
+  networkDown=false;await doc.dispatch('pointerdown');await settle();
+  assert.equal(doc.body.classList.contains('concealed'),false);assert.equal(doc.elements['draft-editor'].value,'Proba123');
+  assert.equal(doc.elements['case-detail'].hidden,false);assert.equal(stored.size,0,'marker removed after a normal return');
+  // Transient failure of the background activity refresh never wipes state.
+  clock+=6*60000;networkDown=true;await doc.dispatch('pointerdown');await settle();networkDown=false;
+  assert.equal(doc.elements['draft-editor'].value,'Proba123');assert.equal(doc.elements.logout.hidden,false);
+  // A real authorization failure on return still locks and clears.
+  doc.visibilityState='hidden';await doc.dispatch('visibilitychange');loggedIn=false;doc.visibilityState='visible';await doc.dispatch('visibilitychange');await settle();
+  assert.equal(doc.elements['draft-editor'].value,'');assert.equal(doc.elements.login.hidden,false);assert.equal(stored.size,0);
+ }finally{Object.assign(globalThis,{document:previous.document,location:previous.location,fetch:previous.fetch,addEventListener:previous.addEventListener,setTimeout:previous.setTimeout,clearTimeout:previous.clearTimeout,sessionStorage:previous.sessionStorage});Date.now=previous.now;}
+});
+
+test('a page reload after an app switch (iOS discarded the tab) is reported honestly; nothing sensitive is restored',async()=>{
+ const previous={document:globalThis.document,location:globalThis.location,fetch:globalThis.fetch,addEventListener:globalThis.addEventListener,setTimeout:globalThis.setTimeout,clearTimeout:globalThis.clearTimeout,sessionStorage:globalThis.sessionStorage};
+ const doc=fakeDocument(),stored=new Map([['sarberki-napi-concealed-at',String(Date.now()-120000)]]);
+ globalThis.document=doc;globalThis.location={origin:'https://leafy-chimera-2403e5.netlify.app'};
+ globalThis.sessionStorage={getItem:k=>stored.has(k)?stored.get(k):null,setItem:(k,v)=>stored.set(k,String(v)),removeItem:k=>stored.delete(k)};
+ globalThis.addEventListener=()=>{};globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};
+ globalThis.fetch=async url=>{const u=new URL(url,'https://leafy-chimera-2403e5.netlify.app');
+  if(u.pathname.endsWith('/operator-session'))return response({...meta()});
+  if(u.pathname.endsWith('/booking-cases'))return response({result:[]});throw Error('unexpected');};
+ try{
+  await import(pathToFileURL(resolve('napi-kezelo/napi.mjs')).href+'?synthetic=reloaded');for(let i=0;i<20;i++)await new Promise(r=>setImmediate(r));
+  assert.equal(doc.elements.logout.hidden,false);
+  assert.match(doc.elements['email-status'].textContent,/újratöltötte/);assert.match(doc.elements['email-status'].textContent,/nem tárol/);
+  assert.equal(stored.size,0);assert.equal(doc.elements['email-list'].children.length,0);
+ }finally{Object.assign(globalThis,previous);}
+});
