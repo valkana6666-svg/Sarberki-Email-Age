@@ -12,7 +12,8 @@ const sections=Object.freeze({
  incoming:['Beérkezett ügyek','Új vendégüzenetek és feldolgozásra váró megkeresések.'],
  approval:['Jóváhagyásra vár','Átnézendő választervezetek.'],
  progress:['Folyamatban','Pontosításra vagy ellenőrzésre váró ügyek.'],
- closed:['Lezárt ügyek','Korábban lezárt érdeklődések.']
+ // No close/reject lifecycle exists on the server yet; never imply closed cases.
+ closed:['Lezárt ügyek','Az ügylezárás és elutasítás még nincs bekötve a szerveren, ezért ide jelenleg egyetlen ügy sem kerülhet.']
 });
 const el=id=>document.getElementById(id);
 for(const button of document.querySelectorAll('[data-section]'))button.addEventListener('click',()=>{

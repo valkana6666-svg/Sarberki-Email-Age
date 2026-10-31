@@ -73,7 +73,8 @@ test('daily view reuses protected cookie reader, keeps reading open, auto-loads 
   assert.equal(doc.elements['count-incoming'].textContent,'1 ügy');assert.equal(doc.elements['count-closed'].textContent,'0 ügy');
   await doc.nav[3].dispatch('click');assert.equal(doc.elements['case-list'].children.length,0);
   assert.match(doc.elements['list-status'].textContent,/nincs elérhető tárolt tesztügy/);
-  assert.match(doc.elements['cases-title'].textContent,/Lezárt ügyek/);await doc.nav[0].dispatch('click');
+  assert.match(doc.elements['cases-title'].textContent,/Lezárt ügyek/);
+  assert.match(doc.elements['section-description'].textContent,/még nincs bekötve/);await doc.nav[0].dispatch('click');
   assert.doesNotMatch(doc.elements['list-status'].textContent,/jelentkezzen be/iu);
   doc.elements['chat-input'].value='Kitalált első üzenet';await doc.elements['chat-form'].dispatch('submit');
   assert.equal(doc.elements['chat-output'].textContent,'Szintetikus szerverválasz');
