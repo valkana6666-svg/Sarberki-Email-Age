@@ -30,3 +30,14 @@ Választás: elsőként (1), kifejezetten korlátozott bizonyítékkal; (2) csak
 - A Claude által esetleg módosított `napi-kezelo/napi-email.mjs`, `napi-kezelo/napi.mjs`, `napi-kezelo/index.html` és AI-kód párhuzamosan nem írható felül.
 - Csak `gmail-test-subject-allowlist`. Nincs `main`, production, telepítés, új ág, force push, tényleges levélküldés, foglalás vagy SQL-migráció külön engedély nélkül.
 - Ez elfogadási specifikáció, **nem kódimplementáció és nem PASS igazolás**. A jóváhagyott üzleti szabályok és V2/V3 adat-/jogosultsághatárok változatlanok.
+
+## Jóváhagyott architekturális eltérés – 2026-10-31
+
+Projektvezetői döntés: a fenti „szerveres AI-előnézeti útvonal” helyett az **A) változat** – a meglévő közös e-mail-adapter (`shared-core/inquiry-channel-adapters.mjs` → `buildEmailInquiryDraft` → `central-inquiry-decision.mjs`) közvetlenül a böngészőben, helyben fut.
+
+- Indok: a szerveres `server-chat-preview` hosztoltan tiltott (503), `{language,messages}` szerződése nem e-mailre készült, élő rate limitje nem igazolt. A kliensoldali út nem igényel új hosztolt kaput, és a levéltörzs nem hagyja el a böngészőt.
+- Kompatibilitási bizonyíték: a valódi `scripts/build-static.cjs` a teljes, 15 modulos import-láncot publikálja (nincs bare/`node:` import); Chromiumban és Node-ban azonos bemenetre bájtra azonos szöveg és döntés (5/5). A chatbot böngészős modulja már ugyanezt az adaptert használja.
+- Hatókör: kizárólag a lezárt szintetikus registry (`shared-core/synthetic-mail-fixtures.mjs`, `closedMailRequestFromGmailRecord`) pontos levelei kaphatnak előnézetet. Minden más vagy módosított Gmail-levélnél a gomb tiltott; tetszőleges levél feldolgozása külön jóváhagyást igényel.
+- A szerveroldali CSRF/Origin/401/403/429/503 kapuk helyett: nincs előnézeti hálózati kérés; minden előnézet előtt friss kezelői munkamenet-ellenőrzés (`restoreSession`), hibánál nincs automatikus újrapróbálás.
+- Változatlan: nincs ügymentés, jóváhagyás, levélküldés, foglalás, tartós tárolás vagy naplózás; Gmail `gmail.readonly`; üzleti szabályok, tenant- és jogosultsági határok; a részletes Gmail-nézet (`gmail-readonly.js`) érintetlen.
+- Ismert, külön kezelendő eltérés (P1): a részletes Gmail-nézet a régi `sarberki-core` láncot használja, ezért a két felület tervezete eltérhet; mértéke NEM IGAZOLT.

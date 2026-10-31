@@ -4,6 +4,7 @@ import {resolve,sep} from 'node:path';
 import assert from 'node:assert/strict';
 import {chromium,webkit} from 'playwright';
 import {createServerChatPreview} from '../shared-core/server-chat-preview.mjs';
+import {syntheticMailMime,syntheticMailLanguages} from '../shared-core/synthetic-mail-fixtures.mjs';
 const origin='https://leafy-chimera-2403e5.netlify.app',root=resolve(process.env.NAPI_PROOF_ROOT||'dist');
 const report={syntheticOnly:true,externalRequests:0,blockedExternalRequests:0,unexpectedExternalRequests:0,bookingCreated:false,emailSent:false,actualIPhoneVerified:false,checks:[]};
 let browser;
@@ -13,7 +14,7 @@ try{
   if(process.env.NAPI_PROOF_ENGINE&&process.env.NAPI_PROOF_ENGINE!==engine)continue;
   browser=await launcher.launch({headless:true,...(engine==='chromium'&&process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{})});
   const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block'});
-  const state={authenticated:false,revision:1,allowRead:true,caseMethods:[],previewRevisions:[],chatStatus:200,chatMessages:[],unreadableMail:false,role:'reader',editable:false,draftText:'Kitalált, tárolt válasz.',approval:'pending',draftHash:null};
+  const state={authenticated:false,revision:1,allowRead:true,caseMethods:[],previewRevisions:[],chatStatus:200,chatMessages:[],unreadableMail:false,closedMail:false,role:'reader',editable:false,draftText:'Kitalált, tárolt válasz.',approval:'pending',draftHash:null};
   const record=()=>({tenantId:'sarberki-test',caseId:'case-synthetic',revision:state.revision,
    canEditDraft:state.role==='writer'&&state.approval==='pending',canApproveDraft:state.role==='approver'&&state.approval==='pending',
    data:{state:{approval:state.approval,revision:0,values:{arrival:'2026-11-20',departure:'2026-11-22',guests:2,unit:'Deluxe'}},
@@ -29,6 +30,8 @@ try{
    if(url.href==='https://accounts.google.com/gsi/client'&&new URL(request.frame().url()).pathname==='/napi-kezelo/')return route.fulfill({status:200,contentType:'text/javascript',body:'window.google={accounts:{oauth2:{initTokenClient(options){return {requestAccessToken(){options.callback({access_token:"SYNTHETIC_TOKEN"});}};}}}};'});
    if(url.origin==='https://gmail.googleapis.com'){
     assert.equal(request.method(),'GET');assert.equal(request.headers().authorization,'Bearer SYNTHETIC_TOKEN');
+    const closed=syntheticMailLanguages.map(language=>syntheticMailMime(language));
+    if(state.closedMail&&!url.pathname.endsWith('/profile'))return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(url.pathname.endsWith('/messages')?{messages:closed.map(({id})=>({id}))}:closed.find(({id})=>id===url.pathname.split('/').at(-1)))});
     const body=url.pathname.endsWith('/profile')?{emailAddress:'sarberkiprojecttest@gmail.com'}:url.pathname.endsWith('/messages')?{messages:[{id:'abcdef1234567890'},{id:'abcdef1234567891'},{id:'abcdef1234567892'}]}:{id:url.pathname.split('/').at(-1),internalDate:String(Date.parse('2026-10-20T12:00:00Z')),labelIds:['INBOX'],payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Kitalált napi e-mail '+url.pathname.split('/').at(-1)},{name:'From',value:'guest@synthetic.invalid'}],body:{data:state.unreadableMail&&url.pathname.endsWith('abcdef1234567892')?'%%%':Buffer.from('Kitalált eredeti e-mail.').toString('base64url')}}};
     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
    }
@@ -109,6 +112,8 @@ try{
   await page.locator('#read-email').click();await page.locator('#email-list button').first().waitFor();
   await page.locator('#email-list button').first().click();
   assert.match(await page.locator('#email-detail').innerText(),/Kitalált eredeti e-mail/);
+  assert.equal(await page.locator('#email-draft-request').isDisabled(),true);
+  assert.match(await page.locator('#email-draft-status').innerText(),/csak a lezárt szintetikus tesztlevelekhez/);
   assert.equal(await page.locator('#email-list button').count(),3);
   await page.locator('#email-next').click();assert.equal(await page.locator('#email-picker').inputValue(),'1');
   await page.locator('#email-picker').selectOption('2');assert.equal(await page.locator('#email-next').isDisabled(),true);
@@ -131,6 +136,29 @@ try{
   assert.deepEqual(errors,[]);
   state.unreadableMail=false;
   check(engine,'unreadable-mail-auto-open-manual-selection-and-recovery');
+  check(engine,'arbitrary-mail-has-no-ai-preview');
+  state.closedMail=true;
+  await page.locator('#read-email').click();await page.locator('#email-list button').nth(3).waitFor();
+  await page.locator('#email-draft-request:not([disabled])').waitFor();
+  const requestsBefore=[];const watch=request=>requestsBefore.push(new URL(request.url()).pathname);page.on('request',watch);
+  await page.locator('#email-draft-request').click();await page.locator('#email-draft-text:not([disabled])').waitFor();
+  page.off('request',watch);
+  assert.deepEqual(requestsBefore,['/.netlify/functions/operator-session']);
+  assert.match(await page.locator('#email-draft-text').inputValue(),/\S/);
+  assert.match(await page.locator('#email-draft-checks').innerText(),/Kapacitás: nem igazolt/);
+  assert.match(await page.locator('#email-draft-checks').innerText(),/Ár: nem igazolt/);
+  assert.match(await page.locator('#email-draft-checks').innerText(),/Emberi jóváhagyás szükséges/);
+  assert.match(await page.locator('#email-draft-status').innerText(),/Helyi előnézet/);
+  assert.match(await page.locator('#email-draft-review').innerText(),/\S/);
+  await page.locator('#email-draft-text').fill('Kitalált helyi szerkesztés.');
+  assert.equal(await page.evaluate(()=>localStorage.length+sessionStorage.length),0);
+  await page.locator('#email-next').click();
+  assert.equal(await page.locator('#email-draft-text').inputValue(),'');assert.equal(await page.locator('#email-draft-text').isDisabled(),true);
+  assert.equal(await page.locator('#email-draft-checks li').count(),0);
+  assert.deepEqual(errors,[]);state.closedMail=false;
+  await page.locator('#read-email').click();await page.locator('#email-detail').filter({hasText:'Kitalált eredeti e-mail'}).waitFor();
+  assert.equal(await page.locator('#email-list button').count(),3);assert.equal(await page.locator('#email-draft-request').isDisabled(),true);
+  check(engine,'closed-synthetic-mail-local-ai-preview-session-checked-and-cleared');
 
   await page.locator('#case-list button').waitFor();
   check(engine,'login-automatically-loads-cases');

@@ -1,4 +1,7 @@
 import {readTestGmailInbox,TEST_GMAIL_ACCOUNT,gmailReadableBody} from '../gmail-policy.mjs';
+import {buildEmailInquiryDraft} from '../shared-core/inquiry-channel-adapters.mjs';
+import {closedMailRequestFromGmailRecord} from '../shared-core/synthetic-mail-fixtures.mjs';
+import {languageFromText} from '../sarberki-core.mjs';
 
 let googleLoader;
 function loadGoogle(){
@@ -10,14 +13,49 @@ function loadGoogle(){
  });
  return googleLoader;
 }
+const missingLabels={dates:'pontos érkezési és távozási dátum',dates_confirmation:'a dátum megerősítése',accommodation:'háztípus',adults:'felnőttek száma',
+ children_status:'érkezik-e gyermek',child_ages:'gyermekek életkora',units_requested:'kért egységszám',current_date:'aktuális dátum'};
+// Only the closed fictional registry may be previewed; any other mailbox content needs separate approval.
+function closedPreviewText(message,header,body){
+ try{
+  const from=(/<([^<>\s]+)>\s*$/.exec(header.from||'')?.[1]||'').toLowerCase();
+  return closedMailRequestFromGmailRecord({source:{provider:'gmail',from_email:from,message_id:message.id,thread_id:message.threadId,
+   received_at:new Date(Number(message.internalDate)).toISOString(),subject:header.subject},original_message:body}).envelope.text;
+ }catch{return null;}
+}
 // Separate mailbox reading from cloud case writes. Reuses the existing readonly
 // transport and account policy; no tokens or message bodies are persisted.
-export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=loadGoogle,readInbox=readTestGmailInbox,documentImpl=document,clientId}={}){
+export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=loadGoogle,readInbox=readTestGmailInbox,documentImpl=document,clientId,now=()=>new Date()}={}){
  const el=id=>documentImpl.getElementById(id);
- let generation=0,busy=false,googleApi=null,chooseMessage=null,pendingConsent=false,queuedConsent=null,consentTimer=null;
+ let generation=0,busy=false,googleApi=null,chooseMessage=null,pendingConsent=false,queuedConsent=null,consentTimer=null,previewSource=null,previewTurn=0;
  const active=turn=>turn===generation&&canRead()&&documentImpl.visibilityState!=='hidden';
+ // Local, unsaved reply preview from the shared email adapter. No request, storage or case transition.
+ function clearPreview(source=null){
+  previewTurn++;previewSource=source;
+  el('email-draft-text').value='';el('email-draft-text').disabled=true;el('email-draft-review').textContent='';el('email-draft-checks').replaceChildren();
+  el('email-draft-request').disabled=!source||!canRead();
+  el('email-draft-status').textContent=source?'AI-válaszjavaslat kérhető. Helyi előnézet lesz: nincs mentve, nem küldhető, nem foglalás.':
+   'Az AI-válaszjavaslat jelenleg csak a lezárt szintetikus tesztlevelekhez érhető el; más levélhez külön jóváhagyás szükséges.';
+ }
+ function showPreview(draft){
+  const d=draft.decision,items=[...d.missing.map(code=>'Hiányzó adat: '+(missingLabels[code]||code)),...d.contradictions.map(c=>'Ellentmondás: '+c.message),
+   'Kapacitás: '+(d.capacity?.verified?'típusszinten igazolt, ajánlat előtt újra ellenőrizendő':'nem igazolt'),'Ár: '+(d.pricing?.verified?'igazolt összetevők':'nem igazolt'),
+   'Emberi jóváhagyás szükséges; ez nem mentett ügy, nem küldés és nem foglalás.'];
+  el('email-draft-checks').replaceChildren(...items.map(text=>{const li=documentImpl.createElement('li');li.textContent=text;return li;}));
+  el('email-draft-text').value=draft.text;el('email-draft-text').disabled=false;el('email-draft-review').textContent=draft.operatorReviewText;
+  el('email-draft-status').textContent='Helyi előnézet a közös döntési magból: nincs mentve, nem küldhető, nem foglalás. A szöveg itt szerkeszthető, de nem tárolódik.';
+ }
+ el('email-draft-request').addEventListener('click',async()=>{
+  const source=previewSource,turn=generation;
+  if(!source||!active(turn))return;
+  const request=++previewTurn;el('email-draft-request').disabled=true;el('email-draft-status').textContent='Munkamenet ellenőrzése…';
+  try{await restoreSession();}
+  catch{if(request===previewTurn&&active(turn)){clearPreview(source);el('email-draft-status').textContent='A kezelői munkamenet lejárt vagy nem ellenőrizhető. Jelentkezzen be újra; automatikus újrapróbálás nincs.';}return;}
+  if(request!==previewTurn||source!==previewSource||!active(turn))return;
+  showPreview(buildEmailInquiryDraft({message:source.text,language:languageFromText(source.text),now:now(),tenantId:'sarberki-test'}));
+ });
  function clearPicker(){
-  chooseMessage=null;const placeholder=documentImpl.createElement('option');placeholder.value='';placeholder.textContent='Még nincs beolvasott e-mail';el('email-picker').replaceChildren(placeholder);el('email-picker').disabled=true;el('email-picker-wrap').hidden=false;
+  chooseMessage=null;clearPreview();const placeholder=documentImpl.createElement('option');placeholder.value='';placeholder.textContent='Még nincs beolvasott e-mail';el('email-picker').replaceChildren(placeholder);el('email-picker').disabled=true;el('email-picker-wrap').hidden=false;
   el('email-previous').disabled=true;el('email-next').disabled=true;
  }
  el('email-picker').addEventListener('change',()=>chooseMessage?.(Number(el('email-picker').value)));
@@ -38,9 +76,10 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
    el('email-picker').value=String(index);
    buttons.forEach((button,i)=>button.setAttribute('aria-pressed',String(i===index)));
    el('email-previous').disabled=index===0;el('email-next').disabled=index===messages.length-1;
-   let body;
-   try{body=gmailReadableBody(message.payload)||'A levélnek nincs olvasható szöveges része.';}
-   catch{body='A levél szövege nem jeleníthető meg. Válasszon másik levelet a listából.';}
+   let body,readable=null;
+   try{readable=gmailReadableBody(message.payload);body=readable||'A levélnek nincs olvasható szöveges része.';}
+   catch{readable=null;body='A levél szövege nem jeleníthető meg. Válasszon másik levelet a listából.';}
+   const text=readable&&closedPreviewText(message,header,readable);clearPreview(text?{text}:null);
    el('email-detail').textContent='Feladó: '+(header.from||'Nincs megadva')+'\nTárgy: '+(header.subject||'(nincs tárgy)')+'\n\n'+body;
   };
   messages.forEach((message,index)=>{
