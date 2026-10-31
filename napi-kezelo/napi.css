@@ -8,3 +8,4 @@ textarea{font:inherit;width:100%;padding:12px;background:#090909;color:var(--tex
 
 #cases-panel{scroll-margin-top:16px}#cases-title:focus{outline:2px solid var(--orange);outline-offset:5px}
 body.concealed main,body.concealed footer{visibility:hidden}body.concealed::after{content:attr(data-concealed-message);position:fixed;inset:45% 0 auto;text-align:center;color:var(--muted)}
+footer{flex-wrap:wrap;align-items:center}#deployed_version{flex:1 1 100%;min-width:0;overflow-wrap:anywhere}#reload_version{margin-top:0}
