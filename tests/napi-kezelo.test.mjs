@@ -33,7 +33,7 @@ const preview=()=>({caseId:'case-synthetic',revision:1,persisted:false,approval:
 
 test('daily view reuses protected cookie reader, keeps reading open, auto-loads after login and rejects late responses',async()=>{
  const previous={document:globalThis.document,location:globalThis.location,fetch:globalThis.fetch,addEventListener:globalThis.addEventListener,setTimeout:globalThis.setTimeout,clearTimeout:globalThis.clearTimeout};
- const doc=fakeDocument(),timers=new Map(),events={},calls=[],sessionMeta=meta();let loggedIn=false,clock=0,delayed=false,release,chatStatus=200;
+ const doc=fakeDocument(),timers=new Map(),events={},calls=[],sessionMeta=meta();let loggedIn=false,clock=0,delayed=false,release,chatStatus=200,reviewable=false;
  const chats=[];
  globalThis.document=doc;globalThis.location={origin:'https://leafy-chimera-2403e5.netlify.app'};
  globalThis.addEventListener=(type,fn)=>(events[type]??=[]).push(fn);
@@ -50,11 +50,15 @@ test('daily view reuses protected cookie reader, keeps reading open, auto-loads 
   }
   if(u.pathname.endsWith('/booking-cases')){
    if(!loggedIn)return response({error:'AUTH_REQUIRED'},401);
-   if(u.searchParams.get('action')==='review-record'){
+   // Answer only the real server actions, so a rewired list or review read fails visibly.
+   const action=u.searchParams.get('action');
+   if(action==='review-record'){
     if(delayed)await new Promise(resolve=>{release=resolve;});
-    return response({result:{tenantId:'sarberki-test',caseId:'case-synthetic',revision:1,canEditDraft:false,canApproveDraft:false,data:{state:{approval:'pending',revision:0,values:{arrival:'2026-11-20',departure:'2026-11-22',guests:2,unit:'Deluxe'}},messages:[{text:'Kitalált vendég eredeti üzenete'}],drafts:[]}}});
+    const drafts=reviewable?[{text:'Kitalált, tárolt válasz.',operatorReviewText:'Kitalált ellenőrző összefoglaló',synthetic:true,reviewStatus:'internal_review_required',revision:0,basedOnMessageCount:1}]:[];
+    return response({result:{tenantId:'sarberki-test',caseId:'case-synthetic',revision:1,canEditDraft:reviewable,canApproveDraft:false,data:{state:{approval:'pending',revision:0,values:{arrival:'2026-11-20',departure:'2026-11-22',guests:2,unit:'Deluxe'}},messages:[{text:'Kitalált vendég eredeti üzenete'}],drafts}}});
    }
-   return response({result:[{tenantId:'sarberki-test',caseId:'case-synthetic',revision:1,category:'incoming'}]});
+   if(action==='daily-list')return response({result:[{tenantId:'sarberki-test',caseId:'case-synthetic',revision:1,category:'incoming'}]});
+   return response({error:'INVALID_INPUT'},400);
   }
   throw Error('unexpected endpoint');
  };
@@ -108,7 +112,13 @@ test('daily view reuses protected cookie reader, keeps reading open, auto-loads 
   for(let i=0;i<10&&!doc.elements['case-list'].children.length;i++)await new Promise(resolve=>setImmediate(resolve));
   assert.equal(doc.elements['case-list'].children.length,1);
   assert.equal(doc.elements['case-detail'].hidden,true);
+  // A current reviewable draft opens the editor only through a second review-record read.
+  reviewable=true;const before=calls.length;await doc.elements['case-list'].children[0].children[1].dispatch('click');
+  for(let i=0;i<10&&doc.elements['draft-editor'].disabled;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(doc.elements['draft-editor'].disabled,false);assert.equal(doc.elements['draft-editor'].value,'Kitalált, tárolt válasz.');
+  assert.deepEqual(calls.slice(before).filter(x=>x.path.endsWith('/booking-cases')).map(x=>new URLSearchParams(x.query).get('action')),['review-record','review-record']);
   assert.ok(calls.filter(x=>x.path.endsWith('/booking-cases')).every(x=>x.method==='GET'));
+  assert.ok(calls.some(x=>new URLSearchParams(x.query).get('action')==='daily-list'));
   assert.ok(calls.filter(x=>x.path.endsWith('/booking-cases')).every(x=>new URLSearchParams(x.query).get('tenantId')==='sarberki-test'));
  }finally{Object.assign(globalThis,previous);}
 });

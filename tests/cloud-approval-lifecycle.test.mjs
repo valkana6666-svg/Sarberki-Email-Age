@@ -144,3 +144,16 @@ test('stored readback fields are readonly in hosted HTML',()=>{
  const html=readFileSync(new URL('../cloud-approval.html',import.meta.url),'utf8');
  for(const id of ['stored_readback_text','stored_readback_hu'])assert.match(html,new RegExp('<textarea[^>]*id="'+id+'"[^>]*readonly'));
 });
+test('detailed approval load reads the shared review-record action, not another endpoint',async()=>{
+ const actions=[],record={tenantId:'sarberki-test',caseId:'case-fixture',revision:4,canEditDraft:false,canApproveDraft:true,
+  data:{state:{approval:'pending'},drafts:[{text:'Kitalált részletes tervezet',operatorReviewText:'Kitalált ellenőrző szöveg',synthetic:true,reviewStatus:'internal_review_required'}]}};
+ // Only the real server action returns the record; a rewired detailed read must fail visibly.
+ const h=await harness(async url=>{
+  if(url.includes('operator-session'))return {ok:true,json:async()=>valid()};
+  const action=new URL(url,'https://leafy-chimera-2403e5.netlify.app').searchParams.get('action');actions.push(action);
+  return action==='review-record'?{ok:true,json:async()=>({result:record})}:{ok:false,status:400,json:async()=>({error:'INVALID_INPUT'})};
+ });
+ h.get('isolated_approval_case_id').value='case-fixture';await h.get('isolated_approval_load').click();await settle();
+ assert.equal(h.get('isolated_approval_text').value,'Kitalált részletes tervezet');assert.equal(h.get('isolated_approval_revision').value,'4');
+ assert.deepEqual(actions,['review-record']);
+});
