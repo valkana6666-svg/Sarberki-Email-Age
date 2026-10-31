@@ -80,7 +80,7 @@ test('wrong Gmail account blocks list/message reads; failed display leaves local
   else {assert.equal(displayed,1);assert.match(h.ui.element('gmail_auth_status').textContent,/nem jelölt|sikertelen/);}
  }
 });
-test('actual fake GIS read -> exact registry staging -> explicit cookie Writer -> PostgreSQL -> Reader -> separate DE/SI/EN approval',async t=>{
+test('actual fake GIS read -> exact registry staging -> explicit cookie Writer -> PostgreSQL -> Reader -> HU/DE/SI/EN Writer correction -> independent approval',async t=>{
  let db=new PGlite(),cookie='',metadata,casePosts=0;const ids=[];const tokens=new Map();
  const env={URL:origin,SUPABASE_URL:project,SUPABASE_PUBLISHABLE_KEY:'sb_publishable_SYNTHETIC_PUBLIC_KEY_12345',CASE_STORE_ENABLED:'synthetic-only',CASE_STORE_TEST_TENANTS:'sarberki-test,demo-test',CASE_APPROVAL_ENABLED:'sarberki-test-synthetic-only',ISOLATED_APPROVAL_ATTESTATION_KEY:'a1'.repeat(32),SARBERKI_OPERATOR_SESSION_KEY:'ab'.repeat(32)};
  const jwt=role=>{const claims={sub:actors[role],role:'authenticated',iss:project+'/auth/v1',exp:Math.floor(Date.now()/1000)+3600,session_id:sessions[role]};const token='eyJhbGciOiJIUzI1NiJ9.'+Buffer.from(JSON.stringify(claims)).toString('base64url')+'.synthetic_signature';tokens.set(token,claims);return token;};
@@ -121,9 +121,9 @@ test('actual fake GIS read -> exact registry staging -> explicit cookie Writer -
   await db.query("select set_config('sarberki.approval_install_project_ref',$1,false),set_config('sarberki.approval_backup_sha256',$2,false)",['mojnqizbcaczstguikpv','b'.repeat(64)]);
   await db.exec(await read('deployment/cloud-approval/install.sql'));await db.exec(await read('deployment/cloud-approval/separate-approver-permission.sql'));
   await db.query('insert into sc_isolated_approval_key(key_hex) values($1)',[env.ISOLATED_APPROVAL_ATTESTATION_KEY]);
-  for(const role of Object.keys(actors)){await db.query('insert into auth.users values($1)',[actors[role]]);await db.query('insert into auth.sessions values($1,$2,null)',[sessions[role],actors[role]]);await db.query("insert into sc_memberships values('sarberki-test',$1,true,$2,$3)",[actors[role],role==='writer',role==='approver']);}
+  for(const role of Object.keys(actors)){await db.query('insert into auth.users values($1)',[actors[role]]);await db.query('insert into auth.sessions values($1,$2,null)',[sessions[role],actors[role]]);await db.query("insert into sc_memberships values('sarberki-test',$1,true,$2,$3)",[actors[role],role==='writer',role!=='reader']);}
   await login('writer');const ui=dom();
-  const messages=['de','si','en'].map(syntheticMailMime);
+  const messages=['de','si','en','hu'].map(syntheticMailMime);
   const dePayload=messages[0].payload;messages[0].payload={mimeType:'multipart/alternative',headers:dePayload.headers,parts:[{mimeType:'text/html',body:{data:btoa('<div>ignored alternative</div>')}},{mimeType:'text/plain',body:dePayload.body}]};
   messages.push({...syntheticMailMime('de'),id:'excluded-sent-fixture',labelIds:['SENT']});
   messages.push({...syntheticMailMime('en'),id:'excluded-old-fixture',internalDate:String(Date.parse('2026-09-24'))});
@@ -136,7 +136,7 @@ test('actual fake GIS read -> exact registry staging -> explicit cookie Writer -
   assert.equal(initOperatorLoginPanel({documentRef:ui.document,globalRef:h.window,request:browserFetch}),true);
   for(let i=0;i<100&&ui.element('operator_login').disabled;i++)await new Promise(resolve=>setImmediate(resolve));
   assert.ok(h.window.SarberkiCaseStoreSession);await h.read();h.assertNoTokenStored();
-  assert.equal(ui.element('gmail_message_picker').children.length,3,'only policy-matching INBOX messages enter the picker');
+  assert.equal(ui.element('gmail_message_picker').children.length,4,'only policy-matching INBOX messages enter the picker');
   assert.equal(h.calls.filter(raw=>new URL(raw).pathname.endsWith('/messages')).length,2,'the unchanged callback follows Gmail list pagination');
   await t.test('ordinary, changed and mismatched Gmail events cannot stage cloud save',async()=>{
    const valid=h.window.sarberkiGmailTransform(syntheticMailMime('de'));
@@ -157,7 +157,7 @@ test('actual fake GIS read -> exact registry staging -> explicit cookie Writer -
    assert.equal(ui.element('gmail_cloud_fixture_save').disabled,true);await ui.element('gmail_cloud_fixture_save').click();assert.equal(casePosts,0);
    await login('writer');await ui.element('operator_restore').click();
   });
-  for(const language of ['si','de','en'])await t.test(language+' actual picker/display stages explicit cloud save and preserves role separation',async()=>{
+  for(const language of ['hu','si','de','en'])await t.test(language+' actual picker/display stages explicit cloud save, Writer correction and independent approval',async()=>{
    const mime=syntheticMailMime(language);ui.element('gmail_message_picker').value=mime.id;await ui.element('gmail_open_selected').click();
    assert.equal(ui.element('gmail_cloud_fixture_save').disabled,false,'an exact Gmail-read record must stage the existing explicit save control');
    await ui.element('gmail_cloud_fixture_save').click();const id=ui.element('server_preview_case_id').value;
@@ -167,7 +167,7 @@ test('actual fake GIS read -> exact registry staging -> explicit cookie Writer -
    assert.equal(values.language,language);assert.equal(values.arrival,'2026-10-23');assert.equal(values.departure,'2026-10-25');
    assert.equal(values.adults,'2');assert.equal(values.children,'0');assert.equal(values.unit,'Deluxe');assert.equal(values.phone,core.phoneFromText(syntheticMailEnvelope(language).text));
    assert.equal(saved.data.messages[0].message_id,mime.id);
-   assert.match(saved.data.drafts[0].text,{de:/^Guten Tag/u,si:/^Pozdravljeni/u,en:/^Dear Guest/u}[language]);
+   assert.match(saved.data.drafts[0].text,{hu:/^Kedves Vendégünk/u,de:/^Guten Tag/u,si:/^Pozdravljeni/u,en:/^Dear Guest/u}[language]);
    assert.match(saved.data.drafts[0].operatorReviewText,/^Kedves Vendégünk/u);
 
    await ui.element('gmail_open_selected').click();await ui.element('gmail_cloud_fixture_save').click();assert.equal(ui.element('server_preview_revision').value,'1');
@@ -180,15 +180,29 @@ test('actual fake GIS read -> exact registry staging -> explicit cookie Writer -
    assert.equal((await reader.previewDraft('sarberki-test',id,2)).revision,2,'Reader denied ingest must preserve saved version');
 
    await post({tenantId:'sarberki-test',action:'approve',caseId:id,expectedRevision:2,reviewedDraftHash:hash},403);
-   await login('approver');await post({tenantId:'sarberki-test',action:'review-draft',caseId:id,expectedRevision:2},403);
-   const approved=await post({tenantId:'sarberki-test',action:'approve',caseId:id,expectedRevision:2,reviewedDraftHash:hash});assert.equal(approved.revision,3);assert.equal(approved.data.state.approval,'internally_approved');
-   await post({tenantId:'sarberki-test',action:'approve',caseId:id,expectedRevision:2,reviewedDraftHash:hash},409);
+   // Returned for correction: the Writer saves a new version; the case stays open and pending.
+   const corrected=preview.storedDraft.text+'\n\nSynthetic operator correction '+language+'.',correctedHash=createHash('sha256').update(corrected).digest('hex');
+   const edit={tenantId:'sarberki-test',action:'edit-draft',caseId:id,expectedRevision:2,expectedDraftHash:hash,editedDraftText:corrected};
+   await post(edit,403);
+   await login('writer');await post({...edit,tenantId:'demo-test'},403);await post({...edit,expectedRevision:1},409);
+   const edited=await post(edit);assert.equal(edited.revision,3);assert.equal(edited.data.state.approval,'pending');assert.ok(!edited.data.serverApproval);
+   assert.equal(edited.data.drafts.at(-1).text,corrected);assert.equal(edited.data.drafts.at(-1).editedBy,actors.writer);assert.equal(edited.data.drafts.length,3);
+   assert.equal((await db.query("select kind from sc_audit where case_id=$1 and revision=3",[id])).rows[0].kind,'update');
+   // The Writer also holds approve permission here: this 403 proves editor/approver independence.
+   await post({tenantId:'sarberki-test',action:'approve',caseId:id,expectedRevision:3,reviewedDraftHash:correctedHash},403);
+   await login('approver');await post({tenantId:'sarberki-test',action:'review-draft',caseId:id,expectedRevision:3},403);
+   await post({tenantId:'sarberki-test',action:'approve',caseId:id,expectedRevision:3,reviewedDraftHash:hash},400);
+   await post({tenantId:'sarberki-test',action:'approve',caseId:id,expectedRevision:2,reviewedDraftHash:correctedHash},409);
+   assert.equal((await db.query("select count(*)::int n from sc_audit where case_id=$1 and kind='approve_isolated_synthetic'",[id])).rows[0].n,0);
+   const approved=await post({tenantId:'sarberki-test',action:'approve',caseId:id,expectedRevision:3,reviewedDraftHash:correctedHash});assert.equal(approved.revision,4);assert.equal(approved.data.state.approval,'internally_approved');
+   assert.equal(approved.data.serverApproval.draftHash,correctedHash);assert.equal(approved.data.serverApproval.actor,actors.approver);
+   await post({tenantId:'sarberki-test',action:'approve',caseId:id,expectedRevision:3,reviewedDraftHash:correctedHash},409);
    await login('writer');await ui.element('operator_restore').click();
   });
-  const before=(await db.query("select * from sc_audit where kind='approve_isolated_synthetic' order by case_id")).rows;assert.equal(before.length,3);assert.ok(before.every(row=>row.actor===actors.approver&&row.revision===3));
+  const before=(await db.query("select * from sc_audit where kind='approve_isolated_synthetic' order by case_id")).rows;assert.equal(before.length,4);assert.ok(before.every(row=>row.actor===actors.approver&&row.revision===4));
   const snapshot=await db.dumpDataDir();await db.close();db=new PGlite({loadDataDir:snapshot});
   await login('reader');
   for(const id of ids){const response=await browserFetch('/.netlify/functions/booking-cases?'+new URLSearchParams({tenantId:'sarberki-test',caseId:id,action:'approval-state'}),{headers:csrfHeaders(metadata.csrfToken)});assert.equal(response.status,200);const back=(await response.json()).result;assert.equal(back.approval,'internally_approved');assert.equal(back.audit.length,1);assert.equal(back.audit[0].actor,actors.approver);}
-  h.assertNoTokenStored();assert.equal((await db.query('select count(*)::int n from sc_cases')).rows[0].n,3);
+  h.assertNoTokenStored();assert.equal((await db.query('select count(*)::int n from sc_cases')).rows[0].n,4);
  }finally{await db.close();}
 });
