@@ -30,3 +30,15 @@
 - CI, élő E2E, iPhone, jogosultság és restore: külön státusz.
 - Párhuzamos munka / fájlütközés kockázata:
 - Következő egyetlen végrehajtandó lépés és kijelölt eszköz:
+
+## Három párhuzamos munkamenet koordinációja
+
+A meglévő GitHub issue-k az egyetlen feladatnyilvántartás; ne készíts második listát.
+
+- A: célzott fejlesztés, kizárólag kijelölt fájlokon.
+- B: alkalmazásszintű E2E ellenőrzés, alapértelmezetten csak olvasás.
+- C: független CI-, jogosultsági és visszaállítási audit, alapértelmezetten csak olvasás.
+
+Az A/B/C címkék még nem jelentik a futó Claude-munkamenetek igazolt azonosítását. Minden munkamenet közölje a feladatát, az issue-t, a teljes HEAD SHA-t, az érintett fájlokat, a teszteredményeket és az akadályokat. Csak egy munkamenet írhat egy adott fájlt; írás előtt friss HEAD- és ütközésellenőrzés szükséges. Main, production, valódi levélküldés és Previo-írás továbbra is tilos. Force push tilos.
+
+A tulajdonos az eredményeket a SÁRBERKI – PROJEKTVEZETŐ beszélgetésbe másolja. A koordinátor külön ellenőrzi az eredményeket és kijelöli a következő egyetlen P0 lépést. A külön munkamenetek között nincs automatikus üzenetátadás.
