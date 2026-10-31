@@ -6,6 +6,9 @@ import {isPublishableKey} from '../netlify/functions/chatbot-test-config.mjs';
 const origin='https://leafy-chimera-2403e5.netlify.app';
 const project='https://mojnqizbcaczstguikpv.supabase.co';
 const name='__Host-sarberki-operator',ttl=7*24*60*60*1000;
+// Inactivity limit, decided only by the server clock inside the encrypted cookie.
+// The skew allowance only tolerates clock differences between function instances.
+const idle=30*60*1000,skew=60*1000;
 const aad=Buffer.from(name+'|'+origin+'|'+project+'|v1');
 export const clearOperatorCookie=name+'=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
 export class OperatorSessionError extends Error{
@@ -48,21 +51,24 @@ export function createOperatorCookieSession({env=process.env,fetchImpl=fetch,now
  // delete the browser's current cookie on read/login/refresh failure: a later
  // response could otherwise erase a successful login in another tab. Only
  // explicit logout clears it; every failed request still denies access.
- function read(event){
+ function read(event,{allowIdle=false}={}){
   const raw=header(event,'cookie')||'';if(raw.length>8192)fail(401,'AUTH_REQUIRED',null);
   const found=raw.split(';').map(x=>x.trim()).filter(x=>x.startsWith(name+'='));
   if(found.length!==1)fail(401,'AUTH_REQUIRED',null,found.length?'SESSION_COOKIE_INVALID':'SESSION_COOKIE_MISSING');
+  let payload;
   try{
    const parts=found[0].slice(name.length+1).split('.');
    if(parts.length!==4||parts[0]!=='v1'||parts.slice(1).some(x=>! /^[A-Za-z0-9_-]+$/.test(x)))throw Error();
    const iv=Buffer.from(parts[1],'base64url'),tag=Buffer.from(parts[3],'base64url');if(iv.length!==12||tag.length!==16)throw Error();
    const decipher=createDecipheriv('aes-256-gcm',setup(),iv);decipher.setAAD(aad);decipher.setAuthTag(tag);
-   const payload=JSON.parse(Buffer.concat([decipher.update(Buffer.from(parts[2],'base64url')),decipher.final()]).toString('utf8'));
+   payload=JSON.parse(Buffer.concat([decipher.update(Buffer.from(parts[2],'base64url')),decipher.final()]).toString('utf8'));
    if(Number.isSafeInteger(payload?.expiresAt)&&payload.expiresAt<=now())fail(401,'AUTH_REQUIRED',null,'SESSION_EXPIRED');
-   if(Object.keys(payload).sort().join(',')!=='csrfToken,expiresAt,refreshToken'||! /^[A-Za-z0-9_-]{10,512}$/.test(payload.refreshToken)||
-    ! /^[a-f0-9]{64}$/.test(payload.csrfToken)||!Number.isSafeInteger(payload.expiresAt)||payload.expiresAt<=now()||payload.expiresAt-now()>ttl)throw Error();
-   return payload;
+   if(Object.keys(payload).sort().join(',')!=='csrfToken,expiresAt,idleExpiresAt,refreshToken'||! /^[A-Za-z0-9_-]{10,512}$/.test(payload.refreshToken)||
+    ! /^[a-f0-9]{64}$/.test(payload.csrfToken)||!Number.isSafeInteger(payload.expiresAt)||payload.expiresAt<=now()||payload.expiresAt-now()>ttl||
+    !Number.isSafeInteger(payload.idleExpiresAt)||payload.idleExpiresAt>payload.expiresAt||payload.idleExpiresAt-now()>idle+skew)throw Error();
   }catch(error){if(error instanceof OperatorSessionError)throw error;fail(401,'AUTH_REQUIRED',null,'SESSION_COOKIE_INVALID');}
+  if(!allowIdle&&payload.idleExpiresAt<=now())fail(401,'AUTH_REQUIRED',null,'SESSION_IDLE');
+  return payload;
  }
  function csrf(event,payload){
   const value=header(event,'x-csrf-token');
@@ -99,7 +105,7 @@ export function createOperatorCookieSession({env=process.env,fetchImpl=fetch,now
  async function refreshed(payload){
   const result=tokens(await auth('token?grant_type=refresh_token',{body:{refresh_token:payload.refreshToken}}));
   const verified=await authority(result.access_token);
-  const updated={...payload,refreshToken:result.refresh_token};
+  const updated={...payload,refreshToken:result.refresh_token,idleExpiresAt:Math.min(now()+idle,payload.expiresAt)};
   return {...verified,metadata:metadata(updated),setCookie:cookie(updated),payload:updated,accessToken:result.access_token};
  }
  return Object.freeze({
@@ -109,7 +115,7 @@ export function createOperatorCookieSession({env=process.env,fetchImpl=fetch,now
      typeof input.email!=='string'||input.email.length>254||! /^[^@\s]+@[^@\s]+$/.test(input.email)||typeof input.password!=='string'||input.password.length<1||input.password.length>1024)fail(400,'INVALID_INPUT');
    const result=tokens(await auth('token?grant_type=password',{body:{email:input.email,password:input.password}}));
    await authority(result.access_token);
-   const payload={refreshToken:result.refresh_token,csrfToken:randomBytes(32).toString('hex'),expiresAt:now()+ttl};
+   const expiresAt=now()+ttl,payload={refreshToken:result.refresh_token,csrfToken:randomBytes(32).toString('hex'),expiresAt,idleExpiresAt:Math.min(now()+idle,expiresAt)};
    return {metadata:metadata(payload),setCookie:cookie(payload)};
   },
   async restore(event){boundary(event);return refreshed(read(event));},
@@ -133,7 +139,8 @@ export function createOperatorCookieSession({env=process.env,fetchImpl=fetch,now
    return verified;
   },
   async logout(event){
-   boundary(event,{post:true});const payload=read(event);csrf(event,payload);
+   // An idle-expired cookie must still be able to revoke its own Auth session.
+   boundary(event,{post:true});const payload=read(event,{allowIdle:true});csrf(event,payload);
    // Losing DB membership must not prevent revoking one's own Auth session.
    try{const result=tokens(await auth('token?grant_type=refresh_token',{body:{refresh_token:payload.refreshToken}}));await auth('logout?scope=local',{token:result.access_token,logout:true});}
    catch(error){if(error instanceof OperatorSessionError){error.setCookie=clearOperatorCookie;throw error;}fail(503,'SESSION_SERVICE_UNAVAILABLE',clearOperatorCookie);}

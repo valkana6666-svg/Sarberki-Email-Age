@@ -100,11 +100,12 @@ function sessionUI(isAuthenticated,message){
  el('chat-input').disabled=!isAuthenticated;el('chat-send').disabled=!isAuthenticated||chatBusy;
  el('chat-reset').disabled=!isAuthenticated;
 }
-function lockSession(message,{preserveEmailConsent=false}={}){
- if(preserveEmailConsent)emailReader.suspend();else emailReader.clear();resetChat();session.clear();clearData();el('password').value='';
+function lockSession(message){
+ setConcealed(false);emailReader.clear();resetChat();session.clear();clearData();el('password').value='';
  sessionUI(false,message);
 }
-function current(turn){return turn===epoch&&authenticated&&document.visibilityState!=='hidden';}
+// The view may be concealed during an app switch; results still land in memory and stay hidden.
+function current(turn){return turn===epoch&&authenticated;}
 function failed(error){
  lockSession(error?.message==='FORBIDDEN'?'Ehhez a művelethez nincs megfelelő jogosultság.':
  error?.message==='AUTH_REQUIRED'?'A bejelentkezés szükséges vagy lejárt.':'Az adatok most nem ellenőrizhetők. Próbálja újra.');
@@ -221,8 +222,28 @@ async function loadCases({selectAvailable=false}={}){
  }}finally{if(authenticated)el('load-cases').disabled=false;}
 }
 el('load-cases').addEventListener('click',()=>loadCases());
-function suspend({preserveEmailConsent=false}={}){lockSession('A nézet lezárult. Visszatéréskor a munkamenetet újra ellenőrizzük.',{preserveEmailConsent});}
-addEventListener('pagehide',suspend);
-addEventListener('pageshow',event=>{if(event.persisted)void resume();});
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')suspend({preserveEmailConsent:true});else void resume();});
+// App switch (iPhone): conceal, keep in-memory state, and on return let the server decide.
+// The server enforces the 30 minute inactivity limit; a rejected restore locks and clears.
+let concealed=false,lastActivity=0;
+const ACTIVITY_REFRESH_MS=5*60*1000;
+function setConcealed(value){concealed=value;document.body?.classList.toggle('concealed',value);}
+function conceal(){if(!authenticated||concealed)return;setConcealed(true);emailReader.conceal();}
+async function reveal(){
+ if(!concealed){void resume();return;}
+ if(document.visibilityState==='hidden')return;
+ const turn=epoch;
+ try{await session.restore();if(turn!==epoch||!authenticated||document.visibilityState==='hidden')return;
+  lastActivity=Date.now();setConcealed(false);el('session-status').textContent='Bejelentkezve.';emailReader.reveal();
+ }catch(error){if(turn===epoch)failed(error);}
+}
+// Real operator activity slides the server idle deadline, at most once per interval.
+function activity(){
+ if(!authenticated||concealed||document.visibilityState==='hidden'||Date.now()-lastActivity<ACTIVITY_REFRESH_MS)return;
+ lastActivity=Date.now();const turn=epoch;
+ session.restore().catch(error=>{if(turn===epoch&&authenticated)failed(error);});
+}
+for(const type of ['pointerdown','keydown'])document.addEventListener(type,activity,{capture:true,passive:true});
+addEventListener('pagehide',conceal);
+addEventListener('pageshow',event=>{if(event.persisted)void reveal();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')conceal();else void reveal();});
 void resume();

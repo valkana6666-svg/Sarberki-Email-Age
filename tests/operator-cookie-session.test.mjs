@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createDecipheriv} from 'node:crypto';
+import {createDecipheriv,createCipheriv,randomBytes} from 'node:crypto';
 import {createOperatorCookieSession,clearOperatorCookie} from '../shared-core/operator-cookie-session.mjs';
 import {createOperatorSessionHandler} from '../netlify/functions/operator-session.mjs';
 import {syntheticMailEnvelope,syntheticTubFollowupEnvelope,syntheticTubReviewEnvelope,isClosedTubReviewRecord} from '../shared-core/synthetic-mail-fixtures.mjs';
@@ -95,9 +95,16 @@ test('Writer fixture rejects cross-origin, missing CSRF, custom data, revoked se
  f.state.revoked=false;f.env.URL='https://moonlit-torrone-88b39d.netlify.app';f.state.calls=[];
  assert.equal((await handler(event(base))).statusCode,503);assert.equal(f.state.calls.length,0);
 });
-test('real AEAD cookie has only refresh/CSRF/absolute expiry and is never disclosed in metadata',async()=>{
+function encode(payload,key){
+ const iv=randomBytes(12),cipher=createCipheriv('aes-256-gcm',Buffer.from(key,'hex'),iv);cipher.setAAD(Buffer.from(name+'|'+origin+'|'+project+'|v1'));
+ const encrypted=Buffer.concat([cipher.update(JSON.stringify(payload),'utf8'),cipher.final()]);
+ return name+'='+['v1',iv.toString('base64url'),encrypted.toString('base64url'),cipher.getAuthTag().toString('base64url')].join('.');
+}
+const IDLE=30*60*1000;
+test('real AEAD cookie has only refresh/CSRF/absolute expiry/idle deadline and is never disclosed in metadata',async()=>{
  const f=fixture(),logged=await f.login(),payload=decode(logged.setCookie,f.env.SARBERKI_OPERATOR_SESSION_KEY);
- assert.deepEqual(Object.keys(payload).sort(),['csrfToken','expiresAt','refreshToken']);assert.equal(payload.expiresAt,f.state.time+7*86400000);
+ assert.deepEqual(Object.keys(payload).sort(),['csrfToken','expiresAt','idleExpiresAt','refreshToken']);assert.equal(payload.expiresAt,f.state.time+7*86400000);
+ assert.equal(payload.idleExpiresAt,f.state.time+IDLE);
  assert.match(logged.setCookie,/^__Host-sarberki-operator=/);for(const flag of ['Path=/','HttpOnly','Secure','SameSite=Strict','Max-Age=604800'])assert.ok(logged.setCookie.includes(flag));assert.doesNotMatch(logged.setCookie,/Domain=/);
  assert.deepEqual(Object.keys(logged.metadata).sort(),['authenticated','csrfToken','expiresAt','tenantId']);assert.match(logged.metadata.csrfToken,/^[a-f0-9]{64}$/);assert.equal(logged.metadata.tenantId,'sarberki-test');
  assert.doesNotMatch(JSON.stringify(logged.metadata),/synthetic_refresh_token|synthetic_signature|SYNTHETIC_NOT_A_REAL_PASSWORD/);assert.doesNotMatch(logged.setCookie,/synthetic_refresh_token|synthetic_signature/);
@@ -397,4 +404,52 @@ test('late anonymous restore response cannot erase a newer successful login cook
  const first=await cases(event({cookie:jar,csrf:JSON.parse(login.body).csrfToken,query:{tenantId:'sarberki-test'}}));
  assert.equal(first.statusCode,200,'a late anonymous 401 must not delete the new login cookie');
  assert.equal(stale.headers['Set-Cookie'],undefined);
+});
+
+test('server-side 30 minute idle limit: return after 1/5/15/29 minutes keeps the session, 30 minutes requires login',async()=>{
+ for(const minutes of [1,5,15,29]){
+  const f=fixture(),logged=await f.login();f.state.time+=minutes*60000;
+  const restored=await f.session.restore(event({cookie:cookieHeader(logged.setCookie)}));
+  assert.equal(restored.metadata.csrfToken,logged.metadata.csrfToken,String(minutes));
+  assert.equal(decode(restored.setCookie,f.env.SARBERKI_OPERATOR_SESSION_KEY).idleExpiresAt,f.state.time+IDLE,String(minutes));
+ }
+ for(const minutes of [30,31,180]){
+  const f=fixture(),logged=await f.login();f.state.time+=minutes*60000;f.state.calls=[];
+  await assert.rejects(f.session.restore(event({cookie:cookieHeader(logged.setCookie)})),error=>error.status===401&&error.code==='AUTH_REQUIRED'&&error.category==='SESSION_IDLE'&&error.setCookie===null);
+  await assert.rejects(f.session.protectedRead(event({cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken})),error=>error.status===401&&error.category==='SESSION_IDLE');
+  assert.equal(f.state.calls.length,0,'no Auth/DB call after idle expiry');
+ }
+});
+test('activity slides the idle deadline; an older cookie cannot be replayed past its own deadline; absolute limit still applies',async()=>{
+ const f=fixture(),logged=await f.login();
+ f.state.time+=20*60000;const a=await f.session.restore(event({cookie:cookieHeader(logged.setCookie)}));
+ f.state.time+=20*60000;const b=await f.session.protectedRead(event({cookie:cookieHeader(a.setCookie),csrf:logged.metadata.csrfToken}));
+ await assert.rejects(f.session.restore(event({cookie:cookieHeader(logged.setCookie)})),error=>error.category==='SESSION_IDLE');
+ assert.equal(decode(b.setCookie,f.env.SARBERKI_OPERATOR_SESSION_KEY).idleExpiresAt,f.state.time+IDLE);
+ // Near the absolute expiry the idle deadline is capped and the absolute limit wins.
+ const g=fixture(),start=await g.login();let cookie=cookieHeader(start.setCookie);
+ for(let elapsed=0;elapsed<7*86400000-IDLE;elapsed+=25*60000){g.state.time+=25*60000;if(g.state.time-start.metadata.expiresAt+7*86400000>=7*86400000)break;cookie=cookieHeader((await g.session.restore(event({cookie}))).setCookie);}
+ const payload=decode(cookie+'; Path=/',g.env.SARBERKI_OPERATOR_SESSION_KEY);assert.ok(payload.idleExpiresAt<=payload.expiresAt);
+ g.state.time=Date.parse(start.metadata.expiresAt);await assert.rejects(g.session.restore(event({cookie})),error=>error.status===401);
+});
+test('idle deadline cannot be extended by the client: tampering fails AEAD, out-of-range or legacy payloads fail closed',async()=>{
+ const f=fixture(),logged=await f.login(),key=f.env.SARBERKI_OPERATOR_SESSION_KEY,base=decode(logged.setCookie,key);f.state.calls=[];
+ const header=cookieHeader(logged.setCookie),parts=header.split('.');
+ const flipped=parts.slice(0,2).join('.')+'.'+parts[2].slice(0,-2)+(parts[2].endsWith('AA')?'BA':'AA')+'.'+parts[3];
+ await assert.rejects(f.session.restore(event({cookie:flipped})),error=>error.status===401);
+ for(const payload of [{...base,idleExpiresAt:f.state.time+IDLE+5*60000},{...base,idleExpiresAt:base.expiresAt+1},{...base,idleExpiresAt:'later'},
+  {refreshToken:base.refreshToken,csrfToken:base.csrfToken,expiresAt:base.expiresAt}]){
+  await assert.rejects(f.session.restore(event({cookie:encode(payload,key)})),error=>error.status===401&&error.setCookie===null);
+ }
+ assert.equal(f.state.calls.length,0);
+ // A client clock or request header has no influence: only the server clock decides.
+ f.state.time+=30*60000;
+ await assert.rejects(f.session.restore(event({cookie:header,headers:{date:new Date(f.state.time-60*60000).toUTCString()}})),error=>error.category==='SESSION_IDLE');
+});
+test('logout still revokes the Auth session and clears the cookie after idle expiry',async()=>{
+ const f=fixture(),logged=await f.login();f.state.time+=45*60000;f.state.calls=[];
+ const result=await f.session.logout(event({method:'POST',cookie:cookieHeader(logged.setCookie),csrf:logged.metadata.csrfToken}));
+ assert.equal(result.setCookie,clearOperatorCookie);assert.deepEqual(result.metadata,{authenticated:false});
+ assert.ok(f.state.calls.some(x=>x.url.includes('/auth/v1/logout')));
+ await assert.rejects(f.session.logout(event({method:'POST',cookie:cookieHeader(logged.setCookie)})),error=>error.status===403);
 });

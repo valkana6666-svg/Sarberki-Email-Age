@@ -170,6 +170,19 @@ try{
   await page.locator('#email-draft-request').click();await page.locator('#email-draft-text:not([disabled])').waitFor();
   page.off('request',watchMarked);assert.deepEqual(markedRequests,['/.netlify/functions/operator-session']);
   assert.match(await page.locator('#email-draft-text').inputValue(),/Kedves Vendégünk/);
+  // Emulated iPhone app switch: hidden -> visible. Real background/iOS snapshot is not emulated.
+  await page.locator('#email-draft-text').fill('Kitalált, félkész helyi szerkesztés.');
+  const switchRequests=[];const watchSwitch=request=>switchRequests.push(new URL(request.url()).pathname);page.on('request',watchSwitch);
+  const setVisibility=state=>page.evaluate(value=>{Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>value});document.dispatchEvent(new Event('visibilitychange'));},state);
+  await setVisibility('hidden');
+  assert.equal(await page.evaluate(()=>document.body.classList.contains('concealed')),true);
+  assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('main')).visibility),'hidden');
+  await setVisibility('visible');await page.waitForFunction(()=>!document.body.classList.contains('concealed'));
+  page.off('request',watchSwitch);assert.deepEqual(switchRequests,['/.netlify/functions/operator-session']);
+  assert.equal(await page.locator('#email-draft-text').inputValue(),'Kitalált, félkész helyi szerkesztés.');
+  assert.match(await page.locator('#email-detail').innerText(),/Sárberki élő teszt – HU/);
+  assert.equal(await page.locator('#email-list button').count(),3);
+  check(engine,'app-switch-keeps-session-mail-and-local-edit-without-reread');
   assert.match(await page.locator('#email-draft-checks').innerText(),/Kapacitás: nem igazolt/);
   await page.locator('#email-next').click();
   assert.match(await page.locator('#email-detail').innerText(),/Guten Tag!/);

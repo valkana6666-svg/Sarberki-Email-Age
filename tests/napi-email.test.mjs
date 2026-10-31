@@ -266,3 +266,32 @@ test('marked preview keeps session check, clearing and late-result rules',async(
  await select(g,0);release();await pending;assert.equal(g.e['email-draft-text'].value,'');
  g.logout();assert.equal(g.e['email-draft-text'].value,'');assert.equal(g.e['email-draft-request'].disabled,true);
 });
+
+// App switch (iPhone): concealing keeps the read list, selection and edited local preview in memory only.
+test('conceal/reveal keeps the selected mail and edited preview without re-reading or storage',async()=>{
+ const h=await openInbox({messages:closedMessages(),now:PREVIEW_NOW});
+ await select(h,2);await h.e['email-draft-request'].click();h.e['email-draft-text'].value='Kezelő által szerkesztett helyi szöveg';
+ const guard=noNetworkOrStorage(),reads=h.reads,restores=h.restores;
+ try{h.doc.visibilityState='hidden';h.reader.conceal();h.doc.visibilityState='visible';h.reader.reveal();}finally{guard.restore();}
+ assert.deepEqual(guard.calls,[]);assert.equal(h.reads,reads);assert.equal(h.restores,restores);
+ assert.equal(h.e['email-picker'].value,'2');assert.equal(h.e['email-list'].children.length,4);
+ assert.equal(h.e['email-draft-text'].value,'Kezelő által szerkesztett helyi szöveg');assert.equal(h.e['email-draft-text'].disabled,false);
+ assert.notEqual(checks(h),'');assert.equal(h.e['read-email'].disabled,false);
+ h.logout();assert.equal(h.e['email-draft-text'].value,'');assert.equal(h.e['email-list'].children.length,0);
+});
+test('conceal during a pending preview session check drops the result and leaves a usable button',async()=>{
+ const h=await openInbox({messages:closedMessages(),now:PREVIEW_NOW});await select(h,0);
+ let release;h.holdSession(new Promise(resolve=>{release=resolve;}));
+ const pending=h.e['email-draft-request'].click();await Promise.resolve();
+ h.doc.visibilityState='hidden';h.reader.conceal();release();await pending;
+ assert.equal(h.e['email-draft-text'].value,'');assert.equal(h.e['email-draft-request'].disabled,false);
+ h.doc.visibilityState='visible';h.holdSession(null);h.reader.reveal();
+ await h.e['email-draft-request'].click();assert.notEqual(h.e['email-draft-text'].value,'');h.logout();
+});
+test('conceal while the Google consent popup is open keeps the existing suspend behaviour; reveal resumes the read',async()=>{
+ const h=setup({messages:closedMessages(),now:PREVIEW_NOW});h.reader.setEnabled(true);await Promise.resolve();await h.e['read-email'].click();
+ h.doc.visibilityState='hidden';h.reader.conceal();
+ await h.callback({access_token:'SYNTHETIC_TOKEN'});assert.equal(h.reads,0);assert.equal(h.e['read-email'].disabled,true);
+ h.doc.visibilityState='visible';h.reader.reveal();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(h.reads,1);assert.equal(h.e['email-list'].children.length,4);h.logout();
+});

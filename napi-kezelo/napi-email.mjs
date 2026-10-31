@@ -40,7 +40,7 @@ function closedPreviewText(message,header,body){
 // transport and account policy; no tokens or message bodies are persisted.
 export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=loadGoogle,readInbox=readTestGmailInbox,documentImpl=document,clientId,now=()=>new Date()}={}){
  const el=id=>documentImpl.getElementById(id);
- let generation=0,busy=false,googleApi=null,chooseMessage=null,pendingConsent=false,queuedConsent=null,consentTimer=null,previewSource=null,previewTurn=0;
+ let generation=0,busy=false,googleApi=null,chooseMessage=null,pendingConsent=false,queuedConsent=null,consentTimer=null,previewSource=null,previewTurn=0,previewPending=false;
  const active=turn=>turn===generation&&canRead()&&documentImpl.visibilityState!=='hidden';
  // Local, unsaved reply preview from the shared email adapter. No request, storage or case transition.
  function clearPreview(source=null){
@@ -61,11 +61,13 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
  el('email-draft-request').addEventListener('click',async()=>{
   const source=previewSource,turn=generation;
   if(!source||!active(turn))return;
-  const request=++previewTurn;el('email-draft-request').disabled=true;el('email-draft-status').textContent='Munkamenet ellenőrzése…';
-  try{await restoreSession();}
-  catch{if(request===previewTurn&&active(turn)){clearPreview(source);el('email-draft-status').textContent='A kezelői munkamenet lejárt vagy nem ellenőrizhető. Jelentkezzen be újra; automatikus újrapróbálás nincs.';}return;}
-  if(request!==previewTurn||source!==previewSource||!active(turn))return;
-  showPreview(buildEmailInquiryDraft({message:source.text,language:languageFromText(source.text),now:now(),tenantId:'sarberki-test'}));
+  const request=++previewTurn;previewPending=true;el('email-draft-request').disabled=true;el('email-draft-status').textContent='Munkamenet ellenőrzése…';
+  try{
+   try{await restoreSession();}
+   catch{if(request===previewTurn&&active(turn)){clearPreview(source);el('email-draft-status').textContent='A kezelői munkamenet lejárt vagy nem ellenőrizhető. Jelentkezzen be újra; automatikus újrapróbálás nincs.';}return;}
+   if(request!==previewTurn||source!==previewSource||!active(turn))return;
+   showPreview(buildEmailInquiryDraft({message:source.text,language:languageFromText(source.text),now:now(),tenantId:'sarberki-test'}));
+  }finally{if(request===previewTurn)previewPending=false;}
  });
  function clearPicker(){
   chooseMessage=null;clearPreview();const placeholder=documentImpl.createElement('option');placeholder.value='';placeholder.textContent='Még nincs beolvasott e-mail';el('email-picker').replaceChildren(placeholder);el('email-picker').disabled=true;el('email-picker-wrap').hidden=false;
@@ -156,5 +158,12 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
    client.requestAccessToken({prompt:''});
   }catch(error){failure(error);}
  });
- return {clear,setEnabled,suspend};
+ // App switch: keep the read list, selection and local preview in memory (never stored).
+ // A pending Google consent or read keeps the existing suspend path; a pending preview is dropped.
+ function conceal(){
+  if(pendingConsent||busy){suspend();return;}
+  if(previewPending){previewPending=false;clearPreview(previewSource);}
+ }
+ function reveal(){el('read-email').disabled=!canRead()||busy;if(queuedConsent)void processConsent();}
+ return {clear,setEnabled,suspend,conceal,reveal};
 }

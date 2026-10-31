@@ -19,7 +19,8 @@ function fakeDocument(){
  const elements=Object.fromEntries(ids.map(id=>[id,new Element()]));
  const nav=['incoming','approval','progress','closed'].map(section=>{const e=new Element();e.dataset.section=section;return e;});
  const listeners={};
- return {elements,nav,visibilityState:'visible',getElementById:id=>elements[id],querySelectorAll:()=>nav,querySelector:()=>({content:'synthetic-client'}),
+ const classes=new Set(),body={classList:{add:c=>classes.add(c),remove:c=>classes.delete(c),contains:c=>classes.has(c),toggle:(c,on)=>on?classes.add(c):classes.delete(c)}};
+ return {elements,nav,body,visibilityState:'visible',getElementById:id=>elements[id],querySelectorAll:()=>nav,querySelector:()=>({content:'synthetic-client'}),
   createDocumentFragment(){const e=new Element();e.fragment=true;return e;},createElement:()=>new Element(),
   addEventListener(type,fn){(listeners[type]??=[]).push(fn);},async dispatch(type){for(const fn of listeners[type]||[])await fn();}};
 }
@@ -104,14 +105,18 @@ test('daily view reuses protected cookie reader, keeps reading open, auto-loads 
   await doc.elements['load-cases'].dispatch('click');const btn=doc.elements['case-list'].children[0].children[1];
   delayed=true;const pending=btn.dispatch('click');
   for(let i=0;i<10&&!release;i++)await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(typeof release,'function');doc.visibilityState='hidden';await doc.dispatch('visibilitychange');release();await pending;
-  assert.equal(doc.elements['case-detail'].hidden,true);assert.equal(doc.elements['detail-summary'].textContent,'');
-  assert.equal(doc.elements['case-list'].children.length,0);assert.equal(doc.elements['load-cases'].disabled,true);
-  assert.equal(doc.elements['chat-output'].textContent,'');assert.equal(doc.elements['chat-send'].disabled,true);
+  assert.equal(typeof release,'function');doc.visibilityState='hidden';await doc.dispatch('visibilitychange');
+  // App switch conceals the view but keeps the in-memory state; nothing is cleared or re-read.
+  assert.equal(doc.body.classList.contains('concealed'),true);release();await pending;
+  assert.equal(doc.elements['case-list'].children.length,1);assert.equal(doc.elements['load-cases'].disabled,false);
+  assert.equal(doc.elements['chat-output'].textContent,'Szintetikus szerverválasz');
+  const listsBefore=calls.filter(x=>new URLSearchParams(x.query).get('action')==='daily-list').length;
   delayed=false;doc.visibilityState='visible';await doc.dispatch('visibilitychange');
-  for(let i=0;i<10&&!doc.elements['case-list'].children.length;i++)await new Promise(resolve=>setImmediate(resolve));
+  for(let i=0;i<10&&doc.body.classList.contains('concealed');i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(doc.body.classList.contains('concealed'),false);
+  assert.equal(calls.filter(x=>new URLSearchParams(x.query).get('action')==='daily-list').length,listsBefore);
   assert.equal(doc.elements['case-list'].children.length,1);
-  assert.equal(doc.elements['case-detail'].hidden,true);
+  assert.equal(doc.elements['case-detail'].hidden,false);assert.match(doc.elements['detail-facts'].textContent,/2026-11-20/);
   // A current reviewable draft opens the editor only through a second review-record read.
   reviewable=true;const before=calls.length;await doc.elements['case-list'].children[0].children[1].dispatch('click');
   for(let i=0;i<10&&doc.elements['draft-editor'].disabled;i++)await new Promise(resolve=>setImmediate(resolve));
@@ -132,4 +137,71 @@ test('distinct daily PWA route retains original test app and never invents statu
  assert.match(html,/<button id="approve-draft"[^>]+disabled>/u);
  assert.match(html,/<button type="button" disabled>Elutasítás<\/button>/u);
  assert.ok(fs.existsSync('index.html'));assert.ok(fs.existsSync('cloud-approval.html'));
+});
+
+test('iPhone app switch keeps session, open case and unsaved edit; idle-expired server session locks and clears; activity is throttled',async()=>{
+ const previous={document:globalThis.document,location:globalThis.location,fetch:globalThis.fetch,addEventListener:globalThis.addEventListener,setTimeout:globalThis.setTimeout,clearTimeout:globalThis.clearTimeout,now:Date.now};
+ const doc=fakeDocument(),events={},calls=[],sessionMeta=meta();let loggedIn=false,idleExpired=false,clock=Date.now();
+ globalThis.document=doc;globalThis.location={origin:'https://leafy-chimera-2403e5.netlify.app'};
+ globalThis.addEventListener=(type,fn)=>(events[type]??=[]).push(fn);globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};Date.now=()=>clock;
+ const fire=async(type,event={})=>{for(const fn of events[type]||[])await fn(event);};
+ const settle=async()=>{for(let i=0;i<20;i++)await new Promise(resolve=>setImmediate(resolve));};
+ const count=pred=>calls.filter(pred).length,restores=()=>count(x=>x.path.endsWith('/operator-session')&&x.method==='GET');
+ globalThis.fetch=async(url,options={})=>{
+  const u=new URL(url,'https://leafy-chimera-2403e5.netlify.app'),method=options.method||'GET';calls.push({path:u.pathname,method,query:u.search});
+  if(u.pathname.endsWith('/operator-session')){
+   if(method==='POST'){const payload=JSON.parse(options.body);if(payload.action==='login'){loggedIn=true;idleExpired=false;}if(payload.action==='logout')loggedIn=false;}
+   return loggedIn&&!idleExpired?response({...sessionMeta,expiresAt:new Date(clock+3600000).toISOString()}):response({error:'AUTH_REQUIRED'},401);
+  }
+  if(u.pathname.endsWith('/booking-cases')){
+   if(!loggedIn||idleExpired)return response({error:'AUTH_REQUIRED'},401);
+   const action=u.searchParams.get('action');
+   if(action==='daily-list')return response({result:[{tenantId:'sarberki-test',caseId:'case-synthetic',revision:1,category:'incoming'}]});
+   if(action==='review-record')return response({result:{tenantId:'sarberki-test',caseId:'case-synthetic',revision:1,canEditDraft:true,canApproveDraft:false,data:{state:{approval:'pending',revision:0,values:{arrival:'2026-11-20',departure:'2026-11-22',guests:2,unit:'Deluxe'}},messages:[{text:'Kitalált vendég eredeti üzenete'}],drafts:[{text:'Kitalált, tárolt válasz.',operatorReviewText:'Kitalált ellenőrző összefoglaló',synthetic:true,reviewStatus:'internal_review_required',revision:0,basedOnMessageCount:1}]}}});
+   return response({error:'INVALID_INPUT'},400);
+  }
+  throw Error('unexpected endpoint');
+ };
+ try{
+  await import(pathToFileURL(resolve('napi-kezelo/napi.mjs')).href+'?synthetic=app-switch');await settle();
+  doc.elements.email.value='writer@synthetic.invalid';doc.elements.password.value='SYNTHETIC_ONLY';await doc.elements.login.dispatch('submit');await settle();
+  await doc.elements['case-list'].children[0].children[1].dispatch('click');await settle();
+  assert.equal(doc.elements['draft-editor'].disabled,false);
+  doc.elements['draft-editor'].value='Kezelő félkész, nem mentett szerkesztése';await doc.elements['draft-editor'].dispatch('input');
+  for(const minutes of [1,5,15,29]){
+   const before=restores(),lists=count(x=>new URLSearchParams(x.query).get('action')==='daily-list');
+   doc.visibilityState='hidden';await doc.dispatch('visibilitychange');assert.equal(doc.body.classList.contains('concealed'),true);
+   assert.equal(restores(),before,'hiding makes no request');
+   clock+=minutes*60000;doc.visibilityState='visible';await doc.dispatch('visibilitychange');await settle();
+   assert.equal(restores(),before+1,'return verifies the server session once');
+   assert.equal(doc.body.classList.contains('concealed'),false);assert.equal(doc.elements.logout.hidden,false);
+   assert.equal(doc.elements['draft-editor'].value,'Kezelő félkész, nem mentett szerkesztése',String(minutes));
+   assert.equal(doc.elements['case-detail'].hidden,false);assert.equal(doc.elements['case-list'].children.length,1);
+   assert.equal(count(x=>new URLSearchParams(x.query).get('action')==='daily-list'),lists,'no forced reload');
+  }
+  // Back/forward cache: pagehide/pageshow(persisted) behaves the same.
+  await fire('pagehide',{persisted:true});assert.equal(doc.body.classList.contains('concealed'),true);
+  await fire('pageshow',{persisted:true});await settle();assert.equal(doc.body.classList.contains('concealed'),false);
+  assert.equal(doc.elements['draft-editor'].value,'Kezelő félkész, nem mentett szerkesztése');
+  // Activity keeps the server idle deadline sliding, at most once per 5 minutes.
+  let before=restores();await doc.dispatch('pointerdown');await doc.dispatch('keydown');await settle();assert.equal(restores(),before);
+  clock+=5*60000+1;await doc.dispatch('pointerdown');await settle();assert.equal(restores(),before+1);
+  await doc.dispatch('keydown');await settle();assert.equal(restores(),before+1);
+  doc.visibilityState='hidden';await doc.dispatch('pointerdown');await settle();assert.equal(restores(),before+1,'no ping while hidden');doc.visibilityState='visible';
+  // 30 minutes of real inactivity: the server rejects; the view locks and clears protected state.
+  doc.visibilityState='hidden';await doc.dispatch('visibilitychange');clock+=30*60000;idleExpired=true;
+  doc.visibilityState='visible';await doc.dispatch('visibilitychange');await settle();
+  assert.equal(doc.body.classList.contains('concealed'),false);assert.equal(doc.elements.login.hidden,false);assert.equal(doc.elements.logout.hidden,true);
+  assert.match(doc.elements['session-status'].textContent,/lejárt/);
+  assert.equal(doc.elements['draft-editor'].value,'');assert.equal(doc.elements['case-detail'].hidden,true);assert.equal(doc.elements['case-list'].children.length,0);
+  assert.equal(doc.elements['load-cases'].disabled,true);
+  // Login again, then explicit logout clears protected local state.
+  doc.elements.email.value='writer@synthetic.invalid';doc.elements.password.value='SYNTHETIC_ONLY';await doc.elements.login.dispatch('submit');await settle();
+assert.equal(doc.elements['case-list'].children.length,1);
+  await doc.elements.logout.dispatch('click');await settle();
+  assert.equal(doc.elements['case-list'].children.length,0);assert.equal(doc.elements['draft-editor'].value,'');assert.equal(doc.elements.login.hidden,false);
+  // Unauthenticated hide/show never reveals data or skips login.
+  doc.visibilityState='hidden';await doc.dispatch('visibilitychange');doc.visibilityState='visible';await doc.dispatch('visibilitychange');await settle();
+  assert.equal(doc.elements.login.hidden,false);assert.equal(doc.elements['case-list'].children.length,0);
+ }finally{Object.assign(globalThis,{document:previous.document,location:previous.location,fetch:previous.fetch,addEventListener:previous.addEventListener,setTimeout:previous.setTimeout,clearTimeout:previous.clearTimeout});Date.now=previous.now;}
 });
