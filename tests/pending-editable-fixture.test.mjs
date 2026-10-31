@@ -68,6 +68,16 @@ test('real PostgreSQL: fixed Writer preparation -> exact saved edit -> Reader re
   const prepare=createWriterReaderFixtureHandler({env,fetchImpl});
   for(const role of Object.keys(actors)){const login=await call(role,createOperatorSessionHandler({env,fetchImpl}),{action:'login',email:role+'@synthetic.invalid',password:'SYNTHETIC_TEST_PASSWORD'});csrf.set(role,login.csrfToken);}
   const input={action:'prepare-editable-fixture'},readRecord=role=>call(role,api(),{tenantId:'sarberki-test',caseId:EDITABLE_FIXTURE_ID,action:'review-record'},{method:'GET'});
+  // Daily list and detailed review must show the same stored case, revision and draft to every role.
+  const assertViews=async(revision,category,text,flags)=>{
+   for(const role of Object.keys(actors)){
+    const listed=(await call(role,api(),{tenantId:'sarberki-test',action:'daily-list'},{method:'GET'})).result,record=(await readRecord(role)).result;
+    assert.deepEqual(listed,[{tenantId:'sarberki-test',caseId:EDITABLE_FIXTURE_ID,revision,category}],role);
+    assert.equal(record.caseId,listed[0].caseId,role);assert.equal(record.revision,listed[0].revision,role);assert.equal(record.data.drafts.at(-1).text,text,role);
+    assert.deepEqual([record.canEditDraft,record.canApproveDraft],flags[role],role);
+   }
+  };
+  const snapshot=async()=>({cases:(await db.query('select case_id,revision,data from sc_cases order by case_id')).rows,audit:(await db.query('select * from sc_audit order by event_id')).rows,daily:(await call('reader',api(),{tenantId:'sarberki-test',action:'daily-list'},{method:'GET'})).result});
   await call('reader',prepare,input,{status:403});
   await call('writer',prepare,{...input,envelope:editableFixtureRequest().envelope},{status:400});
   const first=(await call('writer',prepare,input)).result;assert.equal(first.caseId,EDITABLE_FIXTURE_ID);assert.equal(first.revision,2);assert.equal(first.duplicate,false);
@@ -85,24 +95,31 @@ test('real PostgreSQL: fixed Writer preparation -> exact saved edit -> Reader re
    await call('reader',api(),{tenantId:'sarberki-test',action:'daily-list'},{method:'GET',headers:{'x-csrf-token':''},status:403});
   });
   const original=opened.data.drafts.at(-1).text,edited=original+'\nSynthetic human clarification.  ';
+  await assertViews(2,'approval',original,{writer:[true,false],reader:[false,false],approver:[false,true]});
+  const beforeRejectedEdits=await snapshot();
   const edit={tenantId:'sarberki-test',caseId:first.caseId,action:'edit-draft',expectedRevision:2,expectedDraftHash:hash(original),editedDraftText:edited};
   await t.test('Reader, other tenant, missing CSRF, stale revision and wrong hash cannot edit',async()=>{
    await call('reader',api(),edit,{status:403});await call('writer',api(),{...edit,tenantId:'demo-test'},{status:403});
    await call('writer',api(),edit,{headers:{'x-csrf-token':''},status:403});await call('writer',api(),{...edit,expectedRevision:1},{status:409});await call('writer',api(),{...edit,expectedDraftHash:'0'.repeat(64)},{status:400});
+   assert.deepEqual(await snapshot(),beforeRejectedEdits);
   });
   const saved=(await call('writer',api(),edit)).result;assert.equal(saved.revision,3);assert.equal(saved.data.drafts.at(-1).text,edited);
   const afterEditAudit=(await db.query('select count(*)::int n from sc_audit')).rows[0].n;
   const resumed=(await call('writer',prepare,input)).result;assert.equal(resumed.caseId,first.caseId);assert.equal(resumed.revision,3);assert.equal(resumed.duplicate,true);
   assert.equal((await db.query('select count(*)::int n from sc_audit')).rows[0].n,afterEditAudit);
   const readback=(await readRecord('reader')).result;assert.equal(readback.canEditDraft,false);assert.equal(readback.revision,3);assert.equal(readback.data.drafts.at(-1).text,edited);
+  await assertViews(3,'approval',edited,{writer:[true,false],reader:[false,false],approver:[false,true]});
   const approve={tenantId:'sarberki-test',caseId:first.caseId,action:'approve',expectedRevision:3,reviewedDraftHash:hash(edited)};
+  const beforeRejectedApprovals=await snapshot();
   await t.test('same editor even with approve permission, Reader, stale revision and foreign tenant cannot approve',async()=>{
    await call('writer',api(),approve,{status:403});await call('reader',api(),approve,{status:403});await call('approver',api(),{...approve,expectedRevision:2},{status:409});await call('approver',api(),{...approve,tenantId:'demo-test'},{status:403});
+   assert.deepEqual(await snapshot(),beforeRejectedApprovals);
   });
   const approved=(await call('approver',api(),approve)).result;assert.equal(approved.revision,4);assert.equal(approved.data.state.approval,'internally_approved');
   const dailyApproved=(await call('reader',api(),{tenantId:'sarberki-test',action:'daily-list'},{method:'GET'})).result;
   assert.equal(dailyApproved[0].revision,4);assert.equal(dailyApproved[0].category,'progress');
   assert.equal((await readRecord('approver')).result.canApproveDraft,false);
+  await assertViews(4,'progress',edited,{writer:[false,false],reader:[false,false],approver:[false,false]});
   const durable=(await call('reader',api(),{tenantId:'sarberki-test',caseId:first.caseId,action:'approval-state'},{method:'GET'})).result;
   assert.equal(durable.storedDraft.text,edited);assert.equal(durable.serverApproval.actor,actors.approver);assert.equal(durable.serverApproval.reviewedRevision,3);assert.equal(durable.serverApproval.draftHash,hash(edited));assert.equal(durable.audit.length,1);assert.equal(durable.audit[0].actor,actors.approver);assert.equal(durable.audit[0].revision,4);
   const auditCount=(await db.query('select count(*)::int n from sc_audit')).rows[0].n;
