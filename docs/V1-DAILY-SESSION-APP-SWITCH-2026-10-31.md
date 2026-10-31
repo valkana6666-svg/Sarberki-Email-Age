@@ -46,3 +46,17 @@ Következtetés: a telepített új kód a normál alkalmazásváltáskor megőrz
 Egyik sem igazolt fizikai eszközön. Javítás (új rendszer nélkül, meglévő modulokkal):
 - A napi kezelő láblécében megjelenik a futó verzió a meglévő `sarberki-chatbot-project/version-status.mjs`-sel; eltérésnél „Új tesztverzió érhető el” és Frissítés gomb.
 - Az újratöltési jelölő (csak időbélyeg) `localStorage`-ba került, hogy az iOS-újraindítást is túlélje; csak 30 percen belüli jelölő számít, olvasás után törlődik.
+
+## Teljes iPhone-újraindítás utáni visszaállítás (build `61daf0c4` fizikai próbája után)
+
+Fizikai próba (tulajdonos, 2026-10-31): normál alkalmazásváltás PASS; teljes bezárás és újraindítás után a levelek és a helyi AI-javaslat eltűntek, a belépés megmaradt, az újratöltés-figyelmeztetés megjelent. Tehát az iOS-újraindítás igazolt, és a `localStorage` túléli.
+
+Összevetés:
+- **Titkosított, rövid élettartamú helyi másolat (választott):** meglévő munkamenetre épül, nincs SQL-, tábla- vagy RLS-változás, nem kerül vendégadat a felhőbe. 4 alkalmazásfájl.
+- **Szerveroldali piszkozat a meglévő ügytárban:** a tetszőleges Gmail-levél felhős tárolását az AGENTS.md és a négyrétegű szintetikus kapu jelenleg tiltja (valódi vendégadat, RLS/E2E, mentés-helyreállítás feltételei). Nagyobb munka, külön döntés.
+
+Megvalósítás:
+- Szerver (`shared-core/operator-cookie-session.mjs`): a munkamenet-metaadat új mezője a `stateKey` = HMAC-SHA256(szerverkulcs, „napi-state-v1|sarberki-test|” + a bejelentkezés CSRF-nonce-a). Csak hitelesített, nem tétlen munkamenet kapja meg; bejelentkezésenként új; a sütiben nincs benne. A kliens (`operator-session.mjs`) csak érvényes 64 hex értéket ad tovább.
+- Napi kezelő (`napi.mjs`, `napi-email.mjs`): a levéllista (dekódolt szöveg, fejlécek, azonosítók), a kiválasztás és a szerkesztett helyi javaslat AES-GCM-mel titkosítva, véletlen IV-vel, időbélyeghez kötött AAD-vel kerül a `localStorage`-ba. Mentés változáskor (késleltetve) és elrejtéskor. Visszaállítás csak sikeres szerveroldali munkamenet-ellenőrzés után, 30 percen belül, a pillanatnyi előnézeti kapu újraértékelésével; más kulcs, lejárat, módosítás vagy hiba esetén törlés. Kijelentkezés, zárás és új bejelentkezés törli. Gmail-token soha nem kerül tárolásra; új levelekhez továbbra is Gmail-olvasás kell.
+
+Kockázat és határ: ugyanazon eszközön a böngészőben futó kód (például XSS) a kulcsot is megkaphatja, ahogy ma a CSRF-nonce-ot és a megjelenített adatot is. A 30 perces ablak, a szerveroldali tétlenségi korlát és a törlés ezt korlátozza. A fizikai iPhone-működés az új kiadás előtt NEM IGAZOLT.

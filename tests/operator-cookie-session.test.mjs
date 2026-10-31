@@ -106,7 +106,7 @@ test('real AEAD cookie has only refresh/CSRF/absolute expiry/idle deadline and i
  assert.deepEqual(Object.keys(payload).sort(),['csrfToken','expiresAt','idleExpiresAt','refreshToken']);assert.equal(payload.expiresAt,f.state.time+7*86400000);
  assert.equal(payload.idleExpiresAt,f.state.time+IDLE);
  assert.match(logged.setCookie,/^__Host-sarberki-operator=/);for(const flag of ['Path=/','HttpOnly','Secure','SameSite=Strict','Max-Age=604800'])assert.ok(logged.setCookie.includes(flag));assert.doesNotMatch(logged.setCookie,/Domain=/);
- assert.deepEqual(Object.keys(logged.metadata).sort(),['authenticated','csrfToken','expiresAt','tenantId']);assert.match(logged.metadata.csrfToken,/^[a-f0-9]{64}$/);assert.equal(logged.metadata.tenantId,'sarberki-test');
+ assert.deepEqual(Object.keys(logged.metadata).sort(),['authenticated','csrfToken','expiresAt','stateKey','tenantId']);assert.match(logged.metadata.csrfToken,/^[a-f0-9]{64}$/);assert.equal(logged.metadata.tenantId,'sarberki-test');
  assert.doesNotMatch(JSON.stringify(logged.metadata),/synthetic_refresh_token|synthetic_signature|SYNTHETIC_NOT_A_REAL_PASSWORD/);assert.doesNotMatch(logged.setCookie,/synthetic_refresh_token|synthetic_signature/);
 });
 test('restore refreshes even an unexpired access session, preserves CSRF/absolute expiry and rotates encrypted cookie',async()=>{
@@ -452,4 +452,17 @@ test('logout still revokes the Auth session and clears the cookie after idle exp
  assert.equal(result.setCookie,clearOperatorCookie);assert.deepEqual(result.metadata,{authenticated:false});
  assert.ok(f.state.calls.some(x=>x.url.includes('/auth/v1/logout')));
  await assert.rejects(f.session.logout(event({method:'POST',cookie:cookieHeader(logged.setCookie)})),error=>error.status===403);
+});
+
+test('per-login local state key: bound to the session, stable across restore, different per login and per server key, never in the cookie',async()=>{
+ const f=fixture(),a=await f.login();assert.match(a.metadata.stateKey,/^[a-f0-9]{64}$/);
+ assert.notEqual(a.metadata.stateKey,a.metadata.csrfToken);
+ const restored=await f.session.restore(event({cookie:cookieHeader(a.setCookie)}));assert.equal(restored.metadata.stateKey,a.metadata.stateKey);
+ const b=await f.login();assert.notEqual(b.metadata.stateKey,a.metadata.stateKey,'a new login gets a new key');
+ assert.equal(JSON.stringify(decode(a.setCookie,f.env.SARBERKI_OPERATOR_SESSION_KEY)).includes(a.metadata.stateKey),false);
+ const g=fixture();g.env.SARBERKI_OPERATOR_SESSION_KEY='cd'.repeat(32);
+ const other=createOperatorCookieSession({env:g.env,fetchImpl:g.fetchImpl,now:g.now});
+ await assert.rejects(other.restore(event({cookie:cookieHeader(a.setCookie)})),error=>error.status===401);
+ // After idle expiry the key is no longer obtainable.
+ f.state.time+=31*60000;await assert.rejects(f.session.restore(event({cookie:cookieHeader(restored.setCookie)})),error=>error.category==='SESSION_IDLE');
 });

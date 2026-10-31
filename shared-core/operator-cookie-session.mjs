@@ -1,6 +1,6 @@
 // Server-only credential transport. Supabase Auth and existing DB memberships
 // remain the authority; the encrypted cookie is never an authorization grant.
-import {randomBytes,createCipheriv,createDecipheriv,timingSafeEqual} from 'node:crypto';
+import {randomBytes,createCipheriv,createDecipheriv,createHmac,timingSafeEqual} from 'node:crypto';
 import {createSupabaseTransport,createSupabaseAuthority} from './supabase-case-repository.mjs';
 import {isPublishableKey} from '../netlify/functions/chatbot-test-config.mjs';
 const origin='https://leafy-chimera-2403e5.netlify.app';
@@ -101,7 +101,10 @@ export function createOperatorCookieSession({env=process.env,fetchImpl=fetch,now
   if(resolved.subject!==subject||!resolved.tenants?.['sarberki-test']?.includes('read'))fail(403,'FORBIDDEN',null,'MEMBERSHIP_DENIED');
   return {authority:resolved,transport};
  }
- const metadata=payload=>({authenticated:true,tenantId:'sarberki-test',expiresAt:new Date(payload.expiresAt).toISOString(),csrfToken:payload.csrfToken});
+  // Per-login key for the daily view's encrypted local snapshot. Derived from the server secret and this
+ // login's CSRF nonce: obtainable only through an authenticated, non-idle session; never stored in the cookie.
+ const stateKey=payload=>createHmac('sha256',setup()).update('napi-state-v1|sarberki-test|'+payload.csrfToken).digest('hex');
+ const metadata=payload=>({authenticated:true,tenantId:'sarberki-test',expiresAt:new Date(payload.expiresAt).toISOString(),csrfToken:payload.csrfToken,stateKey:stateKey(payload)});
  async function refreshed(payload){
   const result=tokens(await auth('token?grant_type=refresh_token',{body:{refresh_token:payload.refreshToken}}));
   const verified=await authority(result.access_token);

@@ -275,8 +275,8 @@ test('a page reload after an app switch (iOS discarded the tab) is reported hone
 });
 
 // Shared harness for the full daily page with a synthetic Google token client and Gmail API.
-async function dailyPage(tag,{storage=new Map()}={}){
- const doc=fakeDocument(),events={},calls=[],sessionMeta=meta();const server={loggedIn:true};
+async function dailyPage(tag,{storage=new Map(),stateKey='5'.repeat(64),loggedIn=true}={}){
+ const doc=fakeDocument(),events={},calls=[],sessionMeta={...meta(),stateKey};const server={loggedIn};
  const mailIds=['58f2a0b1c2d3e4f0','58f2a0b1c2d3e4f1','58f2a0b1c2d3e4f2'];
  const mail=id=>({id,threadId:id,labelIds:['INBOX'],internalDate:String(Date.parse('2026-10-30T12:00:00Z')-mailIds.indexOf(id)*60000),
   payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Sárberki élő teszt – AI előnézet '+mailIds.indexOf(id)},{name:'From',value:'Teszt <sender@example.test>'}],
@@ -300,7 +300,8 @@ async function dailyPage(tag,{storage=new Map()}={}){
   throw Error('unexpected endpoint '+u.href);
  };
  const keys=Object.keys(env),previous=Object.fromEntries(keys.map(k=>[k,globalThis[k]]));Object.assign(globalThis,env);
- const settle=async()=>{for(let i=0;i<30;i++)await new Promise(resolve=>setImmediate(resolve));};
+ // WebCrypto completes on the libuv thread pool, so wait on real time rather than a fixed tick count.
+ const settle=async(ms=60)=>{const end=performance.now()+ms;do await new Promise(resolve=>setImmediate(resolve));while(performance.now()<end);};
  await import(pathToFileURL(resolve('napi-kezelo/napi.mjs')).href+'?synthetic='+tag);await settle();
  return {doc,events,calls,server,storage,settle,restore(){Object.assign(globalThis,previous);}};
 }
@@ -319,7 +320,7 @@ test('observed iPhone flow: 38-mail style read, AI preview, edit, app switch and
   assert.equal(e['email-list'].children.length,3,'mails kept');assert.equal(e['email-picker'].value,'1','selection kept');
   assert.equal(e['email-draft-text'].value,'Proba123','edited AI reply kept');assert.equal(e['case-list'].children.length,6);
   assert.equal(p.calls.filter(x=>x.host==='gmail.googleapis.com').length,gmailReads,'no Gmail re-read');
-  assert.equal([...p.storage.values()].every(v=>/^\d+$/.test(v)),true,'only a timestamp may be stored');
+  for(const value of p.storage.values())for(const plain of ['Proba123','Jó napot','Sárberki élő teszt'])assert.equal(value.includes(plain),false,'stored only encrypted: '+plain);
  }finally{p.restore();}
 });
 
@@ -340,4 +341,47 @@ test('daily page shows the running build and flags a stale running version (exis
  const html=fs.readFileSync('napi-kezelo/index.html','utf8');
  assert.match(html,/id="deployed_version"/);assert.match(html,/id="reload_version"/);
  assert.match(html,/<script type="module" src="\.\.\/sarberki-chatbot-project\/version-status\.mjs"><\/script>/);
+});
+
+// iPhone relaunch: encrypted, session-bound, 30 minute local snapshot restores list, selection and edited reply.
+async function readPreviewEditHide(p,text='Proba123'){
+ const e=p.doc.elements;await e['read-email'].dispatch('click');await p.settle();
+ e['email-picker'].value='1';await e['email-picker'].dispatch('change');await e['email-draft-request'].dispatch('click');await p.settle();
+ e['email-draft-text'].value=text;await e['email-draft-text'].dispatch('input');
+ p.doc.visibilityState='hidden';await p.doc.dispatch('visibilitychange');await p.settle();
+}
+test('relaunch restores mails, selection and edited AI reply from an encrypted snapshot without re-reading Gmail',async()=>{
+ const storage=new Map(),first=await dailyPage('snapshot-save',{storage});
+ try{await readPreviewEditHide(first);}finally{first.restore();}
+ assert.deepEqual([...storage.keys()].sort(),['sarberki-napi-concealed-at','sarberki-napi-state']);
+ const raw=storage.get('sarberki-napi-state');
+ for(const plain of ['Proba123','Jó napot','Sárberki élő teszt','sender@example.test','Kedves'])assert.equal(raw.includes(plain),false,'no plaintext: '+plain);
+ const second=await dailyPage('snapshot-restore',{storage});
+ try{
+  const e=second.doc.elements;
+  assert.equal(second.calls.filter(x=>x.host==='gmail.googleapis.com').length,0,'no Gmail re-read');
+  assert.equal(e['email-list'].children.length,3);assert.equal(e['email-picker'].value,'1');
+  assert.equal(e['email-draft-text'].value,'Proba123');assert.equal(e['email-draft-text'].disabled,false);
+  assert.match(e['email-draft-checks'].children.map(x=>x.textContent).join('\n'),/Kapacitás: nem igazolt/);
+  assert.match(e['email-status'].textContent,/visszaállítva/);assert.doesNotMatch(e['email-status'].textContent,/újratöltötte/);
+  // The restored preview is still gated: another eligible mail can be previewed, nothing is stored unencrypted.
+  assert.equal([...storage.values()].some(v=>v.includes('Proba123')),false);
+  await e.logout.dispatch('click');await second.settle();
+  assert.equal(storage.has('sarberki-napi-state'),false,'logout deletes the snapshot');assert.equal(e['email-list'].children.length,0);
+ }finally{second.restore();}
+});
+test('snapshot is not restored with another login key, after 30 minutes, when tampered, or after an authorization failure',async()=>{
+ const make=async tag=>{const storage=new Map(),p=await dailyPage(tag,{storage});try{await readPreviewEditHide(p);}finally{p.restore();}return storage;};
+ // Different login (new key): unreadable, deleted, honest reload notice.
+ let storage=await make('k1');let p=await dailyPage('k1b',{storage,stateKey:'6'.repeat(64)});
+ try{assert.equal(p.doc.elements['email-list'].children.length,0);assert.equal(storage.has('sarberki-napi-state'),false);assert.match(p.doc.elements['email-status'].textContent,/újratöltötte/);}finally{p.restore();}
+ // Older than 30 minutes.
+ storage=await make('t1');const realNow=Date.now;Date.now=()=>realNow()+31*60000;
+ try{p=await dailyPage('t1b',{storage});try{assert.equal(p.doc.elements['email-list'].children.length,0);assert.equal(storage.has('sarberki-napi-state'),false);}finally{p.restore();}}finally{Date.now=realNow;}
+ // Tampered ciphertext.
+ storage=await make('x1');const snap=JSON.parse(storage.get('sarberki-napi-state'));snap.data=snap.data.slice(0,-4)+(snap.data.endsWith('AAAA')?'BBBB':'AAAA');storage.set('sarberki-napi-state',JSON.stringify(snap));
+ p=await dailyPage('x1b',{storage});try{assert.equal(p.doc.elements['email-list'].children.length,0);assert.equal(storage.has('sarberki-napi-state'),false);}finally{p.restore();}
+ // Server rejects the session (logged out or idle): nothing restored, snapshot deleted.
+ storage=await make('a1');p=await dailyPage('a1b',{storage,loggedIn:false});
+ try{assert.equal(p.doc.elements.login.hidden,false);assert.equal(p.doc.elements['email-list'].children.length,0);assert.equal(storage.has('sarberki-napi-state'),false);}finally{p.restore();}
 });

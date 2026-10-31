@@ -37,10 +37,10 @@ function closedPreviewText(message,header,body){
  }catch{return null;}
 }
 // Separate mailbox reading from cloud case writes. Reuses the existing readonly
-// transport and account policy; no tokens or message bodies are persisted.
-export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=loadGoogle,readInbox=readTestGmailInbox,documentImpl=document,clientId,now=()=>new Date()}={}){
+// transport and account policy; no tokens are persisted. The snapshot is encrypted by the daily view.
+export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=loadGoogle,readInbox=readTestGmailInbox,documentImpl=document,clientId,now=()=>new Date(),onChange=()=>{}}={}){
  const el=id=>documentImpl.getElementById(id);
- let generation=0,busy=false,googleApi=null,chooseMessage=null,pendingConsent=false,queuedConsent=null,consentTimer=null,previewSource=null,previewTurn=0,previewPending=false;
+ let generation=0,busy=false,googleApi=null,chooseMessage=null,pendingConsent=false,queuedConsent=null,consentTimer=null,previewSource=null,previewTurn=0,previewPending=false,shown=null,selectedIndex=-1;
  const active=turn=>turn===generation&&canRead()&&documentImpl.visibilityState!=='hidden';
  // Local, unsaved reply preview from the shared email adapter. No request, storage or case transition.
  function clearPreview(source=null){
@@ -56,8 +56,10 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
    'Emberi jóváhagyás szükséges; ez nem mentett ügy, nem küldés és nem foglalás.'];
   el('email-draft-checks').replaceChildren(...items.map(text=>{const li=documentImpl.createElement('li');li.textContent=text;return li;}));
   el('email-draft-text').value=draft.text;el('email-draft-text').disabled=false;el('email-draft-review').textContent=draft.operatorReviewText;
-  el('email-draft-status').textContent='Helyi előnézet a közös döntési magból: nincs mentve, nem küldhető, nem foglalás. A szöveg itt szerkeszthető, de nem tárolódik.';
+  el('email-draft-status').textContent='Helyi előnézet a közös döntési magból: nincs mentve, nem küldhető, nem foglalás. A szöveg itt szerkeszthető; csak titkosított, 30 percig érvényes helyi másolat készül.';
+  onChange();
  }
+ el('email-draft-text').addEventListener('input',()=>onChange());
  el('email-draft-request').addEventListener('click',async()=>{
   const source=previewSource,turn=generation;
   if(!source||!active(turn))return;
@@ -79,6 +81,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
  function clear(){
   clearPicker();
   generation++;busy=false;pendingConsent=false;queuedConsent=null;clearTimeout(consentTimer);consentTimer=null;el('email-list').replaceChildren();el('email-detail').textContent='';
+  shown=null;selectedIndex=-1;onChange();
   el('email-status').textContent='A tesztpostafiók olvasásához jelentkezzen be.';el('read-email').disabled=true;
  }
  function setEnabled(enabled){if(enabled&&!googleApi)void loadGoogleImpl().then(api=>{googleApi=api;}).catch(()=>{});el('read-email').disabled=!enabled||busy;if(enabled&&queuedConsent)void processConsent();if(enabled&&!busy)el('email-status').textContent='Beolvasás: '+TEST_GMAIL_ACCOUNT+'. A Google külön olvasási engedélyt kér.';}
@@ -91,11 +94,16 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
    el('email-picker').value=String(index);
    buttons.forEach((button,i)=>button.setAttribute('aria-pressed',String(i===index)));
    el('email-previous').disabled=index===0;el('email-next').disabled=index===messages.length-1;
-   let body,readable=null;
-   try{readable=gmailReadableBody(message.payload);body=readable||'A levélnek nincs olvasható szöveges része.';}
+   let body,readable=null;selectedIndex=index;
+   try{
+    // A restored message carries its already decoded text (null when it was unreadable).
+    if(Object.hasOwn(message,'restoredText')&&message.restoredText===null)throw Error('UNREADABLE');
+    readable=Object.hasOwn(message,'restoredText')?message.restoredText:gmailReadableBody(message.payload);body=readable||'A levélnek nincs olvasható szöveges része.';
+   }
    catch{readable=null;body='A levél szövege nem jeleníthető meg. Válasszon másik levelet a listából.';}
    const text=readable&&previewText(message,header,readable);clearPreview(text?{text}:null);
    el('email-detail').textContent='Feladó: '+(header.from||'Nincs megadva')+'\nTárgy: '+(header.subject||'(nincs tárgy)')+'\n\n'+body;
+   onChange();
   };
   messages.forEach((message,index)=>{
    const li=documentImpl.createElement('li'),button=documentImpl.createElement('button'),option=documentImpl.createElement('option');button.type='button';
@@ -106,7 +114,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
   chooseMessage=open;el('email-picker').replaceChildren(options);el('email-picker').disabled=!messages.length;el('email-picker-wrap').hidden=false;
   el('email-list').replaceChildren(fragment);
   el('email-status').textContent=messages.length+' levél beolvasva. Válasszon levelet a választóból vagy a görgethető listából. A felhős ügykezeléshez való átadás még nem érhető el.';
-  if(messages.length)open(0);
+  shown=messages;if(messages.length)open(0);
  }
  function finish(){busy=false;pendingConsent=false;queuedConsent=null;clearTimeout(consentTimer);consentTimer=null;el('read-email').disabled=!canRead();}
  function fail(error){
@@ -165,5 +173,37 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
   if(previewPending){previewPending=false;clearPreview(previewSource);}
  }
  function reveal(){el('read-email').disabled=!canRead()||busy;if(queuedConsent)void processConsent();}
- return {clear,setEnabled,suspend,conceal,reveal};
+ // Snapshot for the daily view's encrypted, session-bound local copy: decoded text only, never tokens.
+ function snapshot(){
+  if(!shown?.length)return null;
+  const messages=shown.map(message=>{
+   const h=Object.fromEntries((message.payload?.headers||[]).map(x=>[x.name.toLowerCase(),x.value]));
+   let text=null;try{text=Object.hasOwn(message,'restoredText')?message.restoredText:gmailReadableBody(message.payload);}catch{}
+   return {id:message.id,threadId:message.threadId,labelIds:message.labelIds,internalDate:message.internalDate,subject:h.subject??null,from:h.from??null,text};
+  });
+  const previewShown=previewSource&&!el('email-draft-text').disabled;
+  return {messages,selected:selectedIndex,preview:previewShown?{text:el('email-draft-text').value,review:el('email-draft-review').textContent,
+   checks:Array.from(el('email-draft-checks').children,child=>child.textContent)}:null};
+ }
+ const str=(v,max)=>typeof v==='string'&&v.length<=max;
+ function restoreSnapshot(snap){
+  if(!canRead()||busy||!snap||!Array.isArray(snap.messages)||!snap.messages.length||snap.messages.length>1000)return false;
+  const valid=snap.messages.every(m=>str(m.id,128)&&(m.threadId==null||str(m.threadId,128))&&Array.isArray(m.labelIds)&&m.labelIds.every(x=>str(x,64))&&str(m.internalDate,20)&&
+   (m.subject==null||str(m.subject,2000))&&(m.from==null||str(m.from,2000))&&(m.text===null||str(m.text,200000)));
+  if(!valid||!Number.isInteger(snap.selected))return false;
+  const messages=snap.messages.map(m=>({id:m.id,threadId:m.threadId,labelIds:m.labelIds,internalDate:m.internalDate,restoredText:m.text,
+   payload:{headers:[...(m.subject==null?[]:[{name:'Subject',value:m.subject}]),...(m.from==null?[]:[{name:'From',value:m.from}])]}}));
+  clearPicker();const turn=++generation;showMessages(messages,turn);
+  if(snap.selected>=0&&snap.selected<messages.length)chooseMessage?.(snap.selected);
+  const p=snap.preview;
+  // The preview is restored only where the current gate still allows a preview for this message.
+  if(p&&previewSource&&str(p.text,20000)&&str(p.review,40000)&&Array.isArray(p.checks)&&p.checks.length<=40&&p.checks.every(x=>str(x,1000))){
+   el('email-draft-checks').replaceChildren(...p.checks.map(text=>{const li=documentImpl.createElement('li');li.textContent=text;return li;}));
+   el('email-draft-text').value=p.text;el('email-draft-text').disabled=false;el('email-draft-review').textContent=p.review;
+   el('email-draft-status').textContent='Helyi előnézet visszaállítva (titkosított, 30 percig érvényes helyi másolat): nincs mentve ügyként, nem küldhető, nem foglalás.';
+  }
+  el('email-status').textContent=messages.length+' levél visszaállítva a titkosított, 30 percig érvényes helyi másolatból. Új levelekhez olvassa be újra a postafiókot.';
+  onChange();return true;
+ }
+ return {clear,setEnabled,suspend,conceal,reveal,snapshot,restoreSnapshot};
 }

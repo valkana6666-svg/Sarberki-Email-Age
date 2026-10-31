@@ -27,7 +27,43 @@ for(const button of document.querySelectorAll('[data-section]'))button.addEventL
 
 const session=createOperatorSession();
 let authenticated=false,epoch=0;
-const emailReader=createDailyEmailReader({canRead:()=>authenticated,restoreSession:()=>session.restore(),clientId:document.querySelector('meta[name="google-oauth-client-id"]')?.content});
+const emailReader=createDailyEmailReader({canRead:()=>authenticated,restoreSession:async()=>rememberKey(await session.restore()),
+ clientId:document.querySelector('meta[name="google-oauth-client-id"]')?.content,onChange:()=>scheduleSave()});
+// Encrypted local copy of the read mail list, selection and local reply preview, so an iOS relaunch does not
+// force a re-read. AES-GCM with a per-login key that only an authenticated, non-idle server session returns;
+// expires after 30 minutes and is deleted on lock/logout. Never a Gmail token; never plaintext.
+const STATE_STORE='sarberki-napi-state',STATE_TTL_MS=30*60*1000,encoder=new TextEncoder();
+let stateKey=null,saveTimer=null,saveQueue=Promise.resolve();
+function rememberKey(meta){stateKey=/^[a-f0-9]{64}$/.test(meta?.stateKey||'')?meta.stateKey:null;return meta;}
+const toB64=bytes=>{let out='';for(let i=0;i<bytes.length;i+=0x8000)out+=String.fromCharCode(...bytes.subarray(i,i+0x8000));return btoa(out);};
+const fromB64=text=>Uint8Array.from(atob(text),c=>c.charCodeAt(0));
+const aesKey=hex=>crypto.subtle.importKey('raw',Uint8Array.from(hex.match(/../g),h=>parseInt(h,16)),'AES-GCM',false,['encrypt','decrypt']);
+const aad=savedAt=>encoder.encode('sarberki-napi-state-v1|sarberki-test|'+savedAt);
+function dropState(){clearTimeout(saveTimer);saveTimer=null;try{localStorage.removeItem(STATE_STORE);}catch{}}
+async function saveState(){
+ const key=stateKey,snap=authenticated&&key?emailReader.snapshot():null;
+ if(!snap){try{localStorage.removeItem(STATE_STORE);}catch{}return;}
+ try{
+  const savedAt=Date.now(),iv=crypto.getRandomValues(new Uint8Array(12));
+  const data=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:aad(savedAt)},await aesKey(key),encoder.encode(JSON.stringify(snap))));
+  if(!authenticated||key!==stateKey)return;
+  const value=JSON.stringify({v:1,savedAt,iv:toB64(iv),data:toB64(data)});
+  if(value.length>3500000)throw Error('TOO_LARGE');
+  localStorage.setItem(STATE_STORE,value);
+ }catch{try{localStorage.removeItem(STATE_STORE);}catch{}}
+}
+function queueSave(){saveQueue=saveQueue.then(saveState,saveState);return saveQueue;}
+function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>{saveTimer=null;void queueSave();},400);}
+async function loadState(){
+ let raw=null;try{raw=localStorage.getItem(STATE_STORE);}catch{}
+ if(!raw)return null;
+ try{
+  const box=JSON.parse(raw),age=Date.now()-box?.savedAt;
+  if(box?.v!==1||!Number.isSafeInteger(box.savedAt)||!(age>=-60000&&age<STATE_TTL_MS)||typeof box.iv!=='string'||typeof box.data!=='string'||!stateKey)throw Error('INVALID');
+  const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:fromB64(box.iv),additionalData:aad(box.savedAt)},await aesKey(stateKey),fromB64(box.data));
+  return JSON.parse(new TextDecoder().decode(plain));
+ }catch{dropState();return null;}
+}
 let listLoaded=false;
 let selectedSection='incoming',rows=[],selected=null,editBase=null,canApprove=false,actionBusy=false;
 const request=createEpochRequestQueue({getEpoch:()=>epoch,isAuthenticated:()=>authenticated,
@@ -101,7 +137,7 @@ function sessionUI(isAuthenticated,message){
  el('chat-reset').disabled=!isAuthenticated;
 }
 function lockSession(message){
- forgetSwitch();setConcealed(false);emailReader.clear();resetChat();session.clear();clearData();el('password').value='';
+ forgetSwitch();dropState();stateKey=null;setConcealed(false);emailReader.clear();resetChat();session.clear();clearData();el('password').value='';
  sessionUI(false,message);
 }
 // The view may be concealed during an app switch; results still land in memory and stay hidden.
@@ -114,8 +150,11 @@ async function resume(){
  if(location.origin!==TEST_ORIGIN){lockSession('A kapcsolat csak a kijelölt tesztoldalon használható.');return;}
  if(document.visibilityState==='hidden')return;
  const turn=epoch;
- try{await session.restore();if(turn!==epoch||document.visibilityState==='hidden')return;
+ try{rememberKey(await session.restore());if(turn!==epoch||document.visibilityState==='hidden')return;
   sessionUI(true,'Bejelentkezve.');
+  const saved=await loadState();if(turn!==epoch)return;
+  if(saved&&emailReader.restoreSnapshot(saved))reloadedAfterSwitch=false;
+  else dropState();
   if(reloadedAfterSwitch){reloadedAfterSwitch=false;el('email-status').textContent='Az alkalmazásváltás közben a böngésző újratöltötte az oldalt. A leveleket és a helyi AI-javaslatot biztonsági okból nem tároljuk, ezért olvassa be újra a leveleket.';}
   await loadCases({selectAvailable:true});
  }catch(error){if(turn===epoch)failed(error);}
@@ -126,13 +165,13 @@ el('login').addEventListener('submit',async event=>{
  const email=el('email').value.trim(),password=el('password').value;
  el('password').value='';emailReader.clear();resetChat();session.clear();clearData();const turn=epoch;
  sessionUI(false,'Bejelentkezés ellenőrzése…');
- try{await session.login(email,password);if(turn===epoch&&document.visibilityState!=='hidden'){
+ try{dropState();rememberKey(await session.login(email,password));if(turn===epoch&&document.visibilityState!=='hidden'){
   sessionUI(true,'Bejelentkezve.');await loadCases({selectAvailable:true});
  }}
  catch(error){if(turn===epoch)failed(error);}
 });
 el('logout').addEventListener('click',async()=>{
- emailReader.clear();resetChat();clearData();const turn=epoch;sessionUI(false,'Kijelentkezés ellenőrzése…');
+ emailReader.clear();dropState();stateKey=null;forgetSwitch();resetChat();clearData();const turn=epoch;sessionUI(false,'Kijelentkezés ellenőrzése…');
  try{await session.logout();if(turn===epoch&&!authenticated)el('session-status').textContent='Kijelentkezve.';}
  catch{if(turn===epoch&&!authenticated)el('session-status').textContent='A kijelentkezés nem ellenőrizhető. Próbálja újra.';}
 });
@@ -235,12 +274,12 @@ function forgetSwitch(){try{localStorage.removeItem(SWITCH_MARK);}catch{}}
 function setConcealed(value,message='Munkamenet ellenőrzése…'){
  concealed=value;document.body?.classList.toggle('concealed',value);if(document.body?.dataset)document.body.dataset.concealedMessage=message;
 }
-function conceal(){if(!authenticated||concealed)return;setConcealed(true);markSwitch();emailReader.conceal();}
+function conceal(){if(!authenticated||concealed)return;setConcealed(true);markSwitch();emailReader.conceal();clearTimeout(saveTimer);saveTimer=null;void queueSave();}
 async function reveal(){
  if(!concealed){void resume();return;}
  if(document.visibilityState==='hidden')return;
  const turn=epoch;
- try{await session.restore();if(turn!==epoch||!authenticated||document.visibilityState==='hidden')return;
+ try{rememberKey(await session.restore());if(turn!==epoch||!authenticated||document.visibilityState==='hidden')return;
   lastActivity=Date.now();forgetSwitch();setConcealed(false);el('session-status').textContent='Bejelentkezve.';emailReader.reveal();
  }catch(error){
   if(turn!==epoch)return;
@@ -255,7 +294,7 @@ function activity(){
  if(concealed){void reveal();return;}
  if(Date.now()-lastActivity<ACTIVITY_REFRESH_MS)return;
  lastActivity=Date.now();const turn=epoch;
- session.restore().catch(error=>{if(turn===epoch&&authenticated&&authError(error))failed(error);});
+ session.restore().then(rememberKey).catch(error=>{if(turn===epoch&&authenticated&&authError(error))failed(error);});
 }
 for(const type of ['pointerdown','keydown'])document.addEventListener(type,activity,{capture:true,passive:true});
 let reloadedAfterSwitch=false;

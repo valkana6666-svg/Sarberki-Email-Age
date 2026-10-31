@@ -15,7 +15,7 @@ export function createOperatorSession({request=fetch,now=()=>Date.now()}={}){
   if(!response.ok){const error=Error(response.status===401?'AUTH_REQUIRED':response.status===403?'FORBIDDEN':response.status===503?'SESSION_SETUP_REQUIRED':'SERVICE_UNAVAILABLE');error.status=response.status;throw error;}
   const body=await response.json();
   if(body?.authenticated!==true||body.tenantId!==tenant||!/^[a-f0-9]{64}$/.test(body.csrfToken)||!Number.isFinite(Date.parse(body.expiresAt))||Date.parse(body.expiresAt)<=now()||Date.parse(body.expiresAt)>now()+7*86400000+60000||'access_token' in body||'refresh_token' in body)throw Error('INVALID_SESSION');
-  revocationCsrf=body.csrfToken;return {authenticated:true,tenantId:tenant,expiresAt:body.expiresAt,csrfToken:body.csrfToken};
+  revocationCsrf=body.csrfToken;return {authenticated:true,tenantId:tenant,expiresAt:body.expiresAt,csrfToken:body.csrfToken,...(/^[a-f0-9]{64}$/.test(body.stateKey||'')?{stateKey:body.stateKey}:{})};
  };
  const options=(method,body,csrf)=>({method,cache:'no-store',credentials:'same-origin',redirect:'error',headers:{'X-Sarberki-Operator':'1',...(body?{'Content-Type':'application/json'}:{}),...(csrf?{'X-CSRF-Token':csrf}:{})},...(body?{body:JSON.stringify(body)}:{})});
  const restore=()=>{

@@ -20,7 +20,7 @@ try{
    data:{state:{approval:state.approval,revision:0,values:{arrival:'2026-11-20',departure:'2026-11-22',guests:2,unit:'Deluxe'}},
     messages:[{text:'Kitalált vendégüzenet'}],drafts:state.editable?[{text:state.draftText,synthetic:true,reviewStatus:'internal_review_required',revision:0,basedOnMessageCount:1}]:[],
     ...(state.approval==='internally_approved'?{serverApproval:{draftHash:state.draftHash}}:{})}});
-  const session={authenticated:true,tenantId:'sarberki-test',csrfToken:'a'.repeat(64),expiresAt:new Date(Date.now()+3600000).toISOString()};
+  const session={authenticated:true,tenantId:'sarberki-test',csrfToken:'a'.repeat(64),stateKey:'7'.repeat(64),expiresAt:new Date(Date.now()+3600000).toISOString()};
   const chatHandler=createServerChatPreview({env:{URL:origin,SERVER_CHAT_SYNTHETIC_ONLY:'true'},
    sessionFactory:()=>({protectedRead:async event=>{assert.equal(state.authenticated,true);assert.equal(event.headers['x-csrf-token'],session.csrfToken);return {};}}),
    fetchImpl:()=>{throw Error('NO_EXTERNAL_PROVIDER');}});
@@ -188,6 +188,20 @@ try{
   assert.match(await page.locator('#email-detail').innerText(),/Sárberki élő teszt – HU/);
   assert.equal(await page.locator('#email-list button').count(),3);
   check(engine,'app-switch-keeps-session-mail-and-local-edit-without-reread');
+  // Emulated iOS relaunch: a real page reload (new JS context) with the cookie and localStorage kept.
+  await setVisibility('hidden');
+  await page.waitForFunction(()=>Boolean(localStorage.getItem('sarberki-napi-state')));
+  const stored=await page.evaluate(()=>localStorage.getItem('sarberki-napi-state'));
+  for(const plain of ['Kitalált, félkész','Sárberki élő teszt','Jó napot','sender@example.test'])assert.equal(stored.includes(plain),false,'snapshot must be encrypted');
+  const relaunchRequests=[];const watchRelaunch=request=>relaunchRequests.push(new URL(request.url()).host);page.on('request',watchRelaunch);
+  await page.reload();await page.locator('#session-status').filter({hasText:'Bejelentkezve'}).waitFor();
+  await page.locator('#email-status').filter({hasText:'visszaállítva'}).waitFor();
+  page.off('request',watchRelaunch);assert.equal(relaunchRequests.includes('gmail.googleapis.com'),false,'no Gmail re-read');
+  assert.equal(await page.locator('#email-list button').count(),3);
+  assert.match(await page.locator('#email-detail').innerText(),/Sárberki élő teszt – HU/);
+  assert.equal(await page.locator('#email-draft-text').inputValue(),'Kitalált, félkész helyi szerkesztés.');
+  assert.equal(await page.locator('#email-draft-text').isDisabled(),false);
+  check(engine,'relaunch-restores-encrypted-mail-list-selection-and-edit');
   assert.match(await page.locator('#email-draft-checks').innerText(),/Kapacitás: nem igazolt/);
   await page.locator('#email-next').click();
   assert.match(await page.locator('#email-detail').innerText(),/Guten Tag!/);
@@ -198,7 +212,10 @@ try{
   assert.equal(await page.locator('#email-detail script, #email-detail img, #email-draft-checks script').count(),0);
   await page.locator('#email-next').click();
   assert.equal(await page.locator('#email-draft-request').isDisabled(),true);assert.equal(await page.locator('#email-draft-text').inputValue(),'');
-  assert.equal(await page.evaluate(()=>localStorage.length+sessionStorage.length),0);
+  // Only the encrypted snapshot and the timestamp marker may be stored; never plaintext mail or reply text.
+  const storedNow=await page.evaluate(()=>({keys:Object.keys(localStorage).sort(),session:sessionStorage.length,text:Object.values(localStorage).join('|')}));
+  assert.equal(storedNow.session,0);assert.ok(storedNow.keys.every(key=>['sarberki-napi-concealed-at','sarberki-napi-state'].includes(key)),storedNow.keys.join());
+  for(const plain of ['Guten Tag','Jó napot','Sárberki élő teszt','Kedves Vendégünk'])assert.equal(storedNow.text.includes(plain),false,'plaintext stored: '+plain);
   assert.deepEqual(errors,[]);state.markedMail=false;
   check(engine,'marked-test-mailbox-preview-html-inert-and-reply-excluded');
   await page.locator('#read-email').click();await page.locator('#email-detail').filter({hasText:'Kitalált eredeti e-mail'}).waitFor();
