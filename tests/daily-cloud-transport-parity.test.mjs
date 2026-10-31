@@ -46,3 +46,21 @@ test('GET never transmits a user-controlled draft or approval payload',async()=>
  assert.equal(seen.options.body,undefined);
  assert.ok(!seen.url.includes('Kitalált'));
 });
+
+test('expired login and stale revision fail closed without implicit retries',async()=>{
+ for(const [status,error] of [[401,'AUTH_REQUIRED'],[409,'CASE_CONFLICT']]){
+  let calls=0;
+  const transport=createCloudCaseRequest({request:async()=>{calls++;return Response.json({error},{status});}});
+  await assert.rejects(transport(metadata,getInput,'GET'),new RegExp(error));
+  assert.equal(calls,1);
+ }
+});
+
+test('malformed JSON and server failures cannot be mistaken for a persisted draft',async()=>{
+ let calls=0;
+ const malformed=createCloudCaseRequest({request:async()=>{calls++;return new Response('{invalid',{headers:{'Content-Type':'application/json'}});}});
+ await assert.rejects(malformed(metadata,getInput,'GET'),SyntaxError);
+ assert.equal(calls,1);
+ const unavailable=createCloudCaseRequest({request:async()=>Response.json({error:'SERVICE_UNAVAILABLE'},{status:503})});
+ await assert.rejects(unavailable(metadata,getInput,'GET'),/SERVICE_UNAVAILABLE/);
+});
