@@ -1,4 +1,5 @@
-import {readTestGmailInbox,TEST_GMAIL_ACCOUNT,gmailReadableBody} from '../gmail-policy.mjs';
+import {readTestGmailInbox,TEST_GMAIL_ACCOUNT,gmailReadableBody,isTestInquiry} from '../gmail-policy.mjs';
+import {TEST_SUBJECT_PREFIXES} from '../gmail-subject.mjs';
 import {buildEmailInquiryDraft} from '../shared-core/inquiry-channel-adapters.mjs';
 import {closedMailRequestFromGmailRecord} from '../shared-core/synthetic-mail-fixtures.mjs';
 import {languageFromText} from '../sarberki-core.mjs';
@@ -15,7 +16,19 @@ function loadGoogle(){
 }
 const missingLabels={dates:'pontos érkezési és távozási dátum',dates_confirmation:'a dátum megerősítése',accommodation:'háztípus',adults:'felnőttek száma',
  children_status:'érkezik-e gyermek',child_ages:'gyermekek életkora',units_requested:'kért egységszám',current_date:'aktuális dátum'};
-// Only the closed fictional registry may be previewed; any other mailbox content needs separate approval.
+// Previewable: the closed fictional registry, or a verified test-mailbox message whose subject
+// starts with the existing test marker. The marker must lead the subject, so Re:/Fwd: replies with
+// quoted threads are excluded. Any other mailbox content needs separate approval.
+const MAX_PREVIEW_CHARS=20000;
+function markedTestSubject(subject){
+ if(typeof subject!=='string')return false;
+ const normalized=subject.trim().toLocaleLowerCase('hu-HU').replace(/\s+/gu,' ');
+ return TEST_SUBJECT_PREFIXES.some(prefix=>normalized===prefix||normalized.startsWith(prefix+' '));
+}
+function previewText(message,header,body){
+ const closed=closedPreviewText(message,header,body);if(closed)return closed;
+ return isTestInquiry(message)&&markedTestSubject(header.subject)&&body.trim()&&body.length<=MAX_PREVIEW_CHARS?body:null;
+}
 function closedPreviewText(message,header,body){
  try{
   const from=(/<([^<>\s]+)>\s*$/.exec(header.from||'')?.[1]||'').toLowerCase();
@@ -35,7 +48,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
   el('email-draft-text').value='';el('email-draft-text').disabled=true;el('email-draft-review').textContent='';el('email-draft-checks').replaceChildren();
   el('email-draft-request').disabled=!source||!canRead();
   el('email-draft-status').textContent=source?'AI-válaszjavaslat kérhető. Helyi előnézet lesz: nincs mentve, nem küldhető, nem foglalás.':
-   'Az AI-válaszjavaslat jelenleg csak a lezárt szintetikus tesztlevelekhez érhető el; más levélhez külön jóváhagyás szükséges.';
+   'Az AI-válaszjavaslat jelenleg csak a lezárt szintetikus tesztlevelekhez és a tesztpostafiók „Sárberki élő teszt” tárgyú leveleihez érhető el (válasz/továbbítás nem); más levélhez külön jóváhagyás szükséges.';
  }
  function showPreview(draft){
   const d=draft.decision,items=[...d.missing.map(code=>'Hiányzó adat: '+(missingLabels[code]||code)),...d.contradictions.map(c=>'Ellentmondás: '+c.message),
@@ -79,7 +92,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
    let body,readable=null;
    try{readable=gmailReadableBody(message.payload);body=readable||'A levélnek nincs olvasható szöveges része.';}
    catch{readable=null;body='A levél szövege nem jeleníthető meg. Válasszon másik levelet a listából.';}
-   const text=readable&&closedPreviewText(message,header,readable);clearPreview(text?{text}:null);
+   const text=readable&&previewText(message,header,readable);clearPreview(text?{text}:null);
    el('email-detail').textContent='Feladó: '+(header.from||'Nincs megadva')+'\nTárgy: '+(header.subject||'(nincs tárgy)')+'\n\n'+body;
   };
   messages.forEach((message,index)=>{

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {createDailyEmailReader} from '../napi-kezelo/napi-email.mjs';
 import {buildEmailInquiryDraft} from '../shared-core/inquiry-channel-adapters.mjs';
 import {syntheticMailMime,syntheticMailEnvelope,syntheticMailLanguages} from '../shared-core/synthetic-mail-fixtures.mjs';
+import {languageFromText} from '../sarberki-core.mjs';
 class Element{
  constructor(){this.children=[];this.listeners={};this.textContent='';this.disabled=false;this.value='';this.attributes={};}
  append(...children){this.children.push(...children);}
@@ -200,4 +201,68 @@ test('preview is cleared on message switch, logout, popup suspend and hidden pag
   assert.equal(h.e['email-draft-text'].value,'',leave);assert.equal(checks(h),'',leave);
   if(leave==='switch')h.logout();
  }
+});
+
+// A1: verified test-mailbox messages whose subject starts with the existing test marker (gmail-subject.mjs).
+const markedBodies={
+ hu:'Jó napot! Deluxe faházat szeretnénk foglalni 2027-05-14 és 2027-05-16 között 2 felnőtt, 0 gyermek számára.',
+ de:'Guten Tag! Deluxe Ferienhaus 2027-05-14 bis 2027-05-16, 2 Erwachsene, 0 Kinder.',
+ en:'Hello! One Deluxe cabin from 2027-05-14 to 2027-05-16 for 2 adults and 0 children.',
+ si:'Pozdravljeni! Deluxe hiška 2027-05-14 do 2027-05-16, 2 odrasli, 0 otroci.'
+};
+const marked=(subject,body,{id='18f2a0b1c2d3e4f5',labelIds=['INBOX'],internalDate=String(Date.parse('2026-10-30T09:00:00Z')),payload=null}={})=>({id,threadId:id,labelIds,internalDate,
+ payload:payload||{mimeType:'text/plain',headers:[...(subject===undefined?[]:[{name:'Subject',value:subject}]),{name:'From',value:'Teszt Küldő <sender@example.test>'}],body:{data:Buffer.from(body).toString('base64url')}}});
+
+test('marked test-mailbox messages get the exact shared-adapter preview in HU/DE/EN/SI without network, storage or logging',async()=>{
+ const subjects=['Sárberki élő teszt – HU foglalás','SARBERKI ELO TESZT de','  Sárberki   élő teszt  - EN','Sárberki élő teszt'];
+ const languages=Object.keys(markedBodies),messages=languages.map((language,index)=>marked(subjects[index],markedBodies[language],{id:'18f2a0b1c2d3e4f'+index}));
+ const h=await openInbox({messages,now:PREVIEW_NOW});
+ for(const [index,language] of languages.entries()){
+  await select(h,index);assert.equal(h.e['email-draft-request'].disabled,false,subjects[index]);
+  const guard=noNetworkOrStorage(),before=h.restores;
+  try{await h.e['email-draft-request'].click();}finally{guard.restore();}
+  assert.deepEqual(guard.calls,[]);assert.equal(h.restores,before+1);
+  assert.equal(languageFromText(markedBodies[language]),language);
+  const expected=buildEmailInquiryDraft({message:markedBodies[language],language,now:PREVIEW_NOW,tenantId:'sarberki-test'});
+  assert.equal(h.e['email-draft-text'].value,expected.text,language);
+  assert.equal(h.e['email-draft-review'].textContent,expected.operatorReviewText,language);
+  assert.match(checks(h),/Kapacitás: nem igazolt/);assert.match(checks(h),/Ár: nem igazolt/);assert.match(checks(h),/Emberi jóváhagyás szükséges/);
+  assert.match(h.e['email-draft-status'].textContent,/Helyi előnézet.*nincs mentve.*nem küldhető.*nem foglalás/s);
+ }
+ h.logout();
+});
+
+test('unmarked, reply/forward, lookalike, out-of-scope or oversized test-mailbox messages get no preview',async()=>{
+ const body=markedBodies.hu;
+ const rejected=[
+  ['reply','Re: Sárberki élő teszt',body],['reply-hu','VS: Sárberki élő teszt',body],['forward','Fwd: Sárberki élő teszt',body],['forward-de','AW: Sárberki élő teszt',body],
+  ['lookalike-suffix','Sárberki élő tesztelés',body],['lookalike-order','Teszt Sárberki élő',body],['prefix-not-first','x Sárberki élő teszt',body],
+  ['ordinary-inquiry','Érdeklődés a szállásról',body],['empty-subject','',body],['missing-subject',undefined,body],
+  ['marker-only-in-body','Foglalás','Sárberki élő teszt '+body],
+  ['no-inbox-label','Sárberki élő teszt',body,{labelIds:['SENT']}],
+  ['before-test-window','Sárberki élő teszt',body,{internalDate:String(Date.parse('2026-09-24T12:00:00Z'))}],
+  ['oversized','Sárberki élő teszt','A'.repeat(20001)],['blank-body','Sárberki élő teszt','   \n  '],
+  ['unreadable','Sárberki élő teszt',body,{payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Sárberki élő teszt'}],body:{data:'%%%'}}}]
+ ];
+ const h=await openInbox({messages:rejected.map(([,subject,text,extra],index)=>marked(subject,text,{id:'28f2a0b1c2d3e4'+String(index).padStart(2,'0'),...extra})),now:PREVIEW_NOW});
+ for(const [index,[name]] of rejected.entries()){
+  await select(h,index);const before=h.restores;
+  assert.equal(h.e['email-draft-request'].disabled,true,name);
+  assert.match(h.e['email-draft-status'].textContent,/csak a lezárt szintetikus tesztlevelekhez/,name);
+  const guard=noNetworkOrStorage();
+  try{await h.e['email-draft-request'].click();}finally{guard.restore();}
+  assert.deepEqual(guard.calls,[],name);assert.equal(h.restores,before,name);assert.equal(h.e['email-draft-text'].value,'',name);assert.equal(checks(h),'',name);
+ }
+ h.logout();
+});
+
+test('marked preview keeps session check, clearing and late-result rules',async()=>{
+ const messages=[marked('Sárberki élő teszt 1',markedBodies.hu,{id:'38f2a0b1c2d3e4f0'}),marked('Sárberki élő teszt 2',markedBodies.en,{id:'38f2a0b1c2d3e4f1'})];
+ const h=await openInbox({messages,now:PREVIEW_NOW});await select(h,0);h.expire();
+ await h.e['email-draft-request'].click();assert.equal(h.e['email-draft-text'].value,'');assert.match(h.e['email-draft-status'].textContent,/munkamenet/);h.logout();
+ const g=await openInbox({messages,now:PREVIEW_NOW});await select(g,0);await g.e['email-draft-request'].click();assert.notEqual(g.e['email-draft-text'].value,'');
+ await select(g,1);assert.equal(g.e['email-draft-text'].value,'');assert.equal(checks(g),'');
+ let release;g.holdSession(new Promise(resolve=>{release=resolve;}));const pending=g.e['email-draft-request'].click();await Promise.resolve();
+ await select(g,0);release();await pending;assert.equal(g.e['email-draft-text'].value,'');
+ g.logout();assert.equal(g.e['email-draft-text'].value,'');assert.equal(g.e['email-draft-request'].disabled,true);
 });

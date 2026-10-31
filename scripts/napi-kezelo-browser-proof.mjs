@@ -14,7 +14,7 @@ try{
   if(process.env.NAPI_PROOF_ENGINE&&process.env.NAPI_PROOF_ENGINE!==engine)continue;
   browser=await launcher.launch({headless:true,...(engine==='chromium'&&process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{})});
   const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block'});
-  const state={authenticated:false,revision:1,allowRead:true,caseMethods:[],previewRevisions:[],chatStatus:200,chatMessages:[],unreadableMail:false,closedMail:false,role:'reader',editable:false,draftText:'Kitalált, tárolt válasz.',approval:'pending',draftHash:null};
+  const state={authenticated:false,revision:1,allowRead:true,caseMethods:[],previewRevisions:[],chatStatus:200,chatMessages:[],unreadableMail:false,closedMail:false,markedMail:false,role:'reader',editable:false,draftText:'Kitalált, tárolt válasz.',approval:'pending',draftHash:null};
   const record=()=>({tenantId:'sarberki-test',caseId:'case-synthetic',revision:state.revision,
    canEditDraft:state.role==='writer'&&state.approval==='pending',canApproveDraft:state.role==='approver'&&state.approval==='pending',
    data:{state:{approval:state.approval,revision:0,values:{arrival:'2026-11-20',departure:'2026-11-22',guests:2,unit:'Deluxe'}},
@@ -31,6 +31,12 @@ try{
    if(url.origin==='https://gmail.googleapis.com'){
     assert.equal(request.method(),'GET');assert.equal(request.headers().authorization,'Bearer SYNTHETIC_TOKEN');
     const closed=syntheticMailLanguages.map(language=>syntheticMailMime(language));
+    const b64=text=>Buffer.from(text).toString('base64url');
+    const markedMail=[
+     {id:'48f2a0b1c2d3e4f0',threadId:'48f2a0b1c2d3e4f0',labelIds:['INBOX'],internalDate:String(Date.parse('2026-10-30T12:00:00Z')),payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Sárberki élő teszt – HU'},{name:'From',value:'Teszt <sender@example.test>'}],body:{data:b64('Jó napot! Deluxe faházat szeretnénk foglalni 2027-05-14 és 2027-05-16 között 2 felnőtt, 0 gyermek számára.')}}},
+     {id:'48f2a0b1c2d3e4f1',threadId:'48f2a0b1c2d3e4f1',labelIds:['INBOX'],internalDate:String(Date.parse('2026-10-30T11:00:00Z')),payload:{mimeType:'text/html',headers:[{name:'Subject',value:'Sárberki élő teszt – HTML'},{name:'From',value:'Teszt <sender@example.test>'}],body:{data:b64('<p>Guten Tag! Deluxe Ferienhaus 2027-05-14 bis 2027-05-16, 2 Erwachsene, 0 Kinder.</p><script>window.__xss=1</script><img src="x.png" onerror="window.__xss=2">')}}},
+     {id:'48f2a0b1c2d3e4f2',threadId:'48f2a0b1c2d3e4f2',labelIds:['INBOX'],internalDate:String(Date.parse('2026-10-30T10:00:00Z')),payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Re: Sárberki élő teszt – HU'},{name:'From',value:'Teszt <sender@example.test>'}],body:{data:b64('Idézett válasz 2027-05-14.')}}}];
+    if(state.markedMail&&!url.pathname.endsWith('/profile'))return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(url.pathname.endsWith('/messages')?{messages:markedMail.map(({id})=>({id}))}:markedMail.find(({id})=>id===url.pathname.split('/').at(-1)))});
     if(state.closedMail&&!url.pathname.endsWith('/profile'))return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(url.pathname.endsWith('/messages')?{messages:closed.map(({id})=>({id}))}:closed.find(({id})=>id===url.pathname.split('/').at(-1)))});
     const body=url.pathname.endsWith('/profile')?{emailAddress:'sarberkiprojecttest@gmail.com'}:url.pathname.endsWith('/messages')?{messages:[{id:'abcdef1234567890'},{id:'abcdef1234567891'},{id:'abcdef1234567892'}]}:{id:url.pathname.split('/').at(-1),internalDate:String(Date.parse('2026-10-20T12:00:00Z')),labelIds:['INBOX'],payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Kitalált napi e-mail '+url.pathname.split('/').at(-1)},{name:'From',value:'guest@synthetic.invalid'}],body:{data:state.unreadableMail&&url.pathname.endsWith('abcdef1234567892')?'%%%':Buffer.from('Kitalált eredeti e-mail.').toString('base64url')}}};
     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
@@ -156,9 +162,29 @@ try{
   assert.equal(await page.locator('#email-draft-text').inputValue(),'');assert.equal(await page.locator('#email-draft-text').isDisabled(),true);
   assert.equal(await page.locator('#email-draft-checks li').count(),0);
   assert.deepEqual(errors,[]);state.closedMail=false;
+  check(engine,'closed-synthetic-mail-local-ai-preview-session-checked-and-cleared');
+  state.markedMail=true;
+  await page.locator('#read-email').click();await page.locator('#email-list button').nth(2).waitFor();
+  await page.locator('#email-detail').filter({hasText:'Sárberki élő teszt – HU'}).waitFor();
+  const markedRequests=[];const watchMarked=request=>markedRequests.push(new URL(request.url()).pathname);page.on('request',watchMarked);
+  await page.locator('#email-draft-request').click();await page.locator('#email-draft-text:not([disabled])').waitFor();
+  page.off('request',watchMarked);assert.deepEqual(markedRequests,['/.netlify/functions/operator-session']);
+  assert.match(await page.locator('#email-draft-text').inputValue(),/Kedves Vendégünk/);
+  assert.match(await page.locator('#email-draft-checks').innerText(),/Kapacitás: nem igazolt/);
+  await page.locator('#email-next').click();
+  assert.match(await page.locator('#email-detail').innerText(),/Guten Tag!/);
+  assert.doesNotMatch(await page.locator('#email-detail').innerText(),/<script|onerror/);
+  await page.locator('#email-draft-request').click();await page.locator('#email-draft-text:not([disabled])').waitFor();
+  assert.match(await page.locator('#email-draft-text').inputValue(),/\S/);
+  assert.equal(await page.evaluate(()=>window.__xss),undefined);
+  assert.equal(await page.locator('#email-detail script, #email-detail img, #email-draft-checks script').count(),0);
+  await page.locator('#email-next').click();
+  assert.equal(await page.locator('#email-draft-request').isDisabled(),true);assert.equal(await page.locator('#email-draft-text').inputValue(),'');
+  assert.equal(await page.evaluate(()=>localStorage.length+sessionStorage.length),0);
+  assert.deepEqual(errors,[]);state.markedMail=false;
+  check(engine,'marked-test-mailbox-preview-html-inert-and-reply-excluded');
   await page.locator('#read-email').click();await page.locator('#email-detail').filter({hasText:'Kitalált eredeti e-mail'}).waitFor();
   assert.equal(await page.locator('#email-list button').count(),3);assert.equal(await page.locator('#email-draft-request').isDisabled(),true);
-  check(engine,'closed-synthetic-mail-local-ai-preview-session-checked-and-cleared');
 
   await page.locator('#case-list button').waitFor();
   check(engine,'login-automatically-loads-cases');

@@ -41,3 +41,14 @@ Projektvezetői döntés: a fenti „szerveres AI-előnézeti útvonal” helyet
 - A szerveroldali CSRF/Origin/401/403/429/503 kapuk helyett: nincs előnézeti hálózati kérés; minden előnézet előtt friss kezelői munkamenet-ellenőrzés (`restoreSession`), hibánál nincs automatikus újrapróbálás.
 - Változatlan: nincs ügymentés, jóváhagyás, levélküldés, foglalás, tartós tárolás vagy naplózás; Gmail `gmail.readonly`; üzleti szabályok, tenant- és jogosultsági határok; a részletes Gmail-nézet (`gmail-readonly.js`) érintetlen.
 - Ismert, külön kezelendő eltérés (P1): a részletes Gmail-nézet a régi `sarberki-core` láncot használja, ezért a két felület tervezete eltérhet; mértéke NEM IGAZOLT.
+
+## A1 hatókörbővítés – megjelölt tesztpostafiók-levelek (2026-10-31)
+
+Projektvezetői engedély alapján a helyi előnézet a lezárt szintetikus registry mellett az ellenőrzött tesztpostafiók megjelölt leveleire is kiterjed. Központi AI-motor, szerveroldali jóváhagyás, SQL, jogosultság és üzleti szabály nem változott.
+
+- Feltételek együtt: a levél a `readTestGmailInbox` által már ellenőrzött `sarberkiprojecttest@gmail.com` fiókból származik; `isTestInquiry` (INBOX, 2026-09-25 utáni); a tárgy a meglévő `gmail-subject.mjs` `TEST_SUBJECT_PREFIXES` jelölőjével **kezdődik** („Sárberki élő teszt”, ékezet nélkül is), utána csak szóköz és tetszőleges szöveg; olvasható, nem üres, legfeljebb 20 000 karakteres törzs.
+- Elutasítva: `Re:`/`Fwd:`/`AW:`/`VS:` stb. (a jelölő nem a tárgy elején áll), hasonló vagy átrendezett tárgy, csak a törzsben szereplő jelölő, más címke vagy korábbi dátum, túl hosszú, üres vagy olvashatatlan törzs.
+- HTML-levél: a meglévő `gmailReadableBody` inert DOMParserrel szöveggé alakít; megjelenítés csak `textContent`/`value`. Böngészőpróbában `<script>` és `onerror` nem fut.
+- Változatlanul: nincs előnézeti hálózati kérés, ügymentés, jóváhagyás, küldés, foglalás, tárolás vagy naplózás; minden előnézet előtt friss kezelői munkamenet-ellenőrzés; törlés levélváltáskor, kijelentkezéskor, háttérbe kerüléskor; késői eredmény eldobva.
+- Kockázat: a jelölőt bárki beírhatja a tesztfiókba küldött levél tárgyába. Ennek következménye csak helyi, nem tárolt előnézet abban a böngészőben, ahol a kezelő a levelet már olvashatja.
+- Nem igazolt: hosztolt OAuth, valódi tesztlevél élő előnézete és fizikai iPhone. Valódi levél felhős ügyként mentése és független jóváhagyása továbbra is tiltott (B, külön döntés).
