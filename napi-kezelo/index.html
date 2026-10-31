@@ -35,6 +35,7 @@
   <form id="chat-form"><label for="chat-input">Tesztüzenet</label><input id="chat-input" type="text" maxlength="1000" autocomplete="off" required disabled><button id="chat-send" type="submit" class="primary" disabled>Tesztüzenet küldése</button> <button id="chat-reset" type="button" class="secondary" disabled>Új beszélgetés</button></form><p id="chat-output" class="readout" role="status" aria-live="polite"></p>
  </section>
 </main>
-<footer><span>Sárberki Horgásztó</span><a href="../index.html">Részletes tesztfelület ↗</a></footer>
+<footer><span>Sárberki Horgásztó</span><span id="deployed_version" role="status" aria-live="polite">Verzió ellenőrzése…</span><button id="reload_version" class="secondary" type="button">Frissítés</button><a href="../index.html">Részletes tesztfelület ↗</a></footer>
 <script type="module" src="./napi.mjs"></script>
+<script type="module" src="../sarberki-chatbot-project/version-status.mjs"></script>
 </body></html>

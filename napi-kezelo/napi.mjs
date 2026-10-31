@@ -228,9 +228,10 @@ el('load-cases').addEventListener('click',()=>loadCases());
 let concealed=false,lastActivity=0;
 const ACTIVITY_REFRESH_MS=5*60*1000,SWITCH_MARK='sarberki-napi-concealed-at';
 const authError=error=>['AUTH_REQUIRED','FORBIDDEN'].includes(error?.message);
-// Only a timestamp is kept, to tell an iOS tab reload apart from a normal return. No mail, AI text or token.
-function markSwitch(){try{sessionStorage.setItem(SWITCH_MARK,String(Date.now()));}catch{}}
-function forgetSwitch(){try{sessionStorage.removeItem(SWITCH_MARK);}catch{}}
+// Only a timestamp is kept, to tell an iOS reload or home-screen relaunch apart from a normal return.
+// localStorage is expected to outlive an iOS home-screen relaunch, unlike sessionStorage. No mail, AI text or token.
+function markSwitch(){try{localStorage.setItem(SWITCH_MARK,String(Date.now()));}catch{}}
+function forgetSwitch(){try{localStorage.removeItem(SWITCH_MARK);}catch{}}
 function setConcealed(value,message='Munkamenet ellenőrzése…'){
  concealed=value;document.body?.classList.toggle('concealed',value);if(document.body?.dataset)document.body.dataset.concealedMessage=message;
 }
@@ -258,7 +259,8 @@ function activity(){
 }
 for(const type of ['pointerdown','keydown'])document.addEventListener(type,activity,{capture:true,passive:true});
 let reloadedAfterSwitch=false;
-try{reloadedAfterSwitch=Boolean(Number(sessionStorage.getItem(SWITCH_MARK)));}catch{}
+// Only a switch within the 30 minute idle window counts; the server still decides the session.
+try{const at=Number(localStorage.getItem(SWITCH_MARK));reloadedAfterSwitch=at>0&&Date.now()-at<30*60*1000;}catch{}
 forgetSwitch();
 addEventListener('pagehide',conceal);
 addEventListener('pageshow',event=>{if(event.persisted)void reveal();});

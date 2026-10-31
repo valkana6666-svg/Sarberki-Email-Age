@@ -30,3 +30,19 @@ Javítás (`napi-kezelo/napi.mjs`):
 - Újratöltés-felismerés: elrejtéskor csak egy időbélyeg kerül a `sessionStorage`-ba (levél, AI-szöveg, token nem). Ha újratöltés után megtalálható, a felület kiírja, hogy az iOS újratöltötte az oldalt, és a levelek biztonsági okból nem tárolódnak. Normál visszatéréskor, záráskor és kijelentkezéskor törlődik. Ez a következő fizikai próbán bizonyítja vagy kizárja a 2. utat.
 
 Ha a 2. út igazolódik: a levélállapot újratöltésen átívelő megőrzéséhez szerveroldali munkamenethez kötött, titkosított, rövid élettartamú helyi pillanatkép vagy szerveroldali piszkozat kellene; ez külön döntés.
+
+## Második fizikai iPhone FAIL (telepített `da97c3e`) – kivizsgálás
+
+Tünet: bejelentkezve, a 6 tárolt ügy megvan, a 38 levél és a „Proba123” eltűnt, újratöltési figyelmeztetés nincs.
+
+Automatizált reprodukció ugyanazzal a forgatókönyvvel (beolvasás, AI-javaslat, szerkesztés, elrejtés/visszatérés), egyszeri próbaként három verzión:
+- `d358f76` (a munkamenet-javítás előtti kód): bejelentkezve=igen, levelek=0, ügyek=6, szerkesztés törölve, figyelmeztetés nincs – **pontosan a megfigyelt tünet**.
+- `4966d05` és `a91f3c1`: levelek=3, ügyek=6, „Proba123” megmaradt.
+
+Következtetés: a telepített új kód a normál alkalmazásváltáskor megőrzi az állapotot. A megfigyelt tünetet két, kívülről azonos eset okozhatja:
+1. a főképernyős (standalone) alkalmazás a korábbi kódot futtatta – benne nincs frissítés gomb, a régi JavaScript a teljes bezárásig fut;
+2. az iOS újraindította az alkalmazást, és a `sessionStorage`-ban lévő újratöltési jelölő elveszett, ezért nem jelent meg figyelmeztetés.
+
+Egyik sem igazolt fizikai eszközön. Javítás (új rendszer nélkül, meglévő modulokkal):
+- A napi kezelő láblécében megjelenik a futó verzió a meglévő `sarberki-chatbot-project/version-status.mjs`-sel; eltérésnél „Új tesztverzió érhető el” és Frissítés gomb.
+- Az újratöltési jelölő (csak időbélyeg) `localStorage`-ba került, hogy az iOS-újraindítást is túlélje; csak 30 percen belüli jelölő számít, olvasás után törlődik.

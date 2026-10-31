@@ -207,10 +207,10 @@ assert.equal(doc.elements['case-list'].children.length,1);
 });
 
 test('iPhone return with a transient session-check failure must not wipe mail/case state; a later tap retries; reload is detected without storing data',async()=>{
- const previous={document:globalThis.document,location:globalThis.location,fetch:globalThis.fetch,addEventListener:globalThis.addEventListener,setTimeout:globalThis.setTimeout,clearTimeout:globalThis.clearTimeout,sessionStorage:globalThis.sessionStorage,now:Date.now};
+ const previous={document:globalThis.document,location:globalThis.location,fetch:globalThis.fetch,addEventListener:globalThis.addEventListener,setTimeout:globalThis.setTimeout,clearTimeout:globalThis.clearTimeout,localStorage:globalThis.localStorage,now:Date.now};
  const doc=fakeDocument(),events={},calls=[],sessionMeta=meta(),stored=new Map();let loggedIn=false,networkDown=false,clock=Date.now();
  const storage={getItem:k=>stored.has(k)?stored.get(k):null,setItem:(k,v)=>stored.set(k,String(v)),removeItem:k=>stored.delete(k)};
- globalThis.document=doc;globalThis.location={origin:'https://leafy-chimera-2403e5.netlify.app'};globalThis.sessionStorage=storage;
+ globalThis.document=doc;globalThis.location={origin:'https://leafy-chimera-2403e5.netlify.app'};globalThis.localStorage=storage;
  globalThis.addEventListener=(type,fn)=>(events[type]??=[]).push(fn);globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};Date.now=()=>clock;
  const settle=async()=>{for(let i=0;i<20;i++)await new Promise(resolve=>setImmediate(resolve));};
  globalThis.fetch=async(url,options={})=>{
@@ -236,7 +236,8 @@ test('iPhone return with a transient session-check failure must not wipe mail/ca
   const mailStatus=doc.elements['email-status'].textContent;
   // App switch; on return the first session check fails transiently (iOS network not yet up).
   doc.visibilityState='hidden';await doc.dispatch('visibilitychange');
-  assert.ok(stored.size<=1&&[...stored.values()].every(v=>/^\d+$/.test(v)),'only a non-sensitive timestamp may be stored');
+  assert.deepEqual([...stored.keys()],['sarberki-napi-concealed-at'],'marker must outlive an iOS relaunch (localStorage)');
+  assert.match(stored.get('sarberki-napi-concealed-at'),/^\d+$/,'only a non-sensitive timestamp may be stored');
   networkDown=true;clock+=60000;doc.visibilityState='visible';await doc.dispatch('visibilitychange');await settle();
   assert.equal(doc.body.classList.contains('concealed'),true,'stays concealed, not wiped');
   assert.equal(doc.elements['draft-editor'].value,'Proba123');assert.equal(doc.elements['case-list'].children.length,1);
@@ -253,14 +254,14 @@ test('iPhone return with a transient session-check failure must not wipe mail/ca
   // A real authorization failure on return still locks and clears.
   doc.visibilityState='hidden';await doc.dispatch('visibilitychange');loggedIn=false;doc.visibilityState='visible';await doc.dispatch('visibilitychange');await settle();
   assert.equal(doc.elements['draft-editor'].value,'');assert.equal(doc.elements.login.hidden,false);assert.equal(stored.size,0);
- }finally{Object.assign(globalThis,{document:previous.document,location:previous.location,fetch:previous.fetch,addEventListener:previous.addEventListener,setTimeout:previous.setTimeout,clearTimeout:previous.clearTimeout,sessionStorage:previous.sessionStorage});Date.now=previous.now;}
+ }finally{Object.assign(globalThis,{document:previous.document,location:previous.location,fetch:previous.fetch,addEventListener:previous.addEventListener,setTimeout:previous.setTimeout,clearTimeout:previous.clearTimeout,localStorage:previous.localStorage});Date.now=previous.now;}
 });
 
 test('a page reload after an app switch (iOS discarded the tab) is reported honestly; nothing sensitive is restored',async()=>{
- const previous={document:globalThis.document,location:globalThis.location,fetch:globalThis.fetch,addEventListener:globalThis.addEventListener,setTimeout:globalThis.setTimeout,clearTimeout:globalThis.clearTimeout,sessionStorage:globalThis.sessionStorage};
+ const previous={document:globalThis.document,location:globalThis.location,fetch:globalThis.fetch,addEventListener:globalThis.addEventListener,setTimeout:globalThis.setTimeout,clearTimeout:globalThis.clearTimeout,localStorage:globalThis.localStorage};
  const doc=fakeDocument(),stored=new Map([['sarberki-napi-concealed-at',String(Date.now()-120000)]]);
  globalThis.document=doc;globalThis.location={origin:'https://leafy-chimera-2403e5.netlify.app'};
- globalThis.sessionStorage={getItem:k=>stored.has(k)?stored.get(k):null,setItem:(k,v)=>stored.set(k,String(v)),removeItem:k=>stored.delete(k)};
+ globalThis.localStorage={getItem:k=>stored.has(k)?stored.get(k):null,setItem:(k,v)=>stored.set(k,String(v)),removeItem:k=>stored.delete(k)};
  globalThis.addEventListener=()=>{};globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};
  globalThis.fetch=async url=>{const u=new URL(url,'https://leafy-chimera-2403e5.netlify.app');
   if(u.pathname.endsWith('/operator-session'))return response({...meta()});
@@ -271,4 +272,72 @@ test('a page reload after an app switch (iOS discarded the tab) is reported hone
   assert.match(doc.elements['email-status'].textContent,/újratöltötte/);assert.match(doc.elements['email-status'].textContent,/nem tárol/);
   assert.equal(stored.size,0);assert.equal(doc.elements['email-list'].children.length,0);
  }finally{Object.assign(globalThis,previous);}
+});
+
+// Shared harness for the full daily page with a synthetic Google token client and Gmail API.
+async function dailyPage(tag,{storage=new Map()}={}){
+ const doc=fakeDocument(),events={},calls=[],sessionMeta=meta();const server={loggedIn:true};
+ const mailIds=['58f2a0b1c2d3e4f0','58f2a0b1c2d3e4f1','58f2a0b1c2d3e4f2'];
+ const mail=id=>({id,threadId:id,labelIds:['INBOX'],internalDate:String(Date.parse('2026-10-30T12:00:00Z')-mailIds.indexOf(id)*60000),
+  payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Sárberki élő teszt – AI előnézet '+mailIds.indexOf(id)},{name:'From',value:'Teszt <sender@example.test>'}],
+   body:{data:Buffer.from('Jó napot! Deluxe faházat szeretnénk foglalni 2027-05-14 és 2027-05-16 között 2 felnőtt, 0 gyermek számára.').toString('base64url')}}});
+ const env={document:doc,location:{origin:'https://leafy-chimera-2403e5.netlify.app',search:''},localStorage:{getItem:k=>storage.has(k)?storage.get(k):null,setItem:(k,v)=>storage.set(k,String(v)),removeItem:k=>storage.delete(k)},
+  google:{accounts:{oauth2:{initTokenClient:options=>({requestAccessToken:()=>options.callback({access_token:'SYNTHETIC_TOKEN'})})}}},
+  addEventListener:(type,fn)=>(events[type]??=[]).push(fn),setTimeout:()=>0,clearTimeout:()=>{}};
+ env.fetch=async(url,options={})=>{
+  const u=new URL(url,'https://leafy-chimera-2403e5.netlify.app'),method=options.method||'GET';calls.push({path:u.pathname,method,host:u.host,query:u.search});
+  if(u.host==='gmail.googleapis.com'){
+   if(u.pathname.endsWith('/profile'))return response({emailAddress:'sarberkiprojecttest@gmail.com'});
+   if(u.pathname.endsWith('/messages'))return response({messages:mailIds.map(id=>({id}))});
+   return response(mail(u.pathname.split('/').at(-1)));
+  }
+  if(u.pathname==='/build-info.mjs')return new Response('export const deployedCommit = "'+'a'.repeat(40)+'";\n');
+  if(u.pathname.endsWith('/operator-session')){
+   if(method==='POST'){const payload=JSON.parse(options.body);if(payload.action==='logout')server.loggedIn=false;if(payload.action==='login')server.loggedIn=true;}
+   return server.loggedIn?response({...sessionMeta,expiresAt:new Date(Date.now()+3600000).toISOString()}):response({error:'AUTH_REQUIRED'},401);
+  }
+  if(u.pathname.endsWith('/booking-cases'))return response({result:Array.from({length:6},(_,i)=>({tenantId:'sarberki-test',caseId:'case-synthetic-'+i,revision:1,category:'incoming'}))});
+  throw Error('unexpected endpoint '+u.href);
+ };
+ const keys=Object.keys(env),previous=Object.fromEntries(keys.map(k=>[k,globalThis[k]]));Object.assign(globalThis,env);
+ const settle=async()=>{for(let i=0;i<30;i++)await new Promise(resolve=>setImmediate(resolve));};
+ await import(pathToFileURL(resolve('napi-kezelo/napi.mjs')).href+'?synthetic='+tag);await settle();
+ return {doc,events,calls,server,storage,settle,restore(){Object.assign(globalThis,previous);}};
+}
+
+test('observed iPhone flow: 38-mail style read, AI preview, edit, app switch and return keeps mails, selection and edit (no re-read)',async()=>{
+ const p=await dailyPage('observed-flow');
+ try{
+  const e=p.doc.elements;assert.equal(e.logout.hidden,false);assert.equal(e['case-list'].children.length,6);
+  await e['read-email'].dispatch('click');await p.settle();
+  assert.equal(e['email-list'].children.length,3);
+  e['email-picker'].value='1';await e['email-picker'].dispatch('change');await e['email-draft-request'].dispatch('click');await p.settle();
+  assert.match(e['email-draft-text'].value,/Kedves Vendégünk/);e['email-draft-text'].value='Proba123';
+  const gmailReads=p.calls.filter(x=>x.host==='gmail.googleapis.com').length;
+  p.doc.visibilityState='hidden';await p.doc.dispatch('visibilitychange');p.doc.visibilityState='visible';await p.doc.dispatch('visibilitychange');await p.settle();
+  assert.equal(p.doc.body.classList.contains('concealed'),false);assert.equal(e.logout.hidden,false);
+  assert.equal(e['email-list'].children.length,3,'mails kept');assert.equal(e['email-picker'].value,'1','selection kept');
+  assert.equal(e['email-draft-text'].value,'Proba123','edited AI reply kept');assert.equal(e['case-list'].children.length,6);
+  assert.equal(p.calls.filter(x=>x.host==='gmail.googleapis.com').length,gmailReads,'no Gmail re-read');
+  assert.equal([...p.storage.values()].every(v=>/^\d+$/.test(v)),true,'only a timestamp may be stored');
+ }finally{p.restore();}
+});
+
+test('iOS relaunch (new JS context, sessionStorage gone) is detected through a timestamp-only marker and reported',async()=>{
+ const storage=new Map([['sarberki-napi-concealed-at',String(Date.now()-90000)]]);
+ const p=await dailyPage('relaunch',{storage});
+ try{
+  assert.equal(p.doc.elements.logout.hidden,false);assert.equal(p.doc.elements['case-list'].children.length,6);
+  assert.match(p.doc.elements['email-status'].textContent,/újratöltötte/);assert.equal(storage.size,0);
+ }finally{p.restore();}
+ // An old marker (beyond the 30 minute idle window) is ignored.
+ const old=new Map([['sarberki-napi-concealed-at',String(Date.now()-31*60000)]]);
+ const q=await dailyPage('relaunch-old',{storage:old});
+ try{assert.doesNotMatch(q.doc.elements['email-status'].textContent,/újratöltötte/);assert.equal(old.size,0);}finally{q.restore();}
+});
+
+test('daily page shows the running build and flags a stale running version (existing version-status module)',async()=>{
+ const html=fs.readFileSync('napi-kezelo/index.html','utf8');
+ assert.match(html,/id="deployed_version"/);assert.match(html,/id="reload_version"/);
+ assert.match(html,/<script type="module" src="\.\.\/sarberki-chatbot-project\/version-status\.mjs"><\/script>/);
 });

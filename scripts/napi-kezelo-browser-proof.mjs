@@ -101,6 +101,8 @@ try{
   assert.equal(await page.locator('#email-picker-wrap').isVisible(),true);
   assert.equal(await page.locator('#email-picker').isDisabled(),true);
   assert.match(await page.locator('#email-picker').innerText(),/Még nincs beolvasott e-mail/);
+  await page.locator('#deployed_version').filter({hasText:'egyezik'}).waitFor();
+  check(engine,'daily-page-shows-running-build-matches-deployed');
   check(engine,'mail-picker-visible-before-reading');
   assert.equal(await page.locator('nav button').count(),4);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
@@ -149,7 +151,7 @@ try{
   const requestsBefore=[];const watch=request=>requestsBefore.push(new URL(request.url()).pathname);page.on('request',watch);
   await page.locator('#email-draft-request').click();await page.locator('#email-draft-text:not([disabled])').waitFor();
   page.off('request',watch);
-  assert.deepEqual(requestsBefore,['/.netlify/functions/operator-session']);
+  assert.deepEqual(requestsBefore.filter(path=>path!=='/build-info.mjs'),['/.netlify/functions/operator-session']);
   assert.match(await page.locator('#email-draft-text').inputValue(),/\S/);
   assert.match(await page.locator('#email-draft-checks').innerText(),/Kapacitás: nem igazolt/);
   assert.match(await page.locator('#email-draft-checks').innerText(),/Ár: nem igazolt/);
@@ -168,7 +170,7 @@ try{
   await page.locator('#email-detail').filter({hasText:'Sárberki élő teszt – HU'}).waitFor();
   const markedRequests=[];const watchMarked=request=>markedRequests.push(new URL(request.url()).pathname);page.on('request',watchMarked);
   await page.locator('#email-draft-request').click();await page.locator('#email-draft-text:not([disabled])').waitFor();
-  page.off('request',watchMarked);assert.deepEqual(markedRequests,['/.netlify/functions/operator-session']);
+  page.off('request',watchMarked);assert.deepEqual(markedRequests.filter(path=>path!=='/build-info.mjs'),['/.netlify/functions/operator-session']);
   assert.match(await page.locator('#email-draft-text').inputValue(),/Kedves Vendégünk/);
   // Emulated iPhone app switch: hidden -> visible. Real background/iOS snapshot is not emulated.
   await page.locator('#email-draft-text').fill('Kitalált, félkész helyi szerkesztés.');
@@ -178,7 +180,7 @@ try{
   assert.equal(await page.evaluate(()=>document.body.classList.contains('concealed')),true);
   assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('main')).visibility),'hidden');
   await setVisibility('visible');await page.waitForFunction(()=>!document.body.classList.contains('concealed'));
-  page.off('request',watchSwitch);assert.deepEqual(switchRequests,['/.netlify/functions/operator-session']);
+  page.off('request',watchSwitch);assert.deepEqual(switchRequests.filter(path=>path!=='/build-info.mjs'),['/.netlify/functions/operator-session']);
   assert.equal(await page.locator('#email-draft-text').inputValue(),'Kitalált, félkész helyi szerkesztés.');
   assert.match(await page.locator('#email-detail').innerText(),/Sárberki élő teszt – HU/);
   assert.equal(await page.locator('#email-list button').count(),3);
