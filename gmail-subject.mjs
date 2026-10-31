@@ -51,6 +51,14 @@ function normalizeSubject(subject) {
   return normalized;
 }
 
+// Strict test-mail marker shared by the daily view and the server source check: the marker must lead
+// the subject (so Re:/Fwd: replies never match), followed only by the end or a space.
+export function isMarkedTestSubject(subject) {
+  if (typeof subject !== 'string') return false;
+  const normalized = subject.trim().toLocaleLowerCase('hu-HU').replace(/\s+/gu, ' ');
+  return TEST_SUBJECT_PREFIXES.some(prefix => normalized === prefix || normalized.startsWith(prefix + ' '));
+}
+
 export function isApprovedSubject(subject) {
   if (typeof subject !== 'string') return false;
   const normalized = normalizeSubject(subject);

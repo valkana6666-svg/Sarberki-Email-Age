@@ -1,5 +1,5 @@
 import {readTestGmailInbox,TEST_GMAIL_ACCOUNT,gmailReadableBody,isTestInquiry} from '../gmail-policy.mjs';
-import {TEST_SUBJECT_PREFIXES} from '../gmail-subject.mjs';
+import {isMarkedTestSubject} from '../gmail-subject.mjs';
 import {buildEmailInquiryDraft} from '../shared-core/inquiry-channel-adapters.mjs';
 import {closedMailRequestFromGmailRecord} from '../shared-core/synthetic-mail-fixtures.mjs';
 import {languageFromText} from '../sarberki-core.mjs';
@@ -20,14 +20,9 @@ const missingLabels={dates:'pontos érkezési és távozási dátum',dates_confi
 // starts with the existing test marker. The marker must lead the subject, so Re:/Fwd: replies with
 // quoted threads are excluded. Any other mailbox content needs separate approval.
 const MAX_PREVIEW_CHARS=20000;
-function markedTestSubject(subject){
- if(typeof subject!=='string')return false;
- const normalized=subject.trim().toLocaleLowerCase('hu-HU').replace(/\s+/gu,' ');
- return TEST_SUBJECT_PREFIXES.some(prefix=>normalized===prefix||normalized.startsWith(prefix+' '));
-}
 function previewText(message,header,body){
  const closed=closedPreviewText(message,header,body);if(closed)return closed;
- return isTestInquiry(message)&&markedTestSubject(header.subject)&&body.trim()&&body.length<=MAX_PREVIEW_CHARS?body:null;
+ return isTestInquiry(message)&&isMarkedTestSubject(header.subject)&&body.trim()&&body.length<=MAX_PREVIEW_CHARS?body:null;
 }
 function closedPreviewText(message,header,body){
  try{
