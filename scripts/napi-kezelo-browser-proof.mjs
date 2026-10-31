@@ -94,7 +94,10 @@ try{
     return route.fulfill({status:200,headers:{'Content-Type':type,'Cache-Control':'no-store'},body:readFileSync(file)});
    }catch{return route.fulfill({status:404,body:''});}
   });
-  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const page=await context.newPage(),errors=[];
+  // WebKit reports a fetch cancelled by this proof's own page.reload() as a page error. Only the public
+  // version check (/build-info.mjs, handled in its own try/catch) is exempt; every other page error fails.
+  page.on('pageerror',e=>{if(engine==='webkit'&&/\/build-info\.mjs due to access control checks\.?$/.test(e.message))return;errors.push(e.message);});
   await page.goto(origin+'/napi-kezelo/');
   await page.locator('#session-status').filter({hasText:'bejelentkezés'}).waitFor();
   assert.equal(await page.locator('#load-cases').isDisabled(),true);
