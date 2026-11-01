@@ -60,3 +60,24 @@
 ## Mobil böngészőpróba igazítása a 41aa870 állandó címkéihez (2026-11-01 ~23:12Z)
 - Dispatch 41360581226 (HEAD `f28b756`) FAIL: a próba a régi, sorszám-alapú „Tesztügy 2” címkét kereste; a 41aa870 óta a tesztlevél-ügy címkéje állandó: „Tesztlevél-ügy tm-<id>”. Termékhiba nincs; a 20 korábbi ellenőrzés PASS volt.
 - Javítás csak a `scripts/napi-kezelo-browser-proof.mjs` keresőjében (az állandó címkére). Helyben Chromium 22/22 PASS.
+
+## Élő életciklus-próba L11–L12: Approver elutasítás → Writer új tervezet → újranyitás (interaktív Claude Code, 2026-11-01 23:40–23:43Z)
+- Környezet: „Sarberki TEST E2E” felhőkörnyezet. Előellenőrzés: `leafy-chimera-2403e5.netlify.app` HTTP 200 a proxyn át; a négy `SARBERKI_TEST_WRITER_*` / `SARBERKI_TEST_APPROVER_*` változó megvan (érték nem került kiírásra, naplóba, commitba; a kimenetet a szkript titokegyezésre ellenőrizte).
+- Kiinduló HEAD `ffde29c12341e44724307b0fc402ab0d8eb6df21`; AGENTS.md teljes beolvasás, blob `be27bd2dfb4795496bd9f3d64ad60ada1123de5b`. Telepített TEST-verzió az oldalon: `da3dc9a65b02` („a telepített verzió egyezik”).
+- Módszer: Playwright/Chromium (390×844 mobil nézet, külön böngészőkontextus szerepenként) a meglévő napi kezelő felületén, valódi bejelentkezéssel. Hálózati kapu: csak `daily-list`, `test-mailbox-record`, `test-mailbox-decide`, `test-mailbox-redraft` engedett; más ügy-API-művelet 0; külső hoszt csak a Google GSI-szkript (letiltva, Gmail nem érintett). Előtte csak olvasó próba (írás blokkolva) igazolta az előfeltételt.
+- Ügy: `tm-1a0e711a60c6a259` (kitalált tartalmú tesztlevél-ügy). A jóváhagyott `tm-1a1917b5a80512ca` (rev 5, approved_internal) érintetlen maradt.
+
+| Lépés | Szerepkör | Szerverválasz / visszaolvasás | Eredmény |
+|---|---|---|---|
+| Előfeltétel | Approver | rev 1, `pending`, canDecide=true, döntés 0, draft-hash `5ea9a76f…` | PASS |
+| Függetlenség | Writer | ugyanazon rev 1-en canDecide=false, elutasítás gomb tiltva | PASS |
+| L11 elutasítás | Approver | `test-mailbox-decide` 200 → rev 2, `rejected`; visszaolvasás: `reject` döntés 2026-11-01T23:42:23.261081Z, indoklással; canDecide=false; felület: „Elutasítás mentve és visszaolvasva. Az ügy nyitva marad.” | PASS |
+| Nyitva marad | Writer | rev 2 `rejected`, kategória `progress` (nem Lezárt), canEditDraft=true, canDecide=false | PASS |
+| L12 új tervezet | Writer | `test-mailbox-redraft` 200 → rev 3, `pending`; új draft-hash `6efe2cba…`; felület: „Új tervezet mentve és visszaolvasva. Független jóváhagyásra vár.” | PASS |
+| Újranyitás visszaolvasása | Approver (új munkamenet) | rev 3, `pending`, kategória `approval`, canDecide=true, döntéstörténetben a `reject` megmaradt | PASS |
+
+- **Eredmény: L11–L12 élő elutasítás → Writer új tervezet → újranyitás: PASS** (TEST-oldal, valódi Auth/DB, böngészőautomatizálás).
+- Az ügy a próba után rev 3 / `pending`; új jóváhagyás vagy visszaküldés szándékosan nem történt.
+- Korlátok / NEM IGAZOLT: fizikai iPhone-on ez a kör nem futott (Chromium mobil emuláció); a tm_reject/tm_redraft audit-sorok közvetlen DB-olvasása nem történt (a szerver read-modelljének döntéstörténete és revíziója igazolja). Megfigyelés: az Approver-fiók szerverválasza canEditDraft=true – vagyis Writer-joga is van; hogy saját tervezetét ne hagyhassa jóvá, ebben a körben nem próbáltuk (korábbi szerveres tesztek szerint a DB ellenőrzi).
+- Módosított fájl: csak ez a naplófájl. A próbaszkript nem került a repóba (helyi scratchpad). Nem történt: telepítés, migráció, kapcsolóváltás, levélküldés, foglalás, Previo, main/production, Gmail-olvasás.
+- Következő: a docs/V1-FOLYTATASI-PONT.md (Work-fájl) LIVE-RE-REJECT-SWITCH sorában az elutasítás/újranyitás rész PASS-ra frissíthető e bejegyzés alapján; nyitva marad a Drive-másolat exact-file visszaolvasása és az iPhone-os címkeellenőrzés.
