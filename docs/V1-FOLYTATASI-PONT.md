@@ -267,3 +267,10 @@ Ez a kiegészítés felülírja a fenti általános „élő lánc NEM IGAZOLT�
 | LIVE-RE-REJECT-SWITCH | Tulajdonos/Work | korábbi fő iPhone kör PASS; Re:-tiltás, elutasítás/újranyitás, alkalmazásváltás külön NEM IGAZOLT | Meglévő L5/L11–12/L14 bizonyítékok vagy célzott próba |
 
 A jelenlegi felhőböngészőben korábban kijelentkezett kezelő látszott; a jelen körben nem próbáltunk hiányzó jogosultságot SQL-írással, service-role-lal vagy más felhasználó megszemélyesítésével pótolni. A lezárt jóváhagyott ügy változatlan. Nincs Claude-nak párhuzamosan átadott kódfeladat; a célzott javítást Codex elvégezte. V2/V3 érték: ugyanaz a megjelenítés mindkét meglévő ügyúton; új AI-motor vagy adatmodell nincs.
+
+
+### A létszámjavítás commit és CI-visszaolvasása
+- Javítás teljes SHA: `155b7346efe5d289e1b7e0db7e94d8d5247ec2c4`; a tesztági ref és a három módosított fájl közvetlenül visszaolvasva.
+- [Sarberki test branch checks 41305139670](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41305139670): success, a javítás SHA-jára; [Capacity regression 41305139686](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41305139686): success.
+- A push-eseményű mobil workflow szándékosan skipped; új fizikai/mobil élő bizonyítéknak nem számít.
+- A javítás továbbra sincs külön TEST-kiadásként telepítve; a következő lépés az erre szóló engedéllyel kiadás, majd az ügyadatlap egyszeri célzott ellenőrzése.
