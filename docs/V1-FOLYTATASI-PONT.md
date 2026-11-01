@@ -190,3 +190,43 @@ Netlify-telepítés, kapcsolóbekapcsolás, vendéglevél, foglalás és Previo-
 - Gyökérok (kódból azonosítva, teszttel reprodukálva): iPhone Safariban a Google-tokenkérés külön lapot nyit, ezért a napi oldal rejtett lesz; meglévő engedélynél a lap azonnal bezárul, így ablak alig látszik. A token a rejtett oldalra érkezik; a mentés visszahívása ilyenkor elvetette (`active()` hamis a rejtett oldal miatt). A beolvasás ugyanerre a helyzetre már sorba állította a választ (queuedConsent) – a mentésből ez hiányzott.
 - Minimális javítás (`napi-kezelo/napi-email.mjs`): rejtett oldalon érkező mentési tokent csak memóriában tartja, és a napi nézet szerveres munkamenet-ellenőrzése utáni visszatéréskor (reveal) használja fel; kijelentkezés/clear eldobja. A hibaüzenet megkülönbözteti a hiányzó tokent (Google hibakóddal) és a közben megváltozott kiválasztást. OAuth-rendszer, AI-mag, szerver és üzleti szabály változatlan.
 - Bizonyíték: új teszt reprodukálta a pontos üzenetet a javítás előtt, utána PASS (rejtett → visszatérés → mentés; kijelentkezés → nincs mentés; hibakód). `npm test` 2491/2491; Chromium napi próba 22/22. Élő iPhone: NEM IGAZOLT.
+
+
+## Gmail → közös AI → ügy → független jóváhagyás – élő bizonyíték visszaolvasása (2026-11-01 11:55Z körül)
+
+Ez a kiegészítés felülírja a fenti általános „élő lánc NEM IGAZOLT” állapotot az alább pontosított, sikeresen lefutott körre. Nem jelenti az összes negatív/életciklus-próba teljesítését.
+
+### Kiindulás és döntés
+- A munkamenet első érdemi művelete az aktuális tesztági AGENTS.md teljes lekérése volt (2026-11-01 11:51–11:52Z közötti intervallum; külön másodperc pontosságú olvasási időbélyeg nem került rögzítésre), blob: `be27bd2dfb4795496bd9f3d64ad60ada1123de5b`.
+- Kiinduló és írás előtt ellenőrzött HEAD: `acd78cb00b79643365f1a373c391a05e40ed6175`, kizárólag `gmail-test-subject-allowlist`.
+- Tulajdonosi bizonyíték: fizikai iPhone Tesztügy 7 Writer → mentés → független Approver → jóváhagyás → visszaolvasás sikeres, 2026-11-01 11:47:01 UTC.
+- Meglévő használható út: saját alkalmazási Gmail-olvasás, közös inquiry-channel-adapters / server-test-mailbox-case, WP3 RPC, napi kezelő, külön Writer/Approver. A szerverkód a Gmail-forrást maga olvassa és a meglévő közös maggal készít tervezetet.
+- Választás: a már lefutott kör Gmail-forrásának, adatbázis-rekordjának és auditjának közvetlen csak-olvasó összevetése. Új ügy vagy azonos próba ismétlése szükségtelen; új motor, OAuth-rendszer vagy kódjavítás nem indokolt bizonyított hiba nélkül.
+
+### Közvetlenül visszaolvasott eredmények
+| Ellenőrzés | Eredmény / bizonyíték |
+|---|---|
+| Gmail tesztpostafiók csatlakoztatott olvasása | PASS: profil sarberkiprojecttest@gmail.com; a jelölt levél kereshető és teljes MIME-tartalma olvasható. Ez a connector olvasását bizonyítja; az alkalmazás saját OAuth-láncának bizonyítéka a következő forráskötött ügy. |
+| Valódi Gmail-forrás → tárolt ügy | PASS: a „Sárberki élő teszt – AI előnézet” levél message-id `1a1917b5a80512ca`, ügy `tm-1a1917b5a80512ca`; a Gmail-törzs, thread/RFC Message-ID és tárolt sourceReceipt/messages megegyezik; mailbox_id=sarberki_gmail_test. A forrás kitalált tesztlevél. |
+| Közös mag válaszjavaslata és mentése | PASS az ellenőrzött láncra: tárolt eredeti tervezet, tények (2026-11-13 → 2026-11-15, 4 felnőtt, 0 gyermek), manual_review_required; a szerver meglévő buildEmailInquiryDraft útja visszaolvasva. Kapacitás/ár nincs igazoltnak feltüntetve. |
+| Független jóváhagyás | PASS: tm_create 10:57:01.292932Z → tm_redraft 11:01:06.302813Z → tm_return 11:05:53.560881Z → tm_redraft 11:38:38.821224Z → tm_approve 11:47:01.218595Z; revízió 1–5. A létrehozó nem rendelkezik can_approve joggal; a döntő személy különböző, és rendelkezik vele. Személyazonosítókat nem publikálunk. |
+| Hash és revízió | PASS: az utolsó tervezet szövegének SHA-256-ja egyezik az internalApproval.draftHash értékkel; reviewedRevision=4, ügy revision=5. A teljes tárolt JSON SHA-256-ja egyezik az audit data_hash értékével. A két hash eltérő dolgot jelöl; közvetlen összehasonlításuk nem érvényes hibateszt. |
+| Belső jóváhagyási korlát | PASS: scope=test-mailbox-v1, sendAllowed=false, bookingAllowed=false, priceVerified=false, capacityVerified=false. Belső jóváhagyás, nem foglalás/vendégküldés. |
+| TEST kapcsoló | PASS: közvetlen SQL 11:52:47Z és 11:53:53Z enabled=true. Netlify env pontos értéke itt nem olvasva; az adott ügy sikeres létrehozása/döntése az akkori kapu működésének bizonyítéka. |
+| Telepített verzió | PASS: közvetlen böngészős /api/health deployedCommit=`acd78cb00b79643365f1a373c391a05e40ed6175`; autoSend=false, autoBookingModification=false. A napi kezelő látható verziója is egyezik. |
+| Mai elküldött levél | PASS az ellenőrzött tesztpostafiókra: Gmail `in:sent after:2026/11/01` keresés 0 találat. A tegnapi tesztlevél és Re: a korábbi teszt része; nem mai küldés. |
+| CI | PASS: [41297590496](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41297590496), naplóból 2491 PASS / 0 FAIL / 0 SKIP. Külön célzott csomag 26 PASS, nem összeadandó. |
+| Meglévő célzott/mobil futás | PASS: [41297892491](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41297892491) targeted és [41297894500](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41297894500) dispatch mobil success, ugyanazon SHA. Új futást nem indítottunk. |
+
+### Hátralévő, pontosan körülhatárolt elfogadási hiány
+- Duplikált mentés elutasításának élő bizonyítéka NEM IGAZOLT. A forráshoz pontosan 1 ügy van, de ez önmagában nem bizonyít ismételt mentési kísérletet.
+- „Re:” gombtiltás élő bizonyítéka NEM IGAZOLT. Re: tesztlevél létezik, a letiltást ebben a munkamenetben nem próbáltuk.
+- Elutasítás → új tervezet → újranyitás élő bizonyítéka NEM IGAZOLT: ezen az ügyön tm_reject esemény 0. Visszaküldés és jóváhagyás igazolt.
+- Fizikai iPhone fő kör PASS tulajdonosi közlés alapján; az adatbázis az eszközt nem bizonyítja. Alkalmazásváltás utáni munkamenet-visszatérés külön NEM IGAZOLT.
+- A jelen felhőböngésző napi kezelője kijelentkezett (beolvasás/mentés tiltva). Az iPhone munkamenete nem ugyanaz. Nem kértünk új belépést a már lezárt kör ismétléséhez.
+- Previo-változatlanság közvetlen élő összevetése NEM IGAZOLT; Previo-kérést nem indítottunk. A kikapcsolt bookingAllowed/autoBookingModification nem helyettesíti ezt.
+
+### Változtatás és következő konkrét lépés
+- Kizárólag ez a meglévő folytatási dokumentum frissült. Nincs kódmódosítás, telepítés, migráció, kapcsolóváltás, e-mail-küldés, ügyírás vagy új automatizálás.
+- A fő Gmail → AI → mentés → független jóváhagyás kör újrafuttatása nem szükséges.
+- Következő feladat: meglévő forgatókönyv L4/L5/L11–L12/L14 hiányzó élő bizonyítékainak összegyűjtése (korábbi képernyőkép/napló elfogadható, ha ténylegesen igazol), majd csak a valóban hiányzó célzott próbák. Az approved ügyet indokolatlanul ne módosítsuk; az elutasítási körhöz külön jogosult tesztügy szükséges. A teljes V1 100% továbbra sem állítható ezen hiányok lezárása nélkül.
