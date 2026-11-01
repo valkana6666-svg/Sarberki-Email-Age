@@ -17,8 +17,10 @@ Jelölés: minden sor eredménye **PASS / FAIL / NEM IGAZOLT**, bizonyítékkal 
 ## 1. Friss mentés és visszaállíthatóság
 | # | Lépés | Elvárt | Eredmény |
 |---|---|---|---|
-| 1.1 | Friss titkosított mentés a meglévő folyamattal (`docs/BACKUP-V2-*.md`) | mentés SHA-256 rögzítve (csak az ellenőrzőkód, a mentés nem) | NEM IGAZOLT |
-| 1.2 | Elkülönített visszaállítási próba | sikeres, bizonyítékkal | NEM IGAZOLT |
+| 1.1 | Friss titkosított mentés a meglévő folyamattal (`docs/BACKUP-V2-*.md`) | mentés SHA-256 rögzítve (csak az ellenőrzőkód, a mentés nem) | **PASS (2026-11-01 07:28Z)** – Backup V2 run [41284787609](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41284787609), forráskód `676ee69` (kérés: `30cece8`); titkosított staging-artifact 13075230160, zip-digest `54b3578868dbfa1534f991e7111e941f076870639038a808fe9c58be6ff50dc8`; proof-artifact 13074905792; a readback a `mojnqizbcaczstguikpv` eredetet ellenőrzi |
+| 1.2 | Elkülönített visszaállítási próba | sikeres, bizonyítékkal | **PASS (2026-11-01 07:28Z)** – ugyanaz a futás: pontos azonosítójú GitHub-visszaolvasás + hash PASS; forrás-hitelesítő nélküli SQL-visszaállítás: `full_restore PASS`, `case_manifest PASS`, 50 tábla összevetve. A Drive-ág ebben a futásban kimaradt (külön ellenőrizhető). |
+
+Megjegyzés a 2.2-höz: a `sarberki.tm_backup_sha256` értékét a tulajdonos választja a fenti futás bizonyítékai közül (pl. a proof-artifactban rögzített helyreállítási csomag SHA-256-ja); ezt a dokumentum nem dönti el. A mentés a migráció előtt legyen friss; ha közben a TEST-adatbázis változik, új mentés szükséges.
 
 ## 2. Hosztolt migráció (`deployment/test-mailbox/install.sql`)
 | # | Lépés | Elvárt | Eredmény |

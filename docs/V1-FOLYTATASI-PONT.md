@@ -20,7 +20,7 @@
 | Napi kezelő bekötése (mentés, megnyitás, Writer, Approver) | `484c668` | `npm test` 2488/2488, Chromium + WebKit napi próba, CI zöld |
 | Mobil böngészőpróba a tesztlevél-ügy teljes körére | `52eb26e` | Chromium 22/22 helyben; Chromium + WebKit CI #39 |
 | Biztonsági rés-ellenőrzés: `test-mailbox-record` + napi lista | `a09c9d4` | PGlite a hosztolt rétegsoron (valódi RLS); nem talált hiányt, kódjavítás nem kellett; 3 mutáció bukik |
-| Tulajdonosi élesítési ellenőrzőlista | ez a commit | `docs/V1-TEST-MAILBOX-ACTIVATION-CHECKLIST.md` (dokumentum; tények a telepítő/rollback/kapu fájlokból ellenőrizve) |
+| Tulajdonosi élesítési ellenőrzőlista | `676ee69` | `docs/V1-TEST-MAILBOX-ACTIVATION-CHECKLIST.md` (dokumentum; tények a telepítő/rollback/kapu fájlokból ellenőrizve) |
 
 ## NEM IGAZOLT / tulajdonosi döntésre vár
 - Hosztolt migráció: `deployment/test-mailbox/install.sql` (TEST projekt).
@@ -31,4 +31,5 @@
 - Igazolt (szintetikus): a lista azonosítói egyediek; idegen tenant, Bearer, hiányzó CSRF → 403; `.invalid` feladós vagy más tenantbeli `tm-` sor nem jelenik meg (404, listában sincs); bejelentkezés után visszavont tagság → nincs ügyadat.
 - Megfigyelés (nem biztonsági): a napi lista 100 tételnél vág; 100 normál ügy mellett a tesztlevél-ügy kimaradhat. Jelenlegi szintetikus mennyiségnél nem releváns; csak igazolt igény esetén javítandó.
 - Kódoldalon nincs ismert, engedély nélkül elvégezhető V1-hiány a tesztlevél-láncban. Következő lépés: tulajdonosi döntés az ellenőrzőlista 1–4. pontjáról (mentés → migráció → kapcsolók → TEST-telepítés), majd az 5. pont élő próbája. Addig az óránkénti futás csak ellenőrizzen és jelentsen; látszatfejlesztés nem indokolt.
+- Ellenőrzőlista 1.1–1.2 (mentés + elkülönített visszaállítás): PASS a Backup V2 41284787609-es futása alapján (2026-11-01, tulajdonosi engedéllyel kiolvasva). Hátralévő tulajdonosi döntés: 2. migráció → 3. kapcsolók → 4. TEST-telepítés → 5. élő próba.
 - Élő lépések kizárólag tulajdonosi döntés után.
