@@ -19,3 +19,17 @@
 - Nem történt: telepítés, migráció, kapcsolóváltás, levélküldés, foglalás, Previo, main/production.
 - Következő feladat: a fenti (1)–(3) tulajdonosi döntése/lépése; addig csak ellenőrzés és jelentés.
 - Címzett: a Sárberki projektvezető chat; automatikus elküldés oda nem igazolt.
+
+## Futásnapló – Claude óránkénti futás, 2026-11-01 20:18–20:22Z [claude-hourly]
+- Futásazonosító: ütemezett Claude-futás; munkamenet-azonosítóját a commit `Claude-Session` sora rögzíti (session_01EgatxQ… commitsor szerint). Indítás: ütemezett.
+- Kezdő/záró UTC: 2026-11-01T20:18:33Z / ~20:22Z.
+- Kiinduló és záró tesztági HEAD (napló commitja előtt): `826816eb835add78f90f4e2dd9d3799bde284b59` (Work, 19:36:17Z, csak docs/V1-FOLYTATASI-PONT.md).
+- AGENTS.md: forrás `origin/gmail-test-subject-allowlist:AGENTS.md`, teljes (93 sor, 15755 bájt) beolvasás 2026-11-01T20:18Z után az első érdemi műveletként; git-blob `be27bd2dfb4795496bd9f3d64ad60ada1123de5b` (változatlan).
+- Beolvasva: docs/V1-FOLYTATASI-PONT.md teljes (406 sor, legfrissebb szakasz: „Claude óránkénti automatizálás – élő ellenőrzés és célzott javítás, 20:35 CET”), ez a státuszfájl teljes.
+- Ütközésvédelem: utolsó nem ütemezett commit 2026-11-01T19:36:17Z; programmal számolt eltelt idő 42,8 perc (< 60) → alkalmazáskód nem módosítható; csak ellenőrzés és saját auditnapló. A státuszfájlt a Work legutóbbi commitja nem érintette (blob `9ef3aae7…`).
+- CI (branch-szűrt): HEAD `826816eb…` „Sarberki test branch checks” [41342575437](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41342575437) success (dokumentációs commit; tesztszámot naplóból nem olvastam, a kódcommit 2491 PASS bizonyítéka a nyilvántartásban a 41324810347 futás).
+- Eredmény: **indokolt no-op – BLOKKOLT.** Alkalmazáskód nem módosult, új teszt/CI nem indult. Nyitott pontok változatlanul külső lépésre várnak: (1) Drive-hozzáférés és exact-file visszaolvasás; (2) az állandó ügycímke-javítás (`41aa870`) TEST-kiadása – külön tulajdonosi engedély; (3) elutasítás → új tervezet → újranyitás élő próba (tm-1a0e711a60c6a259) – független Approver, telefonos lépés.
+- Naplózás: ez a bejegyzés a GitHub-mentés megismétlésének ellenőrzése a Work utáni első futásból; a mentés sikerét a commit visszaolvasása igazolja (külön jelzés alább, ha elmarad: NEM IGAZOLT).
+- Módosított fájl: csak ez a naplófájl. Nem történt: telepítés, migráció, kapcsolóváltás, levélküldés, foglalás, Previo, main/production.
+- Következő feladat: (1)–(3) tulajdonosi lépése; addig csak ellenőrzés és jelentés.
+- Címzett: a Sárberki projektvezető chat; automatikus elküldés oda nem igazolt.
