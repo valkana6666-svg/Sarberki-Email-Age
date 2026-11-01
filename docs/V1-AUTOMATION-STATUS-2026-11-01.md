@@ -49,3 +49,5 @@
 - Engedély: a tulajdonos ebben a munkamenetben kifejezetten jóváhagyta a két kész javítás kiadását kizárólag a `leafy-chimera-2403e5` TESZT-oldalra.
 - Kódeltérés a legutóbb telepített `b197a91` óta: csak `napi-kezelo/napi.mjs` (állandó ügycímke, 41aa870) és `napi-kezelo/napi-email.mjs` (mailbox-státuszszöveg, 66a432a), plusz tesztjeik. A 66a432a óta csak dokumentáció változott. Teljes CI a 66a432a-ra: 41347898521, 2491 PASS.
 - Fájlkiosztás betartva: `docs/V1-FOLYTATASI-PONT.md` (Work) érintetlen. Kapcsoló, migráció, jogosultság, AI, üzleti szabály, production változatlan; nincs levél, foglalás, Previo.
+- **Eredmény:** CI 41349910242 PASS (`da3dc9a`); telepítés-ellenőrzés 41350294262 PASS (verify_deployed, deployedCommit = `da3dc9a65b02cf7c01f7c370bee1fd1fc25eb9a3`). Fizikai iPhone-on az új címke és státuszszöveg: NEM IGAZOLT.
+- Következő: iPhone-on frissítés után (1) a napi lista ügycímkéi nem változnak új ügy beszúrásakor, (2) sikeres beolvasás után a státusz a jelölt tesztlevél Writer-mentését írja.
