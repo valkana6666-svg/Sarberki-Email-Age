@@ -312,3 +312,13 @@ A jelenlegi felhőböngészőben korábban kijelentkezett kezelő látszott; a j
 - Korábbi közvetlen katalógus: UNIQUE(tenant_id,mailbox_id,message_id); korábbi PGlite duplicate 23505 negatív teszt és CI bizonyíték megmarad. A jelen élő próbában belső hibakódot nem olvastunk ki.
 - Aktuális AGENTS.md lekérve 2026-11-01T15:11:04.839Z, változatlan blob be27bd2dfb4795496bd9f3d64ad60ada1123de5b. Csak ez a dokumentum módosult; nincs kód-, ügy-, jogosultság-, kapcsoló-, telepítési vagy migrációs módosítás, nincs e-mail/Previo művelet.
 - Következő hiányzó élő próba: az 1. „Re: Sárberki élő teszt – AI előnézet” kiválasztása után az „Ügyként mentés” gomb tiltott állapotának vizuális igazolása. A sikeres duplikációs és korábbi fő kör nem ismétlendő.
+
+
+## Re: levél felületi mentéstiltása – fizikai iPhone, 2026-11-01 16:12 CET
+- **LIVE-RE: PASS**, az aktiválási lista 5.4 / élő forgatókönyv L5 felületi elfogadási feltételére.
+- A tulajdonos két képernyőképe (IMG_0501.jpeg, IMG_0502.jpeg) együttesen mutatja az „1. Re: Sárberki élő teszt – AI előnézet” levél kiválasztását (38 betöltött levél), és alatta a szürke, inaktív „Ügyként mentés” gombot. Nem történt mentési vagy szervermegkerülési kísérlet.
+- A bizonyíték felületi tiltás, nem új szerveroldali tiltópróba. Az előző szerveres negatív tesztek bizonyítéka ettől külön marad.
+- A fő Gmail-kör, létszámkijelzés és duplikációs próba már PASS; nem ismétlendők.
+- Aktuális AGENTS.md teljes lekérve 2026-11-01T15:13:08.250Z (16:13:08 CET), blob be27bd2dfb4795496bd9f3d64ad60ada1123de5b, változatlan. Csak a folytatási dokumentum frissült; nincs kód/ügy/jogosultság/kapcsoló/telepítés/migráció változás és nincs küldés/foglalás/Previo.
+- Következő legkisebb, adatírást nem igénylő hiányzó élő próba: fizikai iPhone alkalmazásváltás → visszatérés, a levéllista és a bejelentkezés megmaradásának igazolása, 30 percen belül, kijelentkezés nélkül. Ez nem a már kész Google/OAuth-kör újrafuttatása.
+- Elutasítás → újranyitás továbbra is külön élő hiány; a már approved Tesztügy 7-et ehhez nem szabad módosítani. Megfelelő, még jóvá nem hagyott tesztlevél-ügyet kell előbb azonosítani.
