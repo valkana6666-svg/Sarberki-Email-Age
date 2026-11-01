@@ -11,6 +11,7 @@ import {createExactGmailReceipt,exactGmailEditReceipt,matchesExactGmailEditRecor
 import {closedSyntheticMailLanguage,isClosedTubFollowup,isClosedTubPreviousRecord,isClosedTubReview,isClosedTubReviewRecord} from '../../shared-core/synthetic-mail-fixtures.mjs';
 import {resolveBookingCase} from '../../booking-cases.mjs';
 import {dailyCaseSummary} from '../../shared-core/server-daily-case-view.mjs';
+import {ingestTestMailboxMessage} from '../../shared-core/server-test-mailbox-case.mjs';
 const headers={'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 const response=(statusCode,body)=>({statusCode,headers,body:JSON.stringify(body)});
 // Cookie-reader case picker gets metadata only, never raw inquiry content.
@@ -21,6 +22,13 @@ export function syntheticCaseSummaries(records,exactReceipt=null){
   typeof row.data?.sender==='string'&&
   (/^[^\s@]+@[^\s@]+\.invalid$/iu.test(row.data.sender)||exactReceipt?.matchesRecord(row)))
   .map(row=>({tenantId:'sarberki-test',caseId:row.caseId,revision:row.revision})).slice(0,100);
+}
+// Fixed public codes for the test-mailbox action; anything else becomes STORAGE_FAILURE.
+const TEST_MAILBOX_ERRORS=Object.freeze({GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACCOUNT:403,FORBIDDEN:403,GMAIL_RATE_LIMITED:429,INVALID_INPUT:400,
+ GMAIL_SOURCE_UNVERIFIED:422,NOT_MARKED_TEST_MESSAGE:422,REPLY_NOT_ALLOWED:422,NOT_ADDRESSED_TO_TEST_MAILBOX:422,INVALID_SENDER:422,MESSAGE_ID_REQUIRED:422,
+ TEXT_PART_REQUIRED:422,EMPTY_TEXT:422,TEXT_TOO_LONG:422,UNREADABLE_TEXT:422,INVALID_DRAFT:422,STORAGE_FAILURE:503});
+function testMailboxIngestEnabled(env,cloudApproval){
+ return cloudApproval&&env.CASE_TEST_MAILBOX_INGEST_ENABLED==='sarberki-test-fictional-only';
 }
 export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedApproval=false,reviewProviders=null,serviceBindingProvider=null,serviceAvailabilityProvider=null}={}){
  return async event=>{
@@ -48,6 +56,24 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    const input=event.httpMethod==='GET'?(event.queryStringParameters||{}):JSON.parse(event.body||'{}');
    if(!input||typeof input!=='object'||Array.isArray(input))return response(400,{error:'INVALID_INPUT'});
    let cookieSession=null;
+   // Server-attested fictional test-mailbox case (WP4a). Off unless the owner sets the switch; cookie Writer
+   // with CSRF only; the Gmail token travels in its own header, is used once and is never stored or echoed.
+   if(input.action==='test-mailbox-ingest'){
+    if(event.httpMethod!=='POST'||!cookieMode||!testMailboxIngestEnabled(env,cloudApproval)||input.tenantId!=='sarberki-test'||
+      Object.keys(input).sort().join(',')!=='action,messageId,tenantId')return cookieResponse(403,{error:'FORBIDDEN'});
+    if(typeof input.messageId!=='string'||!/^[a-f0-9]{12,32}$/.test(input.messageId))return cookieResponse(400,{error:'INVALID_INPUT'});
+    cookieSession=await createOperatorCookieSession({env,fetchImpl}).protectedWrite(event);
+    rotatedCookie=cookieSession.setCookie;
+    const tokens=Object.entries(event.headers||{}).filter(([key])=>key.toLowerCase()==='x-sarberki-gmail-token').map(([,value])=>value);
+    if(tokens.length!==1||typeof tokens[0]!=='string'||tokens[0].length>4096)return cookieResponse(401,{error:'GMAIL_AUTH_REQUIRED'});
+    try{
+     const result=await ingestTestMailboxMessage({token:tokens[0],messageId:input.messageId,transport:cookieSession.transport,attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,fetchImpl});
+     return cookieResponse(200,{result:{caseId:result.caseId,revision:Number(result.revision)}});
+    }catch(error){
+     const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'STORAGE_FAILURE';
+     return cookieResponse(TEST_MAILBOX_ERRORS[code],{error:code});
+    }
+   }
    const exactAttempt=event.httpMethod==='POST'&&(input.action==='diagnose-exact-receipt'||input.action==='ingest-and-draft'&&Object.hasOwn(input,'sourceReceipt'));
    if(exactAttempt){
     // Never expose an allowlist-comparison oracle to Bearer, anonymous or foreign-tenant requests.
