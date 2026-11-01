@@ -51,3 +51,8 @@
 - Fájlkiosztás betartva: `docs/V1-FOLYTATASI-PONT.md` (Work) érintetlen. Kapcsoló, migráció, jogosultság, AI, üzleti szabály, production változatlan; nincs levél, foglalás, Previo.
 - **Eredmény:** CI 41349910242 PASS (`da3dc9a`); telepítés-ellenőrzés 41350294262 PASS (verify_deployed, deployedCommit = `da3dc9a65b02cf7c01f7c370bee1fd1fc25eb9a3`). Fizikai iPhone-on az új címke és státuszszöveg: NEM IGAZOLT.
 - Következő: iPhone-on frissítés után (1) a napi lista ügycímkéi nem változnak új ügy beszúrásakor, (2) sikeres beolvasás után a státusz a jelölt tesztlevél Writer-mentését írja.
+
+## TEST-hozzáférés kérelme (interaktív Claude Code, 2026-11-01 23:05Z)
+- Kiinduló HEAD `7511317`, AGENTS blob `be27bd2…`; telepített `da3dc9a`. Nyitott élő V1-pont, amit Claude a meglévő ügyön végre tudna hajtani: független Approver elutasítás → Writer új tervezet → újranyitás (L11–L12), böngészőautomatizálással a TEST-oldalon. Új ügy/Gmail-mentés nem kell hozzá.
+- Hiányzó hozzáférés (pontosan): (1) a Claude felhőkörnyezet hálózati engedélye a `leafy-chimera-2403e5.netlify.app` hosztra (jelenleg proxy 403); (2) két kitalált TEST-kezelői fiók belépési adata környezeti változóként: `SARBERKI_TEST_WRITER_EMAIL`, `SARBERKI_TEST_WRITER_PASSWORD`, `SARBERKI_TEST_APPROVER_EMAIL`, `SARBERKI_TEST_APPROVER_PASSWORD` (Writer és tőle független Approver). Supabase-, Netlify-API-, Gmail- vagy service-role hozzáférés nem kell.
+- A beállítás új munkamenetben érvényes. Titok nem kerül chatbe, naplóba, tesztbe vagy GitHubra; a próba csak a meglévő TEST-ügyön, küldés/foglalás/Previo nélkül.
