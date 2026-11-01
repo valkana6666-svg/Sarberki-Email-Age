@@ -54,6 +54,8 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
    try{
     const body=options.body?JSON.parse(options.body):null;let result;
     if(url.pathname.endsWith('/sc_memberships'))result=(await db.query('select * from sc_memberships where user_id=$1',[actors[role]])).rows;
+    else if(url.pathname==='/rest/v1/sc_cases'){const id=url.searchParams.get('case_id')?.slice(3),tenant=url.searchParams.get('tenant_id').slice(3);
+     result=(await db.query('select * from sc_cases where tenant_id=$1'+(id?' and case_id=$2':''),id?[tenant,id]:[tenant])).rows;}
     else if(url.pathname.endsWith('/rpc/sc_tm_create'))result=(await db.query('select sc_tm_create($1,$2,$3,$4) r',[body.p_tenant,body.p_case,JSON.stringify(body.p_data),JSON.stringify(body.p_proof)])).rows[0].r;
     else if(url.pathname.endsWith('/rpc/sc_tm_redraft'))result=(await db.query('select sc_tm_redraft($1,$2,$3,$4) r',[body.p_tenant,body.p_case,body.p_expected,JSON.stringify(body.p_draft)])).rows[0].r;
     else if(url.pathname.endsWith('/rpc/sc_tm_decide'))result=(await db.query('select sc_tm_decide($1,$2,$3,$4,$5,$6) r',[body.p_tenant,body.p_case,body.p_expected,body.p_draft_hash,body.p_decision,body.p_reason])).rows[0].r;
@@ -62,8 +64,8 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
    }catch(error){return {ok:false,status:error.code==='42501'?403:400};}finally{await db.exec('reset role');}
   };
   const call=async(role,env,input,{headers={},status,method='POST'}={})=>{
-   const event={httpMethod:method,headers:{host:new URL(origin).host,origin,'sec-fetch-site':'same-origin','x-sarberki-operator':'1','Content-Type':'application/json',
-    ...(cookies.has(role)?{cookie:cookies.get(role)}:{}),...(csrf.has(role)?{'x-csrf-token':csrf.get(role)}:{}),...headers},body:JSON.stringify(input),queryStringParameters:{}};
+   const event={httpMethod:method,...(method==='GET'?{}:{}),headers:{host:new URL(origin).host,origin,'sec-fetch-site':'same-origin','x-sarberki-operator':'1','Content-Type':'application/json',
+    ...(cookies.has(role)?{cookie:cookies.get(role)}:{}),...(csrf.has(role)?{'x-csrf-token':csrf.get(role)}:{}),...headers},body:method==='GET'?'':JSON.stringify(input),queryStringParameters:method==='GET'?input:{}};
    const response=await createCaseHandler({env,fetchImpl})(event);if(response.headers['Set-Cookie'])cookies.set(role,response.headers['Set-Cookie'].split(';')[0]);
    assert.doesNotMatch(response.body,new RegExp(GMAIL_TOKEN.replace('.','\\.')),'token never echoed');
    if(status!==undefined)assert.equal(response.statusCode,status,response.body);return {status:response.statusCode,json:JSON.parse(response.body)};
@@ -162,6 +164,35 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
    await redraft('writer',{caseId:case2,expectedRevision:2,draftText:'Újranyitott, kitalált tervezet.'},{status:200});
    await decide('both',{caseId:case2,expectedRevision:3,reviewedDraftHash:await hashOf(case2),decision:'approve'},{status:200});
    const data=(await latest(case2)).data;assert.deepEqual(data.decisions.map(x=>x.decision),['reject','approve']);assert.equal(data.drafts.length,2);
+  });
+  await t.test('daily list shows test-mailbox cases only when enabled; record read gives role-specific edit/decide flags without secrets',async()=>{
+   const id3='18f2a0b1c2d3e4f7',case3='tm-'+id3;
+   await call('writer',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-ingest',messageId:id3},{headers:gmail,status:200});
+   const list=(await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'daily-list'},{method:'GET',status:200})).json.result;
+   const byId=Object.fromEntries(list.map(row=>[row.caseId,row]));
+   assert.deepEqual(byId[case3],{tenantId:'sarberki-test',caseId:case3,revision:1,category:'approval',kind:'test-mailbox'});
+   assert.equal(byId[caseId].category,'progress');
+   const off=(await call('reader',baseEnv,{tenantId:'sarberki-test',action:'daily-list'},{method:'GET',status:200})).json.result;
+   assert.equal(off.some(row=>row.caseId.startsWith('tm-')),false,'hidden while the switch is off');
+   const record=role=>call(role,enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:case3},{method:'GET',status:200}).then(r=>r.json.result);
+   const reader=await record('reader');
+   assert.deepEqual({e:reader.canEditDraft,d:reader.canDecide,a:reader.approval,r:reader.revision},{e:false,d:false,a:'pending',r:1});
+   assert.equal(reader.messages[0].text,TEXT);assert.match(reader.draft.text,/Kedves Vendégünk/);assert.equal(reader.draft.hash,await hashOf(case3));
+   assert.deepEqual(reader.decisions,[]);assert.equal(reader.values.arrival,'2027-05-14');
+   assert.equal(JSON.stringify(reader).includes(KEY),false);assert.equal('testMailbox' in reader,false);assert.equal('sourceReceipt' in reader,false);
+   assert.deepEqual([(await record('writer')).canEditDraft,(await record('writer')).canDecide],[true,false]);
+   assert.deepEqual([(await record('approver')).canEditDraft,(await record('approver')).canDecide],[false,true]);
+   assert.deepEqual([(await record('both')).canEditDraft,(await record('both')).canDecide],[true,true],'not the author of case3');
+   const approved=(await call('approver',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId},{method:'GET',status:200})).json.result;
+   assert.deepEqual([approved.canEditDraft,approved.canDecide,approved.approval],[false,false,'approved_internal']);
+   assert.deepEqual(approved.decisions.map(x=>x.decision),['return','approve']);assert.equal(approved.internalApproval.sendAllowed,false);
+   const case2=(await call('both',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:'tm-18f2a0b1c2d3e4f6'},{method:'GET',status:200})).json.result;
+   assert.equal(case2.canDecide,false,'approved case cannot be decided again');
+   await call('reader',baseEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:case3},{method:'GET',status:403});
+   await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:'case-synthetic'},{method:'GET',status:400});
+   await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:case3,extra:'1'},{method:'GET',status:403});
+   await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:case3},{status:403});
+   await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:'tm-aaaaaaaaaaaaaaaa'},{method:'GET',status:404});
   });
  }finally{await db.close();}
 });

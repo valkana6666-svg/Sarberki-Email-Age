@@ -20,9 +20,11 @@ const missingLabels={dates:'pontos érkezési és távozási dátum',dates_confi
 // starts with the existing test marker. The marker must lead the subject, so Re:/Fwd: replies with
 // quoted threads are excluded. Any other mailbox content needs separate approval.
 const MAX_PREVIEW_CHARS=20000;
+// Only a marked mail with a real Gmail id can be saved as a case; the server re-reads it from Gmail itself.
 function previewText(message,header,body){
- const closed=closedPreviewText(message,header,body);if(closed)return closed;
- return isTestInquiry(message)&&isMarkedTestSubject(header.subject)&&body.trim()&&body.length<=MAX_PREVIEW_CHARS?body:null;
+ const closed=closedPreviewText(message,header,body);if(closed)return {text:closed,saveable:false};
+ return isTestInquiry(message)&&isMarkedTestSubject(header.subject)&&body.trim()&&body.length<=MAX_PREVIEW_CHARS?
+  {text:body,saveable:/^[a-f0-9]{12,32}$/.test(message.id||''),messageId:message.id}:null;
 }
 function closedPreviewText(message,header,body){
  try{
@@ -33,7 +35,7 @@ function closedPreviewText(message,header,body){
 }
 // Separate mailbox reading from cloud case writes. Reuses the existing readonly
 // transport and account policy; no tokens are persisted. The snapshot is encrypted by the daily view.
-export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=loadGoogle,readInbox=readTestGmailInbox,documentImpl=document,clientId,now=()=>new Date(),onChange=()=>{}}={}){
+export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=loadGoogle,readInbox=readTestGmailInbox,documentImpl=document,clientId,now=()=>new Date(),onChange=()=>{},onSaveCase=null}={}){
  const el=id=>documentImpl.getElementById(id);
  let generation=0,busy=false,googleApi=null,chooseMessage=null,pendingConsent=false,queuedConsent=null,consentTimer=null,previewSource=null,previewTurn=0,previewPending=false,shown=null,selectedIndex=-1;
  const active=turn=>turn===generation&&canRead()&&documentImpl.visibilityState!=='hidden';
@@ -42,6 +44,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
   previewTurn++;previewSource=source;
   el('email-draft-text').value='';el('email-draft-text').disabled=true;el('email-draft-review').textContent='';el('email-draft-checks').replaceChildren();
   el('email-draft-request').disabled=!source||!canRead();
+  el('email-save-case').disabled=!source?.saveable||!onSaveCase||!canRead();el('email-save-status').textContent='';
   el('email-draft-status').textContent=source?'AI-válaszjavaslat kérhető. Helyi előnézet lesz: nincs mentve, nem küldhető, nem foglalás.':
    'Az AI-válaszjavaslat jelenleg csak a lezárt szintetikus tesztlevelekhez és a tesztpostafiók „Sárberki élő teszt” tárgyú leveleihez érhető el (válasz/továbbítás nem); más levélhez külön jóváhagyás szükséges.';
  }
@@ -96,7 +99,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
     readable=Object.hasOwn(message,'restoredText')?message.restoredText:gmailReadableBody(message.payload);body=readable||'A levélnek nincs olvasható szöveges része.';
    }
    catch{readable=null;body='A levél szövege nem jeleníthető meg. Válasszon másik levelet a listából.';}
-   const text=readable&&previewText(message,header,readable);clearPreview(text?{text}:null);
+   clearPreview((readable&&previewText(message,header,readable))||null);
    el('email-detail').textContent='Feladó: '+(header.from||'Nincs megadva')+'\nTárgy: '+(header.subject||'(nincs tárgy)')+'\n\n'+body;
    onChange();
   };
@@ -160,6 +163,27 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
    consentTimer=setTimeout(()=>failure(Error('CONSENT_TIMEOUT')),120000);
    client.requestAccessToken({prompt:''});
   }catch(error){failure(error);}
+ });
+ // Save the selected marked test mail as a pending cloud case. A fresh token is requested on this click
+ // (user gesture) and handed to the server once; the server reads the mail itself and enforces every gate.
+ const saveErrors={NOT_MARKED_TEST_MESSAGE:'A levél tárgya nem jelölt tesztlevél.',REPLY_NOT_ALLOWED:'Válasz vagy továbbítás nem menthető.',
+  FORBIDDEN:'Ehhez a mentéshez nincs jogosultság, vagy a funkció nincs bekapcsolva.',GMAIL_AUTH_REQUIRED:'A Google-olvasási engedély szükséges.',
+  STORAGE_FAILURE:'A mentés nem sikerült, vagy ez a levél már ügyként szerepel.',GMAIL_RATE_LIMITED:'A Gmail átmenetileg korlátozta az olvasást.'};
+ el('email-save-case').addEventListener('click',()=>{
+  const source=previewSource,turn=generation;
+  if(!source?.saveable||!onSaveCase||!active(turn)||!clientId||!googleApi?.accounts?.oauth2)return;
+  const done=message=>{if(source===previewSource){el('email-save-case').disabled=!canRead();el('email-save-status').textContent=message;}};
+  el('email-save-case').disabled=true;el('email-save-status').textContent='Google-olvasási engedély ellenőrzése…';
+  try{
+   googleApi.accounts.oauth2.initTokenClient({client_id:clientId,scope:'https://www.googleapis.com/auth/gmail.readonly',hint:TEST_GMAIL_ACCOUNT,include_granted_scopes:false,
+    callback:async result=>{
+     if(!result?.access_token||source!==previewSource||!active(turn))return done('A Google-engedély nem érkezett meg; a levél nem lett mentve.');
+     el('email-save-status').textContent='Ügy mentése a szerveren…';
+     try{const saved=await onSaveCase({messageId:source.messageId,token:result.access_token});
+      if(source===previewSource)el('email-save-status').textContent='Ügyként mentve ('+saved.caseId+'). Független jóváhagyásra vár; nincs küldés vagy foglalás.';}
+     catch(error){done(saveErrors[error?.message]||'A mentés nem igazolt. Próbálja újra; nincs automatikus ismétlés.');}
+    },error_callback:()=>done('A Google-engedély nem sikerült; a levél nem lett mentve.')}).requestAccessToken({prompt:''});
+  }catch{done('A Google-belépés nem érhető el.');}
  });
  // App switch: keep the read list, selection and local preview in memory (never stored).
  // A pending Google consent or read keeps the existing suspend path; a pending preview is dropped.

@@ -19,3 +19,13 @@ test('review POST keeps exact case version and CSRF without credential metadata 
  assert.equal(captured.options.method,'POST');assert.deepEqual(JSON.parse(captured.options.body),input);
  assert.equal(captured.options.headers['Content-Type'],'application/json');assert.ok(!JSON.stringify(captured).includes('must-not-leak'));
 });
+test('only the transient Gmail token header may be added; it never enters the body or URL',async()=>{
+ const calls=[];const request=async(url,options)=>{calls.push({url,options});return {ok:true,json:async()=>({result:{caseId:'tm-abababababababab',revision:1}})};};
+ const send=createCloudCaseRequest({request}),input={tenantId:'sarberki-test',action:'test-mailbox-ingest',messageId:'abababababababab'};
+ await send({csrfToken:'synthetic-csrf'},input,'POST',{'X-Sarberki-Gmail-Token':'SYNTHETIC_TOKEN'});
+ assert.equal(calls[0].options.headers['X-Sarberki-Gmail-Token'],'SYNTHETIC_TOKEN');assert.equal(calls[0].options.headers['X-CSRF-Token'],'synthetic-csrf');
+ assert.deepEqual(JSON.parse(calls[0].options.body),input);assert.ok(!calls[0].url.includes('SYNTHETIC_TOKEN'));
+ for(const extra of [{'X-CSRF-Token':'forged'},{Authorization:'Bearer x'},{'X-Sarberki-Gmail-Token':1}])
+  await assert.rejects(send({csrfToken:'synthetic-csrf'},input,'POST',extra),/INVALID_INPUT/);
+ assert.equal(calls.length,1);
+});

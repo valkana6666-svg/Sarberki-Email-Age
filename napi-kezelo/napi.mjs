@@ -13,7 +13,7 @@ const sections=Object.freeze({
  approval:['Jóváhagyásra vár','Átnézendő választervezetek.'],
  progress:['Folyamatban','Pontosításra vagy ellenőrzésre váró ügyek.'],
  // No close/reject lifecycle exists on the server yet; never imply closed cases.
- closed:['Lezárt ügyek','Az ügylezárás és elutasítás még nincs bekötve a szerveren, ezért ide jelenleg egyetlen ügy sem kerülhet.']
+ closed:['Lezárt ügyek','Az ügylezárás még nincs bekötve a szerveren, ezért ide jelenleg egyetlen ügy sem kerülhet. Az elutasított tesztlevél-ügy a Folyamatban részben marad.']
 });
 const el=id=>document.getElementById(id);
 for(const button of document.querySelectorAll('[data-section]'))button.addEventListener('click',()=>{
@@ -28,7 +28,13 @@ for(const button of document.querySelectorAll('[data-section]'))button.addEventL
 const session=createOperatorSession();
 let authenticated=false,epoch=0;
 const emailReader=createDailyEmailReader({canRead:()=>authenticated,restoreSession:async()=>rememberKey(await session.restore()),
- clientId:document.querySelector('meta[name="google-oauth-client-id"]')?.content,onChange:()=>scheduleSave()});
+ clientId:document.querySelector('meta[name="google-oauth-client-id"]')?.content,onChange:()=>scheduleSave(),
+ // Writer saves a marked test mail as a pending case; the server re-reads it from Gmail with this one-off token.
+ onSaveCase:async({messageId,token})=>{
+  const result=await request({tenantId:TENANT,action:'test-mailbox-ingest',messageId},'POST',{'X-Sarberki-Gmail-Token':token});
+  if(!isTestMailboxCaseId(result?.caseId)||!Number.isSafeInteger(result.revision))throw Error('INVALID_DATA');
+  await loadCases();void openCase(result.caseId);return result;
+ }});
 // Encrypted local copy of the read mail list, selection and local reply preview, so an iOS relaunch does not
 // force a re-read. AES-GCM with a per-login key that only an authenticated, non-idle server session returns;
 // expires after 30 minutes and is deleted on lock/logout. Never a Gmail token; never plaintext.
@@ -65,14 +71,16 @@ async function loadState(){
  }catch{dropState();return null;}
 }
 let listLoaded=false;
-let selectedSection='incoming',rows=[],selected=null,editBase=null,canApprove=false,actionBusy=false;
+let selectedSection='incoming',rows=[],selected=null,editBase=null,canApprove=false,actionBusy=false,tmCase=null;
+const isTestMailboxCaseId=id=>typeof id==='string'&&/^tm-[a-f0-9]{12,32}$/.test(id);
 const request=createEpochRequestQueue({getEpoch:()=>epoch,isAuthenticated:()=>authenticated,
  prepare:()=>session.restore(),execute:createCloudCaseRequest()});
 const review=createIsolatedApprovalReview({enabled:true,client:{
  get:(_tenant,caseId)=>request({tenantId:TENANT,caseId,action:'review-record'},'GET'),
  approve:(_tenant,caseId,expectedRevision,reviewedDraftHash)=>request({tenantId:TENANT,caseId,action:'approve',expectedRevision,reviewedDraftHash})}});
 function resetActions(){
- selected=null;editBase=null;canApprove=false;review.clear();
+ selected=null;editBase=null;canApprove=false;tmCase=null;review.clear();
+ for(const id of ['return-draft','reject-draft','decision-reason'])el(id).disabled=true;el('decision-reason').value='';
  el('draft-editor').value='';el('draft-editor').disabled=true;el('save-draft').disabled=true;
  el('approve-draft').disabled=true;el('approve-confirm').checked=false;el('approve-confirm').disabled=true;
 }
@@ -175,8 +183,66 @@ el('logout').addEventListener('click',async()=>{
  try{await session.logout();if(turn===epoch&&!authenticated)el('session-status').textContent='Kijelentkezve.';}
  catch{if(turn===epoch&&!authenticated)el('session-status').textContent='A kijelentkezés nem ellenőrizhető. Próbálja újra.';}
 });
+const tmStatus=Object.freeze({pending:'Független jóváhagyásra vár.',returned_for_edit:'Visszaküldve javításra. Writer új tervezetet menthet.',
+ rejected:'Elutasítva; az ügy nyitva marad, Writer új tervezettel újranyithatja.',approved_internal:'Belső jóváhagyás mentve (test-mailbox-v1). Nincs levélküldés vagy foglalás.'});
+const tmDecisionLabel=Object.freeze({approve:'jóváhagyva',return:'visszaküldve javításra',reject:'elutasítva'});
+// Test-mailbox case: same detail panel, own server read model. Edit/decide flags are hints only; the database re-checks.
+async function openTestMailboxCase(caseId,turn,status){
+ const record=await request({tenantId:TENANT,caseId,action:'test-mailbox-record'},'GET');if(!current(turn))return;
+ if(record?.caseId!==caseId||!Number.isSafeInteger(record.revision)||record.revision<1||!tmStatus[record.approval]||
+  !Array.isArray(record.messages)||typeof record.draft?.text!=='string'||!/^[a-f0-9]{64}$/.test(record.draft.hash||'')||!Array.isArray(record.decisions))throw Error('INVALID_DATA');
+ const messages=document.createDocumentFragment();
+ for(const message of record.messages){
+  if(typeof message.text!=='string')throw Error('INVALID_DATA');
+  const item=document.createElement('p');item.className='readout';
+  item.textContent=(message.received_at?message.received_at+'\n':'')+message.text;messages.append(item);
+ }
+ const values=record.values||{};
+ el('detail-messages').replaceChildren(messages);
+ el('detail-facts').textContent='Érkezés: '+(values.arrival||'Nincs megadva')+'\nTávozás: '+(values.departure||'Nincs megadva')+
+  '\nLétszám: '+(values.guests||'Nincs megadva')+'\nHáztípus: '+(values.unit||'Nincs megadva');
+ el('detail-status').textContent=status||tmStatus[record.approval];
+ el('detail-draft').textContent=record.draft.text;
+ el('detail-summary').textContent=record.draft.operatorReviewText||'Magyar ellenőrző összefoglaló még nincs.';
+ el('detail-capacity').textContent='Tesztlevél-ügy (test-mailbox-v1): kapacitás és ár nem igazolt; nincs levélküldés vagy foglalás.';
+ el('detail-price').textContent=record.decisions.length?'Döntések: '+record.decisions.map(d=>(tmDecisionLabel[d.decision]||'ismeretlen')+(d.at?' ('+d.at+')':'')+(d.reason?' – '+d.reason:'')).join('; '):'';
+ tmCase={caseId,revision:record.revision,hash:record.draft.hash,text:record.draft.text};
+ if(record.canEditDraft===true){el('draft-editor').value=record.draft.text;el('draft-editor').disabled=false;}
+ if(record.canDecide===true&&record.approval==='pending'){
+  tmCase.canDecide=true;el('approve-confirm').disabled=false;
+  for(const id of ['return-draft','reject-draft','decision-reason'])el(id).disabled=false;
+ }
+}
+async function tmMutate(kind){
+ const base=tmCase;if(actionBusy||!authenticated||!base)return;
+ const text=el('draft-editor').value,reason=el('decision-reason').value.trim();
+ if(kind==='redraft'&&(!text.trim()||text===base.text))return;
+ if(kind!=='redraft'&&(!base.canDecide||kind==='approve'&&!el('approve-confirm').checked))return;
+ const turn=epoch;actionBusy=true;resetActions();el('detail-status').textContent='Művelet ellenőrzése…';
+ try{
+  const input=kind==='redraft'?{tenantId:TENANT,caseId:base.caseId,action:'test-mailbox-redraft',expectedRevision:base.revision,draftText:text}:
+   {tenantId:TENANT,caseId:base.caseId,action:'test-mailbox-decide',decision:kind,expectedRevision:base.revision,reviewedDraftHash:base.hash,...(reason&&kind!=='approve'?{reason}:{})};
+  const result=await request(input);if(!current(turn))return;
+  const expected=kind==='redraft'?'pending':{approve:'approved_internal',return:'returned_for_edit',reject:'rejected'}[kind];
+  if(result?.caseId!==base.caseId||result.revision!==base.revision+1||result.approval!==expected)throw Error('INVALID_DATA');
+  rows=[];listLoaded=false;updateCounts();el('case-list').replaceChildren();
+  await openTestMailboxCase(base.caseId,turn,kind==='redraft'?'Új tervezet mentve és visszaolvasva. Független jóváhagyásra vár.':
+   kind==='approve'?'Belső jóváhagyás mentve és visszaolvasva (test-mailbox-v1). Nincs levélküldés vagy foglalás.':
+   kind==='return'?'Visszaküldés mentve és visszaolvasva. Writer új tervezetet menthet.':'Elutasítás mentve és visszaolvasva. Az ügy nyitva marad.');
+ }catch(error){if(current(turn)){
+  if(error.message==='AUTH_REQUIRED')failed(error);
+  else {clearDetail();el('list-status').textContent=error.message==='FORBIDDEN'?'A művelethez nincs megfelelő jogosultság.':'A mentés eredménye nem igazolt, vagy az ügy közben megváltozott. Töltse be újra; nincs automatikus ismétlés.';}
+ }}finally{actionBusy=false;}
+}
 async function openCase(caseId){
- if(!authenticated||!isIsolatedReviewCaseId(caseId)||actionBusy)return;
+ if(!authenticated||actionBusy)return;
+ if(isTestMailboxCaseId(caseId)){
+  clearDetail();const turn=++epoch;el('case-detail').hidden=false;el('detail-status').textContent='Ügy ellenőrzése…';
+  try{await openTestMailboxCase(caseId,turn);}
+  catch(error){if(current(turn)){clearDetail();if(['AUTH_REQUIRED','FORBIDDEN'].includes(error.message))failed(error);else el('list-status').textContent='Az ügy most nem tölthető be. Töltse be újra az ügyeket.';}}
+  return;
+ }
+ if(!isIsolatedReviewCaseId(caseId))return;
  clearDetail();const turn=++epoch;el('case-detail').hidden=false;el('detail-status').textContent='Ügy ellenőrzése…';
  try{
   const record=await request({tenantId:TENANT,caseId,action:'review-record'},'GET');if(!current(turn))return;
@@ -211,10 +277,16 @@ async function openCase(caseId){
  }catch(error){if(current(turn)){clearDetail();if(['AUTH_REQUIRED','FORBIDDEN'].includes(error.message))failed(error);else el('list-status').textContent='Az ügy most nem tölthető be. Töltse be újra az ügyeket.';}}
 }
 el('draft-editor').addEventListener('input',()=>{
+ if(tmCase){
+  // Editing the draft withdraws any pending decision on the loaded version.
+  if(tmCase.canDecide){tmCase.canDecide=false;el('approve-confirm').checked=false;el('approve-confirm').disabled=true;el('approve-draft').disabled=true;
+   for(const id of ['return-draft','reject-draft','decision-reason'])el(id).disabled=true;}
+  el('save-draft').disabled=actionBusy||el('draft-editor').value===tmCase.text||!el('draft-editor').value.trim();return;
+ }
  review.clear();selected=null;canApprove=false;el('approve-confirm').checked=false;el('approve-confirm').disabled=true;el('approve-draft').disabled=true;
  el('save-draft').disabled=actionBusy||!editBase||el('draft-editor').value===editBase.text||!el('draft-editor').value.trim();
 });
-el('approve-confirm').addEventListener('change',()=>{el('approve-draft').disabled=actionBusy||!selected||!canApprove||!el('approve-confirm').checked;});
+el('approve-confirm').addEventListener('change',()=>{el('approve-draft').disabled=actionBusy||!(tmCase?.canDecide||selected&&canApprove)||!el('approve-confirm').checked;});
 async function mutate(kind){
  if(actionBusy||!authenticated)return;
  const base=kind==='edit'?editBase:selected,text=el('draft-editor').value;
@@ -238,8 +310,10 @@ async function mutate(kind){
   else {clearDetail();el('list-status').textContent=error.message==='FORBIDDEN'?'A művelethez nincs megfelelő jogosultság.':'A mentés eredménye nem igazolt, vagy az ügy közben megváltozott. Töltse be újra; nincs automatikus ismétlés.';}
  }}finally{actionBusy=false;}
 }
-el('save-draft').addEventListener('click',()=>mutate('edit'));
-el('approve-draft').addEventListener('click',()=>mutate('approve'));
+el('save-draft').addEventListener('click',()=>tmCase?tmMutate('redraft'):mutate('edit'));
+el('approve-draft').addEventListener('click',()=>tmCase?tmMutate('approve'):mutate('approve'));
+el('return-draft').addEventListener('click',()=>tmMutate('return'));
+el('reject-draft').addEventListener('click',()=>tmMutate('reject'));
 async function loadCases({selectAvailable=false}={}){
  if(!authenticated||actionBusy)return;
  clearData('Ügyek ellenőrzése…');const turn=epoch;el('load-cases').disabled=true;
@@ -247,7 +321,7 @@ async function loadCases({selectAvailable=false}={}){
   const result=await request({tenantId:TENANT,action:'daily-list'},'GET');if(!current(turn))return;
   if(!Array.isArray(result)||result.length>100)throw Error('INVALID_DATA');
   const seen=new Set();
-  for(const row of result){if(row?.tenantId!==TENANT||!isIsolatedReviewCaseId(row.caseId)||!Number.isSafeInteger(row.revision)||row.revision<1||!sections[row.category]||seen.has(row.caseId))throw Error('INVALID_DATA');seen.add(row.caseId);}
+  for(const row of result){if(row?.tenantId!==TENANT||!(row.kind==='test-mailbox'?isTestMailboxCaseId(row.caseId):isIsolatedReviewCaseId(row.caseId))||!Number.isSafeInteger(row.revision)||row.revision<1||!sections[row.category]||seen.has(row.caseId))throw Error('INVALID_DATA');seen.add(row.caseId);}
   rows=result;listLoaded=true;
   if(selectAvailable&&rows.length&&!rows.some(row=>row.category===selectedSection)){
    selectedSection=rows[0].category;

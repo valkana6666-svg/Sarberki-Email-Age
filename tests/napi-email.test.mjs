@@ -12,12 +12,12 @@ class Element{
  setAttribute(key,value){this.attributes[key]=value;}
  async click(){await this.listeners.click?.();}
 }
-function setup({unreadableIndex=-1,messages=null,now=null}={}){
- const elements=Object.fromEntries(['read-email','email-list','email-status','email-detail','email-picker','email-picker-wrap','email-previous','email-next','email-draft-request','email-draft-status','email-draft-text','email-draft-review','email-draft-checks'].map(id=>[id,new Element()]));
+function setup({unreadableIndex=-1,messages=null,now=null,onSaveCase=null}={}){
+ const elements=Object.fromEntries(['read-email','email-list','email-status','email-detail','email-picker','email-picker-wrap','email-previous','email-next','email-draft-request','email-draft-status','email-draft-text','email-draft-review','email-draft-checks','email-save-case','email-save-status'].map(id=>[id,new Element()]));
  const doc={getElementById:id=>elements[id],visibilityState:'visible',createElement:()=>new Element(),createDocumentFragment:()=>Object.assign(new Element(),{fragment:true})};
  let authenticated=true,expired=false,sessionHold=null,callback,reads=0,restores=0,release;const consentRequests=[];
  const google={accounts:{oauth2:{initTokenClient(options){assert.equal(options.scope,'https://www.googleapis.com/auth/gmail.readonly');assert.equal(options.include_granted_scopes,false);callback=options.callback;return {requestAccessToken(input){consentRequests.push(input);}};}}}};
- const reader=createDailyEmailReader({documentImpl:doc,canRead:()=>authenticated,restoreSession:async()=>{restores++;if(sessionHold)await sessionHold;if(!authenticated||expired)throw Error('AUTH_REQUIRED');},...(now?{now:()=>now}:{}),loadGoogleImpl:async()=>google,clientId:'synthetic',readInbox:async token=>{assert.equal(token,'SYNTHETIC_TOKEN');reads++;if(release)await release;if(messages)return messages;return [0,1,2].map(index=>({payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Kitalált levél '+(index+1)},{name:'From',value:'guest@synthetic.invalid'}],body:{data:index===unreadableIndex?'%%%':Buffer.from('Kitalált érdeklődés. Levél '+(index+1)).toString('base64url')}}}));}});
+ const reader=createDailyEmailReader({documentImpl:doc,canRead:()=>authenticated,restoreSession:async()=>{restores++;if(sessionHold)await sessionHold;if(!authenticated||expired)throw Error('AUTH_REQUIRED');},...(now?{now:()=>now}:{}),loadGoogleImpl:async()=>google,clientId:'synthetic',onSaveCase,readInbox:async token=>{assert.equal(token,'SYNTHETIC_TOKEN');reads++;if(release)await release;if(messages)return messages;return [0,1,2].map(index=>({payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Kitalált levél '+(index+1)},{name:'From',value:'guest@synthetic.invalid'}],body:{data:index===unreadableIndex?'%%%':Buffer.from('Kitalált érdeklődés. Levél '+(index+1)).toString('base64url')}}}));}});
  return {reader,e:elements,doc,consentRequests,get callback(){return callback;},get reads(){return reads;},get restores(){return restores;},hideForConsent(){doc.visibilityState='hidden';authenticated=false;reader.suspend();reader.setEnabled(false);},returnFromConsent(){doc.visibilityState='visible';authenticated=true;reader.setEnabled(true);},logout(){authenticated=false;reader.clear();},delay(p){release=p;},expire(){expired=true;},holdSession(p){sessionHold=p;},get authenticated(){return authenticated;},set authenticated(v){authenticated=v;}};
 }
 test('daily Gmail uses readonly consent and shared reader, opens original without persisting or submitting a case',async()=>{
@@ -294,4 +294,29 @@ test('conceal while the Google consent popup is open keeps the existing suspend 
  await h.callback({access_token:'SYNTHETIC_TOKEN'});assert.equal(h.reads,0);assert.equal(h.e['read-email'].disabled,true);
  h.doc.visibilityState='visible';h.reader.reveal();await new Promise(resolve=>setImmediate(resolve));
  assert.equal(h.reads,1);assert.equal(h.e['email-list'].children.length,4);h.logout();
+});
+
+test('save-as-case: only a marked mail with a Gmail id; fresh token per click goes to the server callback once; closed fixtures and other mail cannot be saved',async()=>{
+ const saves=[];let fail=null;
+ const onSaveCase=async input=>{saves.push(input);if(fail)throw Error(fail);return {caseId:'tm-'+input.messageId,revision:1};};
+ const messages=[marked('Sárberki élő teszt mentés',markedBodies.hu,{id:'48f2a0b1c2d3e4f0'}),marked('Re: Sárberki élő teszt',markedBodies.hu,{id:'48f2a0b1c2d3e4f1'}),
+  marked('Sárberki élő teszt rossz azonosító',markedBodies.hu,{id:'NOT-HEX'})];
+ const h=await openInbox({messages,now:PREVIEW_NOW,onSaveCase});
+ await select(h,0);assert.equal(h.e['email-save-case'].disabled,false);
+ const guard=noNetworkOrStorage();
+ try{await h.e['email-save-case'].click();}finally{guard.restore();}
+ assert.deepEqual(guard.calls,[]);assert.deepEqual(h.consentRequests.at(-1),{prompt:''});assert.equal(saves.length,0);
+ await h.callback({access_token:'FRESH_SYNTHETIC_TOKEN'});
+ assert.deepEqual(saves,[{messageId:'48f2a0b1c2d3e4f0',token:'FRESH_SYNTHETIC_TOKEN'}]);
+ assert.match(h.e['email-save-status'].textContent,/Ügyként mentve \(tm-48f2a0b1c2d3e4f0\).*nincs küldés vagy foglalás/);
+ // Refused consent or a server rejection is reported, not retried.
+ await h.e['email-save-case'].click();await h.callback({});assert.equal(saves.length,1);assert.match(h.e['email-save-status'].textContent,/nem lett mentve/);
+ fail='FORBIDDEN';await h.e['email-save-case'].click();await h.callback({access_token:'FRESH_SYNTHETIC_TOKEN'});
+ assert.equal(saves.length,2);assert.match(h.e['email-save-status'].textContent,/nincs jogosultság/);assert.equal(h.e['email-save-case'].disabled,false);
+ for(const index of [1,2]){await select(h,index);assert.equal(h.e['email-save-case'].disabled,true,String(index));await h.e['email-save-case'].click();}
+ assert.equal(saves.length,2);
+ h.logout();
+ const closed=await openInbox({messages:closedMessages(),now:PREVIEW_NOW,onSaveCase});
+ for(const index of syntheticMailLanguages.keys()){await select(closed,index);assert.equal(closed.e['email-draft-request'].disabled,false);assert.equal(closed.e['email-save-case'].disabled,true);}
+ closed.logout();assert.equal(saves.length,2);
 });

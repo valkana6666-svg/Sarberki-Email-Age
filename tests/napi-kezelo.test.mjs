@@ -15,7 +15,7 @@ class Element {
  async dispatch(type,event={}){for(const fn of this.listeners[type]||[])await fn({preventDefault(){},...event});}
 }
 function fakeDocument(){
- const ids=['count-incoming','count-approval','count-progress','count-closed','cases-panel','cases-title','email-picker','email-picker-wrap','email-previous','email-next','read-email','email-status','email-list','email-detail','email-draft-request','email-draft-status','email-draft-text','email-draft-review','email-draft-checks','draft-editor','save-draft','approve-draft','approve-confirm','detail-messages','detail-facts','chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','detail-link','section-heading','section-description'];
+ const ids=['count-incoming','count-approval','count-progress','count-closed','cases-panel','cases-title','email-picker','email-picker-wrap','email-previous','email-next','read-email','email-status','email-list','email-detail','email-draft-request','email-draft-status','email-draft-text','email-draft-review','email-draft-checks','draft-editor','save-draft','approve-draft','approve-confirm','return-draft','reject-draft','decision-reason','email-save-case','email-save-status','detail-messages','detail-facts','chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','detail-link','section-heading','section-description'];
  const elements=Object.fromEntries(ids.map(id=>[id,new Element()]));
  const nav=['incoming','approval','progress','closed'].map(section=>{const e=new Element();e.dataset.section=section;return e;});
  const listeners={};
@@ -135,7 +135,7 @@ test('distinct daily PWA route retains original test app and never invents statu
  assert.match(html,/közös ügytár tárolt állapotát/iu);
  assert.match(html,/<textarea id="draft-editor"[^>]+disabled>/u);
  assert.match(html,/<button id="approve-draft"[^>]+disabled>/u);
- assert.match(html,/<button type="button" disabled>Elutasítás<\/button>/u);
+ assert.match(html,/<button id="reject-draft" type="button" disabled>Elutasítás<\/button>/u);assert.match(html,/<button id="return-draft" type="button" disabled>/u);
  assert.ok(fs.existsSync('index.html'));assert.ok(fs.existsSync('cloud-approval.html'));
 });
 
@@ -384,4 +384,91 @@ test('snapshot is not restored with another login key, after 30 minutes, when ta
  // Server rejects the session (logged out or idle): nothing restored, snapshot deleted.
  storage=await make('a1');p=await dailyPage('a1b',{storage,loggedIn:false});
  try{assert.equal(p.doc.elements.login.hidden,false);assert.equal(p.doc.elements['email-list'].children.length,0);assert.equal(storage.has('sarberki-napi-state'),false);}finally{p.restore();}
+});
+
+test('test-mailbox case: list and open, Writer redraft, independent Approver return/reject/approve with revision+hash, no send/booking',async()=>{
+ const previous={document:globalThis.document,location:globalThis.location,fetch:globalThis.fetch,addEventListener:globalThis.addEventListener,setTimeout:globalThis.setTimeout,clearTimeout:globalThis.clearTimeout};
+ const doc=fakeDocument(),posts=[],sessionMeta=meta(),caseId='tm-'+'ab'.repeat(8);let loggedIn=false,role='writer',failNext=null,skew=0;
+ const hash=text=>[...text].reduce((h,c)=>(h*31+c.charCodeAt(0))>>>0,7).toString(16).padStart(8,'0').repeat(8);
+ const state={revision:1,approval:'pending',text:'Kitalált első tervezet.',decisions:[]};
+ const settle=async()=>{for(let i=0;i<30;i++)await new Promise(resolve=>setImmediate(resolve));};
+ globalThis.document=doc;globalThis.location={origin:'https://leafy-chimera-2403e5.netlify.app'};
+ globalThis.addEventListener=()=>{};globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};
+ globalThis.fetch=async(url,options={})=>{
+  const u=new URL(url,'https://leafy-chimera-2403e5.netlify.app'),method=options.method||'GET';
+  if(u.pathname.endsWith('/operator-session')){
+   if(method==='POST'&&JSON.parse(options.body).action==='login')loggedIn=true;
+   return loggedIn?response(sessionMeta):response({error:'AUTH_REQUIRED'},401);
+  }
+  if(!u.pathname.endsWith('/booking-cases'))throw Error('unexpected endpoint');
+  if(!loggedIn)return response({error:'AUTH_REQUIRED'},401);
+  if(method==='GET'){
+   const action=u.searchParams.get('action');
+   if(action==='daily-list')return response({result:[{tenantId:'sarberki-test',caseId,revision:state.revision,category:state.approval==='pending'?'approval':'progress',kind:'test-mailbox'}]});
+   if(action==='test-mailbox-record'){
+    assert.equal(u.searchParams.get('caseId'),caseId);
+    return response({result:{caseId,revision:state.revision,approval:state.approval,messages:[{text:'Kitalált tesztlevél',received_at:'2026-11-01T06:00:00Z'}],
+     values:{arrival:'2026-11-20',departure:'2026-11-22',guests:2,unit:'C'},draft:{text:state.text,operatorReviewText:'Kitalált ellenőrzés',hash:hash(state.text)},
+     decisions:state.decisions,internalApproval:null,
+     canEditDraft:role==='writer'&&['pending','returned_for_edit','rejected'].includes(state.approval),canDecide:role==='approver'&&state.approval==='pending'}});
+   }
+   return response({error:'INVALID_INPUT'},400);
+  }
+  const body=JSON.parse(options.body);posts.push(body);
+  if(failNext){const error=failNext;failNext=null;return response({error},error==='FORBIDDEN'?403:409);}
+  assert.equal(body.expectedRevision,state.revision);
+  if(body.action==='test-mailbox-redraft'){state.text=body.draftText;state.approval='pending';}
+  else if(body.action==='test-mailbox-decide'){
+   assert.equal(body.reviewedDraftHash,hash(state.text));
+   state.approval={approve:'approved_internal',return:'returned_for_edit',reject:'rejected'}[body.decision];
+   state.decisions.push({decision:body.decision,at:'2026-11-01T06:10:00Z',reason:body.reason??null,reviewedRevision:state.revision});
+  }else return response({error:'INVALID_INPUT'},400);
+  state.revision++;return response({result:{caseId,revision:state.revision+skew,approval:state.approval}});
+ };
+ const e=doc.elements,open=async()=>{await e['load-cases'].dispatch('click');await settle();await doc.nav[state.approval==='pending'?1:2].dispatch('click');await e['case-list'].children[0].children[1].dispatch('click');await settle();};
+ try{
+  await import(pathToFileURL(resolve('napi-kezelo/napi.mjs')).href+'?test-mailbox=1');await settle();
+  e.email.value='writer@synthetic.invalid';e.password.value='SYNTHETIC_ONLY';await e.login.dispatch('submit');await settle();
+  assert.equal(e['count-approval'].textContent,'1 ügy');
+  await open();
+  assert.equal(e['detail-draft'].textContent,'Kitalált első tervezet.');assert.match(e['detail-capacity'].textContent,/kapacitás és ár nem igazolt/);
+  assert.match(e['detail-status'].textContent,/Független jóváhagyásra vár/);
+  // Writer: may edit, may not decide.
+  assert.equal(e['draft-editor'].disabled,false);assert.equal(e['approve-confirm'].disabled,true);assert.equal(e['reject-draft'].disabled,true);
+  assert.equal(e['save-draft'].disabled,true);
+  e['draft-editor'].value='Kitalált második tervezet.';await e['draft-editor'].dispatch('input');assert.equal(e['save-draft'].disabled,false);
+  await e['save-draft'].dispatch('click');await settle();
+  assert.deepEqual(posts.at(-1),{tenantId:'sarberki-test',caseId,action:'test-mailbox-redraft',expectedRevision:1,draftText:'Kitalált második tervezet.'});
+  assert.match(e['detail-status'].textContent,/Új tervezet mentve és visszaolvasva/);assert.equal(e['detail-draft'].textContent,'Kitalált második tervezet.');
+  // Approver: return with reason, decide buttons need pending state.
+  role='approver';await open();
+  assert.equal(e['draft-editor'].disabled,true);assert.equal(e['approve-confirm'].disabled,false);assert.equal(e['return-draft'].disabled,false);
+  assert.equal(e['approve-draft'].disabled,true);
+  e['decision-reason'].value='Kitalált indok';await e['return-draft'].dispatch('click');await settle();
+  assert.deepEqual(posts.at(-1),{tenantId:'sarberki-test',caseId,action:'test-mailbox-decide',decision:'return',expectedRevision:2,reviewedDraftHash:hash('Kitalált második tervezet.'),reason:'Kitalált indok'});
+  assert.match(e['detail-status'].textContent,/Visszaküldés mentve/);assert.match(e['detail-price'].textContent,/visszaküldve javításra.*Kitalált indok/);
+  assert.equal(e['return-draft'].disabled,true);assert.equal(e['approve-confirm'].disabled,true);
+  // Writer redrafts, Approver rejects (case stays open), Writer reopens, Approver approves internally.
+  role='writer';await open();e['draft-editor'].value='Kitalált harmadik tervezet.';await e['draft-editor'].dispatch('input');await e['save-draft'].dispatch('click');await settle();
+  role='approver';await open();await e['reject-draft'].dispatch('click');await settle();
+  assert.equal(posts.at(-1).decision,'reject');assert.equal(Object.hasOwn(posts.at(-1),'reason'),false);
+  assert.match(e['detail-status'].textContent,/Elutasítás mentve.*nyitva marad/);
+  role='writer';await open();assert.match(e['detail-status'].textContent,/Elutasítva/);assert.equal(e['draft-editor'].disabled,false);
+  e['draft-editor'].value='Kitalált negyedik tervezet.';await e['draft-editor'].dispatch('input');await e['save-draft'].dispatch('click');await settle();
+  role='approver';await open();
+  await e['approve-draft'].dispatch('click');await settle();
+  assert.equal(posts.at(-1).action,'test-mailbox-redraft','approval needs the confirmation checkbox');
+  e['approve-confirm'].checked=true;await e['approve-confirm'].dispatch('change');assert.equal(e['approve-draft'].disabled,false);
+  await e['approve-draft'].dispatch('click');await settle();
+  assert.deepEqual(posts.at(-1),{tenantId:'sarberki-test',caseId,action:'test-mailbox-decide',decision:'approve',expectedRevision:6,reviewedDraftHash:hash('Kitalált negyedik tervezet.')});
+  assert.match(e['detail-status'].textContent,/Belső jóváhagyás mentve.*Nincs levélküldés vagy foglalás/);
+  assert.equal(e['approve-confirm'].disabled,true);assert.equal(e['draft-editor'].disabled,true);
+  // A result that is not exactly the next revision is not accepted as proof of the decision.
+  state.approval='pending';await open();skew=1;await e['reject-draft'].dispatch('click');await settle();skew=0;
+  assert.equal(e['case-detail'].hidden,true);assert.match(e['list-status'].textContent,/nem igazolt/);
+  // A server conflict is shown honestly and never retried automatically.
+  state.approval='pending';await open();failNext='CASE_CONFLICT';const count=posts.length;await e['reject-draft'].dispatch('click');await settle();
+  assert.equal(posts.length,count+1);assert.equal(e['case-detail'].hidden,true);assert.match(e['list-status'].textContent,/nincs automatikus ismétlés/);
+  assert.ok(posts.every(p=>['test-mailbox-redraft','test-mailbox-decide'].includes(p.action)&&p.tenantId==='sarberki-test'));
+ }finally{Object.assign(globalThis,previous);}
 });

@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import {clarificationEnabled} from '../../shared-core/server-clarification-review.mjs';
 import {createTubServiceApproval,createServiceApprovalAttestor} from '../../shared-core/server-tub-approval.mjs';
 import {createServerCaseService} from '../../shared-core/server-case-service.mjs';
@@ -39,6 +40,23 @@ function validTestMailboxInput(input){
  return typeof input.reviewedDraftHash==='string'&&/^[a-f0-9]{64}$/.test(input.reviewedDraftHash)&&['approve','return','reject'].includes(input.decision)&&
   (input.reason===undefined||typeof input.reason==='string'&&input.reason.length<=500&&!/[\r\n]/.test(input.reason));
 }
+// Only sc_tm_create produces this shape: synthetic writers are limited to .invalid senders.
+function isTestMailboxCase(record){
+ return record?.tenantId==='sarberki-test'&&typeof record.caseId==='string'&&/^tm-[a-f0-9]{12,32}$/.test(record.caseId)&&
+  typeof record.data?.sender==='string'&&!/\.invalid$/i.test(record.data.sender)&&record.data.testMailbox?.scope==='test-mailbox-source-v1'&&
+  Array.isArray(record.data.drafts)&&record.data.drafts.length>0&&Array.isArray(record.data.messages);
+}
+function testMailboxView(record,authority){
+ const data=record.data,state=data.state?.approval,latest=data.drafts.at(-1),permissions=authority?.tenants?.['sarberki-test']||[];
+ return {caseId:record.caseId,revision:record.revision,approval:state,
+  messages:data.messages.map(m=>({text:m.text,received_at:m.received_at})),values:data.state?.values||{},
+  draft:{text:latest.text,operatorReviewText:latest.operatorReviewText??null,createdAt:latest.createdAt??null,hash:createHash('sha256').update(String(latest.text),'utf8').digest('hex')},
+  decisions:(data.decisions||[]).map(d=>({decision:d.decision,at:d.at,reason:d.reason??null,reviewedRevision:d.reviewedRevision})),
+  internalApproval:data.internalApproval?{scope:data.internalApproval.scope,at:data.internalApproval.at,capacityVerified:false,priceVerified:false,sendAllowed:false,bookingAllowed:false}:null,
+  // Display hints only: the database re-checks permission, state, revision, hash and approver independence.
+  canEditDraft:permissions.includes('write')&&['pending','returned_for_edit','rejected'].includes(state),
+  canDecide:permissions.includes('approve')&&state==='pending'&&latest.createdBy!==authority?.subject};
+}
 function testMailboxIngestEnabled(env,cloudApproval){
  return cloudApproval&&env.CASE_TEST_MAILBOX_INGEST_ENABLED==='sarberki-test-fictional-only';
 }
@@ -72,6 +90,18 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    // session with CSRF only; Writer for ingest/redraft, Approver for decisions (the database also enforces an
    // approver independent of the draft author). The Gmail token travels in its own header, is used once and
    // is never stored or echoed. Fixed public error codes only.
+   if(input.action==='test-mailbox-record'){
+    if(event.httpMethod!=='GET'||!cookieMode||!testMailboxIngestEnabled(env,cloudApproval)||input.tenantId!=='sarberki-test'||Object.keys(input).sort().join(',')!=='action,caseId,tenantId')
+     return cookieResponse(403,{error:'FORBIDDEN'});
+    if(typeof input.caseId!=='string'||!/^tm-[a-f0-9]{12,32}$/.test(input.caseId))return cookieResponse(400,{error:'INVALID_INPUT'});
+    cookieSession=await createOperatorCookieSession({env,fetchImpl}).protectedRead(event);
+    rotatedCookie=cookieSession.setCookie;
+    const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.sarberki-test&case_id=eq.'+encodeURIComponent(input.caseId));
+    const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
+    const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
+    if(!record||!isTestMailboxCase(record))return cookieResponse(404,{error:'NOT_FOUND'});
+    return cookieResponse(200,{result:testMailboxView(record,cookieSession.authority)});
+   }
    if(TEST_MAILBOX_FIELDS[input.action]){
     const keys=Object.keys(input).sort().join(',');
     if(event.httpMethod!=='POST'||!cookieMode||!testMailboxIngestEnabled(env,cloudApproval)||input.tenantId!=='sarberki-test'||!TEST_MAILBOX_FIELDS[input.action].includes(keys))
@@ -177,6 +207,9 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      if(!cookieMode||Object.keys(input).sort().join(',')!=='action,tenantId')return cookieResponse(403,{error:'FORBIDDEN'});
      const records=await service.listCases({tenantId:input.tenantId});
      result=records.filter(record=>{try{assertReviewAccess(record);return true;}catch(error){if(error.code==='FORBIDDEN')return false;throw error;}}).slice(0,100).map(dailyCaseSummary);
+     // Test-mailbox cases appear only while the owner switch is on; pending awaits an independent decision.
+     if(testMailboxIngestEnabled(env,cloudApproval))result=result.concat(records.filter(isTestMailboxCase).map(record=>({tenantId:record.tenantId,caseId:record.caseId,revision:record.revision,
+      category:record.data.state?.approval==='pending'?'approval':'progress',kind:'test-mailbox'}))).slice(0,100);
     }else if(input.action==='service-approval-state'){
      if(!isIsolatedReviewCaseId(input.caseId))return cookieResponse(403,{error:'FORBIDDEN'});
      result=await serviceFlow().state(input.caseId,Number(input.expectedRevision));
