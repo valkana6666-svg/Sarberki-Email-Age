@@ -147,3 +147,18 @@ Ez a legújabb állapot felülírja a korábbi TM-ACT-2 „tulajdonosi döntésr
 | TM-ACT-5 | Work + tulajdonos | BLOKKOLT | szintetikus bizonyíték meglévő; élő kör NEM IGAZOLT | csak 3–4 után Gmail → Writer → független Approver, majd fizikai iPhone |
 
 Netlify-telepítés, kapcsolóbekapcsolás, vendéglevél, foglalás és Previo-módosítás **nem történt**. A készültségi százalékot nem módosítjuk. Következő konkrét kapu: TM-ACT-3/4 külön tulajdonosi döntése.
+
+## Engedélyezett TEST-aktiválás – hozzáférési akadály (2026-11-01)
+
+- Tulajdonosi engedély e munkamenetben: meglévő leafy-chimera-2403e5 TEST-telepítés és két tesztlevél-kapcsoló bekapcsolása, kizárólag sikeres közvetlen biztonsági ellenőrzés után. Ez az engedély a folytatásra is érvényes, nem kell újra kérni; nem engedélyez vendégküldést, foglalást, Previo-írást vagy production-módosítást.
+- AGENTS.md teljes beolvasása: 2026-11-01T08:26:33Z (09:26:33 CET), blob be27bd2dfb4795496bd9f3d64ad60ada1123de5b.
+- Induló és újraellenőrzött HEAD: 51174326dc1a9f6b3e6d6ab2ecb527cd21f5af48.
+- PASS: a legutóbbi teljes alkalmazás-CI [41286987060](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41286987060) sikeres; bd78591d1817b18604cd9287601be7caa637be7d óta e HEAD-ig kizárólag három dokumentum változott. Nem futtattuk újra a sikeres alkalmazásteszteket.
+- PASS: a [friss mentés/restore 41288264009](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41288264009) sikeres; a két artifact elérhető, nem lejárt. A korábban letöltéssel igazolt proof és hash változatlan.
+- PASS readonly SQL: WP3 két RLS-védett tábla és négy függvény jelen van, üres search_path és várt ACL; projektkötés és teszt-tenant helyes, tanúsítási kulcs létezik, váratlan tenant 0, külön Writer/Approver személypár létezik. Config enabled=false, registry=0. WP3 nem futott újra.
+- PASS: GET /api/health 200; deployedCommit=1cfde646f43036b83e1bb122ea74ce96bd3afa8c; autoSend=false, autoBookingModification=false. Ez továbbra is az előző telepítés.
+- Korlát: operator-session névtelen GET 401 AUTH_REQUIRED; booking-cases névtelen GET 400 INVALID_INPUT. Ebből nem állítunk hitelesített ügykezelési vagy teljes jóváhagyási PASS-t.
+- Netlify hozzáférés feltárva: nincs elérhető Netlify-csatlakozó; plugin-keresés nem adott találatot; a helyi Netlify CLI és a vizsgált Netlify-hitelesítési környezeti változók nem konfiguráltak (értékeket nem olvastunk/naplóztunk).
+- Böngészős ellenőrzés: app.netlify.com bejelentkezést kér. A felhasználó a biztonságos belépési folyamatban Google-t és a valkana6666@gmail.com fiókot választotta. A Google a biztonságos jelszóbeküldés után „Helytelen jelszó” hibát mutatott. Ez hitelesítési akadály, nem igazolt bot-/Netlify-üzemzavar. Hitelesítő érték nem került a modellhez vagy dokumentációba.
+- **TM-ACT-3/4: BLOKKOLT a Netlify-belépésnél.** Netlify környezeti kapcsolók és privát kulcskötés NEM IGAZOLT. Kiadási commit nem készült, Netlify-telepítés és kapcsolómódosítás nem történt. Az adatbázis-kapcsoló a hiba után újra visszaolvasva false; nincs részleges aktiválás vagy szükséges rollback.
+- Következő konkrét lépés: a jelen felhőböngészőben sikeres kézi Netlify-hitelesítés, majd csak a TEST-oldal környezeti beállításainak titokmentes ellenőrzése. Utána friss HEAD, szabályozott [netlify-test-release] commit/TEST-build, pontos deployedCommit; Netlify kapcsoló és végül DB-kapcsoló, a védelmek ellenőrzésével. Az élő Gmail-ügy és fizikai iPhone külön következő szakasz.
