@@ -56,3 +56,7 @@
 - Kiinduló HEAD `7511317`, AGENTS blob `be27bd2…`; telepített `da3dc9a`. Nyitott élő V1-pont, amit Claude a meglévő ügyön végre tudna hajtani: független Approver elutasítás → Writer új tervezet → újranyitás (L11–L12), böngészőautomatizálással a TEST-oldalon. Új ügy/Gmail-mentés nem kell hozzá.
 - Hiányzó hozzáférés (pontosan): (1) a Claude felhőkörnyezet hálózati engedélye a `leafy-chimera-2403e5.netlify.app` hosztra (jelenleg proxy 403); (2) két kitalált TEST-kezelői fiók belépési adata környezeti változóként: `SARBERKI_TEST_WRITER_EMAIL`, `SARBERKI_TEST_WRITER_PASSWORD`, `SARBERKI_TEST_APPROVER_EMAIL`, `SARBERKI_TEST_APPROVER_PASSWORD` (Writer és tőle független Approver). Supabase-, Netlify-API-, Gmail- vagy service-role hozzáférés nem kell.
 - A beállítás új munkamenetben érvényes. Titok nem kerül chatbe, naplóba, tesztbe vagy GitHubra; a próba csak a meglévő TEST-ügyön, küldés/foglalás/Previo nélkül.
+
+## Mobil böngészőpróba igazítása a 41aa870 állandó címkéihez (2026-11-01 ~23:12Z)
+- Dispatch 41360581226 (HEAD `f28b756`) FAIL: a próba a régi, sorszám-alapú „Tesztügy 2” címkét kereste; a 41aa870 óta a tesztlevél-ügy címkéje állandó: „Tesztlevél-ügy tm-<id>”. Termékhiba nincs; a 20 korábbi ellenőrzés PASS volt.
+- Javítás csak a `scripts/napi-kezelo-browser-proof.mjs` keresőjében (az állandó címkére). Helyben Chromium 22/22 PASS.

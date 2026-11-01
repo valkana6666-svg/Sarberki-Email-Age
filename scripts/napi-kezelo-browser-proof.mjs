@@ -328,7 +328,7 @@ try{
   const fits=()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth);
   const openTm=async(section,status)=>{await page.reload();await page.locator('#session-status').filter({hasText:'Bejelentkezve'}).waitFor();
    await page.locator('[data-section='+section+']').click();await page.locator('#load-cases').click();
-   await page.locator('#case-list li').filter({hasText:'Tesztügy 2'}).getByRole('button').click();await page.locator('#detail-status').filter({hasText:status}).waitFor();};
+   await page.locator('#case-list li').filter({hasText:'Tesztlevél-ügy tm-48f2a0b1c2d3e4f0'}).getByRole('button').click();await page.locator('#detail-status').filter({hasText:status}).waitFor();};
   state.role='writer';state.markedMail=true;await page.reload();await page.locator('#session-status').filter({hasText:'Bejelentkezve'}).waitFor();
   await page.waitForFunction(()=>Boolean(window.google?.accounts?.oauth2?.initTokenClient));
   await page.locator('#read-email').click();await page.locator('#email-detail').filter({hasText:'Sárberki élő teszt – HU'}).waitFor();
