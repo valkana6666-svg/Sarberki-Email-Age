@@ -17,3 +17,10 @@
 ## Nem igazolt / következő
 - Hosztolt migráció (`deployment/test-mailbox/install.sql`), Netlify-kapcsoló, telepítés: tulajdonosi döntés.
 - Napi felület („Ügyként mentés”, visszaküldés/elutasítás gombok, tesztlevél-ügyek megjelenítése) és a `sc_tm_redraft`/`sc_tm_decide` szerveroldali műveletei: következő lépés.
+
+## Kiegészítés: `test-mailbox-redraft` és `test-mailbox-decide`
+- Ugyanazok a kapcsolók és a cookie+CSRF-feltétel; ügyazonosító csak `tm-<hex>`.
+- `test-mailbox-redraft`: `{tenantId, action, caseId, expectedRevision, draftText}`, Writer (`protectedWrite`) → `sc_tm_redraft`.
+- `test-mailbox-decide`: `{tenantId, action, caseId, expectedRevision, reviewedDraftHash, decision, reason?}`, `decision` ∈ approve/return/reject, `reason` legfeljebb 500 karakter, sortörés nélkül; Approver (`protectedApproval`) → `sc_tm_decide` (a szerzőtől független jóváhagyót az adatbázis kényszeríti).
+- Válasz: `{result:{caseId, revision, approval}}`; régi revízió → 409 `CASE_CONFLICT`; az adatbázis állapot-, hash- vagy változatlan-tervezet-elutasítása → 409 `TEST_MAILBOX_REJECTED`; jogosultság → 403.
+- Tesztek a valódi szerverkezelőn (PGlite): kikapcsolva tiltott; hibás mezők/döntés/indok/ügyazonosító; Bearer; hiányzó CSRF; Writer és Reader nem dönthet; visszaküldés → változatlan tervezet elutasítva → új tervezet → független jóváhagyás; régi revízió és rossz hash; ismételt döntés; a szerző (approve joggal is) nem hagyhatja jóvá; elutasítás → újranyitás → jóváhagyás, előzmények megmaradnak; audit `tm_create, tm_return, tm_redraft, tm_approve`. 6 mutáció mind bukik.
