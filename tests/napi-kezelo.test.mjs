@@ -391,7 +391,7 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
  const doc=fakeDocument(),posts=[],sessionMeta=meta(),caseId='tm-'+'ab'.repeat(8);let loggedIn=false,role='writer',failNext=null,skew=0;
  const hash=text=>[...text].reduce((h,c)=>(h*31+c.charCodeAt(0))>>>0,7).toString(16).padStart(8,'0').repeat(8);
  const state={revision:1,approval:'pending',text:'Kitalált első tervezet.',decisions:[]};
- let guestValues={adults:'4',children:'0'};
+ let guestValues={adults:'4',children:'0'},listPrefix=[];
  const settle=async()=>{for(let i=0;i<30;i++)await new Promise(resolve=>setImmediate(resolve));};
  globalThis.document=doc;globalThis.location={origin:'https://leafy-chimera-2403e5.netlify.app'};
  globalThis.addEventListener=()=>{};globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};
@@ -405,7 +405,7 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   if(!loggedIn)return response({error:'AUTH_REQUIRED'},401);
   if(method==='GET'){
    const action=u.searchParams.get('action');
-   if(action==='daily-list')return response({result:[{tenantId:'sarberki-test',caseId,revision:state.revision,category:state.approval==='pending'?'approval':'progress',kind:'test-mailbox'}]});
+   if(action==='daily-list')return response({result:[...listPrefix,{tenantId:'sarberki-test',caseId,revision:state.revision,category:state.approval==='pending'?'approval':'progress',kind:'test-mailbox'}]});
    if(action==='test-mailbox-record'){
     assert.equal(u.searchParams.get('caseId'),caseId);
     return response({result:{caseId,revision:state.revision,approval:state.approval,messages:[{text:'Kitalált tesztlevél',received_at:'2026-11-01T06:00:00Z'}],
@@ -432,6 +432,13 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   e.email.value='writer@synthetic.invalid';e.password.value='SYNTHETIC_ONLY';await e.login.dispatch('submit');await settle();
   assert.equal(e['count-approval'].textContent,'1 ügy');
   await open();
+  // A newly inserted case must not rename an existing mailbox case (observed iPhone confusion).
+  const originalLabel=e['case-list'].children[0].children[0].textContent;
+  listPrefix=[{tenantId:'sarberki-test',caseId:'tm-'+'cd'.repeat(8),revision:1,category:'incoming',kind:'test-mailbox'}];
+  await open();
+  assert.equal(e['case-list'].children[0].children[0].textContent,originalLabel);
+  assert.ok(originalLabel.includes(caseId),'visible label carries the stable case identity');
+  assert.equal(e['case-list'].children[0].children[1].attributes['aria-label'],originalLabel+' megnyitása');
   // Live case shape: adults/children are known while the separate guests field is absent.
   assert.match(e['detail-facts'].textContent,/Létszám: 4 felnőtt, 0 gyermek/);
   for(const [values,expected] of [

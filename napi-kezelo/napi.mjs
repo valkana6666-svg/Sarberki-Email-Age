@@ -92,7 +92,8 @@ function renderRows(){
  const visible=rows.filter(row=>row.category===selectedSection),fragment=document.createDocumentFragment();
  visible.forEach((row,index)=>{
   const li=document.createElement('li'),label=document.createElement('span'),button=document.createElement('button');
-  label.textContent='Tesztügy '+(rows.indexOf(row)+1);button.type='button';button.textContent='Megnyitás';
+  // Mailbox cases keep the identity shown by the save receipt even when the list order changes.
+  label.textContent=row.kind==='test-mailbox'?'Tesztlevél-ügy '+row.caseId:'Tesztügy '+(rows.indexOf(row)+1);button.type='button';button.textContent='Megnyitás';
   button.setAttribute('aria-label',label.textContent+' megnyitása');
   button.addEventListener('click',()=>openCase(row.caseId));li.append(label,button);fragment.append(li);
  });
