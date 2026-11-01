@@ -289,3 +289,15 @@ A jelenlegi felhőböngészőben korábban kijelentkezett kezelő látszott; a j
 - A nyers napi .mjs fájl közvetlen böngészős megnyitását ERR_BLOCKED_BY_CLIENT megakadályozta; ezt nem nevezzük Netlify- vagy alkalmazáshibának. A működő health és a napi UI verziója igazolt.
 - Változtatás: egy üres, engedélyezett kiadási commit és jelen jelentés. Nincs további kód-, adatbázis-, RLS-, kapcsoló-, main-, production- vagy Previo-módosítás; nincs levélküldés/foglalás. Rollback nem volt szükséges.
 - Következő konkrét feladat: a meglévő bejelentkezett iPhone napi kezelő frissítése után Tesztügy 7 megnyitása és a „Létszám: 4 felnőtt, 0 gyermek” sor egyszeri vizuális igazolása. Új ügyet, tervezetet vagy jóváhagyást ehhez nem kell létrehozni.
+
+
+## Fizikai iPhone – létszámjavítás elfogadva (2026-11-01 16:00–16:01 CET)
+- A tulajdonos négy új iPhone-képernyőképet adott át (IMG_0490.jpeg–IMG_0493.jpeg), vizuálisan ellenőrizve. Titkos vagy személyes adatot és képfájlt nem töltöttünk fel GitHubra.
+- **UI-GUEST-COUNT: PASS, fizikai iPhone-on is.** Az Ügyadatok részben egyértelműen olvasható: „Létszám: 4 felnőtt, 0 gyermek”; érkezés 2026-11-13, távozás 2026-11-15. A korábbi „telepített ügyadatlap kijelzése NEM IGAZOLT” állapotot ez lezárja.
+- Kiadási verzió ugyanazon átadott képcsomagban: „Tesztverzió: b197a91293fb · a telepített verzió egyezik.” Teljes, korábban közvetlen health-ellenőrzéssel igazolt kiadás: `b197a91293fbd544ead156321f0a81dd87f3a5cc`; forrásjavítás: `155b7346efe5d289e1b7e0db7e94d8d5247ec2c4`.
+- A képeken a Tesztügy 7 listabejegyzés, az eredeti, 4 felnőttet kérő Gmail-szöveg, a tárolt választervezet és a korábbi döntések láthatók. Státusz: „Belső jóváhagyás mentve (test-mailbox-v1). Nincs levélküldés vagy foglalás.” Visszaküldés 11:05:53.560881Z; jóváhagyás 11:47:01.218595Z. Ez a korábbi szerveres revision/hash-visszaolvasással együtt a javítás utáni megjelenítés bizonyítéka.
+- A jóváhagyás/mentés körét nem ismételtük meg, adatbázist nem módosítottunk. Az inaktívnak látszó döntési gombok az elfogadott ügy képén önmagukban nem új jogosultsági negatív tesztek.
+- „Háztípus: Nincs megadva”: az eredeti levél négyszemélyes házat kér, konkrét háztípust nem nevez meg; ez nem bizonyít háztípus-kivonatolási hibát.
+- „Magyar ellenőrző összefoglaló még nincs” látható a módosított tervezetnél; ez külön megfigyelés, nem a most lezárt létszámhiba. Hiányzó összefoglaló viselkedését szükség esetén a meglévő redraft szerződéssel kell összevetni, automatikus újrafejlesztés nélkül.
+- Friss szabályzat-ellenőrzés: teljes tesztági AGENTS.md lekérve 2026-11-01T15:01:44Z (16:01:44 CET), blob `be27bd2dfb4795496bd9f3d64ad60ada1123de5b`, változatlan; induló HEAD `2a9bf2548a0b7bc9f93fc3774979de6ccce58d1a`.
+- Következő konkrét feladat: csak a még hiányzó élő negatív/lifecycle bizonyítékok (duplikált mentés elutasítása, Re: tiltás, külön tesztügyön elutasítás → újranyitás, alkalmazásváltás). A fő Gmail-lánc és a létszámjavítás lezárt; ezeket ne futtassuk újra. A teljes V1 100%-át ez az egy kijelzési elfogadás nem jelenti.
