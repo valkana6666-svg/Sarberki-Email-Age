@@ -44,3 +44,8 @@
 - Nem történt: telepítés, migráció, kapcsolóváltás, levélküldés, foglalás, Previo, main/production. Telepítéshez külön engedély kell.
 - Következő: CI-visszaolvasás a saját SHA-ra; utána a nyilvántartás következő valós feladata.
 - CI-visszaolvasás (branch-szűrt, 2026-11-01T20:40Z): kódcommit `66a432a452d35876d72b95c48f0e237297917578` – „Sarberki test branch checks” [41347898521](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41347898521) **success** (a pglite-tesztek CI-beli futását ez igazolja; tesztszámot naplóból nem olvastam). A mobil workflow push-ra skipped – nem mobilbizonyíték. Eredmény: UI-MAILBOX-STATUS-COPY KÉSZ (szintetikus/CI); iPhone/telepítés NEM IGAZOLT, TEST-kiadás külön engedélyre vár.
+
+## TEST-kiadás: 41aa870 + 66a432a (interaktív Claude Code, tulajdonosi engedéllyel, 2026-11-01 ~21:02Z)
+- Engedély: a tulajdonos ebben a munkamenetben kifejezetten jóváhagyta a két kész javítás kiadását kizárólag a `leafy-chimera-2403e5` TESZT-oldalra.
+- Kódeltérés a legutóbb telepített `b197a91` óta: csak `napi-kezelo/napi.mjs` (állandó ügycímke, 41aa870) és `napi-kezelo/napi-email.mjs` (mailbox-státuszszöveg, 66a432a), plusz tesztjeik. A 66a432a óta csak dokumentáció változott. Teljes CI a 66a432a-ra: 41347898521, 2491 PASS.
+- Fájlkiosztás betartva: `docs/V1-FOLYTATASI-PONT.md` (Work) érintetlen. Kapcsoló, migráció, jogosultság, AI, üzleti szabály, production változatlan; nincs levél, foglalás, Previo.
