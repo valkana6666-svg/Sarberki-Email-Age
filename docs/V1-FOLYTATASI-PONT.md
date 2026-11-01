@@ -171,3 +171,8 @@ Netlify-telepítés, kapcsolóbekapcsolás, vendéglevél, foglalás és Previo-
 - Kiadás: a meglévő kapun át (`[netlify-test-release]` commit, csak `leafy-chimera-2403e5`); ellenőrzés `gmail-readonly-targeted-20261024.yml` `verify_deployed:true` futással (deployedCommit = kiadási commit).
 - **Eredmény:** TEST-kiadás PASS – deployedCommit `6702d1c8c198906f47500518bedd9016b117fddb` (run 41291815208 `DEPLOY SYNC PASS`; CI 41291505796 PASS). Kapcsolók: nem állítottuk (hozzáférés hiánya); Netlify-változó állapota NEM IGAZOLT, DB utolsó ismert értéke false (Work-visszaolvasás).
 - **Következő konkrét lépés (TM-ACT-3):** Netlify-hozzáféréssel rendelkező végrehajtó (tulajdonos/Work) a TEST-oldalon beállítja `CASE_TEST_MAILBOX_INGEST_ENABLED=sarberki-test-fictional-only`, majd új TEST-build (`[netlify-test-release]` commit, Claude is elkészítheti) és deployedCommit-ellenőrzés; utána Supabase-hozzáféréssel `sc_test_mailbox_config.enabled=true`. Ezután TM-ACT-5 élő próba.
+
+## TM-ACT-3.1 – Netlify-változó utáni TEST-build (2026-11-01)
+- Tulajdonosi közlés: a `leafy-chimera-2403e5` TEST-oldalon a `CASE_TEST_MAILBOX_INGEST_ENABLED` változó elmentve (Netlify-lista: 5 érték, 5 deploy context). A pontos érték ebből a környezetből nem olvasható: **NEM IGAZOLT**.
+- AGENTS.md beolvasva 09:24Z, blob `be27bd2dfb4795496bd9f3d64ad60ada1123de5b`; kiinduló HEAD `9a799c405b414e216441b7472f304738278c48a2`.
+- Új TEST-build a meglévő kapuval, hogy a függvények megkapják a változót. A DB-kapcsoló (`sc_test_mailbox_config.enabled`) szándékosan változatlan (utolsó ismert: false), így a tesztlevél-műveletek továbbra is 403-at adnak.
