@@ -320,3 +320,31 @@ test('save-as-case: only a marked mail with a Gmail id; fresh token per click go
  for(const index of syntheticMailLanguages.keys()){await select(closed,index);assert.equal(closed.e['email-draft-request'].disabled,false);assert.equal(closed.e['email-save-case'].disabled,true);}
  closed.logout();assert.equal(saves.length,2);
 });
+
+test('iPhone: the Google tab hides the page; a save token that arrives while hidden is kept and used after the verified return, never while hidden or after logout',async()=>{
+ const saves=[];const onSaveCase=async input=>{saves.push(input);return {caseId:'tm-'+input.messageId,revision:1};};
+ const messages=[marked('Sárberki élő teszt mentés',markedBodies.hu,{id:'58f2a0b1c2d3e4f0'})];
+ const h=await openInbox({messages,now:PREVIEW_NOW,onSaveCase});
+ await select(h,0);await h.e['email-save-case'].click();
+ // Safari opens the Google tab: the daily page is hidden when the token arrives.
+ h.doc.visibilityState='hidden';h.reader.conceal();
+ await h.callback({access_token:'FRESH_SYNTHETIC_TOKEN'});
+ assert.equal(saves.length,0,'nothing is sent while the page is hidden');
+ assert.doesNotMatch(h.e['email-save-status'].textContent,/nem érkezett meg/);
+ h.doc.visibilityState='visible';h.reader.reveal();await new Promise(resolve=>setImmediate(resolve));
+ assert.deepEqual(saves,[{messageId:'58f2a0b1c2d3e4f0',token:'FRESH_SYNTHETIC_TOKEN'}]);
+ assert.match(h.e['email-save-status'].textContent,/Ügyként mentve \(tm-58f2a0b1c2d3e4f0\)/);
+ // Logout while the token is queued: it is dropped and never used.
+ await h.e['email-save-case'].click();h.doc.visibilityState='hidden';h.reader.conceal();
+ await h.callback({access_token:'FRESH_SYNTHETIC_TOKEN'});h.logout();h.doc.visibilityState='visible';h.reader.reveal();
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(saves.length,1);
+});
+test('save: a Google error response names its code; a token without a current selection reports the changed state',async()=>{
+ const saves=[];const onSaveCase=async input=>{saves.push(input);return {caseId:'tm-'+input.messageId,revision:1};};
+ const messages=[marked('Sárberki élő teszt 1',markedBodies.hu,{id:'68f2a0b1c2d3e4f0'}),marked('Sárberki élő teszt 2',markedBodies.hu,{id:'68f2a0b1c2d3e4f1'})];
+ const h=await openInbox({messages,now:PREVIEW_NOW,onSaveCase});
+ await select(h,0);await h.e['email-save-case'].click();await h.callback({error:'access_denied'});
+ assert.match(h.e['email-save-status'].textContent,/nem érkezett meg.*access_denied/);
+ await h.e['email-save-case'].click();await select(h,1);await h.callback({access_token:'FRESH_SYNTHETIC_TOKEN'});
+ assert.equal(saves.length,0);
+});

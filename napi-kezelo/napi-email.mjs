@@ -37,7 +37,7 @@ function closedPreviewText(message,header,body){
 // transport and account policy; no tokens are persisted. The snapshot is encrypted by the daily view.
 export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=loadGoogle,readInbox=readTestGmailInbox,documentImpl=document,clientId,now=()=>new Date(),onChange=()=>{},onSaveCase=null}={}){
  const el=id=>documentImpl.getElementById(id);
- let generation=0,busy=false,googleApi=null,chooseMessage=null,pendingConsent=false,queuedConsent=null,consentTimer=null,previewSource=null,previewTurn=0,previewPending=false,shown=null,selectedIndex=-1;
+ let generation=0,busy=false,googleApi=null,chooseMessage=null,pendingConsent=false,queuedConsent=null,consentTimer=null,previewSource=null,previewTurn=0,previewPending=false,shown=null,selectedIndex=-1,queuedSave=null;
  const active=turn=>turn===generation&&canRead()&&documentImpl.visibilityState!=='hidden';
  // Local, unsaved reply preview from the shared email adapter. No request, storage or case transition.
  function clearPreview(source=null){
@@ -78,7 +78,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
  el('email-next').addEventListener('click',()=>chooseMessage?.(Number(el('email-picker').value)+1));
  function clear(){
   clearPicker();
-  generation++;busy=false;pendingConsent=false;queuedConsent=null;clearTimeout(consentTimer);consentTimer=null;el('email-list').replaceChildren();el('email-detail').textContent='';
+  generation++;busy=false;pendingConsent=false;queuedConsent=null;queuedSave=null;clearTimeout(consentTimer);consentTimer=null;el('email-list').replaceChildren();el('email-detail').textContent='';
   shown=null;selectedIndex=-1;onChange();
   el('email-status').textContent='A tesztpostafiók olvasásához jelentkezzen be.';el('read-email').disabled=true;
  }
@@ -176,12 +176,19 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
   el('email-save-case').disabled=true;el('email-save-status').textContent='Google-olvasási engedély ellenőrzése…';
   try{
    googleApi.accounts.oauth2.initTokenClient({client_id:clientId,scope:'https://www.googleapis.com/auth/gmail.readonly',hint:TEST_GMAIL_ACCOUNT,include_granted_scopes:false,
-    callback:async result=>{
-     if(!result?.access_token||source!==previewSource||!active(turn))return done('A Google-engedély nem érkezett meg; a levél nem lett mentve.');
-     el('email-save-status').textContent='Ügy mentése a szerveren…';
-     try{const saved=await onSaveCase({messageId:source.messageId,token:result.access_token});
-      if(source===previewSource)el('email-save-status').textContent='Ügyként mentve ('+saved.caseId+'). Független jóváhagyásra vár; nincs küldés vagy foglalás.';}
-     catch(error){done(saveErrors[error?.message]||'A mentés nem igazolt. Próbálja újra; nincs automatikus ismétlés.');}
+    callback:result=>{
+     // On iPhone the Google tab hides this page; the token often arrives while hidden. Keep it in memory
+     // only, and use it after the daily view has re-verified the operator session (reveal). Same rule as reading.
+     const run=async()=>{
+      if(!result?.access_token)return done('A Google-engedély nem érkezett meg; a levél nem lett mentve.'+(typeof result?.error==='string'&&/^[a-z_]{1,40}$/.test(result.error)?' ('+result.error+')':''));
+      if(source!==previewSource||!active(turn))return done('A kiválasztott levél vagy a belépés közben megváltozott; a levél nem lett mentve. Nyomja meg újra.');
+      el('email-save-status').textContent='Ügy mentése a szerveren…';
+      try{const saved=await onSaveCase({messageId:source.messageId,token:result.access_token});
+       if(source===previewSource)el('email-save-status').textContent='Ügyként mentve ('+saved.caseId+'). Független jóváhagyásra vár; nincs küldés vagy foglalás.';}
+      catch(error){done(saveErrors[error?.message]||'A mentés nem igazolt. Próbálja újra; nincs automatikus ismétlés.');}
+     };
+     if(turn===generation&&documentImpl.visibilityState==='hidden'){queuedSave=run;return;}
+     return run();
     },error_callback:()=>done('A Google-engedély nem sikerült; a levél nem lett mentve.')}).requestAccessToken({prompt:''});
   }catch{done('A Google-belépés nem érhető el.');}
  });
@@ -191,7 +198,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
   if(pendingConsent||busy){suspend();return;}
   if(previewPending){previewPending=false;clearPreview(previewSource);}
  }
- function reveal(){el('read-email').disabled=!canRead()||busy;if(queuedConsent)void processConsent();}
+ function reveal(){el('read-email').disabled=!canRead()||busy;if(queuedConsent)void processConsent();if(queuedSave){const run=queuedSave;queuedSave=null;void run();}}
  // Snapshot for the daily view's encrypted, session-bound local copy: decoded text only, never tokens.
  function snapshot(){
   if(!shown?.length)return null;
