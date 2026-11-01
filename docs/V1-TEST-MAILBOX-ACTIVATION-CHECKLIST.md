@@ -25,9 +25,9 @@ Megjegyzés a 2.2-höz: a `sarberki.tm_backup_sha256` értékét a tulajdonos v�
 ## 2. Hosztolt migráció (`deployment/test-mailbox/install.sql`)
 | # | Lépés | Elvárt | Eredmény |
 |---|---|---|---|
-| 2.1 | Projekt-metaadat ellenőrzése a célzott munkamenetben | `mojnqizbcaczstguikpv` | NEM IGAZOLT |
-| 2.2 | Ugyanabban a munkamenetben: `sarberki.tm_install_project_ref` és `sarberki.tm_backup_sha256` (1.1) beállítása, majd `install.sql` | a telepítő máskülönben szándékosan megszakad | NEM IGAZOLT |
-| 2.3 | Visszaolvasás | `sc_test_mailbox_config.enabled=false`; `sc_tm_create/redraft/decide` létezik; meglévő függvények, RLS és jogok változatlanok | NEM IGAZOLT |
+| 2.1 | Projekt-metaadat ellenőrzése a célzott munkamenetben | `mojnqizbcaczstguikpv` | **PASS 2026-11-01** – API: sarberki-test, ACTIVE_HEALTHY; telepítő DB-kötése helyes |
+| 2.2 | Ugyanabban a munkamenetben: `sarberki.tm_install_project_ref` és `sarberki.tm_backup_sha256` (1.1) beállítása, majd `install.sql` | a telepítő máskülönben szándékosan megszakad | **PASS** – migráció 20261101082048_wp3_test_mailbox_owner_approved_20261101; projekt és friss mentéshash SET LOCAL ugyanabban a tranzakcióban |
+| 2.3 | Visszaolvasás | `sc_test_mailbox_config.enabled=false`; `sc_tm_create/redraft/decide` létezik; meglévő függvények, RLS és jogok változatlanok | **PASS** – 2 RLS-tábla, 4 pontos függvénytörzs, enabled=false; jogosultságmátrix és meglévő objektumok egyezése; tiltópróba PASS |
 
 Visszaállítás: `deployment/test-mailbox/rollback.sql` (ugyanazzal a projekt-hivatkozással). Kikapcsolja a kapcsolót és törli a négy új függvényt; ügyek, audit, üzenetkulcsok, nyilvántartás megmaradnak.
 
@@ -68,3 +68,10 @@ FAIL esetén: 3.2 kikapcsolása azonnal, majd hibajegy a lépés számával; a p
 ## 6. Lezárás
 - Eredmények rögzítése a `docs/V1-FOLYTATASI-PONT.md` táblázatában, commit SHA-val és CI-linkkel.
 - A kapcsolók a próba után a tulajdonos döntése szerint maradnak vagy kikapcsolódnak (alapértelmezés: kikapcsolás).
+
+## WP3 végrehajtva – 2026-11-01 (legfrissebb kiegészítés)
+A feltételes tulajdonosi engedély alapján kizárólag a 2. lépés futott, sikeresen; a 3–5. lépések továbbra is külön döntésre várnak. Részletes napló: [V1-FOLYTATASI-PONT.md](V1-FOLYTATASI-PONT.md), „WP3 feltételes TEST-migráció – végrehajtási bizonyíték”.
+
+Az 1.1–1.2-höz kiegészítő, friss migráció előtti bizonyíték: [run 41288264009](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41288264009), commit `2d0b2264011e2a462b64ea3c5862bd6a72ef1af0`; exact-ID GitHub readback és izolált restore PASS (50 tábla). Stage 13075424077, proof 13075573868. A telepítéshez használt ciphertext-csomag SHA-256: `b12553febf662bee8b170d16a4980e2d567fbc1cb63d3a7aabc45fecf520f072`. A mentési kör előtti/utáni 51 táblás DML-számlálók és az ellenőrzött sémaazonosítók egyeztek. A korábbi napi mentés történeti bizonyítéka fent megmarad.
+
+Jelen állapot: `sc_test_mailbox_config.enabled=false`, registry=0. Rollback ellenőrizve, végrehajtása nem volt szükséges és nem történt. Nincs Netlify-telepítés, kapcsolóbekapcsolás, levélküldés, foglalás vagy Previo-művelet.

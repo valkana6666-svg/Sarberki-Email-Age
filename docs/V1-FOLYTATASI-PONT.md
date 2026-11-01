@@ -23,7 +23,7 @@
 | Tulajdonosi élesítési ellenőrzőlista | `676ee69` | `docs/V1-TEST-MAILBOX-ACTIVATION-CHECKLIST.md` (dokumentum; tények a telepítő/rollback/kapu fájlokból ellenőrizve) |
 
 ## NEM IGAZOLT / tulajdonosi döntésre vár
-- Hosztolt migráció: `deployment/test-mailbox/install.sql` (TEST projekt).
+- Hosztolt WP3-migráció: **PASS**, Supabase `20261101082048`; kikapcsolva. Részletes bizonyíték a dokumentum végén.
 - Kapcsolók: Netlify `CASE_TEST_MAILBOX_INGEST_ENABLED=sarberki-test-fictional-only` és DB `sc_test_mailbox_config`.
 - TEST-telepítés (`[netlify-test-release]`), élő Gmail → ügy → Writer → független Approver próba, fizikai iPhone.
 
@@ -39,7 +39,7 @@ Formátum átadott feladathoz: azonosító · felelős · releváns fájlok · u
 
 | Azonosító | Felelős | Fájlok | Utolsó igazolt commit | Hiba / cél | Elvárt teszt | Állapot |
 |---|---|---|---|---|---|---|
-| TM-ACT-2 | Tulajdonos | `deployment/test-mailbox/install.sql`, `rollback.sql` | `7d14aa0` | hosztolt migráció a TEST-projekten | ellenőrzőlista 2.1–2.3 | tulajdonosi döntésre vár |
+| TM-ACT-2 | Work | `deployment/test-mailbox/install.sql`, `rollback.sql` | `2d0b2264011e2a462b64ea3c5862bd6a72ef1af0` | TEST-migráció végrehajtva, enabled=false | ellenőrzőlista 2.1–2.3, migráció 20261101082048 | PASS |
 | TM-ACT-3/4 | Tulajdonos | Netlify-változó, `sc_test_mailbox_config`, `[netlify-test-release]` | `7d14aa0` | kapcsolók + TEST-telepítés | ellenőrzőlista 3–4 | tulajdonosi döntésre vár |
 | TM-ACT-5 | Tulajdonos + Claude (visszaolvasás) | napi kezelő | `7d14aa0` | élő Writer/Approver próba, iPhone | ellenőrzőlista 5.1–5.12 | 2–4 után |
 
@@ -103,3 +103,47 @@ A részletes, gombokat és negatív próbákat tartalmazó egyetlen lista: [V1-T
 - Projektutasítások összevetése: a fő korlátok egyeznek. Az AGENTS.md részletesebb kapacitás-, titok-, Pushover-, RLS- és E2E-korlátokat, továbbá történeti október 18-i ütemtervet tartalmaz; a régi dátum nem nyit újra kész feladatot. Tartós/globális Work-beállítás mentése és új munkamenetbeli automatikus betöltése NEM IGAZOLT.
 
 **Következő konkrét feladat:** a TM-ACT-2 pontos TEST-migrációjának tulajdonosi döntése az ellenőrzőlista szerint; utána külön kapcsoló- és kiadási döntések. Addig csak új bizonyítékot vagy valódi változást ellenőrzünk.
+
+
+## WP3 feltételes TEST-migráció – végrehajtási bizonyíték (2026-11-01)
+
+Ez a legújabb állapot felülírja a korábbi TM-ACT-2 „tulajdonosi döntésre vár / BLOKKOLT” megjelölést. A tulajdonos e munkamenetben feltételesen engedélyezte kizárólag a WP3 TEST-migrációt, sikeres előellenőrzések után.
+
+- **Eredmény: PASS; a funkció továbbra is kikapcsolva.** Migráció: `20261101082048_wp3_test_mailbox_owner_approved_20261101`. Indítás: `2026-11-01T08:20:39.305Z` (09:20:39 CET).
+- Induló HEAD: `cabc7580e49d81185bc0cc8431eb90dbe48354da`; migráció előtti HEAD: `2d0b2264011e2a462b64ea3c5862bd6a72ef1af0`.
+- Teljes aktuális AGENTS.md beolvasva `2026-11-01T08:13:59Z` (09:13:59 CET); blob `be27bd2dfb4795496bd9f3d64ad60ada1123de5b`.
+- Célprojekt az API metaadatából: `sarberki-test / mojnqizbcaczstguikpv / ACTIVE_HEALTHY`; más projekt nem kapott SQL-módosítást.
+- Jóváhagyott telepítő blobja: `e2429f6a7972d1384f093a5543cd284b97b167ff`; rollback blobja: `b0ae30785f7479b9bad5ece0f4135501d1fdf7a6`. Az eredeti SQL-fájlok nem változtak.
+
+### Mentés és frissesség
+- A korábbi [41284787609](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41284787609) proof-artifactját ténylegesen letöltöttük és ZIP-digestjét ellenőriztük (`ed9c8681a1511d3d3506ad3995a03de35fede890ec2a629232044446dba36864`). A telepítéshez alkalmas titkosított helyreállítási csomag SHA-256-ja: `2b0906b984359a4d446f57a539a767411ea9920375b9a63813806ac9d321753a`; nem az artifact külső ZIP-digestje.
+- A korábbi snapshot óta eltelt teljes időszak változatlansága nem volt bizonyítható a publikus proofból. Ezért a tulajdonosi feltétel alapján a meglévő eljárással **egyszeri kézi WP3-frissítő mentés** indult, nem új automatizálás. A napi automatizálás nem módosult.
+- Friss mentési kérés commitja: `2d0b2264011e2a462b64ea3c5862bd6a72ef1af0`; [run 41288264009](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41288264009) SUCCESS.
+- Stage artifact: `13075424077`; proof artifact: `13075573868`. A letöltött proof ZIP SHA-256-ja egyezik az API digesttel: `a4a7f6992f04e8626a21990705e2bc03343f7f0fe9fb5b21a46717267b2bf995`.
+- **A migrációban ténylegesen használt mentésazonosító:** `b12553febf662bee8b170d16a4980e2d567fbc1cb63d3a7aabc45fecf520f072` (titkosított helyreállítási csomag).
+- Proof: source_project=mojnqizbcaczstguikpv; input_mode=exact_id_github_download; full_restore=PASS; case_manifest=PASS; all_table_copy_payloads_equal=true; tables_compared=50; verification_completed=true. A visszaállítás külön PostgreSQL 17 célba történt; a forrásadatbázis nem restore-cél.
+- Frissesség a friss mentési körben: 51 tábla INSERT/UPDATE/DELETE statisztikai számlálói és a stats_reset időpont azonos; oszlop-, kényszer-, public-függvény-, reláció/ACL/RLS- és policy-ellenőrző azonosítók azonosak a mentés előtt/után. Ez metaadat-/statisztika-alapú változásellenőrzés; a régi snapshot teljes bájtszintű összevetését nem állítjuk. A migráció előtti referencia e friss mentés.
+- A Drive-ág kimaradt; teljes platform/Auth API/Netlify-helyreállítást ez sem igazol.
+
+### Telepítés és visszaolvasás
+- Telepítő előfeltételek PASS: helyes projektkötés, jelen lévő tanúsítási kulcs (értékét nem olvastuk ki), teszt-tenant, 0 váratlan tenant, auth.uid, sha256, jogosultságfüggvény és MAC-függvény elérhető; WP3-objektumok előtte hiányoztak.
+- Supabase apply_migration ugyanabban az SQL-tranzakcióban kapta a `sarberki.tm_install_project_ref` és `sarberki.tm_backup_sha256` értékeket, közvetlenül az eredeti install.sql BEGIN-je után. Munkameneti lock_timeout=5s, statement_timeout=60s. Ezen deklarációkon túl a telepítő tartalma változatlan. Válasz: success=true.
+- `sc_test_mailbox_config` és `sc_test_mailbox_cases` létrejött, mindkettő RLS-védett. A config pontosan egy sora: enabled=false, backup_sha256 a fenti friss hash. Registry sorok száma: 0.
+- `sc_tm_actor`, `sc_tm_create`, `sc_tm_redraft`, `sc_tm_decide` létrejött; mind a négy prosrc törzse pontosan egyezik a telepítővel, SECURITY DEFINER és üres search_path.
+- PUBLIC/anon/service_role EXECUTE egyik új függvényre sincs. authenticated csak create/redraft/decide EXECUTE-jogot kapott; actor közvetlenül nem hívható.
+- Az új táblákon anon/authenticated/service_role szerepeknek nincs SELECT/INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER/MAINTAIN jogosultsága (teljes privilégium-mátrix visszaolvasva).
+- Meglévő 5 ellenőrzött függvény definíciója/ACL-je, 10 meglévő tábla ACL/RLS-beállítása és 77 meglévő kényszer változatlan a telepítés előtti kiinduláshoz képest.
+- A DML-számlálókban csak a várt új config INSERT=1 és a Supabase migrációs nyilvántartás INSERT+1 változás jelent meg; a registry üres, a meglévő táblák számlálói változatlanok.
+- Negatív, visszagörgetett próba authenticated szereppel: a `sc_tm_create` kikapcsolt állapotban `42501 / forbidden or expired` hibát adott. Váratlan elfogadásra a próba hibát dobott volna; az ellenőrzés PASS. Ez nem érvényes élő Gmail/Auth E2E-próba.
+- Advisors előtte/utána összevetve: az új két belső, policy nélküli, RLS+REVOKE táblára INFO; a három szándékos authenticated definer RPC-re WARN jelent meg. A meglévő anon `rls_auto_enable` és Auth leaked-password figyelmeztetés nem változott. A `rls_auto_enable` forrása visszaolvasva: event_trigger visszatérésű automatikus RLS-bekapcsoló. Nem módosítottuk; az általános figyelmeztetések nem egyenlők az új RPC-k jogosulatlan használatának bizonyítékával.
+- Rollback SQL ellenőrizve: exact projektdeklaráció kell; kapcsoló false + négy új függvény eltávolítása; ügy/audit/message-key/registry megmarad. **Hosztolt rollback nem futott**, mert a migráció és a visszaolvasás sikeres; rollbackre nincs jelzett szükség.
+
+### Aktuális feladatok
+| Azonosító | Felelős | Állapot | Bizonyítékverzió | Következő lépés |
+|---|---|---|---|---|
+| TM-ACT-1-REFRESH | Work | PASS | 2d0b2264011e2a462b64ea3c5862bd6a72ef1af0; run 41288264009 | új adatbázis-változtatás előtt snapshot-frissesség újraértékelése |
+| TM-ACT-2 | Work | PASS | Supabase 20261101082048; install blob e2429f6a7972d1384f093a5543cd284b97b167ff | nincs újratelepítés |
+| TM-ACT-3/4 | Tulajdonosi döntés; egyetlen kijelölt végrehajtó | BLOKKOLT | kapcsoló false visszaolvasva | külön kapcsoló- és TEST-kiadási engedély, privát Netlify-kötésellenőrzéssel |
+| TM-ACT-5 | Work + tulajdonos | BLOKKOLT | szintetikus bizonyíték meglévő; élő kör NEM IGAZOLT | csak 3–4 után Gmail → Writer → független Approver, majd fizikai iPhone |
+
+Netlify-telepítés, kapcsolóbekapcsolás, vendéglevél, foglalás és Previo-módosítás **nem történt**. A készültségi százalékot nem módosítjuk. Következő konkrét kapu: TM-ACT-3/4 külön tulajdonosi döntése.
