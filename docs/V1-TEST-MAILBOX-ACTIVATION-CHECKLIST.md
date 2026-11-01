@@ -75,3 +75,13 @@ A feltételes tulajdonosi engedély alapján kizárólag a 2. lépés futott, si
 Az 1.1–1.2-höz kiegészítő, friss migráció előtti bizonyíték: [run 41288264009](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41288264009), commit `2d0b2264011e2a462b64ea3c5862bd6a72ef1af0`; exact-ID GitHub readback és izolált restore PASS (50 tábla). Stage 13075424077, proof 13075573868. A telepítéshez használt ciphertext-csomag SHA-256: `b12553febf662bee8b170d16a4980e2d567fbc1cb63d3a7aabc45fecf520f072`. A mentési kör előtti/utáni 51 táblás DML-számlálók és az ellenőrzött sémaazonosítók egyeztek. A korábbi napi mentés történeti bizonyítéka fent megmarad.
 
 Jelen állapot: `sc_test_mailbox_config.enabled=false`, registry=0. Rollback ellenőrizve, végrehajtása nem volt szükséges és nem történt. Nincs Netlify-telepítés, kapcsolóbekapcsolás, levélküldés, foglalás vagy Previo-művelet.
+
+## 4. pont végrehajtva – 2026-11-01 (Claude Code)
+| # | Eredmény |
+|---|---|
+| 4.1 | **PASS** – kiadási commit `6702d1c8c198906f47500518bedd9016b117fddb` (`[netlify-test-release]`), alkalmazás-CI [41291505796](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41291505796) PASS |
+| 4.2 | **PASS** – [41291815208](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41291815208): `DEPLOY SYNC PASS`, `/api/health` deployedCommit = `6702d1c8c198906f47500518bedd9016b117fddb` |
+| 3.1 | **NEM IGAZOLT / nem végrehajtva** – Netlify API, csatlakozó és hitelesítő ebből a környezetből nem érhető el (proxy 403) |
+| 3.2 | **NEM IGAZOLT / nem végrehajtva** – Supabase írási/olvasási út innen nem érhető el; utolsó visszaolvasott állapot (Work): `enabled=false` |
+
+Biztonsági sorrend a kapcsolókhoz (változatlan): előbb 3.1 Netlify-változó (+ új TEST-build, hogy a függvények megkapják), utána 3.2 DB-kapcsoló; visszaállítás fordítva: 3.2 false, majd 3.1 törlés. Amíg bármelyik ki van kapcsolva, a tesztlevél-műveletek 403-at adnak.
