@@ -322,3 +322,12 @@ A jelenlegi felhőböngészőben korábban kijelentkezett kezelő látszott; a j
 - Aktuális AGENTS.md teljes lekérve 2026-11-01T15:13:08.250Z (16:13:08 CET), blob be27bd2dfb4795496bd9f3d64ad60ada1123de5b, változatlan. Csak a folytatási dokumentum frissült; nincs kód/ügy/jogosultság/kapcsoló/telepítés/migráció változás és nincs küldés/foglalás/Previo.
 - Következő legkisebb, adatírást nem igénylő hiányzó élő próba: fizikai iPhone alkalmazásváltás → visszatérés, a levéllista és a bejelentkezés megmaradásának igazolása, 30 percen belül, kijelentkezés nélkül. Ez nem a már kész Google/OAuth-kör újrafuttatása.
 - Elutasítás → újranyitás továbbra is külön élő hiány; a már approved Tesztügy 7-et ehhez nem szabad módosítani. Megfelelő, még jóvá nem hagyott tesztlevél-ügyet kell előbb azonosítani.
+
+
+## Fizikai iPhone alkalmazásváltás – 2026-11-01 16:14 CET
+- **LIVE-APP-SWITCH: PASS a rövid alkalmazásváltás/visszatérés körre.** A kért próba válaszaként átadott IMG_0503.png a másik alkalmazást (Lidl Plus), az IMG_0504.jpeg a visszatért Sárberki-kezelőt mutatja, mindkettő 16:14-kor.
+- Visszatérés után „Bejelentkezve.”, „38 levél beolvasva”, és ugyanaz az „1. Re: Sárberki élő teszt – AI előnézet” kiválasztás látszik. Nem kértünk új Gmail-beolvasást, kijelentkezést vagy új jóváhagyást. A próba a tulajdonos által követett lépések és az átadott képek együttese alapján elfogadva.
+- Korlát: ez rövid, normál alkalmazásváltás bizonyítéka; nem igazolja a 30 percen túli munkamenetet, az iOS által kilőtt lap teljes újraindítását vagy az összes PWA/Safari variánst.
+- Kész és nem ismétlendő: fő Gmail → AI → mentés → független jóváhagyás; létszámkijelzés; duplikált mentés elutasítása; Re: felületi tiltás; jelen rövid alkalmazásváltás.
+- Következő hiányzó élő életciklus-próba: külön, még nem jóváhagyott tesztlevél-ügyön független Approver elutasítása → Writer új tervezete → újranyitás. A 2026-11-01 15:15Z readonly registry-lekérdezés szerint egyetlen tm-ügy létezik, tm-1a1917b5a80512ca, revision=5, approved_internal. Ezért az elutasítási próbához másik engedélyezett, kitalált tartalmú eredeti tesztlevélből új tesztügy szükséges; az elfogadott ügyet nem módosítjuk. Re: levél nem használható.
+- AGENTS.md aktuális teljes lekérés 2026-11-01T15:15:07.408Z (16:15:07 CET), blob be27bd2dfb4795496bd9f3d64ad60ada1123de5b, változatlan. Csak ez a jelentés módosult; a registry-vizsgálat csak olvasás volt. Nincs kód-, ügy-, jogosultság-, kapcsoló-, telepítési vagy migrációs változás, küldés/foglalás/Previo-művelet.
