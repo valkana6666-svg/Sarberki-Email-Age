@@ -194,5 +194,28 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
    await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:case3},{status:403});
    await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:'tm-aaaaaaaaaaaaaaaa'},{method:'GET',status:404});
   });
+  await t.test('record/list security: unique list ids, tenant/Bearer/CSRF refusals, look-alike rows hidden, revoked membership reads nothing',async()=>{
+   const case3='tm-18f2a0b1c2d3e4f7',get=(role,input,options)=>call(role,enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:case3,...input},{method:'GET',...options});
+   const ids=(await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'daily-list'},{method:'GET',status:200})).json.result.map(row=>row.caseId);
+   assert.equal(new Set(ids).size,ids.length,'a test-mailbox case must not be listed twice');
+   await get('reader',{tenantId:'demo-test'},{status:403});
+   await get('reader',{},{headers:{'x-csrf-token':''},status:403});
+   const bearer=await createCaseHandler({env:enabledEnv,fetchImpl})({httpMethod:'GET',headers:{host:new URL(origin).host,origin,'sec-fetch-site':'same-origin','x-sarberki-operator':'1',
+    'Content-Type':'application/json',cookie:cookies.get('reader'),'x-csrf-token':csrf.get('reader'),authorization:'Bearer '+'x'.repeat(40)},body:'',queryStringParameters:{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:case3}});
+   assert.equal(bearer.statusCode,403);assert.equal(bearer.body.includes('Kedves'),false);
+   // Rows that only look like test-mailbox cases (synthetic .invalid sender, other tenant) are never served by this route.
+   const source=(await latest(case3)).data;
+   for(const [tenant,id,sender] of [['sarberki-test','tm-'+'c'.repeat(16),'guest@synthetic.invalid'],['demo-test','tm-'+'d'.repeat(16),source.sender]]){
+    await db.query('insert into sc_cases(tenant_id,case_id,revision,data,updated_by) values($1,$2,1,$3,$4)',[tenant,id,{...source,id,tenantId:tenant,sender},actors.writer]);
+    await get('both',{caseId:id},{status:404});
+   }
+   const listed=(await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'daily-list'},{method:'GET',status:200})).json.result;
+   assert.equal(listed.some(row=>row.caseId==='tm-'+'c'.repeat(16)&&row.kind==='test-mailbox'),false);assert.equal(listed.some(row=>row.caseId==='tm-'+'d'.repeat(16)),false);
+   // Revoking the membership after login: the server-side RLS read returns nothing; no case data leaks.
+   assert.equal((await get('reader',{},{status:200})).json.result.caseId,case3);
+   await db.query("delete from sc_memberships where tenant_id='sarberki-test' and user_id=$1",[actors.reader]);
+   const revoked=await get('reader',{});
+   assert.notEqual(revoked.status,200);assert.equal(JSON.stringify(revoked.json).includes('Kedves'),false);assert.equal(revoked.json.result,undefined);
+  });
  }finally{await db.close();}
 });
