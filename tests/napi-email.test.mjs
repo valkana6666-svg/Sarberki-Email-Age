@@ -33,7 +33,7 @@ test('daily Gmail uses readonly consent and shared reader, opens original withou
  assert.equal(h.e['email-list'].children.length,3);
  await h.e['email-list'].children[0].children[0].click();assert.equal(h.e['email-picker'].value,'0');
  assert.equal(h.e['email-list'].children[0].children[0].attributes['aria-pressed'],'true');
- assert.match(h.e['email-detail'].textContent,/Levél 1/);assert.match(h.e['email-status'].textContent,/átadás még nem/);
+ assert.match(h.e['email-detail'].textContent,/Levél 1/);assert.match(h.e['email-status'].textContent,/ebben a nézetben nem érhető el/);assert.doesNotMatch(h.e['email-status'].textContent,/még nem/);
  h.logout();assert.equal(h.e['email-picker'].children.length,1);assert.equal(h.e['email-picker-wrap'].hidden,false);assert.equal(h.e['email-list'].children.length,0);assert.equal(h.e['email-detail'].textContent,'');assert.equal(h.e['read-email'].disabled,true);
 });
 test('late OAuth and mailbox responses cannot reopen messages after logout',async()=>{
@@ -302,6 +302,7 @@ test('save-as-case: only a marked mail with a Gmail id; fresh token per click go
  const messages=[marked('Sárberki élő teszt mentés',markedBodies.hu,{id:'48f2a0b1c2d3e4f0'}),marked('Re: Sárberki élő teszt',markedBodies.hu,{id:'48f2a0b1c2d3e4f1'}),
   marked('Sárberki élő teszt rossz azonosító',markedBodies.hu,{id:'NOT-HEX'})];
  const h=await openInbox({messages,now:PREVIEW_NOW,onSaveCase});
+ assert.match(h.e['email-status'].textContent,/Csak a jelölt tesztlevél menthető ügyként \(Writer-jogosultsággal\)/);assert.doesNotMatch(h.e['email-status'].textContent,/még nem|minden levél/);
  await select(h,0);assert.equal(h.e['email-save-case'].disabled,false);
  const guard=noNetworkOrStorage();
  try{await h.e['email-save-case'].click();}finally{guard.restore();}

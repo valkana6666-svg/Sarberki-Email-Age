@@ -111,7 +111,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
   });
   chooseMessage=open;el('email-picker').replaceChildren(options);el('email-picker').disabled=!messages.length;el('email-picker-wrap').hidden=false;
   el('email-list').replaceChildren(fragment);
-  el('email-status').textContent=messages.length+' levél beolvasva. Válasszon levelet a választóból vagy a görgethető listából. A felhős ügykezeléshez való átadás még nem érhető el.';
+  el('email-status').textContent=messages.length+' levél beolvasva. Válasszon levelet a választóból vagy a görgethető listából.'+(onSaveCase?' Csak a jelölt tesztlevél menthető ügyként (Writer-jogosultsággal); más levélnél a mentés nem érhető el.':' A felhős ügyként mentés ebben a nézetben nem érhető el.');
   shown=messages;if(messages.length)open(0);
  }
  function finish(){busy=false;pendingConsent=false;queuedConsent=null;clearTimeout(consentTimer);consentTimer=null;el('read-email').disabled=!canRead();}

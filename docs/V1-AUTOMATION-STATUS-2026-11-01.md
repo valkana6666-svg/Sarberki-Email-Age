@@ -33,3 +33,13 @@
 - Módosított fájl: csak ez a naplófájl. Nem történt: telepítés, migráció, kapcsolóváltás, levélküldés, foglalás, Previo, main/production.
 - Következő feladat: (1)–(3) tulajdonosi lépése; addig csak ellenőrzés és jelentés.
 - Címzett: a Sárberki projektvezető chat; automatikus elküldés oda nem igazolt.
+
+## Futásnapló – Claude óránkénti futás, UI-MAILBOX-STATUS-COPY [claude-hourly]
+- Kezdő megfigyelés: 2026-11-01T20:36:48Z. Munkamenet: `session_01EgatxLWUSCtCNr1fuZGT3C` (a commitsor szerint).
+- Kiinduló tesztági HEAD: `85542514987fa99dfdc7bd9c231e1359994d88a8`. AGENTS.md teljes beolvasás 20:36Z, git-blob `be27bd2dfb4795496bd9f3d64ad60ada1123de5b`, forrás `origin/gmail-test-subject-allowlist:AGENTS.md`.
+- Feladat: UI-MAILBOX-STATUS-COPY (kijelölt, szabad; fájlok: `napi-kezelo/napi-email.mjs`, `tests/napi-email.test.mjs`; Work nem módosítja).
+- Javítás: a sikeres beolvasás után az elavult „A felhős ügykezeléshez való átadás még nem érhető el.” helyett: onSaveCase elérhetőnél „Csak a jelölt tesztlevél menthető ügyként (Writer-jogosultsággal); más levélnél a mentés nem érhető el.”, nem elérhetőnél „A felhős ügyként mentés ebben a nézetben nem érhető el.” Kapuk, readonly, allowlist, session, AI-mag változatlan.
+- Teszt (valós napló): `node --test tests/napi-email.test.mjs` 21 PASS / 0 FAIL (callback elérhető és nem elérhető ág ellenőrizve).
+- Teljes `npm test` helyben: 2353 PASS / 26 FAIL; a módosítás nélküli HEAD-en azonos (2353/26). Ok: a sandboxból hiányzik az `@electric-sql/pglite` csomag (ERR_MODULE_NOT_FOUND), regiszter-korlátot nem kerültem meg. A pglite/Postgres-tesztek helyben NEM IGAZOLT; a CI az irányadó.
+- Nem történt: telepítés, migráció, kapcsolóváltás, levélküldés, foglalás, Previo, main/production. Telepítéshez külön engedély kell.
+- Következő: CI-visszaolvasás a saját SHA-ra; utána a nyilvántartás következő valós feladata.
