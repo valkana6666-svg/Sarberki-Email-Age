@@ -81,3 +81,24 @@
 - Korlátok / NEM IGAZOLT: fizikai iPhone-on ez a kör nem futott (Chromium mobil emuláció); a tm_reject/tm_redraft audit-sorok közvetlen DB-olvasása nem történt (a szerver read-modelljének döntéstörténete és revíziója igazolja). Megfigyelés: az Approver-fiók szerverválasza canEditDraft=true – vagyis Writer-joga is van; hogy saját tervezetét ne hagyhassa jóvá, ebben a körben nem próbáltuk (korábbi szerveres tesztek szerint a DB ellenőrzi).
 - Módosított fájl: csak ez a naplófájl. A próbaszkript nem került a repóba (helyi scratchpad). Nem történt: telepítés, migráció, kapcsolóváltás, levélküldés, foglalás, Previo, main/production, Gmail-olvasás.
 - Következő: a docs/V1-FOLYTATASI-PONT.md (Work-fájl) LIVE-RE-REJECT-SWITCH sorában az elutasítás/újranyitás rész PASS-ra frissíthető e bejegyzés alapján; nyitva marad a Drive-másolat exact-file visszaolvasása és az iPhone-os címkeellenőrzés.
+
+## TEST E2E hozzáférés-leltár, élő negatív és függetlenségi próbák (interaktív Claude Code, 2026-11-01 23:47–23:58Z)
+- Kiinduló HEAD `0f7cb5171c9015e7424d0508937d971a252a3e3b`, CI [41363475188](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41363475188) success. AGENTS.md teljes, blob `be27bd2dfb4795496bd9f3d64ad60ada1123de5b` (93 sor, 15755 bájt, változatlan). Nyitott jegyek: #1–#6, #8; új hibajegy nincs.
+- **Hozzáférés-leltár (csak nevek/elérhetőség, érték nélkül):** projektváltozó csak a négy `SARBERKI_TEST_WRITER_*` / `SARBERKI_TEST_APPROVER_*`. Hálózat (proxy): TEST-oldal 200; Google API-hosztok elérhetők, de Gmail-token/Google-belépés nincs; Supabase, Netlify API, sarberki.hu, Previo, OpenAI: 403 (tiltva). Supabase-, service role-, Netlify-, Gmail- vagy Previo-hitelesítő adat nincs → telepítés, migráció, kapcsoló, DB-közvetlen írás innen nem is lehetséges.
+- **Élő negatív próbák (`tm-1a0e711a60c6a259`, valódi Auth/DB, böngészőből hívott meglévő API):**
+
+| Próba | Várt | Kapott | Eredmény |
+|---|---|---|---|
+| Névtelen GET record / POST reject | elutasítás | 401 AUTH_REQUIRED / 401 | PASS |
+| Writer döntése (reject, approve) | tiltás | 403 FORBIDDEN mindkettő | PASS |
+| Writer redraft CSRF-token nélkül | tiltás | 403 FORBIDDEN | PASS |
+| Approver elavult revízióval | CAS-ütközés | 409 CASE_CONFLICT | PASS |
+| Approver rossz draft-hash-sel approve | elutasítás | 409 TEST_MAILBOX_REJECTED | PASS |
+| Állapot a negatív próbák után | változatlan | rev 3, pending, hash `6efe2cba…` | PASS |
+| Kettős szerepű Approver saját tervezete (rev 4) | nem dönthet | canDecide=false; approve 403, reject 403 | PASS |
+
+- **Függetlenség élőben: PASS.** Az előző bejegyzés nyitott megfigyelése (az Approver-fióknak Writer-joga is van) lezárva: saját tervezetét sem jóváhagyni, sem elutasítani nem tudja; a DB-szabály (`independent approver required`) élőben is érvényesül.
+- Helyreállítás: a Writer új belső tervezetet mentett (rev 5, pending); Approver-visszaolvasás canDecide=true. Az ügy így ismét alkalmas a következő független döntési próbára. Jóváhagyás nem történt. `tm-1a1917b5a80512ca` érintetlen.
+- **Gmail OAuth → olvasás → szerveres mentés élőben: NEM IGAZOLT ebből a környezetből.** Ok: Google-fiókba belépés és hozzájárulás emberi lépés; ilyen hitelesítő adat nincs és nem is kérendő. A korábbi iPhone-os PASS (fő Gmail → AI → mentés → független jóváhagyás) érvényes, nem ismételtük.
+- Bizonyított hiba: nincs → kódmódosítás nincs (AGENTS 4. pont). Módosított fájl: csak ez a napló. Nem történt: telepítés, migráció, kapcsolóváltás, levélküldés, foglalás, Previo, Gmail-olvasás, main/production.
+- Következő legkisebb lépés: (1) iPhone-on a 41aa870/66a432a címke és státuszszöveg megtekintése (tulajdonos); (2) a meglévő titkosított mentés Drive-másolatának exact-file visszaolvasása (Drive-hozzáférés); (3) ha a tulajdonos kéri, a rev 5 ügyön jóváhagyási kör ebből a környezetből.
