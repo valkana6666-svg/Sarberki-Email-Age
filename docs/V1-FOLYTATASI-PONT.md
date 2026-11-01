@@ -178,3 +178,9 @@ Netlify-telepítés, kapcsolóbekapcsolás, vendéglevél, foglalás és Previo-
 - Új TEST-build a meglévő kapuval, hogy a függvények megkapják a változót. A DB-kapcsoló (`sc_test_mailbox_config.enabled`) szándékosan változatlan (utolsó ismert: false), így a tesztlevél-műveletek továbbra is 403-at adnak.
 - **Eredmény:** TEST-build PASS – run 41293340101 `DEPLOY SYNC PASS`, deployedCommit `7e9a4fa133530a043ecddc8de0dbc38c0065e356`; CI 41293054158 PASS. Netlify-változó pontos értéke és hatása: NEM IGAZOLT (nincs olvasási út; a health nem jelzi). DB-kapcsoló nem változott. Teljes aktiválás: NEM IGAZOLT.
 - **Következő lépés:** hitelesített Writer-kezelővel a napi kezelőben egy jelölt tesztlevél „Ügyként mentés”: a várt válasz most „Ehhez a mentéshez nincs jogosultság, vagy a funkció nincs bekapcsolva” (DB-kapcsoló false). Ez a tiltás működését igazolja, de a Netlify-érték helyességét még nem. Utána tulajdonosi döntéssel `sc_test_mailbox_config.enabled=true`, majd ugyanaz a próba → sikeres mentés igazolja mindkét kapcsolót.
+
+## Élő próba – állapot (2026-11-01, Claude Code)
+- AGENTS.md beolvasva 10:11Z (blob `be27bd2…`), HEAD `f870250`, nincs új párhuzamos commit.
+- Tulajdonosi közlés (nem Claude-visszaolvasás): Netlify-változó Production-értéke iPhone-on ellenőrizve; `sc_test_mailbox_config.enabled=true` beállítva és visszaellenőrizve. Telepített commit: `7e9a4fa` (run 41293340101).
+- Claude ebből a környezetből nem éri el a tesztoldalt, a Gmailt és a Supabase-t (proxy 403), és a GitHub Actionsben sincs kezelői belépés vagy Gmail-token → az élő 5.1–5.12 lépések **NEM IGAZOLT**, mock/CI nem helyettesíti.
+- Átvehető forgatókönyv: `docs/V1-TEST-MAILBOX-LIVE-RUN-SCRIPT.md` (L1–L16, elvárt szövegek a telepített kódból). Végrehajtó: tulajdonos iPhone-on (W és A fiók), L15 Work csak-olvasó SQL. Eredmények beírása után Claude kiértékeli és csak bizonyított hiba esetén javít.
