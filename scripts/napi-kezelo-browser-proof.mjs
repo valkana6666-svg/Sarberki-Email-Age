@@ -2,6 +2,7 @@
 import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {resolve,sep} from 'node:path';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {chromium,webkit} from 'playwright';
 import {createServerChatPreview} from '../shared-core/server-chat-preview.mjs';
 import {syntheticMailMime,syntheticMailLanguages} from '../shared-core/synthetic-mail-fixtures.mjs';
@@ -14,7 +15,12 @@ try{
   if(process.env.NAPI_PROOF_ENGINE&&process.env.NAPI_PROOF_ENGINE!==engine)continue;
   browser=await launcher.launch({headless:true,...(engine==='chromium'&&process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{})});
   const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block'});
-  const state={authenticated:false,revision:1,allowRead:true,caseMethods:[],previewRevisions:[],chatStatus:200,chatMessages:[],unreadableMail:false,closedMail:false,markedMail:false,role:'reader',editable:false,draftText:'Kitalált, tárolt válasz.',approval:'pending',draftHash:null};
+  const state={authenticated:false,revision:1,allowRead:true,caseMethods:[],previewRevisions:[],chatStatus:200,chatMessages:[],unreadableMail:false,closedMail:false,markedMail:false,role:'reader',editable:false,draftText:'Kitalált, tárolt válasz.',approval:'pending',draftHash:null,tm:null,tmPosts:[]};
+  const sha=text=>createHash('sha256').update(text,'utf8').digest('hex');
+  const tmView=()=>({caseId:state.tm.caseId,revision:state.tm.revision,approval:state.tm.approval,messages:[{text:'Kitalált tesztlevél szövege',received_at:'2026-10-30T12:00:00Z'}],
+   values:{arrival:'2027-05-14',departure:'2027-05-16',guests:2,unit:'Deluxe'},draft:{text:state.tm.text,operatorReviewText:'Kitalált ellenőrző szöveg',hash:sha(state.tm.text)},
+   decisions:state.tm.decisions,internalApproval:null,
+   canEditDraft:state.role==='writer'&&['pending','returned_for_edit','rejected'].includes(state.tm.approval),canDecide:state.role==='approver'&&state.tm.approval==='pending'});
   const record=()=>({tenantId:'sarberki-test',caseId:'case-synthetic',revision:state.revision,
    canEditDraft:state.role==='writer'&&state.approval==='pending',canApproveDraft:state.role==='approver'&&state.approval==='pending',
    data:{state:{approval:state.approval,revision:0,values:{arrival:'2026-11-20',departure:'2026-11-22',guests:2,unit:'Deluxe'}},
@@ -71,6 +77,24 @@ try{
     if(request.method()==='POST'){
      const input=request.postDataJSON();
      assert.equal(request.headers()['x-csrf-token'],session.csrfToken);
+     if(/^test-mailbox-/.test(input.action)){
+      // Synthetic stand-in for the default-off server route; the real route and SQL are covered by PGlite tests.
+      state.tmPosts.push({...input,token:request.headers()['x-sarberki-gmail-token']??null});
+      if(input.tenantId!=='sarberki-test')return json(403,{error:'FORBIDDEN'});
+      if(input.action==='test-mailbox-ingest'){
+       if(state.role!=='writer'||request.headers()['x-sarberki-gmail-token']!=='SYNTHETIC_TOKEN'||input.messageId!=='48f2a0b1c2d3e4f0'||state.tm)return json(403,{error:'FORBIDDEN'});
+       state.tm={caseId:'tm-'+input.messageId,revision:1,approval:'pending',text:'Kitalált AI-tervezet.',decisions:[]};
+       return json(200,{result:{caseId:state.tm.caseId,revision:1}});
+      }
+      if(!state.tm||input.caseId!==state.tm.caseId)return json(403,{error:'FORBIDDEN'});
+      if(input.expectedRevision!==state.tm.revision)return json(409,{error:'CASE_CONFLICT'});
+      if(input.action==='test-mailbox-redraft'&&state.role==='writer'&&input.draftText!==state.tm.text){state.tm.text=input.draftText;state.tm.approval='pending';}
+      else if(input.action==='test-mailbox-decide'&&state.role==='approver'&&state.tm.approval==='pending'&&input.reviewedDraftHash===sha(state.tm.text)){
+       state.tm.approval={approve:'approved_internal',return:'returned_for_edit',reject:'rejected'}[input.decision];
+       state.tm.decisions.push({decision:input.decision,at:'2026-11-01T07:00:00Z',reason:input.reason??null,reviewedRevision:state.tm.revision});
+      }else return json(403,{error:'FORBIDDEN'});
+      state.tm.revision++;return json(200,{result:{caseId:state.tm.caseId,revision:state.tm.revision,approval:state.tm.approval}});
+     }
      if(input.tenantId!=='sarberki-test'||input.caseId!=='case-synthetic')return json(403,{error:'FORBIDDEN'});
      if(input.expectedRevision!==state.revision)return json(409,{error:'CASE_CONFLICT'});
      if(input.action==='edit-draft'&&state.role==='writer'){state.draftText=input.editedDraftText;state.draftHash=input.expectedDraftHash;state.revision++;}
@@ -84,7 +108,12 @@ try{
 
      return json(200,{result:record()});
     }
-    return json(200,{result:[{tenantId:'sarberki-test',caseId:'case-synthetic',revision:state.revision,category:state.editable?(state.approval==='pending'?'approval':'progress'):'incoming'}]});
+    if(url.searchParams.get('action')==='test-mailbox-record'){
+     if(!state.tm||url.searchParams.get('caseId')!==state.tm.caseId)return json(404,{error:'NOT_FOUND'});
+     return json(200,{result:tmView()});
+    }
+    return json(200,{result:[{tenantId:'sarberki-test',caseId:'case-synthetic',revision:state.revision,category:state.editable?(state.approval==='pending'?'approval':'progress'):'incoming'},
+     ...(state.tm?[{tenantId:'sarberki-test',caseId:state.tm.caseId,revision:state.tm.revision,category:state.tm.approval==='pending'?'approval':'progress',kind:'test-mailbox'}]:[])]});
    }
    if(request.method()!=='GET')return route.abort();
    let path=url.pathname.endsWith('/')?url.pathname+'index.html':url.pathname;
@@ -295,6 +324,43 @@ try{
   await page.locator('#detail-status').filter({hasText:'Belső jóváhagyás mentve és visszaolvasva'}).waitFor();
   await page.locator('[data-section=progress]').click();await page.locator('#load-cases').click();await page.locator('#case-list button').waitFor();
   assert.equal(state.approval,'internally_approved');check(engine,'writer-edit-readback-independent-approval-shared-progress');
+  // Test-mailbox case: Writer saves the marked mail, redrafts; independent Approver returns, then approves internally.
+  const fits=()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth);
+  const openTm=async(section,status)=>{await page.reload();await page.locator('#session-status').filter({hasText:'Bejelentkezve'}).waitFor();
+   await page.locator('[data-section='+section+']').click();await page.locator('#load-cases').click();
+   await page.locator('#case-list li').filter({hasText:'Tesztügy 2'}).getByRole('button').click();await page.locator('#detail-status').filter({hasText:status}).waitFor();};
+  state.role='writer';state.markedMail=true;await page.reload();await page.locator('#session-status').filter({hasText:'Bejelentkezve'}).waitFor();
+  await page.waitForFunction(()=>Boolean(window.google?.accounts?.oauth2?.initTokenClient));
+  await page.locator('#read-email').click();await page.locator('#email-detail').filter({hasText:'Sárberki élő teszt – HU'}).waitFor();
+  await page.locator('#email-save-case:not([disabled])').waitFor();
+  await page.locator('#email-save-case').click();
+  await page.locator('#email-save-status').filter({hasText:'Ügyként mentve (tm-48f2a0b1c2d3e4f0)'}).waitFor();
+  await page.locator('#detail-status').filter({hasText:'Független jóváhagyásra vár'}).waitFor();
+  assert.equal(state.tmPosts[0].token,'SYNTHETIC_TOKEN');assert.equal(JSON.stringify(state.tmPosts[0]).split('SYNTHETIC_TOKEN').length,2,'token only in header');
+  assert.match(await page.locator('#detail-capacity').innerText(),/kapacitás és ár nem igazolt/);
+  assert.equal(await page.locator('#approve-confirm').isDisabled(),true);assert.equal(await page.locator('#reject-draft').isDisabled(),true);
+  await page.locator('#email-next').click();assert.equal(await page.locator('#email-save-case').isDisabled(),false,'marked HTML mail is saveable');
+  await page.locator('#email-next').click();assert.equal(await page.locator('#email-save-case').isDisabled(),true,'reply excluded');
+  await page.locator('#draft-editor').fill('Kitalált javított tervezet.');await page.locator('#save-draft').click();
+  await page.locator('#detail-status').filter({hasText:'Új tervezet mentve és visszaolvasva'}).waitFor();
+  assert.equal(await fits(),true);
+  state.role='approver';await openTm('approval','Független jóváhagyásra vár');
+  assert.equal(await page.locator('#draft-editor').isDisabled(),true);
+  await page.locator('#decision-reason').fill('Kitalált indok');await page.locator('#return-draft').click();
+  await page.locator('#detail-status').filter({hasText:'Visszaküldés mentve és visszaolvasva'}).waitFor();
+  assert.match(await page.locator('#detail-price').innerText(),/visszaküldve javításra.*Kitalált indok/);
+  state.role='writer';await openTm('progress','Visszaküldve javításra');
+  await page.locator('#draft-editor').fill('Kitalált végleges tervezet.');await page.locator('#save-draft').click();
+  await page.locator('#detail-status').filter({hasText:'Új tervezet mentve'}).waitFor();
+  state.role='approver';await openTm('approval','Független jóváhagyásra vár');
+  assert.equal(await page.locator('#approve-draft').isDisabled(),true);
+  await page.locator('#approve-confirm').check();await page.locator('#approve-draft').click();
+  await page.locator('#detail-status').filter({hasText:'Belső jóváhagyás mentve és visszaolvasva (test-mailbox-v1)'}).waitFor();
+  assert.equal(state.tm.approval,'approved_internal');assert.equal(await fits(),true);
+  assert.deepEqual(state.tmPosts.map(p=>p.action+(p.decision?':'+p.decision:'')),['test-mailbox-ingest','test-mailbox-redraft','test-mailbox-decide:return','test-mailbox-redraft','test-mailbox-decide:approve']);
+  assert.ok(state.tmPosts.slice(1).every(p=>p.token===null),'Gmail token only on ingest');
+  assert.deepEqual(errors,[]);state.markedMail=false;
+  check(engine,'test-mailbox-save-writer-redraft-approver-return-and-internal-approval');
   await page.goto(origin+'/index.html');assert.equal(await page.locator('body').count(),1);
   check(engine,'existing-test-page-still-served');
   await context.close();await browser.close();browser=null;
