@@ -301,3 +301,14 @@ A jelenlegi felhőböngészőben korábban kijelentkezett kezelő látszott; a j
 - „Magyar ellenőrző összefoglaló még nincs” látható a módosított tervezetnél; ez külön megfigyelés, nem a most lezárt létszámhiba. Hiányzó összefoglaló viselkedését szükség esetén a meglévő redraft szerződéssel kell összevetni, automatikus újrafejlesztés nélkül.
 - Friss szabályzat-ellenőrzés: teljes tesztági AGENTS.md lekérve 2026-11-01T15:01:44Z (16:01:44 CET), blob `be27bd2dfb4795496bd9f3d64ad60ada1123de5b`, változatlan; induló HEAD `2a9bf2548a0b7bc9f93fc3774979de6ccce58d1a`.
 - Következő konkrét feladat: csak a még hiányzó élő negatív/lifecycle bizonyítékok (duplikált mentés elutasítása, Re: tiltás, külön tesztügyön elutasítás → újranyitás, alkalmazásváltás). A fő Gmail-lánc és a létszámjavítás lezárt; ezeket ne futtassuk újra. A teljes V1 100%-át ez az egy kijelzési elfogadás nem jelenti.
+
+
+## Élő duplikációs próba – 2026-11-01 16:10–16:11 CET
+- **LIVE-DUPLICATE: PASS az ismételt mentés elutasítása / nincs új ügy elfogadási feltételre.**
+- Előfeltétel: 16:08–16:09-es átadott iPhone-képeken 38 levél beolvasva, a 2. „Sárberki élő teszt – AI előnézet” eredeti levél kiválasztva (nem a Re:). A tulajdonos a kért egyszeri ismételt „Ügyként mentés” próbát végezte.
+- Eredménykép: IMG_0500.jpeg (16:10), „A mentés nem sikerült, vagy ez a levél már ügyként szerepel.” A lista 7 tárolt tesztügyet mutat. A generikus szöveg önmagában nem bizonyít konkrét SQLSTATE-et; itt a kontrollált ismételt mentés és az adatbázis-visszaolvasás együtt az elfogadási bizonyíték.
+- Kiinduló readonly SQL 2026-11-01T15:04:54.709845Z: a sarberki-test / sarberki_gmail_test / 1a1917b5a80512ca forráshoz 1 ügy, revision=5, rekordhash f4a9791e1a9b6bca18d6025e1360237f778c5a4fcf48660b6f4b5fc0dcd76005.
+- Utólagos readonly SQL 2026-11-01T15:11:05.186465Z: ugyanahhoz a forráshoz **1 ügy**, revision=5, ugyanaz a rekordhash, audit_events=5, approved_at=2026-11-01T11:47:01.218595Z. A meglévő jóváhagyott ügy és előzményei változatlanok, második ügy nem keletkezett.
+- Korábbi közvetlen katalógus: UNIQUE(tenant_id,mailbox_id,message_id); korábbi PGlite duplicate 23505 negatív teszt és CI bizonyíték megmarad. A jelen élő próbában belső hibakódot nem olvastunk ki.
+- Aktuális AGENTS.md lekérve 2026-11-01T15:11:04.839Z, változatlan blob be27bd2dfb4795496bd9f3d64ad60ada1123de5b. Csak ez a dokumentum módosult; nincs kód-, ügy-, jogosultság-, kapcsoló-, telepítési vagy migrációs módosítás, nincs e-mail/Previo művelet.
+- Következő hiányzó élő próba: az 1. „Re: Sárberki élő teszt – AI előnézet” kiválasztása után az „Ügyként mentés” gomb tiltott állapotának vizuális igazolása. A sikeres duplikációs és korábbi fő kör nem ismétlendő.
