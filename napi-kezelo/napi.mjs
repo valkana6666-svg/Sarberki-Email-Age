@@ -186,6 +186,16 @@ el('logout').addEventListener('click',async()=>{
 const tmStatus=Object.freeze({pending:'Független jóváhagyásra vár.',returned_for_edit:'Visszaküldve javításra. Writer új tervezetet menthet.',
  rejected:'Elutasítva; az ügy nyitva marad, Writer új tervezettel újranyithatja.',approved_internal:'Belső jóváhagyás mentve (test-mailbox-v1). Nincs levélküldés vagy foglalás.'});
 const tmDecisionLabel=Object.freeze({approve:'jóváhagyva',return:'visszaküldve javításra',reject:'elutasítva'});
+// Display known adult/child counts when extraction did not supply a separate total.
+// This is a read-only label: never infer an unknown child count or change stored facts.
+function guestSummary(values){
+ if(values.guests)return values.guests;
+ const count=value=>(typeof value==='number'||typeof value==='string'&&/^(0|[1-9][0-9]*)$/.test(value))&&Number.isSafeInteger(Number(value))&&Number(value)>=0;
+ const parts=[];
+ if(count(values.adults))parts.push(values.adults+' felnőtt');
+ if(count(values.children))parts.push(values.children+' gyermek');
+ return parts.join(', ')||'Nincs megadva';
+}
 // Test-mailbox case: same detail panel, own server read model. Edit/decide flags are hints only; the database re-checks.
 async function openTestMailboxCase(caseId,turn,status){
  const record=await request({tenantId:TENANT,caseId,action:'test-mailbox-record'},'GET');if(!current(turn))return;
@@ -200,7 +210,7 @@ async function openTestMailboxCase(caseId,turn,status){
  const values=record.values||{};
  el('detail-messages').replaceChildren(messages);
  el('detail-facts').textContent='Érkezés: '+(values.arrival||'Nincs megadva')+'\nTávozás: '+(values.departure||'Nincs megadva')+
-  '\nLétszám: '+(values.guests||'Nincs megadva')+'\nHáztípus: '+(values.unit||'Nincs megadva');
+  '\nLétszám: '+guestSummary(values)+'\nHáztípus: '+(values.unit||'Nincs megadva');
  el('detail-status').textContent=status||tmStatus[record.approval];
  el('detail-draft').textContent=record.draft.text;
  el('detail-summary').textContent=record.draft.operatorReviewText||'Magyar ellenőrző összefoglaló még nincs.';
@@ -257,7 +267,7 @@ async function openCase(caseId){
   }
   el('detail-messages').replaceChildren(messages);
   el('detail-facts').textContent='Érkezés: '+(values.arrival||'Nincs megadva')+'\nTávozás: '+(values.departure||'Nincs megadva')+
-   '\nLétszám: '+(values.guests||'Nincs megadva')+'\nHáztípus: '+(values.unit||'Nincs megadva');
+   '\nLétszám: '+guestSummary(values)+'\nHáztípus: '+(values.unit||'Nincs megadva');
   el('detail-status').textContent=record.data.state.approval==='internally_approved'?'Belső jóváhagyás mentve. Az ügy folyamatban van; nincs elküldött levél vagy foglalás.':'A közös ügytárból betöltött tesztügy.';
   el('detail-draft').textContent=draft?.text||'Még nincs tárolt választervezet.';
   el('detail-summary').textContent=draft?.operatorReviewText||'Magyar ellenőrző összefoglaló még nincs.';

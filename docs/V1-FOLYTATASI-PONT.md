@@ -230,3 +230,40 @@ Ez a kiegészítés felülírja a fenti általános „élő lánc NEM IGAZOLT�
 - Kizárólag ez a meglévő folytatási dokumentum frissült. Nincs kódmódosítás, telepítés, migráció, kapcsolóváltás, e-mail-küldés, ügyírás vagy új automatizálás.
 - A fő Gmail → AI → mentés → független jóváhagyás kör újrafuttatása nem szükséges.
 - Következő feladat: meglévő forgatókönyv L4/L5/L11–L12/L14 hiányzó élő bizonyítékainak összegyűjtése (korábbi képernyőkép/napló elfogadható, ha ténylegesen igazol), majd csak a valóban hiányzó célzott próbák. Az approved ügyet indokolatlanul ne módosítsuk; az elutasítási körhöz külön jogosult tesztügy szükséges. A teljes V1 100% továbbra sem állítható ezen hiányok lezárása nélkül.
+
+
+## Élő Gmail-audit folytatás és létszám-megjelenítési javítás – 2026-11-01
+
+### Kiindulás és döntési napló
+- Teljes aktuális AGENTS.md lekérve 2026-11-01T12:05:42.766Z (13:05:42 CET), blob `be27bd2dfb4795496bd9f3d64ad60ada1123de5b`; kiinduló/írás előtt ellenőrzött HEAD `a4eb189bae5f4b087d68c4436d7fbb10fde5a75a`.
+- Meglévő működő elemek: a korábbi fő Gmail → közös AI → ügymentés → Writer → visszaküldés → javított tervezet → független Approver jóváhagyás kör. A fizikai iPhone eredményeket a tulajdonos képernyőképekkel igazoltnak adta át; ezeket elfogadjuk, nem nyitjuk újra.
+- Döntés: csak az új létszám-eltérés reprodukálása és javítása, valamint a szerveres kötés/audit visszaolvasása. A központi adatértelmezés átírása indokolatlan, mert a 4 felnőtt már helyesen ki van nyerve és tárolva. A kijelzési fallback a legkisebb beavatkozás; nem változtat tényeken, kapacitáson, áron vagy jogosultságon.
+
+### Szerveroldali tények (csak-olvasó SQL)
+- Ügy: `tm-1a1917b5a80512ca`, revision=5; forrás és registry message_id azonos, az adott forráshoz 1 ügy létezik.
+- facts.adults={value:"4",status:"known"}, facts.children={value:"0",status:"known"}; state.values.adults="4", children="0". A külön facts.guests mező hiányzó; ez nem azonos az adults adat elvesztésével.
+- A tárolt első üzenet szövege egyezik a state.original szöveggel. Az első, manual_review_required tervezetben szerepel „4 fő (4 felnőtt)”. Gmail-forrás teljes MIME-egyezése az előző auditban már igazolt; nem olvastuk újra indokolatlanul.
+- Audit teljes sora: tm_create (revision 1, 10:57:01Z), tm_redraft (2, 11:01:06Z), tm_return (3, 11:05:53Z), tm_redraft (4, 11:38:38Z), tm_approve (5, 11:47:01.218595Z). A létrehozó és tervezetíró nem approve-jogú; a döntő más személy, can_approve=true.
+- Jóváhagyási szöveghash egyezik az utolsó tervezet SHA-256-jával; a teljes aktuális ügy JSON-hash-e egyezik a revision 5 audit-hashével. internalApproval scope=test-mailbox-v1, reviewedRevision=4; sendAllowed=false, bookingAllowed=false, priceVerified=false, capacityVerified=false.
+- RLS közvetlenül visszaolvasva aktív: sc_cases, sc_test_mailbox_cases, sc_test_mailbox_config.
+- Duplikációvédelem szerveroldalon PASS: élő katalógusból `UNIQUE (tenant_id, mailbox_id, message_id)`; egy meglévő forráshoz 1 ügy. A meglévő tests/test-mailbox-sql-pglite.test.mjs külön ellenőrzi a duplicate message → 23505, jogosulatlan létrehozás → 42501, saját jóváhagyás, hibás hash, stale revision, idegen tenant és ismételt döntés tiltását. Meglévő releváns CI: [41297590496](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41297590496), 2491 PASS, nem futott újra.
+- Korlát: a UNIQUE és a korábbi motoros teszt nem élő kezelői duplikált kattintás bizonyítéka; az továbbra is külön jelölendő.
+
+### Bizonyított kijelzési hiba és minimális javítás
+- FAIL a kiinduló felületi kódon: mindkét ügyadatlap a `values.guests || 'Nincs megadva'` mezőt használta, ezért az adults=4, children=0, guests hiányzó esetben a „Létszám: Nincs megadva” szöveget írta.
+- Reprodukció: meglévő tests/napi-kezelo.test.mjs test-mailbox kezelőtesztjében a valós adatstruktúrával; a javítás előtt az elvárt „Létszám: 4 felnőtt, 0 gyermek” ellenőrzés FAIL.
+- Javítás: napi-kezelo/napi.mjs kizárólag megjelenítési helper. Meglévő összesített létszám megtartva; annak hiányában csak érvényes, ismert nemnegatív egész adults/children mezők jelennek meg („4 felnőtt, 0 gyermek”). Egyik hiányából sem következtetünk másikra vagy teljes létszámra. Mindkét napi ügyadatlap ugyanazt használja.
+- Bővített regresszió: a valós alak mellett meglévő guests-elsőbbség, csak felnőtt, csak gyermek, üres/ismeretlen, negatív, tört és boolean értékek megjelenítése; a meglévő teljes Writer/Approver felületi életciklus megmaradt.
+- Célzott lokális csomag: `node --test tests/napi-kezelo.test.mjs` **11 PASS / 0 FAIL / 0 SKIP**. `node --check napi-kezelo/napi.mjs` PASS. Ez fake-DOM/integrációs bizonyíték, nem új fizikai iPhone-próba. A helyi függőségek letöltésének kezdeti hiányát pótoltuk; az nem termékhiba.
+- Módosított fájlok: napi-kezelo/napi.mjs; tests/napi-kezelo.test.mjs; jelen dokumentum.
+- Nincs központi AI-/üzletiszabály-/SQL-/jogosultságmódosítás, ügyírás, migráció, kapcsolóváltás, Netlify-telepítés, e-mail vagy Previo-művelet. A javítás commitja nem release commit.
+
+### Átadás, állapot és következő lépés
+| Azonosító | Felelős | Állapot | Következő lépés |
+|---|---|---|---|
+| LIVE-GMAIL-MAIN | Tulajdonos iPhone / Work szerveres audit | PASS az igazolt fő körre | Ne futtassuk újra |
+| UI-GUEST-COUNT | Codex célzott javítás / Claude vagy Work ellenőrzés | Forrásjavítás és célzott teszt PASS; telepített javítás NEM IGAZOLT | Commit CI visszaolvasása; szükséges külön kiadási engedéllyel TEST-telepítés, majd egy adatlap ellenőrzése |
+| LIVE-DUPLICATE | Tulajdonos/Work hitelesített Writer | DB UNIQUE és korábbi motoros teszt PASS; élő kattintás NEM IGAZOLT | Csak hiányzó célzott próba/korábbi bizonyíték |
+| LIVE-RE-REJECT-SWITCH | Tulajdonos/Work | korábbi fő iPhone kör PASS; Re:-tiltás, elutasítás/újranyitás, alkalmazásváltás külön NEM IGAZOLT | Meglévő L5/L11–12/L14 bizonyítékok vagy célzott próba |
+
+A jelenlegi felhőböngészőben korábban kijelentkezett kezelő látszott; a jelen körben nem próbáltunk hiányzó jogosultságot SQL-írással, service-role-lal vagy más felhasználó megszemélyesítésével pótolni. A lezárt jóváhagyott ügy változatlan. Nincs Claude-nak párhuzamosan átadott kódfeladat; a célzott javítást Codex elvégezte. V2/V3 érték: ugyanaz a megjelenítés mindkét meglévő ügyúton; új AI-motor vagy adatmodell nincs.

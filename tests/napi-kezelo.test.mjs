@@ -391,6 +391,7 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
  const doc=fakeDocument(),posts=[],sessionMeta=meta(),caseId='tm-'+'ab'.repeat(8);let loggedIn=false,role='writer',failNext=null,skew=0;
  const hash=text=>[...text].reduce((h,c)=>(h*31+c.charCodeAt(0))>>>0,7).toString(16).padStart(8,'0').repeat(8);
  const state={revision:1,approval:'pending',text:'Kitalált első tervezet.',decisions:[]};
+ let guestValues={adults:'4',children:'0'};
  const settle=async()=>{for(let i=0;i<30;i++)await new Promise(resolve=>setImmediate(resolve));};
  globalThis.document=doc;globalThis.location={origin:'https://leafy-chimera-2403e5.netlify.app'};
  globalThis.addEventListener=()=>{};globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};
@@ -408,7 +409,7 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
    if(action==='test-mailbox-record'){
     assert.equal(u.searchParams.get('caseId'),caseId);
     return response({result:{caseId,revision:state.revision,approval:state.approval,messages:[{text:'Kitalált tesztlevél',received_at:'2026-11-01T06:00:00Z'}],
-     values:{arrival:'2026-11-20',departure:'2026-11-22',guests:2,unit:'C'},draft:{text:state.text,operatorReviewText:'Kitalált ellenőrzés',hash:hash(state.text)},
+     values:{arrival:'2026-11-20',departure:'2026-11-22',...guestValues,unit:'C'},draft:{text:state.text,operatorReviewText:'Kitalált ellenőrzés',hash:hash(state.text)},
      decisions:state.decisions,internalApproval:null,
      canEditDraft:role==='writer'&&['pending','returned_for_edit','rejected'].includes(state.approval),canDecide:role==='approver'&&state.approval==='pending'}});
    }
@@ -431,6 +432,21 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   e.email.value='writer@synthetic.invalid';e.password.value='SYNTHETIC_ONLY';await e.login.dispatch('submit');await settle();
   assert.equal(e['count-approval'].textContent,'1 ügy');
   await open();
+  // Live case shape: adults/children are known while the separate guests field is absent.
+  assert.match(e['detail-facts'].textContent,/Létszám: 4 felnőtt, 0 gyermek/);
+  for(const [values,expected] of [
+   [{guests:6,adults:'4',children:'2'},'6'],
+   [{adults:'4'},'4 felnőtt'],
+   [{children:2},'2 gyermek'],
+   [{adults:'4',children:''},'4 felnőtt'],
+   [{},'Nincs megadva'],
+   [{adults:-1,children:'ismeretlen'},'Nincs megadva'],
+   [{adults:'4.5',children:false},'Nincs megadva']
+  ]){
+   guestValues=values;await open();
+   assert.equal(e['detail-facts'].textContent.split('Létszám: ')[1].split('\n')[0],expected);
+  }
+  guestValues={adults:'4',children:'0'};await open();
   assert.equal(e['detail-draft'].textContent,'Kitalált első tervezet.');assert.match(e['detail-capacity'].textContent,/kapacitás és ár nem igazolt/);
   assert.match(e['detail-status'].textContent,/Független jóváhagyásra vár/);
   // Writer: may edit, may not decide.
