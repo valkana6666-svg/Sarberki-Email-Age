@@ -498,3 +498,32 @@ Címzett: Sárberki projektvezető chat. A fenti 21:35-ös engedély és fájlki
 - Következő konkrét Work-feladat: a már meglévő titkosított backup független Drive-másolatának hozzáférési blokkolóját célzottan feltárni, új SQL-export/restore ismétlése nélkül. Következő Claude-futás: a friss feladatnyilvántartásból valódi szabad V1-hiány kiválasztása a megmaradt külső lépések átugrásával; ha nincs ilyen, pontos változatlan no-op commit nélkül. A Gmail-szövegjavítást nem kell újra fejleszteni. Ismert konkrét integrációs következő lépés a 41aa870 + 66a432a javítások külön engedélyes TEST-kiadása és az elutasítás → Writer új tervezet → pending élő kör, amikor a tulajdonos rendelkezésre áll.
 - Korlát: a fájlszintű ütközésvédelem koordinációs szabály, nem atomi többügynökös lock. Ismeretlen aktív munka esetén biztonságos megállás szükséges; minden órára új kódot nem garantálunk.
 - Nem történt main/production/Netlify/release-marker/migráció/kapcsoló-/jogosultság-/AI-/üzletiszabály-módosítás, éles e-mail, foglalás vagy Previo-írás. Új automatizálás nem készült; a tiltások megmaradtak.
+
+## ChatGPT „nem jött vissza a lekérdezés” – Work kapcsolatdiagnosztika, 2026-11-01 22:02 CET
+Címzett: Sárberki projektvezető chat. A jelen vizsgálat a Work saját, ténylegesen rendelkezésre álló kapcsolataira vonatkozik; nem a másik ChatGPT-beszélgetés eszköznaplójának ellenőrzése.
+
+- Első művelet: aktuális teljes tesztági AGENTS.md 2026-11-01T20:59:06.653Z, blob be27bd2dfb4795496bd9f3d64ad60ada1123de5b. Beolvasott HEAD bc2e82632cd6c4e26c6f373e5f0e412032c269ac; ehhez tartozó branch-szűrt CI 41348243413 completed/success. Ez friss külső lekérés, nem emlékezetből vett állapot.
+- Meglévő eszközök: GitHub, Gmail (három felsorolt fiókkapcsolat; a Sárberki teszt- és API-fiók profillekérését próbáltuk), Supabase, Google Drive és további eszközök elérhetők. Csak a projekthez szükséges olvasási próbák történtek; magánlevelezést nem olvastunk.
+- Döntés: először kis, tényleges read-only szolgáltatáshívások, jelenlegi pluginengedélyek és friss projektadatok; újracsatlakoztatás/engedélybővítés csak bizonyított hiba esetén indokolt. A jelen sikeres próbák mellett a kapcsolat törlése/újrakötése nem választott megoldás.
+
+| Kapcsolat | Valódi próba | Eredmény és határ |
+|---|---|---|
+| GitHub | teljes AGENTS, távoli tesztági HEAD, commitok, branch-szűrt CI, aktuális V1-FOLYTATASI-PONT | PASS; szükséges fejlesztési állapot lekérhető |
+| Gmail TESZT | sarberkiprojecttest@gmail.com profil, jelölt tesztlevél keresése, ismert eredeti tesztlevél teljes olvasása | PASS; az ismert 1a1917b5a80512ca levél valódi tartalma visszaérkezett; küldés/módosítás nem történt |
+| Gmail API-fiók | sarberkito@gmail.com profil | PASS e korlátozott kapcsolati próbára; postafióktartalom nem került olvasásra |
+| Supabase TESZT | projektadat és közvetlen SELECT now(), count(*) a sc_test_mailbox_cases táblából | PASS; sarberki-test / mojnqizbcaczstguikpv / ACTIVE_HEALTHY; 2026-11-01 20:59:57.549379+00-kor 2 tesztlevél-ügy; személyes ügytartalom/kulcs nem olvasva, DB-írás nincs |
+| Google Drive | Sárberki névre korlátozott metadata-keresés | PASS; egy projektfájl találat. Ez NEM a Backup V2 Actions külön Drive-credentialjének vagy encrypted exact-ID letöltésének bizonyítéka |
+
+### Jogosultság, másik Chat és bizonyított ok
+- GitHub/Gmail/Supabase jelenlegi app-specifikus engedélyei ténylegesen lekérve: Allow all actions; globális default Allow low-risk actions. Ezek jelenlegi ChatGPT-engedélybeállítások, NEM a szolgáltatói OAuth-scope-ok teljes listája és NEM történeti változásnapló. Engedélyt nem módosítottunk.
+- Jelenleg igazolt hozzáférési hiba nincs a fenti Work-próbákban. A jelzett általános mondatot nem követte elérhető pontos toolnév, időbélyeg, HTTP/hibakód vagy request ID, ezért ebből nem következtethető jogosultságvesztés.
+- A projektvezetői ChatGPT-beszélgetés aktuális eszközkészlete, hibás hívása, belső futási naplója és korábbi jogosultság-változása innen NEM IGAZOLT; azokat nem replayeltük. Work sikere nem igazolja automatikusan a másik beszélgetés sikerét. Nem találtunk közvetlen eszközt a másik Chat belső tool-telemetriájának vizsgálatára.
+- Az OpenAI hivatalos, ténylegesen megnyitott dokumentációja szerint mind Chat, mind Work használhat plugineket: https://learn.chatgpt.com/training/walkthroughs/getting-started . Ezért nem helyes pusztán a Chat módot a friss lekérés lehetetlenségének nevezni; az adott beszélgetésben kell tényleges próbát végezni.
+- **A jelzett hiba gyökéroka NEM IGAZOLT.** Belső ChatGPT-hiba, lejárt hitelesítés, kvóta, modell vagy jogosultságváltás egyikét sem állítjuk bizonyíték nélkül. OpenAI belső naplóihoz nincs hozzáférésünk.
+- Javítás: reprodukálható műszaki hibát e körben nem találtunk, ezért kapcsolatot/jogosultságot/beállítást nem változtattunk és nem állítunk helyreállítást. A friss adatokhoz használható Work-útvonal ténylegesen igazolt.
+
+### Következő legkisebb ellenőrzés ugyanabban a projektvezetői Chatben
+A GitHub plugin használatát kifejezetten kérve: „Olvasd be ténylegesen a valkana6666-svg/Sarberki-Email-Age repository gmail-test-subject-allowlist ágának aktuális AGENTS.md-jét és távoli HEAD-jét. Írd ki az olvasás idejét, teljes HEAD SHA-t és AGENTS blob SHA-t. Ha nincs elérhető GitHub-eszköz, ezt mondd; ha egy hívás hibás, add meg a tényleges eszközt, hibaszöveget/hibakódot és azonosítót, ha visszakaptad. Üres keresési eredményt különíts el a sikertelen hívástól, ne csak annyit írj, hogy nem jött vissza a lekérdezés.”
+Ez diagnosztikai átadás, nem automatikusan beállított globális ChatGPT-utasítás. Tulajdonosi újracsatlakoztatás most nem indokolt; csak ugyanott visszakapott konkrét hitelesítési/engedélyhiba alapján. Ismétlődő belső hibánál az érintett beszélgetés és pontos idő/hibaazonosító szükséges a szolgáltatói kivizsgáláshoz, titok nélkül.
+
+A tesztágon kizárólag e központi diagnosztikai jelentés változott. Nincs alkalmazáskód-, production/main-, telepítési, migrációs, jogosultsági, biztonsági, küldési, foglalási vagy Previo-változás; Claude kódfájljaihoz Work nem nyúlt.
