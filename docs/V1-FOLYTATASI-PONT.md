@@ -33,3 +33,24 @@
 - Kódoldalon nincs ismert, engedély nélkül elvégezhető V1-hiány a tesztlevél-láncban. Következő lépés: tulajdonosi döntés az ellenőrzőlista 1–4. pontjáról (mentés → migráció → kapcsolók → TEST-telepítés), majd az 5. pont élő próbája. Addig az óránkénti futás csak ellenőrizzen és jelentsen; látszatfejlesztés nem indokolt.
 - Ellenőrzőlista 1.1–1.2 (mentés + elkülönített visszaállítás): PASS a Backup V2 41284787609-es futása alapján (2026-11-01, tulajdonosi engedéllyel kiolvasva). Hátralévő tulajdonosi döntés: 2. migráció → 3. kapcsolók → 4. TEST-telepítés → 5. élő próba.
 - Élő lépések kizárólag tulajdonosi döntés után.
+
+## Átadási nyilvántartás (Claude / Codex / Work / óránkénti futás)
+Formátum átadott feladathoz: azonosító · felelős · releváns fájlok · utolsó igazolt commit · hiba · elvárt teszt · állapot. Ténylegesen átadott feladatot más nem végez párhuzamosan.
+
+| Azonosító | Felelős | Fájlok | Utolsó igazolt commit | Hiba / cél | Elvárt teszt | Állapot |
+|---|---|---|---|---|---|---|
+| TM-ACT-2 | Tulajdonos | `deployment/test-mailbox/install.sql`, `rollback.sql` | `7d14aa0` | hosztolt migráció a TEST-projekten | ellenőrzőlista 2.1–2.3 | tulajdonosi döntésre vár |
+| TM-ACT-3/4 | Tulajdonos | Netlify-változó, `sc_test_mailbox_config`, `[netlify-test-release]` | `7d14aa0` | kapcsolók + TEST-telepítés | ellenőrzőlista 3–4 | tulajdonosi döntésre vár |
+| TM-ACT-5 | Tulajdonos + Claude (visszaolvasás) | napi kezelő | `7d14aa0` | élő Writer/Approver próba, iPhone | ellenőrzőlista 5.1–5.12 | 2–4 után |
+
+Codexnek átadott feladat jelenleg nincs; Work/Codex commit 2026-10-31 óta nem érkezett a tesztágra (ellenőrizve 2026-11-01 07:59Z). Nyitott GitHub-jegyek között nincs Gmail-lánc hiba (#8 napi kezelő: a felület és az ügy-életciklus a tesztlevél-ügyekre bekötve; „Lezárt ügyek” szándékosan üres, mert a D2 döntés szerint az elutasítás nem zár le).
+
+## Bizonyítékolvasási tudnivalók
+- A „Sarberki daily UI synthetic mobile proof” push eseményre **mindig skipped**; bizonyíték csak a `workflow_dispatch` futás (`confirm_synthetic_only:true`). Utolsó: run 41281756319 (#39, `52eb26e`) PASS. Push-futás „skipped” állapota nem hiba és nem NEM IGAZOLT.
+- Az `AGENTS.md`-t csak-ellenőrző futásban is be kell olvasni (blob-azonosítóval jelentve).
+
+## Óránkénti automatizálás (403-ügy) – állapot
+- Korábbi 403 oka: a régi (csevegő típusú) feladathoz nem volt repository csatolva. A régi feladat kikapcsolva.
+- Új Code-típusú feladat (repository csatolva): írási hozzáférés **PASS** – saját push `b4a32ad` (2026-11-01 05:53Z); olvasási hozzáférés **PASS** – 06:18Z és 07:18Z futás hiba nélkül olvasta a HEAD-et és a CI-t, és az 1 órás szabály szerint nem fejlesztett.
+- Teljes önálló fejlesztési futás: **NEM IGAZOLT** (eddig nem volt rá szabad ablak/feladat).
+- A feladat utasításszövege ügynökből nem módosítható (tulajdonosi létrehozás); a javasolt új szöveget a tulajdonos másolja be. Új ütemezés nem jött létre.
