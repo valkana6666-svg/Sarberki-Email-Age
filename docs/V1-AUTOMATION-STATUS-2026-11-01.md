@@ -102,3 +102,23 @@
 - **Gmail OAuth → olvasás → szerveres mentés élőben: NEM IGAZOLT ebből a környezetből.** Ok: Google-fiókba belépés és hozzájárulás emberi lépés; ilyen hitelesítő adat nincs és nem is kérendő. A korábbi iPhone-os PASS (fő Gmail → AI → mentés → független jóváhagyás) érvényes, nem ismételtük.
 - Bizonyított hiba: nincs → kódmódosítás nincs (AGENTS 4. pont). Módosított fájl: csak ez a napló. Nem történt: telepítés, migráció, kapcsolóváltás, levélküldés, foglalás, Previo, Gmail-olvasás, main/production.
 - Következő legkisebb lépés: (1) iPhone-on a 41aa870/66a432a címke és státuszszöveg megtekintése (tulajdonos); (2) a meglévő titkosított mentés Drive-másolatának exact-file visszaolvasása (Drive-hozzáférés); (3) ha a tulajdonos kéri, a rev 5 ügyön jóváhagyási kör ebből a környezetből.
+
+## Munkamenet-biztonság élőben, Drive-gyökérok, Diff-eredet (interaktív Claude Code, 2026-11-01 23:51Z – 2026-11-02 00:25Z)
+- Kiinduló HEAD `47aed48cee8f387543f8cb25c41ea46b6ef6c613`, CI [41363995930](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41363995930) success; AGENTS.md teljes, blob `be27bd2dfb4795496bd9f3d64ad60ada1123de5b`, változatlan (ellenőrizve 23:51Z és 00:00Z).
+- Módszer: Playwright/Chromium a TEST-oldalon, a meglévő `operator-session` és `booking-cases` végpontok, valódi Writer/Approver-fiók; a sütik csak memóriában, a kimenet titokegyezésre ellenőrizve. Ügy: `tm-1a0e711a60c6a259` rev 5/pending – a próbák alatt végig változatlan.
+
+| Próba | Eredmény |
+|---|---|
+| Saját tenant, érvényes CSRF | 200 – PASS |
+| Idegen tenant (`other-tenant`) record és daily-list | 403 FORBIDDEN – PASS |
+| Kijelentkezés után ugyanaz a böngésző | 401 AUTH_REQUIRED – PASS |
+| Kijelentkezés előtti süti + régi CSRF visszajátszása új böngészőben | record 401, session 401 – PASS |
+| CSRF: hiányzó / másik munkamenet érvényes tokenje / véletlen 64-hex / operátorfejléc nélkül (GET) | mind 403 – PASS |
+| CSRF: másik munkamenet tokenje / véletlen token (POST redraft) | 403, állapot változatlan – PASS |
+| 30 perces tétlenség: belépés 23:52:41Z, 31,5 perc hívás nélkül, 00:24:13Z | record 401, session 401 AUTH_REQUIRED – PASS; a lejárt süti kijelentkezése 200 (szerveroldali Auth-visszavonás) |
+
+- WebKit/iPhone: a konténerben nincs WebKit (csak Chromium; Playwright újratelepítése tilos). Élő WebKit-próba: NEM IGAZOLT. A változatlan felületi kódra a CI szintetikus Chromium+WebKit mobilpróba [41360826829](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41360826829) success; fizikai iPhone (41aa870/66a432a címke és szöveg): NEM IGAZOLT.
+- **Drive-mentés: BLOKKOLT, gyökérok igazolva.** A [41325441753](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41325441753) futás naplójában a preflight lépés környezete `SARBERKI_V2_DRIVE_OAUTH_JSON:` **üres** (egy beállított secret `***`-ként látszana), a `SARBERKI_V2_DRIVE_FOLDER_ID` be van állítva. Ok: a `SARBERKI_V2_DRIVE_OAUTH_JSON` repository secret hiányzik vagy üres – programhiba nincs. Teendő (tulajdonos): Google OAuth-hozzájárulás a mentési Drive-fiókkal, majd a secret beállítása; utána egy `[backup-v2-drive-restore]` futás. Újrafuttatás addig értelmetlen, nem indítottuk.
+- Újratervezet utáni „Magyar ellenőrző összefoglaló még nincs”: szándékos viselkedés (a redraft csak szöveget ment; kézi módosításhoz nincs ellenőrzött magyar összefoglaló, ugyanaz a minta, mint a `manual_edit_translation_unverified`). Nem hiba, nem módosítottuk.
+- **Diff-eredet (+11931/−18 a felületen):** a munkafa tiszta (nincs módosított/követetlen/ignorált fájl, nincs stash), a helyi ág azonos az originnel. E munkamenet összes változása `ffde29c..HEAD`: 1 fájl, csak dokumentáció (ez a napló). A tesztágnak a main-nel nincs közös őse (a teljes eltérés 792 fájl, +70621/−97); a tesztág egyetlen ősére sem jön ki pontosan +11931/−18 (a legközelebbi ~11,9k beszúrás −537…−549 törléssel). A felületi szám tehát nem e munkamenet kódmódosítása; a pontos összehasonlítási alapja innen NEM IGAZOLT. Semmit nem töröltünk és nem állítottunk vissza.
+- Módosított fájl: csak ez a napló. Nem történt: kódmódosítás, telepítés, migráció, kapcsoló, jelszóváltás, levélküldés, foglalás, Previo, main/production.
