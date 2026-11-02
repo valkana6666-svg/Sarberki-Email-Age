@@ -23,7 +23,7 @@ TEST-oldal: `leafy-chimera-2403e5`, telepített `32052fc`. Teljes `npm test`: 25
 | SCHEDULE-ENV | Tulajdonos, számítógépről | BLOKKOLT | Óránkénti feladat környezete: Sarberki TEST E2E |
 | V1-RC-CHECK | Claude | FELTÉTELES PASS – csak a Drive hiányzik | [`V1-RC-CHECK-2026-11-02.md`](V1-RC-CHECK-2026-11-02.md); Drive PASS után végleges |
 | LIVE-MAILBOX-PLAN | Claude | TERV KÉSZ – tulajdonosi döntésre vár | [`V1-LIVE-MAILBOX-PLAN.md`](V1-LIVE-MAILBOX-PLAN.md): 3 kérdés (hol fut az info@; A: Microsoft Graph vagy B: továbbítás; éles környezet) |
-| GUEST-TEXT-FIXES | Claude | KÉSZ a tesztágon; TEST-kiadás engedélyre vár | Minőségi átvizsgálás (264 megkeresés): (1) magyar dátum `2026.11.13.` (`3228b13`); (2) „nem hozunk kutyát” után nincs kisállatdíj-mondat; (3) szlovén „s psom” felismerve; (4) kérdések/státusz az aláírás elé, felkínált típusok mellett nincs „VIP/Családi/Deluxe/Osztott?” ismétlés. `npm test` 2527/2527 |
+| GUEST-TEXT-FIXES | Claude | KÉSZ a tesztágon; TEST-kiadás engedélyre vár | Minőségi átvizsgálás (264 megkeresés): (1) magyar dátum `2026.11.13.` (`3228b13`); (2) „nem hozunk kutyát” után nincs kisállatdíj-mondat; (3) szlovén „s psom” felismerve; (4) kérdések/státusz az aláírás elé, felkínált típusok mellett nincs „VIP/Családi/Deluxe/Osztott?” ismétlés; (5) létszám: „6 főre”, „15 fős társaság”, „za 4 osebe” felismerve (azonos kapacitásdöntés). `npm test` 2530/2530 |
 | PREVIO-READ-PLAN | Work | V1 után | Csak olvasó kapacitás/ár bekötésének feltételei (API-kulcs, mellékhatás-kapu) |
 
 ## Akadályok

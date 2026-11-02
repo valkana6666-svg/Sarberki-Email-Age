@@ -130,7 +130,10 @@ export function guestCountFromText(text=''){
     || text.match(/\binsgesamt\s+(\d{1,2})\s*(?:gäste|personen)\b/iu)
     || text.match(/\bskupaj\s+(\d{1,2})\s*oseb\b/iu);
   if(explicitTotal) return Number(explicitTotal[1]);
-  const total=text.match(/(?:^|\s)(\d{1,2})\s*(?:fő|fo|személy|szemely|persons?|people|guests?|gäste|personen|oseb)(?=\s|$|[,.!?:;])/iu);
+  // Inflected party sizes: "4 főre/főnek/főt", "2 személyre", Slovene "za 4 osebe". "N fős" is a party size only
+  // before a group noun; "4 fős házat" describes a cabin, not the guests.
+  const total=text.match(/(?:^|\s)(\d{1,2})\s*(?:fő(?:re|nek|t|vel)?|fo(?:re|nek|t|vel)?|személy(?:re|nek|t|lyel)?|szemely(?:re|nek|t|lyel)?|persons?|people|guests?|gäste|personen|oseb[ei]?)(?=\s|$|[,.!?:;])/iu)
+    || text.match(/(?:^|\s)(\d{1,2})\s*(?:fős|fos)\s+(?:baráti\s+|baráti\s+|\p{L}+\s+)?(?:társaság|tarsasag|család|csalad|csoport|csapat|kör|kor)\p{L}*/iu);
   if(total) return Number(total[1]);
   const adultChildPairs=[
     /\b(\d{1,2})\s*(?:felnőtt|felnott)\w*\s*(?:és|es|,|\+)\s*(\d{1,2})\s*(?:gyerek|gyermek)\w*\b/iu,
