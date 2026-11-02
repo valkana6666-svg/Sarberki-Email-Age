@@ -93,4 +93,11 @@ class DriveDiagnostics(unittest.TestCase):
         out=err.getvalue()
         self.assertIn('stage=oauth_token',out);self.assertIn('NARROW_DRIVE_FILE_SCOPE_REQUIRED',out)
         for secret in ('cid-secret','GOCSPX-secret','1//secret'):self.assertNotIn(secret,out)
+class DriveSecretShape(unittest.TestCase):
+    def test_shape_never_reveals_content(self):
+        shape=drive.secret_shape('GOCSPX-abc')
+        self.assertEqual(shape,'len=10,lines=1,first=letter,last=letter');self.assertNotIn('GOCSPX',shape)
+        self.assertEqual(drive.secret_shape('{"a":"b"}'),'len=9,lines=1,first={,last=}')
+        self.assertEqual(drive.secret_shape(''),'len=0,lines=0,first=none,last=none')
+        self.assertEqual(drive.secret_shape('\ufeff{"a":1}\n'),'len=10,lines=2,first=bom,last=space')
 if __name__=='__main__':unittest.main()

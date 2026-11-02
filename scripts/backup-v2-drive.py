@@ -25,8 +25,16 @@ def request(url,token=None,data=None,content_type=None,method=None,extra_headers
         body=r.read(MAX+1)
         if len(body)>MAX:raise ValueError('RESPONSE_TOO_LARGE')
         return (body,dict(r.headers)) if with_headers else body
+def secret_shape(secret):
+    # Structure only, never content: length, line count, and whether it is framed as a JSON object.
+    text=secret if isinstance(secret,str) else ''
+    kind=lambda c:'{' if c=='{' else '}' if c=='}' else 'quote' if c in '"\'' else 'space' if c.isspace() else 'bom' if c=='\ufeff' else 'letter' if c.isalpha() else 'digit' if c.isdigit() else 'other' if c else 'none'
+    return 'len='+str(len(text))+',lines='+str(text.count('\n')+1 if text else 0)+',first='+kind(text[:1])+',last='+kind(text[-1:])
 def access_token(secret):
+    global STAGE
+    STAGE='oauth_config('+secret_shape(secret)+')'
     config=json.loads(secret)
+    STAGE='oauth_token'
     if set(config)!={'client_id','client_secret','refresh_token'} or any(not isinstance(v,str) or not v for v in config.values()):
         raise ValueError('DRIVE_OAUTH_CONFIGURATION_REQUIRED')
     body=urllib.parse.urlencode(dict(config,grant_type='refresh_token')).encode()
