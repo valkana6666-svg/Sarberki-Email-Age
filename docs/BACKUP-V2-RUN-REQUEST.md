@@ -1,5 +1,22 @@
 # Daily cloud backup request
 
+Date: 2026-11-02 (Europe/Vienna).
+Requested at: 2026-11-02T08:04:22.572Z (local 2026-11-02T09:04:22+01:00).
+Request ID: cloud-daily-20261102-090422-b9a2eccd.
+Provider: github-bridge.
+Branch: gmail-test-subject-allowlist.
+Request marker: [backup-v2-cloud-bridge-run].
+Base commit: b9a2eccd914bd4dafe2b542dab66d836b2d6b601.
+Previous request blob SHA: e2ca257435d1ae673f33c2a03341b8dc36920421.
+
+Single authorized daily read-only export request. Not evidence of backup success. Preserve encryption, exact-ID GitHub artifact readback and isolated SQL restore; no production, Netlify, live booking or Previo changes.
+
+Previous proven snapshot: GitHub Actions run 41325591254 (2026-11-01), source commit aa4db7362facb44e1bd024645de5e6e2d9a42eee; safety and export-restore SUCCESS; encrypted staging artifact 13090139495, proof artifact 13090463991; exact-ID GitHub readback and isolated SQL restore PASS (52 tables compared). Separate Drive transfer/readback/restore remains independently verifiable.
+
+## Historical requests (preserved)
+
+# Daily cloud backup request
+
 Date: 2026-11-01 (Europe/Vienna).
 Requested at: 2026-11-01T07:26:18.900Z (UTC; local 2026-11-01 08:26:18+01:00).
 Request ID: cloud-daily-20261101-082618-676ee69e.
