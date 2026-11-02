@@ -512,6 +512,8 @@ export function replySummary(language='hu', {arrival=null,departure=null,guests=
     if(n===3||n===4)return `${n} odrasle osebe`;
     return `${n} odraslih oseb`;
   };
+  // Slovene number agreement: 1 oseba, 2 osebi, 3-4 osebe, 5+ oseb (101/102/103-104 follow 1/2/3-4).
+  const siPersons=n=>{const r=n%100;return `${n} ${r===1?'oseba':r===2?'osebi':r===3||r===4?'osebe':'oseb'}`;};
   const siChildren=n=>{
     if(n===1)return '1 otrok';
     if(n===2)return '2 otroka';
@@ -541,7 +543,7 @@ export function replySummary(language='hu', {arrival=null,departure=null,guests=
       dog:'You would like to bring a dog.'
     },
     si:{
-      people:()=>children?`${guests} oseb (${siAdults(adults)} in ${siChildren(children)}${ageList('si')?`; starost otrok: ${ageList('si')} let`:''})`:`${guests} oseb`,
+      people:()=>children?`${siPersons(guests)} (${siAdults(adults)} in ${siChildren(children)}${ageList('si')?`; starost ${children===1?'otroka':'otrok'}: ${ageList('si')} let`:''})`:siPersons(guests),
       base:p=>`Pri nas želite bivati od ${fmtNumeric(arrival)} do ${fmtNumeric(departure)}, skupaj ${p}.`,
       pier:'Če je mogoče, želite hiško z lastnim pomolom.',
       hotTub:'Želite tudi masažno / vročo kad.',
