@@ -577,3 +577,12 @@ Címzett: Sárberki projektvezető chat.
 - Tényleges naplókeresés november 1–2. kijelzett időablakára: nincs találat. Ez nem globális audit vagy naplózási hiba bizonyítéka.
 - Részletek és URL-ek: [Previo-felmérés](PREVIO-TEST-UI-ASSESSMENT-2026-11-02.md), commit 72f2085d4c9af3346661ffec5fb6eac57f2bcdca. Konkrét API-működés továbbra NEM IGAZOLT.
 - Következő: ár/kedvezmény/foglaló és gyermekkor/többegységes adatlap; voucher és meglévő foglalás kommunikáció/történet. Nincs új kódhiba, kódfejlesztés, Previo-mentés, vendégküldés vagy telepítés.
+
+## Previo ár/életkor/fizetés felmérés – 2026-11-02 09:03 CET
+Címzett: Sárberki projektvezető chat.
+- AGENTS teljes beolvasás 08:59:15 CET, változatlan be27bd2dfb4795496bd9f3d64ad60ada1123de5b blob. Induló HEAD 4f0d7fd9ccdc84594ebedd3bc8682c25599e06fb; CI 41409694284 success.
+- **PASS, csak TESZT:** Alap árlistán 2026.11.02–12.31 között 1–2 fő 30.000 Ft, 3 fő 40.000 Ft, 4 fő 50.000 Ft kijelzés; hosszútávú kedvezménylistában alapszűrővel nincs találat; Gyerek kategória 0–17, Felnőtt 18–150, felnőtt alapértelmezett; online fizetés Alap nézetében nincs szezon.
+- Ezek nem éles árak/üzleti szabályok és nem kapacitás- vagy API-bizonyíték. Gyermekkedvezmény és foglaló tényleges alkalmazása NEM IGAZOLT. Beállítás, motor és API-kapu változatlan.
+- Részletes URL-ek és korlátok a [Previo-felmérésben](PREVIO-TEST-UI-ASSESSMENT-2026-11-02.md), commit 82c59240366ccc913bee2e4a0893eceebace4bda.
+- Következő: gyermek-életkor és többegységes foglalási adatlap mezői mentés nélkül; voucher/kommunikáció/történet meglévő, azonosítható szintetikus foglaláson. Éles honlap integrációja és saját API-hozzáférés továbbra külön, NEM IGAZOLT.
+- Csak dokumentáció; nincs Previo-mentés, vendégküldés, pénzügyi művelet, foglalás vagy telepítés.
