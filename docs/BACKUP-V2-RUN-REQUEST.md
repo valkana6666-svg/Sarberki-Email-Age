@@ -40,3 +40,12 @@ Source project only: mojnqizbcaczstguikpv.
 Use the existing encrypted read-only export, exact-ID readback and isolated SQL restore workflow unchanged. No source migration, activation switch, Netlify deployment, e-mail, booking or Previo operation is authorized by this request.
 Before refresh: DML counter baseline and nonsecret schema fingerprints captured by Work; compare again before any migration.
 Previous backup run: 41284787609; verified ciphertext package SHA256: 2b0906b984359a4d446f57a539a767411ea9920375b9a63813806ac9d321753a.
+
+## Drive-útvonal próbája új OAuth-secrettel (tulajdonos beállította, 2026-11-02)
+Requested at: 2026-11-02T17:14:18Z.
+Request ID: drive-proof-20261102.
+Provider: drive (vars.SARBERKI_V2_STORAGE_PROVIDER), marker: [backup-v2-run].
+Branch: gmail-test-subject-allowlist. Base commit: 97edcdd58aa0d7cdee880913857e1010b6a78ea0.
+Reason: the owner created a new client secret and drive.file refresh token for the dedicated "Sarberki Drive Backup" OAuth client (Testing, External, test user added) and stored SARBERKI_V2_DRIVE_OAUTH_JSON. Previous blocker: run 41325441753, empty secret.
+Unchanged existing workflow: read-only source export, isolated SQL restore, encrypted Drive upload, exact-file SHA256 readback, restore from the Drive download. No migration, switch, Netlify deployment, e-mail, booking or Previo operation.
+Known limits: Testing refresh tokens expire after about 7 days; the client secret ending …Stz3 appeared in a chat screenshot and is to be rotated at the next token renewal (owner chose "later").
