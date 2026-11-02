@@ -19,7 +19,7 @@ TEST-oldal: `leafy-chimera-2403e5`, telepített `32052fc`. Teljes `npm test`: 25
 ## Nyitott feladatok
 | ID | Felelős | Állapot | Teendő |
 |---|---|---|---|
-| DRIVE-SECRET | Tulajdonos (útmutató: Work) | BLOKKOLT | `SARBERKI_V2_DRIVE_OAUTH_JSON` secret, majd `[backup-v2-drive-restore]` és visszaolvasás (Claude) |
+| DRIVE-SECRET | Tulajdonos ([útmutató](DRIVE-OAUTH-TULAJDONOSI-UTMUTATO.md): Work) | BLOKKOLT | `SARBERKI_V2_DRIVE_OAUTH_JSON` secret, majd `[backup-v2-drive-restore]` és visszaolvasás (Claude) |
 | SCHEDULE-ENV | Tulajdonos, számítógépről | BLOKKOLT | Óránkénti feladat környezete: Sarberki TEST E2E |
 | V1-RC-CHECK | Claude | Drive után | Kiadásra jelölési ellenőrzés a fenti bizonyítékokból |
 | LIVE-MAILBOX-PLAN | Work | SZABAD | info@sarberki.hu csak olvasó bekötésének terve (hozzáférés, kockázat, lépések); megvalósítás tulajdonosi engedéllyel |
