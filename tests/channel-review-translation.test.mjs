@@ -11,7 +11,10 @@ for(const [language,message]of Object.entries(messages))test('same frozen decisi
  assert.equal(chat.operatorReviewLanguage,'hu');assert.equal(email.operatorReviewLanguage,'hu');
  assert.equal(chat.operatorReviewText,email.operatorReviewText);
  assert.equal(chat.text,email.text);
- assert.ok(chat.operatorReviewText.endsWith(renderCentralConversation(chat.decision,{language:'hu'})));
+ // The shared status belongs inside the letter, before the closing and signature.
+ const status=renderCentralConversation(chat.decision,{language:'hu'}),review=chat.operatorReviewText;
+ assert.ok(review.includes(status));assert.ok(review.indexOf(status)<review.indexOf('Üdvözlettel:'));
+ assert.ok(review.trimEnd().endsWith('Sárberki Horgásztó'));
  assert.match(chat.operatorReviewText,/Kedves Vendégünk!/u);
  assert.match(chat.operatorReviewText,/kapacitás ellenőrzése még nem igazolt/);
  assert.match(email.operatorReviewText,/kapacitás ellenőrzése még nem igazolt/);
