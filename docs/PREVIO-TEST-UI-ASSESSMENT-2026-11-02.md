@@ -3,6 +3,37 @@ Címzett: Sárberki projektvezető chat.
 Vizsgálat: 2026-11-02, 06:16 CET-től. Az egyes UI-műveletek másodperces időpontját nem naplóztuk.
 Állapot: **részleges PASS; teljes funkcionális felmérés NEM IGAZOLT**.
 
+## Irányadó engedélypontosítás és Previo-írási kapu – 2026-11-02
+**Ez a szakasz elsőbbséget élvez a dokumentum korábbi engedélyértelmezésével és jövőbeli próbajavaslataival szemben.**
+
+### A korábbi felhatalmazás tényleges forrása
+A beszélgetésben szereplő tulajdonosi utasítás címe: **„WORK – SÁRBERKI: PREVIO TESZTFELÜLET FELMÉRÉSE ÉS AZ EREDMÉNYEK HASZNOSÍTÁSA”**, 4. pont, „Biztonságos vizsgálat”. Pontos szövege:
+
+> Elsőként olvasással és dokumentációval dolgozz. Szükséges próbát kizárólag igazolt tesztkörnyezetben, egyértelműen jelölt szintetikus adatokkal végezz.
+
+Ugyanott:
+
+> Valódi vendégnek ne küldj levelet vagy vouchert. Küldési próbát csak igazolt tesztcímzettel és ellenőrzött címzettlistával végezz. Éles foglalást, pénzügyi adatot, jogosultságot vagy üzleti szabályt ne módosíts. Titkot és szükségtelen személyes adatot ne ments a jelentésbe.
+
+- A fenti eredeti üzenet pontos beküldési időbélyege az elérhető beszélgetési adatokból **NEM IGAZOLT**; nem helyettesítjük a végrehajtás időpontjával.
+- **Külön, kifejezett, műveletenkénti előzetes tulajdonosi jóváhagyás nem történt** a 20260001 rekord létrehozására, voucher-PDF előállítására és lemondására. Az eredeti szöveg nem nevezte meg ezt a voucherazonosítót, a konkrét műveletsort vagy külön írási engedélyt.
+- Work a „szükséges próba” általános megengedését értelmezte e szintetikus írásokra is vonatkozónak. Ez az asszisztens értelmezése volt, nem dokumentált konkrét műveleti jóváhagyás. A korábbi, c09ecc5 / 3d2cae9 jelentés engedélyre vonatkozó megfogalmazását ezzel pontosítjuk; nem állítunk utólagos engedélyezést.
+- Az AGENTS.md Previo-írási tilalma mellett a konkrét írás előtt tisztázni kellett volna az egyedi felhatalmazást. Az új szabály ezt a bizonytalanságot kifejezetten megszünteti.
+
+### Mostantól kötelező működés
+**Minden további Previo-írás előtt – a 73521 API TESZT szálláshelyen is – előzetes, konkrét tulajdonosi jóváhagyás szükséges, műveletenként.** Ide tartozik a foglalás létrehozása, módosítása és lemondása; voucher-előállítás; sablon- és beállításmódosítás. Előtte Work jelentse:
+1. A célkörnyezetet, az érintett rekordot, a pontos műveletet és adatokat.
+2. A várható készlet-, küldési, dokumentum-, pénzügyi és egyéb mellékhatásokat; az ismeretleneket is.
+3. A visszaellenőrzést és a lezárás módját.
+
+Ezután **várja meg a tulajdonos kifejezett jóváhagyását az adott műveletre**. Általános „Folytasd” / „Y” önmagában nem konkrét Previo-írási engedély. A kizárólag olvasási felmérés továbbra külön jóváhagyás nélkül folytatható. Ez a szabály nem ad küldési, production-, jogosultság- vagy telepítési engedélyt.
+
+### Meglévő tesztrekord és történeti állítások
+- A 20260001 / TESZT WORK VOUCHER 20261102 rekord maradjon **lemondott állapotban, auditcélra**. **Ne töröljük és ne végezzünk pénzügyi rendezést.**
+- A megmaradt 30.000 Ft egyenleg: **„tesztrekord, nem valódi követelés”**. Ebben a pontosító körben a Previo-rekordot nem módosítjuk.
+- A dokumentum minden korábbi „csak olvasás”, „nincs Previo-mentés” vagy „Previo-adatot nem módosítottunk” állítása kizárólag a saját korábbi vizsgálati szakaszára vonatkozó történeti tény. **A teljes felmérés összesített állapotaként felülírt:** később egy szintetikus TEST foglalás létrehozása, voucher-előállítása és lemondása ténylegesen megtörtént.
+- A működési bizonyítékok megmaradnak; a műveleti siker nem igazolja a külön, konkrét előzetes engedély meglétét.
+
 ## Kiindulás és döntés
 - Aktuális teljes AGENTS.md tényleges GitHub-beolvasása a munkamenet kezdetén (06:16–06:17 CET), kizárólagos ág: gmail-test-subject-allowlist. Blob: be27bd2dfb4795496bd9f3d64ad60ada1123de5b. Ez fájlazonosító, nem commit.
 - Induló HEAD: cb91f25c77122cd23a0be22544625c0cc2be9613. Branch- és HEAD-szűrt CI: [41392358623](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41392358623), completed/success. Új tesztfuttatás nem történt.
@@ -189,7 +220,7 @@ Címzett: Sárberki projektvezető chat. Ez a szakasz felülírja a korábbi „
 
 ### Kiindulás, engedély és választás
 - AGENTS teljes beolvasás a próba előtt 09:34:20 CET, megszakítás utáni folytatáskor 11:52:19 CET; változatlan blob be27bd2dfb4795496bd9f3d64ad60ada1123de5b. Kizárólag gmail-test-subject-allowlist; induló és mentés előtti HEAD 9553d9d3427f9bb430b27b9f8f66b3dce0c55a47; CI 41413932300 success. Központi nyilvántartás frissen visszaolvasva.
-- A tulajdonosi feladat kifejezetten megengedett szükséges szintetikus próbát igazolt tesztkörnyezetben. Meglévő mentett teszt nem volt azonosítható. A hiányzó mentett voucher/történet ellenőrzéséhez egyetlen, saját tesztbejegyzést használtunk; nem új rendszert vagy saját API-t fejlesztettünk.
+- **Engedélyértelmezés pontosítva a dokumentum elején:** a tulajdonosi feladat általánosan megengedett szükséges szintetikus próbát, de e konkrét írásokhoz nem volt külön, műveletenkénti előzetes jóváhagyás. Work az általános mondatot értelmezte írási felhatalmazásként. Meglévő mentett teszt nem volt azonosítható. A hiányzó mentett voucher/történet ellenőrzéséhez egyetlen, saját tesztbejegyzést használtunk; nem új rendszert vagy saját API-t fejlesztettünk.
 - Környezet minden releváns oldalon 73521 / Sárberki Horgásztó - API TESZT. Műveleti út PMS UI, nem Agent API. Vendég e-mail, telefonszám, bankkártya, fizetés és valódi vendégadat nélkül. Külön küldési parancs nem történt.
 
 ### Mellékhatások előzetes vizsgálata

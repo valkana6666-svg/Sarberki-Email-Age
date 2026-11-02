@@ -2,6 +2,15 @@
 
 Érzékeny adatot, tokent, valódi vendégadatot nem tartalmaz. Minden interaktív és óránkénti futás végén frissítendő.
 
+## Irányadó Previo-engedélypontosítás – 2026-11-02
+**Claude / Codex / Work: ezt a kaput a korábbi Previo-próbajavaslatok előtt alkalmazzátok.**
+- **Minden további Previo-írás a TEST-ben is előzetes, konkrét tulajdonosi jóváhagyáshoz kötött, műveletenként:** létrehozás, módosítás, lemondás, voucher-előállítás, sablon vagy beállítás. Előtte pontos művelet/cél/adatok, várható és ismeretlen mellékhatások, visszaellenőrzés és lezárás jelentendő; utána a jóváhagyást meg kell várni. Általános Folytasd/Y önmagában nem konkrét írási engedély. Olvasási felmérés külön engedély nélkül folytatható.
+- A c09ecc5 / 3d2cae9 próba engedélyének forrása a tulajdonosi „PREVIO TESZTFELÜLET FELMÉRÉSE ÉS AZ EREDMÉNYEK HASZNOSÍTÁSA” utasítás 4. pontja: „Szükséges próbát kizárólag igazolt tesztkörnyezetben, egyértelműen jelölt szintetikus adatokkal végezz.”
+- **A konkrét 20260001 létrehozás/voucher/lemondás műveletsorra külön, kifejezett, műveletenkénti előzetes jóváhagyás nem történt.** Work az általános próbaengedélyt értelmezte e műveletekre vonatkozónak. Ez értelmezés, nem dokumentált konkrét jóváhagyás; nem állítunk utólagos engedélyt. Az eredeti utasítás pontos beküldési időbélyege NEM IGAZOLT.
+- **A régebbi Previo „nem módosítottunk adatot / csak olvasás” bejegyzések összesített állapotként FELÜLÍRTAK.** Kizárólag saját korábbi részszakaszukat írják le. Összesítve: egy szintetikus TEST foglalás létrejött, voucher készült, majd lemondás történt.
+- A 20260001 rekord maradjon lemondott állapotban auditcélra. Törlés és pénzügyi rendezés tilos; megmaradt 30.000 Ft: **„tesztrekord, nem valódi követelés”**. Ebben a körben nincs Previo-művelet.
+- A pontos eredeti idézetek, értelmezési határ és részletes kapu a [Previo-felmérés elején](PREVIO-TEST-UI-ASSESSMENT-2026-11-02.md). A konkrét írási engedélyt követelő jelen utasítás felülírja a korábbi általános próbaengedélyre támaszkodó folytatási javaslatokat.
+
 ## Állandó folytatási szabály (tulajdonosi utasítás, 2026-11-01)
 - A „Folytasd” vagy „Y” mindig azt jelenti: folytatás a legutóbbi **ténylegesen igazolt** állapottól, a kijelölt terv következő hiányzó feladatával. Nem új projekt, nem újratervezés, nem kész munka megismétlése.
 - Minden futás elején: tesztági `AGENTS.md` teljes beolvasása (ha nem elérhető: NEM IGAZOLT, szabályzatot igénylő módosítás nincs) → GitHub HEAD → utolsó igazolt eredmény → kész fejlesztések és tesztek → következő valódi hiány → onnan folytatás.
