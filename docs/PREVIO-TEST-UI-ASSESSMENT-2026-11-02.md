@@ -70,3 +70,41 @@ Ez nem bizonyít hibás jelszót, Previo-leállást vagy API-jogosultságveszté
 - A sarberki.hu honlap beküldése létrehoz-e Previo-bejegyzést: **NEM IGAZOLT**. A teszt online panelje nem bizonyítja az éles honlap integrációját.
 - API-kulcs és szolgáltatói olvasási/sandbox/mellékhatásmentességi szerződés ellenőrzése továbbra külön kapu. Kulcsot chatbe/GitHubra nem kérünk.
 - Kódjavítást indokoló reprodukált programhiba nincs; csak dokumentáció készült. Nincs telepítés, migráció, jogosultságváltozás, vendégküldés, valódi foglalás, pénzügyi vagy Previo-adatmódosítás.
+
+## Folytatás – 2026-11-02 08:37–08:42 CET (07:37–07:42 UTC)
+Címzett: Sárberki projektvezető chat. Ez a szakasz a korábbi hozzáférési akadály aktuális állapotát felülírja; a felmérés továbbra részleges.
+
+### Kiindulás és ütközésvédelem
+- Teljes aktuális AGENTS ismét ténylegesen beolvasva a fenti időablak elején; ág: gmail-test-subject-allowlist; blob: be27bd2dfb4795496bd9f3d64ad60ada1123de5b. A hívás másodperces időpontját nem rögzítettük.
+- Induló HEAD: e531a04d2dc76afb86ca4580327b677a537d9908. Ehhez a branch-szűrt CI: [41404399976](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41404399976) success; capacity regression 41404399941 success; a mobil push workflow 41404399947 skipped, nem élő mobilbizonyíték.
+- A meglévő felmérés és központi feladatnyilvántartás visszaolvasva. Mentés előtti HEAD: c96df0563aadc882560e7b74fad26e4f4c9b0f25; Claude friss, ikon TEST-kiadásról szóló dokumentációs változása visszaolvasva. Alkalmazáskódja és feladatköre érintetlen.
+- A kezdeti üres böngészőlap nem jelentett kijelentkezést: a PMS a meglévő munkamenettel, új jelszó vagy jogosultságkérés nélkül megnyílt. Minden vizsgált oldalon 73521 és a Sárberki Horgásztó - API TESZT fejléc szerepelt.
+- Választás: a meglévő PMS2 beállítások olvasása. A korábbi identity-origin akadály a most megnyitott Reservation+ részoldalakat már nem blokkolta. Ez nem bizonyít új belépési folyamatot vagy API-hitelesítést.
+
+### Új, ténylegesen visszaolvasott UI-bizonyítékok
+Az állapotokat a betöltött oldal akadálymentességi/DOM-pillanatképéből olvastuk, nem pusztán a menüpont létezéséből. A kapcsolókat nem változtattuk meg.
+
+| Oldal | Ténylegesen látott állapot | Következtetés és korlát |
+|---|---|---|
+| https://pms2.previo.app/73521/settings/applications/online-reservations/booking/general | A „foglalási naptáram a tényleges foglaltságot tükrözi…” és az időszakosan szabad szoba foglalását engedő checkbox egyaránt jelöletlen; online foglalás legkésőbb 00:00; Mentés tiltva | PASS a tesztbeállításra. Az első jelölő az online visszaigazolhatóságról szól; nem egyszerű naptárláthatósági kapcsoló. Beküldés és állapotképzés nem próbált. |
+| https://pms2.previo.app/73521/settings/notifications/reservation | Új foglalás és Lemondott foglalás táblákban Partner / Manuális / Web kapcsolók mind kikapcsolva; „Értesítések engedélyezése” gomb látható | PASS a kapcsolók megfigyelésére. Az értesítés hiánya nem bizonyítja, hogy bejegyzés sem készül. Böngészős értesítési engedélyt sem kértünk. |
+| https://pms2.previo.app/73521/settings/hotel/email | SPF-hitelesítés: Nincs beállítva; a felület spamkockázati figyelmeztetést ír. Feladó név/cím mező üres; saját SMTP kapcsoló kikapcsolva; Mentés tiltva | PASS a teszt konfigurációjára. Vendégküldési/voucher-próba nincs; az éles Outlook vagy Agent küldési képessége ebből nem állapítható meg. |
+| https://pms2.previo.app/73521/settings/prices/currencies | Alapértelmezett pénznem HUF; egyéb pénznem EUR, forrás MNB, kijelzett árfolyam 1 EUR = 367,1100 HUF | PASS a kijelzett tesztértékre; nem rögzített üzleti árfolyam vagy szobaár. Nem építjük be a központi motorba. |
+| https://pms2.previo.app/73521/settings/applications/online-reservations/booking/form-configuration | „Még nincs új R+ konfiguráció”; hozzáadás és saját foglalási űrlap megjelenítése gomb | PASS a konfigurátor állapotára. Nem bizonyítja régi űrlap vagy éles honlapos integráció hiányát. Új konfigurációt és vendégoldali foglalási folyamatot nem indítottunk. |
+| https://pms2.previo.app/73521/settings/applications/online-reservations/booking/conversion | Google AdWords, Google Analytics 4, Google Tag Manager és Sklik kapcsolók kikapcsolva; Mentés tiltva | PASS a teszt mérési kapcsolóira; nem foglalási beérkezés bizonyítéka. |
+| https://pms2.previo.app/73521/settings/applications/channel-manager/my-connections | RESERVATION+ és Offers Aktív / Alap / 0% | A korábban ismert kapcsolatok aktuálisan olvashatók; nem az Agent saját API-kulcsának vagy scope-jának bizonyítéka. |
+
+### API / automatizálás / kézi visszaesési út
+| Terület | Konkrét API bizonyítéka ebben a folytatásban | Használható V1-megoldás | Hiány |
+|---|---|---|---|
+| Online visszaigazolhatóság és honlapos igény | Saját API-hívás nem történt; e konfiguráció olvasási/írási végpontja nincs igazolva | Kezelő ellenőrzi a forrást, Previo-azonosítót és aktuális státuszt; meglévő ügyhöz kapcsolja, új foglalást csak meglévő bejegyzés kizárása után készít | Szintetikus, mellékhatás-ellenőrzött beküldés és PMS-azonosító összerendelése; éles honlap működése külön NEM IGAZOLT |
+| Értesítések | Beállítás API-n keresztüli kezelése nem igazolt | Kezelői beérkezési ellenőrzés; értesítésre nem alapozunk duplikációvédelmet | Csatornák tényleges kézbesítési viselkedése |
+| E-mail / voucher | A feladóoldal nem voucher-sablon vagy küldési API; új bizonyíték nincs ilyen végpontra | Meglévő emberileg jóváhagyott tervezet és kézi Previo-ellenőrzés | Sablonok, címzettlista, voucher és előzmény, saját API-szerződés |
+| Pénznem / ár | A UI pénzneme nem teljes díjkalkuláció és nem API-árigazolás | Kezelő által ellenőrzött, forrással/időponttal jelölt ár az adatlaphoz | Díjtételek, kedvezmények, IFA, dézsa, foglaló együttes szerződése |
+
+### Változtatás, korlát és következő lépés
+- Bizonyított alkalmazáskódhiba nincs. A biztonságos hasznosítás a meglévő kézi adatlap/ellenőrzési sorrend pontosítása: előbb meglévő Previo-bejegyzés/forrás/státusz ellenőrzése, utána kezelői döntés; értesítés vagy üres konfigurátor nem jogosít új foglalásra. A motor és az üzleti szabályok változatlanok.
+- A felső PMS-menü kattintásra és billentyűzetes lenyitásra nem adott olvasható kibontott menüt e böngészővezérlésben. A PMS2 oldalsó fában csak a fenti részoldalak voltak elérhetők. Ez kezelőfelületi automatizálási korlát; nem bizonyított jogosultsági vagy szolgáltatói hiba. Rejtett alkalmazásállapot, sessionből kinyert API vagy találgatott végpont használata nincs.
+- **NEM IGAZOLT marad:** szerepkörök és műveletnapló részletei; voucher/sablon/küldési előzmény; gyermekkor és többegységes mentés; részletes ár/kedvezmény/foglaló; a sarberki.hu beküldés tényleges Previo-hatása; saját API-hozzáférés.
+- Következő konkrét feladat: a régi PMS beállítási menüjének hozzáférhető megnyitásából a kommunikációs sablonok és felhasználói naplók olvasási felmérése, majd a hiányzó ár/gyermek/többegységes mezők. Nem új hitelesítési engedély a jelenleg bizonyított akadály.
+- Kizárólag dokumentáció változott. Új automatizált teszt nem indokolt és nem futott; fent a meglévő CI állapotát olvastuk. Nincs Previo-mentés, küldés, foglalás, konfiguráció-/jogosultság-/AI-/üzletiszabály-módosítás, migráció vagy telepítés.
