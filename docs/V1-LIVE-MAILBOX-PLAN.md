@@ -1,4 +1,4 @@
-# V1 – valódi postafiók (info@sarberki.hu) csak olvasó bekötésének terve
+# V1 – valódi postafiók (info@sarberkito.hu) csak olvasó bekötésének terve
 
 Feladat: LIVE-MAILBOX-PLAN (Claude, 2026-11-02). Terv, kódváltozás nélkül. Megvalósítás csak tulajdonosi döntés és engedély után.
 
@@ -13,22 +13,22 @@ A forrás-olvasó utáni lépések (AI, ügytár, napi kezelő, jóváhagyás) v
 3. **Csak olvasás:** nincs küldés, nincs postafiók-módosítás (olvasottnak jelölés sem); a válasz kézzel megy ki.
 4. **Kapcsoló és visszaút:** alapból tiltott éles kapcsoló, egy kattintásos kikapcsolás; mentés-visszaállítás az új táblákra.
 
-## Szolgáltató: Google Workspace (Work, 2026-11-02 22:21 UTC, nyilvános DNS)
-MX: `ASPMX.L.GOOGLE.COM` (1), `ALT1/ALT2` (5), `ALT3/ALT4` (10); SPF `include:_spf.google.com`. Az Outlook csak levelezőprogram. Az info@ postafiók vagy alias volta DNS-ből NEM IGAZOLT.
+## Szolgáltató: NEM IGAZOLT
+A helyes cím **info@sarberkito.hu** (tulajdonos, 2026-11-02). A Work 11-02-i MX-lekérdezése a `sarberki.hu` domainre vonatkozott (Google Workspace), ezért **érvénytelen**; a `sarberkito.hu` MX-ét újra le kell kérdezni. Az Outlook csak levelezőprogram.
 
-## Döntés: a meglévő Gmail-olvasó újrahasznosítása
-| Út | Értékelés |
+## Út a szolgáltató szerint
+| MX-eredmény | Út |
 |---|---|
-| **Meglévő Gmail-lánc `gmail.readonly` joggal, Workspace-fiókra paraméterezve** | **Választott.** Élőben igazolt kód (kezelői OAuth → szerveres újraolvasás → közös AI → napi kezelő); új elem csak az éles kapuk (fiók, tenant, tárgyszűrő helyett postafiók-kapu). |
-| Microsoft Graph / Microsoft tesztfiók | Elvetve: az MX nem Microsoft 365. |
-| Továbbítás külön Gmailbe, IMAP | Elvetve: adatmásolat, tartós jelszó; nem szükséges. |
+| Google (`aspmx.l.google.com`) | **Meglévő, élőben igazolt Gmail-lánc** `gmail.readonly` joggal, Workspace-fiókra paraméterezve; Internal OAuth (nincs 7 napos lejárat) |
+| Microsoft 365 (`*.mail.protection.outlook.com`) | Új `server-outlook-source` adapter, Microsoft Graph `Mail.Read` delegált joggal; Azure-alkalmazásregisztráció |
+| Tárhelyszolgáltató | IMAP csak olvasó (tartós jelszó a szerveren, nagyobb kockázat), vagy továbbítás külön Gmailbe (adatmásolat) – külön tulajdonosi döntés |
 
-Előny: a Workspace saját Google Cloud-projektjében az OAuth-alkalmazás **Internal** lehet → nincs Google-ellenőrzés a `gmail.readonly` korlátozott jogra, és nincs 7 napos token-lejárat (ugyanez a Drive-mentés tartós tokenjére is megoldás lehet).
+Mindegyik úton a forrás-olvasó utáni lánc (AI, ügytár, napi kezelő, jóváhagyás) változatlan.
 
 ## Tulajdonosi döntések (a megvalósítás előtt)
-1. Az info@ önálló Workspace-postafiók vagy alias/csoport? Ki a Workspace-adminisztrátor (admin.google.com belépés)?
-2. Mehet-e Internal OAuth-kliens létrehozása a sarberki.hu Workspace Google Cloud-projektjében, kizárólag `gmail.readonly` joggal?
+1. A `sarberkito.hu` MX-eredménye (Work) és: önálló postafiók vagy alias? Ki a postafiók adminisztrátora?
+2. A szolgáltató szerinti út jóváhagyása, kizárólag olvasási joggal.
 3. Melyik Supabase/Netlify környezet lesz az éles ügytár (külön projekt vagy tenant)?
 
 ## Becslés (feltételezés, nem igazolt)
-A kód a meglévő Gmail-adapter paraméterezése és az éles kapuk: kb. 1–2 fejlesztési munkamenet, majd TEST-szerű próba egy kifejezetten erre a célra küldött, kitalált levéllel, élesítés csak engedéllyel. A pontos idő a döntésektől és a hozzáférések elérhetőségétől függ.
+Google esetén a meglévő Gmail-adapter paraméterezése és az éles kapuk: kb. 1–2 munkamenet; Microsoft esetén új adapter: néhány munkamenet, majd TEST-szerű próba egy kifejezetten erre a célra küldött, kitalált levéllel, élesítés csak engedéllyel. A pontos idő a döntésektől és a hozzáférések elérhetőségétől függ.

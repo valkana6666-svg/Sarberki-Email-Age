@@ -25,7 +25,7 @@ Source commit: 2b124ebce2d2dd21c632fcb903b6bfd233884923
 ## Remaining work
 
 - Gmail reading is restricted to sarberkiprojecttest@gmail.com by the existing policy. Google readonly consent is required on the user's device.
-- The info@sarberki.hu Outlook mailbox is not connected by this change.
+- The info@sarberkito.hu Outlook mailbox is not connected by this change.
 - Mailbox reading does not ingest arbitrary messages into the restricted cloud test-case backend, does not generate/approve a new cloud reply, and does not broaden its receipt allowlist.
 - Cloud ingestion, shared-case lifecycle for newly read mail, Outlook application authentication and end-to-end live acceptance remain outstanding. Do not describe this release as a completed daily email workflow.
 - Release commit requests only the existing Netlify TEST deployment; deployed build identity must be checked separately.
