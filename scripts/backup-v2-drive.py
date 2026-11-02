@@ -1,10 +1,16 @@
 """Private append-only Drive snapshots. OAuth secret is never logged or in argv."""
-import hashlib,json,os,re,secrets,sys,urllib.request,urllib.parse
+import hashlib,json,os,re,secrets,sys,urllib.error,urllib.request,urllib.parse
 from pathlib import Path
 SCOPE='https://www.googleapis.com/auth/drive.file'
 FOLDER_ID='1EE2ioPs_8OwpnttT9hYHba_Y9_aWwcqz'
 OWNER='valkana6666@gmail.com'
 MAX=256*1024*1024
+# Diagnostic stage only; never a secret, token, response body or exception text.
+STAGE='start'
+def failure_code(error):
+    if isinstance(error,urllib.error.HTTPError):return 'HTTP_'+str(int(error.code))
+    if type(error) is ValueError and re.fullmatch(r'[A-Z_]{3,64}',str(error)):return str(error)
+    return 'UNEXPECTED_'+re.sub(r'[^A-Za-z]','',type(error).__name__)[:40]
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,*args,**kwargs): return None
 def request(url,token=None,data=None,content_type=None,method=None,extra_headers=None,with_headers=False):
@@ -79,9 +85,13 @@ def main():
     if sys.argv[1:] not in ([],['preflight']):raise ValueError('INVALID_OPERATION')
     folder=os.environ.get('SARBERKI_V2_DRIVE_FOLDER_ID','')
     if folder!=FOLDER_ID:raise ValueError('UNAPPROVED_FOLDER')
+    global STAGE
+    STAGE='oauth_token'
     token=access_token(os.environ.get('SARBERKI_V2_DRIVE_OAUTH_JSON',''))
+    STAGE='folder'
     query=urllib.parse.urlencode({'fields':'id,mimeType,trashed,permissions(type,role,emailAddress)'})
     validate_folder(json.loads(request('https://www.googleapis.com/drive/v3/files/'+folder+'?'+query,token)),folder)
+    STAGE='quota'
     if sys.argv[1:]==['preflight']:
         about=json.loads(request('https://www.googleapis.com/drive/v3/about?fields=storageQuota',token))
         validate_quota(about.get('storageQuota',{}),0)
@@ -97,6 +107,7 @@ def main():
     prefix='sarberki-'+run+'-'+attempt+'-'+sha
     readback=Path('/tmp/sarberki-v2-drive-readback')
     readback.mkdir(mode=0o700,exist_ok=False)
+    STAGE='upload_readback'
     receipt=[]
     for p in files:
         name=prefix+('.zip' if p.suffix=='.zip' else '.zip.sha256')
@@ -106,6 +117,6 @@ def main():
         'immutability':'application-level distinct IDs; not WORM/ObjectLock'},indent=2))
 if __name__=='__main__':
     try:main()
-    except Exception:
-        print('BLOCKED: Drive access, privacy, quota or exact-file readback failed. No complete backup claim.',file=sys.stderr)
+    except Exception as error:
+        print('BLOCKED (stage='+STAGE+', code='+failure_code(error)+'): Drive access, privacy, quota or exact-file readback failed. No complete backup claim.',file=sys.stderr)
         sys.exit(1)

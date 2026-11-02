@@ -74,4 +74,23 @@ class DriveSafety(unittest.TestCase):
     def test_unapproved_resumable_endpoint(self):
         with patch.object(drive,'request',return_value=(b'',{'Location':'https://example.invalid/upload'})):
             with self.assertRaises(ValueError):drive.upload('synthetic',drive.FOLDER_ID,'synthetic.zip',b'x'*(5*1024*1024+1))
+class DriveDiagnostics(unittest.TestCase):
+    def test_failure_code_is_fixed_and_secret_free(self):
+        import urllib.error,io
+        self.assertEqual(drive.failure_code(ValueError('UNAPPROVED_FOLDER')),'UNAPPROVED_FOLDER')
+        self.assertEqual(drive.failure_code(urllib.error.HTTPError('https://www.googleapis.com/x',404,'secret-body',{},io.BytesIO(b'secret'))),'HTTP_404')
+        self.assertEqual(drive.failure_code(ValueError('token=ya29.secret-value')),'UNEXPECTED_ValueError')
+        self.assertEqual(drive.failure_code(KeyError('refresh_token')),'UNEXPECTED_KeyError')
+    def test_blocked_line_names_stage_but_no_secret(self):
+        import io,json,os,sys,contextlib
+        env={'SARBERKI_V2_DRIVE_FOLDER_ID':drive.FOLDER_ID,'SARBERKI_V2_DRIVE_OAUTH_JSON':json.dumps(dict(client_id='cid-secret',client_secret='GOCSPX-secret',refresh_token='1//secret'))}
+        err=io.StringIO()
+        with patch.dict(os.environ,env),patch.object(sys,'argv',['backup-v2-drive.py','preflight']),patch.object(drive,'request',side_effect=ValueError('NARROW_DRIVE_FILE_SCOPE_REQUIRED')),contextlib.redirect_stderr(err):
+            with self.assertRaises(SystemExit):
+                try:drive.main()
+                except Exception as e:
+                    print('BLOCKED (stage='+drive.STAGE+', code='+drive.failure_code(e)+')',file=sys.stderr);sys.exit(1)
+        out=err.getvalue()
+        self.assertIn('stage=oauth_token',out);self.assertIn('NARROW_DRIVE_FILE_SCOPE_REQUIRED',out)
+        for secret in ('cid-secret','GOCSPX-secret','1//secret'):self.assertNotIn(secret,out)
 if __name__=='__main__':unittest.main()
