@@ -514,8 +514,9 @@ Kérem írják meg, mennyi előleget kell fizetni, hány napon belül kell átut
     hotTub:true,dog:true,intent:'booking_request',
     bookingRules:{depositPct:50,depositDueDays:10,cancellationDaysUnder15Guests:14,cancellationDaysFrom15Guests:30}
   });
-  assert.match(draft,/23\.10\.2026/u);
-  assert.match(draft,/26\.10\.2026/u);
+  // Hungarian date order: year.month.day.
+  assert.match(draft,/2026\.10\.23\./u);
+  assert.match(draft,/2026\.10\.26\./u);
   assert.match(draft,/8 fő/u);
   assert.match(draft,/50% előleg/u);
   assert.match(draft,/10 napon belül/u);

@@ -56,7 +56,7 @@ test('actual analyzer and price approval handlers render both drafts from curren
 });
 test('field edit regenerates the reply and revokes the old price without manual refresh',()=>{
  const h=harness();approve(h);h.node('f_arrival').value='2026-11-16';h.node('f_arrival').dispatchEvent({type:'input'});
- assert.doesNotMatch(h.node('draft').value,/122\s*200 Ft/u);assert.match(h.node('draft').value,/16\.11\.2026/u);assert.equal(h.node('price_arrival').value,'2026-11-16');
+ assert.doesNotMatch(h.node('draft').value,/122\s*200 Ft/u);assert.match(h.node('draft').value,/2026\.11\.16\./u);assert.equal(h.node('price_arrival').value,'2026-11-16');
 });
 test('phone supplementation and refresh retain approval and remove the phone question',()=>{
  const h=harness();approve(h);h.node('f_phone').value='+36 30 555 1234';h.node('f_phone').dispatchEvent({type:'input'});h.node('refresh').click();

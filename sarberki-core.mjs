@@ -461,6 +461,8 @@ export function languageFromText(text='',{conservative=false}={}){
 export function replySummary(language='hu', {arrival=null,departure=null,guests=null,adults:knownAdults=null,children=null,childAges=[],pier=false,hotTub=false,dog=false}={}){
   if(!arrival||!departure||!guests) return '';
   const fmtNumeric=iso=>{const [y,m,d]=iso.split('-');return `${d}.${m}.${y}`;};
+  // Hungarian order is year.month.day. (e.g. 2026.11.13.); German and Slovene keep day.month.year.
+  const fmtHungarian=iso=>{const [y,m,d]=iso.split('-');return `${y}.${m}.${d}.`;};
   const enMonths=['January','February','March','April','May','June','July','August','September','October','November','December'];
   const fmtEnglish=iso=>{const [y,m,d]=iso.split('-');return `${Number(d)} ${enMonths[Number(m)-1]} ${y}`;};
   const adults=Number.isInteger(knownAdults)?knownAdults:Number.isFinite(children)?Math.max(0,guests-children):null;
@@ -486,7 +488,7 @@ export function replySummary(language='hu', {arrival=null,departure=null,guests=
   const packs={
     hu:{
       people:()=>children?`${guests} fő (${adults} felnőtt és ${children} gyermek${ageList('hu')?`, ${ageList('hu')} ${children===1?'éves':'évesek'}`:''})`:`${guests} fő${adults!==null?` (${adults} felnőtt)`:''}`,
-      base:p=>`${fmtNumeric(arrival)} és ${fmtNumeric(departure)} között ${p} részére keresnek szállást.`,
+      base:p=>`${fmtHungarian(arrival)} és ${fmtHungarian(departure)} között ${p} részére keresnek szállást.`,
       pier:'Ha lehetséges, saját / külön stéget kérnek.',
       hotTub:'Dézsát is szeretnének.',
       dog:'Kutyát is hoznának.'

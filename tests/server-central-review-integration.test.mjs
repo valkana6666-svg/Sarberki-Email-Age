@@ -33,7 +33,7 @@ test('new guest draft accurately renders stored facts and Hungarian operator rev
  const expected=buildCentralReply({caseId:f.record.data.id,language:v.language,arrival:v.arrival,departure:v.departure,guests:2,adults:2,children:0,childAges:[],phone:v.phone,name:v.name,cabin:v.unit,original:f.record.data.state.original},{tenant:{...SARBERKI_TENANT,id:'sarberki-test'},records:[]});
  assert.equal(review.draft,expected);assert.equal(review.operatorReviewLanguage,'hu');
  assert.match(review.operatorReviewText,/Kedves|Köszönjük/);assert.match(review.operatorReviewText,/2 felnőtt/);
- assert.match(review.operatorReviewText,/01\.11\.2026/);assert.match(review.operatorReviewText,/03\.11\.2026/);
+ assert.match(review.operatorReviewText,/2026\.11\.01\./);assert.match(review.operatorReviewText,/2026\.11\.03\./);
  assert.match(review.operatorReviewText,/kapacitás igazolt/);assert.match(review.draft,/2 guests/);assert.doesNotMatch(review.draft,/null adults/);assert.doesNotMatch(review.draft,/200/);
  const repeated=await prepareSyntheticBookingReview({...f,currentNow:()=>at+1000});assert.equal(repeated.draft,review.draft);
 });

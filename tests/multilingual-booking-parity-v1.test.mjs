@@ -22,7 +22,9 @@ for(const language of languages){
     const draft=buildReplyDraft({...request,language});
     assert.match(draft,/Deluxe/u);
     // The guest's arrival and departure must survive localized rendering.
-    const dateMarkers=language==='en'?['5 November 2026','7 November 2026']:['05.11.2026','07.11.2026'];
+    const dateMarkers=language==='en'?['5 November 2026','7 November 2026']:language==='hu'?['2026.11.05.','2026.11.07.']:['05.11.2026','07.11.2026'];
+    // Hungarian text must not use the German/Slovene day.month.year order.
+    if(language==='hu')assert.doesNotMatch(draft,/\b\d{2}\.\d{2}\.\d{4}\b/u);
     for(const marker of dateMarkers) assert.ok(draft.includes(marker),`${language}: missing stay date ${marker}`);
     assert.ok(draft.length>20);
     assert.doesNotMatch(draft,/7A|10C|\bpool\b|\bmapping\b/iu);
