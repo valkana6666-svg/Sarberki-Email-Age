@@ -149,3 +149,25 @@ Címzett: Sárberki projektvezető chat.
 - A tesztkonfiguráció és a jóváhagyott Sárberki üzleti szabály különbözik; ettől még nincs bizonyított kódhiba. Nem módosítottuk a központi AI-t vagy szabálymotort, nem építettünk új árkalkulátort.
 - Hátralévő konkrét vizsgálat: többegységes és gyermek-életkoros foglalási adatlap mentés nélküli mezőfelmérése; voucher/kommunikáció/előzmény meglévő szintetikus foglaláson, ha ilyen azonosítható. Mentett próba, tényleges API és éles honlap -> Previo hatás továbbra NEM IGAZOLT.
 - Csak dokumentáció változik; nincs Previo-adatmódosítás, foglalás, küldés, pénzügyi művelet, migráció, telepítés vagy jogosultságváltozás. Új automatizált teszt nem futott.
+
+## Csoportos és vendég-életkoros adatlap – 2026-11-02 09:13–09:17 CET
+Címzett: Sárberki projektvezető chat.
+- Teljes AGENTS beolvasás 09:13:20 CET, blob be27bd2dfb4795496bd9f3d64ad60ada1123de5b; gmail-test-subject-allowlist. Induló/mentés előtti HEAD 25901d93135ed607569ce7bcfaea6c691dd24d9e, CI 41410412064 completed/success. A friss backup-kérés csak docs/BACKUP-V2-RUN-REQUEST.md fájlt érintette; ahhoz és kódfájlokhoz nem nyúltunk. Központi nyilvántartás visszaolvasva.
+- Helyszín minden adatlap fejlécében 73521 / Sárberki Horgásztó - API TESZT; URL https://pms.previo.app/73521/reservation/grid . Kizárólag üres, nem mentett űrlapokat olvastunk.
+
+| Funkció | Tényleges megfigyelés | Állapot és korlát |
+|---|---|---|
+| Csoportos foglalás | Külön Csoportos foglalás részletei adatlap; közös dátum, voucher, állapot/opciólejárat, cég, forrás, kapcsolattartó, szegmens; alatta Szoba(0)/Vendégek(0), hozzárendelt szobák/dátumok/vendégek/ár/egyenleg táblázat | PASS a többegységes UI szerkezetére, nem mentett működési próba. |
+| Új beosztott foglalás | A hozzárendelés + gombja külön űrlapot nyitott. Dátum, piaci szegmens, Alap árlista, normál ágyak/pótágy-kezelés választó, számlatételek, pénznem, vendégkategória, ország, étkezés; táblában szobatípus, vendégek, szobák száma, elérhető oszlopok | PASS a mezőkre; szobaszám alapérték 0, OK tiltva. Sem értéket, sem szobát nem választottunk ki; Visszavonással bezártuk. A nézet automatikus elérhetőségi mezőt is megjelenít, külön API-hívást nem indítottunk és eredményét kapacitásbizonyítékként nem használtuk. |
+| Egyéni foglalás vendégsora | Négy üres vendégsor, szerkesztőgomb és Felnőtt kategória | Új életkormező-felméréshez nyitva, nem a korábbi foglalási alapmezők újratesztelése. |
+| Bejelentőlap / Kategória és születésnap | Születési idő, születési hely/ország; letiltott Felnőtt kategóriamező; információ: a kategória automatikusan az életkor alapján áll be, csak a foglalás részleteiben módosítható | PASS a mező és súgószöveg létezésére. Születési időt nem írtunk be, automatikus átsorolást/mentést nem igazoltunk. |
+| Voucher / történet | Új adatlap vouchermezője automatikus számozást mutat, történet fül tiltva | Nem mentett voucher, nem generált dokumentum és nem elküldött visszaigazolás. A megjelenített szám nem bizonyít lefoglalt sorszámot. |
+| Meglévő tesztfoglalás keresése | A listában Kezdet/Vége üresre állítva, Szöveg=TESZT, Keresés lefuttatva; betöltés után nincs megjeleníthető adat | PASS erre a keresésre. Nem állítjuk, hogy a teljes adatbázis üres. Azonosítható mentett szintetikus foglalás nem került elő; voucher/kommunikáció/történet tényleges ellenőrzése ezért NEM IGAZOLT. |
+
+### Biztonságos lezárás és hasznosítás
+- A beosztott űrlap Visszavonással; a csoportos adatlap Visszavonás -> Nincs mentés választással bezárva. A vendég adatlap Visszavonással, az egyéni foglalás végül a látható Nincs mentés gombbal lezárva; a foglalási lista visszatért. A bezáró megerősítés egyes DOM-pillanatképekben késve jelent meg; képernyőképpel azonosítottuk, majd a megfelelő Nincs mentés gombot választottuk. Mentés/OK/küldés nem történt.
+- Nem állítunk szolgáltatói DB-auditot vagy minden háttérzárolás hiányát pusztán a bezárásból. A csoportos űrlap elérhetőségi mezőjének mellékhatás-szerződése továbbra külön szolgáltatói kérdés.
+- V1 kézi adatlaphoz igazoltan használható: csoportfejléc + egységenként dátum, létszám, vendégkategória/életkor, árlista és ár; közös/egységenkénti Previo-azonosító csak valódi visszaolvasásból. Nem helyettesítjük az életkort puszta gyermekszámmal. A PMS életkori kategória nem írja át a jóváhagyott Sárberki díjkorhatárokat.
+- Ez UI-mezőbizonyíték, nem a REST reservationId/roomReservationId modell saját API-próbája. Hitelesített API, mentett többegységes/gyermekkoros viselkedés és a honlapos beérkezés továbbra NEM IGAZOLT.
+- Következő konkrét kapu: egy már meglévő, egyértelműen szintetikus Previo-foglalás azonosítása, vagy szükséges, elkülönített teszt létrehozásának konkrét paraméterezése és mellékhatásainak tisztázása; utána mentett voucher, címzettlista és kommunikáció/történet olvasása küldés nélkül. Új foglalást csak a nyitott ellenőrzés kedvéért ebben a körben nem készítettünk.
+- Bizonyított alkalmazáskódhiba nincs. Csak dokumentáció; nincs alkalmazáskód-, AI-, üzletiszabály-, jogosultság-, production-változás, migráció vagy telepítés; új automatizált teszt nem futott.
