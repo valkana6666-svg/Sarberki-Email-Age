@@ -22,7 +22,7 @@ TEST-oldal: `leafy-chimera-2403e5`, telepített `32052fc`. Teljes `npm test`: 25
 | DRIVE-SECRET | Tulajdonos ([útmutató](DRIVE-OAUTH-TULAJDONOSI-UTMUTATO.md): Work) | BLOKKOLT | `SARBERKI_V2_DRIVE_OAUTH_JSON` secret, majd `[backup-v2-drive-restore]` és visszaolvasás (Claude) |
 | SCHEDULE-ENV | Tulajdonos, számítógépről | BLOKKOLT | Óránkénti feladat környezete: Sarberki TEST E2E |
 | V1-RC-CHECK | Claude | Drive után | Kiadásra jelölési ellenőrzés a fenti bizonyítékokból |
-| LIVE-MAILBOX-PLAN | Claude (fiók-/hozzáférés-ellenőrzés: Work, ha kell) | SZABAD | info@sarberki.hu csak olvasó bekötésének terve a meglévő Gmail-lánc mintájára (hozzáférés, kockázat, lépések); megvalósítás tulajdonosi engedéllyel |
+| LIVE-MAILBOX-PLAN | Claude | TERV KÉSZ – tulajdonosi döntésre vár | [`V1-LIVE-MAILBOX-PLAN.md`](V1-LIVE-MAILBOX-PLAN.md): 3 kérdés (hol fut az info@; A: Microsoft Graph vagy B: továbbítás; éles környezet) |
 | PREVIO-READ-PLAN | Work | V1 után | Csak olvasó kapacitás/ár bekötésének feltételei (API-kulcs, mellékhatás-kapu) |
 
 ## Akadályok
