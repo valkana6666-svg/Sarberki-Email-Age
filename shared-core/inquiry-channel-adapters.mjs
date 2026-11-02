@@ -1,6 +1,6 @@
 import {evaluateCentralInquiry} from './central-inquiry-decision.mjs';
 import {buildCentralReply} from '../central-reply.mjs';
-import {replyQuestions} from '../sarberki-core.mjs';
+import {replyQuestions,stayCancellationFromText} from '../sarberki-core.mjs';
 const words={
  hu:{pending:'A kapacitás ellenőrzése még nem igazolt.',available:'A teljes kért időszakra megfelelő típusszintű kapacitás igazolt. A végleges ajánlat emberi jóváhagyásra vár.',unavailable:'A kért elhelyezéshez nincs elegendő igazolt szabad kapacitás.',review:'A megadott adatok pontosítása vagy emberi ellenőrzése szükséges.',date:'Kérjük, erősítse meg az érkezés és távozás évét.',units:'Hány szállásegységet szeretnének?',price:'Az ellenőrzött ár belső jóváhagyásra vár; ez még nem végleges ajánlat.'},
  de:{pending:'Die Verfügbarkeit ist noch nicht verifiziert.',available:'Passende Kapazität auf Typebene wurde für den gesamten Aufenthalt geprüft. Das endgültige Angebot benötigt eine manuelle Freigabe.',unavailable:'Für die gewünschte Unterkunft reicht die bestätigte freie Kapazität nicht aus.',review:'Die Angaben müssen präzisiert oder manuell geprüft werden.',date:'Bitte bestätigen Sie das Jahr der An- und Abreise.',units:'Wie viele Unterkunftseinheiten wünschen Sie?',price:'Der geprüfte Preis benötigt eine interne Freigabe und ist noch kein endgültiges Angebot.'},
@@ -29,6 +29,9 @@ export function buildChatInquiryReply(options={}){
 }
 function renderEmailDecision(decision,original,language){
  const f=decision.facts;
+ // An explicit stay cancellation gets the existing approved acknowledgement, not booking questions.
+ // The decision, facts and safety flags are unchanged; a human still reviews before anything is sent.
+ if(stayCancellationFromText(original))return buildCentralReply({language,original,intent:'cancellation_request'});
  const draft=buildCentralReply({language,original,arrival:f.dates?.arrival,departure:f.dates?.departure,guests:f.guests,adults:f.adults,children:f.children,childAges:f.child_ages,phone:f.phone,cabin:f.cabin});
  // Existing email renderer remains the presentation layer. The shared decision
  // and its current safety status are returned alongside the pending draft.

@@ -71,6 +71,16 @@ export function requestFlagsFromText(text=''){
   };
   return {petRequested:requested(pet),hotTubRequested:requested(tub),parkingQuestion:/(?:parkol|parking|parkpl(?:atz|ätze)|parkiriš|parkiris)/iu.test(text)};
 }
+// Conservative: an explicit statement that the guest cancels their booking/stay, in one sentence.
+// Questions, conditions, negations and "cancellation terms" are not a cancellation.
+export function stayCancellationFromText(text=''){
+  text=activeMessageText(text);
+  const object=/(?:foglalás\p{L}*|foglalas\p{L}*|szállás\p{L}*|szallas\p{L}*|booking\p{L}*|reservation\p{L}*|stay\b|buchung\p{L}*|reservierung\p{L}*|aufenthalt\p{L}*|rezervacij\p{L}*|nastanitev\p{L}*)/iu;
+  const verb=/(?:(?<!\p{L})lemond(?!ási|asi|hat)\p{L}*|(?<!\p{L})le\s+(?:\p{L}+\s+){0,2}mond(?!ási|hat)\p{L}*|(?<!\p{L})mond\p{L}*\s+le(?!\p{L})|cancel(?!lation)\p{L}*|stornier\p{L}*|absag\p{L}*|odpoved(?:ati|ujem|ujemo|al\p{L}*)|prekli[cč](?:ati|ujem|ujemo|al\p{L}*))/iu;
+  const blocked=/\?|(?<!\p{L})(?:ha|amennyiben|if|unless|falls|wenn|če|ce|lehet|lehetséges|can|could|may|kann|könn\p{L}*|lahko|mi|milyen|what|which|wie|welche\p{L}*|kaj|nem|not|don['’]t|nicht|kein\p{L}*|ne)(?!\p{L})|lemondási|lemondasi|cancellation|storno(?:bedingung|gebühr|frist)\p{L}*|stornierungs\p{L}*|pogoj\p{L}*\s+odpoved/iu;
+  // A dot after a digit is a date or ordinal ("vom 20. bis 22. Dezember"), not a sentence end.
+  return text.split(/(?<=[!?]|(?<!\d)\.)\s+|\n+/u).some(sentence=>object.test(sentence)&&verb.test(sentence)&&!blocked.test(sentence));
+}
 export function cabinFromText(text=''){
   text=activeMessageText(text);
   const found=[];
