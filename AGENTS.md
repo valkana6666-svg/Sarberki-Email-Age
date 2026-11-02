@@ -24,6 +24,8 @@ A cél a működő V1 és annak valódi használata, nem a folyamat további aud
 - Jelentés: egy tömör táblázat (ellenőrzés / bizonyíték / eredmény) és legfeljebb 5 sor korlát és következő lépés. A változatlan tiltásokat ne sorold fel; elég: „tiltások: AGENTS.md szerint”.
 - Ha nincs elvégezhető feladat: egy mondatos jelentés, commit nélkül.
 
+**Previo-írás (TEST is) – tulajdonosi döntés, 2026-11-02:** foglalás létrehozása, módosítása, lemondása, voucher, sablon vagy beállítás csak **előzetes, konkrét tulajdonosi engedéllyel**, műveletenként. Az engedélyt a végrehajtás előtt a `docs/V1-ALLAPOT.md` „Engedélyek” részébe kell rögzíteni: ki, mikor, pontosan melyik művelet, milyen tesztadat, hogyan zárul. Általános feladatleírás („szükséges szintetikus próba megengedett”) nem engedély. **Utólagos tudomásulvétel nem engedély**, és nem helyettesíti az előzetes engedélyt; külön, „UTÓLAGOS TUDOMÁSULVÉTEL” jelöléssel rögzítendő. Olvasó felmérés engedély nélkül folytatható. Ez a szabály a fenti és alábbi Previo-tiltásokat nem lazítja.
+
 ## KÖTELEZŐ FEJLESZTÉSI DÖNTÉSI PROTOKOLL – 2026-10-30
 
 Ez a szabály a Sárberki V1/V2 valamennyi új feladatára, hibajavítására, refaktorálására és Codex-munkamenetére érvényes. A meglévő biztonsági, jogosultsági, adatvédelmi és jóváhagyási korlátokat nem gyengítheti.
