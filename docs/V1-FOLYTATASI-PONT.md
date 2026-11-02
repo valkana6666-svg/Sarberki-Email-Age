@@ -1,5 +1,7 @@
 # Sárberki V1 – folytatási pont (élő dokumentum)
 
+> **ARCHÍV (2026-11-02):** az aktuális állapot a `docs/V1-ALLAPOT.md`-ben van. Ezt a fájlt ne bővítsd tovább; csak célzott kereséssel olvasd.
+
 Érzékeny adatot, tokent, valódi vendégadatot nem tartalmaz. Minden interaktív és óránkénti futás végén frissítendő.
 
 ## Irányadó Previo-engedélypontosítás – 2026-11-02

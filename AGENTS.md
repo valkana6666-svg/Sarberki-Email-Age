@@ -1,5 +1,22 @@
 # Sárberki foglaltságkezelési kötelező ellenőrzési pont
 
+## FÓKUSZ ÉS HATÉKONYSÁG – tulajdonosi döntés, 2026-11-02 (minden ágensre: Claude, Work, Codex, óránkénti futás)
+
+A cél a működő V1 és annak valódi használata, nem a folyamat további auditálása. Ez a szakasz a munkasorrendet és a munkamódot szabályozza; az alábbi biztonsági, jogosultsági és tiltó szabályok egyikét sem gyengíti.
+
+**Fejlesztési sorrend:**
+1. **V1 lezárása:** Drive-mentés (tulajdonosi secret), rövid állapotfájl, kiadásra jelölési ellenőrzés.
+2. **Kontrollált éles bevezetés:** a valódi postafiók csak olvasó bekötése; a kezelő a választ kézzel küldi. Production-aktiválás csak külön tulajdonosi engedéllyel.
+3. **Csak olvasó Previo-kapacitás és ár** a tervezetbe, a meglévő Previo-kapu és mellékhatás-igazolás szerint.
+4. Csak ezután: V2-előkészítés (Previo-írás, automatikus küldés, telefon). Ami nem az aktuális lépést viszi előre, az halasztandó.
+
+**Munkamód:**
+- Elsődleges állapotforrás a `docs/V1-ALLAPOT.md` (legfeljebb 40 sor). Munkamenet elején az AGENTS.md és ez a fájl elég; a hosszú `docs/V1-FOLYTATASI-PONT.md` archívum, csak célzott kereséssel olvasandó, és nem bővítendő tovább.
+- Igazolt, PASS eredményt ne ellenőrizz újra, és ne dokumentálj újra. Változatlan HEAD és AGENTS-blob esetén ne olvasd be újra a teljes dokumentációt.
+- Egy feladat = egy commit (eredmény + állapotfájl-frissítés együtt). Nincs külön „record” és „link” commit, nincs no-op commit.
+- Jelentés: egy tömör táblázat (ellenőrzés / bizonyíték / eredmény) és legfeljebb 5 sor korlát és következő lépés. A változatlan tiltásokat ne sorold fel; elég: „tiltások: AGENTS.md szerint”.
+- Ha nincs elvégezhető feladat: egy mondatos jelentés, commit nélkül.
+
 ## KÖTELEZŐ FEJLESZTÉSI DÖNTÉSI PROTOKOLL – 2026-10-30
 
 Ez a szabály a Sárberki V1/V2 valamennyi új feladatára, hibajavítására, refaktorálására és Codex-munkamenetére érvényes. A meglévő biztonsági, jogosultsági, adatvédelmi és jóváhagyási korlátokat nem gyengítheti.
