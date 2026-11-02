@@ -13,8 +13,9 @@ A forrás-olvasó utáni lépések (AI, ügytár, napi kezelő, jóváhagyás) v
 3. **Csak olvasás:** nincs küldés, nincs postafiók-módosítás (olvasottnak jelölés sem); a válasz kézzel megy ki.
 4. **Kapcsoló és visszaút:** alapból tiltott éles kapcsoló, egy kattintásos kikapcsolás; mentés-visszaállítás az új táblákra.
 
-## Szolgáltató: NEM IGAZOLT
-A helyes cím **info@sarberkito.hu** (tulajdonos, 2026-11-02). A Work 11-02-i MX-lekérdezése a `sarberki.hu` domainre vonatkozott (Google Workspace), ezért **érvénytelen**; a `sarberkito.hu` MX-ét újra le kell kérdezni. Az Outlook csak levelezőprogram.
+## Szolgáltató: Google Workspace (Work, 2026-11-02 23:24 CET, nyilvános DNS)
+Cím: **info@sarberkito.hu**. MX: `smtp.google.com` (a Google Workspace új, egyrekordos MX-formája). SPF: `include:_spf.google.com include:_spf.previo.cz ip4:212.108.192.37 ~all` (a Previo is küldhet a domain nevében; ez nem bizonyít működő Previo-integrációt). A korábbi `sarberki.hu`-lekérdezés rossz domainre vonatkozott. Az info@ postafiók vagy alias volta NEM IGAZOLT. Az Outlook csak levelezőprogram.
+**Választott út: a meglévő, élőben igazolt Gmail-lánc** (első sor alább).
 
 ## Út a szolgáltató szerint
 | MX-eredmény | Út |
@@ -26,8 +27,8 @@ A helyes cím **info@sarberkito.hu** (tulajdonos, 2026-11-02). A Work 11-02-i MX
 Mindegyik úton a forrás-olvasó utáni lánc (AI, ügytár, napi kezelő, jóváhagyás) változatlan.
 
 ## Tulajdonosi döntések (a megvalósítás előtt)
-1. A `sarberkito.hu` MX-eredménye (Work) és: önálló postafiók vagy alias? Ki a postafiók adminisztrátora?
-2. A szolgáltató szerinti út jóváhagyása, kizárólag olvasási joggal.
+1. Az info@ önálló Workspace-postafiók vagy alias/csoport? Ki a Workspace-adminisztrátor (admin.google.com)?
+2. Mehet-e Internal OAuth-kliens a sarberkito.hu Workspace Google Cloud-projektjében, kizárólag `gmail.readonly` joggal?
 3. Melyik Supabase/Netlify környezet lesz az éles ügytár (külön projekt vagy tenant)?
 
 ## Becslés (feltételezés, nem igazolt)
