@@ -1,6 +1,6 @@
 # Sárberki V1 – aktuális állapot (legfeljebb 40 sor; minden feladat a saját commitjában frissíti)
 
-Utolsó frissítés: 2026-11-02 12:20 CET. Részletes előzmény (archív): `docs/V1-FOLYTATASI-PONT.md`, `docs/V1-AUTOMATION-STATUS-2026-11-01.md`.
+Utolsó frissítés: 2026-11-02 12:35 CET. Szerepek: AGENTS.md „FÓKUSZ ÉS HATÉKONYSÁG”. Részletes előzmény (archív): `docs/V1-FOLYTATASI-PONT.md`, `docs/V1-AUTOMATION-STATUS-2026-11-01.md`.
 
 ## Kész, igazolt – ne ismételd
 | Terület | Bizonyíték |
@@ -22,7 +22,7 @@ TEST-oldal: `leafy-chimera-2403e5`, telepített `32052fc`. Teljes `npm test`: 25
 | DRIVE-SECRET | Tulajdonos ([útmutató](DRIVE-OAUTH-TULAJDONOSI-UTMUTATO.md): Work) | BLOKKOLT | `SARBERKI_V2_DRIVE_OAUTH_JSON` secret, majd `[backup-v2-drive-restore]` és visszaolvasás (Claude) |
 | SCHEDULE-ENV | Tulajdonos, számítógépről | BLOKKOLT | Óránkénti feladat környezete: Sarberki TEST E2E |
 | V1-RC-CHECK | Claude | Drive után | Kiadásra jelölési ellenőrzés a fenti bizonyítékokból |
-| LIVE-MAILBOX-PLAN | Work | SZABAD | info@sarberki.hu csak olvasó bekötésének terve (hozzáférés, kockázat, lépések); megvalósítás tulajdonosi engedéllyel |
+| LIVE-MAILBOX-PLAN | Claude (fiók-/hozzáférés-ellenőrzés: Work, ha kell) | SZABAD | info@sarberki.hu csak olvasó bekötésének terve a meglévő Gmail-lánc mintájára (hozzáférés, kockázat, lépések); megvalósítás tulajdonosi engedéllyel |
 | PREVIO-READ-PLAN | Work | V1 után | Csak olvasó kapacitás/ár bekötésének feltételei (API-kulcs, mellékhatás-kapu) |
 
 ## Akadályok

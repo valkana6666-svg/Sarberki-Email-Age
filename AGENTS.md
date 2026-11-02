@@ -10,6 +10,13 @@ A cél a működő V1 és annak valódi használata, nem a folyamat további aud
 3. **Csak olvasó Previo-kapacitás és ár** a tervezetbe, a meglévő Previo-kapu és mellékhatás-igazolás szerint.
 4. Csak ezután: V2-előkészítés (Previo-írás, automatikus küldés, telefon). Ami nem az aktuális lépést viszi előre, az halasztandó.
 
+**Szerepek (tulajdonosi döntés, 2026-11-02; felülírja az alábbi régebbi „Work koordinál” szabályokat):**
+- **Claude Code – egyetlen elsődleges fejlesztő:** kódolás, tesztelés, javítás, engedélyezett TEST-kiadás és élő TEST-ellenőrzés.
+- **Work – speciális ellenőrző, csak konkrét, indokolt feladatra:** Previo, Gmail-fiók, Drive, Supabase és más, Claude-nál hiányzó hozzáférés. Claude munkáját rutinszerűen nem ellenőrzi újra és nem dokumentálja újra.
+- **Tulajdonos/projektvezetés:** prioritás, üzleti döntés, biztonság, eredményértékelés.
+- Független kontroll csak kritikus pontokon: jogosultság/RLS-változás, adatkezelés, production- vagy éles bevezetés, kiadásra jelölés. Egymás munkájáról rutinjelentés nem készül.
+- Az óránkénti Claude-futás csak kiosztott, SZABAD feladaton dolgozik.
+
 **Munkamód:**
 - Elsődleges állapotforrás a `docs/V1-ALLAPOT.md` (legfeljebb 40 sor). Munkamenet elején az AGENTS.md és ez a fájl elég; a hosszú `docs/V1-FOLYTATASI-PONT.md` archívum, csak célzott kereséssel olvasandó, és nem bővítendő tovább.
 - Igazolt, PASS eredményt ne ellenőrizz újra, és ne dokumentálj újra. Változatlan HEAD és AGENTS-blob esetén ne olvasd be újra a teljes dokumentációt.
@@ -85,7 +92,7 @@ Ez a szabály a Sárberki V1/V2 valamennyi új feladatára, hibajavítására, r
 
 ## Work–Codex végrehajtás és igazolás
 
-- Work koordinál; programozáshoz és automatizált teszthez lehetőség szerint közvetlen Codex-feladatot indít. Csak tényleges átadást jelents átadásnak. Az eredményt a koordinátor külön ellenőrzi.
+- (2026-11-02 óta a fenti Szerepek érvényesek; ez a pont csak a Work konkrét célfeladataira vonatkozik.) Work koordinál; programozáshoz és automatizált teszthez lehetőség szerint közvetlen Codex-feladatot indít. Csak tényleges átadást jelents átadásnak. Az eredményt a koordinátor külön ellenőrzi.
 - Feladat előtt olvasd ezt az útmutatót, ellenőrizd a tesztág HEAD-jét, a releváns korábbi commitokat, CI-t és nyitott hibákat. Ne ismételj kész fejlesztést vagy indokolatlanul sikeres tesztet. Csoportosítsd a független ellenőrzéseket.
 - Párhuzamos munkát ne írj felül. A szükséges legkisebb módosítást, külön fájltulajdonlást és commit előtt friss HEAD-ellenőrzést használj; force push tilos.
 - Szintetikus adatokkal futtasd az érintett célzott és negatív teszteket. Kapacitást érintő változtatásnál a fenti teljes `npm test` követelmény érvényes. Fixture/mock, valódi PostgreSQL, böngésző-emuláció és élő forrás bizonyítékát külön jelöld.
