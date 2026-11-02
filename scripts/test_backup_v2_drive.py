@@ -99,5 +99,5 @@ class DriveSecretShape(unittest.TestCase):
         self.assertEqual(shape,'len=10,lines=1,first=letter,last=letter');self.assertNotIn('GOCSPX',shape)
         self.assertEqual(drive.secret_shape('{"a":"b"}'),'len=9,lines=1,first={,last=}')
         self.assertEqual(drive.secret_shape(''),'len=0,lines=0,first=none,last=none')
-        self.assertEqual(drive.secret_shape('\ufeff{"a":1}\n'),'len=10,lines=2,first=bom,last=space')
+        self.assertEqual(drive.secret_shape('\ufeff{"a":1}\n'),'len=9,lines=2,first=bom,last=space')
 if __name__=='__main__':unittest.main()
