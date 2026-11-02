@@ -19,7 +19,7 @@ TEST-oldal: `leafy-chimera-2403e5`, telepített `17c1ad2` (2026-11-02 16:18Z; é
 ## Nyitott feladatok
 | ID | Felelős | Állapot | Teendő |
 |---|---|---|---|
-| DRIVE-SECRET | Tulajdonos ([útmutató](DRIVE-OAUTH-TULAJDONOSI-UTMUTATO.md): Work) | BLOKKOLT | `SARBERKI_V2_DRIVE_OAUTH_JSON` secret, majd `[backup-v2-drive-restore]` és visszaolvasás (Claude) |
+| DRIVE-SECRET | Tulajdonos (Claude vezeti) | BLOKKOLT – a secret létezik, de nem érvényes JSON | Google-oldal kész (Drive API, kliens, redirect, test user valkana6666, új titok, drive.file refresh token). Run 41490109148: `stage=oauth_token, code=UNEXPECTED_JSONDecodeError` (`2e42b5e` diagnosztika). Teendő: a secretet ellenőrzött JSON-nal frissíteni (PowerShell-ellenőrzés), majd `[backup-v2-run]`. A `…Stz3` titok képen kikerült → következő tokenmegújításkor csere |
 | SCHEDULE-ENV | Tulajdonos | SZÜNETELTETVE (2026-11-02 16:16Z) | Óránkénti futás kikapcsolva; újraindításkor környezet: Sarberki TEST E2E, utasításban `docs/V1-ALLAPOT.md` |
 | V1-RC-CHECK | Claude | FELTÉTELES PASS – csak a Drive hiányzik | [`V1-RC-CHECK-2026-11-02.md`](V1-RC-CHECK-2026-11-02.md); Drive PASS után végleges |
 | LIVE-MAILBOX-PLAN | Claude | TERV KÉSZ – tulajdonosi döntésre vár | [`V1-LIVE-MAILBOX-PLAN.md`](V1-LIVE-MAILBOX-PLAN.md): 3 kérdés (hol fut az info@; A: Microsoft Graph vagy B: továbbítás; éles környezet) |
