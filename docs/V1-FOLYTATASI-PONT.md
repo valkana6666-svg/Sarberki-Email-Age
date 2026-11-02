@@ -545,7 +545,7 @@ Ez a szakasz felülírja a fenti régebbi, ellentmondó állításokat (külön�
 | LIVE-READONLY-SMOKE | Claude (interaktív, TEST E2E) | `scripts/live-test-readonly-smoke.mjs` | KÉSZ (2026-11-02): élő futás 20 PASS / 0 FAIL, deployedCommit `da3dc9a` | Újrafuttatás csak TEST E2E környezetben és csak ha a telepített SHA változott: `CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/live-test-readonly-smoke.mjs` (exit 0 = PASS). |
 | DRIVE-SECRET | Tulajdonos | GitHub secret `SARBERKI_V2_DRIVE_OAUTH_JSON` | BLOKKOLT | Secret beállítása, utána `[backup-v2-drive-restore]` futás és exact-file visszaolvasás. |
 | IPHONE-LABEL | Tulajdonos | – | BLOKKOLT | iPhone-képernyőkép az állandó ügycímkéről és a beolvasás utáni státuszszövegről. |
-| AUDIT-SQL-READBACK | Work | readonly SQL | NYITOTT (Work) | `tm_reject`/`tm_redraft` audit-sorok közvetlen visszaolvasása a `tm-1a0e711a60c6a259` ügyre. |
+| AUDIT-SQL-READBACK | Work | readonly SQL | KÉSZ / PASS (2026-11-02 12:10 CET; közvetlen SQL-visszaolvasás) | `tm_reject`/`tm_redraft` audit-sorok közvetlen visszaolvasása a `tm-1a0e711a60c6a259` ügyre. |
 | SCHEDULE-ENV | Tulajdonos | ütemezett feladat beállítása | BLOKKOLT | Az ütemezett feladat környezetének átállítása „Sarberki TEST E2E”-re a webes felületen (eszközzel nem állítható). |
 
 
@@ -614,3 +614,36 @@ Címzett: Sárberki projektvezető chat. Ez felülírja a fenti „mentett vouch
 - Teljes részletek, források és korlátok: [Previo-felmérés](PREVIO-TEST-UI-ASSESSMENT-2026-11-02.md), c09ecc5c533a759b58495d20d3dc411c37abe1e9. A korábbi kizárólag-olvasási bejegyzések történeti szakaszok; most egy szintetikus TEST létrehozás/lemondás történt.
 - **NEM IGAZOLT marad:** saját API-hozzáférés/idempotencia, mentett gyermekkoros/többegységes működés, kézbesítés és éles honlap beérkezése. Ezekből nem készül új V2-rendszer vagy éles aktiválás.
 - Következő: V1 P0 nyitott bizonyítékainak folytatása a feladatnyilvántartásból; a kész Previo UI-felmérést és 20260001 próbát ne ismételjük. Nincs kódhiba, kódváltozás, main/production, éles foglalás, telepítés, migráció vagy jogosultság-/AI-/üzletiszabály-változás.
+
+## AUDIT-SQL-READBACK lezárva – 2026-11-02 12:10 CET
+Címzett: Sárberki projektvezető chat.
+
+### Kiindulás és választás
+- Teljes aktuális AGENTS beolvasás 12:08:11 CET; ág gmail-test-subject-allowlist; blob be27bd2dfb4795496bd9f3d64ad60ada1123de5b. Induló/mentés előtti HEAD 3d2cae96692af92e0a26245dd41da726e85e244d, CI 41433073699 success.
+- Meglévő központi feladatnyilvántartás és lezárt élő életciklus eredményei alapján kizárólag a hiányzó közvetlen audit-visszaolvasást végeztük. Új elutasítás/javítás/jóváhagyás vagy sikeres tesztismétlés nem történt.
+- Supabase skill alkalmazva; projektazonosság tényleges get_project válasszal: mojnqizbcaczstguikpv / sarberki-test / ACTIVE_HEALTHY / eu-west-2. Az adatok nem productionből származnak.
+- Választott megoldás: meglévő public.sc_audit és sc_cases, sc_test_mailbox_cases célzott SELECT, tenant- és case_id-szűrővel. Sémaoszlopok előbb information_schema alapján ellenőrizve; nincs RPC, adatírás, migráció vagy kapcsolóváltozás.
+
+### Tényleges auditbizonyíték
+Ügy: tm-1a0e711a60c6a259; tenant sarberki-test. Idők Europe/Vienna, CET, UTC+1 szerint átszámítva.
+
+| Event ID | Revízió | Esemény | Idő (CET) |
+|---|---|---|---|
+| 45 | 1 | tm_create | 2026-11-01 16:21:36.660262 |
+| 46 | 2 | tm_reject | 2026-11-02 00:42:23.261081 |
+| 47 | 3 | tm_redraft | 2026-11-02 00:42:36.395111 |
+| 48 | 4 | tm_redraft | 2026-11-02 00:48:49.645299 |
+| 49 | 5 | tm_redraft | 2026-11-02 00:49:19.636825 |
+
+- **PASS:** 5 audit-esemény, 5 különböző, folyamatos 1–5 revízió; adatbázisbeli aktuális ügyrevízió 5, audit maximum 5. A legutolsó audit időpontja és az ügy updated_at egyezik.
+- **PASS:** létrehozó és elutasító actor különbözik; elutasító és az első utána következő javító actor különbözik. SQL-egyenlőségvizsgálat történt, UUID-k nem kerülnek a jelentésbe. A további egymást követő tervezetmódosítások actorai is különböznek.
+- **PASS:** case_status preparing; state.approval pending; 4 tervezet, 1 döntés. Ez a korábban igazolt újratervezési végállapot, nem új jóváhagyás.
+- **PASS:** az sc_test_mailbox_cases kapcsolótábla az ügyet az 1a0e711a60c6a259 message_id-hoz kapcsolja; SQL exists eredmény true.
+- **Határ:** e konkrét mentett állapot és auditlánc igazolt. Ez az adminisztratív olvasási út nem új RLS/felhasználói jogosultsági teszt; a korábbi negatív/függetlenségi próbák eredményeit nem ismételtük meg és nem bővítjük e SELECT-ből.
+- A lekérdezés során kizárólag e tesztügy adatai szerepeltek; a jelentésbe nincs levéltörzs, vendégnév/telefonszám, account-UUID, titok vagy teljes state JSON másolva.
+
+### Állapot és következő konkrét feladat
+- **AUDIT-SQL-READBACK: KÉSZ / PASS**, a feladattábla frissítve. Kódhiba nem igazolt, kódjavítás és új automatizált teszt nem indokolt.
+- Következő P0: a meglévő Backup V2 legutóbbi tényleges mentési/visszaállítási és Drive-átadási bizonyítékának visszaolvasása; export/restore ismétlése nélkül előbb a korábbi futás naplóját kell ellenőrizni. A DRIVE-SECRET blokkolót csak új bizonyíték alapján zárjuk le, secretet nem módosítunk.
+- A pending tesztügy független Approver-döntése külön felhasználói művelet marad; ebből az auditellenőrzésből új döntési művelet nem következik.
+- Nincs DB-írás, jogosultság-/RLS-/AI-/üzletiszabály-változás, telepítés, migráció, e-mail vagy Previo-művelet. Csak ez a GitHub-nyilvántartás változik.
