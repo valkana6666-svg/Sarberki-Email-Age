@@ -62,7 +62,7 @@ export function nameFromText(text=''){
 
 export function requestFlagsFromText(text=''){
   text=activeMessageText(text);
-  const pet=/(?:kuty\p{L}*|háziállat\p{L}*|dogs?|pets?|hund\p{L}*|haustier\p{L}*|\bpes\b|\bpsa\b)/iu;
+  const pet=/(?:kuty\p{L}*|háziállat\p{L}*|dogs?|pets?|hund\p{L}*|haustier\p{L}*|\bpes\b|\bps(?:a|u|om|i|ov|oma)\b)/iu;
   const tub=/(?:dézs\p{L}*|dezsa\p{L}*|hot[ -]?tub|whirlpool|badefass|badezuber|jacuzzi|(?:vroč\p{L}*|masaž\p{L}*)\s*kad)/iu;
   const negation=/(?<!\p{L})(?:nem|mégsem|megsem|nincs|nélkül|nelkul|not|no|without|kein\p{L}*|nicht|ohne|brez|ne)(?!\p{L})/iu;
   const requested=pattern=>{
@@ -615,7 +615,10 @@ function operationalTopicLines(language='hu',original='',rules=null,caseContext=
     arrival:/(?:érkez|check[- ]?in|arriv|ankunft|anreise|prihod)/iu.test(original),
     departure:/(?:távoz|kijelentkez|check[- ]?out|what\s+time[^.!?\n]{0,40}(?:leave|departure)|abreise|abreisen|odhod)/iu.test(original),
     returning:/(?:törzsvend|visszatérő|korábban[^.!?\n]{0,80}(?:száll|járt)|returning\s+guest|stayed[^.!?\n]{0,100}(?:before|ago)|previous\s+stay|stammgast|schon[^.!?\n]{0,80}(?:bei\s+ihnen|übernachtet)|povratn|že[^.!?\n]{0,80}bivali)/iu.test(original),
-    pet:/(?:kuty|háziállat|dog|pet\b|hund|haustier|pes|psa)/iu.test(original),
+    // Answer the pet fee when a pet is wanted or asked about, not when the guest explicitly declines one
+    // ("we will not bring a dog"); the shared negation-aware request flag decides, a question always counts.
+    pet:/(?:kuty|háziállat|dog|pet\b|hund|haustier|pes|ps(?:a|u|om|i|ov|oma)\b)/iu.test(original)&&(requestFlagsFromText(original).petRequested||
+     /(?:kuty|háziállat|dog|pet\b|hund|haustier|pes|ps(?:a|u|om|i|ov|oma)\b)[^.!?\n]*\?/iu.test(original)),
     hotTub:/(?:dézs|dézsafürdő|hot[ -]?tub|whirlpool|badefass|vroč\w*\s*kad|masaž\w*\s*kad)/iu.test(original)
   };
   const lines=[];
