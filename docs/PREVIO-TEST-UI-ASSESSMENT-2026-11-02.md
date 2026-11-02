@@ -129,3 +129,23 @@ A hivatalos dokumentáció friss keresési találatai: https://help.previo.app/e
 - E funkciók konkrét API-végpontja/saját API-hozzáférése továbbra NEM IGAZOLT; UI-hozzáférésből nem állítunk API-működést. Bizonyított alkalmazáskódhiba nincs, kódjavítás nem indokolt.
 - Következő hiányzó felmérés: részletes ár/kedvezmény/foglaló, gyermekkor és többegységes adatlap, voucher előállítás és meglévő foglalás kommunikációs/történeti részlete. Az éles honlap beküldésének hatása külön NEM IGAZOLT.
 - Csak a meglévő GitHub-dokumentáció módosul. Nincs Previo-mentés, küldés, foglalás, jogosultságváltozás, éles művelet, migráció vagy telepítés. Új automatizált teszt nem futott.
+
+## Árlista, kedvezmények, életkor és online fizetés – 2026-11-02 08:59–09:03 CET
+Címzett: Sárberki projektvezető chat.
+- Aktuális AGENTS teljes beolvasása 08:59:15 CET; blob be27bd2dfb4795496bd9f3d64ad60ada1123de5b; kizárólag gmail-test-subject-allowlist. Induló/mentés előtti HEAD 4f0d7fd9ccdc84594ebedd3bc8682c25599e06fb, releváns CI 41409694284 a záró visszaolvasáskor success. Központi feladatnyilvántartás beolvasva.
+- Megoldás: meglévő PMS-beállítások olvasása; új ár- vagy foglalólogika fejlesztése nem indokolt. Minden vizsgált oldal címében 73521 / API TESZT. Nem történt szerkesztés vagy mentés.
+
+| Terület és tényleges URL | Megfigyelés | Bizonyíték korlátja |
+|---|---|---|
+| https://pms.previo.app/73521/rates | Alap árlista, 2026.11.02–12.31 kijelzett időszak. Apartmanok 4+0, 5 szoba. Egy/két fő ikonjánál 30.000 Ft, háromnál 40.000 Ft, négynél 50.000 Ft. Minimum/maximum tartózkodás és min. előfoglalás „-”; érkezés/távozás engedélyjel látható. Mentés tiltva. | PASS a kijelzésre. Az 5 kiadó szoba árlistabeállítás, nem adott dátumra szabad kapacitás. Az összegek nem teljes tartózkodási ajánlatok, és nem kerülnek át az éles szabálymotorba. |
+| Árlista / Kedvezmények-Felárak menü | Hosszútávú tartózkodás, First Minute, Last Minute, Akciós ár, Kedvezmény kuponok | PASS a menüpontokra; ezek nem igazoltan konfigurált kedvezmények. |
+| https://pms.previo.app/73521/price_actions#priceActions/longTerm | Hosszútávú tartózkodás lista: éjszakaszámküszöb, szoba, árlista, érvényesség kezdete/vége, mennyiség és kedvezmény/felár oszlopok. Alapszűrő 2026.11.02-től, eredmény Nincs találat. | PASS e lista állapotára; nem az összes történeti vagy más típusú kedvezmény hiányának bizonyítéka. Nem állítjuk, hogy a törzsvendég- vagy egyéjszakás szabály itt be van állítva. |
+| https://pms.previo.app/73521/settings/guest_categories | Gyerek: típus Gyerek, 0–17, online Igen, ágy nélkül Nem, nem alapértelmezett. Felnőtt: 18–150, online Igen, ágy nélkül Nem, új foglalás alapértelmezése. Mindkét sornál kedvezmény/felár és mennyiség „-”. További, részben felnőtt/diák típusú kategóriák is látszanak. | PASS a tesztkorhatárokra és mezőkre. Nincs igazolt 0–3 / 3–8 díjskála ebben a tesztlistában; az éles jóváhagyott gyermekszabály változatlan. A konkrét vendég életkorának mentése és automatikus kategóriaválasztás még NEM IGAZOLT. |
+| https://pms.previo.app/73521/online_settings/payments | Alap árlista fizetési beállítása: „A szezonok nincsenek megadva”; Új szezon hozzáadása és Több időszak beállítása gomb; Mentés tiltva. | PASS a nézetre. Foglaló százaléka/határideje nincs igazolva ebből az üres nézetből. Szezont nem hoztunk létre, fizetést/kérelmet nem indítottunk. |
+
+### API és V1-hasznosítás
+- Az árlista és vendégkategória UI-megfigyelés; saját hitelesített API-hívás ebben a körben sem történt. A korábban dokumentált általános XML díj-/feltétel-lekérdezési lehetőség nem e beállítások sikeres saját lekérése.
+- Kézi átadásban külön ellenőrzendő az árlista és időszak, a létszámhoz tartozó ár, gyermekek tényleges életkora és a Previo vendégkategória, valamint a foglaló összege/határideje. Ismeretlen értéket nem helyettesítünk a teszt alapértékeivel.
+- A tesztkonfiguráció és a jóváhagyott Sárberki üzleti szabály különbözik; ettől még nincs bizonyított kódhiba. Nem módosítottuk a központi AI-t vagy szabálymotort, nem építettünk új árkalkulátort.
+- Hátralévő konkrét vizsgálat: többegységes és gyermek-életkoros foglalási adatlap mentés nélküli mezőfelmérése; voucher/kommunikáció/előzmény meglévő szintetikus foglaláson, ha ilyen azonosítható. Mentett próba, tényleges API és éles honlap -> Previo hatás továbbra NEM IGAZOLT.
+- Csak dokumentáció változik; nincs Previo-adatmódosítás, foglalás, küldés, pénzügyi művelet, migráció, telepítés vagy jogosultságváltozás. Új automatizált teszt nem futott.
