@@ -568,3 +568,12 @@ Címzett: Sárberki projektvezető chat. **Részleges PASS; a teljes felmérés 
 - Jelen akadály: felső PMS-menü nem nyílt ki a támogatott kattintás/billentyűzet útján; PMS2 oldalfában a hiányzó sablon/napló/ár részoldalak nem voltak elérhetők. Nem állítunk jogosultsághiányt vagy Previo-hibát.
 - Következő: régi PMS kommunikációs sablon- és felhasználói naplóoldalak olvasási elérése, majd hiányzó ár/foglaló/gyermekkor/többegységes mezők. Éles honlap -> Previo-bejegyzés és saját API-hozzáférés továbbra NEM IGAZOLT.
 - Bizonyított alkalmazáskódhiba nincs; csak meglévő jelentés és ez a folytatási pont változott. Nincs új tesztfuttatás, Previo-írás, vendégküldés, foglalás, telepítés, migráció, jogosultság-/AI-/üzletiszabály-módosítás.
+
+## Previo menüakadály lezárva, sablon/szerepkör/napló – 2026-11-02 08:57 CET
+Címzett: Sárberki projektvezető chat.
+- AGENTS teljesen beolvasva 08:52:43 CET, blob be27bd2dfb4795496bd9f3d64ad60ada1123de5b; induló HEAD fee85a79689a29bf726f052e2d3de7ffe50d8b3d, CI 41408190873 success.
+- A korábbi menüakadály **MEGOLDVA**: natív kattintás a menügomb alsó részére. Nem kell új belépés vagy jogosultságváltozás; a fenti menüblokkoló már nem aktuális.
+- **PASS:** 73521 TESZT Leírások/Egyéb sablonmezők, szerepkörlista és műveleti jogmátrix, Felhasználói tevékenység naplónézet. Manager szerepkör egy felhasználóval; szerkesztés Visszavonással bezárva, módosítás nélkül.
+- Tényleges naplókeresés november 1–2. kijelzett időablakára: nincs találat. Ez nem globális audit vagy naplózási hiba bizonyítéka.
+- Részletek és URL-ek: [Previo-felmérés](PREVIO-TEST-UI-ASSESSMENT-2026-11-02.md), commit 72f2085d4c9af3346661ffec5fb6eac57f2bcdca. Konkrét API-működés továbbra NEM IGAZOLT.
+- Következő: ár/kedvezmény/foglaló és gyermekkor/többegységes adatlap; voucher és meglévő foglalás kommunikáció/történet. Nincs új kódhiba, kódfejlesztés, Previo-mentés, vendégküldés vagy telepítés.
