@@ -177,3 +177,8 @@
 - Kiadás: a meglévő `scripts/netlify-test-build-gate.cjs` kapun, üres `[netlify-test-release]` commit `32052fc890aaa46c021ea538a3204e6bae8d9f9a` (fájlváltozás 0). Main/production, kapcsoló, migráció, jogosultság változatlan.
 - Ellenőrzés: `/api/health` deployedCommit = `32052fc890aa…`, ok=true, channel=gmail-test-subject-allowlist, autoSend=false, autoBookingModification=false; napi kezelő lábléce „Tesztverzió: 32052fc890aa · a telepített verzió egyezik.”; a telepített `napi-kezelo/icons/{apple-touch-icon,icon-192,icon-512}.png` bájtra azonos a commitolt fájlokkal; manifest és apple-touch-icon hivatkozás változatlan. Írásmentes élő próba (`scripts/live-test-readonly-smoke.mjs`) az új verzión: **20 PASS / 0 FAIL**, blokkolt kérés 0.
 - **Eredmény: TEST-kiadás PASS.** NEM IGAZOLT: fizikai iPhone kezdőképernyő-ikon (iOS gyorsítótár miatt a meglévő parancsikont törölni és újra hozzáadni kellhet).
+
+## #8 ikon – fizikai iPhone (2026-11-02 09:00–09:02 CET, tulajdonosi képernyőképek)
+- 09:00: a régi „Sárberki Napi” parancsikon még a felirat nélküli ikont mutatta – iOS a hozzáadáskor menti az ikont; a szerver az új ikont `no-store` fejléccel adja (ellenőrizve), tehát nem kiadási hiba.
+- 09:02: a parancsikon újbóli hozzáadása után a kezdőképernyőn fekete alapon türkiz koszorú, korona, ponty, a szalagon olvasható „SÁRBERKI HORGÁSZTÓ” felirat, „LENTI” és három csillag látszik, „Sárberki Napi” néven. **#8 ikon fizikai iPhone-on: PASS.** A képek nem kerültek GitHubra.
+- A #8 jegy ezzel minden Claude által vizsgált pontja PASS (felület, kategóriák, ügyadatlap, műveletek, technikai adat elrejtése, ikon). A többi Sárberki parancsikon („SárberkiAustri…”, „Sárberki Kezelő”) nem érintett.
