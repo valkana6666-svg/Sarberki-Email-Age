@@ -23,7 +23,7 @@ def validate(values):
     if not values.get('SARBERKI_BACKUP_DB_URL'):raise ValueError('PROTECTED_DATABASE_ACCESS_REQUIRED')
     provider=values.get('SARBERKI_V2_STORAGE_PROVIDER','s3')
     if provider=='drive':
-        if values.get('SARBERKI_V2_DRIVE_FOLDER_ID')!='1EE2ioPs_8OwpnttT9hYHba_Y9_aWwcqz':raise ValueError('APPROVED_DRIVE_FOLDER_REQUIRED')
+        if values.get('SARBERKI_V2_DRIVE_FOLDER_ID')!='19WOxZQK6M-kqou3OU43084bZce9Dnhyg':raise ValueError('APPROVED_DRIVE_FOLDER_REQUIRED')
     elif provider=='github-bridge':
         pass  # Encrypted staging artifact; independent Drive transfer remains required.
     elif provider=='s3':

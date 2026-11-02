@@ -2,7 +2,7 @@
 import hashlib,json,os,re,secrets,sys,urllib.error,urllib.request,urllib.parse
 from pathlib import Path
 SCOPE='https://www.googleapis.com/auth/drive.file'
-FOLDER_ID='1EE2ioPs_8OwpnttT9hYHba_Y9_aWwcqz'
+FOLDER_ID='19WOxZQK6M-kqou3OU43084bZce9Dnhyg'
 OWNER='valkana6666@gmail.com'
 MAX=256*1024*1024
 # Diagnostic stage only; never a secret, token, response body or exception text.

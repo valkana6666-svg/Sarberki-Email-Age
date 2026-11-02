@@ -85,14 +85,14 @@ jobs:
       - name: Verify Drive authorization before any source export
         if: env.SARBERKI_EFFECTIVE_PROVIDER == 'drive'
         env:
-          SARBERKI_V2_DRIVE_FOLDER_ID: ${{ vars.SARBERKI_V2_DRIVE_FOLDER_ID }}
+          SARBERKI_V2_DRIVE_FOLDER_ID: 19WOxZQK6M-kqou3OU43084bZce9Dnhyg  # app-created owner-only folder (run 41531436566)
           SARBERKI_V2_DRIVE_OAUTH_JSON: ${{ secrets.SARBERKI_V2_DRIVE_OAUTH_JSON }}
         run: python3 scripts/backup-v2-drive.py preflight
       - name: Read-only export with new protected passphrase
         env:
           SARBERKI_V2_ENABLED: ${{ vars.SARBERKI_V2_ENABLED }}
           SARBERKI_V2_STORAGE_PROVIDER: ${{ env.SARBERKI_EFFECTIVE_PROVIDER }}
-          SARBERKI_V2_DRIVE_FOLDER_ID: ${{ vars.SARBERKI_V2_DRIVE_FOLDER_ID }}
+          SARBERKI_V2_DRIVE_FOLDER_ID: 19WOxZQK6M-kqou3OU43084bZce9Dnhyg  # app-created owner-only folder (run 41531436566)
           SARBERKI_V2_BUCKET: ${{ vars.SARBERKI_V2_BUCKET }}
           SARBERKI_V2_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_V2_PASSPHRASE }}
           SARBERKI_BACKUP_DB_URL: ${{ secrets.SARBERKI_BACKUP_DB_URL }}
@@ -135,7 +135,7 @@ jobs:
       - name: Private Drive snapshots and exact-file SHA256 readback
         if: env.SARBERKI_EFFECTIVE_PROVIDER == 'drive'
         env:
-          SARBERKI_V2_DRIVE_FOLDER_ID: ${{ vars.SARBERKI_V2_DRIVE_FOLDER_ID }}
+          SARBERKI_V2_DRIVE_FOLDER_ID: 19WOxZQK6M-kqou3OU43084bZce9Dnhyg  # app-created owner-only folder (run 41531436566)
           SARBERKI_V2_DRIVE_OAUTH_JSON: ${{ secrets.SARBERKI_V2_DRIVE_OAUTH_JSON }}
         run: python3 scripts/backup-v2-drive.py
       - name: Validate the exact-ID downloaded Drive package

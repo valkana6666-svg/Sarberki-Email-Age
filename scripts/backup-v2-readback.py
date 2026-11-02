@@ -11,7 +11,7 @@ import stat
 import sys
 import zipfile
 
-FOLDER = '1EE2ioPs_8OwpnttT9hYHba_Y9_aWwcqz'
+FOLDER = '19WOxZQK6M-kqou3OU43084bZce9Dnhyg'
 LIMIT = 256 * 1024 * 1024
 DATABASE = {'database.dump.gpg', 'roles.sql.gpg', 'manifest.json.gpg',
             'SHA256SUMS.txt', 'STATUS.txt', 'PROVENANCE.json'}
