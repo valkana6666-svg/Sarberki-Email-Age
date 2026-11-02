@@ -18,3 +18,17 @@ test('negative: undecided length, several dates, no date, out-of-range nights, p
  for(const text of ['2027.06.12-én 1 vagy 2 éjszakára','on 2027-06-20 for 1-2 nights','am 12.06.2027 für eine oder zwei Nächte','2027.06.12 vagy 2027.06.19, egy éjszaka',
   'egy éjszaka, valamikor júniusban','30 nights from 2027-06-12','5 to 8 people in May 2027'])assert.equal(range(text),null,text);
 });
+test('month-name start date with a night count; a missing year is marked inferred',()=>{
+ for(const [text,expected] of [['Érdeklődnék, hogy 2027. július 3-án érkezve 4 éjszakára 2 fő részére','2027-07-03>2027-07-07'],['3 July 2027 for 2 nights','2027-07-03>2027-07-05'],
+  ['July 3, 2027, two nights','2027-07-03>2027-07-05'],['am 3. Juli 2027 für 2 Nächte','2027-07-03>2027-07-05'],['od 3. julija 2027 za dve noči','2027-07-03>2027-07-05']]){
+  assert.equal(range(text),expected,text);assert.equal(dateRangeFromText(text,now).inferredYear,false,text);
+ }
+ const noYear=dateRangeFromText('július 3-án érkeznénk 2 éjszakára',now);
+ assert.equal(`${noYear.arrival}>${noYear.departure}`,'2027-07-03>2027-07-05');assert.equal(noYear.inferredYear,true);
+ assert.equal(range('július 3. vagy július 10., egy éjszakára'),null);
+});
+test('accentless month abbreviations (jul, jun, apr, marc) are read and marked inferred without a year',()=>{
+ for(const [text,expected] of [['jul 10-14','2027-07-10>2027-07-14'],['jun 3-5','2027-06-03>2027-06-05'],['apr 3-5','2027-04-03>2027-04-05'],['marc 3-5','2027-03-03>2027-03-05']]){
+  assert.equal(range(text),expected,text);assert.equal(dateRangeFromText(text,now).inferredYear,true,text);
+ }
+});

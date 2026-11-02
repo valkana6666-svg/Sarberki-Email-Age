@@ -6,6 +6,8 @@ import {BUSINESS} from './business-config.mjs';
 const MONTHS = {
   január:1,januar:1,február:2,februar:2,március:3,marcius:3,április:4,aprilis:4,május:5,majus:5,június:6,junius:6,július:7,julius:7,augusztus:8,szeptember:9,október:10,oktober:10,november:11,december:12,
   jan:1,febr:2,márc:3,ápr:4,máj:5,jún:6,júl:7,aug:8,szept:9,okt:10,nov:11,dec:12,
+  // Accentless abbreviations the shared month pattern already accepts (also English Apr/Jun/Jul).
+  marc:3,apr:4,jun:6,jul:7,
   january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12,
   januar:1,februar:2,märz:3,maerz:3,mai:5,juni:6,juli:7,oktober:10,dezember:12,
   januar_si:1,januarja:1,februar_si:2,februarja:2,marec:3,marca:3,april_si:4,aprila:4,maj:5,maja:5,junij:6,junija:6,julij:7,julija:7,avgust:8,avgusta:8,september_si:9,septembra:9,oktober_si:10,oktobra:10,november_si:11,novembra:11,december_si:12,decembra:12
@@ -372,7 +374,7 @@ function validIsoDate(value){
 // "2027.06.12-én egy éjszakára", "on 2027-06-20 for 1 night", "am 12.06.2027 für eine Nacht":
 // exactly one full start date and exactly one night count (1-14) give the stay; anything else stays unknown.
 const NIGHT_WORDS={egy:1,két:2,ket:2,kettő:2,három:3,harom:3,négy:4,negy:4,öt:5,ot:5,one:1,two:2,three:3,four:4,five:5,eine:1,einer:1,zwei:2,drei:3,vier:4,fünf:5,ena:1,eno:1,dve:2,tri:3,štiri:4,stiri:4,pet:5};
-function singleDateWithNights(text){
+function singleDateWithNights(text,now=new Date()){
   const nights=[...text.matchAll(/(?<!\p{L})(\d{1,2}|egy|két|ket|kettő|három|harom|négy|negy|öt|ot|one|two|three|four|five|eine|einer|zwei|drei|vier|fünf|ena|eno|dve|tri|štiri|stiri|pet)\s+(?:éjszak\p{L}*|ejszak\p{L}*|éj(?!\p{L})|nights?(?!\p{L})|nächte\p{L}*|nacht(?!\p{L})|noč\p{L}*|noc\p{L}*)/giu)]
     .map(m=>NIGHT_WORDS[m[1].toLowerCase()]??Number(m[1]));
   // "1 vagy 2 éjszaka", "1-2 nights": an undecided length is never guessed.
@@ -382,11 +384,29 @@ function singleDateWithNights(text){
     ...[...text.matchAll(/(?<!\d)(20\d{2})[.\/-](\d{1,2})[.\/-](\d{1,2})(?!\d)/gu)].map(m=>`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`),
     ...[...text.matchAll(/(?<!\d)(\d{1,2})\.(\d{1,2})\.(20\d{2})(?!\d)/gu)].map(m=>`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`)
   ]);
+  // Month-name start dates: "2027. július 3-án", "3 July 2027", "July 3, 2027", "3. Juli 2027", "3. julija 2027".
+  // Without a year the next occurrence is used and marked inferred, so the reply asks to confirm the year.
+  const pad=n=>String(n).padStart(2,'0'),named=[];
+  const huM='január|február|március|április|május|június|július|augusztus|szeptember|október|november|december';
+  const enM='January|February|March|April|May|June|July|August|September|October|November|December';
+  const deM='Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember';
+  const siM='januarja|februarja|marca|aprila|maja|junija|julija|avgusta|septembra|oktobra|novembra|decembra';
+  for(const m of text.matchAll(new RegExp(`(?:(20\\d{2})\\.?\\s*)?(${huM})(?!\\p{L})\\s+(\\d{1,2})(?!\\d)`,'giu')))named.push([m[1],m[2],m[3]]);
+  for(const m of text.matchAll(new RegExp(`(?<!\\d)(\\d{1,2})(?:st|nd|rd|th|\\.)?\\s+(?:of\\s+)?(${enM}|${deM}|${siM})(?!\\p{L})(?:,?\\s+(20\\d{2}))?`,'giu')))named.push([m[3],m[2],m[1]]);
+  for(const m of text.matchAll(new RegExp(`(${enM})(?!\\p{L})\\s+(\\d{1,2})(?:st|nd|rd|th)?(?!\\d)(?:,?\\s+(20\\d{2}))?`,'giu')))named.push([m[3],m[1],m[2]]);
+  let inferredYear=false;
+  for(const [year,month,day] of named){
+    const mn=monthNumber(month)||monthNumber(month+'_si'),dn=Number(day);
+    if(!mn||dn<1||dn>31)continue;
+    let y=year?Number(year):now.getUTCFullYear();
+    if(!year){inferredYear=true;if(`${y}-${pad(mn)}-${pad(dn)}`<now.toISOString().slice(0,10))y++;}
+    dates.add(`${y}-${pad(mn)}-${pad(dn)}`);
+  }
   if(dates.size!==1)return null;
   const arrival=[...dates][0];
   if(!validIsoDate(arrival))return null;
   const d=new Date(arrival+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+nights[0]);
-  return {arrival,departure:d.toISOString().slice(0,10),inferredYear:false};
+  return {arrival,departure:d.toISOString().slice(0,10),inferredYear};
 }
 export function dateRangeFromText(text='',now=new Date(),timeZone='Europe/Budapest'){
   text=activeMessageText(text);
@@ -399,7 +419,7 @@ export function dateRangeFromText(text='',now=new Date(),timeZone='Europe/Budape
     : text.split(/[;\n]/u);
   const ranges=parts.map(p=>parseDateRange(p,now,timeZone)).filter(Boolean);
   if(new Set(ranges.map(r=>r.arrival+'|'+r.departure)).size>1)return null;
-  let result=parseDateRange(text,now,timeZone)||singleDateWithNights(text);
+  let result=parseDateRange(text,now,timeZone)||singleDateWithNights(text,now);
   if(!result)return null;
   if(/(?:jövőre|jovore|következő évben|next year|nächstes jahr|naslednje leto)/iu.test(text)&&result.inferredYear){
     const year=Number(new Intl.DateTimeFormat('en',{timeZone,year:'numeric'}).format(now))+1;
