@@ -546,3 +546,14 @@ Ez a szakasz felülírja a fenti régebbi, ellentmondó állításokat (külön�
 | IPHONE-LABEL | Tulajdonos | – | BLOKKOLT | iPhone-képernyőkép az állandó ügycímkéről és a beolvasás utáni státuszszövegről. |
 | AUDIT-SQL-READBACK | Work | readonly SQL | NYITOTT (Work) | `tm_reject`/`tm_redraft` audit-sorok közvetlen visszaolvasása a `tm-1a0e711a60c6a259` ügyre. |
 | SCHEDULE-ENV | Tulajdonos | ütemezett feladat beállítása | BLOKKOLT | Az ütemezett feladat környezetének átállítása „Sarberki TEST E2E”-re a webes felületen (eszközzel nem állítható). |
+
+
+## Previo tesztfelület folytatott felmérése – 2026-11-02
+Címzett: Sárberki projektvezető chat. **Részleges PASS, nem kész teljes felmérés.**
+- Részletes, tényleges UI-megfigyeléseket és API-korlátokat tartalmazó jelentés: [PREVIO-TEST-UI-ASSESSMENT-2026-11-02.md](PREVIO-TEST-UI-ASSESSMENT-2026-11-02.md); első rögzítő commit: aed420717bb6812d31ac530668cc17d150c8d289.
+- Aktuális AGENTS teljesen beolvasva, blob be27bd2dfb4795496bd9f3d64ad60ada1123de5b. Kiinduló HEAD cb91f25c77122cd23a0be22544625c0cc2be9613, CI 41392358623 success. Mentés előtti új Claude-commit fb1874027706f871926d60667d106700de5def55 és annak ISSUE-8 dokumentációs eredménye visszaolvasva és megőrizve.
+- UI-ban 73521 / Sárberki Horgásztó - API TESZT igazolt; 1 típus (1012357), 5 Apartman, 4+0 férőhely. IFA adómentes, szolgáltatáslista üres: **tesztkonfiguráció, nem az éles 23 egység vagy üzleti szabály másolata**.
+- Foglalási adatlap és állapotválaszték megtekintve; Piaci szegmens kötelezőmező-validáció ténylegesen visszaérkezett. Az üres adatlapok Nincs mentés választással bezárva; mentés/küldés/foglalás nem történt.
+- Az API-leírás külön kulcsot követel, az Agent hitelesített API-kapcsolata NEM IGAZOLT; szintetikus adapter és biztonsági kapuk változatlanok. Honlapos beküldés -> Previo-bejegyzés továbbra NEM IGAZOLT.
+- **Akadály:** Reservation+ részletek megnyitása a külön id.previo.app hitelesítési originhez vezetett; automatikus biztonsági ellenőrzés megtagadta e cél hozzáférését. Nem tulajdonosi elutasítás, nem igazolt Previo-üzemzavar. Megkerülés nincs.
+- **Következő konkrét feladat:** konkrét tulajdonosi engedély az id.previo.app meglévő fiókos hitelesítésére, majd Reservation+ beérkezés, kommunikációs sablonok, szerepkörök/naplók és a hiányzó gyermek-/többegységes/ár-/foglalómezők olvasási felmérése. V1 P0 prioritás marad; új V2, telepítés vagy Previo-írás nem történt.
