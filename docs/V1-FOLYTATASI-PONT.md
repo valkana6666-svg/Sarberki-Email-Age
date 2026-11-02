@@ -540,7 +540,7 @@ Ez a szakasz felülírja a fenti régebbi, ellentmondó állításokat (külön�
 
 | ID | Felelős | Fájlkör | Állapot | Feltétel / elfogadás |
 |---|---|---|---|---|
-| ISSUE-8-ACCEPTANCE | Claude óránkénti | olvasás: `napi-kezelo/*`, `tests/napi-*.test.mjs`; javítás csak bizonyított hiánynál ugyanitt | SZABAD | A #8 jegy minden pontját vesd össze a kóddal és teszttel; táblázat PASS/HIÁNY/NEM IGAZOLT a státuszfájlba. Csak reprodukált hiányra minimális javítás + célzott teszt. Az ikon/logó-forrás cseréje és TEST-kiadás tulajdonosi döntés. |
+| ISSUE-8-ACCEPTANCE | Claude óránkénti | olvasás: `napi-kezelo/*`, `tests/napi-*.test.mjs`; javítás csak bizonyított hiánynál ugyanitt | KÉSZ (vizsgálat, 2026-11-02): egy HIÁNY – az ikon szalagján nincs „Sárberki Horgásztó” felirat; döntés a tulajdonosra vár, lásd státuszfájl | A #8 jegy minden pontját vesd össze a kóddal és teszttel; táblázat PASS/HIÁNY/NEM IGAZOLT a státuszfájlba. Csak reprodukált hiányra minimális javítás + célzott teszt. Az ikon/logó-forrás cseréje és TEST-kiadás tulajdonosi döntés. |
 | LIVE-READONLY-SMOKE | Claude óránkénti | `scripts/live-test-readonly-smoke.mjs` (új, egyetlen fájl) | SZABAD, csak TEST E2E környezetben | Írásmentes élő próba: két szerep belépése, daily-list, record, CSRF-/tenant-/névtelen negatívok, kijelentkezés; titok nem kerülhet kimenetbe. Utána csak akkor futtatandó, ha a telepített SHA változott. |
 | DRIVE-SECRET | Tulajdonos | GitHub secret `SARBERKI_V2_DRIVE_OAUTH_JSON` | BLOKKOLT | Secret beállítása, utána `[backup-v2-drive-restore]` futás és exact-file visszaolvasás. |
 | IPHONE-LABEL | Tulajdonos | – | BLOKKOLT | iPhone-képernyőkép az állandó ügycímkéről és a beolvasás utáni státuszszövegről. |

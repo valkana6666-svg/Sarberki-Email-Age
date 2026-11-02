@@ -122,3 +122,26 @@
 - Újratervezet utáni „Magyar ellenőrző összefoglaló még nincs”: szándékos viselkedés (a redraft csak szöveget ment; kézi módosításhoz nincs ellenőrzött magyar összefoglaló, ugyanaz a minta, mint a `manual_edit_translation_unverified`). Nem hiba, nem módosítottuk.
 - **Diff-eredet (+11931/−18 a felületen):** a munkafa tiszta (nincs módosított/követetlen/ignorált fájl, nincs stash), a helyi ág azonos az originnel. E munkamenet összes változása `ffde29c..HEAD`: 1 fájl, csak dokumentáció (ez a napló). A tesztágnak a main-nel nincs közös őse (a teljes eltérés 792 fájl, +70621/−97); a tesztág egyetlen ősére sem jön ki pontosan +11931/−18 (a legközelebbi ~11,9k beszúrás −537…−549 törléssel). A felületi szám tehát nem e munkamenet kódmódosítása; a pontos összehasonlítási alapja innen NEM IGAZOLT. Semmit nem töröltünk és nem állítottunk vissza.
 - Módosított fájl: csak ez a napló. Nem történt: kódmódosítás, telepítés, migráció, kapcsoló, jelszóváltás, levélküldés, foglalás, Previo, main/production.
+
+## ISSUE-8-ACCEPTANCE – #8 jegy összevetése kóddal/teszttel [claude-hourly]
+- Futás: ütemezett Claude-munkamenet, session-azonosító NEM ELÉRHETŐ. Megfigyelés: 2026-11-02T05:19Z. Kiinduló és záró tesztági HEAD (a napló commitja előtt): `cb91f25c77122cd23a0be22544625c0cc2be9613`, branch-szűrt CI [41392358623](https://github.com/valkana6666-svg/Sarberki-Email-Age/actions/runs/41392358623) success. AGENTS.md teljes beolvasás 05:19Z, blob `be27bd2dfb4795496bd9f3d64ad60ada1123de5b` (változatlan).
+- Feladatválasztás: UI-MAILBOX-STATUS-COPY már KÉSZ (66a432a; a kódban és a tesztben a javított szöveg megvan: `napi-email.mjs:114`, `tests/napi-email.test.mjs:36,305`) – nem ismételtem. Választott: ISSUE-8-ACCEPTANCE (SZABAD, Claude óránkénti), csak olvasás. LIVE-READONLY-SMOKE nem választható: a `SARBERKI_TEST_*` változók ebben a környezetben hiányoznak (0 db; nem a TEST E2E környezet).
+- Módszer: statikus összevetés (`napi-kezelo/*`, `tests/napi-*.test.mjs`) és az ikonfájlok megtekintése. Teszt nem futott, kód nem változott; az élő/iPhone állapot nem vizsgált.
+
+| #8 pont | Eredmény | Bizonyíték / megjegyzés |
+|---|---|---|
+| Külön útvonal, régi TESZT megmarad | PASS (statikus + teszt) | `/napi-kezelo/`; `tests/napi-kezelo.test.mjs:131` ellenőrzi, hogy `index.html`, `cloud-approval.html` megmarad |
+| Önálló PWA, külön név, nem írja felül a chatbot/e-mail ikonokat | PASS (statikus) | manifest `id/scope/start_url=/napi-kezelo/`, név „Sárberki – Napi kezelő”, saját `napi-kezelo/icons/*` |
+| Fekete–narancs oldal | PASS (statikus) | `theme-color #ff7a00`, `background_color #0b0b0b` |
+| Négy kategória | PASS | `napi.mjs:12-16`, teszt `:131` |
+| Ügyadatlap (üzenetek, tények, összegzés, kapacitás, ár, AI-tervezet) | PASS (statikus) | `detail-*` elemek az `index.html`-ben; életciklus-teszt `:389` |
+| Megnyitás/Szerkesztés/Jóváhagyás/Elutasítás, küldés és foglalás nem automatikus | PASS (teszt) | gombok alapból `disabled`, jogosultság- és revízió/hash-kapu (`:131`, `:389`); küldés/foglalás gomb nincs |
+| Nincs hamis élő adat | PASS | „Nincs betöltve” számlálók, `closed` szekció őszinte szövege |
+| Tech. naplók csak a TESZT nézetben | NEM IGAZOLT | külön tesztet nem találtam; a kezelőoldalon a „Beszélgetés” kártya `hidden` |
+| Writer/Reader, RLS, audit | PASS (korábbi élő bizonyítékok) | lásd `0f7cb51`, `47aed48`, `b081d45` |
+| Ikon: fekete alapon türkiz halas logó **és türkiz „Sárberki Horgásztó” felirat**, a korábbi ikon mintájára | **HIÁNY** | a gyökér `apple-touch-icon.png` szalagján „SÁRBERKI HORGÁSZTÓ” felirat látszik; a `napi-kezelo/icons/icon-512.png` szalagja üres, felirat nincs (megtekintéssel). Színe és a hal/korona/babér megfelel |
+| Ikon-méretek tesztje | HIÁNY (teszt) | `tests/operator-pwa.test.mjs` az operator-manifestet fedi; a `napi-kezelo` ikonokra nincs méret-/létezésteszt |
+| Valódi iPhone | NEM IGAZOLT | tulajdonosi lépés (IPHONE-LABEL) |
+
+- Döntés: az ikon cseréje/újragyártása a nyilvántartás szerint tulajdonosi döntés (forrásválasztás, TEST-kiadás), ezért nem módosítottam. Javaslat: a tulajdonos döntse el, hogy a felirat kerüljön-e a szalagra (forrásként a 128 px-es 1 bites gyökérikon túl kicsi, jó felbontású forrás kell); ezután egy fájlkörű javítás (`napi-kezelo/icons/*` + méretteszt) és TEST-kiadás.
+- Nem történt: kódmódosítás, telepítés, migráció, kapcsoló, levélküldés, foglalás, Previo, main/production.
