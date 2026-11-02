@@ -183,3 +183,49 @@ Címzett: Sárberki projektvezető chat.
 - Következő végrehajtható teszt előfeltétele: meglévő szintetikus foglalás pontos azonosítója, vagy egy elkülönített szintetikus próba előkészítése a 73521 környezetben. Új próba előtt a készletzárolás/értesítés/voucher automatikus mellékhatásait, kötelező piaci szegmenst és a tesztadat későbbi lezárását tisztázni kell. Nem állítunk új tulajdonosi engedélykövetelményt: a meglévő utasítás szükséges szintetikus tesztet megenged, a technikai mellékhatásfeltételek azonban még nincsenek igazolva. Biztonsági kapcsoló/jogosultság változtatása továbbra külön engedélyhez kötött.
 - API-hozzáférés és éles honlap -> Previo-bejegyzés külön, továbbra NEM IGAZOLT kapu. A meglévő V1-motor és kézi átadás használható; a Previo végrehajtást nem aktiváljuk.
 - Nincs kódhiba vagy indokolt alkalmazáskód-javítás. Csak dokumentáció változott, nincs Previo-mentés, foglalás, küldés, migráció, telepítés vagy jogosultságmódosítás; új automatizált teszt nem futott.
+
+## Mentett szintetikus voucher-próba és lezárás – 2026-11-02
+Címzett: Sárberki projektvezető chat. Ez a szakasz felülírja a korábbi „nincs mentett tesztfoglalás / voucher nem igazolt” állapotot, kizárólag az alábbi konkrét próbára.
+
+### Kiindulás, engedély és választás
+- AGENTS teljes beolvasás a próba előtt 09:34:20 CET, megszakítás utáni folytatáskor 11:52:19 CET; változatlan blob be27bd2dfb4795496bd9f3d64ad60ada1123de5b. Kizárólag gmail-test-subject-allowlist; induló és mentés előtti HEAD 9553d9d3427f9bb430b27b9f8f66b3dce0c55a47; CI 41413932300 success. Központi nyilvántartás frissen visszaolvasva.
+- A tulajdonosi feladat kifejezetten megengedett szükséges szintetikus próbát igazolt tesztkörnyezetben. Meglévő mentett teszt nem volt azonosítható. A hiányzó mentett voucher/történet ellenőrzéséhez egyetlen, saját tesztbejegyzést használtunk; nem új rendszert vagy saját API-t fejlesztettünk.
+- Környezet minden releváns oldalon 73521 / Sárberki Horgásztó - API TESZT. Műveleti út PMS UI, nem Agent API. Vendég e-mail, telefonszám, bankkártya, fizetés és valódi vendégadat nélkül. Külön küldési parancs nem történt.
+
+### Mellékhatások előzetes vizsgálata
+Hivatalos, ténylegesen lekért források:
+- https://help.previo.app/en/doc/reservation-detail/ : az opció/megerősített/bejelentkezett/kijelentkezett/más állapot szobát blokkol; várólista/lemondás/no-show nem jelenik meg blokkoló foglalásként.
+- https://help.previo.app/en/doc/frequent-mailing-questions/ : kampány indulhat azonnal vagy időzítetten a mentéshez kapcsolódva. A kikapcsolt böngészős értesítések önmagukban nem zárják ki a vendégküldést.
+- https://help.previo.app/en/doc/online-check-in-aj/ : Alfred külön automatikus vagy kampányos check-in kommunikációt kezelhet.
+Ezek szolgáltatói általános leírások; nem saját API-mellékhatás-tesztek.
+
+| Előzetesen vizsgált TEST oldal | Tényleges eredmény |
+|---|---|
+| https://pms.previo.app/73521/guests/mailing#mailing | CRM/hírlevél kampánylista: üres kulcsszó és levelezéstípus mellett Keresés lefuttatva, 0 találat. Nem változtattunk kapcsolót és nem indítottunk kampányt. |
+| https://pms2.previo.app/73521/settings/applications/alfred/general | Online check-in/kijelentkezés/lemondás/dátumváltoztatás/fizetés/terminál kapcsolók jelöletlenek. A preautorizáció automatikus befejezése jelölt; kártya/preautorizáció nem került a próbába. Mentés nem történt ezen az oldalon. |
+| https://pms.previo.app/73521/communication/grid#Communication | OTA kommunikáció aktiválási tájékoztatót mutatott: Channel Manager szükséges. Ez nem a foglalás saját e-mail naplója és nem az Agent Gmail-kapcsolata. Semmit nem aktiváltunk. |
+
+### Konkrét mentett próba és bizonyíték
+Tesztjelölés: **TESZT WORK VOUCHER 20261102**. Voucher: **20260001**. Dátum: 2026.11.02 14:00–11.03 10:00. Egy felnőtt, Apartman 1; forrás Telefon; piaci szegmens Egyéni, szabadidős foglalás. Új állapot kezdettől várólista, soha nem opció/megerősítve. Email és telefon üres. A rendszer saját Alap árlistája 30.000 Ft összeget számolt, reggeli tesztalapértékkel; ezek nem az éles Sárberki üzleti szabályai.
+
+| Ellenőrzés | Bizonyíték | Eredmény |
+|---|---|---|
+| Létrehozás | Lista megjelent, majd voucher alapján újranyitva; tesztjelölés, várólista, 1 fő, üres email/telefon visszaolvasva | PASS, valódi TEST UI-mentés |
+| Létrehozási audit | Foglalási történet: 2026.11.02 09:39:44, „Az új foglalást létrehoztuk”, száma 20260001 | PASS |
+| Kommunikáció mentés után | Mentett foglalás Kommunikáció tab: 0 esemény, nincs megjeleníthető adat | PASS a kijelzett naplóra; nem globális szolgáltatói kézbesítési audit |
+| Voucher előállítás | Nyomtatási vezérlő -> Foglalás visszaigazolás: Magyar, Voucher díjbekérőként működik jelöletlen; OK után új PDF-nézet: https://pms.previo.app/73521/voucher/print/ , cím Voucher_20260001 | PASS, tényleges dokumentumelőállítás, nem küldés |
+| Voucher képi visszaolvasás | 2 oldalas PDF; első oldal fejléc SZÁLLÁS VOUCHER 20260001; TESZT WORK VOUCHER 20261102, API TESZT, dátum, 1×Apartmanok, 1 felnőtt, 30.000 Ft | PASS az első oldalra; teljes második oldal tartalmát nem igazoltuk |
+| Megszakítás utáni állapot | A böngészőmunkamenet időközben újraindult; 11:52 után a mentett 20260001 ismét megnyílt a tesztlistából | PASS a tartós mentésre; az új munkamenet nem indokolt új foglalást |
+| Próba lezárása | Kizárólag ezen az azonosított teszten állapot lemondás -> Mentés -> újranyitás; állapot lemondás, ugyanaz a tesztjelölés és voucher | PASS; a bejegyzés audit céljára megmaradt, nem töröltük |
+| Audit lezárás után | Történetben két sor: létrehozás és módosított foglalás, mindkettő 20260001 | PASS |
+| Kommunikáció lezárás után | 11:56 körüli végső visszaolvasás: 0 esemény | PASS a naplóra; nincs küldési próba |
+| Készlet | Várólista -> lemondás, mindkettő szolgáltatói dokumentáció szerint nem blokkoló | Dokumentált állapotszemantika; önálló API-készletellenőrzés és háttérzárolási DB-audit NEM IGAZOLT |
+
+### Tanulság és korlát
+- A voucher generálása **nem bizonyítja a foglalás megerősítését vagy a vendégküldést**: várólistás tesztre is előállt. A V1 belső jóváhagyását, aktuális kapacitás-/árigazolását és küldési engedélyét nem helyettesítheti a voucher létezése.
+- A tesztvoucher alapértelmezett szövege e-mailben küldött instrukcióra hivatkozott, miközben itt nem volt küldés; ezért éles használat előtt a munkatárs a valódi folyamatnak megfelelő tartalmat ellenőrizze. Sablont vagy üzleti szabályt nem változtattunk engedély nélkül.
+- A lemondás után a tesztlista 30.000 Ft ár/egyenleg mezője megmaradt. Ez tesztrekord, nem valódi fizetés vagy vendégkövetelés; pénzügyi nullázást, bizonylattörlést és számlakiállítást nem végeztünk.
+- A tesztrekordhoz a rendszer vendégbelépési kódot is képezett; azt és az audit IP-adatát nem mentjük GitHubra vagy a jelentésbe.
+- A korábbi „Previo-adatot nem módosítottunk” kizárólag a korábbi olvasási szakaszokra igaz. Ebben a körben **egy szintetikus TEST foglalás létrehozása és lemondása ténylegesen megtörtént**. Production/éles foglalás, main, telepítés, migráció, biztonsági kapcsoló, jogosultság, AI-motor és jóváhagyott üzleti szabály változatlan.
+- Saját hitelesített API, API-s idempotencia, mentett gyermekkoros/többegységes viselkedés, tényleges tesztcímzettes kézbesítés és éles honlap -> Previo-bejegyzés továbbra NEM IGAZOLT.
+- Következő V1-feladat: a felmérés alapján a meglévő kézi átadási út és a saját API-kapuk közötti határ megtartása; visszatérés a központi nyilvántartás nyitott V1 P0 bizonyítékaihoz. A 20260001 próbát és a kész UI-felmérést ne ismételjük. Új Previo-írási fejlesztés vagy éles aktiválás nem indokolt.
