@@ -21,7 +21,7 @@ TEST-oldal: `leafy-chimera-2403e5`, telepített `32052fc`. Teljes `npm test`: 25
 |---|---|---|---|
 | DRIVE-SECRET | Tulajdonos ([útmutató](DRIVE-OAUTH-TULAJDONOSI-UTMUTATO.md): Work) | BLOKKOLT | `SARBERKI_V2_DRIVE_OAUTH_JSON` secret, majd `[backup-v2-drive-restore]` és visszaolvasás (Claude) |
 | SCHEDULE-ENV | Tulajdonos, számítógépről | BLOKKOLT | Óránkénti feladat környezete: Sarberki TEST E2E |
-| V1-RC-CHECK | Claude | Drive után | Kiadásra jelölési ellenőrzés a fenti bizonyítékokból |
+| V1-RC-CHECK | Claude | FELTÉTELES PASS – csak a Drive hiányzik | [`V1-RC-CHECK-2026-11-02.md`](V1-RC-CHECK-2026-11-02.md); Drive PASS után végleges |
 | LIVE-MAILBOX-PLAN | Claude | TERV KÉSZ – tulajdonosi döntésre vár | [`V1-LIVE-MAILBOX-PLAN.md`](V1-LIVE-MAILBOX-PLAN.md): 3 kérdés (hol fut az info@; A: Microsoft Graph vagy B: továbbítás; éles környezet) |
 | PREVIO-READ-PLAN | Work | V1 után | Csak olvasó kapacitás/ár bekötésének feltételei (API-kulcs, mellékhatás-kapu) |
 
