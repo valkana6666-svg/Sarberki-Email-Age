@@ -527,3 +527,22 @@ A GitHub plugin használatát kifejezetten kérve: „Olvasd be ténylegesen a v
 Ez diagnosztikai átadás, nem automatikusan beállított globális ChatGPT-utasítás. Tulajdonosi újracsatlakoztatás most nem indokolt; csak ugyanott visszakapott konkrét hitelesítési/engedélyhiba alapján. Ismétlődő belső hibánál az érintett beszélgetés és pontos idő/hibaazonosító szükséges a szolgáltatói kivizsgáláshoz, titok nélkül.
 
 A tesztágon kizárólag e központi diagnosztikai jelentés változott. Nincs alkalmazáskód-, production/main-, telepítési, migrációs, jogosultsági, biztonsági, küldési, foglalási vagy Previo-változás; Claude kódfájljaihoz Work nem nyúlt.
+
+## FELÜLÍRÓ állapot-helyesbítés és óránkénti feladatnyilvántartás – 2026-11-02 06:10 CET (tulajdonosi engedéllyel, Claude Code)
+Ez a szakasz felülírja a fenti régebbi, ellentmondó állításokat (különösen a 41aa870/66a432a „TEST-kiadás engedélyre vár” sorokat). Lezárt feladatot nem nyit újra.
+
+**Igazolt, lezárt (nem ismétlendő):**
+- 41aa870 (állandó ügycímke) + 66a432a (mailbox-státuszszöveg) **TEST-kiadás KÉSZ**: `da3dc9a65b02cf7c01f7c370bee1fd1fc25eb9a3`, CI 41349910242 PASS, telepítés-ellenőrzés 41350294262 PASS; az oldal lábléce „da3dc9a65b02 · a telepített verzió egyezik” (élőben visszaolvasva 2026-11-01 23:40Z). Csak a fizikai iPhone-os vizuális ellenőrzés NEM IGAZOLT.
+- UI-MAILBOX-STATUS-COPY kész (66a432a). LIVE-GMAIL-MAIN, UI-GUEST-COUNT, LIVE-DUPLICATE, LIVE-RE, LIVE-APP-SWITCH PASS (korábbi szakaszok).
+- L11–L12 elutasítás → Writer új tervezet → újranyitás élőben PASS; élő negatív, függetlenségi, CSRF-, tenant-, kijelentkezés-visszajátszási és 30 perces tétlenségi próbák PASS (`docs/V1-AUTOMATION-STATUS-2026-11-01.md`, `0f7cb51`, `47aed48`, `b081d45`). A `tm-1a0e711a60c6a259` ügy rev 5/pending, az Approver dönthet rajta.
+
+**Óránkénti feladatnyilvántartás (a futások innen választanak; ha egy sor KÉSZ, a futás ezt itt frissíti a saját commitjában):**
+
+| ID | Felelős | Fájlkör | Állapot | Feltétel / elfogadás |
+|---|---|---|---|---|
+| ISSUE-8-ACCEPTANCE | Claude óránkénti | olvasás: `napi-kezelo/*`, `tests/napi-*.test.mjs`; javítás csak bizonyított hiánynál ugyanitt | SZABAD | A #8 jegy minden pontját vesd össze a kóddal és teszttel; táblázat PASS/HIÁNY/NEM IGAZOLT a státuszfájlba. Csak reprodukált hiányra minimális javítás + célzott teszt. Az ikon/logó-forrás cseréje és TEST-kiadás tulajdonosi döntés. |
+| LIVE-READONLY-SMOKE | Claude óránkénti | `scripts/live-test-readonly-smoke.mjs` (új, egyetlen fájl) | SZABAD, csak TEST E2E környezetben | Írásmentes élő próba: két szerep belépése, daily-list, record, CSRF-/tenant-/névtelen negatívok, kijelentkezés; titok nem kerülhet kimenetbe. Utána csak akkor futtatandó, ha a telepített SHA változott. |
+| DRIVE-SECRET | Tulajdonos | GitHub secret `SARBERKI_V2_DRIVE_OAUTH_JSON` | BLOKKOLT | Secret beállítása, utána `[backup-v2-drive-restore]` futás és exact-file visszaolvasás. |
+| IPHONE-LABEL | Tulajdonos | – | BLOKKOLT | iPhone-képernyőkép az állandó ügycímkéről és a beolvasás utáni státuszszövegről. |
+| AUDIT-SQL-READBACK | Work | readonly SQL | NYITOTT (Work) | `tm_reject`/`tm_redraft` audit-sorok közvetlen visszaolvasása a `tm-1a0e711a60c6a259` ügyre. |
+| SCHEDULE-ENV | Tulajdonos | ütemezett feladat beállítása | BLOKKOLT | Az ütemezett feladat környezetének átállítása „Sarberki TEST E2E”-re a webes felületen (eszközzel nem állítható). |
