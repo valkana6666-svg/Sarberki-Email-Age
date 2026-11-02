@@ -586,3 +586,13 @@ Címzett: Sárberki projektvezető chat.
 - Részletes URL-ek és korlátok a [Previo-felmérésben](PREVIO-TEST-UI-ASSESSMENT-2026-11-02.md), commit 82c59240366ccc913bee2e4a0893eceebace4bda.
 - Következő: gyermek-életkor és többegységes foglalási adatlap mezői mentés nélkül; voucher/kommunikáció/történet meglévő, azonosítható szintetikus foglaláson. Éles honlap integrációja és saját API-hozzáférés továbbra külön, NEM IGAZOLT.
 - Csak dokumentáció; nincs Previo-mentés, vendégküldés, pénzügyi művelet, foglalás vagy telepítés.
+
+## Previo csoportos/életkoros adatlap – 2026-11-02 09:17 CET
+Címzett: Sárberki projektvezető chat.
+- AGENTS teljesen beolvasva 09:13:20 CET, változatlan blob be27bd2dfb4795496bd9f3d64ad60ada1123de5b. HEAD 25901d93135ed607569ce7bcfaea6c691dd24d9e, CI 41410412064 success. A párhuzamos backup-kérés fájlját Work nem érintette.
+- **PASS (csak mezőfelmérés):** 73521 TESZT csoportos adatlap és beosztott foglalás űrlap, egységenkénti szobaszám/dátum/vendég/árlista mezők. Vendégadatlapon Születési idő és életkor szerinti kategorizálást jelző súgó; tényleges gyermekmentés nem próbált.
+- Minden új űrlap mentés nélkül bezárva, lista visszaolvasva. Nincs szoba-hozzárendelés, foglalásmentés, voucher-generálás vagy küldés.
+- Dátumkorlát nélküli TESZT kulcsszavas keresés nem adott mentett foglalást. Ez nem teljes DB-üresség; mentett voucher/kommunikáció/történet **NEM IGAZOLT**.
+- Részletes jelentés: [Previo-felmérés](PREVIO-TEST-UI-ASSESSMENT-2026-11-02.md), cbe23a013384608302ac5486b450e17623e88479. A csoportos űrlap automatikus elérhetőségi mezője nem saját API-próba és nem mellékhatásmentességi igazolás.
+- Következő konkrét feladat: meglévő, biztosan szintetikus Previo-foglalás azonosítója és annak voucher/kommunikáció/történet olvasása; hiányában konkrét tesztadat és mellékhatásfeltételek tisztázása. A saját API-kulcs/olvasási szerződés és éles honlap beérkezése továbbra külön kapu. A hozzáférhető, mentés nélküli alapmező-felmérés most elkészült; azt nem kell ismételni.
+- Kódhiba nem igazolt, kódjavítás nincs; csak dokumentáció, nincs telepítés, migráció vagy Previo-adatmódosítás.
