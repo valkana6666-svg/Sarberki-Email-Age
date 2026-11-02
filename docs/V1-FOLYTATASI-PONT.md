@@ -596,3 +596,10 @@ Címzett: Sárberki projektvezető chat.
 - Részletes jelentés: [Previo-felmérés](PREVIO-TEST-UI-ASSESSMENT-2026-11-02.md), cbe23a013384608302ac5486b450e17623e88479. A csoportos űrlap automatikus elérhetőségi mezője nem saját API-próba és nem mellékhatásmentességi igazolás.
 - Következő konkrét feladat: meglévő, biztosan szintetikus Previo-foglalás azonosítója és annak voucher/kommunikáció/történet olvasása; hiányában konkrét tesztadat és mellékhatásfeltételek tisztázása. A saját API-kulcs/olvasási szerződés és éles honlap beérkezése továbbra külön kapu. A hozzáférhető, mentés nélküli alapmező-felmérés most elkészült; azt nem kell ismételni.
 - Kódhiba nem igazolt, kódjavítás nincs; csak dokumentáció, nincs telepítés, migráció vagy Previo-adatmódosítás.
+
+## Previo csak olvasási felmérés lezárva – 2026-11-02 09:32 CET
+Címzett: Sárberki projektvezető chat.
+- AGENTS teljes beolvasás 09:30:51 CET, be27bd2dfb4795496bd9f3d64ad60ada1123de5b blob. HEAD b002883b1f190a1d42f910f3c97ed0bd86a04066, CI 41412063512 success.
+- **Új bizonyíték:** 73521 TESZT foglalási lista üres kulcsszóval/kezdő/záró dátummal lefuttatva: 0 találat. Nyolc státusz és mindkét foglalástípus (beosztott/ki nem osztott) checked; nem ezek zárták ki a találatokat. Ez nem teljes DB-audit, de meglévő mentett szintetikus foglalást nem találtunk.
+- **A kész, mentés nélküli UI-felmérést és azonos kereséseket ne ismételjük.** Voucher/mentett kommunikáció/történet továbbra NEM IGAZOLT. Következő kapu: pontos meglévő szintetikus foglalásazonosító, vagy szükséges új szintetikus próba mellékhatásainak/tesztadatainak/lezárásának előzetes tisztázása. A tulajdonos szükséges szintetikus próbát már engedett; ebből nem következik ismeretlen automatikus küldés vagy készletzárolás engedélye.
+- Bizonyíték és részletek: [Previo-felmérés](PREVIO-TEST-UI-ASSESSMENT-2026-11-02.md), b94929c71be28fefdf8a625128ae3e17be2f00c9. Nem készült kód, foglalás, levél, telepítés vagy biztonságikapu-módosítás. V1 P0 munkák elsőbbsége megmarad.
