@@ -147,7 +147,7 @@ export function guestCountFromText(text=''){
   if(total) return Number(total[1]);
   const adultChildPairs=[
     /\b(\d{1,2})\s*(?:felnőtt|felnott)\w*\s*(?:és|es|,|\+)\s*(\d{1,2})\s*(?:gyerek|gyermek)\w*\b/iu,
-    /\b(\d{1,2})\s*adults?\s*(?:and|,|\+)\s*(\d{1,2})\s*(?:children|child)\b/iu,
+    /\b(\d{1,2})\s*adults?\s*(?:and|,|\+)\s*(\d{1,2})\s*(?:children|child|kids?)\b/iu,
     /\b(\d{1,2})\s*erwachsene\w*\s*(?:und|,|\+)\s*(\d{1,2})\s*kind(?:er)?\b/iu,
     /\b(\d{1,2})\s*odrasl\w*\s*(?:in|,|\+)\s*(\d{1,2})\s*(?:otrok|otroc)\w*\b/iu
   ];
@@ -207,8 +207,8 @@ export function adultCountFromText(text=''){
 export function childCountFromText(text=''){
   text=activeMessageText(text);
   if(ambiguousPartyFieldsFromText(text).includes('children'))return null;
-  if(/\b(?:nincs(?:enek)?\s+(?:gyerek|gyermek)|(?:gyermek|gyerek)\s+(?:nélkül|nelkul)|no\s+children|without\s+children|keine\s+kinder|ohne\s+kinder|brez\s+otrok|ni\s+otrok)\b/iu.test(text))return 0;
-  const m=text.match(/\b(\d{1,2})\s*(?:gyerek\w*|gyermek\w*|children|child|kinder|kind|(?:otrok|otroc)\w*)\b/iu);
+  if(/\b(?:nincs(?:enek)?\s+(?:gyerek|gyermek)|(?:gyermek|gyerek)\s+(?:nélkül|nelkul)|no\s+(?:children|kids)|without\s+(?:children|kids)|keine\s+kinder|ohne\s+kinder|brez\s+otrok|ni\s+otrok)\b/iu.test(text))return 0;
+  const m=text.match(/\b(\d{1,2})\s*(?:gyerek\w*|gyermek\w*|children|child|kids?|kinder|kind|(?:otrok|otroc)\w*)\b/iu);
   if(m) return Number(m[1]);
   const huWords={egy:1,két:2,ket:2,kettő:2,ketto:2,három:3,harom:3,négy:4,negy:4,öt:5,ot:5,hat:6};
   const hw=text.match(/\b(egy|két|ket|kettő|ketto|három|harom|négy|negy|öt|ot|hat)\s+(?:gyerek\w*|gyermek\w*)\b/iu)?.[1]?.toLocaleLowerCase('hu-HU');
@@ -426,7 +426,7 @@ export function phoneFromText(text=''){
 export function childAgesFromText(text=''){
   text=activeMessageText(text);
   text=text.replace(/(?<!\p{L})(?:én|en|i am|ich bin|star sem)\s+\d{1,2}\s*(?:éves|eves|years? old|jahre alt|let)(?:\s+vagyok)?/giu,'');
-  if(!/(?:gyerek|gyermek|child|children|kinder|kind\b|otrok|otroc)/iu.test(text))return [];
+  if(!/(?:gyerek|gyermek|child|children|kids?\b|kinder|kind\b|otrok|otroc)/iu.test(text))return [];
   const separate=[...text.matchAll(/\b(\d{1,2})\s*(?:éves|eves|years? old|jahre alt)\b/giu)];
   if(separate.length>1)return separate.map(m=>Number(m[1]));
   const ageList=text.match(/\b(?:aged|im\s+alter\s+von|star(?:a|i|e)?)\s+((?:\d{1,2})(?:\s*(?:,|and|und|in|és|es)\s*\d{1,2})*)/iu);
@@ -435,7 +435,7 @@ export function childAgesFromText(text=''){
     text.match(/\baged\s+([^.!?]{1,120})/iu)?.[1],
     text.match(/\bim\s+alter\s+von\s+([^.!?]{1,120}?)(?=\s+jahren?\b|[.!?]|$)/iu)?.[1],
     text.match(/\bstar(?:a|i|e)?\s+([^.!?]{1,120}?)(?=\s+let\b|[.!?]|$)/iu)?.[1],
-    text.match(/\b(?:children|kinder|kindern|gyerek\w*|gyermek\w*|(?:otrok|otroc)\w*)\b[^0-9.!?\n]{0,40}((?:\d{1,2}\s*(?:(?:,|and|und|in|és|es|meg)\s*)?){1,6})(?=\s*(?:years? old|years?|jahre(?:n)?(?: alt)?|évesek?|evesek?|let)\b)/iu)?.[1],
+    text.match(/\b(?:children|kids?|kinder|kindern|kind|gyerek\w*|gyermek\w*|(?:otrok|otroc)\w*)\b[^0-9.!?\n]{0,40}((?:\d{1,2}\s*(?:(?:,|and|und|in|és|es|meg)\s*)?){1,6})(?=\s*(?:years? old|years?|jahre(?:n)?(?: alt)?|évesek?|evesek?|let)\b)/iu)?.[1],
     text.match(/((?:\d{1,2}\s*(?:(?:,|és|es|meg)\s*)?){1,6})(?=\s+(?:évesek|éves|evesek|eves)\b)/iu)?.[1]
   ].filter(Boolean);
   for(const segment of segments){
