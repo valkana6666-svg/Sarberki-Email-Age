@@ -27,6 +27,7 @@ Cím: **info@sarberkito.hu**. MX: `smtp.google.com` (a Google Workspace új, egy
 Mindegyik úton a forrás-olvasó utáni lánc (AI, ügytár, napi kezelő, jóváhagyás) változatlan.
 
 ## Tulajdonosi döntések (a megvalósítás előtt)
+0. **Előfeltétel (2026-11-02):** a vállalkozás és az info@sarberkito.hu a projekttulajdonos édesapjáé (adatkezelő). Bekötés csak az ő kifejezett, lehetőleg írásos hozzájárulásával; a Workspace-adminisztrátori lépéseket ő vagy az ő engedélyével más végzi. Éles indulás előtt az adatkezelési tájékoztatóban szerepeljen az AI-alapú feldolgozás.
 1. Az info@ önálló Workspace-postafiók vagy alias/csoport? Ki a Workspace-adminisztrátor (admin.google.com)?
 2. Mehet-e Internal OAuth-kliens a sarberkito.hu Workspace Google Cloud-projektjében, kizárólag `gmail.readonly` joggal?
 3. Melyik Supabase/Netlify környezet lesz az éles ügytár (külön projekt vagy tenant)?
