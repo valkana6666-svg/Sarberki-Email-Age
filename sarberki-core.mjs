@@ -339,7 +339,8 @@ function parseDateRange(text='', now=new Date(), timeZone='Europe/Budapest'){
       return {arrival:`${startYear}-${String(firstMonth).padStart(2,'0')}-${String(firstDay).padStart(2,'0')}`,departure:`${endYear}-${String(secondMonth).padStart(2,'0')}-${String(secondDay).padStart(2,'0')}`,inferredYear:!startExplicit&&!endExplicit&&!next};
     }
   }
-  const dayFirst=text.match(new RegExp(`\\b(?:vom\\s+)?(\\d{1,2})\\.?\\s*(?:bis|[-–])\\s*(\\d{1,2})\\.?\\s+(${names})\\b`,'iu'));
+  // "vom 3. bis 7. Juni", "5-8 May", "from 5 to 8 May", "from the 5th to the 8th of May".
+  const dayFirst=text.match(new RegExp(`\\b(?:vom\\s+|from\\s+(?:the\\s+)?)?(\\d{1,2})(?:st|nd|rd|th)?\\.?\\s*(?:bis|to|until|till|[-–])\\s*(?:the\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\.?\\s+(?:of\\s+)?(${names})\\b`,'iu'));
   const r=text.match(new RegExp(`\\b(?:20\\d{2}\\s*[.\\/-]?\\s*)?(${names})\\.?\\s+(\\d{1,2})\\.?\\s*(?:[-–—]|to|bis|do|(?:-?(?:től|tól|tol)))\\s*(?:(?:${names})\\s+)?(\\d{1,2})\\.?(?:-?ig)?\\b`,'iu'));
   if(!r&&!dayFirst) return null;
   const month=monthNumber(r ? r[1] : dayFirst[3]); if(!month) return null;
@@ -358,6 +359,25 @@ function validIsoDate(value){
   const d=new Date(value+'T00:00:00Z');
   return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===value;
 }
+// "2027.06.12-én egy éjszakára", "on 2027-06-20 for 1 night", "am 12.06.2027 für eine Nacht":
+// exactly one full start date and exactly one night count (1-14) give the stay; anything else stays unknown.
+const NIGHT_WORDS={egy:1,két:2,ket:2,kettő:2,három:3,harom:3,négy:4,negy:4,öt:5,ot:5,one:1,two:2,three:3,four:4,five:5,eine:1,einer:1,zwei:2,drei:3,vier:4,fünf:5,ena:1,eno:1,dve:2,tri:3,štiri:4,stiri:4,pet:5};
+function singleDateWithNights(text){
+  const nights=[...text.matchAll(/(?<!\p{L})(\d{1,2}|egy|két|ket|kettő|három|harom|négy|negy|öt|ot|one|two|three|four|five|eine|einer|zwei|drei|vier|fünf|ena|eno|dve|tri|štiri|stiri|pet)\s+(?:éjszak\p{L}*|ejszak\p{L}*|éj(?!\p{L})|nights?(?!\p{L})|nächte\p{L}*|nacht(?!\p{L})|noč\p{L}*|noc\p{L}*)/giu)]
+    .map(m=>NIGHT_WORDS[m[1].toLowerCase()]??Number(m[1]));
+  // "1 vagy 2 éjszaka", "1-2 nights": an undecided length is never guessed.
+  if(/(?<!\p{L})(?:\d{1,2}|egy|one|eine|ena)\s*(?:vagy|or|oder|ali|[-–\/])\s*(?:\d{1,2}|két|two|zwei|dve)\s+(?:éjszak|ejszak|night|nächt|nacht|noč|noc)/iu.test(text))return null;
+  if(new Set(nights).size!==1||!(nights[0]>=1&&nights[0]<=14))return null;
+  const dates=new Set([
+    ...[...text.matchAll(/(?<!\d)(20\d{2})[.\/-](\d{1,2})[.\/-](\d{1,2})(?!\d)/gu)].map(m=>`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`),
+    ...[...text.matchAll(/(?<!\d)(\d{1,2})\.(\d{1,2})\.(20\d{2})(?!\d)/gu)].map(m=>`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`)
+  ]);
+  if(dates.size!==1)return null;
+  const arrival=[...dates][0];
+  if(!validIsoDate(arrival))return null;
+  const d=new Date(arrival+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+nights[0]);
+  return {arrival,departure:d.toISOString().slice(0,10),inferredYear:false};
+}
 export function dateRangeFromText(text='',now=new Date(),timeZone='Europe/Budapest'){
   text=activeMessageText(text);
   const explicitDates=[...text.matchAll(/\b20\d{2}[./-]\d{1,2}[./-]\d{1,2}\b/gu)].map(m=>m[0]);
@@ -369,7 +389,7 @@ export function dateRangeFromText(text='',now=new Date(),timeZone='Europe/Budape
     : text.split(/[;\n]/u);
   const ranges=parts.map(p=>parseDateRange(p,now,timeZone)).filter(Boolean);
   if(new Set(ranges.map(r=>r.arrival+'|'+r.departure)).size>1)return null;
-  let result=parseDateRange(text,now,timeZone);
+  let result=parseDateRange(text,now,timeZone)||singleDateWithNights(text);
   if(!result)return null;
   if(/(?:jövőre|jovore|következő évben|next year|nächstes jahr|naslednje leto)/iu.test(text)&&result.inferredYear){
     const year=Number(new Intl.DateTimeFormat('en',{timeZone,year:'numeric'}).format(now))+1;
