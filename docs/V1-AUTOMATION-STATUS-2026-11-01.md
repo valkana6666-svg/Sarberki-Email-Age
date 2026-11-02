@@ -145,3 +145,7 @@
 
 - Döntés: az ikon cseréje/újragyártása a nyilvántartás szerint tulajdonosi döntés (forrásválasztás, TEST-kiadás), ezért nem módosítottam. Javaslat: a tulajdonos döntse el, hogy a felirat kerüljön-e a szalagra (forrásként a 128 px-es 1 bites gyökérikon túl kicsi, jó felbontású forrás kell); ezután egy fájlkörű javítás (`napi-kezelo/icons/*` + méretteszt) és TEST-kiadás.
 - Nem történt: kódmódosítás, telepítés, migráció, kapcsoló, levélküldés, foglalás, Previo, main/production.
+
+## ISSUE-8-ICON-TEST – napi-kezelo ikon-méretteszt [claude-hourly]
+- Hiány (ISSUE-8 vizsgálat): a `napi-kezelo` ikonokra nem volt méret-/létezésteszt. Pótolva: `tests/napi-kezelo-icons.test.mjs` (PNG-fejléc, 192/512 méret a manifest szerint, apple-touch-icon négyzetes és hivatkozott, hiányzó fájl negatív teszt). Célzott futás: 3/3 PASS (fixture, helyi). Teljes `npm test` nem futott (kapacitást nem érint); CI-igazolás a commit után.
+- Az ikonfelirat HIÁNY továbbra is tulajdonosi döntés; kód, ikon, telepítés nem változott.
