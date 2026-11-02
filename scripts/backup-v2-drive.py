@@ -47,12 +47,34 @@ def access_token(secret):
         raise ValueError('DRIVE_ACCESS_TOKEN_REQUIRED')
     return token
 def validate_folder(meta,folder_id):
-    if folder_id!=FOLDER_ID or meta.get('id')!=folder_id or meta.get('mimeType')!='application/vnd.google-apps.folder':
+    if folder_id!=FOLDER_ID:raise ValueError('UNAPPROVED_FOLDER')
+    validate_owner_only_folder(meta,folder_id)
+def validate_owner_only_folder(meta,folder_id):
+    if meta.get('id')!=folder_id or meta.get('mimeType')!='application/vnd.google-apps.folder':
         raise ValueError('UNAPPROVED_FOLDER')
     permissions=meta.get('permissions',[])
     if not permissions or any(p.get('type')!='user' or p.get('role')!='owner' or p.get('emailAddress','').lower()!=OWNER for p in permissions):
         raise ValueError('OWNER_ONLY_FOLDER_REQUIRED')
     if meta.get('trashed'):raise ValueError('FOLDER_TRASHED')
+APP_FOLDER_NAME='Sarberki V2 mentes'
+FOLDER_FIELDS='id,mimeType,trashed,permissions(type,role,emailAddress)'
+def ensure_app_folder(token):
+    # drive.file only reaches folders this OAuth app created. One-time and idempotent: reuse the single
+    # existing app folder, never create a second one, never touch or list other Drive content.
+    global STAGE
+    STAGE='folder_lookup'
+    q="mimeType='application/vnd.google-apps.folder' and name='"+APP_FOLDER_NAME+"' and 'root' in parents and trashed=false"
+    found=json.loads(request('https://www.googleapis.com/drive/v3/files?'+urllib.parse.urlencode({'q':q,'fields':'files(id)','spaces':'drive'}),token)).get('files',[])
+    if len(found)>1:raise ValueError('MULTIPLE_APP_FOLDERS')
+    if found:folder_id=found[0].get('id','')
+    else:
+        STAGE='folder_create'
+        body=json.dumps({'name':APP_FOLDER_NAME,'mimeType':'application/vnd.google-apps.folder','parents':['root']}).encode()
+        folder_id=json.loads(request('https://www.googleapis.com/drive/v3/files?fields=id',token,body,'application/json; charset=UTF-8')).get('id','')
+    if not isinstance(folder_id,str) or not re.fullmatch(r'[A-Za-z0-9_-]{10,128}',folder_id):raise ValueError('INVALID_FOLDER_ID')
+    STAGE='folder_acl'
+    validate_owner_only_folder(json.loads(request('https://www.googleapis.com/drive/v3/files/'+folder_id+'?'+urllib.parse.urlencode({'fields':FOLDER_FIELDS}),token)),folder_id)
+    return folder_id,('reused' if found else 'created')
 def validate_quota(quota,needed):
     try: limit=int(quota['limit']);used=int(quota['usage'])
     except (KeyError,ValueError,TypeError):raise ValueError('STORAGE_QUOTA_NOT_VERIFIED')
@@ -90,10 +112,15 @@ def upload(token,folder_id,name,data,verified_copy=None):
     return {'file_id':fid,'name':name,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),
         'exact_id_readback':'PASS','url':result.get('webViewLink'),'version_model':'distinct_file_per_run_attempt'}
 def main():
-    if sys.argv[1:] not in ([],['preflight']):raise ValueError('INVALID_OPERATION')
+    if sys.argv[1:] not in ([],['preflight'],['create-folder']):raise ValueError('INVALID_OPERATION')
+    global STAGE
+    if sys.argv[1:]==['create-folder']:
+        STAGE='oauth_token'
+        folder_id,how=ensure_app_folder(access_token(os.environ.get('SARBERKI_V2_DRIVE_OAUTH_JSON','')))
+        print('Drive app folder '+how+', owner-only ACL: PASS; folder_id='+folder_id)
+        return
     folder=os.environ.get('SARBERKI_V2_DRIVE_FOLDER_ID','')
     if folder!=FOLDER_ID:raise ValueError('UNAPPROVED_FOLDER')
-    global STAGE
     STAGE='oauth_token'
     token=access_token(os.environ.get('SARBERKI_V2_DRIVE_OAUTH_JSON',''))
     STAGE='folder'

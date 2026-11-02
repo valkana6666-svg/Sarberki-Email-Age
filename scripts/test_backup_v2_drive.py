@@ -1,4 +1,4 @@
-import importlib.util,unittest
+import importlib.util,json,unittest
 from pathlib import Path
 from unittest.mock import patch
 spec=importlib.util.spec_from_file_location('drive',Path(__file__).with_name('backup-v2-drive.py'))
@@ -101,3 +101,36 @@ class DriveSecretShape(unittest.TestCase):
         self.assertEqual(drive.secret_shape(''),'len=0,lines=0,first=none,last=none')
         self.assertEqual(drive.secret_shape('\ufeff{"a":1}\n'),'len=9,lines=2,first=bom,last=space')
 if __name__=='__main__':unittest.main()
+
+class DriveAppFolder(unittest.TestCase):
+    def acl(self,fid):
+        return json.dumps(dict(id=fid,mimeType='application/vnd.google-apps.folder',permissions=[dict(type='user',role='owner',emailAddress=drive.OWNER)])).encode()
+    def test_creates_once_when_missing(self):
+        calls=[]
+        def fake(url,token=None,data=None,*a,**k):
+            calls.append((url,data))
+            if '/files?' in url and data is None:return b'{"files":[]}'
+            if data is not None:return b'{"id":"syntheticFolder01"}'
+            return self.acl('syntheticFolder01')
+        with patch.object(drive,'request',side_effect=fake):
+            self.assertEqual(drive.ensure_app_folder('t'),('syntheticFolder01','created'))
+        self.assertEqual(sum(1 for _,d in calls if d is not None),1)
+    def test_reuses_existing_never_creates(self):
+        def fake(url,token=None,data=None,*a,**k):
+            if data is not None:raise AssertionError('must not create')
+            if '/files?' in url:return b'{"files":[{"id":"syntheticFolder02"}]}'
+            return self.acl('syntheticFolder02')
+        with patch.object(drive,'request',side_effect=fake):
+            self.assertEqual(drive.ensure_app_folder('t'),('syntheticFolder02','reused'))
+    def test_multiple_app_folders_blocked(self):
+        with patch.object(drive,'request',return_value=b'{"files":[{"id":"syntheticFolder03"},{"id":"syntheticFolder04"}]}'):
+            with self.assertRaisesRegex(ValueError,'MULTIPLE_APP_FOLDERS'):drive.ensure_app_folder('t')
+    def test_shared_folder_rejected(self):
+        def fake(url,token=None,data=None,*a,**k):
+            if '/files?' in url:return b'{"files":[{"id":"syntheticFolder05"}]}'
+            return json.dumps(dict(id='syntheticFolder05',mimeType='application/vnd.google-apps.folder',permissions=[dict(type='user',role='owner',emailAddress=drive.OWNER),dict(type='anyone',role='reader')])).encode()
+        with patch.object(drive,'request',side_effect=fake):
+            with self.assertRaisesRegex(ValueError,'OWNER_ONLY_FOLDER_REQUIRED'):drive.ensure_app_folder('t')
+    def test_invalid_id_rejected(self):
+        with patch.object(drive,'request',return_value=b'{"files":[{"id":"../x"}]}'):
+            with self.assertRaisesRegex(ValueError,'INVALID_FOLDER_ID'):drive.ensure_app_folder('t')
