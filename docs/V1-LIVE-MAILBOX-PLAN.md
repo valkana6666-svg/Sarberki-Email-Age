@@ -37,5 +37,14 @@ Mindegyik úton a forrás-olvasó utáni lánc (AI, ügytár, napi kezelő, jóv
 - **Automatikus levelek:** a Previo a domain nevében küld (SPF). A közös szűrő (`shared-core/automated-mail-filter.mjs`, `400f6e6`) ezeket, továbbá az auto-reply, bulk és noreply leveleket kiszűri; éles profilban a saját feladót is.
 - **Napi mentés:** a napi `[backup-v2-cloud-bridge-run]` kérés (a tulajdonos fiókjáról, 11-03 07:36Z, PASS) a GitHub-úton fut. A Drive-útra (`[backup-v2-run]`) állítás a Drive-token tartóssá tétele után, a napi kérés üzenetének cseréjével lehetséges.
 
+## Éles ügytár (külön Supabase-projekt) – tervezési döntés (Claude, 2026-11-03)
+Kiindulás (kódból): a séma tesztkerítése `sc_tenants.test_only ... check (test_only)` és a `'sarberki-test'` literál kb. 30 helyen, 9 SQL-fájlban (`supabase/migrations/*`, `deployment/{cloud-approval,exact-receipt,test-mailbox}/install.sql`), továbbá a JS-ben (`server-gmail-source` canonical, `booking-cases`, Pushover-ledger).
+| Út | Értékelés |
+|---|---|
+| A) Éles másolat-fájlok `sarberki-live` névvel | Gyors, de párhuzamos biztonsági SQL → eltérés-kockázat (AGENTS: nincs párhuzamos motor). Elvetve. |
+| **B) Egy telepítéskori, változtathatatlan projektprofil** (`environment` = test/live, `tenant_id`), a literálok helyett egy függvény olvassa; `test_only` = (environment='test') | **Választott.** Ugyanaz az SQL mindkét projektben; a TEST-projekt viselkedése változatlan marad. |
+Végrehajtás: (1) SQL + JS átírása, pglite valódi PostgreSQL-tesztek mindkét profillal, negatív tesztek (profil nem módosítható, test projekt nem fogad live tenantot és fordítva); (2) a TEST-adatbázis frissítése csak tulajdonosi engedéllyel, utána élő TEST-ellenőrzés; (3) új éles projekt telepítése + visszaállítási próba (PLATFORM-RESTORE-TEST) engedéllyel. Független ellenőrzés: jogosultsági/RLS-változás → kritikus pont.
+Becslés: (1) 1–2 munkamenet; (2)–(3) tulajdonosi lépésekkel kb. 1 óra (feltételezés).
+
 ## Becslés (feltételezés, nem igazolt)
 Google esetén a meglévő Gmail-adapter paraméterezése és az éles kapuk: kb. 1–2 munkamenet; Microsoft esetén új adapter: néhány munkamenet, majd TEST-szerű próba egy kifejezetten erre a célra küldött, kitalált levéllel, élesítés csak engedéllyel. A pontos idő a döntésektől és a hozzáférések elérhetőségétől függ.
