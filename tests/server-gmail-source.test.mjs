@@ -120,3 +120,19 @@ test('automated or booking-system mail is never accepted as a test-mailbox inqui
   await assert.rejects(read(gmail({body:message({headers})})),e=>e.code==='AUTOMATED_MESSAGE',JSON.stringify(headers));
  }
 });
+
+test('mailbox attestation: only known profiles, scope and tenant come from the profile, live proofs never verify as TEST',async()=>{
+ const {attestMailboxSource,verifyMailboxAttestation}=await import('../shared-core/server-gmail-source.mjs');
+ const {MAILBOX_PROFILES}=await import('../shared-core/server-mailbox-profiles.mjs');
+ const live=MAILBOX_PROFILES['sarberki-live'],key='e5'.repeat(32),checkedAt='2026-11-03T10:00:00.000Z';
+ const source={provider:'gmail',mailbox_id:'sarberkito_info',message_id:'18f2a0b1c2d3e4f5',thread_id:'18f2a0b1c2d3e4f5',rfc_message_id:'<x@example.test>',in_reply_to:null,references:[],
+  subject:'Érdeklődés',from:'V <v@example.test>',from_email:'v@example.test',to:'info@sarberkito.hu',received_at:'2026-11-03T09:00:00.000Z'};
+ const envelope={sender:'v@example.test',text:'Kitalált szöveg',mailbox_id:'sarberkito_info',message_id:source.message_id,thread_id:source.thread_id,rfc_message_id:source.rfc_message_id,references:[],received_at:source.received_at};
+ const proof=attestMailboxSource({profile:live,key,tenantId:'sarberki-live',source,envelope,checkedAt});
+ assert.equal(proof.scope,'live-mailbox-source-v1');
+ assert.equal(verifyMailboxAttestation({profile:live,key,tenantId:'sarberki-live',source,envelope,proof}),true);
+ assert.equal(verifyMailboxAttestation({key,tenantId:'sarberki-live',source,envelope,proof}),false);
+ assert.throws(()=>attestMailboxSource({profile:{...live},key,tenantId:'sarberki-live',source,envelope,checkedAt}),/MAILBOX_PROFILE_UNKNOWN/);
+ assert.throws(()=>attestMailboxSource({profile:live,key,tenantId:'sarberki-test',source,envelope,checkedAt}),/INVALID_EVIDENCE/);
+ assert.throws(()=>attestMailboxSource({profile:live,key,tenantId:'sarberki-live',source:{...source,to:'sarberkiprojecttest@gmail.com'},envelope,checkedAt}),/INVALID_EVIDENCE/);
+});

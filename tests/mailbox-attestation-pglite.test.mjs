@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createHash,createHmac} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
+import {attestMailboxSource,verifyMailboxAttestation} from '../shared-core/server-gmail-source.mjs';
+import {MAILBOX_PROFILES} from '../shared-core/server-mailbox-profiles.mjs';
 
 // Real PostgreSQL semantics (PGlite). Fictional data only, nothing is applied to any hosted database.
 // Slice 4 of the live case store: a LIVE project gets the mailbox RPCs without the TEST-only approval package.
@@ -32,6 +34,13 @@ function fixture(n,{to='info@sarberkito.hu',scope='live-mailbox-source-v1',tenan
  const checkedAt=new Date().toISOString(),bodySha256=sha(text);
  const fields=[scope,tenant,source.mailbox_id,id,id,source.rfc_message_id,source.from_email,to,source.subject,source.received_at,bodySha256,checkedAt];
  const proof={scope,checkedAt,bodySha256,attestation:createHmac('sha256',Buffer.from(KEY,'hex')).update(fields.join('\n')).digest('hex')};
+ if(to==='info@sarberkito.hu'&&scope==='live-mailbox-source-v1'&&tenant===TENANT){
+  // The server-side JS attestation for the (disabled) live profile is byte-identical to the database recomputation.
+  const js=attestMailboxSource({profile:MAILBOX_PROFILES['sarberki-live'],key:KEY,tenantId:tenant,source,envelope,checkedAt});
+  assert.deepEqual(js,proof);
+  assert.equal(verifyMailboxAttestation({profile:MAILBOX_PROFILES['sarberki-live'],key:KEY,tenantId:tenant,source,envelope,proof}),true);
+  assert.equal(verifyMailboxAttestation({key:KEY,tenantId:tenant,source,envelope,proof}),false,'TEST profile rejects a live proof');
+ }
  const caseId='live-case-'+n;
  return {caseId,data:{id:caseId,tenantId:tenant,sender:source.from_email,state:{approval:'pending',values:{}},messages:[envelope],drafts:[{text:'Kedves Vendégünk! (kitalált tervezet)'}],sourceReceipt:source},proof};
 }

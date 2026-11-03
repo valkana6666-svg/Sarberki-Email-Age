@@ -6,13 +6,13 @@ import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
 import {readTestGmailInbox,gmailReadableBody,TEST_GMAIL_ACCOUNT} from '../gmail-policy.mjs';
 import {isMarkedTestSubject} from '../gmail-subject.mjs';
 import {automatedMailReason} from './automated-mail-filter.mjs';
-import {enabledMailboxProfile} from './server-mailbox-profiles.mjs';
+import {enabledMailboxProfile,MAILBOX_PROFILES} from './server-mailbox-profiles.mjs';
 
 // The only enabled profile; its values must match the existing test-account policy and attestation scope.
 const PROFILE=enabledMailboxProfile('sarberki-test');
 if(PROFILE.account!==TEST_GMAIL_ACCOUNT||PROFILE.sourceScope!=='test-mailbox-source-v1')throw Error('MAILBOX_PROFILE_MISMATCH');
 export const TEST_MAILBOX_SOURCE_SCOPE=PROFILE.sourceScope;
-const MAILBOX_ID=PROFILE.mailboxId,MAX_TEXT=20000,TENANT=PROFILE.tenantId;
+const MAILBOX_ID=PROFILE.mailboxId,MAX_TEXT=20000;
 const fail=code=>{const error=Error(code);error.code=code;throw error;};
 const address=value=>{const match=/<([^<>\s]+)>\s*$/.exec(value||'');return (match?match[1]:String(value||'').trim()).toLowerCase();};
 function plainTextPart(part){
@@ -63,10 +63,13 @@ export async function readVerifiedTestMailboxMessage({token,messageId,fetchImpl=
 
 // Domain-separated HMAC (own scope as first field) with the existing server attestation key, in the
 // newline-joined form the database helper sc_isolated_approval_mac can recompute.
-function canonical({tenantId,source,envelope,checkedAt,bodySha256}){
- if(tenantId!==TENANT||!source||!envelope||!Number.isFinite(Date.parse(checkedAt))||new Date(checkedAt).toISOString()!==checkedAt)fail('INVALID_EVIDENCE');
+// The scope and tenant come from a known mailbox profile (default: TEST). Attesting performs no mailbox read;
+// whether a profile may be used for reading or storing is decided by enabledMailboxProfile and the database.
+const knownProfile=profile=>Object.values(MAILBOX_PROFILES).includes(profile)?profile:fail('MAILBOX_PROFILE_UNKNOWN');
+function canonical({profile,tenantId,source,envelope,checkedAt,bodySha256}){
+ if(tenantId!==profile.tenantId||source?.to!==profile.account||!source||!envelope||!Number.isFinite(Date.parse(checkedAt))||new Date(checkedAt).toISOString()!==checkedAt)fail('INVALID_EVIDENCE');
  if(['message_id','thread_id','rfc_message_id','received_at','mailbox_id'].some(k=>source[k]!==envelope[k])||envelope.sender!==source.from_email)fail('INVALID_EVIDENCE');
- const values=[TEST_MAILBOX_SOURCE_SCOPE,tenantId,source.mailbox_id,source.message_id,source.thread_id,source.rfc_message_id,
+ const values=[profile.sourceScope,tenantId,source.mailbox_id,source.message_id,source.thread_id,source.rfc_message_id,
   source.from_email,source.to,source.subject,source.received_at,bodySha256,checkedAt];
  if(values.some(v=>typeof v!=='string'||!v||/[\r\n]/.test(v)))fail('INVALID_EVIDENCE');
  return values.join('\n');
@@ -74,16 +77,20 @@ function canonical({tenantId,source,envelope,checkedAt,bodySha256}){
 const keyBytes=key=>{if(typeof key!=='string'||!/^[a-f0-9]{64}$/.test(key))fail('SETUP_REQUIRED');return Buffer.from(key,'hex');};
 const bodyHash=envelope=>createHash('sha256').update(String(envelope?.text??''),'utf8').digest('hex');
 
-export function attestTestMailboxSource({key,tenantId,source,envelope,checkedAt}){
+export function attestMailboxSource({profile=PROFILE,key,tenantId,source,envelope,checkedAt}){
+ profile=knownProfile(profile);
  const secret=keyBytes(key),bodySha256=bodyHash(envelope);
- const attestation=createHmac('sha256',secret).update(canonical({tenantId,source,envelope,checkedAt,bodySha256})).digest('hex');
- return {scope:TEST_MAILBOX_SOURCE_SCOPE,checkedAt,bodySha256,attestation};
+ const attestation=createHmac('sha256',secret).update(canonical({profile,tenantId,source,envelope,checkedAt,bodySha256})).digest('hex');
+ return {scope:profile.sourceScope,checkedAt,bodySha256,attestation};
 }
+export function attestTestMailboxSource(input){return attestMailboxSource({...input,profile:PROFILE});}
 
-export function verifyTestMailboxAttestation({key,tenantId,source,envelope,proof}){
+export function verifyMailboxAttestation({profile=PROFILE,key,tenantId,source,envelope,proof}){
  try{
-  if(proof?.scope!==TEST_MAILBOX_SOURCE_SCOPE||!/^[a-f0-9]{64}$/.test(proof.attestation||''))return false;
-  const expected=attestTestMailboxSource({key,tenantId,source,envelope,checkedAt:proof.checkedAt});
+  profile=knownProfile(profile);
+  if(proof?.scope!==profile.sourceScope||!/^[a-f0-9]{64}$/.test(proof.attestation||''))return false;
+  const expected=attestMailboxSource({profile,key,tenantId,source,envelope,checkedAt:proof.checkedAt});
   return expected.bodySha256===proof.bodySha256&&timingSafeEqual(Buffer.from(expected.attestation,'hex'),Buffer.from(proof.attestation,'hex'));
  }catch{return false;}
 }
+export function verifyTestMailboxAttestation(input){return verifyMailboxAttestation({...input,profile:PROFILE});}
