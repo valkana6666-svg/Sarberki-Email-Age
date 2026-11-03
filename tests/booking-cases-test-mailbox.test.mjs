@@ -20,7 +20,7 @@ const GMAIL_TOKEN='ya29.SYNTHETIC_TEST_ONLY_TOKEN_0123456789',ID='18f2a0b1c2d3e4
 const TEXT='Jó napot! Deluxe faházat szeretnénk foglalni 2027-05-14 és 2027-05-16 között 2 felnőtt, 0 gyermek számára.';
 
 test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gmail token header can store a marked fictional test mail',async t=>{
- const db=new PGlite(),tokens=new Map(),cookies=new Map(),csrf=new Map();let gmailCalls=0,subject='Sárberki élő teszt – AI előnézet';
+ const db=new PGlite(),tokens=new Map(),cookies=new Map(),csrf=new Map();let gmailCalls=0,subject='Sárberki élő teszt – AI előnézet',fromHeader='Teszt <sender@example.test>';const gmailSends=[];
  try{
   await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key);create table auth.sessions(id uuid primary key,user_id uuid,not_after timestamptz);create function auth.uid() returns uuid language sql stable as $$select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;grant usage on schema auth to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;`);
   await db.exec(await read('supabase/migrations/202610090001_case_store.sql'));
@@ -36,9 +36,11 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
    if(url.origin==='https://gmail.googleapis.com'){
     gmailCalls++;assert.equal(options.headers.Authorization,'Bearer '+GMAIL_TOKEN);
     if(url.pathname.endsWith('/profile'))return new Response(JSON.stringify({emailAddress:'sarberkiprojecttest@gmail.com'}));
+    if(url.pathname.includes('/threads/'))return new Response(JSON.stringify({messages:[]}));
+    if(url.pathname.endsWith('/messages/send')){gmailSends.push(JSON.parse(options.body));return new Response(JSON.stringify({id:'synthetic-sent'}));}
     const id=url.pathname.endsWith('/profile')?ID:url.pathname.split('/').at(-1);
     return new Response(JSON.stringify({id,threadId:id,labelIds:['INBOX'],internalDate:String(Date.parse('2026-10-31T10:00:00Z')),payload:{mimeType:'multipart/alternative',
-     headers:[{name:'Subject',value:subject},{name:'From',value:'Teszt <sender@example.test>'},{name:'To',value:'sarberkiprojecttest@gmail.com'},{name:'Message-ID',value:'<f1@example.test>'}],
+     headers:[{name:'Subject',value:subject},{name:'From',value:fromHeader},{name:'To',value:'sarberkiprojecttest@gmail.com'},{name:'Message-ID',value:'<f1@example.test>'}],
      parts:[{mimeType:'text/plain',body:{data:b64(TEXT)}}]}}));
    }
    assert.equal(url.origin,project,'all Auth/REST is synthetic');
@@ -154,6 +156,32 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
    assert.deepEqual(data.decisions.map(x=>x.decision),['return','approve']);assert.equal(data.internalApproval.scope,'test-mailbox-v1');
    assert.equal(data.internalApproval.sendAllowed,false);assert.equal(data.internalApproval.bookingAllowed,false);
    assert.deepEqual((await db.query('select kind from sc_audit where case_id=$1 order by revision',[caseId])).rows.map(r=>r.kind),['tm_create','tm_return','tm_redraft','tm_approve']);
+  });
+  await t.test('send: off without its own switch; only an Approver; only approved; only the fixed test recipient; exactly one send',async()=>{
+   const sendEnv={...enabledEnv,CASE_TEST_MAILBOX_SEND_ENABLED:'sarberki-test-pair-only'};
+   const send=(role,env,id,revision,options)=>call(role,env,{tenantId:'sarberki-test',action:'test-mailbox-send',caseId:id,expectedRevision:revision},{headers:gmail,...options});
+   // caseId is approved (revision 4) but its sender is not the allowed test recipient.
+   assert.deepEqual((await send('approver',enabledEnv,caseId,4,{status:403})).json,{error:'FORBIDDEN'},'separate send switch, default off');
+   await send('writer',sendEnv,caseId,4,{status:403});
+   await send('approver',sendEnv,caseId,3,{status:409});
+   assert.deepEqual((await send('approver',sendEnv,caseId,4,{status:403})).json,{error:'RECIPIENT_NOT_ALLOWED'});
+   assert.equal(gmailSends.length,0);
+   // A fictional mail from the owner's test sender: store, approve independently, then send once.
+   fromHeader='László Kovács <sarberkito@gmail.com>';
+   try{
+    const id2='18f2a0b1c2d3e4a9',case3='tm-'+id2;
+    await call('writer',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-ingest',messageId:id2},{headers:gmail,status:200});
+    await send('approver',sendEnv,case3,1,{status:409});
+    assert.deepEqual((await send('approver',sendEnv,case3,1,{status:409})).json,{error:'NOT_APPROVED'},'pending is never sent');
+    await call('approver',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-decide',caseId:case3,expectedRevision:1,reviewedDraftHash:await hashOf(case3),decision:'approve'},{status:200});
+    assert.deepEqual((await send('approver',sendEnv,case3,2,{status:200})).json,{result:{caseId:case3,status:'sent'}});
+    assert.equal(gmailSends.length,1);assert.equal(gmailSends[0].threadId,id2);
+    const mime=Buffer.from(gmailSends[0].raw,'base64url').toString('utf8');
+    assert.match(mime,/^From: sarberkiprojecttest@gmail\.com\r\nTo: sarberkito@gmail\.com\r\n/);
+    const body=Buffer.from(mime.split('\r\n\r\n')[1].replace(/\r\n/g,''),'base64').toString('utf8').replace(/\r\n/g,'\n');
+    assert.equal(body,(await latest(case3)).data.drafts.at(-1).text,'exactly the approved stored text');
+    assert.equal((await latest(case3)).revision,2,'sending does not change the case');
+   }finally{fromHeader='Teszt <sender@example.test>';}
   });
   await t.test('the author of the latest draft cannot approve it even with approve permission; reject and reopen keep history',async()=>{
    const id2='18f2a0b1c2d3e4f6',case2='tm-'+id2;

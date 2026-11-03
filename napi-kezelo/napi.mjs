@@ -72,7 +72,8 @@ async function loadState(){
 }
 let listLoaded=false;
 let selectedSection='incoming',rows=[],selected=null,editBase=null,canApprove=false,actionBusy=false,tmCase=null,approvedText=null;
-const COPY_LABEL='Jóváhagyott szöveg másolása';
+const COPY_LABEL='Jóváhagyott szöveg másolása',SEND_LABEL='Válasz küldése';
+let approvedCase=null;
 const isTestMailboxCaseId=id=>typeof id==='string'&&/^tm-[a-f0-9]{12,32}$/.test(id);
 const request=createEpochRequestQueue({getEpoch:()=>epoch,isAuthenticated:()=>authenticated,
  prepare:()=>session.restore(),execute:createCloudCaseRequest()});
@@ -134,6 +135,7 @@ function clearDetail(){
  el('case-detail').hidden=true;
  for(const id of ['detail-status','detail-summary','detail-capacity','detail-price','detail-draft'])el(id).textContent='';
  el('copy-approved').hidden=true;el('copy-approved').textContent=COPY_LABEL;approvedText=null;
+ el('send-approved').hidden=true;el('send-approved').disabled=false;el('send-approved').textContent=SEND_LABEL;approvedCase=null;
  el('detail-link').href='../cloud-approval.html';
 }
 function clearData(message='A listához jelentkezzen be.'){
@@ -221,7 +223,7 @@ async function openTestMailboxCase(caseId,turn,status){
  el('detail-price').textContent=record.decisions.length?'Döntések: '+record.decisions.map(d=>(tmDecisionLabel[d.decision]||'ismeretlen')+(d.at?' ('+d.at+')':'')+(d.reason?' – '+d.reason:'')).join('; '):'';
  tmCase={caseId,revision:record.revision,hash:record.draft.hash,text:record.draft.text};
  // Only an internally approved draft can be copied; an approved draft cannot change, so it is the reviewed text.
- if(record.approval==='approved_internal'){approvedText=record.draft.text;el('copy-approved').hidden=false;}
+ if(record.approval==='approved_internal'){approvedText=record.draft.text;el('copy-approved').hidden=false;approvedCase={caseId,revision:record.revision};el('send-approved').hidden=false;}
  if(record.canEditDraft===true){el('draft-editor').value=record.draft.text;el('draft-editor').disabled=false;}
  if(record.canDecide===true&&record.approval==='pending'){
   tmCase.canDecide=true;el('approve-confirm').disabled=false;
@@ -242,6 +244,26 @@ el('copy-approved').addEventListener('click',async()=>{
   button.textContent='Nem sikerült – a szöveg kijelölve, használja a Másolás funkciót';
   el('detail-status').textContent='A másolás nem sikerült. Jelölje ki a választervezet szövegét kézzel.';
  }
+});
+// Sends the stored, approved reply through the server (test pair only). The browser sends no text.
+const sendErrors={FORBIDDEN:'A küldés nincs bekapcsolva, vagy nincs jóváhagyói jog.',NOT_APPROVED:'Csak jóváhagyott válasz küldhető.',
+ RECIPIENT_NOT_ALLOWED:'Ez a címzett nem engedélyezett (csak a tesztfeladó).',CASE_CONFLICT:'Az ügy közben megváltozott; nyissa meg újra.',
+ GMAIL_AUTH_REQUIRED:'A Google-küldési engedély szükséges.',WRONG_GMAIL_ACCOUNT:'A sarberkiprojecttest@gmail.com fiókot válassza.',
+ LOADING:'A Google-belépés betöltődik; nyomja meg újra.',CONSENT:'A Google-engedély nem érkezett meg.',CHANGED:'A belépés közben megváltozott; nyomja meg újra.'};
+el('send-approved').addEventListener('click',()=>{
+ const target=approvedCase,button=el('send-approved');if(!authenticated||!target||button.disabled)return;
+ button.disabled=true;button.textContent='Google-engedély…';
+ const failedSend=code=>{if(approvedCase!==target)return;button.disabled=false;button.textContent='Nem ment el – '+(sendErrors[code]||'a küldés nem igazolt; nincs automatikus ismétlés.');};
+ emailReader.requestSendToken(async token=>{
+  if(approvedCase!==target||!authenticated)return;
+  button.textContent='Küldés…';
+  try{
+   const result=await request({tenantId:TENANT,caseId:target.caseId,action:'test-mailbox-send',expectedRevision:target.revision},'POST',{'X-Sarberki-Gmail-Token':token});
+   if(approvedCase!==target)return;
+   if(result?.caseId!==target.caseId||!['sent','already_sent'].includes(result.status))throw Error('INVALID_DATA');
+   button.textContent=result.status==='sent'?'Elküldve ✓':'Már el volt küldve ✓ – nem küldtük újra';
+  }catch(error){failedSend(error?.message);}
+ },failedSend);
 });
 async function tmMutate(kind){
  const base=tmCase;if(actionBusy||!authenticated||!base)return;

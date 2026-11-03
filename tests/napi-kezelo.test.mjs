@@ -15,7 +15,7 @@ class Element {
  async dispatch(type,event={}){for(const fn of this.listeners[type]||[])await fn({preventDefault(){},...event});}
 }
 function fakeDocument(){
- const ids=['count-incoming','count-approval','count-progress','count-closed','cases-panel','cases-title','email-picker','email-picker-wrap','email-previous','email-next','read-email','email-status','email-list','email-detail','email-draft-request','email-draft-status','email-draft-text','email-draft-review','email-draft-checks','draft-editor','save-draft','approve-draft','approve-confirm','return-draft','reject-draft','decision-reason','email-save-case','email-save-status','detail-messages','detail-facts','chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','copy-approved','detail-link','section-heading','section-description'];
+ const ids=['count-incoming','count-approval','count-progress','count-closed','cases-panel','cases-title','email-picker','email-picker-wrap','email-previous','email-next','read-email','email-status','email-list','email-detail','email-draft-request','email-draft-status','email-draft-text','email-draft-review','email-draft-checks','draft-editor','save-draft','approve-draft','approve-confirm','return-draft','reject-draft','decision-reason','email-save-case','email-save-status','detail-messages','detail-facts','chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','copy-approved','send-approved','detail-link','section-heading','section-description'];
  const elements=Object.fromEntries(ids.map(id=>[id,new Element()]));
  const nav=['incoming','approval','progress','closed'].map(section=>{const e=new Element();e.dataset.section=section;return e;});
  const listeners={};
@@ -480,6 +480,7 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   e['draft-editor'].value='Kitalált negyedik tervezet.';await e['draft-editor'].dispatch('input');await e['save-draft'].dispatch('click');await settle();
   role='approver';await open();
   assert.equal(e['copy-approved'].hidden,true,'a pending draft cannot be copied for sending');
+  assert.equal(e['send-approved'].hidden,true,'a pending draft cannot be sent');
   await e['approve-draft'].dispatch('click');await settle();
   assert.equal(posts.at(-1).action,'test-mailbox-redraft','approval needs the confirmation checkbox');
   e['approve-confirm'].checked=true;await e['approve-confirm'].dispatch('change');assert.equal(e['approve-draft'].disabled,false);
@@ -489,6 +490,11 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   assert.equal(e['approve-confirm'].disabled,true);assert.equal(e['draft-editor'].disabled,true);
   // Approved text can be copied for a MANUAL Gmail reply; nothing is sent and no request is made.
   assert.equal(e['copy-approved'].hidden,false);
+  // Send: visible only when approved; without the Google script the operator is asked to press again and no request is made.
+  assert.equal(e['send-approved'].hidden,false);
+  const sendCount=posts.length;await e['send-approved'].dispatch('click');await settle();
+  assert.equal(posts.length,sendCount);assert.match(e['send-approved'].textContent,/^Nem ment el – A Google-belépés betöltődik/u);
+  assert.equal(e['send-approved'].disabled,false);
   const copied=[],postCount=posts.length;
   Object.defineProperty(globalThis.navigator,'clipboard',{value:{writeText:async text=>{copied.push(text);}},configurable:true});
   try{

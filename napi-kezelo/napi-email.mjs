@@ -193,6 +193,22 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
     },error_callback:()=>done('A Google-engedély nem sikerült; a levél nem lett mentve.')}).requestAccessToken({prompt:''});
   }catch{done('A Google-belépés nem érhető el.');}
  });
+ // Send the approved reply (owner permission 2026-11-03, test pair only): a fresh token with send + read
+ // scope is requested on the click (user gesture) and handed to the server once. If the Google script is
+ // not loaded yet, it is loaded and the operator presses again (a popup needs the original gesture).
+ function requestSendToken(onToken,onError){
+  if(!clientId)return onError('UNAVAILABLE');
+  if(!googleApi?.accounts?.oauth2){try{void Promise.resolve(loadGoogleImpl()).then(api=>{googleApi=api;}).catch(()=>{});}catch{}return onError('LOADING');}
+  const turn=generation;
+  try{
+   googleApi.accounts.oauth2.initTokenClient({client_id:clientId,scope:'https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly',hint:TEST_GMAIL_ACCOUNT,include_granted_scopes:false,
+    callback:result=>{
+     const run=async()=>{if(turn!==generation)return onError('CHANGED');if(!result?.access_token)return onError('CONSENT');await onToken(result.access_token);};
+     if(documentImpl.visibilityState==='hidden'){queuedSave=run;return;}
+     return run();
+    },error_callback:()=>onError('CONSENT')}).requestAccessToken({prompt:''});
+  }catch{onError('UNAVAILABLE');}
+ }
  // App switch: keep the read list, selection and local preview in memory (never stored).
  // A pending Google consent or read keeps the existing suspend path; a pending preview is dropped.
  function conceal(){
@@ -232,5 +248,5 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
   el('email-status').textContent=messages.length+' levél visszaállítva a titkosított, 30 percig érvényes helyi másolatból. Új levelekhez olvassa be újra a postafiókot.';
   onChange();return true;
  }
- return {clear,setEnabled,suspend,conceal,reveal,snapshot,restoreSnapshot};
+ return {clear,setEnabled,suspend,conceal,reveal,snapshot,restoreSnapshot,requestSendToken};
 }

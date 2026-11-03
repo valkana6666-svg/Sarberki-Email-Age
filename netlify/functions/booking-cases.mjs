@@ -13,6 +13,7 @@ import {closedSyntheticMailLanguage,isClosedTubFollowup,isClosedTubPreviousRecor
 import {resolveBookingCase} from '../../booking-cases.mjs';
 import {dailyCaseSummary} from '../../shared-core/server-daily-case-view.mjs';
 import {ingestTestMailboxMessage} from '../../shared-core/server-test-mailbox-case.mjs';
+import {sendApprovedTestMailboxReply} from '../../shared-core/server-test-mailbox-send.mjs';
 const headers={'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 const response=(statusCode,body)=>({statusCode,headers,body:JSON.stringify(body)});
 // Cookie-reader case picker gets metadata only, never raw inquiry content.
@@ -27,15 +28,18 @@ export function syntheticCaseSummaries(records,exactReceipt=null){
 // Fixed public codes for the test-mailbox action; anything else becomes STORAGE_FAILURE.
 const TEST_MAILBOX_ERRORS=Object.freeze({GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACCOUNT:403,FORBIDDEN:403,GMAIL_RATE_LIMITED:429,INVALID_INPUT:400,
  GMAIL_SOURCE_UNVERIFIED:422,NOT_MARKED_TEST_MESSAGE:422,REPLY_NOT_ALLOWED:422,NOT_ADDRESSED_TO_TEST_MAILBOX:422,INVALID_SENDER:422,MESSAGE_ID_REQUIRED:422,
- TEXT_PART_REQUIRED:422,EMPTY_TEXT:422,TEXT_TOO_LONG:422,UNREADABLE_TEXT:422,INVALID_DRAFT:422,STORAGE_FAILURE:503});
+ TEXT_PART_REQUIRED:422,EMPTY_TEXT:422,TEXT_TOO_LONG:422,UNREADABLE_TEXT:422,INVALID_DRAFT:422,STORAGE_FAILURE:503,
+ NOT_APPROVED:409,RECIPIENT_NOT_ALLOWED:403,SOURCE_UNVERIFIED:422,SEND_FAILED:502,CASE_CONFLICT:409});
 const TEST_MAILBOX_FIELDS=Object.freeze({
  'test-mailbox-ingest':['action,messageId,tenantId'],
  'test-mailbox-redraft':['action,caseId,draftText,expectedRevision,tenantId'],
- 'test-mailbox-decide':['action,caseId,decision,expectedRevision,reviewedDraftHash,tenantId','action,caseId,decision,expectedRevision,reason,reviewedDraftHash,tenantId']
+ 'test-mailbox-decide':['action,caseId,decision,expectedRevision,reviewedDraftHash,tenantId','action,caseId,decision,expectedRevision,reason,reviewedDraftHash,tenantId'],
+ 'test-mailbox-send':['action,caseId,expectedRevision,tenantId']
 });
 function validTestMailboxInput(input){
  if(input.action==='test-mailbox-ingest')return typeof input.messageId==='string'&&/^[a-f0-9]{12,32}$/.test(input.messageId);
  if(typeof input.caseId!=='string'||!/^tm-[a-f0-9]{12,32}$/.test(input.caseId)||!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<1)return false;
+ if(input.action==='test-mailbox-send')return true;
  if(input.action==='test-mailbox-redraft')return typeof input.draftText==='string'&&input.draftText.trim().length>0&&input.draftText.length<=20000;
  return typeof input.reviewedDraftHash==='string'&&/^[a-f0-9]{64}$/.test(input.reviewedDraftHash)&&['approve','return','reject'].includes(input.decision)&&
   (input.reason===undefined||typeof input.reason==='string'&&input.reason.length<=500&&!/[\r\n]/.test(input.reason));
@@ -59,6 +63,10 @@ function testMailboxView(record,authority){
 }
 function testMailboxIngestEnabled(env,cloudApproval){
  return cloudApproval&&env.CASE_TEST_MAILBOX_INGEST_ENABLED==='sarberki-test-fictional-only';
+}
+// Separate owner switch, default off (AGENTS.md TESZT-LEVÉLKÜLDÉSI ENGEDÉLY): removing the variable stops sending.
+function testMailboxSendEnabled(env,cloudApproval){
+ return testMailboxIngestEnabled(env,cloudApproval)&&env.CASE_TEST_MAILBOX_SEND_ENABLED==='sarberki-test-pair-only';
 }
 export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedApproval=false,reviewProviders=null,serviceBindingProvider=null,serviceAvailabilityProvider=null}={}){
  return async event=>{
@@ -104,12 +112,30 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    }
    if(TEST_MAILBOX_FIELDS[input.action]){
     const keys=Object.keys(input).sort().join(',');
-    if(event.httpMethod!=='POST'||!cookieMode||!testMailboxIngestEnabled(env,cloudApproval)||input.tenantId!=='sarberki-test'||!TEST_MAILBOX_FIELDS[input.action].includes(keys))
+    if(event.httpMethod!=='POST'||!cookieMode||!testMailboxIngestEnabled(env,cloudApproval)||input.tenantId!=='sarberki-test'||!TEST_MAILBOX_FIELDS[input.action].includes(keys)
+     ||input.action==='test-mailbox-send'&&!testMailboxSendEnabled(env,cloudApproval))
      return cookieResponse(403,{error:'FORBIDDEN'});
     if(!validTestMailboxInput(input))return cookieResponse(400,{error:'INVALID_INPUT'});
     const session=createOperatorCookieSession({env,fetchImpl});
-    cookieSession=await (input.action==='test-mailbox-decide'?session.protectedApproval(event):session.protectedWrite(event));
+    cookieSession=await (['test-mailbox-decide','test-mailbox-send'].includes(input.action)?session.protectedApproval(event):session.protectedWrite(event));
     rotatedCookie=cookieSession.setCookie;
+    if(input.action==='test-mailbox-send'){
+     const tokens=Object.entries(event.headers||{}).filter(([key])=>key.toLowerCase()==='x-sarberki-gmail-token').map(([,value])=>value);
+     if(tokens.length!==1||typeof tokens[0]!=='string'||tokens[0].length>4096)return cookieResponse(401,{error:'GMAIL_AUTH_REQUIRED'});
+     try{
+      // Read with the approver's own session (RLS); the exact reviewed revision is required.
+      const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.sarberki-test&case_id=eq.'+encodeURIComponent(input.caseId));
+      const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
+      const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
+      if(!record||!isTestMailboxCase(record))return cookieResponse(404,{error:'NOT_FOUND'});
+      if(record.revision!==input.expectedRevision)return cookieResponse(409,{error:'CASE_CONFLICT'});
+      const result=await sendApprovedTestMailboxReply({record,token:tokens[0],fetchImpl});
+      return cookieResponse(200,{result:{caseId:record.caseId,status:result.status}});
+     }catch(error){
+      const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'SEND_FAILED';
+      return cookieResponse(TEST_MAILBOX_ERRORS[code],{error:code});
+     }
+    }
     if(input.action==='test-mailbox-ingest'){
      const tokens=Object.entries(event.headers||{}).filter(([key])=>key.toLowerCase()==='x-sarberki-gmail-token').map(([,value])=>value);
      if(tokens.length!==1||typeof tokens[0]!=='string'||tokens[0].length>4096)return cookieResponse(401,{error:'GMAIL_AUTH_REQUIRED'});
