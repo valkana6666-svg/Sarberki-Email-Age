@@ -12,8 +12,9 @@ import {enabledMailboxProfile,MAILBOX_PROFILES} from './server-mailbox-profiles.
 const PROFILE=enabledMailboxProfile('sarberki-test');
 if(PROFILE.account!==TEST_GMAIL_ACCOUNT||PROFILE.sourceScope!=='test-mailbox-source-v1')throw Error('MAILBOX_PROFILE_MISMATCH');
 export const TEST_MAILBOX_SOURCE_SCOPE=PROFILE.sourceScope;
-const MAILBOX_ID=PROFILE.mailboxId,MAX_TEXT=20000;
+const MAX_TEXT=20000;
 const fail=code=>{const error=Error(code);error.code=code;throw error;};
+const knownProfile=profile=>Object.values(MAILBOX_PROFILES).includes(profile)?profile:fail('MAILBOX_PROFILE_UNKNOWN');
 const address=value=>{const match=/<([^<>\s]+)>\s*$/.exec(value||'');return (match?match[1]:String(value||'').trim()).toLowerCase();};
 function plainTextPart(part){
  if(part?.mimeType==='text/plain'&&part.body?.data)return part;
@@ -29,21 +30,23 @@ function readerFailure(error){
  return 'GMAIL_SOURCE_UNVERIFIED';
 }
 
-export async function readVerifiedTestMailboxMessage({token,messageId,fetchImpl=globalThis.fetch,setTimeoutImpl,clearTimeoutImpl}={}){
+// Reading needs an ENABLED profile (enabledMailboxProfile); a disabled profile fails before any network call.
+export async function readVerifiedMailboxMessage({profile=PROFILE,token,messageId,fetchImpl=globalThis.fetch,setTimeoutImpl,clearTimeoutImpl}={}){
+ profile=enabledMailboxProfile(knownProfile(profile).tenantId);
  if(typeof token!=='string'||!/^[A-Za-z0-9._~+/-]{20,4096}={0,2}$/.test(token))fail('GMAIL_AUTH_REQUIRED');
  if(typeof messageId!=='string'||!/^[a-f0-9]{12,32}$/.test(messageId))fail('INVALID_INPUT');
  let messages;
  try{
-  messages=await readTestGmailInbox(token,{fetchImpl,search:'?'+new URLSearchParams({syntheticGmailMessageId:messageId}),
+  messages=await readTestGmailInbox(token,{fetchImpl,account:profile.account,search:'?'+new URLSearchParams({syntheticGmailMessageId:messageId}),
    ...(setTimeoutImpl?{setTimeoutImpl}:{}),...(clearTimeoutImpl?{clearTimeoutImpl}:{})});
  }catch(error){fail(readerFailure(error));}
  const message=messages?.[0];
  if(messages?.length!==1||message?.id!==messageId)fail('GMAIL_SOURCE_UNVERIFIED');
  const headers=Object.fromEntries((message.payload?.headers||[]).map(h=>[String(h.name).toLowerCase(),h.value]));
- if(!isMarkedTestSubject(headers.subject))fail('NOT_MARKED_TEST_MESSAGE');
+ if(profile.requireTestSubject!==false&&!isMarkedTestSubject(headers.subject))fail('NOT_MARKED_TEST_MESSAGE');
  if(headers['in-reply-to']||headers.references)fail('REPLY_NOT_ALLOWED');
- if(automatedMailReason(headers,{ownAddresses:[PROFILE.account],blockOwnSender:PROFILE.blockOwnSender}))fail('AUTOMATED_MESSAGE');
- if(address(headers.to)!==TEST_GMAIL_ACCOUNT||String(headers.to).includes(','))fail('NOT_ADDRESSED_TO_TEST_MAILBOX');
+ if(automatedMailReason(headers,{ownAddresses:[profile.account],blockOwnSender:profile.blockOwnSender}))fail('AUTOMATED_MESSAGE');
+ if(address(headers.to)!==profile.account||String(headers.to).includes(','))fail('NOT_ADDRESSED_TO_TEST_MAILBOX');
  const fromEmail=address(headers.from);
  if(!/^[^@\s<>,]+@[^@\s<>,]+\.[^@\s<>,]+$/.test(fromEmail))fail('INVALID_SENDER');
  const rfcMessageId=headers['message-id'];
@@ -55,17 +58,19 @@ export async function readVerifiedTestMailboxMessage({token,messageId,fetchImpl=
  if(typeof text!=='string'||!text.trim())fail('EMPTY_TEXT');
  if(text.length>MAX_TEXT)fail('TEXT_TOO_LONG');
  const received=new Date(Number(message.internalDate)).toISOString();
- const source={provider:'gmail',mailbox_id:MAILBOX_ID,message_id:message.id,thread_id:message.threadId,rfc_message_id:rfcMessageId,
-  in_reply_to:null,references:[],subject:headers.subject,from:headers.from,from_email:fromEmail,to:TEST_GMAIL_ACCOUNT,received_at:received};
- const envelope={sender:fromEmail,text,mailbox_id:MAILBOX_ID,message_id:message.id,thread_id:message.threadId,rfc_message_id:rfcMessageId,references:[],received_at:received};
+ const mailboxId=profile.mailboxId;
+ const source={provider:'gmail',mailbox_id:mailboxId,message_id:message.id,thread_id:message.threadId,rfc_message_id:rfcMessageId,
+  in_reply_to:null,references:[],subject:headers.subject,from:headers.from,from_email:fromEmail,to:profile.account,received_at:received};
+ const envelope={sender:fromEmail,text,mailbox_id:mailboxId,message_id:message.id,thread_id:message.threadId,rfc_message_id:rfcMessageId,references:[],received_at:received};
  return Object.freeze({source:Object.freeze(source),envelope:Object.freeze(envelope),bodySha256:createHash('sha256').update(text,'utf8').digest('hex')});
 }
+
+export function readVerifiedTestMailboxMessage(input={}){return readVerifiedMailboxMessage({...input,profile:PROFILE});}
 
 // Domain-separated HMAC (own scope as first field) with the existing server attestation key, in the
 // newline-joined form the database helper sc_isolated_approval_mac can recompute.
 // The scope and tenant come from a known mailbox profile (default: TEST). Attesting performs no mailbox read;
 // whether a profile may be used for reading or storing is decided by enabledMailboxProfile and the database.
-const knownProfile=profile=>Object.values(MAILBOX_PROFILES).includes(profile)?profile:fail('MAILBOX_PROFILE_UNKNOWN');
 function canonical({profile,tenantId,source,envelope,checkedAt,bodySha256}){
  if(tenantId!==profile.tenantId||source?.to!==profile.account||!source||!envelope||!Number.isFinite(Date.parse(checkedAt))||new Date(checkedAt).toISOString()!==checkedAt)fail('INVALID_EVIDENCE');
  if(['message_id','thread_id','rfc_message_id','received_at','mailbox_id'].some(k=>source[k]!==envelope[k])||envelope.sender!==source.from_email)fail('INVALID_EVIDENCE');

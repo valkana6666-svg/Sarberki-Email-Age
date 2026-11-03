@@ -47,7 +47,7 @@ test('Gmail bridge enforces the predicate after inbox listing', () => {
   const transport=fs.readFileSync(new URL('./gmail-policy.mjs',import.meta.url),'utf8');
   assert.match(source,/readTestGmailInbox\(token/u);
   assert.match(transport, /messages\.filter\(isTestInquiry\)/u);
-  assert.match(transport, /assertTestGmailAccount\(await profileResponse\.json\(\)\)/u);
+  assert.match(transport, /assertTestGmailAccount\(await profileResponse\.json\(\), account\)/u);
   assert.match(source, /gmail\.readonly/u);
   assert.equal(source.includes('gmail.send'), false);
   assert.equal(source.includes('gmail.modify'), false);

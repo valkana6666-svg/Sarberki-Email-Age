@@ -136,3 +136,21 @@ test('mailbox attestation: only known profiles, scope and tenant come from the p
  assert.throws(()=>attestMailboxSource({profile:live,key,tenantId:'sarberki-test',source,envelope,checkedAt}),/INVALID_EVIDENCE/);
  assert.throws(()=>attestMailboxSource({profile:live,key,tenantId:'sarberki-live',source:{...source,to:'sarberkiprojecttest@gmail.com'},envelope,checkedAt}),/INVALID_EVIDENCE/);
 });
+
+test('mailbox read: a disabled or unknown profile fails before any network call; the browser default stays the TEST account',async()=>{
+ const {readVerifiedMailboxMessage}=await import('../shared-core/server-gmail-source.mjs');
+ const {ingestTestMailboxMessage}=await import('../shared-core/server-test-mailbox-case.mjs');
+ const {MAILBOX_PROFILES}=await import('../shared-core/server-mailbox-profiles.mjs');
+ const {readTestGmailInbox}=await import('../gmail-policy.mjs');
+ let calls=0;const fetchImpl=async()=>{calls++;throw Error('no network expected');};
+ const token='t'.repeat(40),messageId='18f2a0b1c2d3e4f5';
+ await assert.rejects(readVerifiedMailboxMessage({profile:MAILBOX_PROFILES['sarberki-live'],token,messageId,fetchImpl}),e=>e.code==='MAILBOX_PROFILE_DISABLED');
+ await assert.rejects(readVerifiedMailboxMessage({profile:{...MAILBOX_PROFILES['sarberki-test']},token,messageId,fetchImpl}),e=>e.code==='MAILBOX_PROFILE_UNKNOWN');
+ await assert.rejects(ingestTestMailboxMessage({profile:MAILBOX_PROFILES['sarberki-live'],token,messageId,fetchImpl,transport:async()=>{calls++;},attestationKey:'e5'.repeat(32)}),e=>e.code==='MAILBOX_PROFILE_DISABLED');
+ await assert.rejects(readTestGmailInbox(token,{fetchImpl,account:'Info@Sarberkito.hu'}),/Érvénytelen Gmail-fiók/);
+ assert.equal(calls,0);
+ // Default account = TEST: a token of another account is refused after the profile check.
+ const other=async url=>(calls++,{ok:true,status:200,json:async()=>({emailAddress:'info@sarberkito.hu'})});
+ await assert.rejects(readTestGmailInbox(token,{fetchImpl:other}),/sarberkiprojecttest@gmail\.com tesztfiók/);
+ assert.equal(calls,1,'only the profile endpoint was called');
+});
