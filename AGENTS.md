@@ -14,6 +14,13 @@
 - **Nem automatikus üzenetkézbesítés:** issue-komment nem indít Claude-munkamenetet, és a Claude-alkalmazás puszta megnyitása nem bizonyít GitHub-beolvasást. Új Claude-munkamenetben e szabály érvényesülését külön kell igazolni; ha nincs GitHub-hozzáférés, jelöld NEM IGAZOLT-nak.
 - Titkot, személyes vendégadatot, tokent nem szabad issue-ba írni. Nincs új main/production, levélküldési, foglalási vagy Previo-írási engedély. A meglévő biztonsági szabályok érvényben maradnak.
 
+## TESZT-LEVÉLKÜLDÉSI ENGEDÉLY – tulajdonosi döntés, 2026-11-03 (szűk kivétel)
+
+- **Engedélyezett kör, kizárólag:** a `sarberkiprojecttest@gmail.com` (rendszer-tesztpostafiók) és a `sarberkito@gmail.com` (ideiglenes, közös tesztfeladó) **egymás közötti** levelezése, **csak kitalált** tartalommal (nincs valódi vendég-, foglalási vagy személyes adat). Bármely más címzett, másolat (Cc/Bcc) vagy továbbítás tilos.
+- **Ki küldhet:** (1) Claude a tulajdonos által bekötött Gmail-csatlakozón keresztül; (2) a V1 TEST-rendszer – emberi jóváhagyás után és később automatikusan is –, de csak külön megvalósított és tesztelt küldési képességgel: rögzített címzettlista (csak a fenti pár), idempotens küldési napló, alapból kikapcsolt kapcsoló és egylépéses kikapcsolás. Ennek elkészültéig a rendszer nem küld.
+- **Sorrend (tulajdonos, 11-03):** előbb Claude-küldés + emberi jóváhagyás néhány levéllel; utána a rendszer automatikus küldése erre a párra.
+- Az `info@sarberkito.hu`, valódi vendég, production és Previo-írás továbbra is tilos; az alábbi „Tilos valódi e-mail küldése” szabály minden más esetre érvényes.
+
 ## FÓKUSZ ÉS HATÉKONYSÁG – tulajdonosi döntés, 2026-11-02 (minden ágensre: Claude, Work, Codex, óránkénti futás)
 
 A cél a működő V1 és annak valódi használata, nem a folyamat további auditálása. Ez a szakasz a munkasorrendet és a munkamódot szabályozza; az alábbi biztonsági, jogosultsági és tiltó szabályok egyikét sem gyengíti.
@@ -57,7 +64,7 @@ Ez a szabály a Sárberki V1/V2 valamennyi új feladatára, hibajavítására, r
 
 
 - Kizárólag a `gmail-test-subject-allowlist` tesztág módosítható. Main és production nem módosítható.
-- Tilos valódi e-mail küldése, valódi foglalás létrehozása és Previo-adatok módosítása.
+- Tilos valódi e-mail küldése (kivétel: a fenti TESZT-LEVÉLKÜLDÉSI ENGEDÉLY szűk köre), valódi foglalás létrehozása és Previo-adatok módosítása.
 - A vendégnek foglalhatóként csak a kért teljes időszakra és szükséges egységszámra ténylegesen ellenőrzött elhelyezés ajánlható. Ismeretlen, hibás vagy más dátumhoz tartozó adat nem szabad kapacitás.
 - Alternatív háztípus ugyanarra az időszakra külön kapacitásellenőrzést igényel. A háztípus megadása nem kerülheti meg az ellenőrzést.
 - A/B közös típusszintű poolja nem bizonyít A+B párost ugyanabban a fizikai faházban. Egyedi egységet vagy párost kizárólag egyedi ellenőrzéssel lehet igazoltnak jelölni. Közelségi kikötés nélkül a megfelelő igazolt típusszintű készletből különböző fizikai házak is ajánlhatók; egymás melletti elhelyezést kizárólag egyedi ellenőrzéssel lehet ígérni.
