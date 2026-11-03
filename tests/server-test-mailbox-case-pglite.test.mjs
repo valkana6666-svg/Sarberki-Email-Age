@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
 import {ingestTestMailboxMessage} from '../shared-core/server-test-mailbox-case.mjs';
+const profile=async(db,env='test')=>db.exec("begin;select set_config('sarberki.deployment_environment','"+env+"',true);"+await readFile(new URL('../deployment/deployment-profile/install.sql',import.meta.url),'utf8')+'commit;');
 
 // End-to-end on real PostgreSQL semantics (PGlite) with the hosted TEST layer stack: fictional Gmail API
 // -> WP2 server read + attestation -> shared engine draft -> WP3 sc_tm_create under the operator's own
@@ -36,6 +37,7 @@ test('WP4a module output is accepted by sc_tm_create; reader, disabled switch, w
   await db.exec("insert into sc_tenants values('sarberki-test','Fictional',true)");
   for(const file of ['deployment/cloud-approval/install.sql','deployment/cloud-approval/separate-approver-permission.sql','deployment/exact-receipt/install.sql'])await db.exec(await read(file));
   await db.query('insert into sc_isolated_approval_key(key_hex) values($1)',[KEY]);
+  await profile(db,'test');
   await db.exec(await read('deployment/test-mailbox/install.sql'));
   for(const [id,session,[r,w,a]] of Object.values(users)){await db.query('insert into auth.users values($1)',[id]);await db.query('insert into auth.sessions values($1,$2,null)',[session,id]);await db.query("insert into sc_memberships values('sarberki-test',$1,$2,$3,$4)",[id,r,w,a]);}
   await assert.rejects(ingest('writer'),error=>error.code==='FORBIDDEN','switch off by default');

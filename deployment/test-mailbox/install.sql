@@ -3,13 +3,18 @@
 -- RLS policies and grants are NOT changed. Disabled by default; the owner enables it explicitly.
 -- sc_write_case keeps rejecting these cases (non-.invalid sender), so only the RPCs below can change them.
 begin;
+-- The deployment profile (deployment/deployment-profile/install.sql) names this project's single tenant.
+do $$ begin
+ if to_regprocedure('public.sc_deployment_tenant()') is null then raise exception 'DEPLOYMENT_PROFILE_REQUIRED' using errcode='55000'; end if;
+ if public.sc_deployment_tenant() is null then raise exception 'DEPLOYMENT_PROFILE_REQUIRED' using errcode='55000'; end if;
+end $$;
 do $$ begin
  if current_setting('sarberki.tm_install_project_ref',true) is distinct from 'mojnqizbcaczstguikpv'
  or coalesce(current_setting('sarberki.tm_backup_sha256',true),'')!~'^[a-f0-9]{64}$'
  or not exists(select 1 from public.sc_cloud_approval_binding where singleton and project_ref='mojnqizbcaczstguikpv')
  or not exists(select 1 from public.sc_isolated_approval_key where singleton)
- or not exists(select 1 from public.sc_tenants where tenant_id='sarberki-test' and test_only)
- or exists(select 1 from public.sc_tenants where not test_only or tenant_id not in ('sarberki-test','demo-test')) then
+ or not exists(select 1 from public.sc_tenants where tenant_id=public.sc_deployment_tenant() and test_only=not public.sc_is_live_deployment())
+ or exists(select 1 from public.sc_tenants where test_only=public.sc_is_live_deployment() or tenant_id not in (public.sc_deployment_tenant(),'demo-test')) then
   raise exception 'verified test project, attestation key and fresh backup required';
  end if;
 end $$;
@@ -45,10 +50,10 @@ create or replace function public.sc_tm_actor(p_tenant text,p_permission text)
 returns uuid language plpgsql stable security definer set search_path='' as $$
 declare actor uuid:=auth.uid(); claims jsonb:=nullif(current_setting('request.jwt.claims',true),'')::jsonb;
 begin
- if p_tenant is distinct from 'sarberki-test'
+ if p_tenant is distinct from public.sc_deployment_tenant()
  or not exists(select 1 from public.sc_test_mailbox_config where singleton and enabled)
  or not exists(select 1 from public.sc_cloud_approval_binding where singleton and project_ref='mojnqizbcaczstguikpv')
- or not exists(select 1 from public.sc_tenants where tenant_id=p_tenant and test_only)
+ or not exists(select 1 from public.sc_tenants where tenant_id=p_tenant and test_only=not public.sc_is_live_deployment())
  or actor is null or not public.sc_has_permission(p_tenant,p_permission)
  or claims->>'iss' is distinct from 'https://mojnqizbcaczstguikpv.supabase.co/auth/v1'
  or claims->>'role' is distinct from 'authenticated'

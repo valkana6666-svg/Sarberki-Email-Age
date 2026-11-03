@@ -5,6 +5,7 @@ import {createHash} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 import {createCaseHandler} from '../netlify/functions/booking-cases.mjs';
 import {createOperatorSessionHandler} from '../netlify/functions/operator-session.mjs';
+const profile=async(db,env='test')=>db.exec("begin;select set_config('sarberki.deployment_environment','"+env+"',true);"+await readFile(new URL('../deployment/deployment-profile/install.sql',import.meta.url),'utf8')+'commit;');
 
 // Real booking-cases handler + operator cookie session + PostgreSQL semantics (PGlite) on the hosted TEST
 // layer stack. Supabase Auth/REST and the Gmail API are synthetic; fictional data only; no send.
@@ -28,6 +29,7 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
   await db.exec("insert into sc_tenants values('sarberki-test','Fictional',true),('demo-test','Other',true)");
   for(const file of ['deployment/cloud-approval/install.sql','deployment/cloud-approval/separate-approver-permission.sql','deployment/exact-receipt/install.sql'])await db.exec(await read(file));
   await db.query('insert into sc_isolated_approval_key(key_hex) values($1)',[KEY]);
+  await profile(db,'test');
   await db.exec(await read('deployment/test-mailbox/install.sql'));await db.exec('update sc_test_mailbox_config set enabled=true');
   for(const [role,id] of Object.entries(actors)){await db.query('insert into auth.users values($1)',[id]);await db.query('insert into auth.sessions values($1,$2,null)',[sessions[role],id]);
    await db.query("insert into sc_memberships values('sarberki-test',$1,$2,$3,$4)",[id,...grants[role]]);}

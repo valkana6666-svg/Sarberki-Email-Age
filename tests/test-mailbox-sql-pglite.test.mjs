@@ -12,6 +12,8 @@ const project='https://mojnqizbcaczstguikpv.supabase.co',KEY='e5'.repeat(32),TEN
 const ids={writer:'11111111-1111-4111-8111-111111111111',approver:'22222222-2222-4222-8222-222222222222',both:'33333333-3333-4333-8333-333333333333',
  reader:'44444444-4444-4444-8444-444444444444',outsider:'55555555-5555-4555-8555-555555555555',demo:'66666666-6666-4666-8666-666666666666',writer2:'77777777-7777-4777-8777-777777777777'};
 const sessions=Object.fromEntries(Object.keys(ids).map((role,i)=>[role,'aaaaaaaa-aaaa-4aaa-8aaa-'+String(i+1).padStart(12,'0')]));
+// Slice 2: the tenant comes from the immutable deployment profile, installed before test-mailbox.
+const profile=async(db,env='test')=>db.exec("begin;select set_config('sarberki.deployment_environment','"+env+"',true);"+await readFile(new URL('../deployment/deployment-profile/install.sql',import.meta.url),'utf8')+'commit;');
 const sha=text=>createHash('sha256').update(text,'utf8').digest('hex');
 
 function fixture(n,{text='Jó napot! Deluxe faházat szeretnénk 2027-05-14 és 2027-05-16 között 2 felnőtt számára.',subject='Sárberki élő teszt – AI előnézet'}={}){
@@ -51,6 +53,13 @@ test('test-mailbox SQL: attested create, independent decisions, return/reject/re
    if(memberships[role])await db.query('insert into sc_memberships values($1,$2,$3,$4,$5)',[memberships[role][0],id,...memberships[role].slice(1)]);}
   const writerBefore=(await db.query("select prosrc from pg_proc where oid='sc_write_case(text,text,bigint,jsonb)'::regprocedure")).rows[0].prosrc;
   const install=await read('deployment/test-mailbox/install.sql');
+  await t.test('install requires the deployment profile, then names no tenant literal',async()=>{
+   await db.query("select set_config('sarberki.tm_install_project_ref','mojnqizbcaczstguikpv',false),set_config('sarberki.tm_backup_sha256',$1,false)",['c'.repeat(64)]);
+   await assert.rejects(db.exec(install),/DEPLOYMENT_PROFILE_REQUIRED/);await db.exec('rollback');
+   assert.equal((await db.query("select to_regclass('public.sc_test_mailbox_config') r")).rows[0].r,null,'nothing installed without a profile');
+   assert.equal(install.includes("'sarberki-test'"),false,'tenant comes from sc_deployment_tenant()');
+   await profile(db,'test');
+  });
   await t.test('install requires the verified project, backup and attestation key',async()=>{
    await db.query("select set_config('sarberki.tm_install_project_ref','wrong',false),set_config('sarberki.tm_backup_sha256',$1,false)",['c'.repeat(64)]);
    await assert.rejects(db.exec(install),/verified test project/);await db.exec('rollback');
