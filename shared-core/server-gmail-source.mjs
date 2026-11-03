@@ -5,9 +5,14 @@
 import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
 import {readTestGmailInbox,gmailReadableBody,TEST_GMAIL_ACCOUNT} from '../gmail-policy.mjs';
 import {isMarkedTestSubject} from '../gmail-subject.mjs';
+import {automatedMailReason} from './automated-mail-filter.mjs';
+import {enabledMailboxProfile} from './server-mailbox-profiles.mjs';
 
-export const TEST_MAILBOX_SOURCE_SCOPE='test-mailbox-source-v1';
-const MAILBOX_ID='sarberki_gmail_test',MAX_TEXT=20000,TENANT='sarberki-test';
+// The only enabled profile; its values must match the existing test-account policy and attestation scope.
+const PROFILE=enabledMailboxProfile('sarberki-test');
+if(PROFILE.account!==TEST_GMAIL_ACCOUNT||PROFILE.sourceScope!=='test-mailbox-source-v1')throw Error('MAILBOX_PROFILE_MISMATCH');
+export const TEST_MAILBOX_SOURCE_SCOPE=PROFILE.sourceScope;
+const MAILBOX_ID=PROFILE.mailboxId,MAX_TEXT=20000,TENANT=PROFILE.tenantId;
 const fail=code=>{const error=Error(code);error.code=code;throw error;};
 const address=value=>{const match=/<([^<>\s]+)>\s*$/.exec(value||'');return (match?match[1]:String(value||'').trim()).toLowerCase();};
 function plainTextPart(part){
@@ -37,6 +42,7 @@ export async function readVerifiedTestMailboxMessage({token,messageId,fetchImpl=
  const headers=Object.fromEntries((message.payload?.headers||[]).map(h=>[String(h.name).toLowerCase(),h.value]));
  if(!isMarkedTestSubject(headers.subject))fail('NOT_MARKED_TEST_MESSAGE');
  if(headers['in-reply-to']||headers.references)fail('REPLY_NOT_ALLOWED');
+ if(automatedMailReason(headers,{ownAddresses:[PROFILE.account],blockOwnSender:PROFILE.blockOwnSender}))fail('AUTOMATED_MESSAGE');
  if(address(headers.to)!==TEST_GMAIL_ACCOUNT||String(headers.to).includes(','))fail('NOT_ADDRESSED_TO_TEST_MAILBOX');
  const fromEmail=address(headers.from);
  if(!/^[^@\s<>,]+@[^@\s<>,]+\.[^@\s<>,]+$/.test(fromEmail))fail('INVALID_SENDER');

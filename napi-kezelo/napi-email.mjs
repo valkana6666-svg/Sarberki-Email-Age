@@ -1,5 +1,6 @@
 import {readTestGmailInbox,TEST_GMAIL_ACCOUNT,gmailReadableBody,isTestInquiry} from '../gmail-policy.mjs';
 import {isMarkedTestSubject} from '../gmail-subject.mjs';
+import {automatedMailReason} from '../shared-core/automated-mail-filter.mjs';
 import {buildEmailInquiryDraft} from '../shared-core/inquiry-channel-adapters.mjs';
 import {closedMailRequestFromGmailRecord} from '../shared-core/synthetic-mail-fixtures.mjs';
 import {languageFromText} from '../sarberki-core.mjs';
@@ -23,7 +24,7 @@ const MAX_PREVIEW_CHARS=20000;
 // Only a marked mail with a real Gmail id can be saved as a case; the server re-reads it from Gmail itself.
 function previewText(message,header,body){
  const closed=closedPreviewText(message,header,body);if(closed)return {text:closed,saveable:false};
- return isTestInquiry(message)&&isMarkedTestSubject(header.subject)&&body.trim()&&body.length<=MAX_PREVIEW_CHARS?
+ return isTestInquiry(message)&&isMarkedTestSubject(header.subject)&&!automatedMailReason(header)&&body.trim()&&body.length<=MAX_PREVIEW_CHARS?
   {text:body,saveable:/^[a-f0-9]{12,32}$/.test(message.id||''),messageId:message.id}:null;
 }
 function closedPreviewText(message,header,body){

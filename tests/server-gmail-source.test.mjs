@@ -114,3 +114,9 @@ test('manipulation: the attestation binds every source field and the server-read
  assert.throws(()=>attestTestMailboxSource({key:KEY,tenantId:'sarberki-test',source:{...source,subject:'a\nb'},envelope,checkedAt}),/INVALID_EVIDENCE/);
  assert.throws(()=>attestTestMailboxSource({key:KEY,tenantId:'sarberki-test',source,envelope,checkedAt:'not a date'}),/INVALID_EVIDENCE/);
 });
+
+test('automated or booking-system mail is never accepted as a test-mailbox inquiry, even with the test subject',async()=>{
+ for(const headers of [{'Auto-Submitted':'auto-generated'},{From:'Previo <noreply@previo.cz>'},{From:'no-reply@example.test'},{Precedence:'bulk'},{'List-Id':'<x.example.test>'},{'Return-Path':'<b@smtp.previo.cz>'}]){
+  await assert.rejects(read(gmail({body:message({headers})})),e=>e.code==='AUTOMATED_MESSAGE',JSON.stringify(headers));
+ }
+});
