@@ -71,7 +71,7 @@ async function loadState(){
  }catch{dropState();return null;}
 }
 let listLoaded=false;
-let selectedSection='incoming',rows=[],selected=null,editBase=null,canApprove=false,actionBusy=false,tmCase=null;
+let selectedSection='incoming',rows=[],selected=null,editBase=null,canApprove=false,actionBusy=false,tmCase=null,approvedText=null;
 const isTestMailboxCaseId=id=>typeof id==='string'&&/^tm-[a-f0-9]{12,32}$/.test(id);
 const request=createEpochRequestQueue({getEpoch:()=>epoch,isAuthenticated:()=>authenticated,
  prepare:()=>session.restore(),execute:createCloudCaseRequest()});
@@ -132,6 +132,7 @@ function clearDetail(){
  el('detail-messages').replaceChildren();el('detail-facts').textContent='';
  el('case-detail').hidden=true;
  for(const id of ['detail-status','detail-summary','detail-capacity','detail-price','detail-draft'])el(id).textContent='';
+ el('copy-approved').hidden=true;approvedText=null;
  el('detail-link').href='../cloud-approval.html';
 }
 function clearData(message='A listához jelentkezzen be.'){
@@ -218,12 +219,20 @@ async function openTestMailboxCase(caseId,turn,status){
  el('detail-capacity').textContent='Tesztlevél-ügy (test-mailbox-v1): kapacitás és ár nem igazolt; nincs levélküldés vagy foglalás.';
  el('detail-price').textContent=record.decisions.length?'Döntések: '+record.decisions.map(d=>(tmDecisionLabel[d.decision]||'ismeretlen')+(d.at?' ('+d.at+')':'')+(d.reason?' – '+d.reason:'')).join('; '):'';
  tmCase={caseId,revision:record.revision,hash:record.draft.hash,text:record.draft.text};
+ // Only an internally approved draft can be copied; an approved draft cannot change, so it is the reviewed text.
+ if(record.approval==='approved_internal'){approvedText=record.draft.text;el('copy-approved').hidden=false;}
  if(record.canEditDraft===true){el('draft-editor').value=record.draft.text;el('draft-editor').disabled=false;}
  if(record.canDecide===true&&record.approval==='pending'){
   tmCase.canDecide=true;el('approve-confirm').disabled=false;
   for(const id of ['return-draft','reject-draft','decision-reason'])el(id).disabled=false;
  }
 }
+// Manual sending only: the operator pastes the approved text into Gmail. Nothing is sent from here.
+el('copy-approved').addEventListener('click',async()=>{
+ const text=approvedText;if(!authenticated||typeof text!=='string')return;
+ try{await navigator.clipboard.writeText(text);el('detail-status').textContent='A jóváhagyott szöveg a vágólapra került. A választ kézzel, Gmailből küldje el.';}
+ catch{el('detail-status').textContent='A másolás nem sikerült. Jelölje ki a választervezet szövegét kézzel.';}
+});
 async function tmMutate(kind){
  const base=tmCase;if(actionBusy||!authenticated||!base)return;
  const text=el('draft-editor').value,reason=el('decision-reason').value.trim();

@@ -15,7 +15,7 @@ class Element {
  async dispatch(type,event={}){for(const fn of this.listeners[type]||[])await fn({preventDefault(){},...event});}
 }
 function fakeDocument(){
- const ids=['count-incoming','count-approval','count-progress','count-closed','cases-panel','cases-title','email-picker','email-picker-wrap','email-previous','email-next','read-email','email-status','email-list','email-detail','email-draft-request','email-draft-status','email-draft-text','email-draft-review','email-draft-checks','draft-editor','save-draft','approve-draft','approve-confirm','return-draft','reject-draft','decision-reason','email-save-case','email-save-status','detail-messages','detail-facts','chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','detail-link','section-heading','section-description'];
+ const ids=['count-incoming','count-approval','count-progress','count-closed','cases-panel','cases-title','email-picker','email-picker-wrap','email-previous','email-next','read-email','email-status','email-list','email-detail','email-draft-request','email-draft-status','email-draft-text','email-draft-review','email-draft-checks','draft-editor','save-draft','approve-draft','approve-confirm','return-draft','reject-draft','decision-reason','email-save-case','email-save-status','detail-messages','detail-facts','chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','copy-approved','detail-link','section-heading','section-description'];
  const elements=Object.fromEntries(ids.map(id=>[id,new Element()]));
  const nav=['incoming','approval','progress','closed'].map(section=>{const e=new Element();e.dataset.section=section;return e;});
  const listeners={};
@@ -479,6 +479,7 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   role='writer';await open();assert.match(e['detail-status'].textContent,/Elutasítva/);assert.equal(e['draft-editor'].disabled,false);
   e['draft-editor'].value='Kitalált negyedik tervezet.';await e['draft-editor'].dispatch('input');await e['save-draft'].dispatch('click');await settle();
   role='approver';await open();
+  assert.equal(e['copy-approved'].hidden,true,'a pending draft cannot be copied for sending');
   await e['approve-draft'].dispatch('click');await settle();
   assert.equal(posts.at(-1).action,'test-mailbox-redraft','approval needs the confirmation checkbox');
   e['approve-confirm'].checked=true;await e['approve-confirm'].dispatch('change');assert.equal(e['approve-draft'].disabled,false);
@@ -486,6 +487,18 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   assert.deepEqual(posts.at(-1),{tenantId:'sarberki-test',caseId,action:'test-mailbox-decide',decision:'approve',expectedRevision:6,reviewedDraftHash:hash('Kitalált negyedik tervezet.')});
   assert.match(e['detail-status'].textContent,/Belső jóváhagyás mentve.*Nincs levélküldés vagy foglalás/);
   assert.equal(e['approve-confirm'].disabled,true);assert.equal(e['draft-editor'].disabled,true);
+  // Approved text can be copied for a MANUAL Gmail reply; nothing is sent and no request is made.
+  assert.equal(e['copy-approved'].hidden,false);
+  const copied=[],postCount=posts.length;
+  Object.defineProperty(globalThis.navigator,'clipboard',{value:{writeText:async text=>{copied.push(text);}},configurable:true});
+  try{
+   await e['copy-approved'].dispatch('click');await settle();
+   assert.deepEqual(copied,['Kitalált negyedik tervezet.']);assert.equal(posts.length,postCount);
+   assert.match(e['detail-status'].textContent,/vágólapra.*kézzel, Gmailből/);
+   Object.defineProperty(globalThis.navigator,'clipboard',{value:{writeText:async()=>{throw Error('denied');}},configurable:true});
+   await e['copy-approved'].dispatch('click');await settle();
+   assert.match(e['detail-status'].textContent,/másolás nem sikerült/);
+  }finally{delete globalThis.navigator.clipboard;}
   // A result that is not exactly the next revision is not accepted as proof of the decision.
   state.approval='pending';await open();skew=1;await e['reject-draft'].dispatch('click');await settle();skew=0;
   assert.equal(e['case-detail'].hidden,true);assert.match(e['list-status'].textContent,/nem igazolt/);
