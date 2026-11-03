@@ -32,5 +32,10 @@ Mindegyik úton a forrás-olvasó utáni lánc (AI, ügytár, napi kezelő, jóv
 2. Mehet-e Internal OAuth-kliens a sarberkito.hu Workspace Google Cloud-projektjében, kizárólag `gmail.readonly` joggal?
 3. Melyik Supabase/Netlify környezet lesz az éles ügytár (külön projekt vagy tenant)?
 
+## Megállapítások az élesítés előtt (Claude, 2026-11-03)
+- **Pushover:** a mostani (csak TEST) értesítés a feladó nevét, e-mail-címét és a levél tárgyát elküldi a Pushovernek (`netlify/functions/pushover-gmail.mjs`). Élesben ez vendégadat egy újabb szolgáltatónál. Javaslat: az éles értesítés csak „Új érdeklődés érkezett” szöveget küldjön, feladó és tárgy nélkül; ellenkező esetben a Pushovert fel kell venni az adatfeldolgozók közé. Tulajdonosi döntés.
+- **Automatikus levelek:** a Previo a domain nevében küld (SPF). A közös szűrő (`shared-core/automated-mail-filter.mjs`, `400f6e6`) ezeket, továbbá az auto-reply, bulk és noreply leveleket kiszűri; éles profilban a saját feladót is.
+- **Napi mentés:** a napi `[backup-v2-cloud-bridge-run]` kérés (a tulajdonos fiókjáról, 11-03 07:36Z, PASS) a GitHub-úton fut. A Drive-útra (`[backup-v2-run]`) állítás a Drive-token tartóssá tétele után, a napi kérés üzenetének cseréjével lehetséges.
+
 ## Becslés (feltételezés, nem igazolt)
 Google esetén a meglévő Gmail-adapter paraméterezése és az éles kapuk: kb. 1–2 munkamenet; Microsoft esetén új adapter: néhány munkamenet, majd TEST-szerű próba egy kifejezetten erre a célra küldött, kitalált levéllel, élesítés csak engedéllyel. A pontos idő a döntésektől és a hozzáférések elérhetőségétől függ.
