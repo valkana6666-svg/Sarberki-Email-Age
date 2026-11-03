@@ -1,5 +1,6 @@
--- TEST ONLY (mojnqizbcaczstguikpv). Additive capability for server-attested, fictional test-mailbox
--- cases. Existing functions (sc_write_case, sc_approve_case, sc_approve_clarification), memberships,
+-- Mailbox cases of this project's deployment profile (tenant, project ref, mailbox and attestation scope
+-- come from deployment/deployment-profile/install.sql; TEST: mojnqizbcaczstguikpv, fictional mail only).
+-- Additive capability for server-attested mailbox cases. Existing functions (sc_write_case, sc_approve_case, sc_approve_clarification), memberships,
 -- RLS policies and grants are NOT changed. Disabled by default; the owner enables it explicitly.
 -- sc_write_case keeps rejecting these cases (non-.invalid sender), so only the RPCs below can change them.
 begin;
@@ -9,9 +10,9 @@ do $$ begin
  if public.sc_deployment_tenant() is null then raise exception 'DEPLOYMENT_PROFILE_REQUIRED' using errcode='55000'; end if;
 end $$;
 do $$ begin
- if current_setting('sarberki.tm_install_project_ref',true) is distinct from 'mojnqizbcaczstguikpv'
+ if current_setting('sarberki.tm_install_project_ref',true) is distinct from public.sc_deployment_project_ref()
  or coalesce(current_setting('sarberki.tm_backup_sha256',true),'')!~'^[a-f0-9]{64}$'
- or not exists(select 1 from public.sc_cloud_approval_binding where singleton and project_ref='mojnqizbcaczstguikpv')
+ or not exists(select 1 from public.sc_cloud_approval_binding where singleton and project_ref=public.sc_deployment_project_ref())
  or not exists(select 1 from public.sc_isolated_approval_key where singleton)
  or not exists(select 1 from public.sc_tenants where tenant_id=public.sc_deployment_tenant() and test_only=not public.sc_is_live_deployment())
  or exists(select 1 from public.sc_tenants where test_only=public.sc_is_live_deployment() or tenant_id not in (public.sc_deployment_tenant(),'demo-test')) then
@@ -52,10 +53,10 @@ declare actor uuid:=auth.uid(); claims jsonb:=nullif(current_setting('request.jw
 begin
  if p_tenant is distinct from public.sc_deployment_tenant()
  or not exists(select 1 from public.sc_test_mailbox_config where singleton and enabled)
- or not exists(select 1 from public.sc_cloud_approval_binding where singleton and project_ref='mojnqizbcaczstguikpv')
+ or not exists(select 1 from public.sc_cloud_approval_binding where singleton and project_ref=public.sc_deployment_project_ref())
  or not exists(select 1 from public.sc_tenants where tenant_id=p_tenant and test_only=not public.sc_is_live_deployment())
  or actor is null or not public.sc_has_permission(p_tenant,p_permission)
- or claims->>'iss' is distinct from 'https://mojnqizbcaczstguikpv.supabase.co/auth/v1'
+ or claims->>'iss' is distinct from 'https://'||public.sc_deployment_project_ref()||'.supabase.co/auth/v1'
  or claims->>'role' is distinct from 'authenticated'
  or coalesce(claims->>'exp','')!~'^[0-9]+$' or (claims->>'exp')::numeric<=extract(epoch from now())
  or coalesce(claims->>'session_id','')!~'^[a-f0-9-]{36}$' then
@@ -82,7 +83,7 @@ begin
   raise exception 'invalid test-mailbox case' using errcode='22023';
  end if;
  src:=p_data->'sourceReceipt';msg:=p_data->'messages'->0;draft:=p_data->'drafts'->0;
- if jsonb_typeof(src) is distinct from 'object' or src->>'provider' is distinct from 'gmail' or src->>'to' is distinct from 'sarberkiprojecttest@gmail.com'
+ if jsonb_typeof(src) is distinct from 'object' or src->>'provider' is distinct from 'gmail' or src->>'to' is distinct from public.sc_deployment_mailbox()
  or src->'in_reply_to' is distinct from 'null'::jsonb or src->'references' is distinct from '[]'::jsonb or msg->'references' is distinct from '[]'::jsonb
  or p_data->>'sender' is distinct from src->>'from_email' or msg->>'sender' is distinct from src->>'from_email'
  or coalesce(src->>'from_email','')~'\.invalid$'
@@ -93,9 +94,9 @@ begin
  end if;
  body_hash:=encode(sha256(convert_to(msg->>'text','UTF8')),'hex');
  begin
-  fields:=array['test-mailbox-source-v1',p_tenant,src->>'mailbox_id',src->>'message_id',src->>'thread_id',src->>'rfc_message_id',
+  fields:=array[public.sc_deployment_source_scope(),p_tenant,src->>'mailbox_id',src->>'message_id',src->>'thread_id',src->>'rfc_message_id',
    src->>'from_email',src->>'to',src->>'subject',src->>'received_at',body_hash,p_proof->>'checkedAt'];
-  if jsonb_typeof(p_proof) is distinct from 'object' or p_proof->>'scope' is distinct from 'test-mailbox-source-v1'
+  if jsonb_typeof(p_proof) is distinct from 'object' or p_proof->>'scope' is distinct from public.sc_deployment_source_scope()
   or p_proof->>'bodySha256' is distinct from body_hash or coalesce(p_proof->>'attestation','')!~'^[a-f0-9]{64}$'
   or exists(select 1 from unnest(fields) v where v is null or v='' or position(chr(10) in v)>0 or position(chr(13) in v)>0)
   or (p_proof->>'checkedAt')::timestamptz<now()-interval '120 seconds' or (p_proof->>'checkedAt')::timestamptz>now()+interval '1 second' then
@@ -111,7 +112,7 @@ begin
   raise exception 'message or case already exists' using errcode='23505';
  end if;
  changed:=jsonb_set(p_data,'{drafts,0}',draft||jsonb_build_object('createdBy',actor,'createdAt',now(),'basedOnRevision',0))
-  ||jsonb_build_object('testMailbox',jsonb_build_object('scope','test-mailbox-source-v1','checkedAt',p_proof->>'checkedAt','bodySha256',body_hash,'createdBy',actor),
+  ||jsonb_build_object('testMailbox',jsonb_build_object('scope',public.sc_deployment_source_scope(),'checkedAt',p_proof->>'checkedAt','bodySha256',body_hash,'createdBy',actor),
    'decisions','[]'::jsonb);
  changed:=jsonb_set(changed,'{state,approval}','"pending"');
  insert into public.sc_cases(tenant_id,case_id,revision,data,updated_by) values(p_tenant,p_case,1,changed,actor) returning * into result;

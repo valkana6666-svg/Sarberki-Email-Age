@@ -4,18 +4,22 @@
 -- 'sarberki-test' literals with sc_deployment_tenant(); this file changes no existing function.
 --
 -- Usage (operator, inside ONE transaction, never from a client):
---   begin; select set_config('sarberki.deployment_environment','test',true); \i install.sql  -- or 'live'
--- An unset or unknown environment aborts. Re-running with the same environment is a no-op;
--- a different environment aborts. Requires the case store (supabase/migrations/202610090001).
+--   begin; select set_config('sarberki.deployment_environment','test',true);   -- or 'live'
+--          select set_config('sarberki.deployment_project_ref','<20-letter Supabase ref>',true); \i install.sql
+-- An unset or unknown environment or project ref aborts. TEST must be mojnqizbcaczstguikpv, LIVE must not.
+-- Re-running with the same environment and ref is a no-op; anything different aborts.
+-- The mailbox and source-attestation scope follow from the environment (shared-core/server-mailbox-profiles.mjs). Requires the case store (supabase/migrations/202610090001).
 do $$
 declare env text:=current_setting('sarberki.deployment_environment',true);
+declare ref text:=current_setting('sarberki.deployment_project_ref',true);
 declare existing text;
 begin
  if env is null or env not in ('test','live') then raise exception 'DEPLOYMENT_ENVIRONMENT_REQUIRED' using errcode='22023'; end if;
+ if ref is null or ref!~'^[a-z]{20}$' or (env='test')<>(ref='mojnqizbcaczstguikpv') then raise exception 'DEPLOYMENT_PROJECT_REF_INVALID' using errcode='22023'; end if;
  if to_regclass('public.sc_tenants') is null then raise exception 'CASE_STORE_REQUIRED' using errcode='55000'; end if;
  if to_regclass('public.sc_deployment_profile') is not null then
-  select environment into existing from public.sc_deployment_profile where singleton;
-  if existing is distinct from env then raise exception 'DEPLOYMENT_PROFILE_MISMATCH' using errcode='55000'; end if;
+  select environment||'/'||project_ref into existing from public.sc_deployment_profile where singleton;
+  if existing is distinct from env||'/'||ref then raise exception 'DEPLOYMENT_PROFILE_MISMATCH' using errcode='55000'; end if;
  end if;
  -- A LIVE project must start empty: no test tenants, cases or memberships are carried over.
  if env='live' and (exists(select 1 from public.sc_tenants where tenant_id<>'sarberki-live')
@@ -28,8 +32,14 @@ create table if not exists public.sc_deployment_profile(
  singleton boolean primary key default true check(singleton),
  environment text not null check(environment in ('test','live')),
  tenant_id text not null,
+ project_ref text not null check(project_ref~'^[a-z]{20}$'),
+ mailbox text not null,
+ source_scope text not null,
  created_at timestamptz not null default now(),
- check((environment='test' and tenant_id='sarberki-test') or (environment='live' and tenant_id='sarberki-live'))
+ check((environment='test' and tenant_id='sarberki-test' and project_ref='mojnqizbcaczstguikpv'
+   and mailbox='sarberkiprojecttest@gmail.com' and source_scope='test-mailbox-source-v1')
+  or (environment='live' and tenant_id='sarberki-live' and project_ref<>'mojnqizbcaczstguikpv'
+   and mailbox='info@sarberkito.hu' and source_scope='live-mailbox-source-v1'))
 );
 alter table public.sc_deployment_profile enable row level security;
 revoke all on table public.sc_deployment_profile from public,anon,authenticated;
@@ -45,9 +55,11 @@ drop trigger if exists sc_deployment_profile_no_truncate on public.sc_deployment
 create trigger sc_deployment_profile_no_truncate before truncate on public.sc_deployment_profile
  for each statement execute function public.sc_deployment_profile_immutable();
 
-insert into public.sc_deployment_profile(environment,tenant_id)
- select current_setting('sarberki.deployment_environment',true),
-  case current_setting('sarberki.deployment_environment',true) when 'live' then 'sarberki-live' else 'sarberki-test' end
+insert into public.sc_deployment_profile(environment,tenant_id,project_ref,mailbox,source_scope)
+ select e,case e when 'live' then 'sarberki-live' else 'sarberki-test' end,current_setting('sarberki.deployment_project_ref',true),
+  case e when 'live' then 'info@sarberkito.hu' else 'sarberkiprojecttest@gmail.com' end,
+  case e when 'live' then 'live-mailbox-source-v1' else 'test-mailbox-source-v1' end
+ from (select current_setting('sarberki.deployment_environment',true) e) x
  where not exists(select 1 from public.sc_deployment_profile);
 
 -- Read helpers for definer functions only (no client grant).
@@ -57,8 +69,17 @@ $$ select tenant_id from public.sc_deployment_profile where singleton $$;
 create or replace function public.sc_is_live_deployment() returns boolean
 language sql stable security definer set search_path='' as
 $$ select coalesce((select environment='live' from public.sc_deployment_profile where singleton),false) $$;
-revoke all on function public.sc_deployment_tenant() from public,anon,authenticated;
-revoke all on function public.sc_is_live_deployment() from public,anon,authenticated;
+create or replace function public.sc_deployment_project_ref() returns text
+language sql stable security definer set search_path='' as
+$$ select project_ref from public.sc_deployment_profile where singleton $$;
+create or replace function public.sc_deployment_mailbox() returns text
+language sql stable security definer set search_path='' as
+$$ select mailbox from public.sc_deployment_profile where singleton $$;
+create or replace function public.sc_deployment_source_scope() returns text
+language sql stable security definer set search_path='' as
+$$ select source_scope from public.sc_deployment_profile where singleton $$;
+revoke all on function public.sc_deployment_tenant(),public.sc_is_live_deployment(),public.sc_deployment_project_ref(),
+ public.sc_deployment_mailbox(),public.sc_deployment_source_scope() from public,anon,authenticated;
 
 -- Tenant fence. TEST keeps the original check(test_only) and gains: only the TEST tenants.
 -- LIVE drops check(test_only) and allows exactly one tenant: 'sarberki-live', test_only=false.

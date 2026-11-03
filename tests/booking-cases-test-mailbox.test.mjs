@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 import {createCaseHandler} from '../netlify/functions/booking-cases.mjs';
 import {createOperatorSessionHandler} from '../netlify/functions/operator-session.mjs';
-const profile=async(db,env='test')=>db.exec("begin;select set_config('sarberki.deployment_environment','"+env+"',true);"+await readFile(new URL('../deployment/deployment-profile/install.sql',import.meta.url),'utf8')+'commit;');
+const profile=async(db,env='test')=>db.exec("begin;select set_config('sarberki.deployment_environment','"+env+"',true),set_config('sarberki.deployment_project_ref','mojnqizbcaczstguikpv',true);"+await readFile(new URL('../deployment/deployment-profile/install.sql',import.meta.url),'utf8')+'commit;');
 
 // Real booking-cases handler + operator cookie session + PostgreSQL semantics (PGlite) on the hosted TEST
 // layer stack. Supabase Auth/REST and the Gmail API are synthetic; fictional data only; no send.

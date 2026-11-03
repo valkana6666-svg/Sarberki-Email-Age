@@ -7,9 +7,11 @@ import {PGlite} from '@electric-sql/pglite';
 const read=path=>readFile(new URL('../'+path,import.meta.url),'utf8');
 const BOOT=`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select null::uuid$$;grant usage on schema auth to authenticated,anon;`;
 async function fresh(){const db=new PGlite();await db.exec(BOOT);await db.exec(await read('supabase/migrations/202610090001_case_store.sql'));return db;}
-async function install(db,env){
+const TEST_REF='mojnqizbcaczstguikpv',LIVE_REF='abcdefghijklmnopqrst';
+async function install(db,env,ref=env==='live'?LIVE_REF:TEST_REF){
  const sql=await read('deployment/deployment-profile/install.sql');
- await db.exec('begin;'+(env===undefined?'':`select set_config('sarberki.deployment_environment','${env}',true);`)+sql+'commit;');
+ await db.exec('begin;'+(env===undefined?'':`select set_config('sarberki.deployment_environment','${env}',true);`)
+  +(ref===null?'':`select set_config('sarberki.deployment_project_ref','${ref}',true);`)+sql+'commit;');
 }
 const fails=async(promise,code,db)=>{await assert.rejects(promise,e=>e.message.includes(code)||assert.fail('expected '+code+' got '+e.message));if(db)await db.exec('rollback').catch(()=>{});};
 const one=async(db,sql)=>(await db.query(sql)).rows[0];
@@ -54,7 +56,7 @@ test('profile is immutable and invisible to clients',async()=>{
  await fails(db.exec("update sc_deployment_profile set environment='test',tenant_id='sarberki-test'"),'DEPLOYMENT_PROFILE_IMMUTABLE');
  await fails(db.exec('delete from sc_deployment_profile'),'DEPLOYMENT_PROFILE_IMMUTABLE');
  await fails(db.exec('truncate sc_deployment_profile'),'DEPLOYMENT_PROFILE_IMMUTABLE');
- await fails(db.exec("insert into sc_deployment_profile(singleton,environment,tenant_id) values(true,'test','sarberki-test')"),'duplicate key');
+ await fails(db.exec("insert into sc_deployment_profile(singleton,environment,tenant_id,project_ref,mailbox,source_scope) values(true,'test','sarberki-test','mojnqizbcaczstguikpv','sarberkiprojecttest@gmail.com','test-mailbox-source-v1')"),'duplicate key');
  for(const role of ['anon','authenticated']){
   await db.exec('set role '+role);
   try{
@@ -62,5 +64,26 @@ test('profile is immutable and invisible to clients',async()=>{
    await fails(db.query('select public.sc_deployment_tenant()'),'permission denied');
    await fails(db.query('select public.sc_is_live_deployment()'),'permission denied');
   }finally{await db.exec('reset role');}
+ }
+});
+
+test('project ref is required, bound to the environment, and fixes mailbox and attestation scope',async()=>{
+ const db=await fresh();
+ await fails(install(db,'test',null),'DEPLOYMENT_PROJECT_REF_INVALID',db);
+ await fails(install(db,'test',LIVE_REF),'DEPLOYMENT_PROJECT_REF_INVALID',db);
+ await fails(install(db,'live',TEST_REF),'DEPLOYMENT_PROJECT_REF_INVALID',db);
+ await fails(install(db,'live','Not-A-Ref'),'DEPLOYMENT_PROJECT_REF_INVALID',db);
+ assert.equal((await one(db,"select to_regclass('public.sc_deployment_profile') r")).r,null);
+ await install(db,'test');
+ assert.deepEqual(await one(db,'select public.sc_deployment_project_ref() r,public.sc_deployment_mailbox() m,public.sc_deployment_source_scope() s'),
+  {r:TEST_REF,m:'sarberkiprojecttest@gmail.com',s:'test-mailbox-source-v1'});
+ const live=await fresh();await install(live,'live');
+ assert.deepEqual(await one(live,'select public.sc_deployment_project_ref() r,public.sc_deployment_mailbox() m,public.sc_deployment_source_scope() s'),
+  {r:LIVE_REF,m:'info@sarberkito.hu',s:'live-mailbox-source-v1'});
+ await fails(install(live,'live','zyxwvutsrqponmlkjihg'),'DEPLOYMENT_PROFILE_MISMATCH',live);
+ for(const role of ['anon','authenticated']){
+  await live.exec('set role '+role);
+  try{for(const fn of ['sc_deployment_project_ref','sc_deployment_mailbox','sc_deployment_source_scope'])await fails(live.query(`select public.${fn}()`),'permission denied');}
+  finally{await live.exec('reset role');}
  }
 });

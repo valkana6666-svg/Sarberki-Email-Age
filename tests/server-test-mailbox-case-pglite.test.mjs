@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
 import {ingestTestMailboxMessage} from '../shared-core/server-test-mailbox-case.mjs';
-const profile=async(db,env='test')=>db.exec("begin;select set_config('sarberki.deployment_environment','"+env+"',true);"+await readFile(new URL('../deployment/deployment-profile/install.sql',import.meta.url),'utf8')+'commit;');
+const profile=async(db,env='test')=>db.exec("begin;select set_config('sarberki.deployment_environment','"+env+"',true),set_config('sarberki.deployment_project_ref','mojnqizbcaczstguikpv',true);"+await readFile(new URL('../deployment/deployment-profile/install.sql',import.meta.url),'utf8')+'commit;');
 
 // End-to-end on real PostgreSQL semantics (PGlite) with the hosted TEST layer stack: fictional Gmail API
 // -> WP2 server read + attestation -> shared engine draft -> WP3 sc_tm_create under the operator's own
