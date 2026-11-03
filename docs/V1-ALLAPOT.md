@@ -20,7 +20,7 @@ TEST-oldal: `leafy-chimera-2403e5`, telepített `17c1ad2` (2026-11-02 16:18Z; é
 ## Nyitott feladatok
 | ID | Felelős | Állapot | Teendő |
 |---|---|---|---|
-| DRIVE-TOKEN | Tulajdonos (Claude vezeti) | KÉSZ (PASS 41531603671); karbantartás | Testing módú refresh token kb. 7 nap → következő megújításkor: `…Stz3` titok cseréje + OAuth-app „In production” állapotba (tartós token), majd egy `[backup-v2-run]` |
+| DRIVE-TOKEN | Tulajdonos (Claude vezeti) | KÉSZ (PASS 41531603671); karbantartás | Testing módú refresh token kb. 7 nap (~11-09-ig) → OAuth-app „In production” (tartós token), új refresh token, majd egy `[backup-v2-run]`. Klienstitok-csere: tulajdonosi döntés (11-03) – nem cseréljük, ne vesd fel újra |
 | SCHEDULE-ENV | Tulajdonos | SZÜNETELTETVE (2026-11-02 16:16Z) | Óránkénti futás kikapcsolva; újraindításkor környezet: Sarberki TEST E2E, utasításban `docs/V1-ALLAPOT.md` |
 | V1-RC-CHECK | Claude | PASS – V1 kiadásra jelölhető (TEST) | [`V1-RC-CHECK-2026-11-02.md`](V1-RC-CHECK-2026-11-02.md); production csak külön engedéllyel |
 | LIVE-MAILBOX-PLAN | Claude | TERV KÉSZ – tulajdonosi döntésre vár | **info@sarberkito.hu = Google Workspace** (MX `smtp.google.com`, Work 11-02 23:24) → meglévő Gmail-lánc, Internal OAuth `gmail.readonly`. Előfeltétel: a vállalkozás tulajdonosa (édesapa) hozzájárulása + adatkezelési tájékoztató. [`V1-LIVE-MAILBOX-PLAN.md`](V1-LIVE-MAILBOX-PLAN.md): 3 kérdés |
