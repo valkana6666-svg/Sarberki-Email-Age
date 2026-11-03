@@ -70,3 +70,10 @@ Retry 2026-11-02T21:17:39Z: the owner updated SARBERKI_V2_DRIVE_OAUTH_JSON with 
 Retry 2026-11-02T21:44:11Z: the owner re-entered SARBERKI_V2_DRIVE_OAUTH_JSON from the clipboard right after the PowerShell validator (previous run 41527407691: stage=oauth_config(len=35), the secret held only the client secret). Same workflow, no other change.
 Drive folder init 2026-11-02T21:46:40Z: run 41531057792 passed OAuth (new JSON secret works) but stopped at stage=folder, HTTP_404. Root cause: the drive.file scope only reaches folders created by this OAuth app; 1EE2ioPs… was created by another client (see BACKUP-V2-DRIVE-HU.md). One-time [backup-v2-drive-init] job creates or reuses the owner-only folder 'Sarberki V2 mentes'; no export, no database access.
 Drive full proof 2026-11-02T21:47:47Z: app folder 19WOxZQK6M-kqou3OU43084bZce9Dnhyg created by run 41531436566 (owner-only ACL PASS) and pinned in code and workflow (the old repository variable is no longer read). Same export, restore, upload, exact-ID readback and Drive-download restore.
+
+## Owner-requested Drive durability proof (manual, not the daily automation)
+Requested at: 2026-11-03 (Europe/Vienna), after the owner published the "Sarberki Drive Backup" OAuth app to production (Google Auth Platform: In production) and stored a NEW drive.file refresh token in SARBERKI_V2_DRIVE_OAUTH_JSON (same client, client secret unchanged by owner decision).
+Request ID: drive-durable-token-proof-20261103.
+Provider: drive (vars.SARBERKI_V2_STORAGE_PROVIDER), same workflow, folder 19WOxZQK… (app-created, owner-only).
+Purpose: prove the new token end to end (preflight, export, isolated restore, Drive upload, exact-ID readback, restore from the Drive bytes). Token durability beyond 7 days is only proven by a later run after 2026-11-10.
+No production, Netlify, booking, Previo or source DB change.
