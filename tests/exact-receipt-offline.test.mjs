@@ -6,6 +6,7 @@ import {execFileSync} from 'node:child_process';
 import {CLARIFICATION_TEXT,CLARIFICATION_TEMPLATE} from '../shared-core/server-clarification-review.mjs';
 import {createIsolatedApprovalAttestor} from '../shared-core/isolated-approval-attestation.mjs';
 import {PGlite} from '@electric-sql/pglite';
+import {installDeploymentProfile} from './deployment-profile-fixture.mjs';
 import {createExactGmailReceipt,exactGmailEditReceipt,matchesExactGmailEditRecord,EXACT_EDIT_CASE_ID} from '../shared-core/server-exact-gmail-receipt.mjs';
 import {createServerBookingRuntime} from '../shared-core/server-booking-runtime.mjs';
 import {createServerCaseService} from '../shared-core/server-case-service.mjs';
@@ -74,7 +75,7 @@ test('offline SQL candidate + cookie Writer/runtime/Reader preserve actual sourc
   await db.exec(await read('supabase/migrations/202610090001_case_store.sql'));
   const baselineWriter=(await db.query("select prosrc from pg_proc where oid='sc_write_case(text,text,bigint,jsonb)'::regprocedure")).rows[0].prosrc;
   await db.query("select set_config('sarberki.approval_install_project_ref',$1,false),set_config('sarberki.approval_backup_sha256',$2,false)",['mojnqizbcaczstguikpv','b'.repeat(64)]);
-  await db.exec("insert into sc_tenants values('sarberki-test','Fictional',true)");
+  await db.exec("insert into sc_tenants values('sarberki-test','Fictional',true)");await installDeploymentProfile(db);
   await db.exec(await read('deployment/cloud-approval/install.sql'));
   await db.exec(await read('deployment/cloud-approval/separate-approver-permission.sql'));
   await db.exec('alter default privileges grant all on tables to anon,authenticated,service_role');

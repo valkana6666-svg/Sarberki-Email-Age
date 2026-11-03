@@ -1,17 +1,28 @@
--- Generated from recovery/sql/isolated-approval.sql; managed sarberki-test synthetic binding only.
+-- Generated from recovery/sql/isolated-approval.sql; project binding from the deployment profile.
 begin;
-do $$ begin
- if current_setting('sarberki.approval_install_project_ref',true) is distinct from 'mojnqizbcaczstguikpv'
+-- Project binding comes from the immutable deployment profile (deployment/deployment-profile).
+-- TEST keeps every original fixture precondition; LIVE requires exactly its own empty-of-others tenant.
+-- sc_approve_case below stays synthetic and TEST-only: in a LIVE project it always fails closed.
+do $$
+declare env text; ref text; tenant text;
+begin
+ if to_regclass('public.sc_deployment_profile') is null then
+  raise exception 'deployment profile required';
+ end if;
+ select environment,project_ref,tenant_id into env,ref,tenant from public.sc_deployment_profile where singleton;
+ if current_setting('sarberki.approval_install_project_ref',true) is distinct from ref
  or coalesce(current_setting('sarberki.approval_backup_sha256',true),'')!~'^[a-f0-9]{64}$'
- or not exists(select 1 from public.sc_tenants where tenant_id='sarberki-test' and test_only)
- or exists(select 1 from public.sc_tenants where not test_only or tenant_id not in ('sarberki-test','demo-test'))
- or exists(select 1 from public.sc_cases where coalesce(data->>'sender','')!~'^[^@[:space:]]+@[^@[:space:]]+\.invalid$') then
-  raise exception 'verified test project and fresh backup required';
+ or (env='test' and (not exists(select 1 from public.sc_tenants where tenant_id='sarberki-test' and test_only)
+  or exists(select 1 from public.sc_tenants where not test_only or tenant_id not in ('sarberki-test','demo-test'))
+  or exists(select 1 from public.sc_cases where coalesce(data->>'sender','')!~'^[^@[:space:]]+@[^@[:space:]]+\.invalid$')))
+ or (env='live' and (not exists(select 1 from public.sc_tenants where tenant_id=tenant and not test_only)
+  or exists(select 1 from public.sc_tenants where test_only or tenant_id<>tenant))) then
+  raise exception 'verified % project and fresh backup required',env;
  end if;
 end $$;
 create table if not exists public.sc_cloud_approval_binding(
  singleton boolean primary key default true check(singleton),
- project_ref text not null check(project_ref='mojnqizbcaczstguikpv'),
+ project_ref text not null check(project_ref~'^[a-z]{20}$'),
  backup_sha256 text not null check(backup_sha256~'^[a-f0-9]{64}$')
 );
 alter table public.sc_cloud_approval_binding enable row level security;
@@ -22,8 +33,13 @@ do $$ begin
  end if;
 end $$;
 insert into public.sc_cloud_approval_binding(project_ref,backup_sha256)
- values('mojnqizbcaczstguikpv',current_setting('sarberki.approval_backup_sha256'))
+ values(public.sc_deployment_project_ref(),current_setting('sarberki.approval_backup_sha256'))
  on conflict(singleton) do update set backup_sha256=excluded.backup_sha256;
+do $$ begin
+ if not exists(select 1 from public.sc_cloud_approval_binding where singleton and project_ref=public.sc_deployment_project_ref()) then
+  raise exception 'approval binding does not match deployment profile';
+ end if;
+end $$;
 
 -- Disposable server-only signing material. A single row is provisioned by the
 -- isolated harness owner; user-token REST clients cannot read or mutate it.

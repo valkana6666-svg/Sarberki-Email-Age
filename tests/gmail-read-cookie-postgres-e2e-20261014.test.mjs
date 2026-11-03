@@ -8,6 +8,7 @@ import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 import {createHash} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
+import {installDeploymentProfile} from './deployment-profile-fixture.mjs';
 import * as core from '../sarberki-core.mjs';
 import {BUSINESS} from '../business-config.mjs';
 import * as fishing from '../fishing-rules.mjs';
@@ -117,7 +118,7 @@ test('actual fake GIS read -> exact registry staging -> explicit cookie Writer -
  const post=async(input,expected=200)=>{const response=await browserFetch('/.netlify/functions/booking-cases',{method:'POST',headers:csrfHeaders(metadata.csrfToken),body:JSON.stringify(input)});assert.equal(response.status,expected);return (await response.json()).result;};
  try{
   await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create table auth.sessions(id uuid primary key,user_id uuid,not_after timestamptz);create function auth.uid() returns uuid language sql stable as $$select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;grant usage on schema auth to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;`);
-  await db.exec(await read('supabase/migrations/202610090001_case_store.sql'));await db.exec("insert into sc_tenants values('sarberki-test','Synthetic',true),('demo-test','Foreign',true)");
+  await db.exec(await read('supabase/migrations/202610090001_case_store.sql'));await db.exec("insert into sc_tenants values('sarberki-test','Synthetic',true),('demo-test','Foreign',true)");await installDeploymentProfile(db);
   await db.query("select set_config('sarberki.approval_install_project_ref',$1,false),set_config('sarberki.approval_backup_sha256',$2,false)",['mojnqizbcaczstguikpv','b'.repeat(64)]);
   await db.exec(await read('deployment/cloud-approval/install.sql'));await db.exec(await read('deployment/cloud-approval/separate-approver-permission.sql'));
   await db.query('insert into sc_isolated_approval_key(key_hex) values($1)',[env.ISOLATED_APPROVAL_ATTESTATION_KEY]);

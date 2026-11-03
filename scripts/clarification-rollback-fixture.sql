@@ -10,6 +10,11 @@ grant usage on schema auth to authenticated,anon;
 grant execute on function auth.uid() to authenticated,anon;
 \i supabase/migrations/202610090001_case_store.sql
 insert into public.sc_tenants values('sarberki-test','Fictional only',true);
+begin;
+select set_config('sarberki.deployment_environment','test',true);
+select set_config('sarberki.deployment_project_ref','mojnqizbcaczstguikpv',true);
+\i deployment/deployment-profile/install.sql
+commit;
 set sarberki.approval_install_project_ref='mojnqizbcaczstguikpv';
 set sarberki.receipt_install_project_ref='mojnqizbcaczstguikpv';
 set sarberki.approval_backup_sha256='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';

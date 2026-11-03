@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
+import {installDeploymentProfile} from './deployment-profile-fixture.mjs';
 import {createCaseHandler} from '../netlify/functions/booking-cases.mjs';
 import {cloudSyntheticApprovalEnabled,assertCloudSyntheticReviewCase} from '../shared-core/cloud-synthetic-approval.mjs';
 import {syntheticMailLanguages,syntheticMailEnvelope} from '../shared-core/synthetic-mail-fixtures.mjs';
@@ -26,7 +27,7 @@ test('generated managed binding reuses existing approval SQL and real PostgreSQL
  try{
   await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create table auth.sessions(id uuid primary key,user_id uuid,not_after timestamptz);create function auth.uid() returns uuid language sql stable as $$select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;grant usage on schema auth to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;`);
   await db.exec(await readFile(new URL('../supabase/migrations/202610090001_case_store.sql',import.meta.url),'utf8'));
-  await db.exec("insert into sc_tenants values('sarberki-test','Synthetic',true),('demo-test','Other',true)");
+  await db.exec("insert into sc_tenants values('sarberki-test','Synthetic',true),('demo-test','Other',true)");await installDeploymentProfile(db);
   const source=await readFile(new URL('../recovery/sql/isolated-approval.sql',import.meta.url),'utf8'),sql=buildCloudSyntheticApprovalSql(source);
   assert.equal(sql,await readFile(new URL('../deployment/cloud-approval/install.sql',import.meta.url),'utf8'));
   await assert.rejects(db.exec(sql),/verified test project and fresh backup/);await db.exec('rollback');

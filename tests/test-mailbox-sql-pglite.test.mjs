@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createHash,randomBytes} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
+import {installDeploymentProfile} from './deployment-profile-fixture.mjs';
 import {attestTestMailboxSource} from '../shared-core/server-gmail-source.mjs';
 
 // Real PostgreSQL semantics (PGlite) on the same layer stack as the hosted TEST project:
@@ -40,7 +41,7 @@ test('test-mailbox SQL: attested create, independent decisions, return/reject/re
   await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key);create table auth.sessions(id uuid primary key,user_id uuid,not_after timestamptz);create function auth.uid() returns uuid language sql stable as $$select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;grant usage on schema auth to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;grant select on auth.sessions to authenticated;`);
   await db.exec(await read('supabase/migrations/202610090001_case_store.sql'));
   await db.query("select set_config('sarberki.approval_install_project_ref',$1,false),set_config('sarberki.approval_backup_sha256',$2,false)",['mojnqizbcaczstguikpv','b'.repeat(64)]);
-  await db.exec("insert into sc_tenants values('sarberki-test','Fictional',true),('demo-test','Fictional other',true)");
+  await db.exec("insert into sc_tenants values('sarberki-test','Fictional',true),('demo-test','Fictional other',true)");await installDeploymentProfile(db);
   await db.exec(await read('deployment/cloud-approval/install.sql'));
   await db.exec(await read('deployment/cloud-approval/separate-approver-permission.sql'));
   await db.query("select set_config('sarberki.receipt_install_project_ref',$1,false),set_config('sarberki.receipt_backup_sha256',$2,false)",['mojnqizbcaczstguikpv','b'.repeat(64)]);
