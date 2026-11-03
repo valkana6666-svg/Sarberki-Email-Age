@@ -13,6 +13,15 @@ export function translationConfigured(env){
 }
 export async function translateClosedIncoming(input,{env=process.env,fetchImpl=fetch}={}){
  assertClosedTranslation(input);
+ return translateIncomingToHungarian(input,{env,fetchImpl});
+}
+// Server-read text of a stored, server-attested fictional test-mailbox case (test pair, AGENTS.md). The
+// caller passes the stored message, never browser text. Same provider, glossary and protected-value check.
+export async function translateTestMailboxMessage({text,sourceLanguage},{env=process.env,fetchImpl=fetch}={}){
+ if(typeof text!=='string'||!text.trim()||text.length>10000||!['de','en','si'].includes(sourceLanguage))throw Error('INVALID_INPUT');
+ return translateIncomingToHungarian({purpose:'incoming',sourceLanguage,targetLanguage:'hu',text},{env,fetchImpl});
+}
+async function translateIncomingToHungarian(input,{env,fetchImpl}){
  if(!translationConfigured(env))throw Error('TRANSLATION_DISABLED');
  let data,response;
  try{

@@ -20,7 +20,7 @@ const GMAIL_TOKEN='ya29.SYNTHETIC_TEST_ONLY_TOKEN_0123456789',ID='18f2a0b1c2d3e4
 const TEXT='Jó napot! Deluxe faházat szeretnénk foglalni 2027-05-14 és 2027-05-16 között 2 felnőtt, 0 gyermek számára.';
 
 test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gmail token header can store a marked fictional test mail',async t=>{
- const db=new PGlite(),tokens=new Map(),cookies=new Map(),csrf=new Map();let gmailCalls=0,subject='Sárberki élő teszt – AI előnézet',fromHeader='Teszt <sender@example.test>';const gmailSends=[];
+ const db=new PGlite(),tokens=new Map(),cookies=new Map(),csrf=new Map();let gmailCalls=0,subject='Sárberki élő teszt – AI előnézet',fromHeader='Teszt <sender@example.test>',bodyText=TEXT;const gmailSends=[],openaiCalls=[];
  try{
   await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key);create table auth.sessions(id uuid primary key,user_id uuid,not_after timestamptz);create function auth.uid() returns uuid language sql stable as $$select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;grant usage on schema auth to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;`);
   await db.exec(await read('supabase/migrations/202610090001_case_store.sql'));
@@ -41,8 +41,10 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
     const id=url.pathname.endsWith('/profile')?ID:url.pathname.split('/').at(-1);
     return new Response(JSON.stringify({id,threadId:id,labelIds:['INBOX'],internalDate:String(Date.parse('2026-10-31T10:00:00Z')),payload:{mimeType:'multipart/alternative',
      headers:[{name:'Subject',value:subject},{name:'From',value:fromHeader},{name:'To',value:'sarberkiprojecttest@gmail.com'},{name:'Message-ID',value:'<f1@example.test>'}],
-     parts:[{mimeType:'text/plain',body:{data:b64(TEXT)}}]}}));
+     parts:[{mimeType:'text/plain',body:{data:b64(bodyText)}}]}}));
    }
+   if(url.origin==='https://api.openai.com'){openaiCalls.push(JSON.parse(options.body));
+    return new Response(JSON.stringify({status:'completed',output:[{type:'message',role:'assistant',status:'completed',content:[{type:'output_text',text:'Helló, 5 felnőtt vagyunk, 2027. szeptember 20. és 23. között szállnánk meg. (kitalált)'}]}]}));}
    assert.equal(url.origin,project,'all Auth/REST is synthetic');
    if(url.pathname==='/auth/v1/token'){
     const body=JSON.parse(options.body),role=url.searchParams.get('grant_type')==='password'?body.email.split('@')[0]:body.refresh_token.replace('synthetic_refresh_','');
@@ -156,6 +158,24 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
    assert.deepEqual(data.decisions.map(x=>x.decision),['return','approve']);assert.equal(data.internalApproval.scope,'test-mailbox-v1');
    assert.equal(data.internalApproval.sendAllowed,false);assert.equal(data.internalApproval.bookingAllowed,false);
    assert.deepEqual((await db.query('select kind from sc_audit where case_id=$1 order by revision',[caseId])).rows.map(r=>r.kind),['tm_create','tm_return','tm_redraft','tm_approve']);
+  });
+  await t.test('translate: a stored foreign message gets a verified Hungarian translation; Hungarian needs none; off without config',async()=>{
+   const trEnv={...enabledEnv,SARBERKI_TRANSLATION_ENABLED:'closed-synthetic-only',OPENAI_TRANSLATION_API_KEY:'sk-synthetic-test-key-000',OPENAI_TRANSLATION_MODEL:'synthetic-model'};
+   const tr=(role,env,id,options)=>call(role,env,{tenantId:'sarberki-test',action:'test-mailbox-translate',caseId:id},{method:'GET',...options});
+   assert.deepEqual((await tr('reader',trEnv,caseId,{status:200})).json.result,{caseId,needed:false,language:'hu'});
+   assert.equal(openaiCalls.length,0,'Hungarian is never sent to the provider');
+   bodyText='Hello, we are 5 adults and would like to stay from 20 to 23 September 2027. (fictional)';
+   try{
+    const id4='18f2a0b1c2d3e4b1',case4='tm-'+id4;
+    await call('writer',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-ingest',messageId:id4},{headers:gmail,status:200});
+    assert.deepEqual((await tr('reader',enabledEnv,case4,{status:503})).json,{error:'TRANSLATION_DISABLED'});
+    const ok=(await tr('reader',trEnv,case4,{status:200})).json.result;
+    assert.equal(ok.needed,true);assert.equal(ok.language,'en');assert.match(ok.text,/5 felnőtt.*2027/u);
+    assert.equal(openaiCalls.length,1);assert.equal(openaiCalls[0].input[0].content[0].text,bodyText,'the stored server-read text, not browser input');
+    await tr('reader',trEnv,case4,{status:200});assert.equal(openaiCalls.length,1,'cached per case text');
+    await call('reader',trEnv,{tenantId:'sarberki-test',action:'test-mailbox-translate',caseId:case4,text:'injected'},{method:'GET',status:403});
+    await tr('reader',trEnv,'tm-'+'0'.repeat(16),{status:404});
+   }finally{bodyText=TEXT;}
   });
   await t.test('send: off without its own switch; only an Approver; only approved; only the fixed test recipient; exactly one send',async()=>{
    const sendEnv={...enabledEnv,CASE_TEST_MAILBOX_SEND_ENABLED:'sarberki-test-pair-only'};

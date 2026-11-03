@@ -5,6 +5,7 @@ import {createCloudCaseRequest} from '../shared-core/cloud-case-request.mjs';
 import {createEpochRequestQueue} from '../shared-core/epoch-request-queue.mjs';
 import {createIsolatedApprovalReview} from '../shared-core/isolated-approval-review.mjs';
 import {createServerChatClient} from '../sarberki-chatbot-project/remote-chat-client.mjs';
+import {translationErrorMessage} from '../translation-errors.mjs';
 
 const TEST_ORIGIN='https://leafy-chimera-2403e5.netlify.app';
 const TENANT='sarberki-test';
@@ -201,6 +202,18 @@ function guestSummary(values){
  if(count(values.children))parts.push(values.children+' gyermek');
  return parts.join(', ')||'Nincs megadva';
 }
+// A foreign-language guest message gets a machine Hungarian translation right under it (server-read text,
+// verified numbers; the operator still checks the original). Hungarian messages need none.
+async function showTranslation(caseId,turn){
+ const note=document.createElement('p');note.className='readout';
+ try{
+  const result=await request({tenantId:TENANT,caseId,action:'test-mailbox-translate'},'GET');if(!current(turn))return;
+  if(result?.caseId!==caseId||result.needed!==true)return;
+  if(typeof result.text!=='string')throw Error('TRANSLATION_UNVERIFIED');
+  note.textContent='Magyar fordítás (gépi, az eredetivel együtt ellenőrizendő):\n'+result.text;
+ }catch(error){if(!current(turn)||error?.message==='AUTH_REQUIRED')return;note.className='muted';note.textContent='Magyar fordítás: '+translationErrorMessage(error?.message);}
+ el('detail-messages').append(note);
+}
 // Test-mailbox case: same detail panel, own server read model. Edit/decide flags are hints only; the database re-checks.
 async function openTestMailboxCase(caseId,turn,status){
  const record=await request({tenantId:TENANT,caseId,action:'test-mailbox-record'},'GET');if(!current(turn))return;
@@ -213,7 +226,7 @@ async function openTestMailboxCase(caseId,turn,status){
   item.textContent=(message.received_at?message.received_at+'\n':'')+message.text;messages.append(item);
  }
  const values=record.values||{};
- el('detail-messages').replaceChildren(messages);
+ el('detail-messages').replaceChildren(messages);void showTranslation(caseId,turn);
  el('detail-facts').textContent='Érkezés: '+(values.arrival||'Nincs megadva')+'\nTávozás: '+(values.departure||'Nincs megadva')+
   '\nLétszám: '+guestSummary(values)+'\nHáztípus: '+(values.unit||'Nincs megadva');
  el('detail-status').textContent=status||tmStatus[record.approval];

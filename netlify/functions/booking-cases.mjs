@@ -14,6 +14,11 @@ import {resolveBookingCase} from '../../booking-cases.mjs';
 import {dailyCaseSummary} from '../../shared-core/server-daily-case-view.mjs';
 import {ingestTestMailboxMessage} from '../../shared-core/server-test-mailbox-case.mjs';
 import {sendApprovedTestMailboxReply} from '../../shared-core/server-test-mailbox-send.mjs';
+import {translateTestMailboxMessage} from '../../shared-core/server-translation.mjs';
+import {languageFromText} from '../../sarberki-core.mjs';
+import {translationErrorCode} from '../../translation-errors.mjs';
+// Process-local cache of verified translations per case revision (no repeated provider calls on re-open).
+const testMailboxTranslations=new Map();
 const headers={'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 const response=(statusCode,body)=>({statusCode,headers,body:JSON.stringify(body)});
 // Cookie-reader case picker gets metadata only, never raw inquiry content.
@@ -98,6 +103,29 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    // session with CSRF only; Writer for ingest/redraft, Approver for decisions (the database also enforces an
    // approver independent of the draft author). The Gmail token travels in its own header, is used once and
    // is never stored or echoed. Fixed public error codes only.
+   // Hungarian translation of a stored foreign-language test-mailbox message, shown under the message.
+   if(input.action==='test-mailbox-translate'){
+    if(event.httpMethod!=='GET'||!cookieMode||!testMailboxIngestEnabled(env,cloudApproval)||input.tenantId!=='sarberki-test'||Object.keys(input).sort().join(',')!=='action,caseId,tenantId')
+     return cookieResponse(403,{error:'FORBIDDEN'});
+    if(typeof input.caseId!=='string'||!/^tm-[a-f0-9]{12,32}$/.test(input.caseId))return cookieResponse(400,{error:'INVALID_INPUT'});
+    cookieSession=await createOperatorCookieSession({env,fetchImpl}).protectedRead(event);
+    rotatedCookie=cookieSession.setCookie;
+    const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.sarberki-test&case_id=eq.'+encodeURIComponent(input.caseId));
+    const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
+    const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
+    if(!record||!isTestMailboxCase(record))return cookieResponse(404,{error:'NOT_FOUND'});
+    const text=String(record.data.messages[0]?.text||''),language=languageFromText(text);
+    if(!['de','en','si'].includes(language))return cookieResponse(200,{result:{caseId:record.caseId,needed:false,language}});
+    const key=record.caseId+':'+createHash('sha256').update(text,'utf8').digest('hex');
+    try{
+     if(!testMailboxTranslations.has(key)){
+      const translated=await translateTestMailboxMessage({text,sourceLanguage:language},{env,fetchImpl});
+      if(testMailboxTranslations.size>=200)testMailboxTranslations.clear();
+      testMailboxTranslations.set(key,translated.text);
+     }
+     return cookieResponse(200,{result:{caseId:record.caseId,needed:true,language,text:testMailboxTranslations.get(key)}});
+    }catch(error){return cookieResponse(503,{error:translationErrorCode(error?.message)});}
+   }
    if(input.action==='test-mailbox-record'){
     if(event.httpMethod!=='GET'||!cookieMode||!testMailboxIngestEnabled(env,cloudApproval)||input.tenantId!=='sarberki-test'||Object.keys(input).sort().join(',')!=='action,caseId,tenantId')
      return cookieResponse(403,{error:'FORBIDDEN'});
