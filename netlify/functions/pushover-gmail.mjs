@@ -2,6 +2,9 @@ import {createPushoverDeliveryCoordinator} from '../../shared-core/pushover-deli
 import {createPushoverLedger} from './_shared/pushover-ledger.mjs';
 import {createPushoverRpc} from './_shared/pushover-rpc.mjs';
 import {TEST_GMAIL_ACCOUNT, isTestInquiry} from '../../gmail-policy.mjs';
+import {enabledMailboxProfile,notificationText} from '../../shared-core/server-mailbox-profiles.mjs';
+
+const PROFILE = enabledMailboxProfile('sarberki-test');
 
 const ORIGIN = 'https://leafy-chimera-2403e5.netlify.app';
 const json = (body, status = 200) => Response.json(body, {
@@ -90,7 +93,7 @@ export function createHandler({env = process.env, send = fetch, ledger = null, l
           title:'Sárberki · új levél',
           url:ORIGIN + '/',
           url_title:'Sarberki tesztoldal megnyitasa',
-          message:`Új levél érkezett a Sárberki tesztfiókba.\nFeladó: ${from}\nTárgy: ${subject}`
+          message:notificationText(PROFILE,{from,subject})
         }),
         signal:AbortSignal.timeout(10000)
       });

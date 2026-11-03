@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {automatedMailReason} from '../shared-core/automated-mail-filter.mjs';
-import {MAILBOX_PROFILES,enabledMailboxProfile} from '../shared-core/server-mailbox-profiles.mjs';
+import {MAILBOX_PROFILES,enabledMailboxProfile,notificationText} from '../shared-core/server-mailbox-profiles.mjs';
 import {TEST_GMAIL_ACCOUNT} from '../gmail-policy.mjs';
 
 const human={from:'Teszt Vendég <guest@example.test>',subject:'Érdeklődés a szállásról'};
@@ -54,4 +54,12 @@ test('only the TEST mailbox profile is enabled; the live profile fails closed',(
  assert.throws(()=>enabledMailboxProfile('sarberki-live'),/MAILBOX_PROFILE_DISABLED/);
  for(const id of ['unknown','','__proto__','constructor',undefined])assert.throws(()=>enabledMailboxProfile(id),/MAILBOX_PROFILE_UNKNOWN/,String(id));
  assert.equal(Object.isFrozen(MAILBOX_PROFILES)&&Object.isFrozen(t),true);
+});
+
+test('notifications: TEST keeps synthetic headers; live carries no sender or subject',()=>{
+ const h={from:'Vendég <guest@example.test>',subject:'Érdeklődés'};
+ assert.equal(notificationText(MAILBOX_PROFILES['sarberki-test'],h),'Új levél érkezett a Sárberki tesztfiókba.\nFeladó: Vendég <guest@example.test>\nTárgy: Érdeklődés');
+ const live=notificationText(MAILBOX_PROFILES['sarberki-live'],h);
+ assert.equal(live.includes('guest@example.test')||live.includes('Vendég')||live.includes('Érdeklődés'),false);
+ for(const p of [undefined,null,{},{notificationIncludesHeaders:'true'}])assert.equal(notificationText(p,h).includes('guest@'),false,JSON.stringify(p));
 });

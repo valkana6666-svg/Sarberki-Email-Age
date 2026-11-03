@@ -30,10 +30,10 @@ Mindegyik úton a forrás-olvasó utáni lánc (AI, ügytár, napi kezelő, jóv
 0. **Előfeltétel (2026-11-02):** a vállalkozás és az info@sarberkito.hu a projekttulajdonos édesapjáé (adatkezelő). Bekötés csak az ő kifejezett, lehetőleg írásos hozzájárulásával; a Workspace-adminisztrátori lépéseket ő vagy az ő engedélyével más végzi. Éles indulás előtt az adatkezelési tájékoztatóban szerepeljen az AI-alapú feldolgozás.
 1. Az info@ önálló Workspace-postafiók vagy alias/csoport? Ki a Workspace-adminisztrátor (admin.google.com)?
 2. Mehet-e Internal OAuth-kliens a sarberkito.hu Workspace Google Cloud-projektjében, kizárólag `gmail.readonly` joggal?
-3. Melyik Supabase/Netlify környezet lesz az éles ügytár (külön projekt vagy tenant)?
+3. ~~Éles ügytár~~ – **eldöntve (11-03): külön Supabase-projekt.**
 
 ## Megállapítások az élesítés előtt (Claude, 2026-11-03)
-- **Pushover:** a mostani (csak TEST) értesítés a feladó nevét, e-mail-címét és a levél tárgyát elküldi a Pushovernek (`netlify/functions/pushover-gmail.mjs`). Élesben ez vendégadat egy újabb szolgáltatónál. Javaslat: az éles értesítés csak „Új érdeklődés érkezett” szöveget küldjön, feladó és tárgy nélkül; ellenkező esetben a Pushovert fel kell venni az adatfeldolgozók közé. Tulajdonosi döntés.
+- **Pushover:** a mostani (csak TEST) értesítés a feladó nevét, e-mail-címét és a levél tárgyát elküldi a Pushovernek (`netlify/functions/pushover-gmail.mjs`). Élesben ez vendégadat egy újabb szolgáltatónál. **Tulajdonosi döntés (11-03): az éles értesítés feladó és tárgy nélküli** – megvalósítva (`notificationText`, éles profil).
 - **Automatikus levelek:** a Previo a domain nevében küld (SPF). A közös szűrő (`shared-core/automated-mail-filter.mjs`, `400f6e6`) ezeket, továbbá az auto-reply, bulk és noreply leveleket kiszűri; éles profilban a saját feladót is.
 - **Napi mentés:** a napi `[backup-v2-cloud-bridge-run]` kérés (a tulajdonos fiókjáról, 11-03 07:36Z, PASS) a GitHub-úton fut. A Drive-útra (`[backup-v2-run]`) állítás a Drive-token tartóssá tétele után, a napi kérés üzenetének cseréjével lehetséges.
 
