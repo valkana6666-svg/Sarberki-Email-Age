@@ -4,6 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {createHash,createHmac} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 import {installDeploymentProfile} from './deployment-profile-fixture.mjs';
+import {attestTestMailboxSource} from '../shared-core/server-gmail-source.mjs';
 
 // Slice 2b: the same mailbox-case SQL on a LIVE deployment profile (real PostgreSQL via PGlite).
 // Fictional project ref, people and mail only; nothing here touches a hosted database.
@@ -55,7 +56,10 @@ test('mailbox-case SQL on a LIVE profile: own project, tenant, mailbox and scope
   });
   const ok=mail(2);
   await t.test('live attested mail is saved with the live scope',async()=>{
-   const saved=await create(ok,attest('live-mailbox-source-v1',TENANT,ok.src,ok.text));
+   // JS server attestation (live profile) is exactly what the LIVE database recomputes.
+   const checkedAt=new Date().toISOString(),proof=attestTestMailboxSource({key:KEY,tenantId:TENANT,source:ok.src,envelope:ok.data.messages[0],checkedAt});
+   assert.deepEqual(proof,attest('live-mailbox-source-v1',TENANT,ok.src,ok.text,checkedAt));
+   const saved=await create(ok,proof);
    assert.equal(saved.revision,1);assert.equal(saved.data.testMailbox.scope,'live-mailbox-source-v1');
   });
   await t.test('TEST scope, TEST mailbox, TEST tenant/issuer and own sender are refused',async()=>{

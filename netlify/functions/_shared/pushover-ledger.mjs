@@ -1,7 +1,11 @@
 // Server-only adapter. Inject a protected Supabase client's rpc method.
 // No credentials, network defaults, retries or notification dispatch here.
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-function identity(k){if(!k||k.tenantId!=='sarberki-test'||k.mailbox!=='sarberkiprojecttest@gmail.com'||k.notificationType!=='gmail-new-message'||!/^[A-Za-z0-9_-]{5,128}$/.test(k.messageId))throw Error('INVALID_LEDGER_IDENTITY');}
+import {knownMailboxProfile} from '../../../shared-core/server-mailbox-profiles.mjs';
+// Mirrors the ledger table: only a known (tenant, mailbox) pair; the database fence then admits only
+// its own deployment's pair. Whether a profile may notify at all is decided by the caller's switch.
+const knownPair=k=>{try{return knownMailboxProfile(k.tenantId).account===k.mailbox;}catch{return false;}};
+function identity(k){if(!k||!knownPair(k)||k.notificationType!=='gmail-new-message'||!/^[A-Za-z0-9_-]{5,128}$/.test(k.messageId))throw Error('INVALID_LEDGER_IDENTITY');}
 export function createPushoverLedger({rpc,timeoutMs=10000}={}){
  if(typeof rpc!=='function'||!Number.isInteger(timeoutMs)||timeoutMs<1||timeoutMs>15000)throw Error('INVALID_LEDGER_CONFIGURATION');
  async function call(name,args){let timer;try{

@@ -6,13 +6,13 @@ import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
 import {readTestGmailInbox,gmailReadableBody,TEST_GMAIL_ACCOUNT} from '../gmail-policy.mjs';
 import {isMarkedTestSubject} from '../gmail-subject.mjs';
 import {automatedMailReason} from './automated-mail-filter.mjs';
-import {enabledMailboxProfile} from './server-mailbox-profiles.mjs';
+import {enabledMailboxProfile,knownMailboxProfile} from './server-mailbox-profiles.mjs';
 
 // The only enabled profile; its values must match the existing test-account policy and attestation scope.
 const PROFILE=enabledMailboxProfile('sarberki-test');
 if(PROFILE.account!==TEST_GMAIL_ACCOUNT||PROFILE.sourceScope!=='test-mailbox-source-v1')throw Error('MAILBOX_PROFILE_MISMATCH');
 export const TEST_MAILBOX_SOURCE_SCOPE=PROFILE.sourceScope;
-const MAILBOX_ID=PROFILE.mailboxId,MAX_TEXT=20000,TENANT=PROFILE.tenantId;
+const MAILBOX_ID=PROFILE.mailboxId,MAX_TEXT=20000;
 const fail=code=>{const error=Error(code);error.code=code;throw error;};
 const address=value=>{const match=/<([^<>\s]+)>\s*$/.exec(value||'');return (match?match[1]:String(value||'').trim()).toLowerCase();};
 function plainTextPart(part){
@@ -62,11 +62,15 @@ export async function readVerifiedTestMailboxMessage({token,messageId,fetchImpl=
 }
 
 // Domain-separated HMAC (own scope as first field) with the existing server attestation key, in the
-// newline-joined form the database helper sc_isolated_approval_mac can recompute.
+// newline-joined form the database helper sc_isolated_approval_mac can recompute. Scope, mailbox and
+// recipient come from the tenant's mailbox profile (TEST: test-mailbox-source-v1; LIVE profile:
+// live-mailbox-source-v1), so a proof for one deployment never verifies for the other.
+function profileOf(tenantId){try{return knownMailboxProfile(tenantId);}catch{fail('INVALID_EVIDENCE');}}
 function canonical({tenantId,source,envelope,checkedAt,bodySha256}){
- if(tenantId!==TENANT||!source||!envelope||!Number.isFinite(Date.parse(checkedAt))||new Date(checkedAt).toISOString()!==checkedAt)fail('INVALID_EVIDENCE');
+ const profile=profileOf(tenantId);
+ if(!source||source.mailbox_id!==profile.mailboxId||source.to!==profile.account||!source||!envelope||!Number.isFinite(Date.parse(checkedAt))||new Date(checkedAt).toISOString()!==checkedAt)fail('INVALID_EVIDENCE');
  if(['message_id','thread_id','rfc_message_id','received_at','mailbox_id'].some(k=>source[k]!==envelope[k])||envelope.sender!==source.from_email)fail('INVALID_EVIDENCE');
- const values=[TEST_MAILBOX_SOURCE_SCOPE,tenantId,source.mailbox_id,source.message_id,source.thread_id,source.rfc_message_id,
+ const values=[profile.sourceScope,tenantId,source.mailbox_id,source.message_id,source.thread_id,source.rfc_message_id,
   source.from_email,source.to,source.subject,source.received_at,bodySha256,checkedAt];
  if(values.some(v=>typeof v!=='string'||!v||/[\r\n]/.test(v)))fail('INVALID_EVIDENCE');
  return values.join('\n');
@@ -77,12 +81,12 @@ const bodyHash=envelope=>createHash('sha256').update(String(envelope?.text??''),
 export function attestTestMailboxSource({key,tenantId,source,envelope,checkedAt}){
  const secret=keyBytes(key),bodySha256=bodyHash(envelope);
  const attestation=createHmac('sha256',secret).update(canonical({tenantId,source,envelope,checkedAt,bodySha256})).digest('hex');
- return {scope:TEST_MAILBOX_SOURCE_SCOPE,checkedAt,bodySha256,attestation};
+ return {scope:profileOf(tenantId).sourceScope,checkedAt,bodySha256,attestation};
 }
 
 export function verifyTestMailboxAttestation({key,tenantId,source,envelope,proof}){
  try{
-  if(proof?.scope!==TEST_MAILBOX_SOURCE_SCOPE||!/^[a-f0-9]{64}$/.test(proof.attestation||''))return false;
+  if(proof?.scope!==profileOf(tenantId).sourceScope||!/^[a-f0-9]{64}$/.test(proof.attestation||''))return false;
   const expected=attestTestMailboxSource({key,tenantId,source,envelope,checkedAt:proof.checkedAt});
   return expected.bodySha256===proof.bodySha256&&timingSafeEqual(Buffer.from(expected.attestation,'hex'),Buffer.from(proof.attestation,'hex'));
  }catch{return false;}
