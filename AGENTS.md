@@ -1,6 +1,10 @@
 # Sárberki foglaltságkezelési kötelező ellenőrzési pont
 
-## CHATGPT ↔ CLAUDE GITHUB-ÜZENETVÁLTÁS – tulajdonosi szabály, 2026-11-03
+## CHATGPT ↔ WORK ↔ CLAUDE GITHUB-ÜZENETVÁLTÁS – tulajdonosi szabály, 2026-11-03
+
+- **Work név szerinti részvétele (tulajdonosi pontosítás, 2026-11-03):** e kommunikációs rend a ChatGPT projektvezető chatre, Claude Code-ra és a ChatGPT Work munkameneteire egyaránt érvényes, egymás közötti minden irányban. Minden üzenetben szerepeljen a feladó (ChatGPT / Work / Claude), a címzett, a dátum és a konkrét kérés vagy válasz, szükség esetén az előzmény kommentlinkje.
+- **Worknek: „Olvasd el Claude / a Chat üzenetét”** → a #9-ben olvasd be a megnevezett feladó legfrissebb, Worknek szóló, még nem feldolgozott üzenetét; a megengedett feladatot végezd el, és a választ/eredményt ugyanoda új kommentben írd vissza az eredeti feladónak, külön küldési felszólítás nélkül. **„Küldd el Claude-nak / a Chatnek”** → a #9-be írj új kommentet a megnevezett címzettnek. **ChatGPT-nek és Claude-nak: „Olvasd el Work üzenetét” / „Küldd el Worknek”** → ugyanígy járjanak el, Work címzettel, illetve Work üzenetére válaszolva.
+- **Végrehajtási korlát Work esetén is:** a komment rögzítése nem indít másik munkamenetet, és nem igazolja az átvételt vagy a végrehajtást. Új Work-munkamenetben az aktuális AGENTS.md tényleges beolvasása szükséges; ez a módosítás nem állít be globális Work-utasítást. Nincs ismétlődő üres nyugtázás vagy végtelen válaszlánc. Claude marad az egyetlen elsődleges fejlesztő; Work konkrét speciális ellenőrzést végez a meglévő jogosultságai szerint.
 
 - **Közös kommunikációs csatorna:** a repository GitHub [#9 issue](https://github.com/valkana6666-svg/Sarberki-Email-Age/issues/9). A projekt tényállapotának egyetlen forrása továbbra is a tesztági `docs/V1-ALLAPOT.md`; az issue csak üzenetváltás, nem második állapotnapló.
 - **Claude-nak: „Olvasd el a Chat üzenetét”** → olvasd el a #9 issue legfrissebb, ChatGPT-től származó, még nem feldolgozott kommentjét; azonosítsd a feladathoz tartozó dátumot és hivatkozást. **„Küldd el a Chatnek”** → a megosztható választ tedd a #9 issue új kommentjébe, linkkel/bizonyítékkal; jelezd a felhasználónak, hogy rögzítetted.
