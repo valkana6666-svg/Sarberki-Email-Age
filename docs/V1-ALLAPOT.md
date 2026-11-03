@@ -1,6 +1,6 @@
 # Sárberki V1 – aktuális állapot (legfeljebb 40 sor; minden feladat a saját commitjában frissíti)
 
-Utolsó frissítés: 2026-11-02 22:55 CET. Szerepek: AGENTS.md „FÓKUSZ ÉS HATÉKONYSÁG”. Részletes előzmény (archív): `docs/V1-FOLYTATASI-PONT.md`, `docs/V1-AUTOMATION-STATUS-2026-11-01.md`.
+Utolsó frissítés: 2026-11-03 CET. Szerepek: AGENTS.md „FÓKUSZ ÉS HATÉKONYSÁG”. Részletes előzmény (archív): `docs/V1-FOLYTATASI-PONT.md`, `docs/V1-AUTOMATION-STATUS-2026-11-01.md`.
 
 ## Kész, igazolt – ne ismételd
 | Terület | Bizonyíték |
@@ -20,7 +20,7 @@ TEST-oldal: `leafy-chimera-2403e5`, telepített `17c1ad2` (2026-11-02 16:18Z; é
 ## Nyitott feladatok
 | ID | Felelős | Állapot | Teendő |
 |---|---|---|---|
-| DRIVE-TOKEN | Tulajdonos (Claude vezeti) | KÉSZ (PASS 41531603671); karbantartás | Testing módú refresh token kb. 7 nap (~11-09-ig) → OAuth-app „In production” (tartós token), új refresh token, majd egy `[backup-v2-run]`. Klienstitok-csere: tulajdonosi döntés (11-03) – nem cseréljük, ne vesd fel újra |
+| DRIVE-TOKEN | Tulajdonos (Claude vezeti) | FOLYAMATBAN – OAuth-app **In production** (tulajdonos, 11-03 ~19:40 CET; Branding: honlap + `adatvedelem.html` a TEST-oldalon, ehhez TEST-kiadás tulajdonosi engedéllyel) | Hátra: új refresh token (Playground, `drive.file`) → `SARBERKI_V2_DRIVE_OAUTH_JSON` → egy `[backup-v2-run]` PASS → napi kérés jelölése `[backup-v2-run]`-ra (A változat: meglévő napi feladat). Klienstitok-csere: tulajdonosi döntés (11-03) – nem cseréljük, ne vesd fel újra |
 | SCHEDULE-ENV | Tulajdonos | SZÜNETELTETVE (2026-11-02 16:16Z) | Óránkénti futás kikapcsolva; újraindításkor környezet: Sarberki TEST E2E, utasításban `docs/V1-ALLAPOT.md` |
 | V1-RC-CHECK | Claude | PASS – V1 kiadásra jelölhető (TEST) | [`V1-RC-CHECK-2026-11-02.md`](V1-RC-CHECK-2026-11-02.md); production csak külön engedéllyel |
 | LIVE-MAILBOX-PLAN | Claude | TERV KÉSZ – tulajdonosi döntésre vár | **info@sarberkito.hu = Google Workspace** (MX `smtp.google.com`, Work 11-02 23:24) → meglévő Gmail-lánc, Internal OAuth `gmail.readonly`. Előfeltétel: a vállalkozás tulajdonosa (édesapa) hozzájárulása + adatkezelési tájékoztató. TEST-előkészítés 1/2 kész: közös automatikuslevél-szűrő (Previo, auto-reply, bulk, noreply, saját feladó) a szerveren és a napi kezelőben; postafiók-profil szerveroldalon, éles profil KIKAPCSOLVA. Tulajdonosi döntés (11-03): éles ügytár = **külön Supabase-projekt**; éles értesítés vendégadat nélkül (`notificationText`, kész). Éles ügytár: 1. szelet kész – változtathatatlan projektprofil + tenant-őr (`deployment/deployment-profile/install.sql`, PGlite 4/4; NEM alkalmazva). Hátra: 2. szelet – a minimális éles útvonal paraméterezése (SQL + JS, projekt-kötés is), korrigált becslés 3–4 munkamenet (plan doc); DB-alkalmazás csak engedéllyel [`V1-LIVE-MAILBOX-PLAN.md`](V1-LIVE-MAILBOX-PLAN.md): 3 kérdés |
