@@ -72,6 +72,7 @@ async function loadState(){
 }
 let listLoaded=false;
 let selectedSection='incoming',rows=[],selected=null,editBase=null,canApprove=false,actionBusy=false,tmCase=null,approvedText=null;
+const COPY_LABEL='Jóváhagyott szöveg másolása';
 const isTestMailboxCaseId=id=>typeof id==='string'&&/^tm-[a-f0-9]{12,32}$/.test(id);
 const request=createEpochRequestQueue({getEpoch:()=>epoch,isAuthenticated:()=>authenticated,
  prepare:()=>session.restore(),execute:createCloudCaseRequest()});
@@ -132,7 +133,7 @@ function clearDetail(){
  el('detail-messages').replaceChildren();el('detail-facts').textContent='';
  el('case-detail').hidden=true;
  for(const id of ['detail-status','detail-summary','detail-capacity','detail-price','detail-draft'])el(id).textContent='';
- el('copy-approved').hidden=true;approvedText=null;
+ el('copy-approved').hidden=true;el('copy-approved').textContent=COPY_LABEL;approvedText=null;
  el('detail-link').href='../cloud-approval.html';
 }
 function clearData(message='A listához jelentkezzen be.'){
@@ -228,10 +229,19 @@ async function openTestMailboxCase(caseId,turn,status){
  }
 }
 // Manual sending only: the operator pastes the approved text into Gmail. Nothing is sent from here.
+// Feedback is shown on the button itself (the status line is far above on a phone).
 el('copy-approved').addEventListener('click',async()=>{
- const text=approvedText;if(!authenticated||typeof text!=='string')return;
- try{await navigator.clipboard.writeText(text);el('detail-status').textContent='A jóváhagyott szöveg a vágólapra került. A választ kézzel, Gmailből küldje el.';}
- catch{el('detail-status').textContent='A másolás nem sikerült. Jelölje ki a választervezet szövegét kézzel.';}
+ const text=approvedText,button=el('copy-approved');if(!authenticated||typeof text!=='string')return;
+ try{
+  await navigator.clipboard.writeText(text);
+  button.textContent='Másolva ✓ – illessze be a Gmail-válaszba';
+  el('detail-status').textContent='A jóváhagyott szöveg a vágólapra került. A választ kézzel, Gmailből küldje el.';
+ }catch{
+  // Fallback: select the approved text so the phone's own Copy works.
+  try{const range=document.createRange();range.selectNodeContents(el('detail-draft'));const selection=globalThis.getSelection();selection.removeAllRanges();selection.addRange(range);}catch{}
+  button.textContent='Nem sikerült – a szöveg kijelölve, használja a Másolás funkciót';
+  el('detail-status').textContent='A másolás nem sikerült. Jelölje ki a választervezet szövegét kézzel.';
+ }
 });
 async function tmMutate(kind){
  const base=tmCase;if(actionBusy||!authenticated||!base)return;

@@ -495,9 +495,11 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
    await e['copy-approved'].dispatch('click');await settle();
    assert.deepEqual(copied,['Kitalált negyedik tervezet.']);assert.equal(posts.length,postCount);
    assert.match(e['detail-status'].textContent,/vágólapra.*kézzel, Gmailből/);
+   assert.match(e['copy-approved'].textContent,/^Másolva ✓/u,'feedback on the button itself');
    Object.defineProperty(globalThis.navigator,'clipboard',{value:{writeText:async()=>{throw Error('denied');}},configurable:true});
    await e['copy-approved'].dispatch('click');await settle();
    assert.match(e['detail-status'].textContent,/másolás nem sikerült/);
+   assert.match(e['copy-approved'].textContent,/^Nem sikerült – a szöveg kijelölve/u);
   }finally{delete globalThis.navigator.clipboard;}
   // A result that is not exactly the next revision is not accepted as proof of the decision.
   state.approval='pending';await open();skew=1;await e['reject-draft'].dispatch('click');await settle();skew=0;
