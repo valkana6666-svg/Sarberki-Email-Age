@@ -1,7 +1,7 @@
 import {createPushoverDeliveryCoordinator} from '../../shared-core/pushover-delivery-coordinator.mjs';
 import {createPushoverLedger} from './_shared/pushover-ledger.mjs';
 import {createPushoverRpc} from './_shared/pushover-rpc.mjs';
-import {TEST_GMAIL_ACCOUNT, isTestInquiry} from '../../gmail-policy.mjs';
+import {isTestInquiry} from '../../gmail-policy.mjs';
 import {enabledMailboxProfile,notificationText} from '../../shared-core/server-mailbox-profiles.mjs';
 
 const PROFILE = enabledMailboxProfile('sarberki-test');
@@ -61,7 +61,7 @@ export function createHandler({env = process.env, send = fetch, ledger = null, l
       catch {return json({ok:false,code:'GMAIL_UNAVAILABLE',deliveryUnknown:false},503);}
       if (!profileResult.response.ok) return json({ok:false,code:'GMAIL_AUTH_REQUIRED'},401);
       const profile = profileResult.data;
-      if (profile?.emailAddress?.trim().toLowerCase() !== TEST_GMAIL_ACCOUNT) {
+      if (profile?.emailAddress?.trim().toLowerCase() !== PROFILE.account) {
         return json({ok:false,code:'WRONG_GMAIL_ACCOUNT'},403);
       }
       let messageResult;
@@ -101,7 +101,7 @@ export function createHandler({env = process.env, send = fetch, ledger = null, l
       if (!result.ok || data.status !== 1)throw Error('PROVIDER_REJECTED');
       return {accepted:true,requestId:data.request};
       }});
-      const outcome=await coordinator.process({tenantId:'sarberki-test',mailbox:TEST_GMAIL_ACCOUNT,messageId:event.messageId,notificationType:'gmail-new-message'});
+      const outcome=await coordinator.process({tenantId:PROFILE.tenantId,mailbox:PROFILE.account,messageId:event.messageId,notificationType:'gmail-new-message'});
       return json({ok:outcome.status==='accepted'||outcome.status==='suppressed',...outcome},outcome.status==='accepted'||outcome.status==='suppressed'?200:502);
     } catch {
       return json({ok:false,code:'PUSHOVER_UNAVAILABLE',deliveryUnknown:true},502);

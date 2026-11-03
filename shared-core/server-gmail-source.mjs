@@ -12,7 +12,7 @@ import {enabledMailboxProfile,knownMailboxProfile} from './server-mailbox-profil
 const PROFILE=enabledMailboxProfile('sarberki-test');
 if(PROFILE.account!==TEST_GMAIL_ACCOUNT||PROFILE.sourceScope!=='test-mailbox-source-v1')throw Error('MAILBOX_PROFILE_MISMATCH');
 export const TEST_MAILBOX_SOURCE_SCOPE=PROFILE.sourceScope;
-const MAILBOX_ID=PROFILE.mailboxId,MAX_TEXT=20000;
+const MAX_TEXT=20000;
 const fail=code=>{const error=Error(code);error.code=code;throw error;};
 const address=value=>{const match=/<([^<>\s]+)>\s*$/.exec(value||'');return (match?match[1]:String(value||'').trim()).toLowerCase();};
 function plainTextPart(part){
@@ -29,21 +29,34 @@ function readerFailure(error){
  return 'GMAIL_SOURCE_UNVERIFIED';
 }
 
-export async function readVerifiedTestMailboxMessage({token,messageId,fetchImpl=globalThis.fetch,setTimeoutImpl,clearTimeoutImpl}={}){
+// Reads one message of an ENABLED mailbox profile (only the TEST profile is enabled; the live profile
+// fails with MAILBOX_PROFILE_DISABLED before any network call).
+export async function readVerifiedMailboxMessage({tenantId,token,messageId,fetchImpl=globalThis.fetch,setTimeoutImpl,clearTimeoutImpl}={}){
+ const profile=enabledMailboxProfile(tenantId);
  if(typeof token!=='string'||!/^[A-Za-z0-9._~+/-]{20,4096}={0,2}$/.test(token))fail('GMAIL_AUTH_REQUIRED');
  if(typeof messageId!=='string'||!/^[a-f0-9]{12,32}$/.test(messageId))fail('INVALID_INPUT');
  let messages;
  try{
-  messages=await readTestGmailInbox(token,{fetchImpl,search:'?'+new URLSearchParams({syntheticGmailMessageId:messageId}),
+  messages=await readTestGmailInbox(token,{fetchImpl,account:profile.account,search:'?'+new URLSearchParams({syntheticGmailMessageId:messageId}),
    ...(setTimeoutImpl?{setTimeoutImpl}:{}),...(clearTimeoutImpl?{clearTimeoutImpl}:{})});
  }catch(error){fail(readerFailure(error));}
  const message=messages?.[0];
  if(messages?.length!==1||message?.id!==messageId)fail('GMAIL_SOURCE_UNVERIFIED');
+ return buildMailboxSource(profile,message);
+}
+export const readVerifiedTestMailboxMessage=args=>readVerifiedMailboxMessage({...args,tenantId:'sarberki-test'});
+
+// Pure (no I/O): the server gates and source/envelope shape for one already-read Gmail message, by the
+// given mailbox profile: test-subject marker only where the profile requires it, single recipient =
+// the profile account, no reply, no automated or (live) own-sender mail, explicit text/plain part.
+export function buildMailboxSource(profile,message){
+ if(profile!==knownMailboxProfile(profile?.tenantId))fail('MAILBOX_PROFILE_UNKNOWN');
+ const MAILBOX_ID=profile.mailboxId;
  const headers=Object.fromEntries((message.payload?.headers||[]).map(h=>[String(h.name).toLowerCase(),h.value]));
- if(!isMarkedTestSubject(headers.subject))fail('NOT_MARKED_TEST_MESSAGE');
+ if(profile.requireTestSubject!==false&&!isMarkedTestSubject(headers.subject))fail('NOT_MARKED_TEST_MESSAGE');
  if(headers['in-reply-to']||headers.references)fail('REPLY_NOT_ALLOWED');
- if(automatedMailReason(headers,{ownAddresses:[PROFILE.account],blockOwnSender:PROFILE.blockOwnSender}))fail('AUTOMATED_MESSAGE');
- if(address(headers.to)!==TEST_GMAIL_ACCOUNT||String(headers.to).includes(','))fail('NOT_ADDRESSED_TO_TEST_MAILBOX');
+ if(automatedMailReason(headers,{ownAddresses:[profile.account],blockOwnSender:profile.blockOwnSender}))fail('AUTOMATED_MESSAGE');
+ if(address(headers.to)!==profile.account||String(headers.to).includes(','))fail('NOT_ADDRESSED_TO_TEST_MAILBOX');
  const fromEmail=address(headers.from);
  if(!/^[^@\s<>,]+@[^@\s<>,]+\.[^@\s<>,]+$/.test(fromEmail))fail('INVALID_SENDER');
  const rfcMessageId=headers['message-id'];
@@ -56,7 +69,7 @@ export async function readVerifiedTestMailboxMessage({token,messageId,fetchImpl=
  if(text.length>MAX_TEXT)fail('TEXT_TOO_LONG');
  const received=new Date(Number(message.internalDate)).toISOString();
  const source={provider:'gmail',mailbox_id:MAILBOX_ID,message_id:message.id,thread_id:message.threadId,rfc_message_id:rfcMessageId,
-  in_reply_to:null,references:[],subject:headers.subject,from:headers.from,from_email:fromEmail,to:TEST_GMAIL_ACCOUNT,received_at:received};
+  in_reply_to:null,references:[],subject:headers.subject,from:headers.from,from_email:fromEmail,to:profile.account,received_at:received};
  const envelope={sender:fromEmail,text,mailbox_id:MAILBOX_ID,message_id:message.id,thread_id:message.threadId,rfc_message_id:rfcMessageId,references:[],received_at:received};
  return Object.freeze({source:Object.freeze(source),envelope:Object.freeze(envelope),bodySha256:createHash('sha256').update(text,'utf8').digest('hex')});
 }

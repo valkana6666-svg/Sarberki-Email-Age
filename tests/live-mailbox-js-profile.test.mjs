@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {attestTestMailboxSource,verifyTestMailboxAttestation} from '../shared-core/server-gmail-source.mjs';
+import {attestTestMailboxSource,verifyTestMailboxAttestation,buildMailboxSource,readVerifiedMailboxMessage} from '../shared-core/server-gmail-source.mjs';
+import {ingestMailboxMessage} from '../shared-core/server-test-mailbox-case.mjs';
+import {assertTestGmailAccount} from '../gmail-policy.mjs';
 import {enabledMailboxProfile,knownMailboxProfile} from '../shared-core/server-mailbox-profiles.mjs';
 import {createPushoverLedger} from '../netlify/functions/_shared/pushover-ledger.mjs';
 
@@ -41,4 +43,32 @@ test('ledger identity accepts only a known (tenant, mailbox) pair',async()=>{
  for(const bad of [k('sarberki-live',test_.account),k('sarberki-test',live.account),k('other',live.account),k('constructor',undefined)])
   await assert.rejects(ledger.claimOnce(bad),/INVALID_LEDGER_IDENTITY/);
  assert.equal(calls.length,2);
+});
+
+// Slice 2d-2: reader gates by profile (pure), and the disabled live profile never reaches the network.
+const b64=text=>Buffer.from(text,'utf8').toString('base64url');
+function gmail({to,from='Vendég <guest@example.test>',subject='Érdeklődés júniusra'}){
+ return {id:'19a0b1c2d3e4f5a6',threadId:'19a0b1c2d3e4f5a6',internalDate:String(Date.parse('2026-11-03T09:00:00Z')),labelIds:['INBOX'],
+  payload:{mimeType:'multipart/alternative',headers:[{name:'Subject',value:subject},{name:'From',value:from},{name:'To',value:to},{name:'Message-ID',value:'<f1@example.test>'}],
+   parts:[{mimeType:'text/plain',body:{data:b64('Jó napot! Kitalált érdeklődés.')}}]}};
+}
+test('reader gates follow the profile: live needs no test subject, only its own recipient, never its own sender',()=>{
+ const ok=buildMailboxSource(live,gmail({to:live.account}));
+ assert.deepEqual([ok.source.to,ok.source.mailbox_id,ok.envelope.mailbox_id],[live.account,live.mailboxId,live.mailboxId]);
+ assert.throws(()=>buildMailboxSource(live,gmail({to:test_.account})),/NOT_ADDRESSED_TO_TEST_MAILBOX/);
+ assert.throws(()=>buildMailboxSource(live,gmail({to:live.account,from:'Sárberki <info@sarberkito.hu>'})),/AUTOMATED_MESSAGE/);
+ assert.throws(()=>buildMailboxSource(test_,gmail({to:test_.account})),/NOT_MARKED_TEST_MESSAGE/);
+ assert.equal(buildMailboxSource(test_,gmail({to:test_.account,subject:'Sárberki élő teszt – próba'})).source.to,test_.account);
+ assert.throws(()=>buildMailboxSource({...live,enabled:true},gmail({to:live.account})),/MAILBOX_PROFILE_UNKNOWN/,'a forged/enabled copy is not a profile');
+});
+test('disabled live profile: read and ingest stop before any network or storage call',async()=>{
+ let calls=0;const fetchImpl=async()=>{calls++;throw Error('no network');};
+ await assert.rejects(readVerifiedMailboxMessage({tenantId:'sarberki-live',token:'x'.repeat(40),messageId:'19a0b1c2d3e4f5a6',fetchImpl}),/MAILBOX_PROFILE_DISABLED/);
+ await assert.rejects(ingestMailboxMessage({tenantId:'sarberki-live',token:'x'.repeat(40),messageId:'19a0b1c2d3e4f5a6',fetchImpl,transport:async()=>{calls++;},attestationKey:KEY}),/MAILBOX_PROFILE_DISABLED/);
+ assert.equal(calls,0);
+});
+test('browser default account is unchanged; the server can name its profile account',()=>{
+ assert.doesNotThrow(()=>assertTestGmailAccount({emailAddress:test_.account}));
+ assert.throws(()=>assertTestGmailAccount({emailAddress:live.account}),/tesztfiók/);
+ assert.doesNotThrow(()=>assertTestGmailAccount({emailAddress:live.account},live.account));
 });

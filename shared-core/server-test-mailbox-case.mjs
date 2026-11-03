@@ -8,9 +8,8 @@ import {createBookingCaseStore} from '../booking-cases.mjs';
 import {extractServerMessage} from './server-message-extraction.mjs';
 import {serverInquiryOptions} from './server-inquiry-options.mjs';
 import {buildEmailInquiryDraft} from './inquiry-channel-adapters.mjs';
-import {readVerifiedTestMailboxMessage,attestTestMailboxSource} from './server-gmail-source.mjs';
-
-const TENANT='sarberki-test';
+import {readVerifiedMailboxMessage,attestTestMailboxSource} from './server-gmail-source.mjs';
+import {enabledMailboxProfile} from './server-mailbox-profiles.mjs';
 const fail=code=>{const error=Error(code);error.code=code;throw error;};
 const scope=(message,reverse=false)=>{
  const prefix=message.mailbox_id+':',change=value=>reverse?value.slice(prefix.length):prefix+value;
@@ -23,10 +22,12 @@ function storageFailure(error){
  return 'STORAGE_FAILURE';
 }
 
-export async function ingestTestMailboxMessage({token,messageId,transport,attestationKey,fetchImpl=globalThis.fetch,clock=()=>new Date().toISOString()}={}){
+// tenantId selects an ENABLED mailbox profile (default and only enabled one: sarberki-test).
+export async function ingestMailboxMessage({tenantId,token,messageId,transport,attestationKey,fetchImpl=globalThis.fetch,clock=()=>new Date().toISOString()}={}){
+ const TENANT=enabledMailboxProfile(tenantId).tenantId;
  if(typeof transport!=='function')fail('SETUP_REQUIRED');
  // 1. Server-side Gmail read and gates (marked subject, single recipient, no reply, plain text...).
- const {source,envelope}=await readVerifiedTestMailboxMessage({token,messageId,fetchImpl});
+ const {source,envelope}=await readVerifiedMailboxMessage({tenantId:TENANT,token,messageId,fetchImpl});
  // 2. Existing shared engine: the server extracts its own facts; no client-asserted values.
  const caseId='tm-'+source.message_id;
  let saved;
@@ -53,3 +54,4 @@ export async function ingestTestMailboxMessage({token,messageId,transport,attest
   return {caseId,revision:record?.revision??null};
  }catch(error){fail(storageFailure(error));}
 }
+export const ingestTestMailboxMessage=args=>ingestMailboxMessage({...args,tenantId:'sarberki-test'});
