@@ -1,5 +1,6 @@
 -- Mailbox cases of this project's deployment profile (tenant, project ref, mailbox and attestation scope
 -- come from deployment/deployment-profile/install.sql; TEST: mojnqizbcaczstguikpv, fictional mail only).
+-- Needs deployment/mailbox-attestation (or, on TEST, cloud-approval) for the attestation key.
 -- Additive capability for server-attested mailbox cases. Existing functions (sc_write_case, sc_approve_case, sc_approve_clarification), memberships,
 -- RLS policies and grants are NOT changed. Disabled by default; the owner enables it explicitly.
 -- sc_write_case keeps rejecting these cases (non-.invalid sender), so only the RPCs below can change them.
@@ -12,7 +13,6 @@ end $$;
 do $$ begin
  if current_setting('sarberki.tm_install_project_ref',true) is distinct from public.sc_deployment_project_ref()
  or coalesce(current_setting('sarberki.tm_backup_sha256',true),'')!~'^[a-f0-9]{64}$'
- or not exists(select 1 from public.sc_cloud_approval_binding where singleton and project_ref=public.sc_deployment_project_ref())
  or not exists(select 1 from public.sc_isolated_approval_key where singleton)
  or not exists(select 1 from public.sc_tenants where tenant_id=public.sc_deployment_tenant() and test_only=not public.sc_is_live_deployment())
  or exists(select 1 from public.sc_tenants where test_only=public.sc_is_live_deployment() or tenant_id not in (public.sc_deployment_tenant(),'demo-test')) then
@@ -46,14 +46,13 @@ do $$ begin
  end if;
 end $$;
 
--- Shared guard: enabled switch, test binding, real Auth session (not revoked, not expired), permission.
+-- Shared guard: enabled switch, profile tenant and project, real Auth session (not revoked, not expired), permission.
 create or replace function public.sc_tm_actor(p_tenant text,p_permission text)
 returns uuid language plpgsql stable security definer set search_path='' as $$
 declare actor uuid:=auth.uid(); claims jsonb:=nullif(current_setting('request.jwt.claims',true),'')::jsonb;
 begin
  if p_tenant is distinct from public.sc_deployment_tenant()
  or not exists(select 1 from public.sc_test_mailbox_config where singleton and enabled)
- or not exists(select 1 from public.sc_cloud_approval_binding where singleton and project_ref=public.sc_deployment_project_ref())
  or not exists(select 1 from public.sc_tenants where tenant_id=p_tenant and test_only=not public.sc_is_live_deployment())
  or actor is null or not public.sc_has_permission(p_tenant,p_permission)
  or claims->>'iss' is distinct from 'https://'||public.sc_deployment_project_ref()||'.supabase.co/auth/v1'
