@@ -2,9 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {PGlite} from '@electric-sql/pglite';
+import {profiledDatabase} from './deployment-profile-fixture.mjs';
 const sql=fs.readFileSync(new URL('../supabase/migrations/20261025173000_pushover_delivery_ledger.sql',import.meta.url),'utf8');
 const args="'sarberki-test','sarberkiprojecttest@gmail.com','19abcdef12345','gmail-new-message'";
-async function fixture(){const db=new PGlite();await db.exec('create role anon; create role authenticated; create role service_role bypassrls; grant usage on schema public to anon,authenticated,service_role;');await db.exec(sql);return db;}
+async function fixture(){const db=await profiledDatabase(PGlite);await db.exec(sql);return db;}
 test('complete migration denies browser roles table and RPC access',async()=>{
  const db=await fixture();try{
   for(const role of ['anon','authenticated']){

@@ -4,6 +4,10 @@ def sql(q):
     r=subprocess.run(['psql','-X','-v','ON_ERROR_STOP=1','-At','-c',q],capture_output=True,text=True,check=True)
     return r.stdout.strip()
 sql('CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS; GRANT USAGE ON SCHEMA public TO anon,authenticated,service_role;')
+# Prerequisites: case store and the TEST deployment profile (fictional, disposable database only).
+sql("CREATE SCHEMA auth; CREATE TABLE auth.users(id uuid primary key); CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS 'select null::uuid';")
+subprocess.run(['psql','-X','-v','ON_ERROR_STOP=1','-f','supabase/migrations/202610090001_case_store.sql'],check=True)
+subprocess.run(['psql','-X','-v','ON_ERROR_STOP=1','-1','-c',"select set_config('sarberki.deployment_environment','test',true); select set_config('sarberki.deployment_project_ref','mojnqizbcaczstguikpv',true);",'-f','deployment/deployment-profile/install.sql'],check=True)
 subprocess.run(['psql','-X','-v','ON_ERROR_STOP=1','-f','supabase/migrations/20261025173000_pushover_delivery_ledger.sql'],check=True)
 a="'sarberki-test','sarberkiprojecttest@gmail.com','19abcdef12345','gmail-new-message'"
 def claim(_):

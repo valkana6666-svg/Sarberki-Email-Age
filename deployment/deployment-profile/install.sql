@@ -70,6 +70,11 @@ $$ select coalesce((select environment='live' from public.sc_deployment_profile 
 create or replace function public.sc_deployment_project_ref() returns text
 language sql stable security definer set search_path='' as
 $$ select project_ref from public.sc_deployment_profile where singleton $$;
+-- The single read-only mailbox per deployment (mirror of shared-core/server-mailbox-profiles.mjs).
+create or replace function public.sc_deployment_mailbox() returns text
+language sql stable security definer set search_path='' as
+$$ select case environment when 'live' then 'info@sarberkito.hu' else 'sarberkiprojecttest@gmail.com' end
+   from public.sc_deployment_profile where singleton $$;
 create or replace function public.sc_deployment_issuer() returns text
 language sql stable security definer set search_path='' as
 $$ select 'https://'||project_ref||'.supabase.co/auth/v1' from public.sc_deployment_profile where singleton $$;
@@ -77,6 +82,7 @@ revoke all on function public.sc_deployment_tenant() from public,anon,authentica
 revoke all on function public.sc_is_live_deployment() from public,anon,authenticated;
 revoke all on function public.sc_deployment_project_ref() from public,anon,authenticated;
 revoke all on function public.sc_deployment_issuer() from public,anon,authenticated;
+revoke all on function public.sc_deployment_mailbox() from public,anon,authenticated;
 
 -- Tenant fence. TEST keeps the original check(test_only) and gains: only the TEST tenants.
 -- LIVE drops check(test_only) and allows exactly one tenant: 'sarberki-live', test_only=false.
@@ -106,6 +112,6 @@ end $$;
 do $$ begin
  if exists(select 1 from pg_roles where rolname='service_role') then
   execute 'revoke all on table public.sc_deployment_profile from service_role';
-  execute 'revoke all on function public.sc_deployment_tenant(),public.sc_is_live_deployment(),public.sc_deployment_project_ref(),public.sc_deployment_issuer(),public.sc_tenant_fence(),public.sc_deployment_profile_immutable() from service_role';
+  execute 'revoke all on function public.sc_deployment_tenant(),public.sc_is_live_deployment(),public.sc_deployment_project_ref(),public.sc_deployment_issuer(),public.sc_deployment_mailbox(),public.sc_tenant_fence(),public.sc_deployment_profile_immutable() from service_role';
  end if;
 end $$;

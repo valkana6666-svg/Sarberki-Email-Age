@@ -1,12 +1,20 @@
--- Sárberki V1 test-only Pushover idempotency ledger.
+-- Sárberki V1 Pushover idempotency ledger (TEST or LIVE project).
 -- SOURCE-ONLY, NOT APPLIED. No Pushover endpoint is connected by this migration.
--- Requires separate Supabase test-project authorization, privilege audit, and
+-- Requires separate Supabase project authorization, privilege audit, and
 -- real PostgreSQL concurrency tests before deployment.
+-- Requires the deployment profile (deployment/deployment-profile): a claim is accepted only for
+-- that project's own tenant and mailbox (TEST: sarberki-test + test Gmail; LIVE: sarberki-live +
+-- info@sarberkito.hu). The table check allows only these two pairs; the insert fence picks one.
 begin;
+do $$ begin
+ if to_regclass('public.sc_deployment_profile') is null then
+  raise exception 'deployment profile required' using errcode='55000';
+ end if;
+end $$;
 -- BEGIN LEDGER DDL (also exercised in isolated local SQL tests)
 create table if not exists public.sc_pushover_delivery_claims (
-  tenant_id text not null check (tenant_id = 'sarberki-test'),
-  mailbox text not null check (mailbox = 'sarberkiprojecttest@gmail.com'),
+  tenant_id text not null,
+  mailbox text not null,
   gmail_message_id text not null check (gmail_message_id ~ '^[A-Za-z0-9_-]{5,128}$'),
   notification_type text not null check (notification_type = 'gmail-new-message'),
   claim_id uuid not null default gen_random_uuid(),
@@ -15,6 +23,7 @@ create table if not exists public.sc_pushover_delivery_claims (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   provider_request_id text null check (provider_request_id is null or length(provider_request_id) <= 128),
+  check ((tenant_id, mailbox) in (('sarberki-test', 'sarberkiprojecttest@gmail.com'), ('sarberki-live', 'info@sarberkito.hu'))),
   primary key (tenant_id, mailbox, gmail_message_id, notification_type),
   unique (claim_id)
 );
@@ -44,13 +53,31 @@ create trigger sc_pushover_guard_update
 before update on public.sc_pushover_delivery_claims
 for each row execute function public.sc_pushover_guard_update();
 
+-- Deployment fence: only this project's own tenant and mailbox. SECURITY DEFINER so the invoker
+-- (service role) needs no access to the profile; no role is granted EXECUTE on it.
+create function public.sc_pushover_identity_fence()
+returns trigger language plpgsql security definer set search_path='' as $$
+begin
+ if new.tenant_id is distinct from public.sc_deployment_tenant()
+    or new.mailbox is distinct from public.sc_deployment_mailbox() then
+   raise exception 'invalid notification claim' using errcode='22023';
+ end if;
+ return new;
+end;
+$$;
+revoke all on function public.sc_pushover_identity_fence() from public, anon, authenticated, service_role;
+create trigger sc_pushover_identity_fence
+before insert on public.sc_pushover_delivery_claims
+for each row execute function public.sc_pushover_identity_fence();
+
 -- Atomic insert wins exactly once. NEVER reset or delete a claim on timeout.
 -- Only the server can call these SECURITY INVOKER functions with service role.
 create function public.sc_pushover_claim_once(p_tenant text,p_mailbox text,p_message text,p_kind text)
 returns jsonb language plpgsql security invoker set search_path='' as $$
 declare v_claim uuid;
 begin
-  if p_tenant is distinct from 'sarberki-test' or p_mailbox is distinct from 'sarberkiprojecttest@gmail.com'
+  if (p_tenant, p_mailbox) not in (('sarberki-test', 'sarberkiprojecttest@gmail.com'), ('sarberki-live', 'info@sarberkito.hu'))
+     or p_tenant is null or p_mailbox is null
      or p_kind is distinct from 'gmail-new-message'
      or coalesce(p_message,'') !~ '^[A-Za-z0-9_-]{5,128}$' then
     raise exception 'invalid notification claim' using errcode='22023';

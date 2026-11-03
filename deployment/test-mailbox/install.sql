@@ -25,15 +25,16 @@ begin
  end if;
 end $$;
 
--- Per-deployment mailbox settings, mirroring shared-core/server-mailbox-profiles.mjs. Definer-only.
+-- Per-deployment mailbox-case settings, mirroring shared-core/server-mailbox-profiles.mjs. Definer-only.
+-- The mailbox address itself comes from the profile (sc_deployment_mailbox).
 create or replace function public.sc_tm_profile() returns jsonb
 language sql stable security definer set search_path='' as $$
  select case p.environment
-  when 'test' then jsonb_build_object('tenant','sarberki-test','mailbox','sarberkiprojecttest@gmail.com',
+  when 'test' then jsonb_build_object('tenant','sarberki-test',
    'sourceScope','test-mailbox-source-v1','approvalScope','test-mailbox-v1','testOnly',true,'blockOwnSender',false)
-  when 'live' then jsonb_build_object('tenant','sarberki-live','mailbox','info@sarberkito.hu',
+  when 'live' then jsonb_build_object('tenant','sarberki-live',
    'sourceScope','live-mailbox-source-v1','approvalScope','live-mailbox-v1','testOnly',false,'blockOwnSender',true)
- end||jsonb_build_object('issuer','https://'||p.project_ref||'.supabase.co/auth/v1','projectRef',p.project_ref)
+ end||jsonb_build_object('mailbox',public.sc_deployment_mailbox(),'issuer','https://'||p.project_ref||'.supabase.co/auth/v1','projectRef',p.project_ref)
  from public.sc_deployment_profile p where p.singleton and p.tenant_id=case p.environment when 'test' then 'sarberki-test' else 'sarberki-live' end
 $$;
 
