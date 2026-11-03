@@ -800,7 +800,9 @@ test('known dates and party size offer capacity options without asking for a cab
  assert.doesNotMatch(reply,/Melyik háztípust szeretné/u);
  assert.match(reply,/Szállás\n/u);
  assert.match(reply,/6 fő/u);
- assert.match(reply,/Deluxe[\s\S]*Családi[\s\S]*VIP[\s\S]*A\+C vagy B\+C/u);
+ assert.match(reply,/Deluxe[\s\S]*Családi[\s\S]*VIP/u);
+ // Owner 2026-11-03 / AGENTS: a split is offered only after the whole houses are verified unavailable.
+ assert.doesNotMatch(reply,/A\+C|B\+C|Osztott elhelyezés/u);
  assert.match(reply,/hány felnőtt érkezik/u);
  assert.match(reply,/érkezik-e gyermek/u);
 });

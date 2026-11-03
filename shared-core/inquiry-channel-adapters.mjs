@@ -71,7 +71,15 @@ function placeAdditions(draft,additions,language){
  if(at<0)return draft+'\n\n'+additions.join('\n');
  lines.splice(at,0,MISSING_TITLE[lang],...additions,'');return lines.join('\n');
 }
+// Operator-only (never in the guest text): a split is an alternative only after the whole houses are
+// verified unavailable for the dates (owner, 2026-11-03; AGENTS.md).
+function splitAlternativeNote(decision){
+ const facts=decision.facts,guests=Number(facts?.guests),requested=decision.capacity?.input?.cabin;
+ // facts.split_request_text falls back to the whole message, so the capacity input is the split signal.
+ if(!Number.isInteger(guests)||guests<5||guests>8||facts.cabin||String(requested||'').startsWith('split'))return '';
+ return '\n\nKezelői megjegyzés (a vendég nem látja): ha a kért időszakra nincs szabad egész ház, osztott elhelyezés ajánlható ('+(guests<=6?'A+C vagy B+C':'A+B+C')+') – a vendégnek csak igazolt foglalhatatlanság után.';
+}
 export function buildEmailInquiryDraft(options={}){
  const decision=evaluateCentralInquiry(options),original=options.message||decision.facts.originalText||'';
- return {decision,text:renderEmailDecision(decision,original,decision.facts.language),operatorReviewText:renderEmailDecision(decision,original,'hu'),operatorReviewLanguage:'hu',channel:'email',requiresApproval:true};
+ return {decision,text:renderEmailDecision(decision,original,decision.facts.language),operatorReviewText:renderEmailDecision(decision,original,'hu')+splitAlternativeNote(decision),operatorReviewLanguage:'hu',channel:'email',requiresApproval:true};
 }

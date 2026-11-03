@@ -41,7 +41,7 @@ for(const [lang,expected] of Object.entries(labelCases)){
    assert.match(draft,/Deluxe/u);
    assert.match(draft,new RegExp(expected.family,'u'));
    assert.match(draft,/VIP/u);
-   assert.match(draft,/A\+C|B\+C/u);
+   assert.doesNotMatch(draft,/A\+C|B\+C/u,'no split before verified unavailability (owner 2026-11-03)');
    assert.doesNotMatch(draft,/Requested cabin type|Gewünschter Haustyp|Želeni tip hiške/u);
    assert.doesNotMatch(draft,/Which cabin type|Welchen Haustyp|Kateri tip hiške/u);
  });

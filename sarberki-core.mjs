@@ -494,7 +494,9 @@ export function pierPreferenceFromText(text=''){
 export function languageFromText(text='',{conservative=false}={}){
   // Hungarian also uses ö/ü. Clear Hungarian words must not lose to the
   // German diacritic bonus alone (e.g. "faház ... között").
-  const huScore=(text.match(/\b(?:szia|üdv|szeretn|erdekl|érdekl|faház|fahaz|szállás|szallas|felnőtt|felnott|gyermek|gyerek|fő|fo(?!\p{L})|dézsa|dezsa|mennénk|mennenk|jönnénk|jonnenk|ár|ára|mennyibe|éjszaka)\w*/giu)||[]).length;
+  const huScore=(text.match(/\b(?:szia|üdv|szeretn|erdekl|érdekl|faház|fahaz|szállás|szallas|felnőtt|felnott|gyermek|gyerek|fő|fo(?!\p{L})|dézsa|dezsa|mennénk|mennenk|jönnénk|jonnenk|ár|ára|mennyibe|éjszaka|jó napot|jo napot|foglal|lemond|köszön|koszon|kérem|kerem|sajnos|üdvözlettel|udvozlettel)\w*/giu)||[]).length
+    // ő and ű exist only in Hungarian among the supported languages.
+    + (/[őű]/iu.test(text)?2:0);
   const deDiacritics=/[äß]/iu.test(text)||huScore===0&&/[öü]/iu.test(text)?2:0;
   const scores={
     hu:huScore,
@@ -816,27 +818,16 @@ function cabinDisplayName(cabin,language='hu'){
   return names[cabin]?.[lang]||cabin;
 }
 
+// Whole houses only. A split (A+C, B+C, A+B+C) or several houses is never offered up front for a
+// single-house request: alternatives need verified unavailability first (AGENTS.md). 9+ guests: null.
 function capacityOptionText(guests,language='hu'){
   const lang=['hu','de','en','si'].includes(language)?language:'hu';
   const g=Number(guests);
   const family=cabinDisplayName('Családi',lang);
-  const splitAC={
-    hu:'Osztott elhelyezés: A+C vagy B+C',
-    de:'geteilte Unterkunft: A+C oder B+C',
-    en:'split accommodation: A+C or B+C',
-    si:'deljena nastanitev: A+C ali B+C'
-  }[lang];
-  const splitABC={
-    hu:'Osztott elhelyezés: A+B+C',
-    de:'geteilte Unterkunft: A+B+C',
-    en:'split accommodation: A+B+C',
-    si:'deljena nastanitev: A+B+C'
-  }[lang];
-  if(g<=4)return `Deluxe, ${family}, VIP`;
-  if(g<=6)return `Deluxe, ${family}, VIP; ${splitAC}`;
-  if(g===7)return `${family}, VIP; ${splitABC}`;
-  if(g===8)return `${family}; ${splitABC}`;
-  return {hu:'több ház',de:'mehrere Häuser',en:'multiple cabins',si:'več hišk'}[lang];
+  if(g<=6)return `Deluxe, ${family}, VIP`;
+  if(g===7)return `${family}, VIP`;
+  if(g===8)return family;
+  return null;
 }
 
 export function buildReplyDraft({language='hu',name=null,original='',arrival=null,departure=null,guests=null,adults=null,children=null,childAges=[],phone=null,cabin='? – emberi döntésre vár',pier=false,hotTub=false,dog=false,intent='booking_request',brandName='Sárberki Horgásztó',bookingRules=null,operationalRules=null,pricingRules=null,knowledgeLines=[],caseContext=null,approvedPaymentContext=null,approvedCancellationContext=null}={}){
@@ -851,7 +842,9 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const lastNamePart=nameParts.at(-1)||'';
   // A signed test name such as "Teszt Vendég" must not become "Kedves Vendég!".
   // Preserve a meaningful full salutation when the final token is a generic label.
-  const first=nameParts.length?(lang==='hu'&&/^(?:vendég(?:ünk)?|érdeklődő)$/iu.test(lastNamePart)?nameParts.join(' '):(lang==='hu'?lastNamePart:nameParts[0])):null;
+  // A family signature ("Familie Müller", "Nagy család", "Smith family") keeps the whole name.
+  const familySigned=nameParts.length>1&&nameParts.some(part=>/^(?:család|csalad|familie|family|družina|druzina)$/iu.test(part));
+  const first=nameParts.length?(familySigned||lang==='hu'&&/^(?:vendég(?:ünk)?|érdeklődő)$/iu.test(lastNamePart)?nameParts.join(' '):(lang==='hu'?lastNamePart:nameParts[0])):null;
   const greetings={hu:first?`Kedves ${first}!`:'Kedves Vendégünk!',de:first?`Guten Tag, ${first}!`:'Guten Tag!',en:first?`Dear ${first},`:'Dear Guest,',si:first?`Pozdravljeni, ${first}!`:'Pozdravljeni!'};
   const intros={hu:'Köszönjük érdeklődését.',de:'Vielen Dank für Ihre Anfrage.',en:'Thank you for your enquiry.',si:'Hvala za vaše povpraševanje.'};
   const closings={hu:'Üdvözlettel:',de:'Mit freundlichen Grüßen',en:'Kind regards,',si:'Lep pozdrav'};
@@ -918,7 +911,13 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
     stayLines.push({hu:`A kért háztípus: ${displayCabin}.`,de:`Gewünschter Haustyp: ${displayCabin}.`,en:`Requested cabin type: ${displayCabin}.`,si:`Želeni tip hiške: ${displayCabin}.`}[lang]);
   }else if(canRecommendByCapacity){
     const options=capacityOptionText(guests,lang);
-    stayLines.push({
+    if(options===null)stayLines.push({
+      hu:`${guests} fő egy házban nem fér el; több ház együttes foglalásával tudjuk elhelyezni Önöket. Kérjük, jelezze, ha ez megfelel; a szabad lehetőségeket a kért időszakra ellenőrizzük.`,
+      de:`${guests} Personen passen nicht in ein Haus; wir können Sie in mehreren Häusern zusammen unterbringen. Bitte teilen Sie uns mit, ob das für Sie passt; die freien Möglichkeiten prüfen wir für den gewünschten Zeitraum.`,
+      en:`${guests} guests cannot stay in a single cabin; we can accommodate you in several cabins booked together. Please let us know if this suits you; we will check what is available for your dates.`,
+      si:`${guests} oseb ne more bivati v eni hiški; namestimo vas lahko v več hiškah skupaj. Prosimo, sporočite, ali vam to ustreza; proste možnosti za vaš termin preverimo.`
+    }[lang]);
+    else stayLines.push({
       hu:`A megadott létszám alapján ezek az elhelyezések jöhetnek szóba: ${options}. A ténylegesen szabad lehetőségeket a kért időszakra ellenőrizzük.`,
       de:`Für die angegebene Personenzahl kommen folgende Unterkünfte infrage: ${options}. Die tatsächlich freien Möglichkeiten prüfen wir für den gewünschten Zeitraum.`,
       en:`For the stated party size, these accommodation options can work: ${options}. We will check which of them are actually available for the requested dates.`,
@@ -982,7 +981,8 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   add(titles.booking,bookingLines);
   // An offered set of types is not a guest selection. Ask for the decision
   // in the same reply, even when the guest did not explicitly ask for prices.
-  if((canRecommendByCapacity || (needCabin && caseContext?.availabilityLines?.length > 0)) && !caseContext?.selectedCabinConfirmed){
+  const largeGroup=canRecommendByCapacity&&capacityOptionText(guests,lang)===null;
+  if(!largeGroup&&(canRecommendByCapacity || (needCabin && caseContext?.availabilityLines?.length > 0)) && !caseContext?.selectedCabinConfirmed){
     questions.push({
       hu:'Kérjük, válaszoljon erre az e-mailre, és írja meg, melyik felajánlott faháztípust választja.',
       de:'Bitte antworten Sie auf diese E-Mail und teilen Sie uns mit, welchen der angebotenen Haustypen Sie wählen.',
