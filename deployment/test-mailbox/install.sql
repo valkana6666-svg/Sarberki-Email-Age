@@ -1,18 +1,41 @@
--- TEST ONLY (mojnqizbcaczstguikpv). Additive capability for server-attested, fictional test-mailbox
--- cases. Existing functions (sc_write_case, sc_approve_case, sc_approve_clarification), memberships,
+-- Mailbox cases (server-attested source). Project, tenant, mailbox and scopes come from the immutable
+-- deployment profile (deployment/deployment-profile): TEST = mojnqizbcaczstguikpv, sarberki-test,
+-- the test Gmail account and test-mailbox-* scopes (unchanged behaviour); LIVE = its own project,
+-- sarberki-live, info@sarberkito.hu and live-mailbox-* scopes. Table/function names keep the historic
+-- "test" prefix. Additive capability for these cases. Existing functions (sc_write_case, sc_approve_case, sc_approve_clarification), memberships,
 -- RLS policies and grants are NOT changed. Disabled by default; the owner enables it explicitly.
 -- sc_write_case keeps rejecting these cases (non-.invalid sender), so only the RPCs below can change them.
 begin;
-do $$ begin
- if current_setting('sarberki.tm_install_project_ref',true) is distinct from 'mojnqizbcaczstguikpv'
+do $$
+declare env text; ref text; tenant text;
+begin
+ if to_regclass('public.sc_deployment_profile') is null then
+  raise exception 'deployment profile required';
+ end if;
+ select environment,project_ref,tenant_id into env,ref,tenant from public.sc_deployment_profile where singleton;
+ if current_setting('sarberki.tm_install_project_ref',true) is distinct from ref
  or coalesce(current_setting('sarberki.tm_backup_sha256',true),'')!~'^[a-f0-9]{64}$'
- or not exists(select 1 from public.sc_cloud_approval_binding where singleton and project_ref='mojnqizbcaczstguikpv')
+ or not exists(select 1 from public.sc_cloud_approval_binding where singleton and project_ref=ref)
  or not exists(select 1 from public.sc_isolated_approval_key where singleton)
- or not exists(select 1 from public.sc_tenants where tenant_id='sarberki-test' and test_only)
- or exists(select 1 from public.sc_tenants where not test_only or tenant_id not in ('sarberki-test','demo-test')) then
-  raise exception 'verified test project, attestation key and fresh backup required';
+ or (env='test' and (not exists(select 1 from public.sc_tenants where tenant_id='sarberki-test' and test_only)
+  or exists(select 1 from public.sc_tenants where not test_only or tenant_id not in ('sarberki-test','demo-test'))))
+ or (env='live' and (not exists(select 1 from public.sc_tenants where tenant_id=tenant and not test_only)
+  or exists(select 1 from public.sc_tenants where test_only or tenant_id<>tenant))) then
+  raise exception 'verified % project, attestation key and fresh backup required',env;
  end if;
 end $$;
+
+-- Per-deployment mailbox settings, mirroring shared-core/server-mailbox-profiles.mjs. Definer-only.
+create or replace function public.sc_tm_profile() returns jsonb
+language sql stable security definer set search_path='' as $$
+ select case p.environment
+  when 'test' then jsonb_build_object('tenant','sarberki-test','mailbox','sarberkiprojecttest@gmail.com',
+   'sourceScope','test-mailbox-source-v1','approvalScope','test-mailbox-v1','testOnly',true,'blockOwnSender',false)
+  when 'live' then jsonb_build_object('tenant','sarberki-live','mailbox','info@sarberkito.hu',
+   'sourceScope','live-mailbox-source-v1','approvalScope','live-mailbox-v1','testOnly',false,'blockOwnSender',true)
+ end||jsonb_build_object('issuer','https://'||p.project_ref||'.supabase.co/auth/v1','projectRef',p.project_ref)
+ from public.sc_deployment_profile p where p.singleton and p.tenant_id=case p.environment when 'test' then 'sarberki-test' else 'sarberki-live' end
+$$;
 
 -- Owner switch, default off. Clients cannot read or change it.
 create table if not exists public.sc_test_mailbox_config(
@@ -44,13 +67,14 @@ end $$;
 create or replace function public.sc_tm_actor(p_tenant text,p_permission text)
 returns uuid language plpgsql stable security definer set search_path='' as $$
 declare actor uuid:=auth.uid(); claims jsonb:=nullif(current_setting('request.jwt.claims',true),'')::jsonb;
+declare prof jsonb:=public.sc_tm_profile();
 begin
- if p_tenant is distinct from 'sarberki-test'
+ if prof is null or p_tenant is distinct from prof->>'tenant'
  or not exists(select 1 from public.sc_test_mailbox_config where singleton and enabled)
- or not exists(select 1 from public.sc_cloud_approval_binding where singleton and project_ref='mojnqizbcaczstguikpv')
- or not exists(select 1 from public.sc_tenants where tenant_id=p_tenant and test_only)
+ or not exists(select 1 from public.sc_cloud_approval_binding where singleton and project_ref=prof->>'projectRef')
+ or not exists(select 1 from public.sc_tenants where tenant_id=p_tenant and test_only=(prof->>'testOnly')::boolean)
  or actor is null or not public.sc_has_permission(p_tenant,p_permission)
- or claims->>'iss' is distinct from 'https://mojnqizbcaczstguikpv.supabase.co/auth/v1'
+ or claims->>'iss' is distinct from prof->>'issuer'
  or claims->>'role' is distinct from 'authenticated'
  or coalesce(claims->>'exp','')!~'^[0-9]+$' or (claims->>'exp')::numeric<=extract(epoch from now())
  or coalesce(claims->>'session_id','')!~'^[a-f0-9-]{36}$' then
@@ -66,8 +90,10 @@ end $$;
 create or replace function public.sc_tm_create(p_tenant text,p_case text,p_data jsonb,p_proof jsonb)
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare actor uuid; src jsonb; msg jsonb; draft jsonb; key text; body_hash text; fields text[]; changed jsonb; result public.sc_cases%rowtype;
+declare prof jsonb; scope text;
 begin
  actor:=public.sc_tm_actor(p_tenant,'write');
+ prof:=public.sc_tm_profile();scope:=prof->>'sourceScope';
  if p_case!~'^[a-zA-Z0-9_-]{4,128}$' or jsonb_typeof(p_data) is distinct from 'object' or octet_length(p_data::text)>262144
  or p_data->>'id' is distinct from p_case or p_data->>'tenantId' is distinct from p_tenant
  or jsonb_typeof(p_data->'state') is distinct from 'object' or coalesce(p_data->'state'->>'approval','pending')<>'pending'
@@ -77,10 +103,11 @@ begin
   raise exception 'invalid test-mailbox case' using errcode='22023';
  end if;
  src:=p_data->'sourceReceipt';msg:=p_data->'messages'->0;draft:=p_data->'drafts'->0;
- if jsonb_typeof(src) is distinct from 'object' or src->>'provider' is distinct from 'gmail' or src->>'to' is distinct from 'sarberkiprojecttest@gmail.com'
+ if jsonb_typeof(src) is distinct from 'object' or src->>'provider' is distinct from 'gmail' or src->>'to' is distinct from prof->>'mailbox'
  or src->'in_reply_to' is distinct from 'null'::jsonb or src->'references' is distinct from '[]'::jsonb or msg->'references' is distinct from '[]'::jsonb
  or p_data->>'sender' is distinct from src->>'from_email' or msg->>'sender' is distinct from src->>'from_email'
  or coalesce(src->>'from_email','')~'\.invalid$'
+ or ((prof->>'blockOwnSender')::boolean and lower(coalesce(src->>'from_email',''))=prof->>'mailbox')
  or exists(select 1 from unnest(array['mailbox_id','message_id','thread_id','rfc_message_id','received_at']) k where msg->>k is distinct from src->>k)
  or jsonb_typeof(msg->'text') is distinct from 'string' or length(msg->>'text')>20000 or btrim(msg->>'text')=''
  or jsonb_typeof(draft->'text') is distinct from 'string' or length(draft->>'text')>20000 or btrim(draft->>'text')='' then
@@ -88,9 +115,9 @@ begin
  end if;
  body_hash:=encode(sha256(convert_to(msg->>'text','UTF8')),'hex');
  begin
-  fields:=array['test-mailbox-source-v1',p_tenant,src->>'mailbox_id',src->>'message_id',src->>'thread_id',src->>'rfc_message_id',
+  fields:=array[scope,p_tenant,src->>'mailbox_id',src->>'message_id',src->>'thread_id',src->>'rfc_message_id',
    src->>'from_email',src->>'to',src->>'subject',src->>'received_at',body_hash,p_proof->>'checkedAt'];
-  if jsonb_typeof(p_proof) is distinct from 'object' or p_proof->>'scope' is distinct from 'test-mailbox-source-v1'
+  if jsonb_typeof(p_proof) is distinct from 'object' or p_proof->>'scope' is distinct from scope
   or p_proof->>'bodySha256' is distinct from body_hash or coalesce(p_proof->>'attestation','')!~'^[a-f0-9]{64}$'
   or exists(select 1 from unnest(fields) v where v is null or v='' or position(chr(10) in v)>0 or position(chr(13) in v)>0)
   or (p_proof->>'checkedAt')::timestamptz<now()-interval '120 seconds' or (p_proof->>'checkedAt')::timestamptz>now()+interval '1 second' then
@@ -106,7 +133,7 @@ begin
   raise exception 'message or case already exists' using errcode='23505';
  end if;
  changed:=jsonb_set(p_data,'{drafts,0}',draft||jsonb_build_object('createdBy',actor,'createdAt',now(),'basedOnRevision',0))
-  ||jsonb_build_object('testMailbox',jsonb_build_object('scope','test-mailbox-source-v1','checkedAt',p_proof->>'checkedAt','bodySha256',body_hash,'createdBy',actor),
+  ||jsonb_build_object('testMailbox',jsonb_build_object('scope',scope,'checkedAt',p_proof->>'checkedAt','bodySha256',body_hash,'createdBy',actor),
    'decisions','[]'::jsonb);
  changed:=jsonb_set(changed,'{state,approval}','"pending"');
  insert into public.sc_cases(tenant_id,case_id,revision,data,updated_by) values(p_tenant,p_case,1,changed,actor) returning * into result;
@@ -168,7 +195,7 @@ begin
   'decision',p_decision,'actor',actor,'at',decided_at,'draftHash',p_draft_hash,'reviewedRevision',p_expected,'reason',p_reason)));
  changed:=jsonb_set(changed,'{state,approval}',to_jsonb(next_state));
  if p_decision='approve' then
-  changed:=changed||jsonb_build_object('internalApproval',jsonb_build_object('scope','test-mailbox-v1','actor',actor,'at',decided_at,'draftHash',p_draft_hash,
+  changed:=changed||jsonb_build_object('internalApproval',jsonb_build_object('scope',public.sc_tm_profile()->>'approvalScope','actor',actor,'at',decided_at,'draftHash',p_draft_hash,
    'reviewedRevision',p_expected,'capacityVerified',false,'priceVerified',false,'sendAllowed',false,'bookingAllowed',false));
  end if;
  update public.sc_cases set revision=p_expected+1,data=changed,updated_at=now(),updated_by=actor
@@ -177,12 +204,12 @@ begin
  return to_jsonb(result);
 end $$;
 
-revoke all on function public.sc_tm_actor(text,text) from public,anon,authenticated;
+revoke all on function public.sc_tm_actor(text,text),public.sc_tm_profile() from public,anon,authenticated;
 revoke all on function public.sc_tm_create(text,text,jsonb,jsonb),public.sc_tm_redraft(text,text,bigint,jsonb),public.sc_tm_decide(text,text,bigint,text,text,text) from public,anon;
 grant execute on function public.sc_tm_create(text,text,jsonb,jsonb),public.sc_tm_redraft(text,text,bigint,jsonb),public.sc_tm_decide(text,text,bigint,text,text,text) to authenticated;
 do $$ begin
  if exists(select 1 from pg_roles where rolname='service_role') then
-  execute 'revoke all on function public.sc_tm_actor(text,text),public.sc_tm_create(text,text,jsonb,jsonb),public.sc_tm_redraft(text,text,bigint,jsonb),public.sc_tm_decide(text,text,bigint,text,text,text) from service_role';
+  execute 'revoke all on function public.sc_tm_profile(),public.sc_tm_actor(text,text),public.sc_tm_create(text,text,jsonb,jsonb),public.sc_tm_redraft(text,text,bigint,jsonb),public.sc_tm_decide(text,text,bigint,text,text,text) from service_role';
  end if;
 end $$;
 commit;
