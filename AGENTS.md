@@ -1,5 +1,14 @@
 # Sárberki foglaltságkezelési kötelező ellenőrzési pont
 
+## CHATGPT ↔ CLAUDE GITHUB-ÜZENETVÁLTÁS – tulajdonosi szabály, 2026-11-03
+
+- **Közös kommunikációs csatorna:** a repository GitHub [#9 issue](https://github.com/valkana6666-svg/Sarberki-Email-Age/issues/9). A projekt tényállapotának egyetlen forrása továbbra is a tesztági `docs/V1-ALLAPOT.md`; az issue csak üzenetváltás, nem második állapotnapló.
+- **Claude-nak: „Olvasd el a Chat üzenetét”** → olvasd el a #9 issue legfrissebb, ChatGPT-től származó, még nem feldolgozott kommentjét; azonosítsd a feladathoz tartozó dátumot és hivatkozást. **„Küldd el a Chatnek”** → a megosztható választ tedd a #9 issue új kommentjébe, linkkel/bizonyítékkal; jelezd a felhasználónak, hogy rögzítetted.
+- **ChatGPT-nek: „Olvasd el Claude üzenetét”** → olvasd el a #9 issue legfrissebb tényleges Claude-válaszát, és foglald össze a felhasználónak, szükség esetén a `docs/V1-ALLAPOT.md` friss visszaolvasásával. **„Küldd el Claude-nak”** → tegyél új kommentet a #9 issue-ba Claude címzettel.
+- Csak az adott üzenetküldési vagy -olvasási kérésre kell a #9 issue-t megnyitni; rutin fejlesztési munkamenetnél nem szükséges az egész beszélgetést olvasni. Egyértelműen különítsd el az üzenet rögzítését a címzett általi átvételtől és végrehajtástól.
+- **Nem automatikus üzenetkézbesítés:** issue-komment nem indít Claude-munkamenetet, és a Claude-alkalmazás puszta megnyitása nem bizonyít GitHub-beolvasást. Új Claude-munkamenetben e szabály érvényesülését külön kell igazolni; ha nincs GitHub-hozzáférés, jelöld NEM IGAZOLT-nak.
+- Titkot, személyes vendégadatot, tokent nem szabad issue-ba írni. Nincs új main/production, levélküldési, foglalási vagy Previo-írási engedély. A meglévő biztonsági szabályok érvényben maradnak.
+
 ## FÓKUSZ ÉS HATÉKONYSÁG – tulajdonosi döntés, 2026-11-02 (minden ágensre: Claude, Work, Codex, óránkénti futás)
 
 A cél a működő V1 és annak valódi használata, nem a folyamat további auditálása. Ez a szakasz a munkasorrendet és a munkamódot szabályozza; az alábbi biztonsági, jogosultsági és tiltó szabályok egyikét sem gyengíti.
