@@ -58,7 +58,8 @@ test('LIVE project: profile → attestation → mailbox RPCs; only the live tena
  await db.exec(await read('deployment/mailbox-attestation/install.sql'));
  await db.query('insert into sc_isolated_approval_key(key_hex) values($1)',[KEY]);
  for(const role of Object.keys(ids)){await db.query('insert into auth.users values($1)',[ids[role]]);await db.query('insert into auth.sessions values($1,$2,null)',[sessions[role],ids[role]]);}
- await db.query("insert into sc_memberships values('sarberki-live',$1,true,true,false),('sarberki-live',$2,true,true,true)",[ids.writer,ids.approver]);
+ await db.exec(await read('deployment/approver-role/install.sql'));// approve-only role (no write) like on TEST
+ await db.query("insert into sc_memberships values('sarberki-live',$1,true,true,false),('sarberki-live',$2,true,false,true)",[ids.writer,ids.approver]);
  const install=await read('deployment/test-mailbox/install.sql');
  await t.test('install binds to the live project ref, not the TEST one',async()=>{
   await db.query("select set_config('sarberki.tm_install_project_ref',$1,false),set_config('sarberki.tm_backup_sha256',$2,false)",[TEST_REF,'c'.repeat(64)]);
@@ -86,7 +87,7 @@ test('LIVE project: profile → attestation → mailbox RPCs; only the live tena
   await assert.rejects(create(forged),denied('42501'));
   assert.equal((await db.query('select count(*)::int n from sc_cases')).rows[0].n,1);
  });
- await t.test('independent decision: the draft author cannot approve, another approver can (internal only)',async()=>{
+ await t.test('independent decision: the draft author cannot approve, an approve-only member can (internal only)',async()=>{
   const id='live-case-1',hash=sha('Kedves Vendégünk! (kitalált tervezet)');
   const decide=role=>as(role,async()=>(await db.query('select sc_tm_decide($1,$2,1,$3,$4,null) r',[TENANT,id,hash,'approve'])).rows[0].r);
   await assert.rejects(decide('writer'),denied('42501'));
