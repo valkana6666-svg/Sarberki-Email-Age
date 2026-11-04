@@ -14,9 +14,8 @@ Utolsó frissítés: 2026-11-03 CET. Szerepek: AGENTS.md „FÓKUSZ ÉS HATÉKON
 | Napi mentés + elkülönített visszaállítás (GitHub-úton) | napi `[backup-v2-cloud-bridge-run]`, utolsó 41410412064 |
 | Független Drive-másolat: export → izolált restore → Drive-feltöltés → pontos ID-s visszaolvasás → restore a Drive-letöltésből (52 tábla) | run 41531603671 (`b6e22f1`); app-mappa `19WOxZQK…` (owner-only, run 41531436566) |
 | Previo TEST csak olvasó felmérés (V2-előkészítés) | `9553d9d`, `3d2cae9`, engedély `b6bcb39` |
-TEST-oldal: `leafy-chimera-2403e5`, telepített `77e3526` (2026-11-03, tulajdonos iPhone-on igazolta a verziót). Teljes `npm test`: 2570/2570.
+TEST-oldal: `leafy-chimera-2403e5`, telepített `77e3526` (2026-11-03, tulajdonos iPhone-on igazolta a verziót). Teljes `npm test`: 2570/2570. **Vendéglevél-elv (tulajdonos, 2026-11-04): minden válasz rövid és tömör – csak a szükséges információ és ami a foglaláshoz hiányzik; nincs fölösleges szakasz vagy ismétlés. Minta: a hiányzó adatokra kérdező rövid sablon (`8800560`).**
 
-**Vendéglevél-elv (tulajdonos, 2026-11-04): minden válasz rövid és tömör – csak a szükséges információ és ami a foglaláshoz hiányzik; nincs fölösleges szakasz vagy ismétlés. Minta: a hiányzó adatokra kérdező rövid sablon (`8800560`).**
 ## Nyitott feladatok
 | ID | Felelős | Állapot | Teendő |
 |---|---|---|---|
