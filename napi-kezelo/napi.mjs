@@ -6,7 +6,7 @@ import {createEpochRequestQueue} from '../shared-core/epoch-request-queue.mjs';
 import {createIsolatedApprovalReview} from '../shared-core/isolated-approval-review.mjs';
 import {createServerChatClient} from '../sarberki-chatbot-project/remote-chat-client.mjs';
 import {translationErrorMessage} from '../translation-errors.mjs';
-import {PRICE_LINE,CABIN_NAMES,huf,priceSentence,priceExplanation} from '../shared-core/price-insert-sentence.mjs';
+import {CABIN_NAMES,huf,priceExplanation} from '../shared-core/price-insert-sentence.mjs';
 
 const TEST_ORIGIN='https://leafy-chimera-2403e5.netlify.app';
 const TENANT='sarberki-test';
@@ -241,7 +241,7 @@ async function openTestMailboxCase(caseId,turn,status){
  el('detail-price').textContent=record.decisions.length?'Döntések: '+record.decisions.map(d=>(tmDecisionLabel[d.decision]||'ismeretlen')+(d.at?' ('+d.at+')':'')+(d.reason?' – '+d.reason:'')).join('; '):'';
  tmCase={caseId,revision:record.revision,hash:record.draft.hash,text:record.draft.text};
  // Only an internally approved draft can be copied; an approved draft cannot change, so it is the reviewed text.
- priceCase={caseId,values,language:/^(hu|de|en|si)$/.test(values.language||'')?values.language:'hu',editable:record.canEditDraft===true};el('price-panel').hidden=false;
+ priceCase={caseId,revision:record.revision,values,language:/^(hu|de|en|si)$/.test(values.language||'')?values.language:'hu',editable:record.canEditDraft===true};el('price-panel').hidden=false;
  if(CABIN_NAMES[values.unit])el('price-cabin').value=values.unit;
  if(record.approval==='approved_internal'){approvedText=record.draft.text;el('copy-approved').hidden=false;approvedCase={caseId,revision:record.revision};el('send-approved').hidden=false;}
  if(record.canEditDraft===true){el('draft-editor').value=record.draft.text;el('draft-editor').disabled=false;}
@@ -283,12 +283,26 @@ el('price-calc').addEventListener('click',async()=>{
 });
 // The operator confirms availability (Previo read is not connected yet); without it no price is inserted.
 el('price-available').addEventListener('change',()=>{el('price-insert').disabled=!(priceQuote&&priceCase?.editable&&el('price-available').checked);});
-el('price-insert').addEventListener('click',()=>{
- const target=priceCase,quote=priceQuote,editor=el('draft-editor');if(!target||!quote||editor.disabled||!el('price-available').checked)return;
- const sentence=priceSentence(quote,target.language),generic=PRICE_LINE[target.language]||PRICE_LINE.hu;
- editor.value=editor.value.includes(generic)?editor.value.replace(generic,sentence):editor.value.trimEnd()+'\n\n'+sentence;
- editor.dispatchEvent?.(new Event('input'));
- el('price-insert').disabled=true;el('price-result').textContent+='\n\nJÓVÁHAGYVA és beillesztve a szerkesztőbe – mentéshez: „Módosítás mentése”.';
+// Approving the price saves a SERVER-computed, server-attested priced draft (no browser text); the operator
+// confirms availability by hand until the Previo read is connected. Nothing is inserted automatically.
+const priceErrors={PRICE_FACTS_MISSING:'Az ügyadatokból hiányzik a pontos dátum, a felnőttszám vagy egy gyermek életkora.',
+ PRICE_LINE_MISSING:'A válaszban már nincs meg az általános ármondat (kézzel módosították); az árat kézzel írja be.',
+ PRICE_REFUSED:'Az árlista ehhez nem ad igazolt árat; kézi ellenőrzés szükséges.',CASE_CONFLICT:'Az ügy közben megváltozott; nyissa meg újra.',
+ FORBIDDEN:'Ehhez nincs írási jog, vagy a funkció nincs telepítve.',TEST_MAILBOX_REJECTED:'Az adatbázis elutasította (lehet, hogy a frissítés még nincs telepítve).'};
+el('price-insert').addEventListener('click',async()=>{
+ const target=priceCase,quote=priceQuote;if(!authenticated||!target||!quote||!el('price-available').checked||actionBusy)return;
+ const turn=epoch;actionBusy=true;el('price-insert').disabled=true;el('price-result').textContent+='\n\nÁr jóváhagyása és mentése…';
+ try{
+  const result=await request({tenantId:TENANT,caseId:target.caseId,action:'test-mailbox-price',expectedRevision:target.revision,cabin:quote.cabin,availabilityConfirmed:true});
+  if(!current(turn))return;
+  if(result?.caseId!==target.caseId||result.revision!==target.revision+1||result.approval!=='pending')throw Error('INVALID_DATA');
+  rows=[];listLoaded=false;updateCounts();el('case-list').replaceChildren();
+  await openTestMailboxCase(target.caseId,turn,'Ár jóváhagyva és beillesztve ('+huf(result.total)+' Ft). A tervezet jóváhagyásra vár.');
+ }catch(error){
+  if(!current(turn))return;
+  if(error?.message==='AUTH_REQUIRED')failed(error);
+  else{el('price-result').textContent+='\nNem sikerült: '+(priceErrors[error?.message]||'a mentés nem igazolt; nincs automatikus ismétlés.');el('price-insert').disabled=false;}
+ }finally{actionBusy=false;}
 });
 // Sends the stored, approved reply through the server (test pair only). The browser sends no text.
 const sendErrors={FORBIDDEN:'A küldés nincs bekapcsolva, vagy nincs jóváhagyói jog.',NOT_APPROVED:'Csak jóváhagyott válasz küldhető.',

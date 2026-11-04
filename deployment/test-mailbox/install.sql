@@ -145,6 +145,50 @@ begin
  return to_jsonb(result);
 end $$;
 
+-- Price insertion (owner decision 2026-11-04): the SERVER computes the price-list price, replaces the
+-- engine's generic price sentence and attests the exact new text (scope test-mailbox-price-v1, same server
+-- key). A priced draft built on an unedited machine draft stays a machine draft, so the same operator may
+-- approve it; on a human-edited draft it stays human (independent approver). The operator's availability
+-- confirmation (Previo checked by hand) is recorded on the draft.
+create or replace function public.sc_tm_price_redraft(p_tenant text,p_case text,p_expected bigint,p_draft jsonb,p_proof jsonb)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare actor uuid; row_before public.sc_cases%rowtype; result public.sc_cases%rowtype; state text; latest jsonb; changed jsonb; key text; fields text[]; text_hash text;
+begin
+ actor:=public.sc_tm_actor(p_tenant,'write');
+ if p_expected is null or p_expected<1 or jsonb_typeof(p_draft) is distinct from 'object'
+ or exists(select 1 from jsonb_object_keys(p_draft) k where k not in ('text','operatorReviewText'))
+ or jsonb_typeof(p_draft->'text') is distinct from 'string' or btrim(p_draft->>'text')='' or length(p_draft->>'text')>20000
+ or jsonb_typeof(p_draft->'operatorReviewText') is distinct from 'string' or length(p_draft->>'operatorReviewText')>40000 then
+  raise exception 'invalid draft' using errcode='22023';
+ end if;
+ text_hash:=encode(sha256(convert_to(p_draft->>'text','UTF8')),'hex');
+ begin
+  fields:=array['test-mailbox-price-v1',p_tenant,p_case,p_expected::text,text_hash,encode(sha256(convert_to(p_draft->>'operatorReviewText','UTF8')),'hex'),p_proof->>'checkedAt'];
+  if jsonb_typeof(p_proof) is distinct from 'object' or p_proof->>'scope' is distinct from 'test-mailbox-price-v1'
+  or coalesce(p_proof->>'attestation','')!~'^[a-f0-9]{64}$' or exists(select 1 from unnest(fields) v where v is null or v='')
+  or (p_proof->>'checkedAt')::timestamptz<now()-interval '120 seconds' or (p_proof->>'checkedAt')::timestamptz>now()+interval '1 second' then
+   raise exception 'invalid proof';
+  end if;
+  select key_hex into key from public.sc_isolated_approval_key where singleton;
+  if key is null or public.sc_isolated_approval_mac(array_to_string(fields,chr(10)),key) is distinct from p_proof->>'attestation' then raise exception 'invalid proof'; end if;
+ exception when others then raise exception 'server-attested price required' using errcode='42501'; end;
+ select * into row_before from public.sc_cases where tenant_id=p_tenant and case_id=p_case and revision=p_expected for update;
+ if not found then return null; end if;
+ if not exists(select 1 from public.sc_test_mailbox_cases where tenant_id=p_tenant and case_id=p_case) then
+  raise exception 'test-mailbox case required' using errcode='42501';
+ end if;
+ state:=row_before.data->'state'->>'approval';latest:=row_before.data->'drafts'->-1;
+ if state not in ('pending','returned_for_edit','rejected') then raise exception 'draft cannot change in this state' using errcode='22023'; end if;
+ if latest->>'text'=p_draft->>'text' then raise exception 'changed draft required' using errcode='22023'; end if;
+ changed:=jsonb_set(row_before.data,'{drafts}',(row_before.data->'drafts')||jsonb_build_array(p_draft||jsonb_build_object('createdBy',actor,'createdAt',now(),
+  'basedOnRevision',p_expected,'priceInserted',true,'availabilityConfirmedByOperator',true,'machineDraft',coalesce(latest->'machineDraft','false'::jsonb)='true'::jsonb)));
+ changed:=jsonb_set(changed,'{state,approval}','"pending"');
+ update public.sc_cases set revision=p_expected+1,data=changed,updated_at=now(),updated_by=actor
+  where tenant_id=p_tenant and case_id=p_case and revision=p_expected returning * into result;
+ insert into public.sc_audit(tenant_id,case_id,revision,actor,kind,data_hash) values(p_tenant,p_case,p_expected+1,actor,'tm_price_redraft',encode(sha256(convert_to(changed::text,'UTF8')),'hex'));
+ return to_jsonb(result);
+end $$;
+
 -- Independent Approver decision on the exact reviewed draft: approve (internal, test-mailbox-v1), return or reject.
 create or replace function public.sc_tm_decide(p_tenant text,p_case text,p_expected bigint,p_draft_hash text,p_decision text,p_reason text default null)
 returns jsonb language plpgsql security definer set search_path='' as $$
@@ -181,11 +225,11 @@ begin
 end $$;
 
 revoke all on function public.sc_tm_actor(text,text) from public,anon,authenticated;
-revoke all on function public.sc_tm_create(text,text,jsonb,jsonb),public.sc_tm_redraft(text,text,bigint,jsonb),public.sc_tm_decide(text,text,bigint,text,text,text) from public,anon;
-grant execute on function public.sc_tm_create(text,text,jsonb,jsonb),public.sc_tm_redraft(text,text,bigint,jsonb),public.sc_tm_decide(text,text,bigint,text,text,text) to authenticated;
+revoke all on function public.sc_tm_create(text,text,jsonb,jsonb),public.sc_tm_redraft(text,text,bigint,jsonb),public.sc_tm_price_redraft(text,text,bigint,jsonb,jsonb),public.sc_tm_decide(text,text,bigint,text,text,text) from public,anon;
+grant execute on function public.sc_tm_create(text,text,jsonb,jsonb),public.sc_tm_redraft(text,text,bigint,jsonb),public.sc_tm_price_redraft(text,text,bigint,jsonb,jsonb),public.sc_tm_decide(text,text,bigint,text,text,text) to authenticated;
 do $$ begin
  if exists(select 1 from pg_roles where rolname='service_role') then
-  execute 'revoke all on function public.sc_tm_actor(text,text),public.sc_tm_create(text,text,jsonb,jsonb),public.sc_tm_redraft(text,text,bigint,jsonb),public.sc_tm_decide(text,text,bigint,text,text,text) from service_role';
+  execute 'revoke all on function public.sc_tm_actor(text,text),public.sc_tm_create(text,text,jsonb,jsonb),public.sc_tm_redraft(text,text,bigint,jsonb),public.sc_tm_price_redraft(text,text,bigint,jsonb,jsonb),public.sc_tm_decide(text,text,bigint,text,text,text) from service_role';
  end if;
 end $$;
 commit;

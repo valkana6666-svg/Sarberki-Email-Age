@@ -9,6 +9,7 @@ end $$;
 update public.sc_test_mailbox_config set enabled=false where singleton;
 drop function if exists public.sc_tm_decide(text,text,bigint,text,text,text);
 drop function if exists public.sc_tm_redraft(text,text,bigint,jsonb);
+drop function if exists public.sc_tm_price_redraft(text,text,bigint,jsonb,jsonb);
 drop function if exists public.sc_tm_create(text,text,jsonb,jsonb);
 drop function if exists public.sc_tm_actor(text,text);
 commit;

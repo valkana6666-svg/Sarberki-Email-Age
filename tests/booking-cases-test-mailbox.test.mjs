@@ -62,6 +62,7 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
      result=(await db.query('select * from sc_cases where tenant_id=$1'+(id?' and case_id=$2':''),id?[tenant,id]:[tenant])).rows;}
     else if(url.pathname.endsWith('/rpc/sc_tm_create'))result=(await db.query('select sc_tm_create($1,$2,$3,$4) r',[body.p_tenant,body.p_case,JSON.stringify(body.p_data),JSON.stringify(body.p_proof)])).rows[0].r;
     else if(url.pathname.endsWith('/rpc/sc_tm_redraft'))result=(await db.query('select sc_tm_redraft($1,$2,$3,$4) r',[body.p_tenant,body.p_case,body.p_expected,JSON.stringify(body.p_draft)])).rows[0].r;
+    else if(url.pathname.endsWith('/rpc/sc_tm_price_redraft'))result=(await db.query('select sc_tm_price_redraft($1,$2,$3,$4,$5) r',[body.p_tenant,body.p_case,body.p_expected,JSON.stringify(body.p_draft),JSON.stringify(body.p_proof)])).rows[0].r;
     else if(url.pathname.endsWith('/rpc/sc_tm_decide'))result=(await db.query('select sc_tm_decide($1,$2,$3,$4,$5,$6) r',[body.p_tenant,body.p_case,body.p_expected,body.p_draft_hash,body.p_decision,body.p_reason])).rows[0].r;
     else throw Object.assign(Error('unexpected '+url.pathname),{code:'XX'});
     return {ok:true,json:async()=>result};
@@ -176,6 +177,23 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
     await call('reader',trEnv,{tenantId:'sarberki-test',action:'test-mailbox-translate',caseId:case4,text:'injected'},{method:'GET',status:403});
     await tr('reader',trEnv,'tm-'+'0'.repeat(16),{status:404});
    }finally{bodyText=TEXT;}
+  });
+  await t.test('price: one operator saves, prices (server-computed, attested) and approves; confirmation, role and revision enforced',async()=>{
+   const id5='18f2a0b1c2d3e4c5',case5='tm-'+id5;
+   await call('both',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-ingest',messageId:id5},{headers:gmail,status:200});
+   const price=(role,body,options)=>call(role,enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-price',caseId:case5,cabin:'deluxe',availabilityConfirmed:true,...body},options);
+   await price('both',{expectedRevision:1,availabilityConfirmed:false},{status:400});
+   await price('both',{expectedRevision:1,cabin:'castle'},{status:400});
+   await price('reader',{expectedRevision:1},{status:403});
+   await price('both',{expectedRevision:2},{status:409});
+   const ok=(await price('both',{expectedRevision:1},{status:200})).json.result;
+   assert.deepEqual(ok,{caseId:case5,revision:2,approval:'pending',total:128200});
+   const priced=(await latest(case5)).data.drafts.at(-1);
+   assert.match(priced.text,/Tájékoztató ár \(Deluxe\): 128 200 Ft, amely 2 200 Ft idegenforgalmi adót tartalmaz\./);
+   assert.match(priced.operatorReviewText,/Ár-részletezés \(kezelői, a vendég nem látja\):\nTÁJÉKOZTATÓ ÁR – Deluxe/);
+   assert.equal(priced.machineDraft,true);
+   await price('both',{expectedRevision:2},{status:422},'generic sentence already replaced');
+   await call('both',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-decide',caseId:case5,expectedRevision:2,reviewedDraftHash:await hashOf(case5),decision:'approve'},{status:200});
   });
   await t.test('send: off without its own switch; only an Approver; only approved; only the fixed test recipient; exactly one send',async()=>{
    const sendEnv={...enabledEnv,CASE_TEST_MAILBOX_SEND_ENABLED:'sarberki-test-pair-only'};
