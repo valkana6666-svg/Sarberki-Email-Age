@@ -45,20 +45,29 @@ export function activeMessageText(text=''){
   }
   return current.join('\n').trim();
 }
+// A capitalised word that ends a letter but is a greeting/thanks, never a name.
+const NOT_A_NAME=/^(?:köszönöm|köszi|köszönettel|üdv|üdvözlettel|üdvözlet|tisztelettel|szia|sziasztok|helló|hello|hali|igen|nem|danke|grüße|gruß|thanks|thank|regards|cheers|best|hvala|pozdrav|lp)$/iu;
 export function nameFromText(text=''){
   const current=activeMessageText(text);
-  const fullName='([A-ZÁÉÍÓÖŐÚÜŰČŠŽÄÖÜ][\\p{L}-]+\\s+[A-ZÁÉÍÓÖŐÚÜŰČŠŽÄÖÜ][\\p{L}-]+)';
+  const word='[A-ZÁÉÍÓÖŐÚÜŰČŠŽÄÖÜ][\\p{L}-]+';
+  const fullName='('+word+'[ \\t]+'+word+')';
+  // After an explicit sign-off a single given name ("Üdv: Péter") is a name as well.
+  const signedName='('+word+'(?:[ \\t]+'+word+')?)';
   const patterns=[
-    new RegExp('(?:^|\\n)\\s*(?:üdv(?:özlettel)?|tisztelettel|köszönettel)\\s*\\.?\\s*[:,-]?\\s*'+fullName+'\\s*$','imu'),
-    new RegExp('(?:^|\\n)\\s*(?:mit\\s+freundlichen\\s+grüßen|viele\\s+grüße|freundliche\\s+grüße)\\s*[,.:;-]?\\s*'+fullName+'\\s*$','imu'),
-    new RegExp('(?:^|\\n)\\s*(?:best\\s+regards|kind\\s+regards|regards|thank\\s+you)\\s*[,.:;-]?\\s*'+fullName+'\\s*$','imu'),
-    new RegExp('(?:^|\\n)\\s*(?:hvala\\s+in\\s+lep\\s+pozdrav|lep\\s+pozdrav|pozdrav)\\s*[,.:;-]?\\s*'+fullName+'\\s*$','imu'),
+    new RegExp('(?:^|\\n)\\s*(?:üdv(?:özlettel|özlet)?|tisztelettel|köszönettel|köszönöm|köszi)(?!\\p{L})\\s*\\.?\\s*[:,-]?\\s*'+signedName+'\\s*$','imu'),
+    new RegExp('(?:^|\\n)\\s*(?:mit\\s+freundlichen\\s+grüßen|viele\\s+grüße|freundliche\\s+grüße|liebe\\s+grüße|vielen\\s+dank|danke)(?!\\p{L})\\s*[,.:;-]?\\s*'+signedName+'\\s*$','imu'),
+    new RegExp('(?:^|\\n)\\s*(?:best\\s+regards|kind\\s+regards|regards|thank\\s+you|many\\s+thanks|thanks)(?!\\p{L})\\s*[,.:;-]?\\s*'+signedName+'\\s*$','imu'),
+    new RegExp('(?:^|\\n)\\s*(?:hvala\\s+in\\s+lep\\s+pozdrav|lep\\s+pozdrav|pozdrav|hvala)(?!\\p{L})\\s*[,.:;-]?\\s*'+signedName+'\\s*$','imu'),
     new RegExp('(?:^|\\n)\\s*'+fullName+'\\s*$','mu')
   ];
   for(const pattern of patterns){
     const match=current.match(pattern);
-    if(match?.[1]) return match[1].trim();
+    if(match?.[1]&&!NOT_A_NAME.test(match[1].trim())) return match[1].trim();
   }
+  // A single given name alone on the last line of a multi-line letter ("…?\nPéter").
+  const lines=current.split('\n').map(l=>l.trim()).filter(Boolean);
+  const last=lines.at(-1)||'';
+  if(lines.length>1&&new RegExp('^'+word+'$','u').test(last)&&last.length<=20&&!NOT_A_NAME.test(last)) return last;
   return null;
 }
 
@@ -81,6 +90,8 @@ export function stayCancellationFromText(text=''){
   const verb=/(?:(?<!\p{L})lemond(?!ási|asi|hat)\p{L}*|(?<!\p{L})le\s+(?:\p{L}+\s+){0,2}mond(?!ási|hat)\p{L}*|(?<!\p{L})mond\p{L}*\s+le(?!\p{L})|cancel(?!lation)\p{L}*|stornier\p{L}*|absag\p{L}*|odpoved(?:ati|ujem|ujemo|al\p{L}*)|prekli[cč](?:ati|ujem|ujemo|al\p{L}*))/iu;
   const blocked=/\?|(?<!\p{L})(?:ha|amennyiben|if|unless|falls|wenn|če|ce|lehet|lehetséges|can|could|may|kann|könn\p{L}*|lahko|mi|milyen|what|which|wie|welche\p{L}*|kaj|nem|not|don['’]t|nicht|kein\p{L}*|ne)(?!\p{L})|lemondási|lemondasi|cancellation|storno(?:bedingung|gebühr|frist)\p{L}*|stornierungs\p{L}*|pogoj\p{L}*\s+odpoved/iu;
   // A dot after a digit is a date or ordinal ("vom 20. bis 22. Dezember"), not a sentence end.
+  // A single line break is mail soft-wrapping inside a sentence; only a blank line ends a paragraph.
+  text=text.replace(/[ \t]*\n(?![ \t]*\n)[ \t]*/gu,' ');
   return text.split(/(?<=[!?]|(?<!\d)\.)\s+|\n+/u).some(sentence=>object.test(sentence)&&verb.test(sentence)&&!blocked.test(sentence));
 }
 export function cabinFromText(text=''){
@@ -930,6 +941,7 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   }
 
   const asksAvailability=/(?:szabad|elérhető|van[- ]?e .*szállás|van.*hely|available|frei|prosto|verfügbar|razpolož)/iu.test(original);
+  const cabinNamed=typeof cabin==='string'&&cabin.trim()!==''&&!cabin.trim().startsWith('?');
   const asksPrice=/(?:mennyi|mennyibe|ár|ára|árat|price|cost|kosten|preis|cena)/iu.test(original);
   if(asksAvailability&&!canRecommendByCapacity) stayLines.push({
     hu:'A kért faház elérhetőségét külön visszaigazoljuk.',
@@ -937,6 +949,12 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
     en:'We will confirm availability of your requested cabin separately.',
     si:'Razpoložljivost želene hiške bomo potrdili posebej.'
   }[lang]);
+  // No cabin was named: do not speak of "the requested cabin".
+  if(asksAvailability&&!canRecommendByCapacity&&!cabinNamed){
+    const generic={hu:'Az elérhetőséget külön ellenőrizzük és visszaigazoljuk.',de:'Die Verfügbarkeit prüfen und bestätigen wir gesondert.',
+     en:'We will check and confirm availability separately.',si:'Razpoložljivost bomo preverili in potrdili posebej.'}[lang];
+    stayLines[stayLines.length-1]=generic;provisionalStayLine=generic;
+  }
   if(asksAvailability&&!canRecommendByCapacity) provisionalStayLine=stayLines.at(-1);
 
   const operationalLines=operationalTopicLines(lang,original,operationalRules,caseContext);
