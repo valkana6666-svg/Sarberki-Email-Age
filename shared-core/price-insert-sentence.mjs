@@ -10,11 +10,21 @@ export const CABIN_NAMES=Object.freeze({deluxe:{hu:'Deluxe',de:'Deluxe',en:'Delu
 export const huf=n=>String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,' ');
 export function priceSentence(quote,language){
  const lang=PRICE_LINE[language]?language:'hu',cabin=CABIN_NAMES[quote.cabin]?.[lang]||quote.cabin,total=huf(quote.total),tax=huf(quote.tourismTax);
- const eur=quote.eurConversion?.status==='available'?quote.eurConversion.totalEur.toFixed(2):null;
- return {hu:`Tájékoztató ár (${cabin}): ${total} Ft, amely ${tax} Ft idegenforgalmi adót tartalmaz.${eur?` (kb. ${eur} EUR)`:''} A végleges árat a szabad hely ellenőrzése után erősítjük meg.`,
-  de:`Richtpreis (${cabin}): ${total} HUF inklusive ${tax} HUF Kurtaxe.${eur?` (ca. ${eur} EUR)`:''} Den endgültigen Preis bestätigen wir nach Prüfung der Verfügbarkeit.`,
-  en:`Indicative price (${cabin}): ${total} HUF including ${tax} HUF tourist tax.${eur?` (approx. ${eur} EUR)`:''} We will confirm the final price after checking availability.`,
-  si:`Okvirna cena (${cabin}): ${total} HUF, vključno s ${tax} HUF turistične takse.${eur?` (pribl. ${eur} EUR)`:''} Končno ceno potrdimo po preverjanju razpoložljivosti.`}[lang];
+ // EUR right after the amount; decimal comma except in English.
+ const raw=quote.eurConversion?.status==='available'?quote.eurConversion.totalEur.toFixed(2):null,eur=raw&&lang!=='en'?raw.replace('.',','):raw;
+ return {hu:`Tájékoztató ár (${cabin}): ${total} Ft${eur?` (kb. ${eur} EUR)`:''}, amely ${tax} Ft idegenforgalmi adót tartalmaz. A végleges árat a szabad hely ellenőrzése után erősítjük meg.`,
+  de:`Richtpreis (${cabin}): ${total} HUF${eur?` (ca. ${eur} EUR)`:''} inklusive ${tax} HUF Kurtaxe. Den endgültigen Preis bestätigen wir nach Prüfung der Verfügbarkeit.`,
+  en:`Indicative price (${cabin}): ${total} HUF${eur?` (approx. ${eur} EUR)`:''} including ${tax} HUF tourist tax. We will confirm the final price after checking availability.`,
+  si:`Okvirna cena (${cabin}): ${total} HUF${eur?` (pribl. ${eur} EUR)`:''}, vključno s ${tax} HUF turistične takse. Končno ceno potrdimo po preverjanju razpoložljivosti.`}[lang];
+}
+// After a price for one cabin type, the engine's "which cabin type" question becomes this note.
+export function pricedCabinNote(quote,language){
+ const lang=PRICE_LINE[language]?language:'hu',cabin=CABIN_NAMES[quote.cabin]?.[lang]||quote.cabin;
+ const article=/^[aáeéiíoóöőuúüű]/i.test(CABIN_NAMES[quote.cabin]?.hu||'')?'az':'a';
+ return {hu:`A fenti ár ${article} ${CABIN_NAMES[quote.cabin]?.hu||quote.cabin} faházra vonatkozik; ha másik háztípust szeretne, kérjük, jelezze.`,
+  de:`Der obige Preis gilt für ${cabin}; wenn Sie einen anderen Haustyp wünschen, teilen Sie es uns bitte mit.`,
+  en:`The price above is for the ${cabin}; if you would like a different cabin type, please let us know.`,
+  si:`Zgornja cena velja za ${cabin}; če želite drugo vrsto hiške, nam to sporočite.`}[lang];
 }
 
 // Operator-facing, line-by-line explanation of how the calculator reached the price (Hungarian).

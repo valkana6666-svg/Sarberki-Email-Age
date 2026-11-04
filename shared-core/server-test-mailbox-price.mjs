@@ -5,7 +5,16 @@
 // no text. No price rule, tariff, availability or booking is changed.
 import {createHash,createHmac} from 'node:crypto';
 import {fetchPublicPriceReference} from '../price-source/public-price-fallback.mjs';
-import {PRICE_LINE,priceSentence,priceExplanation} from './price-insert-sentence.mjs';
+import {PRICE_LINE,priceSentence,priceExplanation,pricedCabinNote} from './price-insert-sentence.mjs';
+import {replyQuestions} from '../sarberki-core.mjs';
+
+// The engine's cabin-type questions (with/without the 2-person cabin) and the "choose an offered type" line.
+const OFFERED_TYPE_QUESTION=Object.freeze({hu:'Kérjük, válaszoljon erre az e-mailre, és írja meg, melyik felajánlott faháztípust választja.',
+ de:'Bitte antworten Sie auf diese E-Mail und teilen Sie uns mit, welchen der angebotenen Haustypen Sie wählen.',
+ en:'Please reply to this email and tell us which of the offered cabin types you would like to choose.',
+ si:'Prosimo, odgovorite na to e-pošto in nam sporočite, katero od ponujenih vrst hišk izberete.'});
+function cabinQuestions(lang){return [...new Set([replyQuestions(lang,{needCabin:true,guests:2})[0],replyQuestions(lang,{needCabin:true,guests:4})[0],OFFERED_TYPE_QUESTION[lang]].filter(Boolean))];}
+function replaceCabinQuestion(text,lang,note){let done=false;for(const q of cabinQuestions(lang))if(!done&&text.includes(q)){text=text.replace(q,note);done=true;}return text;}
 
 export const PRICE_SCOPE='test-mailbox-price-v1';
 const fail=code=>{const error=Error(code);error.code=code;throw error;};
@@ -23,9 +32,9 @@ export function quoteInputFromCase(values,cabin){
 export function pricedDraft({latest,quote,language}){
  const lang=PRICE_LINE[language]?language:'hu',generic=PRICE_LINE[lang];
  if(typeof latest?.text!=='string'||!latest.text.includes(generic))fail('PRICE_LINE_MISSING');
- const text=latest.text.replace(generic,priceSentence(quote,lang));
+ const text=replaceCabinQuestion(latest.text.replace(generic,priceSentence(quote,lang)),lang,pricedCabinNote(quote,lang));
  const review=typeof latest.operatorReviewText==='string'&&latest.operatorReviewText.includes(PRICE_LINE.hu)?
-  latest.operatorReviewText.replace(PRICE_LINE.hu,priceSentence(quote,'hu')):String(latest.operatorReviewText||'');
+  replaceCabinQuestion(latest.operatorReviewText.replace(PRICE_LINE.hu,priceSentence(quote,'hu')),'hu',pricedCabinNote(quote,'hu')):String(latest.operatorReviewText||'');
  const operatorReviewText=(review?review+'\n\n':'')+'Ár-részletezés (kezelői, a vendég nem látja):\n'+priceExplanation(quote);
  return {text,operatorReviewText};
 }
