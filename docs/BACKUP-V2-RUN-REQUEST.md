@@ -84,3 +84,9 @@ Source project: mojnqizbcaczstguikpv (sarberki-test).
 Source code: eb5687ce46806e492b59522b24e728b76d5fe802.
 Purpose: fresh verified encrypted Drive backup and isolated restore before owner-authorized deployment/test-mailbox/install.sql and reader membership restoration. No source changes until backup succeeds; no Netlify deployment.
 Provider: drive. Request marker: [backup-v2-run].
+
+## Owner-authorized TEST price RPC pre-install backup
+Requested at: 2026-11-04T05:34:11.415Z.
+Source project: mojnqizbcaczstguikpv (sarberki-test).
+Authorized SQL: 123f3c6f1a24689198d72df83f3d6acceea4d667 deployment/test-mailbox/install.sql.
+Purpose: fresh encrypted Drive backup, exact-ID readback and isolated restore before deployment. Provider: drive. No DB changes until verified success. No Netlify deployment.
