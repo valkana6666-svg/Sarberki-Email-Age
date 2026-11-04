@@ -15,7 +15,7 @@ class Element {
  async dispatch(type,event={}){for(const fn of this.listeners[type]||[])await fn({preventDefault(){},...event});}
 }
 function fakeDocument(){
- const ids=['count-incoming','count-approval','count-progress','count-closed','cases-panel','cases-title','email-picker','email-picker-wrap','email-previous','email-next','read-email','email-status','email-list','email-detail','email-draft-request','email-draft-status','email-draft-text','email-draft-review','email-draft-checks','draft-editor','save-draft','approve-draft','approve-confirm','return-draft','reject-draft','decision-reason','email-save-case','email-save-status','detail-messages','detail-facts','chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','copy-approved','send-approved','price-panel','price-cabin','price-calc','price-result','price-available','price-insert','detail-link','section-heading','section-description'];
+ const ids=['count-incoming','count-approval','count-progress','count-closed','cases-panel','cases-title','email-picker','email-picker-wrap','email-previous','email-next','read-email','email-status','email-list','email-detail','email-draft-request','email-draft-status','email-draft-text','email-draft-review','email-draft-checks','draft-editor','save-draft','approve-draft','approve-confirm','return-draft','reject-draft','decision-reason','email-save-case','email-save-status','detail-messages','detail-facts','chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','copy-approved','send-approved','price-panel','price-cabin','price-calc','price-result','price-available','price-insert','unavailable-confirm','unavailable-insert','unavailable-result','detail-link','section-heading','section-description'];
  const elements=Object.fromEntries(ids.map(id=>[id,new Element()]));
  const nav=['incoming','approval','progress','closed'].map(section=>{const e=new Element();e.dataset.section=section;return e;});
  const listeners={};
@@ -419,6 +419,7 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   if(failNext){const error=failNext;failNext=null;return response({error},error==='FORBIDDEN'?403:409);}
   assert.equal(body.expectedRevision,state.revision);
   if(body.action==='test-mailbox-redraft'){state.text=body.draftText;state.approval='pending';}
+  else if(body.action==='test-mailbox-unavailable'){assert.equal(body.unavailableConfirmed,true);state.text='Kitalált nincs-szabad válasz.';state.approval='pending';}
   else if(body.action==='test-mailbox-decide'){
    assert.equal(body.reviewedDraftHash,hash(state.text));
    state.approval={approve:'approved_internal',return:'returned_for_edit',reject:'rejected'}[body.decision];
@@ -477,6 +478,15 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   assert.equal(posts.at(-1).decision,'reject');assert.equal(Object.hasOwn(posts.at(-1),'reason'),false);
   assert.match(e['detail-status'].textContent,/Elutasítás mentve.*nyitva marad/);
   role='writer';await open();assert.match(e['detail-status'].textContent,/Elutasítva/);assert.equal(e['draft-editor'].disabled,false);
+  // "No free cabin": needs its own confirmation, unticks the price checkbox, server builds the text (no browser text).
+  assert.equal(e['unavailable-confirm'].disabled,false);assert.equal(e['unavailable-insert'].disabled,true);
+  const noFreeCount=posts.length;await e['unavailable-insert'].dispatch('click');await settle();assert.equal(posts.length,noFreeCount,'no request without the confirmation');
+  e['price-available'].checked=true;e['unavailable-confirm'].checked=true;await e['unavailable-confirm'].dispatch('change');
+  assert.equal(e['price-available'].checked,false);assert.equal(e['price-insert'].disabled,true);assert.equal(e['unavailable-insert'].disabled,false);
+  await e['unavailable-insert'].dispatch('click');await settle();
+  assert.deepEqual(posts.at(-1),{tenantId:'sarberki-test',caseId,action:'test-mailbox-unavailable',expectedRevision:5,unavailableConfirmed:true});
+  assert.match(e['detail-status'].textContent,/Nincs szabad hely.*ár nélkül/);assert.equal(e['detail-draft'].textContent,'Kitalált nincs-szabad válasz.');
+  assert.equal(e['unavailable-confirm'].checked,false);assert.equal(e['unavailable-insert'].disabled,true);
   e['draft-editor'].value='Kitalált negyedik tervezet.';await e['draft-editor'].dispatch('input');await e['save-draft'].dispatch('click');await settle();
   role='approver';await open();
   assert.equal(e['copy-approved'].hidden,true,'a pending draft cannot be copied for sending');
@@ -489,7 +499,7 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   assert.equal(posts.at(-1).action,'test-mailbox-redraft','approval needs the confirmation checkbox');
   e['approve-confirm'].checked=true;await e['approve-confirm'].dispatch('change');assert.equal(e['approve-draft'].disabled,false);
   await e['approve-draft'].dispatch('click');await settle();
-  assert.deepEqual(posts.at(-1),{tenantId:'sarberki-test',caseId,action:'test-mailbox-decide',decision:'approve',expectedRevision:6,reviewedDraftHash:hash('Kitalált negyedik tervezet.')});
+  assert.deepEqual(posts.at(-1),{tenantId:'sarberki-test',caseId,action:'test-mailbox-decide',decision:'approve',expectedRevision:7,reviewedDraftHash:hash('Kitalált negyedik tervezet.')});
   assert.match(e['detail-status'].textContent,/Belső jóváhagyás mentve.*Nincs levélküldés vagy foglalás/);
   assert.equal(e['approve-confirm'].disabled,true);assert.equal(e['draft-editor'].disabled,true);
   // Approved text can be copied for a MANUAL Gmail reply; nothing is sent and no request is made.
@@ -517,6 +527,6 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   // A server conflict is shown honestly and never retried automatically.
   state.approval='pending';await open();failNext='CASE_CONFLICT';const count=posts.length;await e['reject-draft'].dispatch('click');await settle();
   assert.equal(posts.length,count+1);assert.equal(e['case-detail'].hidden,true);assert.match(e['list-status'].textContent,/nincs automatikus ismétlés/);
-  assert.ok(posts.every(p=>['test-mailbox-redraft','test-mailbox-decide'].includes(p.action)&&p.tenantId==='sarberki-test'));
+  assert.ok(posts.every(p=>['test-mailbox-redraft','test-mailbox-decide','test-mailbox-unavailable'].includes(p.action)&&p.tenantId==='sarberki-test'));
  }finally{Object.assign(globalThis,previous);}
 });

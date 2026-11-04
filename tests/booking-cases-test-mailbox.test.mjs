@@ -63,6 +63,7 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
     else if(url.pathname.endsWith('/rpc/sc_tm_create'))result=(await db.query('select sc_tm_create($1,$2,$3,$4) r',[body.p_tenant,body.p_case,JSON.stringify(body.p_data),JSON.stringify(body.p_proof)])).rows[0].r;
     else if(url.pathname.endsWith('/rpc/sc_tm_redraft'))result=(await db.query('select sc_tm_redraft($1,$2,$3,$4) r',[body.p_tenant,body.p_case,body.p_expected,JSON.stringify(body.p_draft)])).rows[0].r;
     else if(url.pathname.endsWith('/rpc/sc_tm_price_redraft'))result=(await db.query('select sc_tm_price_redraft($1,$2,$3,$4,$5) r',[body.p_tenant,body.p_case,body.p_expected,JSON.stringify(body.p_draft),JSON.stringify(body.p_proof)])).rows[0].r;
+    else if(url.pathname.endsWith('/rpc/sc_tm_unavailable_redraft'))result=(await db.query('select sc_tm_unavailable_redraft($1,$2,$3,$4,$5) r',[body.p_tenant,body.p_case,body.p_expected,JSON.stringify(body.p_draft),JSON.stringify(body.p_proof)])).rows[0].r;
     else if(url.pathname.endsWith('/rpc/sc_tm_decide'))result=(await db.query('select sc_tm_decide($1,$2,$3,$4,$5,$6) r',[body.p_tenant,body.p_case,body.p_expected,body.p_draft_hash,body.p_decision,body.p_reason])).rows[0].r;
     else throw Object.assign(Error('unexpected '+url.pathname),{code:'XX'});
     return {ok:true,json:async()=>result};
@@ -194,6 +195,25 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
    assert.equal(priced.machineDraft,true);
    await price('both',{expectedRevision:2},{status:422},'generic sentence already replaced');
    await call('both',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-decide',caseId:case5,expectedRevision:2,reviewedDraftHash:await hashOf(case5),decision:'approve'},{status:200});
+  });
+  await t.test('no free cabin: one operator replaces the draft with a server-built no-price reply and approves it',async()=>{
+   const id6='18f2a0b1c2d3e4c6',case6='tm-'+id6;
+   await call('both',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-ingest',messageId:id6},{headers:gmail,status:200});
+   const before=(await latest(case6)).data.drafts.at(-1).text;
+   const mark=(role,body,options)=>call(role,enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-unavailable',caseId:case6,unavailableConfirmed:true,...body},options);
+   await mark('both',{expectedRevision:1,unavailableConfirmed:false},{status:400});
+   await mark('both',{expectedRevision:1,draftText:'injected'},{status:403});
+   await mark('reader',{expectedRevision:1},{status:403});
+   await mark('both',{expectedRevision:2},{status:409});
+   assert.deepEqual((await mark('both',{expectedRevision:1},{status:200})).json.result,{caseId:case6,revision:2,approval:'pending'});
+   const d=(await latest(case6)).data.drafts.at(-1);
+   assert.equal(d.text.split('\n\n')[0],before.split('\n\n')[0],'greeting kept');
+   assert.ok(d.text.endsWith(before.slice(before.lastIndexOf('\n\nÜdvözlettel:'))),'signature kept');
+   assert.match(d.text,/Sajnos a kért időszakra nincs a megadott létszámnak megfelelő szabad faházunk\./);
+   assert.doesNotMatch(d.text,/Ft|ár(?:a|at)?\b/u);
+   assert.deepEqual([d.machineDraft,d.priceInserted,d.unavailableByOperator],[true,false,true]);
+   assert.deepEqual((await mark('both',{expectedRevision:2},{status:409})).json,{error:'ALREADY_UNAVAILABLE'});
+   await call('both',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-decide',caseId:case6,expectedRevision:2,reviewedDraftHash:await hashOf(case6),decision:'approve'},{status:200});
   });
   await t.test('send: off without its own switch; only an Approver; only approved; only the fixed test recipient; exactly one send',async()=>{
    const sendEnv={...enabledEnv,CASE_TEST_MAILBOX_SEND_ENABLED:'sarberki-test-pair-only'};

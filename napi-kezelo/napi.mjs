@@ -144,6 +144,7 @@ function clearDetail(){
  el('copy-approved').hidden=true;el('copy-approved').textContent=COPY_LABEL;approvedText=null;
  el('send-approved').hidden=true;el('send-approved').disabled=false;el('send-approved').textContent=SEND_LABEL;approvedCase=null;
  el('price-panel').hidden=true;el('price-result').textContent='';el('price-insert').disabled=true;el('price-available').checked=false;el('price-available').disabled=true;priceCase=null;priceQuote=null;
+ el('unavailable-confirm').checked=false;el('unavailable-confirm').disabled=true;el('unavailable-insert').disabled=true;el('unavailable-result').textContent='';
  el('detail-link').href='../cloud-approval.html';
 }
 function clearData(message='A listához jelentkezzen be.'){
@@ -243,7 +244,7 @@ async function openTestMailboxCase(caseId,turn,status){
  el('detail-price').textContent=record.decisions.length?'Döntések: '+record.decisions.map(d=>(tmDecisionLabel[d.decision]||'ismeretlen')+(d.at?' ('+d.at+')':'')+(d.reason?' – '+d.reason:'')).join('; '):'';
  tmCase={caseId,revision:record.revision,hash:record.draft.hash,text:record.draft.text};
  // Only an internally approved draft can be copied; an approved draft cannot change, so it is the reviewed text.
- priceCase={caseId,revision:record.revision,values,language:/^(hu|de|en|si)$/.test(values.language||'')?values.language:'hu',editable:record.canEditDraft===true};el('price-panel').hidden=false;
+ priceCase={caseId,revision:record.revision,values,language:/^(hu|de|en|si)$/.test(values.language||'')?values.language:'hu',editable:record.canEditDraft===true};el('price-panel').hidden=false;el('unavailable-confirm').checked=false;el('unavailable-confirm').disabled=!priceCase.editable;el('unavailable-insert').disabled=true;
  if(CABIN_NAMES[values.unit])el('price-cabin').value=values.unit;
  if(record.approval==='approved_internal'){approvedText=record.draft.text;el('copy-approved').hidden=false;approvedCase={caseId,revision:record.revision};el('send-approved').hidden=false;}
  if(record.canEditDraft===true){el('draft-editor').value=record.draft.text;el('draft-editor').disabled=false;}
@@ -284,7 +285,11 @@ el('price-calc').addEventListener('click',async()=>{
  }catch(error){if(priceCase===target)el('price-result').textContent='Az ár nem számítható: '+(error.message||'ismeretlen hiba')+' Kérjük, kézzel ellenőrizze.';}
 });
 // The operator confirms availability (Previo read is not connected yet); without it no price is inserted.
-el('price-available').addEventListener('change',()=>{el('price-insert').disabled=!(priceQuote&&priceCase?.editable&&el('price-available').checked);});
+el('price-available').addEventListener('change',()=>{el('price-insert').disabled=!(priceQuote&&priceCase?.editable&&el('price-available').checked);
+ if(el('price-available').checked){el('unavailable-confirm').checked=false;el('unavailable-insert').disabled=true;}});
+// Owner request 2026-11-04: booked period -> no price at all, a server-built "no free cabin" reply instead.
+el('unavailable-confirm').addEventListener('change',()=>{const on=el('unavailable-confirm').checked;el('unavailable-insert').disabled=!(on&&priceCase?.editable);
+ if(on){el('price-available').checked=false;el('price-insert').disabled=true;}});
 // Approving the price saves a SERVER-computed, server-attested priced draft (no browser text); the operator
 // confirms availability by hand until the Previo read is connected. Nothing is inserted automatically.
 const priceErrors={PRICE_FACTS_MISSING:'Az ügyadatokból hiányzik a pontos dátum, a felnőttszám vagy egy gyermek életkora.',
@@ -304,6 +309,24 @@ el('price-insert').addEventListener('click',async()=>{
   if(!current(turn))return;
   if(error?.message==='AUTH_REQUIRED')failed(error);
   else{el('price-result').textContent+='\nNem sikerült: '+(priceErrors[error?.message]||'a mentés nem igazolt; nincs automatikus ismétlés.');el('price-insert').disabled=false;}
+ }finally{actionBusy=false;}
+});
+const unavailableErrors={ALREADY_UNAVAILABLE:'A válasz már a „nincs szabad hely” szöveg.',DRAFT_SHAPE_UNKNOWN:'A tervezet szerkezete nem ismerhető fel (kézzel módosították); a választ kézzel írja meg.',
+ CASE_CONFLICT:'Az ügy közben megváltozott; nyissa meg újra.',FORBIDDEN:'Ehhez nincs írási jog, vagy a funkció nincs telepítve.',
+ TEST_MAILBOX_REJECTED:'Az adatbázis elutasította (lehet, hogy a frissítés még nincs telepítve).'};
+el('unavailable-insert').addEventListener('click',async()=>{
+ const target=priceCase;if(!authenticated||!target||!target.editable||!el('unavailable-confirm').checked||actionBusy)return;
+ const turn=epoch;actionBusy=true;el('unavailable-insert').disabled=true;el('unavailable-result').textContent='Ár nélküli „nincs szabad hely” válasz mentése…';
+ try{
+  const result=await request({tenantId:TENANT,caseId:target.caseId,action:'test-mailbox-unavailable',expectedRevision:target.revision,unavailableConfirmed:true});
+  if(!current(turn))return;
+  if(result?.caseId!==target.caseId||result.revision!==target.revision+1||result.approval!=='pending')throw Error('INVALID_DATA');
+  rows=[];listLoaded=false;updateCounts();el('case-list').replaceChildren();
+  await openTestMailboxCase(target.caseId,turn,'„Nincs szabad hely” válasz mentve, ár nélkül. A tervezet jóváhagyásra vár.');
+ }catch(error){
+  if(!current(turn))return;
+  if(error?.message==='AUTH_REQUIRED')failed(error);
+  else{el('unavailable-result').textContent='Nem sikerült: '+(unavailableErrors[error?.message]||'a mentés nem igazolt; nincs automatikus ismétlés.');el('unavailable-insert').disabled=false;}
  }finally{actionBusy=false;}
 });
 // Sends the stored, approved reply through the server (test pair only). The browser sends no text.

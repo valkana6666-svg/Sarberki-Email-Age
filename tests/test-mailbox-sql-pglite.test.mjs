@@ -5,6 +5,7 @@ import {createHash,randomBytes} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 import {attestTestMailboxSource} from '../shared-core/server-gmail-source.mjs';
 import {attestPrice} from '../shared-core/server-test-mailbox-price.mjs';
+import {attestUnavailable} from '../shared-core/server-test-mailbox-unavailable.mjs';
 
 // Real PostgreSQL semantics (PGlite) on the same layer stack as the hosted TEST project:
 // case store -> cloud-approval -> separate approver -> exact-receipt -> test-mailbox. Fictional data only.
@@ -162,6 +163,24 @@ test('test-mailbox SQL: attested create, independent decisions, return/reject/re
    assert.equal((await row(q.caseId)).data.drafts.at(-1).machineDraft,false);
    await assert.rejects(decide('both',q.caseId,3,sha(draft.text),'approve'),denied('42501'));
    assert.deepEqual((await audit(p.caseId)).map(x=>x.kind),['tm_create','tm_price_redraft','tm_approve']);
+  });
+  await t.test('no free cabin: a server-attested no-price draft keeps a machine draft one-operator; a price proof is not accepted',async()=>{
+   const mark=(role,caseId,expected,draft,proof)=>as(role,async()=>(await db.query('select sc_tm_unavailable_redraft($1,$2,$3,$4,$5) r',[TENANT,caseId,expected,JSON.stringify(draft),JSON.stringify(proof)])).rows[0].r);
+   const attest=(caseId,expected,draft,key=KEY)=>attestUnavailable({key,tenantId:TENANT,caseId,expectedRevision:expected,draft,checkedAt:new Date().toISOString()});
+   const u=fixture(45);await create('both',u);
+   const draft={text:'Kedves Vendégünk!\n\nSajnos nincs szabad faház (kitalált).\n\nÜdvözlettel:\nSárberki Horgásztó',operatorReviewText:'Nincs szabad hely – kitalált.'};
+   const priceProof=attestPrice({key:KEY,tenantId:TENANT,caseId:u.caseId,expectedRevision:1,draft,checkedAt:new Date().toISOString()});
+   await assert.rejects(mark('both',u.caseId,1,draft,priceProof),denied('42501'),'a price proof is not an unavailability proof');
+   await assert.rejects(mark('both',u.caseId,1,{...draft,text:'Más szöveg'},attest(u.caseId,1,draft)),denied('42501'),'text not attested');
+   await assert.rejects(mark('reader',u.caseId,1,draft,attest(u.caseId,1,draft)),denied('42501'),'reader cannot write');
+   assert.equal(await mark('both',u.caseId,2,draft,attest(u.caseId,2,draft)),null,'stale revision');
+   assert.equal((await mark('both',u.caseId,1,draft,attest(u.caseId,1,draft))).revision,2);
+   const latest=(await row(u.caseId)).data.drafts.at(-1);
+   assert.deepEqual([latest.machineDraft,latest.priceInserted,latest.unavailableByOperator,latest.availabilityConfirmedByOperator],[true,false,true,undefined]);
+   await assert.rejects(mark('both',u.caseId,2,draft,attest(u.caseId,2,draft)),denied('22023'),'unchanged text');
+   assert.equal((await decide('both',u.caseId,2,sha(draft.text),'approve')).revision,3,'same operator approves the no-price machine draft');
+   await assert.rejects(mark('both',u.caseId,3,{...draft,text:draft.text+' '},attest(u.caseId,3,{...draft,text:draft.text+' '})),denied('22023'),'approved case is final');
+   assert.deepEqual((await audit(u.caseId)).map(x=>x.kind),['tm_create','tm_unavailable_redraft','tm_approve']);
   });
   await t.test('7. after a return a changed new draft is required before an independent approval',async()=>{
    const h1=await latestHash(a.caseId);
