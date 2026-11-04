@@ -89,13 +89,33 @@ export function fetchPublicPriceReference(raw){
   const accommodation=basePerUnit*units;
   const tourismTax=input.adults*taxPerAdult;
   const total=accommodation+tourismTax;
+  // Operator-facing explanation of the same arithmetic (no new rule): per night base, extra adults,
+  // high-season and one-night surcharges, then the adults' tourist tax. Must add up to the totals.
+  const rules=SARBERKI_PROFILE.pricingRules;
+  const nightLines=dates.map((date,i)=>{
+   const high=highSeason(date),base=tariffs[i].nightlyHuf;
+   return {date,baseNightlyHuf:base,extraAdultNightlyHuf,highSeason:high,highSeasonSurchargePct:high?rules.highSeasonSurchargePct:0,
+    amountHuf:Math.round((base+extraAdultNightlyHuf)*(high?1+rules.highSeasonSurchargePct/100:1))};
+  });
+  const nightsSum=nightLines.reduce((sum,line)=>sum+line.amountHuf,0);
+  const calculation={
+   priceList:uses2027?'Sárberki 2027. évi végleges árlista':'Sárberki publikus árlista',
+   nights:count,units,includedGuests:included,adults:input.adults,childrenAges:input.children,
+   nightLines,nightsSumHuf:nightsSum,
+   oneNightSurchargePct:count===1?rules.oneNightSurchargePct:0,
+   accommodationPerUnitHuf:basePerUnit,accommodationHuf:accommodation,
+   tourismTaxAdultNightlyHuf:rules.tourismTaxAdultNightlyHuf,tourismTaxPayingAdults:input.adults,tourismTaxHuf:tourismTax,
+   childrenTourismTax:'A kalkulátor az idegenforgalmi adót csak a felnőttekre számolja.',
+   totalHuf:total
+  };
+  if((count===1?Math.round(nightsSum*(1+rules.oneNightSurchargePct/100)):nightsSum)!==basePerUnit)throw Error('Az árbontás nem egyezik a kalkulált árral; kézi ellenőrzés szükséges.');
   return {
     status:'public_reference',source:uses2027?'Sárberki 2027. évi végleges árlista – tájékoztató kalkuláció':'Sárberki publikus árlista – tájékoztató kalkuláció',
     sourceUrl:type.publicPriceUrl||SARBERKI_PROFILE.bookingUrl,
     checkedAt:new Date().toISOString(),...input,units,
     availability:'not_checked',availableUnits:null,
     accommodation,tourismTax,total,currency:'HUF',
-    unitBreakdown:units>1?unitBreakdown:[],
+    unitBreakdown:units>1?unitBreakdown:[],calculation,
     bookingCompleted:false,referenceOnly:true
   };
 }

@@ -16,3 +16,22 @@ export function priceSentence(quote,language){
   en:`Indicative price (${cabin}): ${total} HUF including ${tax} HUF tourist tax.${eur?` (approx. ${eur} EUR)`:''} We will confirm the final price after checking availability.`,
   si:`Okvirna cena (${cabin}): ${total} HUF, vključno s ${tax} HUF turistične takse.${eur?` (pribl. ${eur} EUR)`:''} Končno ceno potrdimo po preverjanju razpoložljivosti.`}[lang];
 }
+
+// Operator-facing, line-by-line explanation of how the calculator reached the price (Hungarian).
+export function priceExplanation(quote){
+ const c=quote.calculation||{},lines=[];
+ lines.push(`TÁJÉKOZTATÓ ÁR – ${CABIN_NAMES[quote.cabin]?.hu||quote.cabin}, ${quote.arrival} → ${quote.departure} (${c.nights??'?'} éjszaka)`);
+ lines.push(`Forrás: ${c.priceList||quote.source||'árlista'}. Szabad hely: a rendszer NEM ellenőrizte.`);
+ lines.push(`Vendégek: ${quote.adults} felnőtt${(quote.children||[]).length?`, gyermek(ek): ${quote.children.join(', ')} év`:''}; az alapár ${c.includedGuests??'?'} főt tartalmaz.`);
+ for(const n of c.nightLines||[]){
+  const parts=[`${huf(n.baseNightlyHuf)} Ft alapár`];
+  if(n.extraAdultNightlyHuf)parts.push(`+ ${huf(n.extraAdultNightlyHuf)} Ft pótfelnőtt`);
+  if(n.highSeason)parts.push(`+ ${n.highSeasonSurchargePct}% főszezoni felár`);
+  lines.push(`• ${n.date} éjszaka: ${parts.join(' ')} = ${huf(n.amountHuf)} Ft`);
+ }
+ if(c.oneNightSurchargePct)lines.push(`• Egy éjszakás felár: +${c.oneNightSurchargePct}% → ${huf(c.accommodationPerUnitHuf)} Ft`);
+ lines.push(`Szállás összesen: ${huf(quote.accommodation)} Ft${c.units>1?` (${c.units} egység)`:''}`);
+ lines.push(`Idegenforgalmi adó (IFA): ${c.tourismTaxPayingAdults??quote.adults} felnőtt × ${c.nights??'?'} éj × ${huf(c.tourismTaxAdultNightlyHuf??0)} Ft = ${huf(quote.tourismTax)} Ft. ${c.childrenTourismTax||''}`.trim());
+ lines.push(`VÉGÖSSZEG: ${huf(quote.total)} Ft`+(quote.eurConversion?.status==='available'?` ≈ ${quote.eurConversion.totalEur.toFixed(2)} EUR (MNB-árfolyam ${quote.eurConversion.rateHufPerEur} Ft/EUR, ${quote.eurConversion.rateDate})`:' (EUR-árfolyam nem elérhető)'));
+ return lines.join('\n');
+}
