@@ -90,3 +90,10 @@ Requested at: 2026-11-04T05:34:11.415Z.
 Source project: mojnqizbcaczstguikpv (sarberki-test).
 Authorized SQL: 123f3c6f1a24689198d72df83f3d6acceea4d667 deployment/test-mailbox/install.sql.
 Purpose: fresh encrypted Drive backup, exact-ID readback and isolated restore before deployment. Provider: drive. No DB changes until verified success. No Netlify deployment.
+
+## Owner-authorized TEST price-rule pre-install backup (not daily automation)
+Requested at: 2026-11-04T05:34:20.242Z.
+Source project: mojnqizbcaczstguikpv (sarberki-test).
+Authorized SQL: 123f3c6f1a24689198d72df83f3d6acceea4d667 deployment/test-mailbox/install.sql.
+Purpose: fresh verified encrypted Drive backup and isolated restore before owner-authorized sc_tm_price_redraft deployment. No source DB changes until backup succeeds; no Netlify deployment.
+Provider: drive. Request marker: [backup-v2-run].
