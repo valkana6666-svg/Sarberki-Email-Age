@@ -1,4 +1,4 @@
-import {activeMessageText,requestFlagsFromText} from '../sarberki-core.mjs';
+import {activeMessageText,requestFlagsFromText,dateRangeFromText,guestCountFromText,adultCountFromText} from '../sarberki-core.mjs';
 import {BUSINESS} from '../business-config.mjs';
 // Parse the current request only. Dates/times are requests, never service evidence.
 const tub=/(?:dézs\p{L}*|dezsa\p{L}*|hot[ -]?tub|badezuber|badefass|whirlpool|(?:vroč\p{L}*|masaž\p{L}*)\s*kad)/iu;
@@ -27,7 +27,13 @@ function requestsAccommodation(source){
  // noun: an available tub at an existing cabin remains a service-only query.
  const stayAvailability=new RegExp('(?:(?:szabad|elérhető|available|free|freie?[snmr]?|verfügbar\\p{L}*|prost\\p{L}*)\\s+(?:(?:deluxe|vip|családi|family)\\s+)?'+stayObject+'|'+stayObject+'\\s+(?:(?:is|are|ist|sind|je|so)\\s+)?(?:available|free|frei|verfügbar|prosta|proste))','iu');
  const stayRequest=new RegExp('(?:\\b(?:book|reserve|buchen|rezervirati|foglalni|lefoglal\\p{L}*)\\s+(?:(?:a|an|one|two|ein\\p{L}*|egy|két|deluxe|vip|family|családi)\\s+){0,4}'+stayObject+'|'+stayObject+'\\s+(?:szeretn\\p{L}*\\s+)?(?:foglalni|buchen|book)|(?:new|separate|új|másik|neue|nova)\\s+(?:stay|accommodation|szállás|übernachtung|nastanitev))','iu');
- return stayRequest.test(source)||stayAvailability.test(source)||stayWithdrawal.test(source);
+ if(stayRequest.test(source)||stayAvailability.test(source)||stayWithdrawal.test(source))return true;
+ // A new stay period together with a party size ("jönnénk 2027. július 10–14., 2 felnőtt és 2 gyerek…
+ // dézsát is szeretnénk") is an accommodation enquiry with a tub wish, not a service for an existing
+ // booking. A message that refers to an existing booking stays a service request.
+ const existingBooking=/(?:foglalás(?:unk|unkhoz|unkra|omhoz|omra|om)|meglévő\s+foglal|már\s+(?:le)?foglalt|foglalási\s*(?:szám|azonosító)|(?:our|my)\s+(?:booking|reservation|stay)|existing\s+(?:booking|reservation)|booking\s*(?:reference|ref|id|number)|unser(?:e|er)?\s+(?:Buchung|Reservierung|Aufenthalt)|reservierungsnummer|naš\p{L}*\s+rezervacij\p{L}*|številka\s+rezervacije)/iu;
+ const range=dateRangeFromText(source);
+ return Boolean(range?.arrival&&range?.departure&&(guestCountFromText(source)||adultCountFromText(source)))&&!existingBooking.test(source);
 }
 export function tubServiceMessage(text=''){
  const source=currentText(text);
