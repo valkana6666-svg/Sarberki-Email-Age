@@ -15,7 +15,7 @@ class Element {
  async dispatch(type,event={}){for(const fn of this.listeners[type]||[])await fn({preventDefault(){},...event});}
 }
 function fakeDocument(){
- const ids=['count-incoming','count-approval','count-progress','count-closed','cases-panel','cases-title','email-picker','email-picker-wrap','email-previous','email-next','read-email','email-status','email-list','email-detail','email-draft-request','email-draft-status','email-draft-text','email-draft-review','email-draft-checks','draft-editor','save-draft','approve-draft','approve-confirm','return-draft','reject-draft','decision-reason','email-save-case','email-save-status','detail-messages','detail-facts','chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','copy-approved','send-approved','detail-link','section-heading','section-description'];
+ const ids=['count-incoming','count-approval','count-progress','count-closed','cases-panel','cases-title','email-picker','email-picker-wrap','email-previous','email-next','read-email','email-status','email-list','email-detail','email-draft-request','email-draft-status','email-draft-text','email-draft-review','email-draft-checks','draft-editor','save-draft','approve-draft','approve-confirm','return-draft','reject-draft','decision-reason','email-save-case','email-save-status','detail-messages','detail-facts','chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','copy-approved','send-approved','price-panel','price-cabin','price-calc','price-result','price-insert','detail-link','section-heading','section-description'];
  const elements=Object.fromEntries(ids.map(id=>[id,new Element()]));
  const nav=['incoming','approval','progress','closed'].map(section=>{const e=new Element();e.dataset.section=section;return e;});
  const listeners={};
@@ -481,6 +481,10 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   role='approver';await open();
   assert.equal(e['copy-approved'].hidden,true,'a pending draft cannot be copied for sending');
   assert.equal(e['send-approved'].hidden,true,'a pending draft cannot be sent');
+  // Price panel: visible on the case; a failed calculation is reported and nothing can be inserted.
+  assert.equal(e['price-panel'].hidden,false);const priceCount=posts.length;
+  await e['price-calc'].dispatch('click');await settle();
+  assert.equal(posts.length,priceCount);assert.match(e['price-result'].textContent,/^Az ár nem számítható: .*kézzel ellenőrizze\.$/u);assert.equal(e['price-insert'].disabled,true);
   await e['approve-draft'].dispatch('click');await settle();
   assert.equal(posts.at(-1).action,'test-mailbox-redraft','approval needs the confirmation checkbox');
   e['approve-confirm'].checked=true;await e['approve-confirm'].dispatch('change');assert.equal(e['approve-draft'].disabled,false);

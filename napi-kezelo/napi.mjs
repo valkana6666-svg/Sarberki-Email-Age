@@ -6,6 +6,7 @@ import {createEpochRequestQueue} from '../shared-core/epoch-request-queue.mjs';
 import {createIsolatedApprovalReview} from '../shared-core/isolated-approval-review.mjs';
 import {createServerChatClient} from '../sarberki-chatbot-project/remote-chat-client.mjs';
 import {translationErrorMessage} from '../translation-errors.mjs';
+import {PRICE_LINE,CABIN_NAMES,huf,priceSentence} from '../shared-core/price-insert-sentence.mjs';
 
 const TEST_ORIGIN='https://leafy-chimera-2403e5.netlify.app';
 const TENANT='sarberki-test';
@@ -75,6 +76,9 @@ let listLoaded=false;
 let selectedSection='incoming',rows=[],selected=null,editBase=null,canApprove=false,actionBusy=false,tmCase=null,approvedText=null;
 const COPY_LABEL='Jóváhagyott szöveg másolása',SEND_LABEL='Válasz küldése';
 let approvedCase=null;
+// Price from the existing public price-list calculator (/api/price-reference, TEST site only): the
+// operator picks the cabin after checking availability; the result can be inserted into the editor.
+let priceCase=null,priceQuote=null;
 const isTestMailboxCaseId=id=>typeof id==='string'&&/^tm-[a-f0-9]{12,32}$/.test(id);
 const request=createEpochRequestQueue({getEpoch:()=>epoch,isAuthenticated:()=>authenticated,
  prepare:()=>session.restore(),execute:createCloudCaseRequest()});
@@ -137,6 +141,7 @@ function clearDetail(){
  for(const id of ['detail-status','detail-summary','detail-capacity','detail-price','detail-draft'])el(id).textContent='';
  el('copy-approved').hidden=true;el('copy-approved').textContent=COPY_LABEL;approvedText=null;
  el('send-approved').hidden=true;el('send-approved').disabled=false;el('send-approved').textContent=SEND_LABEL;approvedCase=null;
+ el('price-panel').hidden=true;el('price-result').textContent='';el('price-insert').disabled=true;priceCase=null;priceQuote=null;
  el('detail-link').href='../cloud-approval.html';
 }
 function clearData(message='A listához jelentkezzen be.'){
@@ -236,6 +241,8 @@ async function openTestMailboxCase(caseId,turn,status){
  el('detail-price').textContent=record.decisions.length?'Döntések: '+record.decisions.map(d=>(tmDecisionLabel[d.decision]||'ismeretlen')+(d.at?' ('+d.at+')':'')+(d.reason?' – '+d.reason:'')).join('; '):'';
  tmCase={caseId,revision:record.revision,hash:record.draft.hash,text:record.draft.text};
  // Only an internally approved draft can be copied; an approved draft cannot change, so it is the reviewed text.
+ priceCase={caseId,values,language:/^(hu|de|en|si)$/.test(values.language||'')?values.language:'hu',editable:record.canEditDraft===true};el('price-panel').hidden=false;
+ if(CABIN_NAMES[values.unit])el('price-cabin').value=values.unit;
  if(record.approval==='approved_internal'){approvedText=record.draft.text;el('copy-approved').hidden=false;approvedCase={caseId,revision:record.revision};el('send-approved').hidden=false;}
  if(record.canEditDraft===true){el('draft-editor').value=record.draft.text;el('draft-editor').disabled=false;}
  if(record.canDecide===true&&record.approval==='pending'){
@@ -257,6 +264,31 @@ el('copy-approved').addEventListener('click',async()=>{
   button.textContent='Nem sikerült – a szöveg kijelölve, használja a Másolás funkciót';
   el('detail-status').textContent='A másolás nem sikerült. Jelölje ki a választervezet szövegét kézzel.';
  }
+});
+el('price-calc').addEventListener('click',async()=>{
+ const target=priceCase;if(!authenticated||!target)return;
+ const v=target.values,ages=String(v.child_ages||'').split(',').filter(Boolean).map(Number);
+ const input={arrival:v.arrival,departure:v.departure,cabin:el('price-cabin').value,adults:Number(v.adults),children:Number(v.children||0)===ages.length?ages:[]};
+ el('price-insert').disabled=true;priceQuote=null;
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(input.arrival||'')||!/^\d{4}-\d{2}-\d{2}$/.test(input.departure||'')||!Number.isInteger(input.adults)||input.adults<1||Number(v.children||0)!==ages.length){
+  el('price-result').textContent='Az árhoz pontos érkezés, távozás, felnőttszám és minden gyermek életkora kell az ügyadatokban.';return;}
+ el('price-result').textContent='Ár számítása…';
+ try{
+  const response=await fetch('/api/price-reference',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input),cache:'no-store',credentials:'same-origin'});
+  const quote=await response.json();if(priceCase!==target)return;
+  if(!response.ok||quote?.status!=='public_reference'||!Number.isSafeInteger(quote.total)||quote.cabin!==input.cabin)throw Error(typeof quote?.error==='string'?quote.error:'');
+  priceQuote=quote;
+  el('price-result').textContent=`Tájékoztató ár (${CABIN_NAMES[quote.cabin].hu}, ${quote.arrival} – ${quote.departure}): ${huf(quote.total)} Ft (szállás ${huf(quote.accommodation)} Ft + IFA ${huf(quote.tourismTax)} Ft)`+
+   (quote.eurConversion?.status==='available'?`, kb. ${quote.eurConversion.totalEur.toFixed(2)} EUR (MNB ${quote.eurConversion.rateDate})`:'')+'. Szabad hely: nem ellenőrzött.';
+  el('price-insert').disabled=!target.editable;
+ }catch(error){if(priceCase===target)el('price-result').textContent='Az ár nem számítható: '+(error.message||'ismeretlen hiba')+' Kérjük, kézzel ellenőrizze.';}
+});
+el('price-insert').addEventListener('click',()=>{
+ const target=priceCase,quote=priceQuote,editor=el('draft-editor');if(!target||!quote||editor.disabled)return;
+ const sentence=priceSentence(quote,target.language),generic=PRICE_LINE[target.language]||PRICE_LINE.hu;
+ editor.value=editor.value.includes(generic)?editor.value.replace(generic,sentence):editor.value.trimEnd()+'\n\n'+sentence;
+ editor.dispatchEvent?.(new Event('input'));
+ el('price-result').textContent+=' Beillesztve a szerkesztőbe – mentéshez: „Módosítás mentése”.';
 });
 // Sends the stored, approved reply through the server (test pair only). The browser sends no text.
 const sendErrors={FORBIDDEN:'A küldés nincs bekapcsolva, vagy nincs jóváhagyói jog.',NOT_APPROVED:'Csak jóváhagyott válasz küldhető.',
