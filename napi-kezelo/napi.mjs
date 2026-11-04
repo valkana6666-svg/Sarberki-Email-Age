@@ -94,13 +94,15 @@ function resetActions(){
 function updateCounts(){
  for(const section of Object.keys(sections))el('count-'+section).textContent=listLoaded?rows.filter(row=>row.category===section).length+' ügy':'Nincs betöltve';
 }
+const ROW_STATUS=Object.freeze({approved_internal:'Jóváhagyva – küldhető',returned_for_edit:'Javításra visszaküldve',rejected:'Elutasítva'});
 function renderRows(){
  updateCounts();el('cases-title').textContent=sections[selectedSection][0]+' – tárolt tesztügyek';
- const visible=rows.filter(row=>row.category===selectedSection),fragment=document.createDocumentFragment();
+ // Approved test-mail replies (ready to send) first, so the operator does not have to search for them.
+ const visible=rows.filter(row=>row.category===selectedSection).sort((a,b)=>(b.approval==='approved_internal')-(a.approval==='approved_internal')),fragment=document.createDocumentFragment();
  visible.forEach((row,index)=>{
   const li=document.createElement('li'),label=document.createElement('span'),button=document.createElement('button');
   // Mailbox cases keep the identity shown by the save receipt even when the list order changes.
-  label.textContent=row.kind==='test-mailbox'?'Tesztlevél-ügy '+row.caseId:'Tesztügy '+(rows.indexOf(row)+1);button.type='button';button.textContent='Megnyitás';
+  label.textContent=row.kind==='test-mailbox'?'Tesztlevél-ügy '+row.caseId+(ROW_STATUS[row.approval]?' · '+ROW_STATUS[row.approval]:''):'Tesztügy '+(rows.indexOf(row)+1);button.type='button';button.textContent='Megnyitás';
   button.setAttribute('aria-label',label.textContent+' megnyitása');
   button.addEventListener('click',()=>openCase(row.caseId));li.append(label,button);fragment.append(li);
  });

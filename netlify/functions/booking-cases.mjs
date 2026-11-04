@@ -285,7 +285,9 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      result=records.filter(record=>{try{assertReviewAccess(record);return true;}catch(error){if(error.code==='FORBIDDEN')return false;throw error;}}).slice(0,100).map(dailyCaseSummary);
      // Test-mailbox cases appear only while the owner switch is on; pending awaits an independent decision.
      if(testMailboxIngestEnabled(env,cloudApproval))result=result.concat(records.filter(isTestMailboxCase).map(record=>({tenantId:record.tenantId,caseId:record.caseId,revision:record.revision,
-      category:record.data.state?.approval==='pending'?'approval':'progress',kind:'test-mailbox'}))).slice(0,100);
+      category:record.data.state?.approval==='pending'?'approval':'progress',kind:'test-mailbox',
+      // State label only (metadata, no guest content): lets the operator find an approved reply to send.
+      approval:['pending','approved_internal','returned_for_edit','rejected'].includes(record.data.state?.approval)?record.data.state.approval:null}))).slice(0,100);
     }else if(input.action==='service-approval-state'){
      if(!isIsolatedReviewCaseId(input.caseId))return cookieResponse(403,{error:'FORBIDDEN'});
      result=await serviceFlow().state(input.caseId,Number(input.expectedRevision));

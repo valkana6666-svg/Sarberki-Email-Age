@@ -844,7 +844,10 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   // Preserve a meaningful full salutation when the final token is a generic label.
   // A family signature ("Familie Müller", "Nagy család", "Smith family") keeps the whole name.
   const familySigned=nameParts.length>1&&nameParts.some(part=>/^(?:család|csalad|familie|family|družina|druzina)$/iu.test(part));
-  const first=nameParts.length?(familySigned||lang==='hu'&&/^(?:vendég(?:ünk)?|érdeklődő)$/iu.test(lastNamePart)?nameParts.join(' '):(lang==='hu'?lastNamePart:nameParts[0])):null;
+  // Hungarian name order (family name first) only for a Hungarian guest: the Hungarian operator copy of an
+  // English/German/Slovene letter keeps the given name ("John Smith" -> "Kedves John!").
+  const hungarianOrder=lang==='hu'&&!['en','de','si'].includes(languageFromText(original,{conservative:true}));
+  const first=nameParts.length?(familySigned||lang==='hu'&&/^(?:vendég(?:ünk)?|érdeklődő)$/iu.test(lastNamePart)?nameParts.join(' '):(hungarianOrder?lastNamePart:nameParts[0])):null;
   const greetings={hu:first?`Kedves ${first}!`:'Kedves Vendégünk!',de:first?`Guten Tag, ${first}!`:'Guten Tag!',en:first?`Dear ${first},`:'Dear Guest,',si:first?`Pozdravljeni, ${first}!`:'Pozdravljeni!'};
   const intros={hu:'Köszönjük érdeklődését.',de:'Vielen Dank für Ihre Anfrage.',en:'Thank you for your enquiry.',si:'Hvala za vaše povpraševanje.'};
   const closings={hu:'Üdvözlettel:',de:'Mit freundlichen Grüßen',en:'Kind regards,',si:'Lep pozdrav'};

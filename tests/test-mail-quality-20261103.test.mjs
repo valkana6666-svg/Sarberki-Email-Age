@@ -49,3 +49,10 @@ test('a family signature keeps the full family name in the greeting',()=>{
  assert.match(hu.text,/^Kedves Nagy család!/u);
  assert.match(draft(1,'Jó napot! 2027. május 14-től 16-ig szeretnénk egy faházat 2 felnőtt részére.\nKöszönettel: Kiss Anna').text,/^Kedves Anna!/u);
 });
+
+test('the Hungarian operator copy of a foreign letter greets with the given name, not the family name',()=>{
+ const en=draft(5,'Hello, we are 5 adults and would like to stay from 20 to 23 September 2027. Do you have a cabin for all of us?\nBest regards, John Smith');
+ assert.match(en.text,/^Dear John,/u);assert.match(en.operatorReviewText,/^Kedves John!/u);
+ const hu=draft(1,'Jó napot! 2027. május 14-től 16-ig szeretnénk egy faházat 2 felnőtt részére.\nKöszönettel: Kiss Anna');
+ assert.match(hu.operatorReviewText,/^Kedves Anna!/u,'Hungarian order unchanged for a Hungarian guest');
+});
