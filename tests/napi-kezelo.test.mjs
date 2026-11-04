@@ -454,7 +454,7 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
    assert.equal(e['detail-facts'].textContent.split('Létszám: ')[1].split('\n')[0],expected);
   }
   guestValues={adults:'4',children:'0'};await open();
-  assert.equal(e['detail-draft'].textContent,'Kitalált első tervezet.');assert.match(e['detail-capacity'].textContent,/kapacitás és ár nem igazolt/);
+  assert.equal(e['detail-draft'].textContent,'Kitalált első tervezet.');assert.match(e['detail-capacity'].textContent,/szabad helyet a rendszer nem ellenőrzi.*kézi Previo-ellenőrzés/);
   assert.match(e['detail-status'].textContent,/Független jóváhagyásra vár/);
   // Writer: may edit, may not decide.
   assert.equal(e['draft-editor'].disabled,false);assert.equal(e['approve-confirm'].disabled,true);assert.equal(e['reject-draft'].disabled,true);

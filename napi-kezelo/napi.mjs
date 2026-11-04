@@ -239,7 +239,7 @@ async function openTestMailboxCase(caseId,turn,status){
  el('detail-status').textContent=status||tmStatus[record.approval];
  el('detail-draft').textContent=record.draft.text;
  el('detail-summary').textContent=record.draft.operatorReviewText||'Magyar ellenőrző összefoglaló még nincs.';
- el('detail-capacity').textContent='Tesztlevél-ügy (test-mailbox-v1): kapacitás és ár nem igazolt; nincs levélküldés vagy foglalás.';
+ el('detail-capacity').textContent='Tesztlevél-ügy (test-mailbox-v1): a szabad helyet a rendszer nem ellenőrzi (Previo-olvasás nincs bekötve) – ár csak kézi Previo-ellenőrzés után illeszthető be; foglalás nincs.';
  el('detail-price').textContent=record.decisions.length?'Döntések: '+record.decisions.map(d=>(tmDecisionLabel[d.decision]||'ismeretlen')+(d.at?' ('+d.at+')':'')+(d.reason?' – '+d.reason:'')).join('; '):'';
  tmCase={caseId,revision:record.revision,hash:record.draft.hash,text:record.draft.text};
  // Only an internally approved draft can be copied; an approved draft cannot change, so it is the reviewed text.
@@ -252,7 +252,7 @@ async function openTestMailboxCase(caseId,turn,status){
   for(const id of ['return-draft','reject-draft','decision-reason'])el(id).disabled=false;
  }
 }
-// Manual sending only: the operator pastes the approved text into Gmail. Nothing is sent from here.
+// Copy for a manual Gmail reply; the separate "Válasz küldése" button sends the approved text server-side (test pair only).
 // Feedback is shown on the button itself (the status line is far above on a phone).
 el('copy-approved').addEventListener('click',async()=>{
  const text=approvedText,button=el('copy-approved');if(!authenticated||typeof text!=='string')return;
