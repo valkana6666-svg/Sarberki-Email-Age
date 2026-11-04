@@ -29,7 +29,7 @@ test('Hungarian cancellation without listed keywords is answered in Hungarian, n
 
 test('five adults asking for one cabin: whole houses only to the guest, split only as operator note',()=>{
  const plan=draft(5,'Hello, we are 5 adults and would like to stay from 20 to 23 September 2027. Do you have a cabin for all of us? What would the price be?\nBest regards, John Smith');
- assert.match(plan.text,/Deluxe, Family cabin, VIP\./u);
+ assert.match(plan.text,/Deluxe, Family cabin or VIP\./u);
  assert.doesNotMatch(plan.text,/A\+C|B\+C|split|Kezelői/iu);
  assert.match(plan.operatorReviewText,/Kezelői megjegyzés \(a vendég nem látja\).*A\+C vagy B\+C.*csak igazolt foglalhatatlanság után/u);
  // Up to four guests: no split note.
@@ -38,7 +38,7 @@ test('five adults asking for one cabin: whole houses only to the guest, split on
 
 test('a 12-person group is told one house is not enough and asked to accept several, never asked to pick an offered type',()=>{
  const plan=draft(7,'Jó napot! Egy 12 fős baráti társaság vagyunk, 2027. október 8. és 10. között jönnénk. Hogyan tudnánk elférni, és mennyi lenne az ár?\nÜdv: Szabó Márk');
- assert.match(plan.text,/12 fő egy házban nem fér el; több ház együttes foglalásával/u);
+ assert.match(plan.text,/12 fő egy házban nem fér el, de több ház együttes foglalásával/u);
  assert.doesNotMatch(plan.text,/jöhetnek szóba: több ház|melyik felajánlott faháztípust/u);
 });
 

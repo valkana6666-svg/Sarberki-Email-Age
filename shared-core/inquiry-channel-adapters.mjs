@@ -1,6 +1,6 @@
 import {evaluateCentralInquiry} from './central-inquiry-decision.mjs';
 import {buildCentralReply} from '../central-reply.mjs';
-import {replyQuestions,stayCancellationFromText} from '../sarberki-core.mjs';
+import {replyQuestions,stayCancellationFromText,replySummary} from '../sarberki-core.mjs';
 const words={
  hu:{pending:'A kapacitás ellenőrzése még nem igazolt.',available:'A teljes kért időszakra megfelelő típusszintű kapacitás igazolt. A végleges ajánlat emberi jóváhagyásra vár.',unavailable:'A kért elhelyezéshez nincs elegendő igazolt szabad kapacitás.',review:'A megadott adatok pontosítása vagy emberi ellenőrzése szükséges.',date:'Kérjük, erősítse meg az érkezés és távozás évét.',units:'Hány szállásegységet szeretnének?',price:'Az ellenőrzött ár belső jóváhagyásra vár; ez még nem végleges ajánlat.'},
  de:{pending:'Die Verfügbarkeit ist noch nicht verifiziert.',available:'Passende Kapazität auf Typebene wurde für den gesamten Aufenthalt geprüft. Das endgültige Angebot benötigt eine manuelle Freigabe.',unavailable:'Für die gewünschte Unterkunft reicht die bestätigte freie Kapazität nicht aus.',review:'Die Angaben müssen präzisiert oder manuell geprüft werden.',date:'Bitte bestätigen Sie das Jahr der An- und Abreise.',units:'Wie viele Unterkunftseinheiten wünschen Sie?',price:'Der geprüfte Preis benötigt eine interne Freigabe und ist noch kein endgültiges Angebot.'},
@@ -45,7 +45,7 @@ function renderEmailDecision(decision,original,language){
  }
  const withQuestions=placeAdditions(draft,additions,language);
  const full=parts.status&&!draft.includes(parts.status)?placeStatus(withQuestions,parts.status,language):withQuestions;
- return shortMissingDetailsReply(full,language,decision)||full;
+ return shortMissingDetailsReply(full,language,decision)||shortDatedReply(full,language,decision)||full;
 }
 // Owner decision 2026-11-04: when the dates are still missing and the letter holds nothing but the
 // standard placeholders and questions, send a short, direct request for the missing details instead
@@ -135,4 +135,57 @@ function splitAlternativeNote(decision){
 export function buildEmailInquiryDraft(options={}){
  const decision=evaluateCentralInquiry(options),original=options.message||decision.facts.originalText||'';
  return {decision,text:renderEmailDecision(decision,original,decision.facts.language),operatorReviewText:renderEmailDecision(decision,original,'hu')+splitAlternativeNote(decision),operatorReviewLanguage:'hu',channel:'email',requiresApproval:true};
+}
+
+// Owner decision 2026-11-04 ("röviden, tömören"): with known dates, a standard enquiry becomes one
+// short paragraph (dates and party, suitable types or the several-cabin note) and a bulleted list of
+// what is still needed. Only recognised standard lines are rewritten; anything else keeps the full letter.
+const DATED={
+ hu:{options:o=>`Önöknek ezek a házak jöhetnek szóba: ${o}.`,or:' vagy ',large:n=>`${n} fő egy házban nem fér el, de több ház együttes foglalásával el tudjuk helyezni Önöket.`,
+  ask:'Kérjük, írja meg:',choice:'melyik háztípust választja',multi:'megfelel-e a több házas elhelyezés',outroPrice:'Ezután ellenőrizzük a szabad helyet, és küldjük az ajánlatot árral.',
+  optionsRe:/^A megadott létszám alapján ezek az elhelyezések jöhetnek szóba: (.+)\. A ténylegesen szabad lehetőségeket a kért időszakra ellenőrizzük\.$/u,largeRe:/^(\d+) fő egy házban nem fér el; /u},
+ de:{options:o=>`Für Sie kommen diese Häuser infrage: ${o}.`,or:' oder ',large:n=>`${n} Personen passen nicht in ein Haus, wir können Sie aber in mehreren Häusern zusammen unterbringen.`,
+  ask:'Bitte teilen Sie uns mit:',choice:'welchen Haustyp Sie wählen',multi:'ob Ihnen die Unterbringung in mehreren Häusern passt',outroPrice:'Danach prüfen wir die Verfügbarkeit und senden Ihnen das Angebot mit Preis.',
+  optionsRe:/^Für die angegebene Personenzahl kommen folgende Unterkünfte infrage: (.+)\. Die tatsächlich freien Möglichkeiten prüfen wir für den gewünschten Zeitraum\.$/u,largeRe:/^(\d+) Personen passen nicht in ein Haus; /u},
+ en:{options:o=>`These cabins can suit you: ${o}.`,or:' or ',large:n=>`${n} guests cannot stay in one cabin, but we can accommodate you in several cabins booked together.`,
+  ask:'Please let us know:',choice:'which cabin type you choose',multi:'whether accommodation in several cabins suits you',outroPrice:'We will then check availability and send you our offer with the price.',
+  optionsRe:/^For the stated party size, these accommodation options can work: (.+)\. We will check which of them are actually available for the requested dates\.$/u,largeRe:/^(\d+) guests cannot stay in a single cabin; /u},
+ si:{options:o=>`Za vas pridejo v poštev te hiške: ${o}.`,or:' ali ',large:n=>`${n} oseb ne more bivati v eni hiški, lahko pa vas namestimo v več hiškah skupaj.`,
+  ask:'Prosimo, sporočite nam:',choice:'katero vrsto hiške izberete',multi:'ali vam ustreza namestitev v več hiškah',outroPrice:'Nato preverimo razpoložljivost in vam pošljemo ponudbo s ceno.',
+  optionsRe:/^Za navedeno število gostov pridejo v poštev naslednje možnosti: (.+)\. Za izbrani termin preverimo, katere so dejansko proste\.$/u,largeRe:/^(\d+) oseb ne more bivati v eni hiški; /u}
+};
+function shortDatedReply(full,language,decision){
+ const d=DATED[language],t=SHORT[language];
+ const f=decision.facts;
+ if(!d||!f.dates?.arrival||!f.dates?.departure||decision.missing.includes('dates')||decision.missing.includes('dates_confirmation'))return null;
+ const summary=replySummary(language,{arrival:f.dates.arrival,departure:f.dates.departure,guests:f.guests,adults:f.adults,children:f.children,childAges:f.child_ages||[]});
+ if(!summary)return null;
+ const q=flag=>replyQuestions(language,flag)[0];
+ const keyOf=new Map([[q({needAdults:true}),'people'],[q({needChildStatus:true}),'people'],[q({needChildAge:true}),'ages'],
+  [q({needPhone:true}),'phone'],[q({needCabin:true}),'cabin'],[q({needCabin:true,guests:2}),'cabinTwo']]);
+ const lines=full.split('\n'),closingAt=lines.indexOf(CLOSING[language]);
+ if(closingAt<2)return null;
+ const allowed=new Set([...SECTION[language],...PLACEHOLDER[language],words[language].pending,replyIntro(language)]);
+ let options=null,large=null,sawSummary=false;const wanted=new Set();
+ for(const line of lines.slice(1,closingAt).map(l=>l.trim()).filter(Boolean)){
+  if(allowed.has(line))continue;
+  if(line===summary){sawSummary=true;continue;}
+  const o=d.optionsRe.exec(line);if(o){options=o[1];continue;}
+  const g=d.largeRe.exec(line);if(g){large=Number(g[1]);continue;}
+  if(OFFERED_CHOICE.some(text=>line.includes(text))){wanted.add('choice');continue;}
+  const key=keyOf.get(line);if(!key)return null;
+  wanted.add(key);
+ }
+ if(!sawSummary||options&&large)return null;
+ if(large)wanted.add('multi');
+ if(wanted.has('people'))wanted.delete('ages');
+ if(wanted.has('cabinTwo'))wanted.delete('cabin');
+ if(wanted.has('choice')){wanted.delete('cabin');wanted.delete('cabinTwo');}
+ const label=k=>({choice:d.choice,multi:d.multi})[k]||t[k];
+ const items=['multi','choice','cabin','cabinTwo','people','ages','phone'].filter(k=>wanted.has(k)).map(label);
+ if(!items.length)return null;
+ const optionText=options?options.replace(/, (?=[^,]*$)/u,d.or):null;
+ const head=[replyIntro(language),summary,optionText?d.options(optionText):'',large?d.large(large):''].filter(Boolean).join(' ');
+ const list=items.map((item,i)=>'– '+item+(i===items.length-1?'.':','));
+ return [lines[0],'',head,'',d.ask,...list,'',options?d.outroPrice:t.outro,'',...lines.slice(closingAt)].join('\n');
 }
