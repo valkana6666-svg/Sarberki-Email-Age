@@ -4,6 +4,7 @@ const messages=Object.freeze({
  AUTH_REQUIRED:'A fordításhoz érvényes kezelői belépés szükséges. Jelentkezz be újra.',
  FORBIDDEN:'A fordítás indításához Writer-jogosultság szükséges; a szerver elutasította a hozzáférést.',
  INVALID_INPUT:'A fordítás jelenleg csak a három engedélyezett zárt tesztlevélhez kérhető. Az eredeti szöveg változatlan.',
+ TRANSLATION_NUMBERS_DIFFER:'A gépi fordításban egy szám vagy összeg eltért az eredetitől, ezért nem jeleníthető meg. Az eredeti szöveg változatlan.',
  TRANSLATION_UNVERIFIED:'A fordítás válasza vagy számai nem ellenőrizhetők, ezért nem jeleníthető meg. Az eredeti szöveg változatlan.',
  TRANSLATION_KEY_REJECTED:'A fordítószolgáltató elutasította a szerveren beállított API-kulcsot. A kulcsértéket ne másold a chatbe.',
  TRANSLATION_ACCESS_DENIED:'A fordítószolgáltató megtagadta az API-hozzáférést. A szolgáltatói projekt jogosultságait ellenőrizni kell.',

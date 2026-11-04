@@ -55,5 +55,5 @@ async function translateIncomingToHungarian(input,{env,fetchImpl}){
   !Array.isArray(message.content)||message.content.length<1||message.content.some(part=>part?.type!=='output_text'||typeof part.text!=='string'||!part.text.trim()))throw Error('TRANSLATION_UNVERIFIED');
  try{return {verified:true,text:checkTranslation({source:input.text,translated:message.content.map(part=>part.text).join('\n'),
   sourceLanguage:input.sourceLanguage,targetLanguage:input.targetLanguage})};}
- catch{throw Error('TRANSLATION_UNVERIFIED');}
+ catch(error){throw Error(error?.message==='PROTECTED_VALUES_DIFFER'?'TRANSLATION_NUMBERS_DIFFER':'TRANSLATION_UNVERIFIED');}
 }
