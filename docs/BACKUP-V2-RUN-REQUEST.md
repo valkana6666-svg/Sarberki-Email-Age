@@ -77,3 +77,10 @@ Request ID: drive-durable-token-proof-20261103.
 Provider: drive (vars.SARBERKI_V2_STORAGE_PROVIDER), same workflow, folder 19WOxZQK… (app-created, owner-only).
 Purpose: prove the new token end to end (preflight, export, isolated restore, Drive upload, exact-ID readback, restore from the Drive bytes). Token durability beyond 7 days is only proven by a later run after 2026-11-10.
 No production, Netlify, booking, Previo or source DB change.
+
+## Owner-authorized TEST approval-rule pre-install backup (not daily automation)
+Requested at: 2026-11-04T05:01:54.271Z.
+Source project: mojnqizbcaczstguikpv (sarberki-test).
+Source code: eb5687ce46806e492b59522b24e728b76d5fe802.
+Purpose: fresh verified encrypted Drive backup and isolated restore before owner-authorized deployment/test-mailbox/install.sql and reader membership restoration. No source changes until backup succeeds; no Netlify deployment.
+Provider: drive. Request marker: [backup-v2-run].
