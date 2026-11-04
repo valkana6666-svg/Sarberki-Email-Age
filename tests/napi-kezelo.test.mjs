@@ -456,7 +456,7 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   }
   guestValues={adults:'4',children:'0'};await open();
   assert.equal(e['detail-draft'].textContent,'Kitalált első tervezet.');assert.match(e['detail-capacity'].textContent,/szabad helyet a rendszer nem ellenőrzi.*kézi Previo-ellenőrzés/);
-  assert.match(e['detail-status'].textContent,/Független jóváhagyásra vár/);
+  assert.match(e['detail-status'].textContent,/^Jóváhagyásra vár\./);
   // Writer: may edit, may not decide.
   assert.equal(e['draft-editor'].disabled,false);assert.equal(e['approve-confirm'].disabled,true);assert.equal(e['reject-draft'].disabled,true);
   assert.equal(e['save-draft'].disabled,true);

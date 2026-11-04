@@ -44,8 +44,61 @@ function renderEmailDecision(decision,original,language){
   additions=additions.filter(line=>!generic.has(line));
  }
  const withQuestions=placeAdditions(draft,additions,language);
- return parts.status&&!draft.includes(parts.status)?placeStatus(withQuestions,parts.status,language):withQuestions;
+ const full=parts.status&&!draft.includes(parts.status)?placeStatus(withQuestions,parts.status,language):withQuestions;
+ return shortMissingDetailsReply(full,language,decision)||full;
 }
+// Owner decision 2026-11-04: when the dates are still missing and the letter holds nothing but the
+// standard placeholders and questions, send a short, direct request for the missing details instead
+// of the full sectioned letter. Any other content (pets, fishing, terms, extras, capacity notes,
+// unknown questions) keeps the full letter, so no answer is ever dropped.
+const SHORT={
+ hu:{intro:'Köszönjük érdeklődését. Hogy pontos ajánlatot és árat tudjunk küldeni, kérjük, írja meg:',outro:'Ezek alapján ellenőrizzük a szabad helyet, és küldjük az ajánlatot.',
+  dates:'a pontos érkezési és távozási dátumot',people:'hány felnőtt és hány gyermek érkezik (gyermeknél az életkort is)',ages:'a gyermek(ek) életkorát',
+  cabin:'melyik háztípust választaná: VIP, Családi, Deluxe vagy Osztott',cabinTwo:'melyik háztípust választaná: VIP, Családi, Deluxe, Osztott vagy Különálló 2 fős',phone:'egy telefonszámot, amelyen elérhetjük'},
+ de:{intro:'Vielen Dank für Ihre Anfrage. Damit wir Ihnen ein genaues Angebot mit Preis senden können, teilen Sie uns bitte mit:',outro:'Auf dieser Grundlage prüfen wir die freien Plätze und senden Ihnen das Angebot.',
+  dates:'das genaue An- und Abreisedatum',people:'wie viele Erwachsene und Kinder anreisen (bei Kindern bitte das Alter)',ages:'das Alter der Kinder',
+  cabin:'welchen Haustyp Sie wählen: VIP, Familienhaus, Deluxe oder geteiltes Haus',cabinTwo:'welchen Haustyp Sie wählen: VIP, Familienhaus, Deluxe, geteiltes Haus oder freistehende Hütte für 2 Personen',phone:'eine Telefonnummer, unter der wir Sie erreichen können'},
+ en:{intro:'Thank you for your enquiry. So that we can send you an exact offer and price, please let us know:',outro:'We will then check availability and send you our offer.',
+  dates:'your exact arrival and departure dates',people:'how many adults and children will be staying (with the children’s ages)',ages:'the children’s ages',
+  cabin:'which cabin type you would like: VIP, Family cabin, Deluxe or Split cabin',cabinTwo:'which cabin type you would like: VIP, Family cabin, Deluxe, Split cabin or the standalone 2-person cabin',phone:'a phone number where we can reach you'},
+ si:{intro:'Hvala za vaše povpraševanje. Da vam lahko pošljemo natančno ponudbo in ceno, nam prosimo sporočite:',outro:'Nato preverimo razpoložljivost in vam pošljemo ponudbo.',
+  dates:'točen datum prihoda in odhoda',people:'koliko odraslih in otrok bo prišlo (pri otrocih tudi starost)',ages:'starost otrok',
+  cabin:'kateri tip hiške želite: VIP, Družinska hiška, Deluxe ali Deljena hiška',cabinTwo:'kateri tip hiške želite: VIP, Družinska hiška, Deluxe, Deljena hiška ali samostojna hiška za 2 osebi',phone:'telefonsko številko, na kateri vas lahko dosežemo'}
+};
+const SECTION={hu:['Szállás','Ár és díjak','Az ajánlathoz még szükségünk van','Foglalás állapota'],de:['Unterkunft','Preis und Gebühren','Noch benötigte Angaben','Reservierungsstatus'],
+ en:['Accommodation','Price and charges','Details still needed','Booking status'],si:['Nastanitev','Cena in doplačila','Podatki za dopolnitev','Status rezervacije']};
+const PLACEHOLDER={
+ hu:['A kért faház elérhetőségét külön visszaigazoljuk.','Az elérhetőséget külön ellenőrizzük és visszaigazoljuk.','A teljes árat a ténylegesen szabad lehetőség alapján adjuk meg.','Ez az érdeklődés még nem visszaigazolt foglalás. A szükséges adatok és a választott faház egyeztetése, valamint az aktuális elérhetőség ellenőrzése után tudjuk a foglalást visszaigazolni.'],
+ de:['Wir bestätigen die Verfügbarkeit des gewünschten Hauses gesondert.','Die Verfügbarkeit prüfen und bestätigen wir gesondert.','Den Gesamtpreis nennen wir anhand der tatsächlich verfügbaren Möglichkeit.','Diese Anfrage ist noch keine bestätigte Buchung. Erst nach Klärung der erforderlichen Angaben und des gewählten Hauses sowie erneuter Verfügbarkeitsprüfung können wir die Buchung bestätigen.'],
+ en:['We will confirm availability of your requested cabin separately.','We will check and confirm availability separately.','We will quote the total price for the option that is actually available.','This enquiry is not a confirmed booking. We can confirm a booking only after clarifying the required details and selected cabin and rechecking availability.'],
+ si:['Razpoložljivost želene hiške bomo potrdili posebej.','Razpoložljivost bomo preverili in potrdili posebej.','Skupno ceno navedemo za možnost, ki je dejansko na voljo.','To povpraševanje še ni potrjena rezervacija. Rezervacijo lahko potrdimo šele po uskladitvi potrebnih podatkov in izbrane hiške ter ponovnem preverjanju razpoložljivosti.']
+};
+function shortMissingDetailsReply(full,language,decision){
+ const lang=SHORT[language]?language:null;
+ if(!lang||!decision.missing.includes('dates'))return null;
+ const t=SHORT[lang],w=words[lang];
+ const q=flag=>replyQuestions(lang,flag)[0];
+ const keyOf=new Map([[q({needDates:true}),'dates'],[q({needAdults:true}),'people'],[q({needChildStatus:true}),'people'],[q({needChildAge:true}),'ages'],
+  [q({needPhone:true}),'phone'],[q({needCabin:true}),'cabin'],[q({needCabin:true,guests:2}),'cabinTwo']]);
+ const lines=full.split('\n'),closingAt=lines.indexOf(CLOSING[lang]);
+ if(closingAt<2)return null;
+ const greeting=lines[0],closing=lines.slice(closingAt);
+ const allowed=new Set([...SECTION[lang],...PLACEHOLDER[lang],w.pending,w.review]);
+ const wanted=new Set();
+ for(const line of lines.slice(1,closingAt).map(l=>l.trim()).filter(Boolean)){
+  if(line===replyIntro(lang)||allowed.has(line))continue;
+  const key=keyOf.get(line);
+  if(!key)return null;
+  wanted.add(key);
+ }
+ if(!wanted.has('dates'))return null;
+ if(wanted.has('people'))wanted.delete('ages');
+ if(wanted.has('cabinTwo'))wanted.delete('cabin');
+ const items=['dates','people','ages','cabin','cabinTwo','phone'].filter(k=>wanted.has(k)).map(k=>t[k]);
+ const list=items.map((item,i)=>'– '+item+(i===items.length-1?'.':','));
+ return [greeting,'',t.intro,...list,'',t.outro,'',...closing].join('\n');
+}
+const replyIntro=lang=>({hu:'Köszönjük érdeklődését.',de:'Vielen Dank für Ihre Anfrage.',en:'Thank you for your enquiry.',si:'Hvala za vaše povpraševanje.'})[lang];
 const OFFERED_CHOICE=['melyik felajánlott faháztípust választja','welchen der angebotenen Haustypen','which of the offered cabin types','katero od ponujenih vrst hišk'];
 const MISSING_TITLE={hu:'Az ajánlathoz még szükségünk van',de:'Noch benötigte Angaben',en:'Details still needed',si:'Podatki za dopolnitev'};
 const STATUS_TITLE={hu:'Foglalás állapota',de:'Reservierungsstatus',en:'Booking status',si:'Status rezervacije'};

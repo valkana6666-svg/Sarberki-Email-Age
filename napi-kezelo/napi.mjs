@@ -197,7 +197,7 @@ el('logout').addEventListener('click',async()=>{
  try{await session.logout();if(turn===epoch&&!authenticated)el('session-status').textContent='Kijelentkezve.';}
  catch{if(turn===epoch&&!authenticated)el('session-status').textContent='A kijelentkezés nem ellenőrizhető. Próbálja újra.';}
 });
-const tmStatus=Object.freeze({pending:'Független jóváhagyásra vár.',returned_for_edit:'Visszaküldve javításra. Writer új tervezetet menthet.',
+const tmStatus=Object.freeze({pending:'Jóváhagyásra vár.',returned_for_edit:'Visszaküldve javításra. Writer új tervezetet menthet.',
  rejected:'Elutasítva; az ügy nyitva marad, Writer új tervezettel újranyithatja.',approved_internal:'Belső jóváhagyás mentve (test-mailbox-v1). Nincs levélküldés vagy foglalás.'});
 const tmDecisionLabel=Object.freeze({approve:'jóváhagyva',return:'visszaküldve javításra',reject:'elutasítva'});
 // Display known adult/child counts when extraction did not supply a separate total.

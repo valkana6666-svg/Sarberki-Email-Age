@@ -185,7 +185,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
       if(source!==previewSource||!active(turn))return done('A kiválasztott levél vagy a belépés közben megváltozott; a levél nem lett mentve. Nyomja meg újra.');
       el('email-save-status').textContent='Ügy mentése a szerveren…';
       try{const saved=await onSaveCase({messageId:source.messageId,token:result.access_token});
-       if(source===previewSource)el('email-save-status').textContent='Ügyként mentve ('+saved.caseId+'). Független jóváhagyásra vár; nincs küldés vagy foglalás.';}
+       if(source===previewSource)el('email-save-status').textContent='Ügyként mentve ('+saved.caseId+'). Jóváhagyásra vár; nincs küldés vagy foglalás.';}
       catch(error){done(saveErrors[error?.message]||'A mentés nem igazolt. Próbálja újra; nincs automatikus ismétlés.');}
      };
      if(turn===generation&&documentImpl.visibilityState==='hidden'){queuedSave=run;return;}
