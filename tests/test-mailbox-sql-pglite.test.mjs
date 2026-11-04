@@ -122,7 +122,14 @@ test('test-mailbox SQL: attested create, independent decisions, return/reject/re
   });
   await t.test('4/6. author cannot approve own draft; stale revision, wrong hash, foreign tenant and repeated decisions fail',async()=>{
    const e=fixture(4);await create('both',e);const h=await latestHash(e.caseId);
-   await assert.rejects(decide('both',e.caseId,1,h,'approve'),denied('42501'),'author with approve permission');
+   // Owner decision 2026-11-04: the operator who saved an unedited machine draft may approve it alone.
+   const m=fixture(41);await create('both',m);assert.equal((await row(m.caseId)).data.drafts[0].machineDraft,true);
+   assert.equal((await decide('both',m.caseId,1,await latestHash(m.caseId),'approve')).revision,2);
+   // A human-written draft still needs an approver other than its author.
+   const n=fixture(42);await create('both',n);await redraft('both',n.caseId,1,{text:'Kézzel átírt kitalált tervezet.'});
+   assert.equal((await row(n.caseId)).data.drafts.at(-1).machineDraft,undefined,'a redraft is never a machine draft');
+   await assert.rejects(decide('both',n.caseId,2,await latestHash(n.caseId),'approve'),denied('42501'),'author of an edited draft');
+   await assert.rejects(redraft('both',n.caseId,2,{text:'x',machineDraft:true}),denied('22023'),'clients cannot claim a machine draft');
    for(const role of ['writer','reader','outsider'])await assert.rejects(decide(role,e.caseId,1,h,'approve'),denied('42501'),role);
    await assert.rejects(decide('demo',e.caseId,1,h,'approve',{tenant:'demo-test'}),denied('42501'));
    await assert.rejects(decide('approver',e.caseId,1,'0'.repeat(64),'approve'),denied('22023'));

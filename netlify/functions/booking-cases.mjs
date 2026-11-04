@@ -64,7 +64,7 @@ function testMailboxView(record,authority){
   internalApproval:data.internalApproval?{scope:data.internalApproval.scope,at:data.internalApproval.at,capacityVerified:false,priceVerified:false,sendAllowed:false,bookingAllowed:false}:null,
   // Display hints only: the database re-checks permission, state, revision, hash and approver independence.
   canEditDraft:permissions.includes('write')&&['pending','returned_for_edit','rejected'].includes(state),
-  canDecide:permissions.includes('approve')&&state==='pending'&&latest.createdBy!==authority?.subject};
+  canDecide:permissions.includes('approve')&&state==='pending'&&(latest.createdBy!==authority?.subject||latest.machineDraft===true)};
 }
 function testMailboxIngestEnabled(env,cloudApproval){
  return cloudApproval&&env.CASE_TEST_MAILBOX_INGEST_ENABLED==='sarberki-test-fictional-only';

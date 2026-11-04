@@ -203,15 +203,18 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
     assert.equal((await latest(case3)).revision,2,'sending does not change the case');
    }finally{fromHeader='Teszt <sender@example.test>';}
   });
-  await t.test('the author of the latest draft cannot approve it even with approve permission; reject and reopen keep history',async()=>{
+  await t.test('the saver of an unedited machine draft may approve it; the author of an edited draft may not; reject and reopen keep history',async()=>{
    const id2='18f2a0b1c2d3e4f6',case2='tm-'+id2;
    await call('both',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-ingest',messageId:id2},{headers:gmail,status:200});
    const h=await hashOf(case2);
-   await decide('both',{caseId:case2,expectedRevision:1,reviewedDraftHash:h,decision:'approve'},{status:403});
+   assert.equal((await call('both',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:case2},{method:'GET',status:200})).json.result.canDecide,true,'machine draft: the saver may decide');
    await decide('approver',{caseId:case2,expectedRevision:1,reviewedDraftHash:h,decision:'reject',reason:'Nem megfelelő.'},{status:200});
-   await redraft('writer',{caseId:case2,expectedRevision:2,draftText:'Újranyitott, kitalált tervezet.'},{status:200});
-   await decide('both',{caseId:case2,expectedRevision:3,reviewedDraftHash:await hashOf(case2),decision:'approve'},{status:200});
-   const data=(await latest(case2)).data;assert.deepEqual(data.decisions.map(x=>x.decision),['reject','approve']);assert.equal(data.drafts.length,2);
+   await redraft('both',{caseId:case2,expectedRevision:2,draftText:'Kézzel írt, kitalált tervezet.'},{status:200});
+   await decide('both',{caseId:case2,expectedRevision:3,reviewedDraftHash:await hashOf(case2),decision:'approve'},{status:403});
+   await decide('approver',{caseId:case2,expectedRevision:3,reviewedDraftHash:await hashOf(case2),decision:'reject',reason:'Még egyszer.'},{status:200});
+   await redraft('writer',{caseId:case2,expectedRevision:4,draftText:'Újranyitott, kitalált tervezet.'},{status:200});
+   await decide('both',{caseId:case2,expectedRevision:5,reviewedDraftHash:await hashOf(case2),decision:'approve'},{status:200});
+   const data=(await latest(case2)).data;assert.deepEqual(data.decisions.map(x=>x.decision),['reject','reject','approve']);assert.equal(data.drafts.length,3);
   });
   await t.test('daily list shows test-mailbox cases only when enabled; record read gives role-specific edit/decide flags without secrets',async()=>{
    const id3='18f2a0b1c2d3e4f7',case3='tm-'+id3;

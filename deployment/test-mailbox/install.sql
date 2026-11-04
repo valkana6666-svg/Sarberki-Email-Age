@@ -105,7 +105,8 @@ begin
  or exists(select 1 from public.sc_message_keys where tenant_id=p_tenant and mailbox_id=src->>'mailbox_id' and message_id=src->>'message_id') then
   raise exception 'message or case already exists' using errcode='23505';
  end if;
- changed:=jsonb_set(p_data,'{drafts,0}',draft||jsonb_build_object('createdBy',actor,'createdAt',now(),'basedOnRevision',0))
+ -- machineDraft is set here (never by a client): the first draft is the server engine's text, saved unedited.
+ changed:=jsonb_set(p_data,'{drafts,0}',draft||jsonb_build_object('createdBy',actor,'createdAt',now(),'basedOnRevision',0,'machineDraft',true))
   ||jsonb_build_object('testMailbox',jsonb_build_object('scope','test-mailbox-source-v1','checkedAt',p_proof->>'checkedAt','bodySha256',body_hash,'createdBy',actor),
    'decisions','[]'::jsonb);
  changed:=jsonb_set(changed,'{state,approval}','"pending"');
@@ -162,7 +163,9 @@ begin
  latest:=row_before.data->'drafts'->-1;
  if row_before.data->'state'->>'approval' is distinct from 'pending' then raise exception 'pending draft required' using errcode='22023'; end if;
  if encode(sha256(convert_to(coalesce(latest->>'text',''),'UTF8')),'hex') is distinct from p_draft_hash then raise exception 'reviewed draft mismatch' using errcode='22023'; end if;
- if (latest->>'createdBy')::uuid=actor then raise exception 'independent approver required' using errcode='42501'; end if;
+ -- Owner decision 2026-11-04: an unedited machine draft may be approved by the operator who saved it;
+ -- a human-written draft (sc_tm_redraft) still needs an approver other than its author.
+ if (latest->>'createdBy')::uuid=actor and (latest->'machineDraft') is distinct from 'true'::jsonb then raise exception 'independent approver required' using errcode='42501'; end if;
  next_state:=case p_decision when 'approve' then 'approved_internal' when 'return' then 'returned_for_edit' else 'rejected' end;
  changed:=jsonb_set(row_before.data,'{decisions}',coalesce(row_before.data->'decisions','[]'::jsonb)||jsonb_build_array(jsonb_build_object(
   'decision',p_decision,'actor',actor,'at',decided_at,'draftHash',p_draft_hash,'reviewedRevision',p_expected,'reason',p_reason)));
