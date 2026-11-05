@@ -606,8 +606,22 @@ function bookingQuestionFlags(text=''){
   const depositAmount=general||/(?:mekkora(?:\s+az|\s+a)?|mennyi(?:\s+az|\s+a)?|hány\s*%)\s*(?:előleg|foglaló)|(?:előleg|foglaló)[^.!?\n]{0,80}(?:mekkora|mennyi|hány\s*%)|(?:how\s+much|what\s+percentage)[^.!?\n]{0,80}(?:deposit)|(?:deposit)[^.!?\n]{0,80}(?:how\s+much|what\s+percentage)|(?:wie\s+hoch|wie\s+viel)[^.!?\n]{0,80}(?:anzahlung)|(?:anzahlung)[^.!?\n]{0,80}(?:wie\s+hoch|wie\s+viel)|(?:kolikšno|koliko)[^.!?\n]{0,80}(?:predplačilo)|(?:predplačilo)[^.!?\n]{0,80}(?:kolikšno|koliko)/iu.test(text);
   const depositDeadline=general||/(?:hány\s+nap|mennyi\s+(?:nap|idő))[^.!?\n]{0,100}(?:előleg|foglaló)|(?:előleg|foglaló)[^.!?\n]{0,120}(?:mikor|meddig|határidő|hány\s+nap|mennyi\s+idő|befizet|átutal)|(?:when|how\s+soon)[^.!?\n]{0,100}(?:deposit)[^.!?\n]{0,60}(?:paid|due)?|(?:deposit)[^.!?\n]{0,100}(?:when|due|paid)|(?:wann|bis\s+wann)[^.!?\n]{0,100}(?:anzahlung)|(?:anzahlung)[^.!?\n]{0,100}(?:wann|fällig|bezahlt)|(?:kdaj|do\s+kdaj)[^.!?\n]{0,100}(?:predplačilo)|(?:predplačilo)[^.!?\n]{0,100}(?:kdaj|rok|plač)/iu.test(text);
   const cancellation=general||/(?:lemondási\s+(?:feltétel|szabály|határidő)|meddig[^.!?\n]{0,60}lemond|hány\s+nap[^.!?\n]{0,60}lemond|cancellation\s+(?:conditions|terms|deadline)|stornierungsbedingungen|stornofrist|pogoji\s+odpovedi|odpovedn(?:i|e)\s+pogoji)/iu.test(text);
-  return {general,depositAmount,depositDeadline,cancellation};
+  // Broader, accent-insensitive understanding (owner 2026-11-05): within one sentence a topic word and a
+  // question/cue word in any order; slang and missing accents ("eloleg", "foglalot utalni") included.
+  const sentences=foldText(text).split(/(?<=[.!?\n])/u);
+  const has=(topic,cue)=>sentences.some(x=>topic.test(x)&&cue.test(x));
+  const depositWord=/(?:eloleg\w*|foglalo\w*|elore\s+(?:kell\s+)?(?:fizet|utal)\w*|deposit|down\s*payment|anzahl\w*|predplacil\w*|akontacij\w*|placa\w*\s+ar[aoe]\b)/u;
+  const amountCue=/(?:mekkora|mennyi(?!\s+ido)\w*|hany\s*(?:%|szazalek)|(?:^|\s)kell(?:-e)?\s+(?:\w+\s+)?(?:eloleg|foglalo)|szukseges|how\s+much|what\s+percentage|do\s+(?:we|i)\s+(?:need|have)\s+to|is\s+there|wie\s+(?:hoch|viel)|\bmuss\w*|koliko|kolik\w*|ali\s+je\s+treba)/u;
+  const deadlineCue=/(?:meddig|mikorra|mikor\b|hatarid\w*|hany\s+nap\w*|mennyi\s+ido\w*|\bwhen\b|deadline|how\s+soon|by\s+when|bis\s+wann|\bwann\b|\bfrist|kdaj|\brok\b)/u;
+  const cancelWord=/(?:lemond\w*|\ble\s+(?:\w+\s+){0,2}mond\w*|storn\w*|cancel\w*|odpoved\w*|visszakap\w*|visszajar\w*|refund\w*|ruckerstatt\w*)/u;
+  const cancelCue=/(?:feltetel\w*|szabaly\w*|hatarid\w*|\bha\b|eseten|mi\s+van|lehet\w*|ingyenes\w*|mennyi\s+ido\w*|policy|terms|conditions|\bfree\b|\bif\b|\bback\b|bedingung\w*|kostenlos|\bfrist|pogoj\w*|brezplac\w*|\?)/u;
+  return {general,
+   depositAmount:depositAmount||has(depositWord,amountCue),
+   depositDeadline:depositDeadline||has(depositWord,deadlineCue)||has(/(?:utal\w*|befizet\w*|fizet\w*)/u,/(?:meddig|mikorra|hatarid)/u)&&has(depositWord,/./u),
+   cancellation:cancellation||has(cancelWord,cancelCue)};
 }
+// Lower-case, accents removed: "Előleg" -> "eloleg", "Dézsa" -> "dezsa", "plačati" -> "placati".
+export function foldText(text=''){return String(text).normalize('NFD').replace(/\p{M}/gu,'').toLowerCase();}
 function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
   if(!rules) return [];
   const q=bookingQuestionFlags(original), lines=[];
@@ -698,22 +712,22 @@ function operationalTopicLines(language='hu',original='',rules=null,caseContext=
     returning:/(?:törzsvend|visszatérő|korábban[^.!?\n]{0,80}(?:száll|járt)|returning\s+guest|stayed[^.!?\n]{0,100}(?:before|ago)|previous\s+stay|stammgast|schon[^.!?\n]{0,80}(?:bei\s+ihnen|übernachtet)|povratn|že[^.!?\n]{0,80}bivali)/iu.test(original),
     // Answer the pet fee when a pet is wanted or asked about, not when the guest explicitly declines one
     // ("we will not bring a dog"); the shared negation-aware request flag decides, a question always counts.
-    pet:/(?:kuty|háziállat|dog|pet\b|hund|haustier|pes|ps(?:a|u|om|i|ov|oma)\b)/iu.test(original)&&(requestFlagsFromText(original).petRequested||
-     /(?:kuty|háziállat|dog|pet\b|hund|haustier|pes|ps(?:a|u|om|i|ov|oma)\b)[^.!?\n]*\?/iu.test(original)),
+    pet:/(?:kuty|háziállat|macsk|cic[aá]|négylábú|dog|pets?\b|cats?\b|hund|katze|haustier|pes|ps(?:a|u|om|i|ov|oma)\b|mačk)/iu.test(original)&&(requestFlagsFromText(original).petRequested||
+     /(?:kuty|háziállat|macsk|cic[aá]|négylábú|dog|pets?\b|cats?\b|hund|katze|haustier|pes|ps(?:a|u|om|i|ov|oma)\b|mačk)[^.!?\n]*\?/iu.test(original)),
     // Owner 2026-11-05: answer the hot tub only when the guest asks about it (a question in the tub
     // sentence or a price word), not when the tub is merely requested ("dézsát is szeretnénk").
-    hotTub:original.split(/(?<=[.!?\n])/u).some(sentence=>/(?:dézs|dézsafürdő|hot[ -]?tub|whirlpool|badefass|badezuber|vroč\w*\s*kad|masaž\w*\s*kad)/iu.test(sentence)
-      &&(/\?/u.test(sentence)||/(?:mennyi|mennyibe|ár[aá]?\b|díj|price|cost|how\s+much|preis|kost|koliko|cena)/iu.test(sentence)))
+    hotTub:foldText(original).split(/(?<=[.!?\n])/u).some(sentence=>/(?:dezs\w*|furdodezs\w*|hot[ -]?tub|whirlpool|jacuzzi|jakuzzi|badefass|badezuber|vroc\w*\s*kad|masaz\w*\s*kad)/u.test(sentence)
+      &&(/\?/u.test(sentence)||/(?:mennyi|mennyibe|\bar[a]?\b|dij|price|cost|how\s+much|preis|kost|koliko|cena)/u.test(sentence)))
   };
   const lines=[];
   // Owner 2026-11-05: piers and adjacent cabins, one sentence each; never internal house numbers.
-  if(/(?:stég|steg\b|stege\b|pier|dock|pomol)/iu.test(original)&&rules.pierPerHouse==='own')lines.push({
+  if(/(?:steg\w*|stege\b|pier|dock|jetty|landing\s+stage|pomol\w*)/u.test(foldText(original))&&rules.pierPerHouse==='own')lines.push({
     hu:'Minden faházhoz saját stég tartozik; az osztott apartmanoknál az emeleti C egységnek saját stégje van, az A és a B egység pedig egy stéget oszt meg.',
     de:'Zu jedem Haus gehört ein eigener Steg; bei den geteilten Apartments hat die obere Einheit C einen eigenen Steg, die Einheiten A und B teilen sich einen Steg.',
     en:'Every cabin has its own pier; in the split apartments the upstairs unit C has its own pier, and units A and B share one pier.',
     si:'Vsaka hiška ima svoj pomol; pri deljenih apartmajih ima zgornja enota C svoj pomol, enoti A in B pa si delita en pomol.'
   }[lang]);
-  if(/(?:egymás\s+mellett|egymás\s+melletti|szomszédos|nebeneinander|benachbart|next\s+to\s+each\s+other|adjacent|side\s+by\s+side|drug\s+ob\s+drugem|sosednj)/iu.test(original))lines.push({
+  if(/(?:egymas\s+mell\w*|szomszedos\w*|kozel\w*\s+(?:egymashoz|legy\w*)|nebeneinander|benachbart|next\s+to\s+each\s+other|adjacent|neighbou?ring|side\s+by\s+side|drug\s+ob\s+drugem|poleg\s+drug\w*|sosednj\w*)/u.test(foldText(original)))lines.push({
     hu:'A szomszédos elhelyezést külön ellenőrizzük.',
     de:'Eine Unterbringung nebeneinander prüfen wir gesondert.',
     en:'We will check separately whether adjacent cabins are possible.',
