@@ -39,7 +39,7 @@ export const BUSINESS = Object.freeze({
     petFeeVerified: true,
     petFeeHufPerPetPerDay: 2000,
     hotTubAvailabilityRequiresCheck: true,
-    hotTubFeeVerified: false,
+    hotTubFeeVerified: true, // owner confirmed the hotTubRentalRules tariff on 2026-11-05
     hotTubSeparateRental: true
   }),
   hotTubRentalRules: Object.freeze({
@@ -48,7 +48,7 @@ export const BUSINESS = Object.freeze({
     includedPeople: 6,
     extraPersonHufPer24Hours: 4000,
     houseNumbers: Object.freeze([1,2,3,4,5,6,11,12,13,14,15]),
-    source: "Tulajdonosi döntés, 2026-10-05"
+    source: "Tulajdonosi döntés, 2026-10-05; érvényesség megerősítve 2026-11-05"
   }),
   splitPhysicalUnits: Object.freeze([
     Object.freeze({id:'7A',physicalHouse:7,segment:'A',level:'ground',nominalGuests:2,previoPool:'splitAB',hotTub:false,individualPrevioMappingVerified:false}),

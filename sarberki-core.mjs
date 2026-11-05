@@ -756,12 +756,19 @@ function operationalTopicLines(language='hu',original='',rules=null,caseContext=
     }[lang]);
   }
   if(!caseContext&&asks.hotTub&&rules.hotTubAvailabilityRequiresCheck){
-    const separate=rules.hotTubSeparateRental===true;
-    lines.push({
-      hu:separate?(rules.hotTubFeeVerified?'A dézsa külön bérelhető, nem tartozik automatikusan a házhoz. Az elérhetőségét külön ellenőrizzük; a beállított díj alkalmazható.':'A dézsa külön bérelhető, nem tartozik automatikusan a házhoz. Az elérhetőségét és díját külön ellenőrizzük; pontos dézsadíjat csak hiteles ellenőrzés után adunk meg.'):(rules.hotTubFeeVerified?'A dézsa elérhetőségét külön ellenőrizzük; a beállított díj alkalmazható.':'A dézsa elérhetőségét és díját külön ellenőrizzük; pontos dézsadíjat csak hiteles ellenőrzés után adunk meg.'),
-      de:separate?(rules.hotTubFeeVerified?'Das Badefass kann separat gemietet werden und gehört nicht automatisch zur Unterkunft. Die Verfügbarkeit wird separat geprüft; die hinterlegte Gebühr kann angewendet werden.':'Das Badefass kann separat gemietet werden und gehört nicht automatisch zur Unterkunft. Verfügbarkeit und Preis werden separat geprüft; einen genauen Preis nennen wir erst nach bestätigter Prüfung.'):(rules.hotTubFeeVerified?'Die Verfügbarkeit des Badefasses wird separat geprüft; die hinterlegte Gebühr kann angewendet werden.':'Verfügbarkeit und Preis des Badefasses werden separat geprüft; einen genauen Preis nennen wir erst nach bestätigter Prüfung.'),
-      en:separate?(rules.hotTubFeeVerified?'The hot tub is rented separately and is not automatically included with the house. Availability is checked separately; the configured fee can be applied.':'The hot tub is rented separately and is not automatically included with the house. Availability and its charge are checked separately; we only quote the exact hot-tub fee after a verified check.'):(rules.hotTubFeeVerified?'Hot-tub availability is checked separately; the configured fee can be applied.':'Hot-tub availability and its charge are checked separately; we only quote the exact hot-tub fee after a verified check.'),
-      si:separate?(rules.hotTubFeeVerified?'Masažna kad se najame posebej in ni samodejno vključena v nastanitev. Razpoložljivost preverimo posebej; uporabi se lahko nastavljena pristojbina.':'Masažna kad se najame posebej in ni samodejno vključena v nastanitev. Razpoložljivost in doplačilo preverimo posebej; natančno ceno navedemo šele po zanesljivem preverjanju.'):(rules.hotTubFeeVerified?'Razpoložljivost vroče kadi preverimo posebej; uporabi se lahko nastavljena pristojbina.':'Razpoložljivost in doplačilo za vročo kad preverimo posebej; natančno ceno navedemo šele po zanesljivem preverjanju.')
+    // One short sentence (owner principle 2026-11-04). The tariff comes only from hotTubRentalRules.
+    const t=BUSINESS.hotTubRentalRules,ft=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+' Ft';
+    const priced=rules.hotTubFeeVerified===true;
+    lines.push(priced?{
+      hu:`Dézsa külön bérelhető: ${ft(t.baseHufPer24Hours)}/24 óra ${t.includedPeople} főig, felette +${ft(t.extraPersonHufPer24Hours)}/fő; a szabad időpontot külön ellenőrizzük.`,
+      de:`Das Badefass kann separat gemietet werden: ${ft(t.baseHufPer24Hours)}/24 Stunden bis ${t.includedPeople} Personen, darüber +${ft(t.extraPersonHufPer24Hours)}/Person; den freien Termin prüfen wir gesondert.`,
+      en:`The hot tub can be rented separately: ${ft(t.baseHufPer24Hours)}/24 hours for up to ${t.includedPeople} guests, then +${ft(t.extraPersonHufPer24Hours)} per person; we will check the free time slot separately.`,
+      si:`Masažno kad lahko najamete posebej: ${ft(t.baseHufPer24Hours)}/24 ur za največ ${t.includedPeople} oseb, nato +${ft(t.extraPersonHufPer24Hours)}/osebo; prost termin preverimo posebej.`
+    }[lang]:{
+      hu:'Dézsa külön bérelhető; a szabad időpontot és a díjat külön ellenőrizzük.',
+      de:'Das Badefass kann separat gemietet werden; freien Termin und Preis prüfen wir gesondert.',
+      en:'The hot tub can be rented separately; we will check the free time slot and the charge separately.',
+      si:'Masažno kad lahko najamete posebej; prost termin in ceno preverimo posebej.'
     }[lang]);
   }
   return lines;

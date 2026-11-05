@@ -682,7 +682,7 @@ Phone: +44 7700 912345.`;
   assert.match(draft,/20%/u);
   assert.match(draft,/730 days/u);
   assert.match(draft,/Pets are allowed; the fee is 2 000 Ft per pet per day/u);
-  assert.match(draft,/hot tub is rented separately and is not automatically included with the house/u);
+  assert.match(draft,/The hot tub can be rented separately: 30 000 Ft\/24 hours for up to 6 guests, then \+4 000 Ft per person/u);
   assert.match(draft,/outside the period with the 10% high-season surcharge/u);
   assert.match(draft,/550 HUF per adult per night/u);
   assert.match(draft,/another suitable cabin type or a combination of units/u);
@@ -893,8 +893,7 @@ test('hot-tub questions always state separate rental when business rules say so'
     cabin:'Deluxe',
     operationalRules:BUSINESS.operationalRules
   });
-  assert.match(reply,/dézsa külön bérelhető/u);
-  assert.match(reply,/nem tartozik automatikusan a házhoz/u);
+  assert.match(reply,/Dézsa külön bérelhető: 30 000 Ft\/24 óra 6 főig, felette \+4 000 Ft\/fő; a szabad időpontot külön ellenőrizzük\./u);
 });
 
 

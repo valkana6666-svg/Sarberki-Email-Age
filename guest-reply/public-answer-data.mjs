@@ -13,9 +13,10 @@ export const PUBLIC_REPLY_DATA=Object.freeze({
   }),
   hotTub:Object.freeze({
     separateRental:true,
-    baseHufPer24Hours:30000,
-    includedPeople:6,
-    extraPersonHufPer24Hours:4000,
+    // Single source: business-config.mjs hotTubRentalRules (owner tariff, confirmed 2026-11-05).
+    baseHufPer24Hours:BUSINESS.hotTubRentalRules.baseHufPer24Hours,
+    includedPeople:BUSINESS.hotTubRentalRules.includedPeople,
+    extraPersonHufPer24Hours:BUSINESS.hotTubRentalRules.extraPersonHufPer24Hours,
     text:Object.freeze({
       hu:'A dézsa külön bérelhető, külön díj ellenében.',
       de:'Das Badefass kann separat gegen Aufpreis gemietet werden.',
