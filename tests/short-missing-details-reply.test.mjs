@@ -78,4 +78,7 @@ test('slangy unaccented mail: day-ticket question without the word "horgász" st
  assert.match(t,/– Normál tó: 24 órás 7 500 \/ 3 750 Ft\.\n– Rekord tó: 24 órás 11 250 \/ 5 650 Ft\./);
  assert.doesNotMatch(t,/heti/);
  assert.match(t,/saját stég tartozik/);assert.match(t,/Az előleg a szállásdíj 50%-a\./);
+ // Owner 2026-11-05: one blank line between the answers; the ticket block stays together.
+ assert.match(t,/egy stéget oszt meg\.\n\nHorgászjegyek \(felnőtt \/ gyermek\):\n– Normál tó/);
+ assert.match(t,/24 órás jegyet kell váltani\.\n\nAz előleg a szállásdíj 50%-a\.\n\nKérjük, írja meg:/);
 });

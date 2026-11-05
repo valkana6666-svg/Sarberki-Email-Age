@@ -92,11 +92,13 @@ function liftAnswers(bodyLines,language){
   const line=raw.trim();
   if(line===sec.fishing||line===sec.extras||line===sec.booking){current=line;continue;}
   if(!line){current=null;rest.push(raw);continue;}
-  if(current===sec.fishing||current===sec.booking){answers.push(line);continue;}
-  if(current===sec.extras&&(PET_LINE.test(line)||KEPT_EXTRA.test(line)||line===hotTubSentence(language))){answers.push(line);continue;}
+  // Owner 2026-11-05: each answer is its own paragraph; the fishing ticket block stays together.
+  if(current===sec.fishing){if(answers.at(-1)?.fishing)answers.at(-1).lines.push(line);else answers.push({fishing:true,lines:[line]});continue;}
+  if(current===sec.booking){answers.push({lines:[line]});continue;}
+  if(current===sec.extras&&(PET_LINE.test(line)||KEPT_EXTRA.test(line)||line===hotTubSentence(language))){answers.push({lines:[line]});continue;}
   rest.push(raw);
  }
- return {answers,rest};
+ return {answers:answers.map(a=>a.lines.join('\n')),rest};
 }
 function shortMissingDetailsReply(full,language,decision){
  const lang=SHORT[language]?language:null;
@@ -122,7 +124,7 @@ function shortMissingDetailsReply(full,language,decision){
  if(wanted.has('cabinTwo'))wanted.delete('cabin');
  const items=['dates','people','ages','cabin','cabinTwo','phone'].filter(k=>wanted.has(k)).map(k=>t[k]);
  const list=items.map((item,i)=>'– '+item+(i===items.length-1?'.':','));
- return [greeting,'',...(lifted.answers.length?[lifted.answers.join('\n'),'']:[]),t.intro,...list,'',t.outro,'',...closing].join('\n');
+ return [greeting,'',...(lifted.answers.length?[lifted.answers.join('\n\n'),'']:[]),t.intro,...list,'',t.outro,'',...closing].join('\n');
 }
 const replyIntro=lang=>({hu:'Köszönjük érdeklődését.',de:'Vielen Dank für Ihre Anfrage.',en:'Thank you for your enquiry.',si:'Hvala za vaše povpraševanje.'})[lang];
 const OFFERED_CHOICE=['melyik felajánlott faháztípust választja','welchen der angebotenen Haustypen','which of the offered cabin types','katero od ponujenih vrst hišk'];
@@ -215,5 +217,5 @@ function shortDatedReply(full,language,decision,original=''){
  const optionText=options?options.replace(/, (?=[^,]*$)/u,d.or):null;
  const head=[replyIntro(language),summary,optionText?d.options(optionText):'',large?d.large(large):''].filter(Boolean).join(' ');
  const list=items.map((item,i)=>'– '+item+(i===items.length-1?'.':','));
- return [lines[0],'',head,'',...(lifted.answers.length?[lifted.answers.join('\n'),'']:[]),d.ask,...list,'',options?d.outroPrice:t.outro,'',...lines.slice(closingAt)].join('\n');
+ return [lines[0],'',head,'',...(lifted.answers.length?[lifted.answers.join('\n\n'),'']:[]),d.ask,...list,'',options?d.outroPrice:t.outro,'',...lines.slice(closingAt)].join('\n');
 }
