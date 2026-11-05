@@ -29,6 +29,10 @@ export const BUSINESS = Object.freeze({
     confirmedLateArrivalExample: '18:30',
     checkinFrom: '14:00',
     checkoutBy: '10:00',
+    // Owner 2026-11-05: every house has its own pier; each split house has two piers – one for the
+    // upper C unit, and one shared half-and-half by units A and B. Never name internal house numbers.
+    pierPerHouse: 'own',
+    pierSplitHouse: 'c_own_ab_shared',
     electricitySettlement: 'metered_separate',
     parking: 'available_large_group_review',
     firewood: 'surcharge_price_unverified',
