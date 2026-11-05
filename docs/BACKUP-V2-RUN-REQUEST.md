@@ -97,3 +97,4 @@ Source project: mojnqizbcaczstguikpv (sarberki-test).
 Authorized SQL: 123f3c6f1a24689198d72df83f3d6acceea4d667 deployment/test-mailbox/install.sql.
 Purpose: fresh verified encrypted Drive backup and isolated restore before owner-authorized sc_tm_price_redraft deployment. No source DB changes until backup succeeds; no Netlify deployment.
 Provider: drive. Request marker: [backup-v2-run].
+Request 2026-11-05T06:47:56Z: owner-requested make-up Drive backup for 2026-11-05 (the daily ChatGPT trigger did not run). Same workflow: preflight, read-only export, isolated restore, Drive upload, exact-ID readback, restore from the Drive bytes.
