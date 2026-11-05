@@ -36,6 +36,6 @@ test('Hungarian review preserves the same missing-data decision across later tur
 });
 test('Hungarian FAQ renderer uses existing intent without reclassifying foreign message',()=>{
  const faq=chatbotReply({message:'Can I rent a hot tub?',language:'en'});
- assert.equal(faq.intent,'hotTub');assert.match(renderChatbotIntent(faq.intent,'hu'),/külön bérelhető, külön díj ellenében/);
+ assert.equal(faq.intent,'hotTub');assert.match(renderChatbotIntent(faq.intent,'hu'),/Dézsa külön bérelhető: 30 000 Ft\/24 óra/);
  assert.equal(renderChatbotIntent('nonexistent','hu'),renderChatbotIntent('unknown','hu'));
 });

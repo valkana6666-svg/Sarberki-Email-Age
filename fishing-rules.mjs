@@ -13,6 +13,14 @@ export const fishing = Object.freeze({
   minimumCm: {zander:30,pike:40,carp:30,grassCarp:40,catfish:50}
 });
 
+// Single source of the general fishing rules sentence (email, chatbot and public reply panel).
+export const FISHING_GENERAL_TEXT=Object.freeze({
+      hu:'A horgászathoz Magyarországra érvényes állami horgászjegy szükséges. Csak szakáll nélküli, legfeljebb 6-os méretű horog használható. Kötelező felszerelés a pontybölcső, merítőháló, sebfertőtlenítő és pontyzsák. A választott tóhoz és időtartamhoz tartozó Sárberki horgászjegyet külön kell kiválasztani.',
+      de:'Zum Angeln ist ein in Ungarn gültiger staatlicher Angelschein erforderlich. Es dürfen nur widerhakenlose Haken bis maximal Größe 6 verwendet werden. Abhakmatte, Kescher, Wunddesinfektionsmittel und Karpfensack sind erforderlich. Die Sárberki-Angelkarte wird je nach See und Gültigkeitsdauer separat gewählt.',
+      en:'Fishing requires a state fishing licence valid in Hungary. Only barbless hooks up to size 6 may be used. A carp cradle/unhooking mat, landing net, wound disinfectant and carp sack are required. The Sárberki fishing ticket is selected separately according to the lake and duration.',
+      si:'Za ribolov je potrebna državna ribolovna dovolilnica, veljavna na Madžarskem. Dovoljeni so le trnki brez zalusti do največ velikosti 6. Potrebni so podloga za krape, podmetalka, razkužilo za rane in vreča za krape. Ribolovna karta Sárberki se izbere posebej glede na jezero in trajanje.'
+    });
+
 export function fishingQuestion(text='', language='hu') {
   // Gyakori ékezet nélküli magyar levél; a díjakat és szabályokat nem változtatja.
   text=String(text).replace(/horgasz/giu,'horgász').replace(/szabaly/giu,'szabály').replace(/szakall/giu,'szakáll');
@@ -28,12 +36,7 @@ export function fishingQuestion(text='', language='hu') {
     && /(?:ár|price|cost|preis|cena|kg)/iu.test(text);
   const answers=[];
   if(wantsGeneral){
-    answers.push({
-      hu:'A horgászathoz Magyarországra érvényes állami horgászjegy szükséges. Csak szakáll nélküli, legfeljebb 6-os méretű horog használható. Kötelező felszerelés a pontybölcső, merítőháló, sebfertőtlenítő és pontyzsák. A választott tóhoz és időtartamhoz tartozó Sárberki horgászjegyet külön kell kiválasztani.',
-      de:'Zum Angeln ist ein in Ungarn gültiger staatlicher Angelschein erforderlich. Es dürfen nur widerhakenlose Haken bis maximal Größe 6 verwendet werden. Abhakmatte, Kescher, Wunddesinfektionsmittel und Karpfensack sind erforderlich. Die Sárberki-Angelkarte wird je nach See und Gültigkeitsdauer separat gewählt.',
-      en:'Fishing requires a state fishing licence valid in Hungary. Only barbless hooks up to size 6 may be used. A carp cradle/unhooking mat, landing net, wound disinfectant and carp sack are required. The Sárberki fishing ticket is selected separately according to the lake and duration.',
-      si:'Za ribolov je potrebna državna ribolovna dovolilnica, veljavna na Madžarskem. Dovoljeni so le trnki brez zalusti do največ velikosti 6. Potrebni so podloga za krape, podmetalka, razkužilo za rane in vreča za krape. Ribolovna karta Sárberki se izbere posebej glede na jezero in trajanje.'
-    }[lang]);
+    answers.push(FISHING_GENERAL_TEXT[lang]);
   }
   if(wantsNormal24){
     answers.push({

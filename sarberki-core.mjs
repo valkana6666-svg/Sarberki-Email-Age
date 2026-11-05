@@ -756,20 +756,7 @@ function operationalTopicLines(language='hu',original='',rules=null,caseContext=
     }[lang]);
   }
   if(!caseContext&&asks.hotTub&&rules.hotTubAvailabilityRequiresCheck){
-    // One short sentence (owner principle 2026-11-04). The tariff comes only from hotTubRentalRules.
-    const t=BUSINESS.hotTubRentalRules,ft=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+' Ft';
-    const priced=rules.hotTubFeeVerified===true;
-    lines.push(priced?{
-      hu:`Dézsa külön bérelhető: ${ft(t.baseHufPer24Hours)}/24 óra ${t.includedPeople} főig, felette +${ft(t.extraPersonHufPer24Hours)}/fő; a szabad időpontot külön ellenőrizzük.`,
-      de:`Das Badefass kann separat gemietet werden: ${ft(t.baseHufPer24Hours)}/24 Stunden bis ${t.includedPeople} Personen, darüber +${ft(t.extraPersonHufPer24Hours)}/Person; den freien Termin prüfen wir gesondert.`,
-      en:`The hot tub can be rented separately: ${ft(t.baseHufPer24Hours)}/24 hours for up to ${t.includedPeople} guests, then +${ft(t.extraPersonHufPer24Hours)} per person; we will check the free time slot separately.`,
-      si:`Masažno kad lahko najamete posebej: ${ft(t.baseHufPer24Hours)}/24 ur za največ ${t.includedPeople} oseb, nato +${ft(t.extraPersonHufPer24Hours)}/osebo; prost termin preverimo posebej.`
-    }[lang]:{
-      hu:'Dézsa külön bérelhető; a szabad időpontot és a díjat külön ellenőrizzük.',
-      de:'Das Badefass kann separat gemietet werden; freien Termin und Preis prüfen wir gesondert.',
-      en:'The hot tub can be rented separately; we will check the free time slot and the charge separately.',
-      si:'Masažno kad lahko najamete posebej; prost termin in ceno preverimo posebej.'
-    }[lang]);
+    lines.push(hotTubSentence(lang,rules.hotTubFeeVerified===true));
   }
   return lines;
 }
@@ -846,6 +833,24 @@ function capacityOptionText(guests,language='hu'){
   if(g===7)return `${family}, VIP`;
   if(g===8)return family;
   return null;
+}
+
+// One short hot-tub sentence for every channel (owner principle 2026-11-04). The tariff comes only from
+// BUSINESS.hotTubRentalRules; without the confirmation flag no amount is ever stated.
+export function hotTubSentence(lang='hu',priced=BUSINESS.operationalRules.hotTubFeeVerified===true){
+  const t=BUSINESS.hotTubRentalRules,ft=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+' Ft';
+  const l=['hu','de','en','si'].includes(lang)?lang:'hu';
+  return (priced?{
+    hu:`Dézsa külön bérelhető: ${ft(t.baseHufPer24Hours)}/24 óra ${t.includedPeople} főig, felette +${ft(t.extraPersonHufPer24Hours)}/fő; a szabad időpontot külön ellenőrizzük.`,
+    de:`Das Badefass kann separat gemietet werden: ${ft(t.baseHufPer24Hours)}/24 Stunden bis ${t.includedPeople} Personen, darüber +${ft(t.extraPersonHufPer24Hours)}/Person; den freien Termin prüfen wir gesondert.`,
+    en:`The hot tub can be rented separately: ${ft(t.baseHufPer24Hours)}/24 hours for up to ${t.includedPeople} guests, then +${ft(t.extraPersonHufPer24Hours)} per person; we will check the free time slot separately.`,
+    si:`Masažno kad lahko najamete posebej: ${ft(t.baseHufPer24Hours)}/24 ur za največ ${t.includedPeople} oseb, nato +${ft(t.extraPersonHufPer24Hours)}/osebo; prost termin preverimo posebej.`
+  }:{
+    hu:'Dézsa külön bérelhető; a szabad időpontot és a díjat külön ellenőrizzük.',
+    de:'Das Badefass kann separat gemietet werden; freien Termin und Preis prüfen wir gesondert.',
+    en:'The hot tub can be rented separately; we will check the free time slot and the charge separately.',
+    si:'Masažno kad lahko najamete posebej; prost termin in ceno preverimo posebej.'
+  })[l];
 }
 
 export function buildReplyDraft({language='hu',name=null,original='',arrival=null,departure=null,guests=null,adults=null,children=null,childAges=[],phone=null,cabin='? – emberi döntésre vár',pier=false,hotTub=false,dog=false,intent='booking_request',brandName='Sárberki Horgásztó',bookingRules=null,operationalRules=null,pricingRules=null,knowledgeLines=[],caseContext=null,approvedPaymentContext=null,approvedCancellationContext=null}={}){

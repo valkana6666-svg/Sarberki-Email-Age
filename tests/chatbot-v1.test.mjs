@@ -17,7 +17,7 @@ for(const language of ['hu','de','en','si']){
 test('Hungarian hot tub is always separately rented',()=>{
  const r=chatbotReply({message:'Van dézsa?',language:'hu'});
  assert.equal(r.intent,'hotTub');
- assert.match(r.reply,/külön bérelhető, külön díj ellenében/u);
+ assert.match(r.reply,/Dézsa külön bérelhető: 30 000 Ft\/24 óra 6 főig/u);
 });
 test('unknown questions are not invented',()=>{
  const r=chatbotReply({message:'Milyen lesz az időjárás jövőre?',language:'hu'});

@@ -73,7 +73,7 @@ test('real iPhone: German booking to Slovenian hot-tub question switches languag
  const result=chat.reply(question);
  assert.equal(chat.language,'si');assert.equal(result.response.language,'si');
  assert.equal(result.response.intent,'hotTub');
- assert.match(result.text,/Masažna kad|masažna kad/iu);
+ assert.match(result.text,/masažn[ao] kad/iu);
  assert.doesNotMatch(result.text,/Badezuber|Verfügbarkeit|Willkommen/u);
  assert.equal(result.operatorReviewText,renderChatbotIntent('hotTub','hu'));
  assert.deepEqual(chat.snapshot(),before);

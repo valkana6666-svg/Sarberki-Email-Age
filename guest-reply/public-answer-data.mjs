@@ -1,4 +1,5 @@
 import {BUSINESS} from '../business-config.mjs';
+import {FISHING_GENERAL_TEXT} from '../fishing-rules.mjs';
 export const PUBLIC_REPLY_DATA_VERSION='2026-10-21-deposit-review';
 
 export const PUBLIC_REPLY_DATA=Object.freeze({
@@ -24,19 +25,14 @@ export const PUBLIC_REPLY_DATA=Object.freeze({
       si:'Masažna kad se najame posebej proti doplačilu.'
     })
   }),
-  fishing:Object.freeze({
-    text:Object.freeze({
-      hu:'A horgászathoz érvényes magyar állami horgászjegy szükséges. Szakáll nélküli, legfeljebb 6-os horog használható. Kötelező a pontybölcső, merítőháló, sebfertőtlenítő és pontyzsák. A Sárberki horgászjegy külön váltandó.',
-      de:'Zum Angeln ist ein gültiger ungarischer staatlicher Angelschein erforderlich. Es darf nur ein widerhakenloser Haken bis Größe 6 verwendet werden. Abhakmatte/Karpfenwiege, Kescher, Wunddesinfektionsmittel und Karpfensack sind Pflicht. Die Sárberki-Angelkarte ist separat zu lösen.',
-      en:'A valid Hungarian state fishing licence is required. Only barbless hooks up to size 6 may be used. A carp cradle/unhooking mat, landing net, wound disinfectant and carp sack are required. The Sárberki fishing ticket is purchased separately.',
-      si:'Za ribolov je potrebna veljavna madžarska državna ribolovna dovolilnica. Dovoljen je trnek brez zalusti največ velikosti 6. Obvezni so podloga/zibelka za krape, podmetalka, razkužilo za rane in vreča za krape. Ribolovno dovolilnico Sárberki je treba kupiti posebej.'
-    })
-  }),
+  // Single source: fishing-rules.mjs (same sentence as the email reply).
+  fishing:Object.freeze({text:FISHING_GENERAL_TEXT}),
   booking:BUSINESS.bookingRules,
   operations:Object.freeze({
-    checkinFrom:'14:00',
-    checkoutBy:'10:00',
-    petFeeHufPerPetPerDay:2000,
+    // Single source: business-config.mjs operationalRules.
+    checkinFrom:BUSINESS.operationalRules.checkinFrom,
+    checkoutBy:BUSINESS.operationalRules.checkoutBy,
+    petFeeHufPerPetPerDay:BUSINESS.operationalRules.petFeeHufPerPetPerDay,
     parkingAvailable:true
   }),
   pending:Object.freeze({
