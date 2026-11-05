@@ -24,7 +24,7 @@ test('child quote is blocked before launching browser',async()=>{
 });
 test('normal lake adult 24h, separate source and validity',()=>{
   const answer=fishingQuestion('Mennyibe kerül 24 órára a Normál tó?');
-  assert.equal(answer.kind,'normal_24h_adult');assert.equal(fishing.tickets.normal.adult.hours24,7500);
+  assert.equal(answer.kind,'tickets');assert.match(answer.answer,/Normál tó: 24 órás 7 500 \/ 3 750 Ft\./);assert.doesNotMatch(answer.answer,/Rekord tó|heti|éves|félév/);assert.equal(fishing.tickets.normal.adult.hours24,7500);
   assert.equal(answer.accommodationTotalAffected,false);assert.equal(answer.validFrom,'2026-01-01');
 });
 test('barbed hook is prohibited',()=>assert.match(fishingQuestion('Használhatok szakállas horgot?').answer,/nem használható/));
@@ -40,8 +40,7 @@ test('returning discount remains un-applied without Previo history',()=>{
 test('dense English fishing question keeps all requested verified answers',()=>{
   const answer=fishingQuestion('What is the price of a 24-hour adult ticket for the Normal lake? Do children need a separate ticket? Are barbed hooks allowed? Are there minimum fish sizes and separate prices for fish we may take home?','en');
   assert.equal(answer.kind,'combined');
-  assert.match(answer.answer,/7,500 HUF/u);
-  assert.match(answer.answer,/3,750 HUF/u);
+  assert.match(answer.answer,/Normal lake: 24-hour 7,500 \/ 3,750 HUF/u);
   assert.match(answer.answer,/Barbed hooks are not allowed/u);
   assert.match(answer.answer,/zander 30 cm/u);
   assert.match(answer.answer,/Take-away fish prices per kg/u);

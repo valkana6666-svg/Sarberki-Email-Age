@@ -686,7 +686,7 @@ Phone: +44 7700 912345.`;
   assert.match(draft,/outside the period with the 10% high-season surcharge/u);
   assert.match(draft,/550 HUF per adult per night/u);
   assert.match(draft,/another suitable cabin type or a combination of units/u);
-  assert.match(draft,/7,500 HUF/u);
+  assert.match(draft,/7,500 \/ 3,750 HUF/u);
   assert.match(draft,/3,750 HUF/u);
   assert.match(draft,/Barbed hooks are not allowed/u);
   assert.match(draft,/zander 30 cm/u);

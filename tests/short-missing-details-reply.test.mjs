@@ -26,9 +26,8 @@ test('short request in German, English and Slovene',()=>{
 
 test('full letter stays when the guest asked something else',()=>{
  for(const m of [
-  'Szia! Nyáron jönnénk 4 fővel, kutyát is hoznánk. Van szabad hely?\nPéter'
- ]){const t=draft(m);assert.equal(isShort(t),false,m+'\n---\n'+t);}
- assert.match(draft('Szia! Nyáron jönnénk 4 fővel, kutyát is hoznánk. Van szabad hely?\nPéter'),/Háziállat hozható/);
+  'Szia! Nyáron jönnénk 4 fővel. Hánytól lehet érkezni?\nPéter'
+ ]){const t=draft(m);assert.equal(isShort(t),false,m+'\n---\n'+t);assert.match(t,/14:00-tól/);}
 });
 
 test('dates known: one short paragraph plus what is still needed (DE family, HU large group, EN, SI)',()=>{
@@ -43,6 +42,18 @@ test('dates known: one short paragraph plus what is still needed (DE family, HU 
 });
 
 test('dates known but extra content: the full letter stays',()=>{
- const t=draft('Jó napot! 2027. május 14. és 16. között jönnénk 2 felnőttel, kutyát is hoznánk. Van szabad hely?\nÜdv: Kiss Anna');
- assert.match(t,/Háziállat hozható/);assert.match(t,/Foglalás állapota/);
+ const t=draft('Jó napot! 2027. május 14. és 16. között jönnénk 2 felnőttel. Hánytól lehet érkezni?\nÜdv: Kiss Anna');
+ assert.match(t,/14:00-tól/);assert.match(t,/Foglalás állapota/);
+});
+
+test('short letters keep verified answers: fishing tickets, pet fee (server email path)',()=>{
+ const fish=draft('Jó napot!\n2027. augusztus 12-től 15-ig jönnénk 5 felnőttel. Milyen horgászjegyek vannak és mennyibe kerülnek?\nKöszönöm: Varga Péter');
+ assert.match(fish,/Horgászjegyek \(felnőtt \/ gyermek\):\n– Normál tó: 24 órás 7 500 \/ 3 750 Ft; heti 32 500 \/ 16 250 Ft\.\n– Rekord tó: 24 órás 11 250 \/ 5 650 Ft; heti 48 750 \/ 24 500 Ft\./);
+ assert.match(fish,/Faházvendégeknek 12 órás jegy nem váltható/);
+ assert.doesNotMatch(fish,/éves|félév|86 000|43 000/);
+ assert.match(fish,/Kérjük, írja meg:/);assert.doesNotMatch(fish,/Foglalás állapota/);
+ const pet=draft('Jó napot!\n2027. július 10. és 14. között jönnénk 2 felnőtt és 2 gyerek (6 és 9 évesek), egy kis kutyát is hoznánk.\nÜdvözlettel: Nagy Éva');
+ assert.match(pet,/Háziállat hozható, díja 2 000 Ft\/nap\/állat\.\n\nKérjük, írja meg:/);
+ const day=draft('Jó napot! Mennyi a napi horgászjegy a rekord tóra?\nPéter');
+ assert.match(day,/– Rekord tó: 24 órás 11 250 \/ 5 650 Ft\./);assert.doesNotMatch(day,/Normál tó:|heti/);
 });

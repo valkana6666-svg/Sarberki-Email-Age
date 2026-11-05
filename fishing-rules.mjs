@@ -24,7 +24,7 @@ export const FISHING_GENERAL_TEXT=Object.freeze({
 export function fishingQuestion(text='', language='hu') {
   // Gyakori ékezet nélküli magyar levél; a díjakat és szabályokat nem változtatja.
   text=String(text).replace(/horgasz/giu,'horgász').replace(/szabaly/giu,'szabály').replace(/szakall/giu,'szakáll');
-  if (!/horgász|hal(?:at|at fog|elvitel|ár)|ponty|csuka|süllő|harcsa|hor(?:og|got|gok)|szakállas|normál\s*tó|rekord\s*tó|angeln|fishing|\bfish\b|fish(?:ing)? ticket|barbed|hook|haken|widerhaken|mindestmaß|min(?:imum)?\s+(?:fish\s+)?size|ribolov|lovili\s+ribe|loviti\s+ribe|trnek|trnki|zalust/iu.test(text)) return null;
+  if (!/horgász|hal(?:at|at fog|elvitel|ár)|ponty|csuka|süllő|harcsa|hor(?:og|got|gok)|szakállas|normál\s*tó|rekord\s*tó|angeln|angel(?:karte|schein)|fishing|\bfish\b|fish(?:ing)? ticket|barbed|hook|haken|widerhaken|mindestmaß|min(?:imum)?\s+(?:fish\s+)?size|ribolov|lovili\s+ribe|loviti\s+ribe|trnek|trnki|zalust/iu.test(text)) return null;
   const lang=['hu','de','en','si'].includes(language)?language:'hu';
   const wantsHook=/(?:szakállas|szakáll nélküli|hor(?:og|got|gok)|barbed\s+hooks?|barbless\s+hooks?|haken|widerhaken|trnek|trnki|zalust)/iu.test(text);
   const wantsGeneral=/(?:horgászat(?:nak)?[^.!?\n]{0,80}(?:feltétel|szabály)|milyen[^.!?\n]{0,80}(?:horgászati|horgászat)[^.!?\n]{0,40}(?:feltétel|szabály)|horgász(?:ni|nánk|nénk|nék)|fishing[^.!?\n]{0,80}(?:conditions|rules|requirements)|(?:would|want|like)[^.!?\n]{0,40}(?:to\s+)?fish|angeln[^.!?\n]{0,80}(?:bedingungen|regeln|voraussetzungen)|möcht(?:e|en)[^.!?\n]{0,40}angeln|ribolov[^.!?\n]{0,80}(?:pogoji|pravila)|(?:želel|želeli|radi)[^.!?\n]{0,50}(?:ribolov|loviti|lovili\s+ribe))/iu.test(text);
@@ -34,24 +34,28 @@ export function fishingQuestion(text='', language='hu') {
   const wantsMinimum=/(?:minimum|minimális|legkisebb|méretkorlát|minimum\s+(?:fish\s+)?size|minimum size|mindestmaß|mindestgr|najmanjša\s+mera|minimalna\s+mera)/iu.test(text);
   const wantsTakeaway=/(?:elvihető|elvitel|hazavi|fish[^.!?\n]{0,50}(?:take[- ]?away|take\s+home)|takeaway|mitnehmen|entnahme|odnes|odvzem)/iu.test(text)
     && /(?:ár|price|cost|preis|cena|kg)/iu.test(text);
+  const asksTicket=/(?:jegy|ticket|karte|kart[ae]\b|dovolilnic|vstopnic)/iu.test(text)||wantsNormal24||wantsChild;
   const answers=[];
   if(wantsGeneral){
     answers.push(FISHING_GENERAL_TEXT[lang]);
   }
-  if(wantsNormal24){
-    answers.push({
-      hu:'Normál tó: a 24 órás felnőtt jegy 7 500 Ft, a gyermekjegy 3 750 Ft. Magyarországra érvényes állami horgászjegy szükséges.',
-      de:'Normal-See: Die 24-Stunden-Karte kostet für Erwachsene 7.500 Ft und für Kinder 3.750 Ft. Ein für Ungarn gültiger staatlicher Angelschein ist erforderlich.',
-      en:'Normal lake: the 24-hour adult ticket is 7,500 HUF and the child ticket is 3,750 HUF. A state fishing licence valid in Hungary is required.',
-      si:'Normalno jezero: 24-urna odrasla karta stane 7.500 HUF, otroška pa 3.750 HUF. Potrebna je državna ribolovna dovolilnica, veljavna na Madžarskem.'
-    }[lang]);
-  } else if(wantsChild){
-    answers.push({
-      hu:'Gyermekjegy külön váltható; a pontos ár a választott tó és jegy időtartama szerint változik.',
-      de:'Für Kinder gibt es eine eigene Karte; der genaue Preis hängt vom gewählten See und der Gültigkeitsdauer ab.',
-      en:'Children use a separate ticket; the exact price depends on the lake and ticket duration.',
-      si:'Za otroke je potrebna ločena karta; natančna cena je odvisna od jezera in trajanja karte.'
-    }[lang]);
+  // Tickets (owner 2026-11-05): a general ticket question lists the 24-hour and weekly tickets of both
+  // lakes (adult / child); a specific question lists only what was asked. No yearly/half-year tickets in
+  // guest replies. Cabin guests cannot buy a 12-hour ticket; they buy the 24-hour one.
+  if(asksTicket){
+   const t=fishing.tickets,money=n=>({hu:String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+' Ft',de:String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.')+' Ft',en:String(n).replace(/\B(?=(\d{3})+(?!\d))/g,',')+' HUF',si:String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.')+' HUF'})[lang];
+   const want24=/(?:24\s*(?:ór|h\b|hour|stunden|ur\b)|24-hour|napi(?:jegy)?|day\s*ticket|tageskarte|dnevn)/iu.test(text);
+   const wantWeek=/(?:heti|week(?:ly)?|woche|wochen|tedensk)/iu.test(text);
+   const durations=(want24||wantWeek)?[want24&&'hours24',wantWeek&&'week'].filter(Boolean):['hours24','week'];
+   const normal=/(?:normál|normal)/iu.test(text),record=/(?:rekord|record)/iu.test(text);
+   const lakes=normal!==record?[normal?'normal':'record']:['normal','record'];
+   const W={hu:{head:'Horgászjegyek (felnőtt / gyermek):',normal:'Normál tó',record:'Rekord tó',hours24:'24 órás',week:'heti',valid:'A rekord tavi jegy a normál tóra is érvényes.',no12:'Faházvendégeknek 12 órás jegy nem váltható; nekik 24 órás jegyet kell váltani.'},
+    de:{head:'Angelkarten (Erwachsene / Kinder):',normal:'Normal-See',record:'Rekord-See',hours24:'24 Stunden',week:'Woche',valid:'Die Karte für den Rekord-See gilt auch am Normal-See.',no12:'Hausgäste können keine 12-Stunden-Karte kaufen; für sie gilt die 24-Stunden-Karte.'},
+    en:{head:'Fishing tickets (adult / child):',normal:'Normal lake',record:'Record lake',hours24:'24-hour',week:'weekly',valid:'The record-lake ticket is also valid at the normal lake.',no12:'Cabin guests cannot buy a 12-hour ticket; they need the 24-hour ticket.'},
+    si:{head:'Ribolovne karte (odrasli / otroci):',normal:'Normalno jezero',record:'Rekordno jezero',hours24:'24-urna',week:'tedenska',valid:'Karta za rekordno jezero velja tudi na normalnem jezeru.',no12:'Gostje hišk ne morejo kupiti 12-urne karte; zanje velja 24-urna karta.'}}[lang];
+   const rows=lakes.map(lake=>'– '+W[lake]+': '+durations.map(d=>W[d]+' '+money(t[lake].adult[d]).replace(/ (Ft|HUF)$/,'')+' / '+money(t[lake].child[d])).join('; ')+'.');
+   const notes=[(lakes.includes('record'))&&W.valid,(durations.includes('hours24')||/12\s*(?:ór|h\b|hour|stunden|ur\b)|12-hour/iu.test(text))&&W.no12].filter(Boolean);
+   answers.push([W.head,...rows,...notes].join('\n'));
   }
   if(wantsHook) answers.push({
     hu:'Szakállas horog nem használható; kizárólag szakáll nélküli, legfeljebb 6-os méretű horog engedélyezett.',
@@ -77,7 +81,7 @@ export function fishingQuestion(text='', language='hu') {
     en:'The fishing question needs to be checked by lake, ticket type and age group.',
     si:'Ribolovno vprašanje je treba preveriti glede na jezero, vrsto karte in starostno skupino.'
   }[lang]);
-  const kind=answers.length>1?'combined':wantsGeneral?'general_conditions':wantsHook?'rule':wantsNormal24?'normal_24h_adult':'review';
+  const kind=answers.length>1?'combined':wantsGeneral?'general_conditions':wantsHook?'rule':asksTicket?'tickets':'review';
   return {namespace:fishing.namespace,kind,answer:answers.join(' '),
     source:wantsHook||wantsMinimum?fishing.rulesSource:fishing.source,verifiedAt:fishing.verifiedAt,validFrom:fishing.validFrom,
     accommodationTotalAffected:false};

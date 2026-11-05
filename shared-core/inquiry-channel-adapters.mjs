@@ -1,6 +1,8 @@
 import {evaluateCentralInquiry} from './central-inquiry-decision.mjs';
 import {buildCentralReply} from '../central-reply.mjs';
-import {replyQuestions,stayCancellationFromText,replySummary} from '../sarberki-core.mjs';
+import {replyQuestions,stayCancellationFromText,replySummary,hotTubSentence,requestFlagsFromText,pierPreferenceFromText} from '../sarberki-core.mjs';
+import {fishingQuestion} from '../fishing-rules.mjs';
+import {SARBERKI_TENANT} from '../tenant-config.mjs';
 const words={
  hu:{pending:'A kapacitás ellenőrzése még nem igazolt.',available:'A teljes kért időszakra megfelelő típusszintű kapacitás igazolt. A végleges ajánlat emberi jóváhagyásra vár.',unavailable:'A kért elhelyezéshez nincs elegendő igazolt szabad kapacitás.',review:'A megadott adatok pontosítása vagy emberi ellenőrzése szükséges.',date:'Kérjük, erősítse meg az érkezés és távozás évét.',units:'Hány szállásegységet szeretnének?',price:'Az ellenőrzött ár belső jóváhagyásra vár; ez még nem végleges ajánlat.'},
  de:{pending:'Die Verfügbarkeit ist noch nicht verifiziert.',available:'Passende Kapazität auf Typebene wurde für den gesamten Aufenthalt geprüft. Das endgültige Angebot benötigt eine manuelle Freigabe.',unavailable:'Für die gewünschte Unterkunft reicht die bestätigte freie Kapazität nicht aus.',review:'Die Angaben müssen präzisiert oder manuell geprüft werden.',date:'Bitte bestätigen Sie das Jahr der An- und Abreise.',units:'Wie viele Unterkunftseinheiten wünschen Sie?',price:'Der geprüfte Preis benötigt eine interne Freigabe und ist noch kein endgültiges Angebot.'},
@@ -32,7 +34,10 @@ function renderEmailDecision(decision,original,language){
  // An explicit stay cancellation gets the existing approved acknowledgement, not booking questions.
  // The decision, facts and safety flags are unchanged; a human still reviews before anything is sent.
  if(stayCancellationFromText(original))return buildCentralReply({language,original,intent:'cancellation_request'});
- const draft=buildCentralReply({language,original,arrival:f.dates?.arrival,departure:f.dates?.departure,guests:f.guests,adults:f.adults,children:f.children,childAges:f.child_ages,phone:f.phone,cabin:f.cabin});
+ // Verified Sárberki fishing knowledge (tickets, rules) is part of the same letter in every channel.
+ const fishing=fishingQuestion(original,language);
+ const knowledge=fishing&&fishing.kind!=='review'?[{tenantId:SARBERKI_TENANT.id,caseId:'inquiry-draft',kind:'knowledge',lines:[fishing.answer],approved:true,source:fishing.source}]:[];
+ const draft=buildCentralReply({caseId:'inquiry-draft',language,original,arrival:f.dates?.arrival,departure:f.dates?.departure,guests:f.guests,adults:f.adults,children:f.children,childAges:f.child_ages,phone:f.phone,cabin:f.cabin},{records:knowledge});
  // Existing email renderer remains the presentation layer. The shared decision
  // and its current safety status are returned alongside the pending draft.
  const parts=centralConversationParts(decision,language);
@@ -45,7 +50,7 @@ function renderEmailDecision(decision,original,language){
  }
  const withQuestions=placeAdditions(draft,additions,language);
  const full=parts.status&&!draft.includes(parts.status)?placeStatus(withQuestions,parts.status,language):withQuestions;
- return shortMissingDetailsReply(full,language,decision)||shortDatedReply(full,language,decision)||full;
+ return shortMissingDetailsReply(full,language,decision)||shortDatedReply(full,language,decision,original)||full;
 }
 // Owner decision 2026-11-04: when the dates are still missing and the letter holds nothing but the
 // standard placeholders and questions, send a short, direct request for the missing details instead
@@ -73,6 +78,24 @@ const PLACEHOLDER={
  en:['We will confirm availability of your requested cabin separately.','We will check and confirm availability separately.','We will quote the total price for the option that is actually available.','This enquiry is not a confirmed booking. We can confirm a booking only after clarifying the required details and selected cabin and rechecking availability.'],
  si:['Razpoložljivost želene hiške bomo potrdili posebej.','Razpoložljivost bomo preverili in potrdili posebej.','Skupno ceno navedemo za možnost, ki je dejansko na voljo.','To povpraševanje še ni potrjena rezervacija. Rezervacijo lahko potrdimo šele po uskladitvi potrebnih podatkov in izbrane hiške ter ponovnem preverjanju razpoložljivosti.']
 };
+
+// Short answers kept in the short letter (owner 2026-11-04/05): the fishing block, the pet fee and the
+// hot-tub sentence. They are lifted out of their sections and shown as one paragraph.
+const ANSWER_SECTION={hu:{fishing:'Horgászat',extras:'Kiegészítő információk'},de:{fishing:'Angeln',extras:'Weitere Informationen'},
+ en:{fishing:'Fishing',extras:'Additional information'},si:{fishing:'Ribolov',extras:'Dodatne informacije'}};
+const PET_LINE=/^(?:Háziállat hozható, díja |Haustiere sind erlaubt; die Gebühr beträgt |Pets are allowed; the fee is |Hišni ljubljenčki so dovoljeni; pristojbina znaša )/u;
+function liftAnswers(bodyLines,language){
+ const sec=ANSWER_SECTION[language],answers=[],rest=[];let current=null;
+ for(const raw of bodyLines){
+  const line=raw.trim();
+  if(line===sec.fishing||line===sec.extras){current=line;continue;}
+  if(!line){current=null;rest.push(raw);continue;}
+  if(current===sec.fishing){answers.push(line);continue;}
+  if(current===sec.extras&&(PET_LINE.test(line)||line===hotTubSentence(language))){answers.push(line);continue;}
+  rest.push(raw);
+ }
+ return {answers,rest};
+}
 function shortMissingDetailsReply(full,language,decision){
  const lang=SHORT[language]?language:null;
  if(!lang||!decision.missing.includes('dates'))return null;
@@ -85,7 +108,8 @@ function shortMissingDetailsReply(full,language,decision){
  const greeting=lines[0],closing=lines.slice(closingAt);
  const allowed=new Set([...SECTION[lang],...PLACEHOLDER[lang],w.pending,w.review]);
  const wanted=new Set();
- for(const line of lines.slice(1,closingAt).map(l=>l.trim()).filter(Boolean)){
+ const lifted=liftAnswers(lines.slice(1,closingAt),lang);
+ for(const line of lifted.rest.map(l=>l.trim()).filter(Boolean)){
   if(line===replyIntro(lang)||allowed.has(line))continue;
   const key=keyOf.get(line);
   if(!key)return null;
@@ -96,7 +120,7 @@ function shortMissingDetailsReply(full,language,decision){
  if(wanted.has('cabinTwo'))wanted.delete('cabin');
  const items=['dates','people','ages','cabin','cabinTwo','phone'].filter(k=>wanted.has(k)).map(k=>t[k]);
  const list=items.map((item,i)=>'– '+item+(i===items.length-1?'.':','));
- return [greeting,'',t.intro,...list,'',t.outro,'',...closing].join('\n');
+ return [greeting,'',...(lifted.answers.length?[lifted.answers.join('\n'),'']:[]),t.intro,...list,'',t.outro,'',...closing].join('\n');
 }
 const replyIntro=lang=>({hu:'Köszönjük érdeklődését.',de:'Vielen Dank für Ihre Anfrage.',en:'Thank you for your enquiry.',si:'Hvala za vaše povpraševanje.'})[lang];
 const OFFERED_CHOICE=['melyik felajánlott faháztípust választja','welchen der angebotenen Haustypen','which of the offered cabin types','katero od ponujenih vrst hišk'];
@@ -154,11 +178,12 @@ const DATED={
   ask:'Prosimo, sporočite nam:',choice:'katero vrsto hiške izberete',multi:'ali vam ustreza namestitev v več hiškah',outroPrice:'Nato preverimo razpoložljivost in vam pošljemo ponudbo s ceno.',
   optionsRe:/^Za navedeno število gostov pridejo v poštev naslednje možnosti: (.+)\. Za izbrani termin preverimo, katere so dejansko proste\.$/u,largeRe:/^(\d+) oseb ne more bivati v eni hiški; /u}
 };
-function shortDatedReply(full,language,decision){
+function shortDatedReply(full,language,decision,original=''){
  const d=DATED[language],t=SHORT[language];
  const f=decision.facts;
  if(!d||!f.dates?.arrival||!f.dates?.departure||decision.missing.includes('dates')||decision.missing.includes('dates_confirmation'))return null;
- const summary=replySummary(language,{arrival:f.dates.arrival,departure:f.dates.departure,guests:f.guests,adults:f.adults,children:f.children,childAges:f.child_ages||[]});
+ const flags=requestFlagsFromText(original);
+ const summary=replySummary(language,{arrival:f.dates.arrival,departure:f.dates.departure,guests:f.guests,adults:f.adults,children:f.children,childAges:f.child_ages||[],dog:flags.petRequested,hotTub:flags.hotTubRequested,pier:pierPreferenceFromText(original)});
  if(!summary)return null;
  const q=flag=>replyQuestions(language,flag)[0];
  const keyOf=new Map([[q({needAdults:true}),'people'],[q({needChildStatus:true}),'people'],[q({needChildAge:true}),'ages'],
@@ -167,7 +192,8 @@ function shortDatedReply(full,language,decision){
  if(closingAt<2)return null;
  const allowed=new Set([...SECTION[language],...PLACEHOLDER[language],words[language].pending,replyIntro(language)]);
  let options=null,large=null,sawSummary=false;const wanted=new Set();
- for(const line of lines.slice(1,closingAt).map(l=>l.trim()).filter(Boolean)){
+ const lifted=liftAnswers(lines.slice(1,closingAt),language);
+ for(const line of lifted.rest.map(l=>l.trim()).filter(Boolean)){
   if(allowed.has(line))continue;
   if(line===summary){sawSummary=true;continue;}
   const o=d.optionsRe.exec(line);if(o){options=o[1];continue;}
@@ -187,5 +213,5 @@ function shortDatedReply(full,language,decision){
  const optionText=options?options.replace(/, (?=[^,]*$)/u,d.or):null;
  const head=[replyIntro(language),summary,optionText?d.options(optionText):'',large?d.large(large):''].filter(Boolean).join(' ');
  const list=items.map((item,i)=>'– '+item+(i===items.length-1?'.':','));
- return [lines[0],'',head,'',d.ask,...list,'',options?d.outroPrice:t.outro,'',...lines.slice(closingAt)].join('\n');
+ return [lines[0],'',head,'',...(lifted.answers.length?[lifted.answers.join('\n'),'']:[]),d.ask,...list,'',options?d.outroPrice:t.outro,'',...lines.slice(closingAt)].join('\n');
 }
