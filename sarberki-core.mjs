@@ -1037,7 +1037,9 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   }[lang]);
 
   const fishingAsked=/(?:horgász|horgasz|angeln|fish(?:ing)?|ribolov|ribe)/iu.test(original);
-  const fishingLines=fishingAsked&&Array.isArray(knowledgeLines)?knowledgeLines.filter(Boolean):[];
+  // Verified knowledge lines come only from the fishing module, which already decided that the guest asked
+  // (e.g. 'napijegy' without the word 'horgász'); they are kept even without a fishing keyword.
+  const fishingLines=Array.isArray(knowledgeLines)&&knowledgeLines.some(Boolean)?knowledgeLines.filter(Boolean):[];
   if(caseContext) pricingLines.push(...caseContext.priceLines);
   // The central reply context always carries a (possibly empty) case context; only case-specific booking
   // lines from the detailed console replace the approved general policy answers.

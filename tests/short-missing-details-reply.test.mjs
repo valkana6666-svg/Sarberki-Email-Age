@@ -70,3 +70,12 @@ test('owner-approved answers reach the daily-view letter and stay in the short f
  const noPier=draft('Jó napot!\n2027. augusztus 12-től 15-ig jönnénk 5 felnőttel.\nÜdv: Kiss Anna');
  assert.doesNotMatch(noPier,/stég|szomszédos|előleg/);
 });
+
+test('slangy unaccented mail: day-ticket question without the word "horgász" still gets the ticket answer',()=>{
+ const t=draft('Sziasztok!\n5-en lennénk 2027. július 10-14. Mennyi az eloleg? Van steg a hazhoz? Mennyibe kerul a napijegy?\nKöszi: Kovács Bence');
+ assert.match(t,/^Kedves Bence!/);
+ assert.match(t,/5 fő részére/);
+ assert.match(t,/– Normál tó: 24 órás 7 500 \/ 3 750 Ft\.\n– Rekord tó: 24 órás 11 250 \/ 5 650 Ft\./);
+ assert.doesNotMatch(t,/heti/);
+ assert.match(t,/saját stég tartozik/);assert.match(t,/Az előleg a szállásdíj 50%-a\./);
+});
