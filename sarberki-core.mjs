@@ -687,7 +687,10 @@ function operationalTopicLines(language='hu',original='',rules=null,caseContext=
     // ("we will not bring a dog"); the shared negation-aware request flag decides, a question always counts.
     pet:/(?:kuty|háziállat|dog|pet\b|hund|haustier|pes|ps(?:a|u|om|i|ov|oma)\b)/iu.test(original)&&(requestFlagsFromText(original).petRequested||
      /(?:kuty|háziállat|dog|pet\b|hund|haustier|pes|ps(?:a|u|om|i|ov|oma)\b)[^.!?\n]*\?/iu.test(original)),
-    hotTub:/(?:dézs|dézsafürdő|hot[ -]?tub|whirlpool|badefass|vroč\w*\s*kad|masaž\w*\s*kad)/iu.test(original)
+    // Owner 2026-11-05: answer the hot tub only when the guest asks about it (a question in the tub
+    // sentence or a price word), not when the tub is merely requested ("dézsát is szeretnénk").
+    hotTub:original.split(/(?<=[.!?\n])/u).some(sentence=>/(?:dézs|dézsafürdő|hot[ -]?tub|whirlpool|badefass|badezuber|vroč\w*\s*kad|masaž\w*\s*kad)/iu.test(sentence)
+      &&(/\?/u.test(sentence)||/(?:mennyi|mennyibe|ár[aá]?\b|díj|price|cost|how\s+much|preis|kost|koliko|cena)/iu.test(sentence)))
   };
   const lines=[];
   if(asks.electricity&&rules.electricitySettlement==='metered_separate') lines.push({
@@ -755,7 +758,9 @@ function operationalTopicLines(language='hu',original='',rules=null,caseContext=
       si:hasVerifiedPetFee?`Hišni ljubljenčki so dovoljeni; pristojbina znaša ${feeText} Ft na žival na dan.`:'Hišni ljubljenčki so dovoljeni z doplačilom; natančno pristojbino mora potrditi upravljavec.'
     }[lang]);
   }
-  if(!caseContext&&asks.hotTub&&rules.hotTubAvailabilityRequiresCheck){
+  // The detailed console adds its own case-specific tub line (availability, approved fee); do not repeat it.
+  const caseTubLine=caseContext?.extraLines?.some(line=>/(?:dézs|badefass|hot tub|masažn)/iu.test(line));
+  if(!caseTubLine&&asks.hotTub&&rules.hotTubAvailabilityRequiresCheck){
     lines.push(hotTubSentence(lang,rules.hotTubFeeVerified===true));
   }
   return lines;

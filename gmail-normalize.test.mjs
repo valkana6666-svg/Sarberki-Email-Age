@@ -682,7 +682,8 @@ Phone: +44 7700 912345.`;
   assert.match(draft,/20%/u);
   assert.match(draft,/730 days/u);
   assert.match(draft,/Pets are allowed; the fee is 2 000 Ft per pet per day/u);
-  assert.match(draft,/The hot tub can be rented separately: 30 000 Ft\/24 hours for up to 6 guests, then \+4 000 Ft per person/u);
+  // Owner 2026-11-05: a hot-tub wish (no question) gets no tub sentence.
+  assert.doesNotMatch(draft,/The hot tub can be rented separately/u);
   assert.match(draft,/outside the period with the 10% high-season surcharge/u);
   assert.match(draft,/550 HUF per adult per night/u);
   assert.match(draft,/another suitable cabin type or a combination of units/u);
