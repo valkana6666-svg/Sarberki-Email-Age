@@ -19,7 +19,7 @@ const sha=text=>createHash('sha256').update(text,'utf8').digest('hex');
 function fixture(n,{text='Jó napot! Deluxe faházat szeretnénk 2027-05-14 és 2027-05-16 között 2 felnőtt számára.',subject='Sárberki élő teszt – AI előnézet'}={}){
  const messageId=('18f2a0b1c2d3e4'+String(n).padStart(2,'0'));
  const source={provider:'gmail',mailbox_id:'sarberki_gmail_test',message_id:messageId,thread_id:messageId,rfc_message_id:'<fictional-'+n+'@example.test>',
-  in_reply_to:null,references:[],subject,from:'Teszt <sender@example.test>',from_email:'sender@example.test',to:'sarberkiprojecttest@gmail.com',received_at:'2026-10-31T10:00:00.000Z'};
+  in_reply_to:null,references:[],subject,from:'Teszt <sarberkito@gmail.com>',from_email:'sarberkito@gmail.com',to:'sarberkiprojecttest@gmail.com',received_at:'2026-10-31T10:00:00.000Z'};
  const envelope={sender:source.from_email,text,mailbox_id:source.mailbox_id,message_id:messageId,thread_id:messageId,rfc_message_id:source.rfc_message_id,references:[],received_at:source.received_at};
  const caseId='tm-case-'+n;
  const data={id:caseId,tenantId:TENANT,sender:source.from_email,state:{approval:'pending',values:{}},messages:[envelope],drafts:[{text:'Kedves Vendégünk! (kitalált tervezet '+n+')'}],sourceReceipt:source};

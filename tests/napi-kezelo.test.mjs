@@ -279,7 +279,7 @@ async function dailyPage(tag,{storage=new Map(),stateKey='5'.repeat(64),loggedIn
  const doc=fakeDocument(),events={},calls=[],sessionMeta={...meta(),stateKey};const server={loggedIn};
  const mailIds=['58f2a0b1c2d3e4f0','58f2a0b1c2d3e4f1','58f2a0b1c2d3e4f2'];
  const mail=id=>({id,threadId:id,labelIds:['INBOX'],internalDate:String(Date.parse('2026-10-30T12:00:00Z')-mailIds.indexOf(id)*60000),
-  payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Sárberki élő teszt – AI előnézet '+mailIds.indexOf(id)},{name:'From',value:'Teszt <sender@example.test>'}],
+  payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Sárberki élő teszt – AI előnézet '+mailIds.indexOf(id)},{name:'From',value:'Teszt <sarberkito@gmail.com>'}],
    body:{data:Buffer.from('Jó napot! Deluxe faházat szeretnénk foglalni 2027-05-14 és 2027-05-16 között 2 felnőtt, 0 gyermek számára.').toString('base64url')}}});
  const env={document:doc,location:{origin:'https://leafy-chimera-2403e5.netlify.app',search:''},localStorage:{getItem:k=>storage.has(k)?storage.get(k):null,setItem:(k,v)=>storage.set(k,String(v)),removeItem:k=>storage.delete(k)},
   google:{accounts:{oauth2:{initTokenClient:options=>({requestAccessToken:()=>options.callback({access_token:'SYNTHETIC_TOKEN'})})}}},
@@ -355,7 +355,7 @@ test('relaunch restores mails, selection and edited AI reply from an encrypted s
  try{await readPreviewEditHide(first);}finally{first.restore();}
  assert.deepEqual([...storage.keys()].sort(),['sarberki-napi-concealed-at','sarberki-napi-state']);
  const raw=storage.get('sarberki-napi-state');
- for(const plain of ['Proba123','Jó napot','Sárberki élő teszt','sender@example.test','Kedves'])assert.equal(raw.includes(plain),false,'no plaintext: '+plain);
+ for(const plain of ['Proba123','Jó napot','Sárberki élő teszt','sarberkito@gmail.com','Kedves'])assert.equal(raw.includes(plain),false,'no plaintext: '+plain);
  const second=await dailyPage('snapshot-restore',{storage});
  try{
   const e=second.doc.elements;

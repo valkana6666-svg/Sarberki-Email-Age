@@ -9,7 +9,7 @@ const ID='18f2a0b1c2d3e4f5',KEY='c3'.repeat(32);
 const BODY='Jó napot! Deluxe faházat szeretnénk foglalni 2027-05-14 és 2027-05-16 között 2 felnőtt, 0 gyermek számára.';
 const b64=text=>Buffer.from(text).toString('base64url');
 function message(overrides={}){
- const headers={Subject:'Sárberki élő teszt – AI előnézet',From:'Teszt Küldő <Sender@Example.test>',To:'sarberkiprojecttest@gmail.com','Message-ID':'<synthetic-1@example.test>',...overrides.headers};
+ const headers={Subject:'Sárberki élő teszt – AI előnézet',From:'Teszt Vendég <sarberkito@gmail.com>',To:'sarberkiprojecttest@gmail.com','Message-ID':'<synthetic-1@example.test>',...overrides.headers};
  const payload=overrides.payload||{mimeType:'multipart/alternative',headers:Object.entries(headers).filter(([,v])=>v!==undefined).map(([name,value])=>({name,value})),
   parts:[{mimeType:'text/plain',body:{data:b64(overrides.body??BODY)}},{mimeType:'text/html',body:{data:b64('<p>'+(overrides.body??BODY)+'</p>')}}]};
  if(overrides.payload)payload.headers=Object.entries(headers).filter(([,v])=>v!==undefined).map(([name,value])=>({name,value}));
@@ -38,8 +38,8 @@ test('server reads ONE verified test-mailbox message and builds the existing exa
  assert.deepEqual(g.calls.map(c=>new URL(c.url).pathname),['/gmail/v1/users/me/profile','/gmail/v1/users/me/messages/'+ID]);
  assert.deepEqual(Object.keys(result).sort(),['bodySha256','envelope','source']);
  assert.deepEqual(result.source,{provider:'gmail',mailbox_id:'sarberki_gmail_test',message_id:ID,thread_id:'18f2a0b1c2d3e4f0',rfc_message_id:'<synthetic-1@example.test>',
-  in_reply_to:null,references:[],subject:'Sárberki élő teszt – AI előnézet',from:'Teszt Küldő <Sender@Example.test>',from_email:'sender@example.test',to:'sarberkiprojecttest@gmail.com',received_at:'2026-10-31T10:00:00.000Z'});
- assert.deepEqual(result.envelope,{sender:'sender@example.test',text:BODY,mailbox_id:'sarberki_gmail_test',message_id:ID,thread_id:'18f2a0b1c2d3e4f0',
+  in_reply_to:null,references:[],subject:'Sárberki élő teszt – AI előnézet',from:'Teszt Vendég <sarberkito@gmail.com>',from_email:'sarberkito@gmail.com',to:'sarberkiprojecttest@gmail.com',received_at:'2026-10-31T10:00:00.000Z'});
+ assert.deepEqual(result.envelope,{sender:'sarberkito@gmail.com',text:BODY,mailbox_id:'sarberki_gmail_test',message_id:ID,thread_id:'18f2a0b1c2d3e4f0',
   rfc_message_id:'<synthetic-1@example.test>',references:[],received_at:'2026-10-31T10:00:00.000Z'});
  assert.match(result.bodySha256,/^[a-f0-9]{64}$/);
  assert.equal(JSON.stringify(result).includes(TOKEN),false,'token never in the result');
@@ -63,17 +63,23 @@ test('negative: wrong account, Gmail auth/rate/availability errors and malformed
  }
 });
 
-test('negative: unmarked, reply/forward, not addressed to the test mailbox, HTML-only, blank, oversized or unreadable messages are rejected',async()=>{
+test('any subject from the test guest is accepted',async()=>{
+ for(const Subject of ['Érdeklődés','Szállás júliusban',undefined]){const r=await read(gmail({body:message({headers:{Subject}})}));assert.equal(r.source.from_email,'sarberkito@gmail.com');}
+});
+
+test('negative: other sender, reply/forward, not addressed to the test mailbox, HTML-only, blank, oversized or unreadable messages are rejected',async()=>{
  const html={mimeType:'text/html',body:{data:b64('<p>'+BODY+'</p>')}};
  const cases=[
-  [message({headers:{Subject:'Érdeklődés a szállásról'}}),'NOT_MARKED_TEST_MESSAGE'],
-  [message({headers:{Subject:'Re: Sárberki élő teszt'}}),'NOT_MARKED_TEST_MESSAGE'],
-  [message({headers:{Subject:undefined}}),'NOT_MARKED_TEST_MESSAGE'],
+  // Owner 2026-11-05: the test gate is the test guest SENDER (any subject); replies/forwards and other senders are refused.
+  [message({headers:{From:'Másik <other@example.test>'}}),'NOT_TEST_PAIR_INQUIRY'],
+  [message({headers:{From:'Lookalike <sarberkito@gmail.com.example.test>'}}),'NOT_TEST_PAIR_INQUIRY'],
+  [message({headers:{Subject:'Re: Érdeklődés'}}),'NOT_TEST_PAIR_INQUIRY'],
+  [message({headers:{Subject:'Fwd: Érdeklődés'}}),'NOT_TEST_PAIR_INQUIRY'],
   [message({headers:{'In-Reply-To':'<earlier@example.test>'}}),'REPLY_NOT_ALLOWED'],
   [message({headers:{References:'<earlier@example.test>'}}),'REPLY_NOT_ALLOWED'],
   [message({headers:{To:'other@example.test'}}),'NOT_ADDRESSED_TO_TEST_MAILBOX'],
   [message({headers:{To:'sarberkiprojecttest@gmail.com, other@example.test'}}),'NOT_ADDRESSED_TO_TEST_MAILBOX'],
-  [message({headers:{From:'no address'}}),'INVALID_SENDER'],
+  [message({headers:{From:'no address'}}),'NOT_TEST_PAIR_INQUIRY'],
   [message({headers:{'Message-ID':undefined}}),'MESSAGE_ID_REQUIRED'],
   [message({payload:html}),'TEXT_PART_REQUIRED'],
   [message({body:'   \n  '}),'EMPTY_TEXT'],
@@ -117,6 +123,6 @@ test('manipulation: the attestation binds every source field and the server-read
 
 test('automated or booking-system mail is never accepted as a test-mailbox inquiry, even with the test subject',async()=>{
  for(const headers of [{'Auto-Submitted':'auto-generated'},{From:'Previo <noreply@previo.cz>'},{From:'no-reply@example.test'},{Precedence:'bulk'},{'List-Id':'<x.example.test>'},{'Return-Path':'<b@smtp.previo.cz>'}]){
-  await assert.rejects(read(gmail({body:message({headers})})),e=>e.code==='AUTOMATED_MESSAGE',JSON.stringify(headers));
+  await assert.rejects(read(gmail({body:message({headers})})),e=>['AUTOMATED_MESSAGE','NOT_TEST_PAIR_INQUIRY'].includes(e.code),JSON.stringify(headers));
  }
 });

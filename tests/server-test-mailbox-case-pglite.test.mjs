@@ -15,7 +15,7 @@ const TEXT='Jó napot! Deluxe faházat szeretnénk foglalni 2027-05-14 és 2027-
 const gmail=(subject='Sárberki élő teszt – AI előnézet')=>async url=>{
  const u=new URL(url);if(u.pathname.endsWith('/profile'))return new Response(JSON.stringify({emailAddress:'sarberkiprojecttest@gmail.com'}));
  return new Response(JSON.stringify({id:ID,threadId:ID,labelIds:['INBOX'],internalDate:String(Date.parse('2026-10-31T10:00:00Z')),payload:{mimeType:'multipart/alternative',
-  headers:[{name:'Subject',value:subject},{name:'From',value:'Teszt <sender@example.test>'},{name:'To',value:'sarberkiprojecttest@gmail.com'},{name:'Message-ID',value:'<f1@example.test>'}],
+  headers:[{name:'Subject',value:subject},{name:'From',value:'Teszt <sarberkito@gmail.com>'},{name:'To',value:'sarberkiprojecttest@gmail.com'},{name:'Message-ID',value:'<f1@example.test>'}],
   parts:[{mimeType:'text/plain',body:{data:b64(TEXT)}}]}}));
 };
 
@@ -42,7 +42,7 @@ test('WP4a module output is accepted by sc_tm_create; reader, disabled switch, w
   await db.exec('update sc_test_mailbox_config set enabled=true');
   await assert.rejects(ingest('reader'),error=>error.code==='FORBIDDEN');
   await assert.rejects(ingest('writer',{attestationKey:'d4'.repeat(32)}),error=>error.code==='FORBIDDEN','key not known to the database');
-  await assert.rejects(ingest('writer',{fetchImpl:gmail('Re: Sárberki élő teszt')}),error=>error.code==='NOT_MARKED_TEST_MESSAGE');
+  await assert.rejects(ingest('writer',{fetchImpl:gmail('Re: Sárberki élő teszt')}),error=>error.code==='NOT_TEST_PAIR_INQUIRY');
   assert.equal((await db.query('select count(*)::int n from sc_cases')).rows[0].n,0);
   const result=await ingest('writer');assert.deepEqual({...result,revision:Number(result.revision)},{caseId:'tm-'+ID,revision:1});
   const data=(await db.query('select data from sc_cases where case_id=$1',['tm-'+ID])).rows[0].data;

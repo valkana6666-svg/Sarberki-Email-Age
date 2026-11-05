@@ -210,8 +210,8 @@ const markedBodies={
  en:'Hello! One Deluxe cabin from 2027-05-14 to 2027-05-16 for 2 adults and 0 children.',
  si:'Pozdravljeni! Deluxe hiška 2027-05-14 do 2027-05-16, 2 odrasli, 0 otroci.'
 };
-const marked=(subject,body,{id='18f2a0b1c2d3e4f5',labelIds=['INBOX'],internalDate=String(Date.parse('2026-10-30T09:00:00Z')),payload=null}={})=>({id,threadId:id,labelIds,internalDate,
- payload:payload||{mimeType:'text/plain',headers:[...(subject===undefined?[]:[{name:'Subject',value:subject}]),{name:'From',value:'Teszt Küldő <sender@example.test>'}],body:{data:Buffer.from(body).toString('base64url')}}});
+const marked=(subject,body,{id='18f2a0b1c2d3e4f5',labelIds=['INBOX'],internalDate=String(Date.parse('2026-10-30T09:00:00Z')),payload=null,from='Teszt Küldő <sarberkito@gmail.com>'}={})=>({id,threadId:id,labelIds,internalDate,
+ payload:payload||{mimeType:'text/plain',headers:[...(subject===undefined?[]:[{name:'Subject',value:subject}]),{name:'From',value:from}],body:{data:Buffer.from(body).toString('base64url')}}});
 
 test('marked test-mailbox messages get the exact shared-adapter preview in HU/DE/EN/SI without network, storage or logging',async()=>{
  const subjects=['Sárberki élő teszt – HU foglalás','SARBERKI ELO TESZT de','  Sárberki   élő teszt  - EN','Sárberki élő teszt'];
@@ -232,13 +232,13 @@ test('marked test-mailbox messages get the exact shared-adapter preview in HU/DE
  h.logout();
 });
 
-test('unmarked, reply/forward, lookalike, out-of-scope or oversized test-mailbox messages get no preview',async()=>{
+test('other sender, reply/forward, lookalike, out-of-scope or oversized test-mailbox messages get no preview',async()=>{
  const body=markedBodies.hu;
  const rejected=[
   ['reply','Re: Sárberki élő teszt',body],['reply-hu','VS: Sárberki élő teszt',body],['forward','Fwd: Sárberki élő teszt',body],['forward-de','AW: Sárberki élő teszt',body],
-  ['lookalike-suffix','Sárberki élő tesztelés',body],['lookalike-order','Teszt Sárberki élő',body],['prefix-not-first','x Sárberki élő teszt',body],
-  ['ordinary-inquiry','Érdeklődés a szállásról',body],['empty-subject','',body],['missing-subject',undefined,body],
-  ['marker-only-in-body','Foglalás','Sárberki élő teszt '+body],
+  // Owner 2026-11-05: the gate is the test guest sender (any subject); other senders and lookalikes are refused.
+  ['other-sender','Érdeklődés a szállásról',body,{from:'Vendég <guest@example.test>'}],['lookalike-sender','Érdeklődés',body,{from:'X <sarberkito@gmail.com.example.test>'}],
+  ['display-name-only','Érdeklődés',body,{from:'sarberkito@gmail.com <other@example.test>'}],
   ['no-inbox-label','Sárberki élő teszt',body,{labelIds:['SENT']}],
   ['before-test-window','Sárberki élő teszt',body,{internalDate:String(Date.parse('2026-09-24T12:00:00Z'))}],
   ['oversized','Sárberki élő teszt','A'.repeat(20001)],['blank-body','Sárberki élő teszt','   \n  '],

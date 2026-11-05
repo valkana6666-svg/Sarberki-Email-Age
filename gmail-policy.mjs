@@ -1,4 +1,14 @@
 export const TEST_GMAIL_ACCOUNT = 'sarberkiprojecttest@gmail.com';
+// Owner decision 2026-11-05: in the TEST phase a mail is a test inquiry by its SENDER (the approved test
+// guest of the test pair, AGENTS.md TESZT-LEVÉLKÜLDÉSI ENGEDÉLY), with any subject; replies and forwards
+// are never new inquiries.
+export const TEST_GUEST_SENDER = 'sarberkito@gmail.com';
+export function senderAddress(from){const m=/<([^<>\s]+)>\s*$/.exec(String(from??''));return (m?m[1]:String(from??'').trim()).toLowerCase();}
+export function isTestPairInquiry(headers={}){
+  if(senderAddress(headers.from)!==TEST_GUEST_SENDER)return false;
+  if(headers['in-reply-to']||headers.references)return false;
+  return !/^\s*(?:re|aw|sv|odg|fwd?|fw|wg|tr|vs)\s*:/iu.test(String(headers.subject??''));
+}
 export const INBOX_QUERY = 'in:inbox after:2026/09/25';
 // Gmail after: uses Pacific midnight; repeat that same boundary locally.
 const AFTER = Date.parse('2026-09-25T00:00:00-07:00');

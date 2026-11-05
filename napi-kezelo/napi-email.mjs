@@ -1,5 +1,4 @@
-import {readTestGmailInbox,TEST_GMAIL_ACCOUNT,gmailReadableBody,isTestInquiry} from '../gmail-policy.mjs';
-import {isMarkedTestSubject} from '../gmail-subject.mjs';
+import {readTestGmailInbox,TEST_GMAIL_ACCOUNT,gmailReadableBody,isTestInquiry,isTestPairInquiry} from '../gmail-policy.mjs';
 import {automatedMailReason} from '../shared-core/automated-mail-filter.mjs';
 import {buildEmailInquiryDraft} from '../shared-core/inquiry-channel-adapters.mjs';
 import {closedMailRequestFromGmailRecord} from '../shared-core/synthetic-mail-fixtures.mjs';
@@ -24,7 +23,7 @@ const MAX_PREVIEW_CHARS=20000;
 // Only a marked mail with a real Gmail id can be saved as a case; the server re-reads it from Gmail itself.
 function previewText(message,header,body){
  const closed=closedPreviewText(message,header,body);if(closed)return {text:closed,saveable:false};
- return isTestInquiry(message)&&isMarkedTestSubject(header.subject)&&!automatedMailReason(header)&&body.trim()&&body.length<=MAX_PREVIEW_CHARS?
+ return isTestInquiry(message)&&isTestPairInquiry(header)&&!automatedMailReason(header)&&body.trim()&&body.length<=MAX_PREVIEW_CHARS?
   {text:body,saveable:/^[a-f0-9]{12,32}$/.test(message.id||''),messageId:message.id}:null;
 }
 function closedPreviewText(message,header,body){
@@ -47,7 +46,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
   el('email-draft-request').disabled=!source||!canRead();
   el('email-save-case').disabled=!source?.saveable||!onSaveCase||!canRead();el('email-save-status').textContent='';
   el('email-draft-status').textContent=source?'AI-válaszjavaslat kérhető. Helyi előnézet lesz: nincs mentve, nem küldhető, nem foglalás.':
-   'Az AI-válaszjavaslat jelenleg csak a lezárt szintetikus tesztlevelekhez és a tesztpostafiók „Sárberki élő teszt” tárgyú leveleihez érhető el (válasz/továbbítás nem); más levélhez külön jóváhagyás szükséges.';
+   'Az AI-válaszjavaslat jelenleg csak a lezárt szintetikus tesztlevelekhez és a tesztvendég (sarberkito@gmail.com) leveleihez érhető el, bármilyen tárggyal (válasz/továbbítás nem); más levélhez külön jóváhagyás szükséges.';
  }
  function showPreview(draft){
   const d=draft.decision,items=[...d.missing.map(code=>'Hiányzó adat: '+(missingLabels[code]||code)),...d.contradictions.map(c=>'Ellentmondás: '+c.message),
@@ -167,7 +166,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
  });
  // Save the selected marked test mail as a pending cloud case. A fresh token is requested on this click
  // (user gesture) and handed to the server once; the server reads the mail itself and enforces every gate.
- const saveErrors={NOT_MARKED_TEST_MESSAGE:'A levél tárgya nem jelölt tesztlevél.',REPLY_NOT_ALLOWED:'Válasz vagy továbbítás nem menthető.',
+ const saveErrors={NOT_MARKED_TEST_MESSAGE:'A levél tárgya nem jelölt tesztlevél.',NOT_TEST_PAIR_INQUIRY:'Csak a tesztvendég (sarberkito@gmail.com) új levele menthető.',AUTOMATED_MESSAGE:'Automatikus levél (pl. Previo, hírlevél) nem menthető.',REPLY_NOT_ALLOWED:'Válasz vagy továbbítás nem menthető.',
   FORBIDDEN:'Ehhez a mentéshez nincs jogosultság, vagy a funkció nincs bekapcsolva.',GMAIL_AUTH_REQUIRED:'A Google-olvasási engedély szükséges.',
   STORAGE_FAILURE:'A mentés nem sikerült, vagy ez a levél már ügyként szerepel.',GMAIL_RATE_LIMITED:'A Gmail átmenetileg korlátozta az olvasást.'};
  el('email-save-case').addEventListener('click',()=>{

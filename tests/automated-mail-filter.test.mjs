@@ -47,7 +47,7 @@ test('own-mailbox sender is rejected only when the profile asks for it',()=>{
 
 test('only the TEST mailbox profile is enabled; the live profile fails closed',()=>{
  const t=enabledMailboxProfile('sarberki-test');
- assert.equal(t.account,TEST_GMAIL_ACCOUNT);assert.equal(t.requireTestSubject,true);assert.equal(t.sourceScope,'test-mailbox-source-v1');
+ assert.equal(t.account,TEST_GMAIL_ACCOUNT);assert.deepEqual([...t.allowedSenders],['sarberkito@gmail.com']);assert.equal(t.sourceScope,'test-mailbox-source-v1');
  assert.equal(MAILBOX_PROFILES['sarberki-live'].account,'info@sarberkito.hu');
  assert.equal(MAILBOX_PROFILES['sarberki-live'].enabled,false);
  assert.equal(MAILBOX_PROFILES['sarberki-live'].blockOwnSender,true);

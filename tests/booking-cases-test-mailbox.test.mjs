@@ -20,7 +20,7 @@ const GMAIL_TOKEN='ya29.SYNTHETIC_TEST_ONLY_TOKEN_0123456789',ID='18f2a0b1c2d3e4
 const TEXT='Jó napot! Deluxe faházat szeretnénk foglalni 2027-05-14 és 2027-05-16 között 2 felnőtt, 0 gyermek számára.';
 
 test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gmail token header can store a marked fictional test mail',async t=>{
- const db=new PGlite(),tokens=new Map(),cookies=new Map(),csrf=new Map();let gmailCalls=0,subject='Sárberki élő teszt – AI előnézet',fromHeader='Teszt <sender@example.test>',bodyText=TEXT;const gmailSends=[],openaiCalls=[];
+ const db=new PGlite(),tokens=new Map(),cookies=new Map(),csrf=new Map();let gmailCalls=0,subject='Sárberki élő teszt – AI előnézet',fromHeader='Teszt <sarberkito@gmail.com>',bodyText=TEXT;const gmailSends=[],openaiCalls=[];
  try{
   await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key);create table auth.sessions(id uuid primary key,user_id uuid,not_after timestamptz);create function auth.uid() returns uuid language sql stable as $$select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;grant usage on schema auth to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;`);
   await db.exec(await read('supabase/migrations/202610090001_case_store.sql'));
@@ -103,7 +103,7 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
   });
   await t.test('an unmarked (Re:) message is refused with a fixed code and nothing is stored',async()=>{
    subject='Re: Sárberki élő teszt';
-   assert.deepEqual((await call('writer',enabledEnv,input,{headers:gmail,status:422})).json,{error:'NOT_MARKED_TEST_MESSAGE'});
+   assert.deepEqual((await call('writer',enabledEnv,input,{headers:gmail,status:422})).json,{error:'NOT_TEST_PAIR_INQUIRY'});
    subject='Sárberki élő teszt – AI előnézet';assert.equal(await cases(),0);
   });
   await t.test('the database switch still governs: off -> FORBIDDEN',async()=>{
@@ -218,7 +218,9 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
   await t.test('send: off without its own switch; only an Approver; only approved; only the fixed test recipient; exactly one send',async()=>{
    const sendEnv={...enabledEnv,CASE_TEST_MAILBOX_SEND_ENABLED:'sarberki-test-pair-only'};
    const send=(role,env,id,revision,options)=>call(role,env,{tenantId:'sarberki-test',action:'test-mailbox-send',caseId:id,expectedRevision:revision},{headers:gmail,...options});
-   // caseId is approved (revision 4) but its sender is not the allowed test recipient.
+   // caseId is approved (revision 4); for the recipient check its stored sender is made a non-test address
+   // directly in the fixture database (the ingest gate no longer admits other senders, owner 2026-11-05).
+   await db.query("update sc_cases set data=jsonb_set(data,'{sourceReceipt,from_email}','\"guest@example.test\"') where case_id=$1",[caseId]);
    assert.deepEqual((await send('approver',enabledEnv,caseId,4,{status:403})).json,{error:'FORBIDDEN'},'separate send switch, default off');
    await send('writer',sendEnv,caseId,4,{status:403});
    await send('approver',sendEnv,caseId,3,{status:409});
@@ -239,7 +241,7 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
     const body=Buffer.from(mime.split('\r\n\r\n')[1].replace(/\r\n/g,''),'base64').toString('utf8').replace(/\r\n/g,'\n');
     assert.equal(body,(await latest(case3)).data.drafts.at(-1).text,'exactly the approved stored text');
     assert.equal((await latest(case3)).revision,2,'sending does not change the case');
-   }finally{fromHeader='Teszt <sender@example.test>';}
+   }finally{fromHeader='Teszt <sarberkito@gmail.com>';}
   });
   await t.test('the saver of an unedited machine draft may approve it; the author of an edited draft may not; reject and reopen keep history',async()=>{
    const id2='18f2a0b1c2d3e4f6',case2='tm-'+id2;

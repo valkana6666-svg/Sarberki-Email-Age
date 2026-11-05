@@ -3,8 +3,7 @@
 // request shape from SERVER-read content. The token is neither stored nor returned. Not wired to any
 // case write here: storing still requires the server-attested write path of the next work package.
 import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
-import {readTestGmailInbox,gmailReadableBody,TEST_GMAIL_ACCOUNT} from '../gmail-policy.mjs';
-import {isMarkedTestSubject} from '../gmail-subject.mjs';
+import {readTestGmailInbox,gmailReadableBody,TEST_GMAIL_ACCOUNT,isTestPairInquiry} from '../gmail-policy.mjs';
 import {automatedMailReason} from './automated-mail-filter.mjs';
 import {enabledMailboxProfile} from './server-mailbox-profiles.mjs';
 
@@ -40,8 +39,8 @@ export async function readVerifiedTestMailboxMessage({token,messageId,fetchImpl=
  const message=messages?.[0];
  if(messages?.length!==1||message?.id!==messageId)fail('GMAIL_SOURCE_UNVERIFIED');
  const headers=Object.fromEntries((message.payload?.headers||[]).map(h=>[String(h.name).toLowerCase(),h.value]));
- if(!isMarkedTestSubject(headers.subject))fail('NOT_MARKED_TEST_MESSAGE');
  if(headers['in-reply-to']||headers.references)fail('REPLY_NOT_ALLOWED');
+ if(!isTestPairInquiry(headers))fail('NOT_TEST_PAIR_INQUIRY');
  if(automatedMailReason(headers,{ownAddresses:[PROFILE.account],blockOwnSender:PROFILE.blockOwnSender}))fail('AUTOMATED_MESSAGE');
  if(address(headers.to)!==TEST_GMAIL_ACCOUNT||String(headers.to).includes(','))fail('NOT_ADDRESSED_TO_TEST_MAILBOX');
  const fromEmail=address(headers.from);

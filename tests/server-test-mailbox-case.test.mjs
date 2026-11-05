@@ -9,7 +9,7 @@ const TOKEN='ya29.SYNTHETIC_TEST_ONLY_TOKEN_0123456789',ID='18f2a0b1c2d3e4f5',KE
 const BODY='Jó napot! Deluxe faházat szeretnénk foglalni 2027-05-14 és 2027-05-16 között 2 felnőtt, 0 gyermek számára.';
 const b64=text=>Buffer.from(text).toString('base64url');
 function gmail({headers={},body=BODY,html=false}={}){
- const h={Subject:'Sárberki élő teszt – AI előnézet',From:'Teszt Küldő <Sender@Example.test>',To:'sarberkiprojecttest@gmail.com','Message-ID':'<synthetic-1@example.test>',...headers};
+ const h={Subject:'Sárberki élő teszt – AI előnézet',From:'Teszt Vendég <sarberkito@gmail.com>',To:'sarberkiprojecttest@gmail.com','Message-ID':'<synthetic-1@example.test>',...headers};
  const parts=html?[{mimeType:'text/html',body:{data:b64('<p>'+body+'</p>')}}]:[{mimeType:'text/plain',body:{data:b64(body)}}];
  const message={id:ID,threadId:'18f2a0b1c2d3e4f0',labelIds:['INBOX'],internalDate:String(Date.parse('2026-10-31T10:00:00Z')),
   payload:{mimeType:'multipart/alternative',headers:Object.entries(h).filter(([,v])=>v!==undefined).map(([name,value])=>({name,value})),parts}};
@@ -42,7 +42,7 @@ test('verified test mail becomes ONE pending case through sc_tm_create with the 
  for(const k of ['mailbox_id','message_id','thread_id','rfc_message_id','received_at'])assert.equal(msg[k],src[k],k);
  assert.equal(msg.message_id,ID,'provider id unscoped');assert.equal(msg.rfc_message_id,'<synthetic-1@example.test>');
  assert.deepEqual(msg.references,[]);assert.equal(src.in_reply_to,null);assert.deepEqual(src.references,[]);
- assert.equal(data.sender,'sender@example.test');assert.equal(msg.sender,'sender@example.test');assert.equal(msg.text,BODY);
+ assert.equal(data.sender,'sarberkito@gmail.com');assert.equal(msg.sender,'sarberkito@gmail.com');assert.equal(msg.text,BODY);
  // Shared engine facts and draft (server-extracted, not client-asserted); no sending/booking marker.
  assert.equal(data.state.values.arrival,'2027-05-14');assert.equal(data.state.values.departure,'2027-05-16');
  assert.equal(typeof data.drafts[0].text,'string');assert.ok(data.drafts[0].text.trim().length>0);
@@ -56,7 +56,7 @@ test('verified test mail becomes ONE pending case through sc_tm_create with the 
 
 test('Gmail gate failures stop before any storage call and expose only fixed codes',async()=>{
  const cases=[
-  ['unmarked subject',{headers:{Subject:'Ajánlatkérés'}},'NOT_MARKED_TEST_MESSAGE'],
+  ['other sender',{headers:{From:'Más <guest@example.test>'}},'NOT_TEST_PAIR_INQUIRY'],
   ['reply',{headers:{'In-Reply-To':'<x@example.test>'}},'REPLY_NOT_ALLOWED'],
   ['other recipient',{headers:{To:'guest@example.test'}},'NOT_ADDRESSED_TO_TEST_MAILBOX'],
   ['two recipients',{headers:{To:'sarberkiprojecttest@gmail.com, other@example.test'}},'NOT_ADDRESSED_TO_TEST_MAILBOX'],
