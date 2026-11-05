@@ -35,3 +35,19 @@ test('sentences that do not ask get no extra answer (no false positives)',()=>{
  for(const [lang,q] of NEG){const t=reply(lang,q);const hit=Object.entries(MARK).filter(([k,r])=>k!=='tickets'&&r.test(t)).map(([k])=>k);if(hit.length||fishingQuestion(q,lang))bad.push(q+' → '+hit.join(','));}
  assert.deepEqual(bad,[]);
 });
+
+import {extractServerMessage} from '../shared-core/server-message-extraction.mjs';
+import {guestCountFromText} from '../sarberki-core.mjs';
+const ex=t=>extractServerMessage({sender:'g@example.test',text:t,mailbox_id:'m',message_id:'x',thread_id:'x',rfc_message_id:'<x>',references:[],received_at:'2026-11-05T10:00:00.000Z'});
+test('colloquial party sizes and date formats are understood',()=>{
+ const P=[['Ketten jönnénk 2027. július 10-től 14-ig.',2],['Négyen lennénk 2027. július 10-14.',4],['2+2 fő, 2027. július 10-14.',4],['Két felnőtt és két gyerek jönne 2027. július 10-14.',4],['3 felnőtt + 1 gyerek, 2027. július 10-14.',4],['Egyedül jönnék 2027. július 10-14.',1],['Öten vagyunk, 2027. július 10-14.',5],['Hatan jönnénk 2027. július 10-14.',6],['5-en lennénk 2027. július 10-14.',5],['Párommal jönnék 2027. július 10-14.',2],['Két család, 4 felnőtt és 3 gyerek, 2027. július 10-14.',7]];
+ for(const [t,n] of P)assert.equal(Number(ex(t).guests),n,t);
+ const D=['2027. július 10-től 14-ig jönnénk 2 fővel.','2027. júl. 10–14. között 2 fő.','2027.07.10-14. 2 fő.','2027.07.10 - 2027.07.14, 2 fő.','2027. július 10. és 14. között 2 fő.','10-14 July 2027, 2 adults.','Vom 10. bis 14. Juli 2027 zu zweit.','Od 10. do 14. julija 2027, 2 osebi.'];
+ for(const t of D){const v=ex(t);assert.deepEqual([v.arrival,v.departure],['2027-07-10','2027-07-14'],t);}
+});
+test('colloquial party forms do not invent a party size',()=>{
+ assert.equal(guestCountFromText('Július 10-én érkeznénk.'),null);
+ assert.equal(guestCountFromText('A párommal és két gyerekkel jönnék.')===2,false);
+ assert.equal(guestCountFromText('Nem egyedül jönnék, hanem hárman.'),3);
+ assert.equal(guestCountFromText('4 fős házat keresünk.'),null);
+});

@@ -180,8 +180,20 @@ export function guestCountFromText(text=''){
     || text.match(/\bskupaj\s+(\d{1,2})(?:\s+oseb)?(?=\s|$|[,.!?:;])/iu);
   if(siArrival) return Number(siArrival[1]);
   const words={ketten:2,kéten:2,hárman:3,harman:3,négyen:4,negyen:4,öten:5,oten:5,hatan:6,heten:7,nyolcan:8,kilencen:9,tízen:10,tizen:10};
-  const w=text.match(/\b(ketten|kéten|hárman|harman|négyen|negyen|öten|oten|hatan|heten|nyolcan|kilencen|tízen|tizen)\b/iu)?.[1]?.toLocaleLowerCase('hu-HU');
-  return w ? words[w] : null;
+  // \b does not see accented letters ("Öten"), so letter-aware boundaries are used.
+  const w=text.match(/(?<!\p{L})(ketten|kéten|hárman|harman|négyen|negyen|öten|oten|hatan|heten|nyolcan|kilencen|tízen|tizen)(?!\p{L})/iu)?.[1]?.toLocaleLowerCase('hu-HU');
+  if(w)return words[w];
+  // Colloquial forms (owner request 2026-11-05): "5-en lennénk", "2+2 fő", "egyedül jönnék", "a párommal jönnék".
+  const numberSuffix=text.match(/(?:^|\s)(\d{1,2})-?(?:an|en|on|ön)(?!\p{L})/iu);
+  if(numberSuffix)return Number(numberSuffix[1]);
+  const plusPair=text.match(/(?:^|\s)(\d{1,2})\s*\+\s*(\d{1,2})\s*(?:fő|fo|személy|szemely|persons?|people|personen|oseb\w*)(?!\p{L})/iu);
+  if(plusPair)return Number(plusPair[1])+Number(plusPair[2]);
+  if(!hasChildMention(text)){
+    if(/(?<!\p{L})egyedül(?!\p{L})/iu.test(text)&&!/(?<!\p{L})nem\s+egyedül/iu.test(text))return 1;
+    if(/(?<!\p{L})(?:párommal|parommal|feleségemmel|feleségemmel|férjemmel|ferjemmel|barátnőmmel|baratnommel|barátommal|élettársammal)(?!\p{L})/iu.test(text)
+      &&/(?<!\p{L})(?:jönnék|jonnek|mennék|mennek|érkeznék|szeretnék|foglalnék)(?!\p{L})/iu.test(text))return 2;
+  }
+  return null;
 }
 // Gmail party projection uses the shared parsers without claiming an explicit
 // zero-child statement. A clear adult-only inquiry supplies its total; unresolved
