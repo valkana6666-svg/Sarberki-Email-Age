@@ -25,3 +25,13 @@ test('public reply panel and email use the same fishing sentence and operations 
  for(const k of ['checkinFrom','checkoutBy','petFeeHufPerPetPerDay'])assert.equal(PUBLIC_REPLY_DATA.operations[k],BUSINESS.operationalRules[k],k);
  assert.ok(fishingQuestion('Milyen horgászati szabályok vannak?','hu').answer.includes(FISHING_GENERAL_TEXT.hu));
 });
+
+test('public panel capacity texts match the central maximum guests (guard against drift)',()=>{
+ const t=BUSINESS.accommodationTypes,c=PUBLIC_REPLY_DATA.cabins;
+ const max=text=>text.match(/\d+/g).map(Number).reduce((a,b)=>a+b,0);
+ assert.equal(max(c.vip.capacityText.hu),t.vip.maxGuests);
+ assert.equal(max(c.family.capacityText.hu),t.family.maxGuests);
+ assert.equal(max(c.deluxe.capacityText.hu),t.deluxe.maxGuests);
+ assert.equal(max(c.split2.capacityText.hu),t.splitA.maxGuests);
+ assert.equal(max(c.split4.capacityText.hu),t.splitC.nominalGuests);
+});
