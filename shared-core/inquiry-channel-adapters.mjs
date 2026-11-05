@@ -81,17 +81,19 @@ const PLACEHOLDER={
 
 // Short answers kept in the short letter (owner 2026-11-04/05): the fishing block, the pet fee and the
 // hot-tub sentence. They are lifted out of their sections and shown as one paragraph.
-const ANSWER_SECTION={hu:{fishing:'Horgászat',extras:'Kiegészítő információk'},de:{fishing:'Angeln',extras:'Weitere Informationen'},
- en:{fishing:'Fishing',extras:'Additional information'},si:{fishing:'Ribolov',extras:'Dodatne informacije'}};
+const ANSWER_SECTION={hu:{fishing:'Horgászat',extras:'Kiegészítő információk',booking:'Foglalási feltételek'},de:{fishing:'Angeln',extras:'Weitere Informationen',booking:'Buchungsbedingungen'},
+ en:{fishing:'Fishing',extras:'Additional information',booking:'Booking terms'},si:{fishing:'Ribolov',extras:'Dodatne informacije',booking:'Pogoji rezervacije'}};
+// Owner-approved one-line answers (2026-11-05) that the short letter keeps.
+const KEPT_EXTRA=/^(?:Minden faházhoz saját stég|Zu jedem Haus gehört ein eigener Steg|Every cabin has its own pier|Vsaka hiška ima svoj pomol|A szomszédos elhelyezést külön ellenőrizzük\.|Eine Unterbringung nebeneinander prüfen wir gesondert\.|We will check separately whether adjacent cabins are possible\.|Sosednjo namestitev preverimo posebej\.)/u;
 const PET_LINE=/^(?:Háziállat hozható, díja |Haustiere sind erlaubt; die Gebühr beträgt |Pets are allowed; the fee is |Hišni ljubljenčki so dovoljeni; pristojbina znaša )/u;
 function liftAnswers(bodyLines,language){
  const sec=ANSWER_SECTION[language],answers=[],rest=[];let current=null;
  for(const raw of bodyLines){
   const line=raw.trim();
-  if(line===sec.fishing||line===sec.extras){current=line;continue;}
+  if(line===sec.fishing||line===sec.extras||line===sec.booking){current=line;continue;}
   if(!line){current=null;rest.push(raw);continue;}
-  if(current===sec.fishing){answers.push(line);continue;}
-  if(current===sec.extras&&(PET_LINE.test(line)||line===hotTubSentence(language))){answers.push(line);continue;}
+  if(current===sec.fishing||current===sec.booking){answers.push(line);continue;}
+  if(current===sec.extras&&(PET_LINE.test(line)||KEPT_EXTRA.test(line)||line===hotTubSentence(language))){answers.push(line);continue;}
   rest.push(raw);
  }
  return {answers,rest};

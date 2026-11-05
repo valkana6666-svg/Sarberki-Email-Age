@@ -490,11 +490,11 @@ test('booking subquestions return only the relevant known policy details',()=>{
   assert.match(deadlineOnly,/10 napon belül/u);
   assert.doesNotMatch(deadlineOnly,/foglalást töröljük/u);
   assert.match(deadlineOnly,/munkatársunk tájékoztat/u);
-  assert.doesNotMatch(deadlineOnly,/A foglaláshoz 50% előleg szükséges/u);
+  assert.doesNotMatch(deadlineOnly,/Az előleg a szállásdíj/u);
   assert.doesNotMatch(deadlineOnly,/lemondási határidő/u);
 
   const general=buildReplyDraft({...base,original:'Mik a foglalási feltételek és a lemondási szabályok?'});
-  assert.match(general,/50% előleg/u);
+  assert.match(general,/Az előleg a szállásdíj 50%-a/u);
   assert.match(general,/10 napon belül/u);
   assert.match(general,/14 nap/u);
 });
@@ -518,7 +518,7 @@ Kérem írják meg, mennyi előleget kell fizetni, hány napon belül kell átut
   assert.match(draft,/2026\.10\.23\./u);
   assert.match(draft,/2026\.10\.26\./u);
   assert.match(draft,/8 fő/u);
-  assert.match(draft,/50% előleg/u);
+  assert.match(draft,/Az előleg a szállásdíj 50%-a/u);
   assert.match(draft,/10 napon belül/u);
   assert.match(draft,/14 nap/u);
 });
@@ -618,7 +618,7 @@ test('deposit percentage changes from 15 guests and unknown group size stays exp
   assert.match(under,/50%/u);
   assert.match(boundary,/80%/u);
   assert.match(over,/80%/u);
-  assert.match(unknown,/15 fő alatt 50%.*legalább 15 főnél 80%/su);
+  assert.match(unknown,/Az előleg 15 fő alatt a szállásdíj 50%-a, 15 főtől 80%-a\./u);
 });
 
 
@@ -671,9 +671,9 @@ Phone: +44 7700 912345.`;
     pricingRules:BUSINESS.pricingRules,knowledgeLines:fishingInfo?[fishingInfo.answer]:[]
   });
 
-  assert.match(draft,/50% deposit/u);
-  assert.match(draft,/7 days when it is more than 14 days/u);
-  assert.match(draft,/cancellation terms only after separate human review/u);
+  assert.match(draft,/The deposit is 50% of the accommodation price/u);
+  assert.match(draft,/The deposit is due within 7 days of the confirmation; if arrival is at most 14 days away, within 24 hours\./u);
+  assert.match(draft,/If you cancel at least 14 days before arrival, the deposit is not forfeited\./u);
   assert.match(draft,/Electricity is charged separately/u);
   assert.match(draft,/Firewood is available/u);
   assert.match(draft,/Parking is available/u);

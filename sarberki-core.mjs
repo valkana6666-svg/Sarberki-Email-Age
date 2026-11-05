@@ -603,7 +603,7 @@ export function replyQuestions(language='hu', {needDates=false,needAdults=false,
 
 function bookingQuestionFlags(text=''){
   const general=/(?:foglalási\s+(?:feltételek|szabályok)|hogyan\s+(?:lehet|tudok|tudunk)\s+foglalni|booking\s+(?:conditions|terms)|buchungsbedingungen|reservierungsbedingungen|rezervacijski\s+pogoji|pogoji\s+rezervacije)/iu.test(text);
-  const depositAmount=general||/(?:mekkora|mennyi(?:\s+az|\s+a)?|hány\s*%)\s*(?:előleg|foglaló)|(?:előleg|foglaló)[^.!?\n]{0,80}(?:mekkora|mennyi|hány\s*%)|(?:how\s+much|what\s+percentage)[^.!?\n]{0,80}(?:deposit)|(?:deposit)[^.!?\n]{0,80}(?:how\s+much|what\s+percentage)|(?:wie\s+hoch|wie\s+viel)[^.!?\n]{0,80}(?:anzahlung)|(?:anzahlung)[^.!?\n]{0,80}(?:wie\s+hoch|wie\s+viel)|(?:kolikšno|koliko)[^.!?\n]{0,80}(?:predplačilo)|(?:predplačilo)[^.!?\n]{0,80}(?:kolikšno|koliko)/iu.test(text);
+  const depositAmount=general||/(?:mekkora(?:\s+az|\s+a)?|mennyi(?:\s+az|\s+a)?|hány\s*%)\s*(?:előleg|foglaló)|(?:előleg|foglaló)[^.!?\n]{0,80}(?:mekkora|mennyi|hány\s*%)|(?:how\s+much|what\s+percentage)[^.!?\n]{0,80}(?:deposit)|(?:deposit)[^.!?\n]{0,80}(?:how\s+much|what\s+percentage)|(?:wie\s+hoch|wie\s+viel)[^.!?\n]{0,80}(?:anzahlung)|(?:anzahlung)[^.!?\n]{0,80}(?:wie\s+hoch|wie\s+viel)|(?:kolikšno|koliko)[^.!?\n]{0,80}(?:predplačilo)|(?:predplačilo)[^.!?\n]{0,80}(?:kolikšno|koliko)/iu.test(text);
   const depositDeadline=general||/(?:hány\s+nap|mennyi\s+(?:nap|idő))[^.!?\n]{0,100}(?:előleg|foglaló)|(?:előleg|foglaló)[^.!?\n]{0,120}(?:mikor|meddig|határidő|hány\s+nap|mennyi\s+idő|befizet|átutal)|(?:when|how\s+soon)[^.!?\n]{0,100}(?:deposit)[^.!?\n]{0,60}(?:paid|due)?|(?:deposit)[^.!?\n]{0,100}(?:when|due|paid)|(?:wann|bis\s+wann)[^.!?\n]{0,100}(?:anzahlung)|(?:anzahlung)[^.!?\n]{0,100}(?:wann|fällig|bezahlt)|(?:kdaj|do\s+kdaj)[^.!?\n]{0,100}(?:predplačilo)|(?:predplačilo)[^.!?\n]{0,100}(?:kdaj|rok|plač)/iu.test(text);
   const cancellation=general||/(?:lemondási\s+(?:feltétel|szabály|határidő)|meddig[^.!?\n]{0,60}lemond|hány\s+nap[^.!?\n]{0,60}lemond|cancellation\s+(?:conditions|terms|deadline)|stornierungsbedingungen|stornofrist|pogoji\s+odpovedi|odpovedn(?:i|e)\s+pogoji)/iu.test(text);
   return {general,depositAmount,depositDeadline,cancellation};
@@ -621,17 +621,18 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
     const under15=validPercent(underRaw)?Number(underRaw):NaN;
     const from15=validPercent(fromRaw)?Number(fromRaw):NaN;
     const pct=knownGuests?(g<15?under15:from15):null;
+    // Owner-approved wording (2026-11-05).
     if(Number.isFinite(pct)) lines.push({
-      hu:`A foglaláshoz ${pct}% előleg szükséges.`,
-      de:`Für die Buchung ist eine Anzahlung von ${pct}% erforderlich.`,
-      en:`A ${pct}% deposit is required for the booking.`,
-      si:`Za rezervacijo je potrebno ${pct}% predplačilo.`
+      hu:`Az előleg a szállásdíj ${pct}%-a.`,
+      de:`Die Anzahlung beträgt ${pct}% des Übernachtungspreises.`,
+      en:`The deposit is ${pct}% of the accommodation price.`,
+      si:`Predplačilo znaša ${pct}% cene nastanitve.`
     }[lang]);
     else if(Number.isFinite(under15)&&Number.isFinite(from15)&&under15!==from15) lines.push({
-      hu:`Az előleg mértéke létszámfüggő: 15 fő alatt ${under15}%, legalább 15 főnél ${from15}%.`,
-      de:`Die Anzahlung hängt von der Gruppengröße ab: unter 15 Personen ${under15}%, ab 15 Personen ${from15}%.`,
-      en:`The deposit depends on group size: ${under15}% for fewer than 15 guests and ${from15}% for at least 15 guests.`,
-      si:`Višina predplačila je odvisna od velikosti skupine: ${under15}% za manj kot 15 oseb in ${from15}% za najmanj 15 oseb.`
+      hu:`Az előleg 15 fő alatt a szállásdíj ${under15}%-a, 15 főtől ${from15}%-a.`,
+      de:`Die Anzahlung beträgt unter 15 Personen ${under15}% und ab 15 Personen ${from15}% des Übernachtungspreises.`,
+      en:`The deposit is ${under15}% of the accommodation price for fewer than 15 guests and ${from15}% from 15 guests.`,
+      si:`Predplačilo znaša pri manj kot 15 osebah ${under15}%, od 15 oseb naprej pa ${from15}% cene nastanitve.`
     }[lang]);
   }
   if(q.depositDeadline&&rules.depositExactBoundaryRequiresReview===true)lines.push({
@@ -640,12 +641,15 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
     en:'The payment window depends on the time until arrival: 7 days when it is more than 14 days, and 24 hours when it is fewer than 14 days. Exactly 14 days requires separate human review; we confirm the exact receipt deadline separately.',
     si:'Rok plačila je odvisen od časa do prihoda: pri več kot 14 dneh je 7 dni, pri manj kot 14 dneh pa 24 ur. Pri natanko 14 dneh je potreben ločen človeški pregled; točen rok prejema plačila potrdimo posebej.'
   }[lang]);
-  if(q.depositDeadline&&rules.depositExactBoundaryRequiresReview===false)lines.push({
-    hu:'A fizetési határidő az érkezésig hátralévő időtől függ: 14 napnál több idő esetén 7 nap, legfeljebb 14 nap esetén 24 óra. Pontosan 14 napnál is 24 óra a beérkezési határidő; a konkrét időpontot visszaigazoljuk.',
-    de:'Die Zahlungsfrist hängt vom Abstand zur Anreise ab: bei mehr als 14 Tagen 7 Tage, bei höchstens 14 Tagen 24 Stunden. Auch bei genau 14 Tagen beträgt die Frist für den Zahlungseingang 24 Stunden; den konkreten Termin bestätigen wir separat.',
-    en:'The payment window depends on the time until arrival: 7 days when it is more than 14 days, and 24 hours when it is at most 14 days. Exactly 14 days also requires receipt within 24 hours; we confirm the exact deadline separately.',
-    si:'Rok plačila je odvisen od časa do prihoda: pri več kot 14 dneh je 7 dni, pri največ 14 dneh pa 24 ur. Tudi pri natanko 14 dneh mora plačilo prispeti v 24 urah; točen rok potrdimo posebej.'
-  }[lang]);
+  if(q.depositDeadline&&rules.depositExactBoundaryRequiresReview===false){
+    const days=Math.round(Number(rules.depositNormalWindowHours)/24),hours=Number(rules.depositShortWindowHours),lead=Number(rules.depositLeadDaysBoundary);
+    if([days,hours,lead].every(n=>Number.isFinite(n)&&n>0))lines.push({
+      hu:`Az előleget a visszaigazolástól számított ${days} napon belül kell befizetni; ha az érkezésig legfeljebb ${lead} nap van hátra, ${hours} órán belül.`,
+      de:`Die Anzahlung ist innerhalb von ${days} Tagen nach der Bestätigung zu zahlen; sind es bis zur Anreise höchstens ${lead} Tage, innerhalb von ${hours} Stunden.`,
+      en:`The deposit is due within ${days} days of the confirmation; if arrival is at most ${lead} days away, within ${hours} hours.`,
+      si:`Predplačilo je treba plačati v ${days} dneh od potrditve; če je do prihoda največ ${lead} dni, v ${hours} urah.`
+    }[lang]);
+  }
   if(q.depositDeadline&&rules.depositDueDays!==null&&rules.depositDueDays!==undefined&&rules.depositDueDays!==''&&Number.isFinite(Number(rules.depositDueDays))&&Number(rules.depositDueDays)>0){
     const days=Number(rules.depositDueDays);
     lines.push({
@@ -656,7 +660,16 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
     }[lang]);
   }
   if(q.general)lines.push({hu:'A foglalás az előleg beérkezése után válik véglegessé.',de:'Die Buchung wird erst nach Eingang der Anzahlung verbindlich.',en:'The booking becomes final once the deposit has been received.',si:'Rezervacija postane dokončna po prejemu predplačila.'}[lang]);
-  if(q.cancellation&&rules.cancellationAutomaticPolicyVerified===false)lines.push({hu:'Lemondási feltételt csak a konkrét foglalás és külön emberi ellenőrzés alapján igazolunk vissza.',de:'Die Stornobedingungen bestätigen wir nur nach gesonderter menschlicher Prüfung der konkreten Buchung.',en:'We confirm cancellation terms only after separate human review of the specific booking.',si:'Pogoje odpovedi potrdimo šele po ločenem človeškem pregledu konkretne rezervacije.'}[lang]);
+  // Owner-approved general cancellation sentence (2026-11-05); individual handling stays with the operator.
+  if(q.cancellation&&rules.cancellationAutomaticPolicyVerified===false){
+    const days=Number(rules.cancellationDaysUnder15Guests);
+    if(Number.isFinite(days)&&days>0&&days===Number(rules.cancellationDaysFrom15Guests))lines.push({
+      hu:`Az érkezés előtt legalább ${days} nappal történő lemondásnál az előleg nem vész el.`,
+      de:`Bei einer Stornierung mindestens ${days} Tage vor der Anreise verfällt die Anzahlung nicht.`,
+      en:`If you cancel at least ${days} days before arrival, the deposit is not forfeited.`,
+      si:`Pri odpovedi najmanj ${days} dni pred prihodom predplačilo ne zapade.`
+    }[lang]);
+  }
   if(q.cancellation&&rules.cancellationAutomaticPolicyVerified!==false&&guests!==null&&guests!==undefined&&Number(guests)>0){
     const g=Number(guests);
     const days=g<15?Number(rules.cancellationDaysUnder15Guests):Number(rules.cancellationDaysFrom15Guests);
@@ -693,6 +706,19 @@ function operationalTopicLines(language='hu',original='',rules=null,caseContext=
       &&(/\?/u.test(sentence)||/(?:mennyi|mennyibe|ár[aá]?\b|díj|price|cost|how\s+much|preis|kost|koliko|cena)/iu.test(sentence)))
   };
   const lines=[];
+  // Owner 2026-11-05: piers and adjacent cabins, one sentence each; never internal house numbers.
+  if(/(?:stég|steg\b|stege\b|pier|dock|pomol)/iu.test(original)&&rules.pierPerHouse==='own')lines.push({
+    hu:'Minden faházhoz saját stég tartozik; az osztott apartmanoknál az emeleti C egységnek saját stégje van, az A és a B egység pedig egy stéget oszt meg.',
+    de:'Zu jedem Haus gehört ein eigener Steg; bei den geteilten Apartments hat die obere Einheit C einen eigenen Steg, die Einheiten A und B teilen sich einen Steg.',
+    en:'Every cabin has its own pier; in the split apartments the upstairs unit C has its own pier, and units A and B share one pier.',
+    si:'Vsaka hiška ima svoj pomol; pri deljenih apartmajih ima zgornja enota C svoj pomol, enoti A in B pa si delita en pomol.'
+  }[lang]);
+  if(/(?:egymás\s+mellett|egymás\s+melletti|szomszédos|nebeneinander|benachbart|next\s+to\s+each\s+other|adjacent|side\s+by\s+side|drug\s+ob\s+drugem|sosednj)/iu.test(original))lines.push({
+    hu:'A szomszédos elhelyezést külön ellenőrizzük.',
+    de:'Eine Unterbringung nebeneinander prüfen wir gesondert.',
+    en:'We will check separately whether adjacent cabins are possible.',
+    si:'Sosednjo namestitev preverimo posebej.'
+  }[lang]);
   if(asks.electricity&&rules.electricitySettlement==='metered_separate') lines.push({
     hu:'Az áramfogyasztás külön fizetendő a tényleges fogyasztás alapján; a pontos végösszeg a mérőállás után állapítható meg.',
     de:'Der Stromverbrauch wird separat nach dem tatsächlichen Verbrauch berechnet; der genaue Betrag steht erst nach dem Ablesen des Zählers fest.',
@@ -987,7 +1013,9 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   const fishingAsked=/(?:horgász|horgasz|angeln|fish(?:ing)?|ribolov|ribe)/iu.test(original);
   const fishingLines=fishingAsked&&Array.isArray(knowledgeLines)?knowledgeLines.filter(Boolean):[];
   if(caseContext) pricingLines.push(...caseContext.priceLines);
-  const bookingLines=caseContext?[...caseContext.bookingLines]:bookingPolicyLines(lang,original,guests,bookingRules);
+  // The central reply context always carries a (possibly empty) case context; only case-specific booking
+  // lines from the detailed console replace the approved general policy answers.
+  const bookingLines=caseContext?.bookingLines?.length?[...caseContext.bookingLines]:bookingPolicyLines(lang,original,guests,bookingRules);
   if(approvedPaymentContext?.operatorApproved===true && approvedPaymentContext?.bookingConfirmed===true && !mismatch && arrival && Number.isInteger(guests) && guests>0){
     const payment=depositReceiptDeadline({guestCount:guests,bookingAt:approvedPaymentContext.bookingAt,arrivalDate:arrival});
     if(payment.status==='calculated'){

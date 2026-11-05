@@ -57,3 +57,16 @@ test('short letters keep verified answers: fishing tickets, pet fee (server emai
  const day=draft('Jó napot! Mennyi a napi horgászjegy a rekord tóra?\nPéter');
  assert.match(day,/– Rekord tó: 24 órás 11 250 \/ 5 650 Ft\./);assert.doesNotMatch(day,/Normál tó:|heti/);
 });
+
+test('owner-approved answers reach the daily-view letter and stay in the short form (pier, adjacent, deposit, cancellation)',()=>{
+ const hu=draft('Jó napot!\n2027. augusztus 12-től 15-ig jönnénk 5 felnőttel, egymás melletti házakat szeretnénk. Van stég a házhoz? Mekkora az előleg, és mik a lemondási feltételek?\nKöszönöm: Varga Péter');
+ assert.match(hu,/Minden faházhoz saját stég tartozik; az osztott apartmanoknál az emeleti C egységnek saját stégje van, az A és a B egység pedig egy stéget oszt meg\./);
+ assert.match(hu,/A szomszédos elhelyezést külön ellenőrizzük\./);
+ assert.match(hu,/Az előleg a szállásdíj 50%-a\./);
+ assert.match(hu,/Az érkezés előtt legalább 14 nappal történő lemondásnál az előleg nem vész el\./);
+ assert.match(hu,/Kérjük, írja meg:/);assert.doesNotMatch(hu,/Foglalás állapota|\b[1-9]\d?\. ház/);
+ const de=draft('Guten Tag, wir kommen vom 12. bis 15. August 2027 mit 5 Erwachsenen. Gibt es einen Steg am Haus? Wie hoch ist die Anzahlung?\nMit freundlichen Grüßen, Anna Huber','de');
+ assert.match(de,/Zu jedem Haus gehört ein eigener Steg/);assert.match(de,/Die Anzahlung beträgt 50% des Übernachtungspreises\./);
+ const noPier=draft('Jó napot!\n2027. augusztus 12-től 15-ig jönnénk 5 felnőttel.\nÜdv: Kiss Anna');
+ assert.doesNotMatch(noPier,/stég|szomszédos|előleg/);
+});
