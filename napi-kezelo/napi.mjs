@@ -9,7 +9,9 @@ import {translationErrorMessage} from '../translation-errors.mjs';
 import {CABIN_NAMES,huf,priceExplanation} from '../shared-core/price-insert-sentence.mjs';
 
 const TEST_ORIGIN='https://leafy-chimera-2403e5.netlify.app';
-const TENANT='sarberki-test';
+// The server session states the deployment's single tenant (live store slice 2); TEST until it says otherwise.
+const KNOWN_TENANTS=['sarberki-test','sarberki-live'];
+let TENANT='sarberki-test';
 const sections=Object.freeze({
  incoming:['Beérkezett ügyek','Új vendégüzenetek és feldolgozásra váró megkeresések.'],
  approval:['Jóváhagyásra vár','Átnézendő választervezetek.'],
@@ -42,11 +44,11 @@ const emailReader=createDailyEmailReader({canRead:()=>authenticated,restoreSessi
 // expires after 30 minutes and is deleted on lock/logout. Never a Gmail token; never plaintext.
 const STATE_STORE='sarberki-napi-state',STATE_TTL_MS=30*60*1000,encoder=new TextEncoder();
 let stateKey=null,saveTimer=null,saveQueue=Promise.resolve();
-function rememberKey(meta){stateKey=/^[a-f0-9]{64}$/.test(meta?.stateKey||'')?meta.stateKey:null;return meta;}
+function rememberKey(meta){stateKey=/^[a-f0-9]{64}$/.test(meta?.stateKey||'')?meta.stateKey:null;if(KNOWN_TENANTS.includes(meta?.tenantId))TENANT=meta.tenantId;return meta;}
 const toB64=bytes=>{let out='';for(let i=0;i<bytes.length;i+=0x8000)out+=String.fromCharCode(...bytes.subarray(i,i+0x8000));return btoa(out);};
 const fromB64=text=>Uint8Array.from(atob(text),c=>c.charCodeAt(0));
 const aesKey=hex=>crypto.subtle.importKey('raw',Uint8Array.from(hex.match(/../g),h=>parseInt(h,16)),'AES-GCM',false,['encrypt','decrypt']);
-const aad=savedAt=>encoder.encode('sarberki-napi-state-v1|sarberki-test|'+savedAt);
+const aad=savedAt=>encoder.encode('sarberki-napi-state-v1|'+TENANT+'|'+savedAt);
 function dropState(){clearTimeout(saveTimer);saveTimer=null;try{localStorage.removeItem(STATE_STORE);}catch{}}
 async function saveState(){
  const key=stateKey,snap=authenticated&&key?emailReader.snapshot():null;
