@@ -7,7 +7,10 @@
 //   GET /rest/rooms              (Rooms)                             -> rooms with roomKindId
 // The key is NOT in this script: the session's network proxy adds "Authorization: ApiKey <key>" for
 // api.previo.app (the placeholder below is replaced there). Output: ids, names, counts only.
-// The live property 753011 is refused. Usage: node scripts/previo-readonly-discovery.mjs --approved-73521
+// The live property 753011 is refused. Usage (Node fetch must use the session proxy):
+//   NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt node scripts/previo-readonly-discovery.mjs --approved-73521
+// First run 2026-11-06 (owner-approved): 3x HTTP 200; 1 rate plan, 1 room kind ('Apartmanok', 4), 5 rooms –
+// the API TEST property is a generic template, NOT the Sárberki 23-unit layout.
 export const ORIGIN='https://api.previo.app',HOTEL='73521',LIVE=['753011'];
 export const CALLS=Object.freeze([
  {name:'ratePlans',path:'/rest/rate-plan'},
