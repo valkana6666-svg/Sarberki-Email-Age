@@ -106,3 +106,10 @@ Source project: mojnqizbcaczstguikpv (sarberki-test).
 Authority: owner requested reading and executing Claude's #9 instruction 6683489501 on 2026-11-06.
 Authorized SQL: deployment/test-mailbox/send-ledger.sql, blob 1674d72f0666cd3a5fc8e431a2bb9c0e0694886e.
 Fresh encrypted Drive backup, exact-ID readback and isolated restore before installation; no database change until verified success. Provider: drive. No deployment profile, new test-mailbox install, Netlify change or email sending.
+
+## Owner-authorized TEST unavailable and followup pre-install backup
+Requested at: 2026-11-06T18:05:47.864Z.
+Authority: owner requested execution of Claude #9 comment 6691712757; TEST project mojnqizbcaczstguikpv only.
+Authorized source: 7068167ead43ddc92a3e5b1f541ccf12335cee50; deployment/test-mailbox/unavailable.sql (blob fc812d2605b9f0c4e6c7c64cc76b35cfd981e06c) and followup.sql (blob c112e41fc44de6cb2775b0d212318cb8292fc644), with their verify SQL.
+Fresh encrypted Drive export, exact-ID readback and isolated restore required before additive RPC installation. No full install, deployment profile, Netlify change or email sending.
+Provider: drive. Request marker: [backup-v2-run].
