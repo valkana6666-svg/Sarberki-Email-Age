@@ -9,8 +9,8 @@ import {extractServerMessage} from './server-message-extraction.mjs';
 import {serverInquiryOptions} from './server-inquiry-options.mjs';
 import {buildEmailInquiryDraft} from './inquiry-channel-adapters.mjs';
 import {readVerifiedTestMailboxMessage,attestTestMailboxSource} from './server-gmail-source.mjs';
+import {TEST_DEPLOYMENT} from './server-deployment.mjs';
 
-const TENANT='sarberki-test';
 const fail=code=>{const error=Error(code);error.code=code;throw error;};
 const scope=(message,reverse=false)=>{
  const prefix=message.mailbox_id+':',change=value=>reverse?value.slice(prefix.length):prefix+value;
@@ -23,10 +23,11 @@ function storageFailure(error){
  return 'STORAGE_FAILURE';
 }
 
-export async function ingestTestMailboxMessage({token,messageId,transport,attestationKey,fetchImpl=globalThis.fetch,clock=()=>new Date().toISOString()}={}){
+export async function ingestTestMailboxMessage({token,messageId,transport,attestationKey,fetchImpl=globalThis.fetch,clock=()=>new Date().toISOString(),deployment=TEST_DEPLOYMENT}={}){
+ const TENANT=deployment.tenantId;
  if(typeof transport!=='function')fail('SETUP_REQUIRED');
  // 1. Server-side Gmail read and gates (marked subject, single recipient, no reply, plain text...).
- const {source,envelope}=await readVerifiedTestMailboxMessage({token,messageId,fetchImpl});
+ const {source,envelope}=await readVerifiedTestMailboxMessage({token,messageId,fetchImpl,deployment});
  // 2. Existing shared engine: the server extracts its own facts; no client-asserted values.
  const caseId='tm-'+source.message_id;
  let saved;
@@ -47,7 +48,7 @@ export async function ingestTestMailboxMessage({token,messageId,transport,attest
  data.drafts=[{text:plan.text,operatorReviewText:plan.operatorReviewText,at,revision:data.state.revision,basedOnMessageCount:1,reviewStatus:'manual_review_required'}];
  data.state.approval='pending';
  // 3. Server attestation (own key, own scope); the database recomputes it, nothing secret is stored.
- const proof=attestTestMailboxSource({key:attestationKey,tenantId:TENANT,source,envelope,checkedAt:clock()});
+ const proof=attestTestMailboxSource({key:attestationKey,tenantId:TENANT,source,envelope,checkedAt:clock(),deployment});
  try{
   const record=await transport('/rest/v1/rpc/sc_tm_create',{method:'POST',body:{p_tenant:TENANT,p_case:caseId,p_data:data,p_proof:proof}});
   return {caseId,revision:record?.revision??null};

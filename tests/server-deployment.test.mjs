@@ -31,3 +31,19 @@ test('operator session: a live deployment cannot start (setup required) and neve
  await assert.rejects(session.login(event),error=>error.status===503&&error.code==='SESSION_SETUP_REQUIRED');
  assert.equal(calls.length,0);
 });
+
+test('Gmail source and ingest: a live deployment fails closed before any Gmail call; attestation is tenant-bound',async()=>{
+ const {readVerifiedTestMailboxMessage,attestTestMailboxSource}=await import('../shared-core/server-gmail-source.mjs');
+ const {ingestTestMailboxMessage}=await import('../shared-core/server-test-mailbox-case.mjs');
+ const live=serverDeployment(LIVE,{profiles:enabledLive}),calls=[];
+ const fetchImpl=async(...args)=>{calls.push(args);throw Error('no network');};
+ await assert.rejects(readVerifiedTestMailboxMessage({token:'t'.repeat(40),messageId:'18f2a0b1c2d3e4f0',fetchImpl,deployment:live}),/LIVE_MAILBOX_READER_PENDING/);
+ await assert.rejects(ingestTestMailboxMessage({token:'t'.repeat(40),messageId:'18f2a0b1c2d3e4f0',transport:async()=>{calls.push('db');},attestationKey:'e5'.repeat(32),fetchImpl,deployment:live}),/LIVE_MAILBOX_READER_PENDING/);
+ assert.equal(calls.length,0);
+ const source={mailbox_id:'m',message_id:'1',thread_id:'1',rfc_message_id:'<a@b>',from_email:'g@example.test',to:'info@sarberkito.hu',subject:'S',received_at:'2026-11-06T08:00:00.000Z'};
+ const envelope={sender:'g@example.test',text:'x',mailbox_id:'m',message_id:'1',thread_id:'1',rfc_message_id:'<a@b>',received_at:source.received_at};
+ const checkedAt=new Date().toISOString();
+ assert.equal(attestTestMailboxSource({key:'e5'.repeat(32),tenantId:'sarberki-live',source,envelope,checkedAt,deployment:live}).scope,'test-mailbox-source-v1');
+ assert.throws(()=>attestTestMailboxSource({key:'e5'.repeat(32),tenantId:'sarberki-live',source,envelope,checkedAt}),/INVALID_EVIDENCE/,'TEST deployment refuses the live tenant');
+ assert.throws(()=>attestTestMailboxSource({key:'e5'.repeat(32),tenantId:'sarberki-test',source,envelope,checkedAt,deployment:live}),/INVALID_EVIDENCE/,'live deployment refuses the TEST tenant');
+});

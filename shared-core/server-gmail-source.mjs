@@ -6,12 +6,13 @@ import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
 import {readTestGmailInbox,gmailReadableBody,TEST_GMAIL_ACCOUNT,isTestPairInquiry} from '../gmail-policy.mjs';
 import {automatedMailReason} from './automated-mail-filter.mjs';
 import {enabledMailboxProfile} from './server-mailbox-profiles.mjs';
+import {TEST_DEPLOYMENT} from './server-deployment.mjs';
 
 // The only enabled profile; its values must match the existing test-account policy and attestation scope.
 const PROFILE=enabledMailboxProfile('sarberki-test');
 if(PROFILE.account!==TEST_GMAIL_ACCOUNT||PROFILE.sourceScope!=='test-mailbox-source-v1')throw Error('MAILBOX_PROFILE_MISMATCH');
 export const TEST_MAILBOX_SOURCE_SCOPE=PROFILE.sourceScope;
-const MAILBOX_ID=PROFILE.mailboxId,MAX_TEXT=20000,TENANT=PROFILE.tenantId;
+const MAILBOX_ID=PROFILE.mailboxId,MAX_TEXT=20000;
 const fail=code=>{const error=Error(code);error.code=code;throw error;};
 const address=value=>{const match=/<([^<>\s]+)>\s*$/.exec(value||'');return (match?match[1]:String(value||'').trim()).toLowerCase();};
 function plainTextPart(part){
@@ -28,7 +29,10 @@ function readerFailure(error){
  return 'GMAIL_SOURCE_UNVERIFIED';
 }
 
-export async function readVerifiedTestMailboxMessage({token,messageId,fetchImpl=globalThis.fetch,setTimeoutImpl,clearTimeoutImpl}={}){
+export async function readVerifiedTestMailboxMessage({token,messageId,fetchImpl=globalThis.fetch,setTimeoutImpl,clearTimeoutImpl,deployment=TEST_DEPLOYMENT}={}){
+ // The reader below is bound to the TEST Gmail account. The live reader (Workspace info@, its own ingest rules
+ // for guest replies) is a separate, consent-gated step (docs/V1-LIVE-MAILBOX-PLAN.md): fail closed until then.
+ if(deployment!==TEST_DEPLOYMENT)fail('LIVE_MAILBOX_READER_PENDING');
  if(typeof token!=='string'||!/^[A-Za-z0-9._~+/-]{20,4096}={0,2}$/.test(token))fail('GMAIL_AUTH_REQUIRED');
  if(typeof messageId!=='string'||!/^[a-f0-9]{12,32}$/.test(messageId))fail('INVALID_INPUT');
  let messages;
@@ -62,8 +66,10 @@ export async function readVerifiedTestMailboxMessage({token,messageId,fetchImpl=
 
 // Domain-separated HMAC (own scope as first field) with the existing server attestation key, in the
 // newline-joined form the database helper sc_isolated_approval_mac can recompute.
-function canonical({tenantId,source,envelope,checkedAt,bodySha256}){
- if(tenantId!==TENANT||!source||!envelope||!Number.isFinite(Date.parse(checkedAt))||new Date(checkedAt).toISOString()!==checkedAt)fail('INVALID_EVIDENCE');
+// The attested tenant is the deployment's single tenant (TEST: sarberki-test; LIVE: sarberki-live), the same
+// field list the database recomputes in sc_tm_create.
+function canonical({tenantId,source,envelope,checkedAt,bodySha256,deployment=TEST_DEPLOYMENT}){
+ if(tenantId!==deployment?.tenantId||!source||!envelope||!Number.isFinite(Date.parse(checkedAt))||new Date(checkedAt).toISOString()!==checkedAt)fail('INVALID_EVIDENCE');
  if(['message_id','thread_id','rfc_message_id','received_at','mailbox_id'].some(k=>source[k]!==envelope[k])||envelope.sender!==source.from_email)fail('INVALID_EVIDENCE');
  const values=[TEST_MAILBOX_SOURCE_SCOPE,tenantId,source.mailbox_id,source.message_id,source.thread_id,source.rfc_message_id,
   source.from_email,source.to,source.subject,source.received_at,bodySha256,checkedAt];
@@ -73,16 +79,16 @@ function canonical({tenantId,source,envelope,checkedAt,bodySha256}){
 const keyBytes=key=>{if(typeof key!=='string'||!/^[a-f0-9]{64}$/.test(key))fail('SETUP_REQUIRED');return Buffer.from(key,'hex');};
 const bodyHash=envelope=>createHash('sha256').update(String(envelope?.text??''),'utf8').digest('hex');
 
-export function attestTestMailboxSource({key,tenantId,source,envelope,checkedAt}){
+export function attestTestMailboxSource({key,tenantId,source,envelope,checkedAt,deployment=TEST_DEPLOYMENT}){
  const secret=keyBytes(key),bodySha256=bodyHash(envelope);
- const attestation=createHmac('sha256',secret).update(canonical({tenantId,source,envelope,checkedAt,bodySha256})).digest('hex');
+ const attestation=createHmac('sha256',secret).update(canonical({tenantId,source,envelope,checkedAt,bodySha256,deployment})).digest('hex');
  return {scope:TEST_MAILBOX_SOURCE_SCOPE,checkedAt,bodySha256,attestation};
 }
 
-export function verifyTestMailboxAttestation({key,tenantId,source,envelope,proof}){
+export function verifyTestMailboxAttestation({key,tenantId,source,envelope,proof,deployment=TEST_DEPLOYMENT}){
  try{
   if(proof?.scope!==TEST_MAILBOX_SOURCE_SCOPE||!/^[a-f0-9]{64}$/.test(proof.attestation||''))return false;
-  const expected=attestTestMailboxSource({key,tenantId,source,envelope,checkedAt:proof.checkedAt});
+  const expected=attestTestMailboxSource({key,tenantId,source,envelope,checkedAt:proof.checkedAt,deployment});
   return expected.bodySha256===proof.bodySha256&&timingSafeEqual(Buffer.from(expected.attestation,'hex'),Buffer.from(proof.attestation,'hex'));
  }catch{return false;}
 }

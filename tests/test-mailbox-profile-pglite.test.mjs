@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {createHash,createHmac} from 'node:crypto';
+import {createHash} from 'node:crypto';
+import {serverDeployment} from '../shared-core/server-deployment.mjs';
+import {MAILBOX_PROFILES} from '../shared-core/server-mailbox-profiles.mjs';
 import {PGlite} from '@electric-sql/pglite';
 import {attestTestMailboxSource} from '../shared-core/server-gmail-source.mjs';
 
@@ -73,13 +75,10 @@ test('LIVE profile project: the minimal path installs and works for sarberki-liv
  const as=async(role,fn,extra)=>{await db.exec('set role authenticated');await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify(claims(role,extra))]);try{return await fn();}finally{await db.exec('reset role');}};
  const one=(role,sql,params,extra)=>as(role,async()=>(await db.query(sql,params)).rows[0].r,extra);
  const denied=code=>error=>error.code===code||assert.fail('expected '+code+' got '+error.code+' '+error.message);
- // The JS attester is still TEST-bound (slice 2, JS step pending); the SQL check is exercised with the same
- // canonical field list, computed here independently.
- const liveProof=(source,envelope)=>{
-  const checkedAt=new Date().toISOString(),bodySha256=sha(envelope.text);
-  const values=['test-mailbox-source-v1',LT,source.mailbox_id,source.message_id,source.thread_id,source.rfc_message_id,source.from_email,source.to,source.subject,source.received_at,bodySha256,checkedAt];
-  return {scope:'test-mailbox-source-v1',checkedAt,bodySha256,attestation:createHmac('sha256',Buffer.from(KEY,'hex')).update(values.join('\n')).digest('hex')};
- };
+ // The JS attester with a LIVE deployment (slice 2, step 4b) must produce what the database recomputes.
+ const liveDeployment=serverDeployment({SARBERKI_DEPLOYMENT:'live',SARBERKI_LIVE_ORIGIN:'https://sarberki-live.example.app',SARBERKI_LIVE_SUPABASE_URL:'https://'+LREF+'.supabase.co'},
+  {profiles:{...MAILBOX_PROFILES,'sarberki-live':{...MAILBOX_PROFILES['sarberki-live'],enabled:true}}});
+ const liveProof=(source,envelope)=>attestTestMailboxSource({key:KEY,tenantId:LT,source,envelope,checkedAt:new Date().toISOString(),deployment:liveDeployment});
  const liveFixture=(n,to='info@sarberkito.hu')=>{
   const messageId='28f2a0b1c2d3e6'+String(n).padStart(2,'0');
   const source={provider:'gmail',mailbox_id:'sarberki_gmail_live',message_id:messageId,thread_id:messageId,rfc_message_id:'<fictional-live-'+n+'@example.test>',
