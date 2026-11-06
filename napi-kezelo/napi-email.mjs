@@ -152,7 +152,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
    el('email-status').textContent='E-mailek beolvasása…';
    const messages=await readInbox(result.access_token,{search:globalThis.location?.search||''});
    if(active(turn))showMessages(messages,turn);
-   const ids=(messages||[]).map(m=>m?.id).filter(id=>/^[a-f0-9]{12,32}$/.test(id||'')).slice(0,25);
+   const ids=(messages||[]).map(m=>m?.id).filter(id=>/^[a-f0-9]{12,32}$/.test(id||'')).slice(0,15);
    if(onTriage&&ids.length&&active(turn)){
     try{const results=await onTriage({token:result.access_token,messageIds:ids});if(active(turn))applyTriage(results);}
     catch{if(active(turn))el('email-status').textContent+=' A levelek csoportosítása most nem sikerült; a mentés így is működik.';}

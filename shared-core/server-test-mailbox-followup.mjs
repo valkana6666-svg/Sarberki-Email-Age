@@ -69,25 +69,30 @@ export async function triageTestMailboxMessages({token,messageIds,transport,fetc
  try{rows=await transport('/rest/v1/sc_cases?select=*&tenant_id=eq.'+TENANT);}catch(error){fail(error?.code==='FORBIDDEN'?'FORBIDDEN':'STORAGE_FAILURE');}
  const cases=(Array.isArray(rows)?rows:[]).filter(r=>/^tm-[a-f0-9]{12,32}$/.test(r.case_id));
  const stored=new Map(cases.flatMap(r=>(r.data?.messages||[]).map(m=>[m.message_id,r.case_id])));
- const results=[];
- for(const messageId of messageIds){
-  if(stored.has(messageId)){results.push({messageId,kind:'stored',caseId:stored.get(messageId)});continue;}
+ // Owner test 2026-11-06 (50 mails): a sequential read of every mail exceeded the function time limit and the
+ // labels never appeared. Now: stored ones need no Gmail call, the rest are read in parallel (max 5 at a time),
+ // at most 15 per call (the newest first, as listed), each with a short per-request timeout.
+ const classify=async messageId=>{
+  if(stored.has(messageId))return {messageId,kind:'stored',caseId:stored.get(messageId)};
   let read=null,followup=false;
   for(const mode of [false,true]){
    try{read=await readVerifiedTestMailboxMessage({token,messageId,fetchImpl,deployment,followup:mode});followup=mode;break;}
-   catch(error){if(['GMAIL_AUTH_REQUIRED','WRONG_GMAIL_ACCOUNT','GMAIL_RATE_LIMITED'].includes(error?.code))throw error;}
+   catch(error){if(['GMAIL_AUTH_REQUIRED','WRONG_GMAIL_ACCOUNT','GMAIL_RATE_LIMITED'].includes(error?.code))throw error;
+    if(!['NOT_TEST_PAIR_INQUIRY','REPLY_NOT_ALLOWED','NOT_A_FOLLOWUP','REPLY_HANDLED_IN_GMAIL'].includes(error?.code))break;}
   }
-  if(!read){results.push({messageId,kind:'not_allowed'});continue;}
+  if(!read)return {messageId,kind:'not_allowed'};
   const {source,envelope}=read;
   const sameGuest=cases.filter(r=>String(r.data?.sender).toLowerCase()===envelope.sender);
   if(followup){
    const thread=sameGuest.filter(r=>r.data?.sourceReceipt?.thread_id===source.thread_id);
-   results.push(thread.length===1?{messageId,kind:'followup',caseId:thread[0].case_id}:{messageId,kind:'uncertain',reason:'reply_without_booking'});
-   continue;
+   return thread.length===1?{messageId,kind:'followup',caseId:thread[0].case_id}:{messageId,kind:'uncertain',reason:'reply_without_booking'};
   }
   const v=extractServerMessage(envelope);
   const related=v.arrival&&v.departure?sameGuest.filter(r=>r.data?.state?.values?.arrival===v.arrival&&r.data?.state?.values?.departure===v.departure):[];
-  results.push(related.length?{messageId,kind:'uncertain',reason:'same_guest_same_dates',caseIds:related.map(r=>r.case_id).slice(0,5)}:{messageId,kind:'new'});
- }
+  return related.length?{messageId,kind:'uncertain',reason:'same_guest_same_dates',caseIds:related.map(r=>r.case_id).slice(0,5)}:{messageId,kind:'new'};
+ };
+ const ids=messageIds.slice(0,15),results=new Array(ids.length);
+ let next=0;
+ await Promise.all(Array.from({length:Math.min(5,ids.length)},async()=>{while(next<ids.length){const i=next++;results[i]=await classify(ids[i]);}}));
  return results;
 }
