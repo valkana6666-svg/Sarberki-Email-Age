@@ -2,9 +2,18 @@
 -- of draft-writing permission. No users, memberships, grants or RPCs are changed.
 begin;
 do $$
-declare old_constraint text;
+declare old_constraint text; p record;
 begin
- if current_setting('sarberki.approval_install_project_ref',true) is distinct from 'mojnqizbcaczstguikpv'
+ -- With the deployment profile (live store slice 2): bound to the profile project and tenant.
+ if to_regclass('public.sc_deployment_profile') is not null then
+  execute 'select environment,tenant_id,project_ref from public.sc_deployment_profile where singleton' into p;
+  if p.project_ref is null or current_setting('sarberki.approval_install_project_ref',true) is distinct from p.project_ref
+  or coalesce(current_setting('sarberki.approval_backup_sha256',true),'')!~'^[a-f0-9]{64}$'
+  or not exists(select 1 from public.sc_cloud_approval_binding where singleton and project_ref=p.project_ref)
+  or not exists(select 1 from public.sc_tenants where tenant_id=p.tenant_id and test_only=(p.environment='test')) then
+   raise exception 'verified test project and fresh backup required';
+  end if;
+ elsif current_setting('sarberki.approval_install_project_ref',true) is distinct from 'mojnqizbcaczstguikpv'
  or coalesce(current_setting('sarberki.approval_backup_sha256',true),'')!~'^[a-f0-9]{64}$'
  or not exists(select 1 from public.sc_cloud_approval_binding where singleton and project_ref='mojnqizbcaczstguikpv')
  or not exists(select 1 from public.sc_tenants where tenant_id='sarberki-test' and test_only)

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {createHash} from 'node:crypto';
+import {createHash,createHmac} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 import {attestTestMailboxSource} from '../shared-core/server-gmail-source.mjs';
 
@@ -63,5 +63,55 @@ test('test-mailbox on a TEST deployment profile: same flow, issuer/session/mailb
    await db.exec('update sc_test_mailbox_config set enabled=false');
    await assert.rejects(one('approver','select sc_tm_decide($1,$2,$3,$4,$5,$6) r',[TENANT,a.caseId,2,sha(a.data.drafts[0].text),'approve',null]),denied('42501'),'switch off');
   }
+ }finally{await db.close();}
+});
+
+test('LIVE profile project: the minimal path installs and works for sarberki-live / info@ only; TEST-only routes refuse',async()=>{
+ const LREF='livexprojectxrefxabc',liss='https://'+LREF+'.supabase.co/auth/v1',LT='sarberki-live';
+ const db=new PGlite();
+ const claims=(role,extra={})=>({sub:ids[role],role:'authenticated',iss:liss,session_id:sessions[role],exp:Math.floor(Date.now()/1000)+3600,...extra});
+ const as=async(role,fn,extra)=>{await db.exec('set role authenticated');await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify(claims(role,extra))]);try{return await fn();}finally{await db.exec('reset role');}};
+ const one=(role,sql,params,extra)=>as(role,async()=>(await db.query(sql,params)).rows[0].r,extra);
+ const denied=code=>error=>error.code===code||assert.fail('expected '+code+' got '+error.code+' '+error.message);
+ // The JS attester is still TEST-bound (slice 2, JS step pending); the SQL check is exercised with the same
+ // canonical field list, computed here independently.
+ const liveProof=(source,envelope)=>{
+  const checkedAt=new Date().toISOString(),bodySha256=sha(envelope.text);
+  const values=['test-mailbox-source-v1',LT,source.mailbox_id,source.message_id,source.thread_id,source.rfc_message_id,source.from_email,source.to,source.subject,source.received_at,bodySha256,checkedAt];
+  return {scope:'test-mailbox-source-v1',checkedAt,bodySha256,attestation:createHmac('sha256',Buffer.from(KEY,'hex')).update(values.join('\n')).digest('hex')};
+ };
+ const liveFixture=(n,to='info@sarberkito.hu')=>{
+  const messageId='28f2a0b1c2d3e6'+String(n).padStart(2,'0');
+  const source={provider:'gmail',mailbox_id:'sarberki_gmail_live',message_id:messageId,thread_id:messageId,rfc_message_id:'<fictional-live-'+n+'@example.test>',
+   in_reply_to:null,references:[],subject:'Érdeklődés',from:'Kitalált Vendég <guest@example.test>',from_email:'guest@example.test',to,received_at:'2026-11-06T08:00:00.000Z'};
+  const envelope={sender:source.from_email,text:'Jó napot! Faházat szeretnénk 2 főre. (kitalált)',mailbox_id:source.mailbox_id,message_id:messageId,thread_id:messageId,rfc_message_id:source.rfc_message_id,references:[],received_at:source.received_at};
+  const caseId='tm-live-'+n;
+  return {caseId,data:{id:caseId,tenantId:LT,sender:source.from_email,state:{approval:'pending',values:{}},messages:[envelope],drafts:[{text:'Kedves Vendégünk! (kitalált)'}],sourceReceipt:source},
+   proof:liveProof(source,envelope)};
+ };
+ try{
+  await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key);create table auth.sessions(id uuid primary key,user_id uuid,not_after timestamptz);create function auth.uid() returns uuid language sql stable as $$select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;grant usage on schema auth to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;grant select on auth.sessions to authenticated;`);
+  await db.exec(await read('supabase/migrations/202610090001_case_store.sql'));
+  await db.exec("begin;select set_config('sarberki.deployment_environment','live',true);select set_config('sarberki.deployment_project_ref','"+LREF+"',true);"+await read('deployment/deployment-profile/install.sql')+'commit;');
+  await db.query("insert into sc_tenants(tenant_id,name) values($1,'Sárberki éles (kitalált próba)')",[LT]);
+  await db.query("select set_config('sarberki.approval_install_project_ref','mojnqizbcaczstguikpv',false),set_config('sarberki.approval_backup_sha256',$1,false)",['b'.repeat(64)]);
+  await assert.rejects(db.exec(await read('deployment/cloud-approval/install.sql')),/verified test project/,'TEST ref refused on LIVE');await db.exec('rollback');
+  await db.query("select set_config('sarberki.approval_install_project_ref',$1,false),set_config('sarberki.tm_install_project_ref',$1,false),set_config('sarberki.tm_backup_sha256',$2,false)",[LREF,'b'.repeat(64)]);
+  await db.exec(await read('deployment/cloud-approval/install.sql'));
+  await db.exec(await read('deployment/cloud-approval/separate-approver-permission.sql'));
+  await db.query('insert into sc_isolated_approval_key(key_hex) values($1)',[KEY]);
+  await db.exec(await read('deployment/test-mailbox/install.sql'));await db.exec('update sc_test_mailbox_config set enabled=true');
+  for(const [role,id] of Object.entries(ids)){await db.query('insert into auth.users values($1)',[id]);await db.query('insert into auth.sessions values($1,$2,null)',[sessions[role],id]);}
+  await db.query('insert into sc_memberships values($1,$2,true,true,false),($1,$3,true,false,true)',[LT,ids.writer,ids.approver]);
+  const a=liveFixture(1);
+  assert.equal((await one('writer','select sc_tm_create($1,$2,$3,$4) r',[LT,a.caseId,JSON.stringify(a.data),JSON.stringify(a.proof)])).revision,1);
+  await one('approver','select sc_tm_decide($1,$2,$3,$4,$5,$6) r',[LT,a.caseId,1,sha(a.data.drafts[0].text),'approve',null]);
+  assert.equal((await db.query('select data from sc_cases where case_id=$1',[a.caseId])).rows[0].data.state.approval,'approved_internal');
+  const b=liveFixture(2,'sarberkiprojecttest@gmail.com');
+  await assert.rejects(one('writer','select sc_tm_create($1,$2,$3,$4) r',[LT,b.caseId,JSON.stringify(b.data),JSON.stringify(b.proof)]),denied('22023'),'TEST mailbox refused on LIVE');
+  const c=liveFixture(3);
+  await assert.rejects(one('writer','select sc_tm_create($1,$2,$3,$4) r',[LT,c.caseId,JSON.stringify(c.data),JSON.stringify(c.proof)],{iss:project+'/auth/v1'}),denied('42501'),'TEST-project token refused');
+  await assert.rejects(one('approver',"select sc_approve_case('sarberki-test','x',1,$1) r",['a'.repeat(64)]),()=>true,'legacy synthetic approval is TEST-only');
+  await assert.rejects(db.query("insert into sc_tenants(tenant_id,name,test_only) values('sarberki-test','X',true)"),/LIVE_TENANT_ONLY/);
  }finally{await db.close();}
 });
