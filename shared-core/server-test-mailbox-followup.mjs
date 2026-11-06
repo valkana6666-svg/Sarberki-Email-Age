@@ -56,3 +56,38 @@ export async function appendTestMailboxFollowup({token,messageId,transport,attes
  if(!record)fail('CASE_CONFLICT');
  return {caseId,revision:Number(record.revision)};
 }
+
+// Triage for the daily page (owner request 2026-11-06): for each read mail, decide on the SERVER whether it is a
+// new booking inquiry, the continuation of an existing booking (same Gmail thread, same guest), uncertain (same
+// guest, new thread, same stay dates – the existing engine's rule: the operator decides), already stored, or not
+// allowed. Metadata only (kind + booking id); nothing is written. Max 25 messages per call.
+export async function triageTestMailboxMessages({token,messageIds,transport,fetchImpl=globalThis.fetch,deployment=TEST_DEPLOYMENT}={}){
+ if(typeof transport!=='function')fail('SETUP_REQUIRED');
+ if(!Array.isArray(messageIds)||!messageIds.length||messageIds.length>25||new Set(messageIds).size!==messageIds.length||messageIds.some(id=>!/^[a-f0-9]{12,32}$/.test(id)))fail('INVALID_INPUT');
+ const TENANT=deployment.tenantId;
+ let rows;
+ try{rows=await transport('/rest/v1/sc_cases?select=*&tenant_id=eq.'+TENANT);}catch(error){fail(error?.code==='FORBIDDEN'?'FORBIDDEN':'STORAGE_FAILURE');}
+ const cases=(Array.isArray(rows)?rows:[]).filter(r=>/^tm-[a-f0-9]{12,32}$/.test(r.case_id));
+ const stored=new Map(cases.flatMap(r=>(r.data?.messages||[]).map(m=>[m.message_id,r.case_id])));
+ const results=[];
+ for(const messageId of messageIds){
+  if(stored.has(messageId)){results.push({messageId,kind:'stored',caseId:stored.get(messageId)});continue;}
+  let read=null,followup=false;
+  for(const mode of [false,true]){
+   try{read=await readVerifiedTestMailboxMessage({token,messageId,fetchImpl,deployment,followup:mode});followup=mode;break;}
+   catch(error){if(['GMAIL_AUTH_REQUIRED','WRONG_GMAIL_ACCOUNT','GMAIL_RATE_LIMITED'].includes(error?.code))throw error;}
+  }
+  if(!read){results.push({messageId,kind:'not_allowed'});continue;}
+  const {source,envelope}=read;
+  const sameGuest=cases.filter(r=>String(r.data?.sender).toLowerCase()===envelope.sender);
+  if(followup){
+   const thread=sameGuest.filter(r=>r.data?.sourceReceipt?.thread_id===source.thread_id);
+   results.push(thread.length===1?{messageId,kind:'followup',caseId:thread[0].case_id}:{messageId,kind:'uncertain',reason:'reply_without_booking'});
+   continue;
+  }
+  const v=extractServerMessage(envelope);
+  const related=v.arrival&&v.departure?sameGuest.filter(r=>r.data?.state?.values?.arrival===v.arrival&&r.data?.state?.values?.departure===v.departure):[];
+  results.push(related.length?{messageId,kind:'uncertain',reason:'same_guest_same_dates',caseIds:related.map(r=>r.case_id).slice(0,5)}:{messageId,kind:'new'});
+ }
+ return results;
+}

@@ -14,6 +14,8 @@ const KNOWN_TENANTS=['sarberki-test','sarberki-live'];
 let TENANT='sarberki-test';
 const sections=Object.freeze({
  incoming:['Beérkezett foglalások','Új vendégüzenetek és feldolgozásra váró megkeresések.'],
+ // Owner request 2026-11-06: a booking the guest replied to waits here until our answer to that reply is sent.
+ followup:['Folytatásra vár','Foglalások, amelyekre a vendég válaszolt, és még nem küldtük el a választ.'],
  approval:['Jóváhagyásra vár','Átnézendő választervezetek.'],
  progress:['Folyamatban','Pontosításra vagy ellenőrzésre váró foglalások.'],
  // No close/reject lifecycle exists on the server yet; never imply closed cases.
@@ -34,6 +36,11 @@ let authenticated=false,epoch=0;
 const emailReader=createDailyEmailReader({canRead:()=>authenticated,restoreSession:async()=>rememberKey(await session.restore()),
  clientId:document.querySelector('meta[name="google-oauth-client-id"]')?.content,onChange:()=>scheduleSave(),
  // Writer saves a marked test mail as a pending case; the server re-reads it from Gmail with this one-off token.
+ // Server triage of the read mails into new / continuation / uncertain / already stored (owner 2026-11-06).
+ onTriage:async({token,messageIds})=>{
+  const result=await request({tenantId:TENANT,action:'test-mailbox-triage',messageIds},'POST',{'X-Sarberki-Gmail-Token':token});
+  if(!Array.isArray(result))throw Error('INVALID_DATA');return result;
+ },
  // A guest's reply (followup) continues its existing case (owner decision 2026-11-06).
  onSaveCase:async({messageId,token,followup=false})=>{
   const result=await request({tenantId:TENANT,action:followup?'test-mailbox-followup':'test-mailbox-ingest',messageId},'POST',{'X-Sarberki-Gmail-Token':token});

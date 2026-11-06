@@ -13,7 +13,7 @@ import {closedSyntheticMailLanguage,isClosedTubFollowup,isClosedTubPreviousRecor
 import {resolveBookingCase} from '../../booking-cases.mjs';
 import {dailyCaseSummary} from '../../shared-core/server-daily-case-view.mjs';
 import {ingestTestMailboxMessage} from '../../shared-core/server-test-mailbox-case.mjs';
-import {appendTestMailboxFollowup} from '../../shared-core/server-test-mailbox-followup.mjs';
+import {appendTestMailboxFollowup,triageTestMailboxMessages} from '../../shared-core/server-test-mailbox-followup.mjs';
 import {sendApprovedTestMailboxReply} from '../../shared-core/server-test-mailbox-send.mjs';
 import {priceTestMailboxCase} from '../../shared-core/server-test-mailbox-price.mjs';
 import {markTestMailboxUnavailable} from '../../shared-core/server-test-mailbox-unavailable.mjs';
@@ -46,6 +46,7 @@ const TEST_MAILBOX_ERRORS=Object.freeze({GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACC
 const TEST_MAILBOX_FIELDS=Object.freeze({
  'test-mailbox-ingest':['action,messageId,tenantId'],
  'test-mailbox-followup':['action,messageId,tenantId'],
+ 'test-mailbox-triage':['action,messageIds,tenantId'],
  'test-mailbox-redraft':['action,caseId,draftText,expectedRevision,tenantId'],
  'test-mailbox-decide':['action,caseId,decision,expectedRevision,reviewedDraftHash,tenantId','action,caseId,decision,expectedRevision,reason,reviewedDraftHash,tenantId'],
  'test-mailbox-send':['action,caseId,expectedRevision,tenantId'],
@@ -53,6 +54,7 @@ const TEST_MAILBOX_FIELDS=Object.freeze({
  'test-mailbox-unavailable':['action,caseId,expectedRevision,tenantId,unavailableConfirmed']
 });
 function validTestMailboxInput(input){
+ if(input.action==='test-mailbox-triage')return Array.isArray(input.messageIds)&&input.messageIds.length>0&&input.messageIds.length<=25&&input.messageIds.every(id=>typeof id==='string'&&/^[a-f0-9]{12,32}$/.test(id));
  if(input.action==='test-mailbox-ingest'||input.action==='test-mailbox-followup')return typeof input.messageId==='string'&&/^[a-f0-9]{12,32}$/.test(input.messageId);
  if(typeof input.caseId!=='string'||!/^tm-[a-f0-9]{12,32}$/.test(input.caseId)||!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<1)return false;
  if(input.action==='test-mailbox-send')return true;
@@ -87,6 +89,17 @@ export function previoCapacityReader(env,fetchImpl){
  let mapping;try{mapping=JSON.parse(env.PREVIO_ROOM_KIND_MAP||'');}catch{return null;}
  return ({cabin,arrival,departure})=>readPrevioFreeCapacity({apiKey:env.PREVIO_API_KEY,hotelId:env.PREVIO_HOTEL_ID,ratePlanId:env.PREVIO_RATE_PLAN_ID,
   mapping,cabins:[cabin],arrival,departure,fetchImpl});
+}
+// Daily category (owner request 2026-11-06): a booking whose newest draft answers a guest's reply waits in
+// "Folytatásra vár" until that exact draft has been sent (send ledger: status sent for its hash).
+async function sentDraftKeys(transport,tenant){
+ try{const rows=await transport('/rest/v1/sc_tm_send_ledger?select=case_id,draft_hash,status&tenant_id=eq.'+tenant);
+  return new Set((Array.isArray(rows)?rows:[]).filter(r=>r.status==='sent').map(r=>r.case_id+':'+r.draft_hash));}catch{return new Set();}
+}
+function testMailboxCategory(record,sent){
+ const latest=record.data.drafts?.at?.(-1),hash=createHash('sha256').update(String(latest?.text??''),'utf8').digest('hex');
+ if(latest?.followup===true&&!sent.has(record.caseId+':'+hash))return 'followup';
+ return record.data.state?.approval==='pending'?'approval':'progress';
 }
 function testMailboxIngestEnabled(env,cloudApproval){
  return cloudApproval&&env.CASE_TEST_MAILBOX_INGEST_ENABLED==='sarberki-test-fictional-only';
@@ -233,6 +246,13 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
       return cookieResponse(TEST_MAILBOX_ERRORS[code],{error:code});
      }
     }
+    // Owner request 2026-11-06: server-side triage of the read mails (new / continuation / uncertain / stored).
+    if(input.action==='test-mailbox-triage'){
+     const tokens=Object.entries(event.headers||{}).filter(([key])=>key.toLowerCase()==='x-sarberki-gmail-token').map(([,value])=>value);
+     if(tokens.length!==1||typeof tokens[0]!=='string'||tokens[0].length>4096)return cookieResponse(401,{error:'GMAIL_AUTH_REQUIRED'});
+     try{return cookieResponse(200,{result:await triageTestMailboxMessages({token:tokens[0],messageIds:input.messageIds,transport:cookieSession.transport,fetchImpl,deployment})});}
+     catch(error){const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'STORAGE_FAILURE';return cookieResponse(TEST_MAILBOX_ERRORS[code],{error:code});}
+    }
     // Owner decision 2026-11-06: a guest's reply continues its case (same thread, same guest; DB re-checks).
     if(input.action==='test-mailbox-followup'){
      const tokens=Object.entries(event.headers||{}).filter(([key])=>key.toLowerCase()==='x-sarberki-gmail-token').map(([,value])=>value);
@@ -274,8 +294,9 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     rotatedCookie=cookieSession.setCookie;
     const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.'+TENANT);
     const records=(Array.isArray(rows)?rows:[]).map(row=>({tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data}));
+    const sent=await sentDraftKeys(cookieSession.transport,TENANT);
     return cookieResponse(200,{result:records.filter(record=>isTestMailboxCase(record,TENANT)).slice(0,100).map(record=>({tenantId:record.tenantId,caseId:record.caseId,revision:record.revision,
-     category:record.data.state?.approval==='pending'?'approval':'progress',kind:'test-mailbox',
+     category:testMailboxCategory(record,sent),kind:'test-mailbox',
      approval:['pending','approved_internal','returned_for_edit','rejected'].includes(record.data.state?.approval)?record.data.state.approval:null}))});
    }
    const exactAttempt=event.httpMethod==='POST'&&(input.action==='diagnose-exact-receipt'||input.action==='ingest-and-draft'&&Object.hasOwn(input,'sourceReceipt'));
@@ -355,8 +376,9 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      const records=await service.listCases({tenantId:input.tenantId});
      result=records.filter(record=>{try{assertReviewAccess(record);return true;}catch(error){if(error.code==='FORBIDDEN')return false;throw error;}}).slice(0,100).map(dailyCaseSummary);
      // Test-mailbox cases appear only while the owner switch is on; pending awaits an independent decision.
+     const sent=testMailboxIngestEnabled(env,cloudApproval)?await sentDraftKeys(transport,'sarberki-test'):new Set();
      if(testMailboxIngestEnabled(env,cloudApproval))result=result.concat(records.filter(record=>isTestMailboxCase(record)).map(record=>({tenantId:record.tenantId,caseId:record.caseId,revision:record.revision,
-      category:record.data.state?.approval==='pending'?'approval':'progress',kind:'test-mailbox',
+      category:testMailboxCategory(record,sent),kind:'test-mailbox',
       // State label only (metadata, no guest content): lets the operator find an approved reply to send.
       approval:['pending','approved_internal','returned_for_edit','rejected'].includes(record.data.state?.approval)?record.data.state.approval:null}))).slice(0,100);
     }else if(input.action==='service-approval-state'){

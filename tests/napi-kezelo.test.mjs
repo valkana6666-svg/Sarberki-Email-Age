@@ -15,9 +15,9 @@ class Element {
  async dispatch(type,event={}){for(const fn of this.listeners[type]||[])await fn({preventDefault(){},...event});}
 }
 function fakeDocument(){
- const ids=['count-incoming','count-approval','count-progress','count-closed','cases-panel','cases-title','email-picker','email-picker-wrap','email-previous','email-next','read-email','email-status','email-list','email-detail','email-draft-request','email-draft-status','email-draft-text','email-draft-review','email-draft-checks','draft-editor','save-draft','approve-draft','approve-confirm','return-draft','reject-draft','decision-reason','email-save-case','email-save-status','detail-messages','detail-facts','chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','copy-approved','send-approved','price-panel','price-cabin','price-calc','price-result','price-available','price-insert','unavailable-confirm','unavailable-insert','unavailable-result','detail-link','section-heading','section-description'];
+ const ids=['count-incoming','count-followup','count-approval','count-progress','count-closed','cases-panel','cases-title','email-picker','email-picker-wrap','email-previous','email-next','read-email','email-status','email-list','email-detail','email-draft-request','email-draft-status','email-draft-text','email-draft-review','email-draft-checks','draft-editor','save-draft','approve-draft','approve-confirm','return-draft','reject-draft','decision-reason','email-save-case','email-save-status','detail-messages','detail-facts','chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','copy-approved','send-approved','price-panel','price-cabin','price-calc','price-result','price-available','price-insert','unavailable-confirm','unavailable-insert','unavailable-result','detail-link','section-heading','section-description'];
  const elements=Object.fromEntries(ids.map(id=>[id,new Element()]));
- const nav=['incoming','approval','progress','closed'].map(section=>{const e=new Element();e.dataset.section=section;return e;});
+ const nav=['incoming','followup','approval','progress','closed'].map(section=>{const e=new Element();e.dataset.section=section;return e;});
  const listeners={};
  const classes=new Set(),body={classList:{add:c=>classes.add(c),remove:c=>classes.delete(c),contains:c=>classes.has(c),toggle:(c,on)=>on?classes.add(c):classes.delete(c)}};
  return {elements,nav,body,visibilityState:'visible',getElementById:id=>elements[id],querySelectorAll:()=>nav,querySelector:()=>({content:'synthetic-client'}),
@@ -68,7 +68,7 @@ test('daily view reuses protected cookie reader, keeps reading open, auto-loads 
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(doc.elements['load-cases'].disabled,true);
   assert.match(doc.elements['session-status'].textContent,/bejelentkezés/iu);
-  await doc.nav[1].dispatch('click');assert.equal(doc.elements['section-heading'].textContent,'Jóváhagyásra vár');
+  await doc.nav[2].dispatch('click');assert.equal(doc.elements['section-heading'].textContent,'Jóváhagyásra vár');
   assert.equal(doc.elements['cases-title'].focused,true);assert.equal(doc.elements['cases-panel'].scrollOptions.block,'start');
   assert.match(doc.elements['list-status'].textContent,/jelentkezzen be/);assert.equal(doc.elements['count-approval'].textContent,'Nincs betöltve');
   doc.elements.email.value='reader@synthetic.invalid';doc.elements.password.value='SYNTHETIC_ONLY';
@@ -76,7 +76,7 @@ test('daily view reuses protected cookie reader, keeps reading open, auto-loads 
   assert.equal(doc.elements['chat-send'].disabled,false);
   assert.equal(doc.elements['case-list'].children.length,1);
   assert.equal(doc.elements['count-incoming'].textContent,'1 foglalás');assert.equal(doc.elements['count-closed'].textContent,'0 foglalás');
-  await doc.nav[3].dispatch('click');assert.equal(doc.elements['case-list'].children.length,0);
+  await doc.nav[4].dispatch('click');assert.equal(doc.elements['case-list'].children.length,0);
   assert.match(doc.elements['list-status'].textContent,/nincs elérhető tárolt tesztfoglalás/);
   assert.match(doc.elements['cases-title'].textContent,/Lezárt foglalások/);
   assert.match(doc.elements['section-description'].textContent,/még nincs bekötve/);await doc.nav[0].dispatch('click');
@@ -427,7 +427,7 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   }else return response({error:'INVALID_INPUT'},400);
   state.revision++;return response({result:{caseId,revision:state.revision+skew,approval:state.approval}});
  };
- const e=doc.elements,open=async()=>{await e['load-cases'].dispatch('click');await settle();await doc.nav[state.approval==='pending'?1:2].dispatch('click');await e['case-list'].children[0].children[1].dispatch('click');await settle();};
+ const e=doc.elements,open=async()=>{await e['load-cases'].dispatch('click');await settle();await doc.nav[state.approval==='pending'?2:3].dispatch('click');await e['case-list'].children[0].children[1].dispatch('click');await settle();};
  try{
   await import(pathToFileURL(resolve('napi-kezelo/napi.mjs')).href+'?test-mailbox=1');await settle();
   e.email.value='writer@synthetic.invalid';e.password.value='SYNTHETIC_ONLY';await e.login.dispatch('submit');await settle();

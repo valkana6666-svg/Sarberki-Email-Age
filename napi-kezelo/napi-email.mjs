@@ -39,8 +39,10 @@ function closedPreviewText(message,header,body){
 }
 // Separate mailbox reading from cloud case writes. Reuses the existing readonly
 // transport and account policy; no tokens are persisted. The snapshot is encrypted by the daily view.
-export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=loadGoogle,readInbox=readTestGmailInbox,documentImpl=document,clientId,now=()=>new Date(),onChange=()=>{},onSaveCase=null}={}){
+export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=loadGoogle,readInbox=readTestGmailInbox,documentImpl=document,clientId,now=()=>new Date(),onChange=()=>{},onSaveCase=null,onTriage=null}={}){
  const el=id=>documentImpl.getElementById(id);
+ // Server triage per read mail (owner request 2026-11-06): new / followup / uncertain / stored.
+ let triage=new Map(),labels=[];
  let generation=0,busy=false,googleApi=null,chooseMessage=null,pendingConsent=false,queuedConsent=null,consentTimer=null,previewSource=null,previewTurn=0,previewPending=false,shown=null,selectedIndex=-1,queuedSave=null;
  const active=turn=>turn===generation&&canRead()&&documentImpl.visibilityState!=='hidden';
  // Local, unsaved reply preview from the shared email adapter. No request, storage or case transition.
@@ -50,6 +52,12 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
   el('email-draft-request').disabled=!source||source.followup===true||!canRead();
   el('email-save-case').disabled=!source?.saveable||!onSaveCase||!canRead();el('email-save-status').textContent='';
   el('email-save-case').textContent=source?.followup?'Hozzáadás a foglaláshoz':'Mentés új foglalásként';
+  const t=source&&triage.get(source.messageId);
+  if(t?.kind==='stored'){el('email-save-case').disabled=true;el('email-save-status').textContent='Ez a levél már szerepel a foglalásban ('+t.caseId+').';}
+  else if(t?.kind==='followup'){el('email-save-case').textContent='Hozzáadás a foglaláshoz ('+t.caseId+')';el('email-save-status').textContent='Folytatás: ugyanaz a vendég, ugyanabban a levélszálban.';}
+  else if(t?.kind==='uncertain')el('email-save-status').textContent=t.reason==='reply_without_booking'?'Bizonytalan: válaszlevél, de nincs hozzá foglalás. Előbb az első levelet mentse új foglalásként.'
+   :'Bizonytalan: ugyanez a vendég ugyanerre az időszakra már szerepel ('+(t.caseIds||[]).join(', ')+'). Ha ez új foglalás, mentse; ha ugyanaz, nyissa meg a meglévőt.';
+  else if(t?.kind==='new')el('email-save-status').textContent='Új érdeklődés.';
   el('email-draft-status').textContent=source?'AI-válaszjavaslat kérhető. Helyi előnézet lesz: nincs mentve, nem küldhető, nem Previo-foglalás.':
    'Az AI-válaszjavaslat jelenleg csak a lezárt szintetikus tesztlevelekhez és a tesztvendég (sarberkito@gmail.com) leveleihez érhető el, bármilyen tárggyal (válasz/továbbítás nem); más levélhez külön jóváhagyás szükséges.';
  }
@@ -89,7 +97,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
  }
  function setEnabled(enabled){if(enabled&&!googleApi)void loadGoogleImpl().then(api=>{googleApi=api;}).catch(()=>{});el('read-email').disabled=!enabled||busy;if(enabled&&queuedConsent)void processConsent();if(enabled&&!busy)el('email-status').textContent='Beolvasás: '+TEST_GMAIL_ACCOUNT+'. A Google külön olvasási engedélyt kér.';}
  function showMessages(messages,turn){
-  const fragment=documentImpl.createDocumentFragment(),options=documentImpl.createDocumentFragment(),buttons=[];
+  const fragment=documentImpl.createDocumentFragment(),options=documentImpl.createDocumentFragment(),buttons=[];labels=[];triage=new Map();
   const headers=messages.map(message=>Object.fromEntries((message.payload?.headers||[]).map(h=>[h.name.toLowerCase(),h.value])));
   const open=index=>{
    if(!active(turn)||!Number.isInteger(index)||index<0||index>=messages.length)return;
@@ -111,6 +119,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
   messages.forEach((message,index)=>{
    const li=documentImpl.createElement('li'),button=documentImpl.createElement('button'),option=documentImpl.createElement('option');button.type='button';
    const header=headers[index],label=(index+1)+'. '+(header.subject||'(nincs tárgy)')+' — '+(header.from||'Ismeretlen feladó');
+   labels.push({button,option,label,id:message.id});
    button.textContent=label;button.setAttribute('aria-pressed','false');button.addEventListener('click',()=>open(index));buttons.push(button);
    option.value=String(index);option.textContent=label;options.append(option);li.append(button);fragment.append(li);
   });
@@ -118,6 +127,13 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
   el('email-list').replaceChildren(fragment);
   el('email-status').textContent=messages.length+' levél beolvasva. Válasszon levelet a választóból vagy a görgethető listából.'+(onSaveCase?' Csak a jelölt tesztlevél menthető foglalásként (Writer-jogosultsággal); más levélnél a mentés nem érhető el.':' A felhős foglalásként mentés ebben a nézetben nem érhető el.');
   shown=messages;if(messages.length)open(0);
+ }
+ // Group labels from the server triage; the current selection is refreshed so its button follows the group.
+ const TRIAGE_LABEL={new:'[Új] ',followup:'[Folytatás] ',uncertain:'[Bizonytalan] ',stored:'[Már beolvasva] '};
+ function applyTriage(results){
+  triage=new Map((Array.isArray(results)?results:[]).filter(r=>r&&typeof r.messageId==='string'&&TRIAGE_LABEL[r.kind]!==undefined).map(r=>[r.messageId,r]));
+  for(const l of labels){const t=triage.get(l.id);const text=(t?TRIAGE_LABEL[t.kind]:'')+l.label;l.button.textContent=text;l.option.textContent=text;}
+  if(selectedIndex>=0&&chooseMessage)chooseMessage(selectedIndex);
  }
  function finish(){busy=false;pendingConsent=false;queuedConsent=null;clearTimeout(consentTimer);consentTimer=null;el('read-email').disabled=!canRead();}
  function fail(error){
@@ -136,6 +152,11 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
    el('email-status').textContent='E-mailek beolvasása…';
    const messages=await readInbox(result.access_token,{search:globalThis.location?.search||''});
    if(active(turn))showMessages(messages,turn);
+   const ids=(messages||[]).map(m=>m?.id).filter(id=>/^[a-f0-9]{12,32}$/.test(id||'')).slice(0,25);
+   if(onTriage&&ids.length&&active(turn)){
+    try{const results=await onTriage({token:result.access_token,messageIds:ids});if(active(turn))applyTriage(results);}
+    catch{if(active(turn))el('email-status').textContent+=' A levelek csoportosítása most nem sikerült; a mentés így is működik.';}
+   }
   }catch(error){if(active(turn))fail(error);}finally{if(active(turn))finish();}
  }
  // Opening the Google popup may hide the main page on iPhone. Drop displayed

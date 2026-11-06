@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 import {ingestTestMailboxMessage} from '../shared-core/server-test-mailbox-case.mjs';
-import {appendTestMailboxFollowup} from '../shared-core/server-test-mailbox-followup.mjs';
+import {appendTestMailboxFollowup,triageTestMailboxMessages} from '../shared-core/server-test-mailbox-followup.mjs';
 
 // Owner decision 2026-11-06: a guest's reply continues the case in the operator system. Real PostgreSQL
 // (PGlite), fictional mails only, the real server modules end to end (Gmail is a fixture).
@@ -19,7 +19,9 @@ const mails={
  [THREAD]:{from:'Kiss Anna <sarberkito@gmail.com>',subject:'Érdeklődés',text:'Jó napot! Május 20-23 között jönnénk ketten. Kiss Anna',msgid:'<first@example.test>'},
  '38f2a0b1c2d3e4a1':{from:'Kiss Anna <sarberkito@gmail.com>',subject:'Re: Érdeklődés',text:'Köszönjük! 2027-ben, 2 felnőtt, a Deluxe faház lenne jó.',msgid:'<second@example.test>',inReplyTo:'<reply-from-us@example.test>'},
  '38f2a0b1c2d3e4a2':{from:'Valaki <other@example.test>',subject:'Re: Érdeklődés',text:'Más feladó.',msgid:'<third@example.test>',inReplyTo:'<x@y>'},
- '38f2a0b1c2d3e4a3':{from:'Kiss Anna <sarberkito@gmail.com>',subject:'Re: Másik',text:'Másik szál.',msgid:'<fourth@example.test>',inReplyTo:'<x@y>',thread:'38f2a0b1c2d3e4ff'}
+ '38f2a0b1c2d3e4a3':{from:'Kiss Anna <sarberkito@gmail.com>',subject:'Re: Másik',text:'Másik szál.',msgid:'<fourth@example.test>',inReplyTo:'<x@y>',thread:'38f2a0b1c2d3e4ff'},
+ '38f2a0b1c2d3e4a4':{from:'Kiss Anna <sarberkito@gmail.com>',subject:'Új kérdés',text:'Jó napot! 2027. augusztus 1-től 4-ig jönnénk hárman.',msgid:'<fifth@example.test>',thread:'38f2a0b1c2d3e4a4'},
+ '38f2a0b1c2d3e4a5':{from:'Kiss Anna <sarberkito@gmail.com>',subject:'Még egy kérdés',text:'Szia! 2027. augusztus 1-től 4-ig van stég a házhoz?',msgid:'<sixth@example.test>',thread:'38f2a0b1c2d3e4a5'}
 };
 const gmailFetch=async url=>{
  const u=String(url);if(u.endsWith('/profile'))return new Response(JSON.stringify({emailAddress:'sarberkiprojecttest@gmail.com'}));
@@ -79,6 +81,13 @@ test('a reply in the case thread from the same guest is appended; facts merged; 
   await assert.rejects(appendTestMailboxFollowup({...common,messageId:'38f2a0b1c2d3e4a2'}),/NOT_TEST_PAIR_INQUIRY/);
   await assert.rejects(appendTestMailboxFollowup({...common,messageId:'38f2a0b1c2d3e4a3'}),/FOLLOWUP_CASE_NOT_FOUND/);
   await assert.rejects(appendTestMailboxFollowup({...common,messageId:THREAD}),/NOT_A_FOLLOWUP/);
+  // 2b. Server triage for the daily page: stored, not allowed, uncertain reply, new inquiry.
+  const triage=await triageTestMailboxMessages({token:'t'.repeat(40),transport:transportFor('writer'),fetchImpl:gmailFetch,messageIds:[THREAD,'38f2a0b1c2d3e4a1','38f2a0b1c2d3e4a2','38f2a0b1c2d3e4a3','38f2a0b1c2d3e4a4']});
+  assert.deepEqual(triage.map(r=>[r.kind,r.caseId??r.reason??null]),[['stored',caseId],['stored',caseId],['not_allowed',null],['uncertain','reply_without_booking'],['new',null]]);
+  await assert.rejects(triageTestMailboxMessages({token:'t'.repeat(40),transport:transportFor('writer'),fetchImpl:gmailFetch,messageIds:[]}),/INVALID_INPUT/);
+  await ingestTestMailboxMessage({...common,messageId:'38f2a0b1c2d3e4a4'});
+  const same=await triageTestMailboxMessages({token:'t'.repeat(40),transport:transportFor('writer'),fetchImpl:gmailFetch,messageIds:['38f2a0b1c2d3e4a5']});
+  assert.deepEqual(same,[{messageId:'38f2a0b1c2d3e4a5',kind:'uncertain',reason:'same_guest_same_dates',caseIds:['tm-38f2a0b1c2d3e4a4']}],'same guest, new thread, same stay: the operator decides');
   // 3. The database alone refuses a forged message for another thread or guest, even with a valid writer session.
   const forged={sender:'sarberkito@gmail.com',text:'x',mailbox_id:row.data.sourceReceipt.mailbox_id,message_id:'38f2a0b1c2d3e4a9',thread_id:'38f2a0b1c2d3e4ff',rfc_message_id:'<f@x>',references:[],received_at:'2026-11-06T10:10:00.000Z'};
   await assert.rejects(transportFor('writer')('/rest/v1/rpc/sc_tm_followup',{method:'POST',body:{p_tenant:TENANT,p_case:caseId,p_expected:3,p_message:forged,p_values:{},p_draft:{text:'y'},p_proof:{}}}),e=>e.detail.includes('does not belong'));

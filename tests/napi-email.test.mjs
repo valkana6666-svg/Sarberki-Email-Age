@@ -12,12 +12,12 @@ class Element{
  setAttribute(key,value){this.attributes[key]=value;}
  async click(){await this.listeners.click?.();}
 }
-function setup({unreadableIndex=-1,messages=null,now=null,onSaveCase=null}={}){
+function setup({unreadableIndex=-1,messages=null,now=null,onSaveCase=null,onTriage=null}={}){
  const elements=Object.fromEntries(['read-email','email-list','email-status','email-detail','email-picker','email-picker-wrap','email-previous','email-next','email-draft-request','email-draft-status','email-draft-text','email-draft-review','email-draft-checks','email-save-case','email-save-status'].map(id=>[id,new Element()]));
  const doc={getElementById:id=>elements[id],visibilityState:'visible',createElement:()=>new Element(),createDocumentFragment:()=>Object.assign(new Element(),{fragment:true})};
  let authenticated=true,expired=false,sessionHold=null,callback,reads=0,restores=0,release;const consentRequests=[];
  const google={accounts:{oauth2:{initTokenClient(options){assert.equal(options.scope,'https://www.googleapis.com/auth/gmail.readonly');assert.equal(options.include_granted_scopes,false);callback=options.callback;return {requestAccessToken(input){consentRequests.push(input);}};}}}};
- const reader=createDailyEmailReader({documentImpl:doc,canRead:()=>authenticated,restoreSession:async()=>{restores++;if(sessionHold)await sessionHold;if(!authenticated||expired)throw Error('AUTH_REQUIRED');},...(now?{now:()=>now}:{}),loadGoogleImpl:async()=>google,clientId:'synthetic',onSaveCase,readInbox:async token=>{assert.equal(token,'SYNTHETIC_TOKEN');reads++;if(release)await release;if(messages)return messages;return [0,1,2].map(index=>({payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Kitalált levél '+(index+1)},{name:'From',value:'guest@synthetic.invalid'}],body:{data:index===unreadableIndex?'%%%':Buffer.from('Kitalált érdeklődés. Levél '+(index+1)).toString('base64url')}}}));}});
+ const reader=createDailyEmailReader({documentImpl:doc,canRead:()=>authenticated,restoreSession:async()=>{restores++;if(sessionHold)await sessionHold;if(!authenticated||expired)throw Error('AUTH_REQUIRED');},...(now?{now:()=>now}:{}),loadGoogleImpl:async()=>google,clientId:'synthetic',onSaveCase,onTriage,readInbox:async token=>{assert.equal(token,'SYNTHETIC_TOKEN');reads++;if(release)await release;if(messages)return messages;return [0,1,2].map(index=>({payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Kitalált levél '+(index+1)},{name:'From',value:'guest@synthetic.invalid'}],body:{data:index===unreadableIndex?'%%%':Buffer.from('Kitalált érdeklődés. Levél '+(index+1)).toString('base64url')}}}));}});
  return {reader,e:elements,doc,consentRequests,get callback(){return callback;},get reads(){return reads;},get restores(){return restores;},hideForConsent(){doc.visibilityState='hidden';authenticated=false;reader.suspend();reader.setEnabled(false);},returnFromConsent(){doc.visibilityState='visible';authenticated=true;reader.setEnabled(true);},logout(){authenticated=false;reader.clear();},delay(p){release=p;},expire(){expired=true;},holdSession(p){sessionHold=p;},get authenticated(){return authenticated;},set authenticated(v){authenticated=v;}};
 }
 test('daily Gmail uses readonly consent and shared reader, opens original without persisting or submitting a case',async()=>{
@@ -365,4 +365,20 @@ test('follow-up (owner 2026-11-06): the test guest\'s Gmail reply offers "Hozzá
  assert.deepEqual(saves,[{messageId:'48f2a0b1c2d3e4a1',token:'FRESH_SYNTHETIC_TOKEN',followup:true}]);
  assert.match(h.e['email-save-status'].textContent,/Hozzáadva a foglaláshoz \(tm-48f2a0b1c2d3e4a0\)/);
  for(const index of [1,2]){await select(h,index);assert.equal(h.e['email-save-case'].disabled,true,String(index));}
+});
+
+test('triage (owner 2026-11-06): the server groups read mails; labels and the save button follow the group',async()=>{
+ const calls=[];
+ const onTriage=async input=>{calls.push(input);return [
+  {messageId:'48f2a0b1c2d3e4b0',kind:'new'},{messageId:'48f2a0b1c2d3e4b1',kind:'stored',caseId:'tm-48f2a0b1c2d3e4b1'},
+  {messageId:'48f2a0b1c2d3e4b2',kind:'uncertain',reason:'same_guest_same_dates',caseIds:['tm-48f2a0b1c2d3e4a0']}];};
+ const messages=[marked('Érdeklődés',markedBodies.hu,{id:'48f2a0b1c2d3e4b0'}),marked('Érdeklődés 2',markedBodies.hu,{id:'48f2a0b1c2d3e4b1'}),marked('Még egy kérdés',markedBodies.hu,{id:'48f2a0b1c2d3e4b2'})];
+ const h=await openInbox({messages,now:PREVIEW_NOW,onSaveCase:async()=>({caseId:'tm-x',revision:1}),onTriage});
+ await new Promise(r=>setTimeout(r,0));
+ assert.deepEqual(calls,[{token:'SYNTHETIC_TOKEN',messageIds:['48f2a0b1c2d3e4b0','48f2a0b1c2d3e4b1','48f2a0b1c2d3e4b2']}]);
+ const texts=h.e['email-list'].children.map(li=>li.children[0].textContent);
+ assert.match(texts[0],/^\[Új\] /);assert.match(texts[1],/^\[Már beolvasva\] /);assert.match(texts[2],/^\[Bizonytalan\] /);
+ await select(h,1);assert.equal(h.e['email-save-case'].disabled,true);assert.match(h.e['email-save-status'].textContent,/már szerepel a foglalásban \(tm-48f2a0b1c2d3e4b1\)/);
+ await select(h,2);assert.equal(h.e['email-save-case'].disabled,false);assert.match(h.e['email-save-status'].textContent,/Bizonytalan: ugyanez a vendég ugyanerre az időszakra már szerepel \(tm-48f2a0b1c2d3e4a0\)/);
+ await select(h,0);assert.equal(h.e['email-save-status'].textContent,'Új érdeklődés.');
 });

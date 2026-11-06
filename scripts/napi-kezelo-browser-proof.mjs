@@ -71,6 +71,8 @@ try{
     return state.authenticated?json(200,session):json(401,{error:'AUTH_REQUIRED'});
    }
    if(url.pathname==='/.netlify/functions/booking-cases'){
+    // Triage after reading (owner 2026-11-06) is metadata only; answered empty, not counted as a case write.
+    if(request.method()==='POST'&&request.postDataJSON()?.action==='test-mailbox-triage')return json(200,{result:[]});
     state.caseMethods.push(request.method());
     if(!state.authenticated)return json(401,{error:'AUTH_REQUIRED'});
     if(!state.allowRead)return json(403,{error:'FORBIDDEN'});
@@ -150,7 +152,7 @@ try{
   assert.equal(await page.locator('section.intro').isVisible(),true);
   assert.equal(await page.locator('#view-toggle').innerText(),'Egyszerű nézet');
   check(engine,'full-view-toggle-shows-everything');
-  assert.equal(await page.locator('nav button').count(),4);
+  assert.equal(await page.locator('nav button').count(),5);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.getByRole('button',{name:/Jóváhagyásra vár/}).click();
   assert.equal(await page.locator('#section-heading').innerText(),'Jóváhagyásra vár');
