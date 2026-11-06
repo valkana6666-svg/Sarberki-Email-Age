@@ -30,10 +30,12 @@ Magyarul:
 
 A kulcsot ne küldd el senkinek: ha megjött, szólj Claude-nak, és a biztonságos űrlapon adod meg.
 
-## 5. Facebook (ha a húgod megadta a jogot)
+## 5. Tesztlevelek (ha van 15 perced): `TESZTLEVELEK-2026-11.md` – 7 kész szöveg a sarberkito@gmail.com-ról
+
+## 5b. Facebook (ha a húgod megadta a jogot)
 Csatlakozás a Sárberki-oldallal az „Angeln in Österreich” csoporthoz; az üzenet- és poszttervek a „Sárberki Austria 2027” táblázat „Új levelek DE-HU” lapjának 7–10. sorában.
 
-## 6. Később, amikor lesz kb. 1–1,5 órád: teljes újraépítési próba
+## 6. Később, amikor lesz kb. 1–1,5 órád: teljes újraépítési próba (részletek: `UJRAEPITESI-PROBA.md`)
 Te: új, ingyenes Supabase-projekt és egy új Netlify-oldal létrehozása (Claude lépésenként vezet). Claude: visszaállítás a Drive-mentésből, beállítás, ellenőrzés. Cél: ≤ 4 óra alatt helyreállítható rendszer.
 
 ## Nem most (tájékoztatás)
