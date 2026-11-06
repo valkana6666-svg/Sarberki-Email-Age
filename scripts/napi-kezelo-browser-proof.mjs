@@ -154,7 +154,7 @@ try{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.getByRole('button',{name:/Jóváhagyásra vár/}).click();
   assert.equal(await page.locator('#section-heading').innerText(),'Jóváhagyásra vár');
-  assert.match(await page.locator('.section-card').innerText(),/közös ügytár/);
+  assert.match(await page.locator('.section-card').innerText(),/közös foglalástár/);
   await page.locator('[data-section=incoming]').click();
   check(engine,'navigation-no-fabricated-category-state');
   await page.locator('#email').fill('reader@synthetic.invalid');await page.locator('#password').fill('SYNTHETIC_PASSWORD_ONLY');
@@ -266,13 +266,13 @@ try{
 
   await page.locator('#case-list button').waitFor();
   check(engine,'login-automatically-loads-cases');
-  assert.equal(await page.locator('#count-incoming').innerText(),'1 ügy');
-  assert.equal(await page.locator('#count-closed').innerText(),'0 ügy');
+  assert.equal(await page.locator('#count-incoming').innerText(),'1 foglalás');
+  assert.equal(await page.locator('#count-closed').innerText(),'0 foglalás');
   for(const section of ['approval','progress','closed']){
    await page.locator('[data-section='+section+']').click();
    assert.equal(await page.locator('[data-section='+section+']').getAttribute('aria-pressed'),'true');
    assert.equal(await page.locator('#case-list li').count(),0);
-   assert.match(await page.locator('#list-status').innerText(),/nincs elérhető tárolt tesztügy/);
+   assert.match(await page.locator('#list-status').innerText(),/nincs elérhető tárolt tesztfoglalás/);
    assert.equal(await page.evaluate(()=>document.activeElement.id),'cases-title');
    await page.waitForFunction(()=>{const y=document.getElementById('cases-panel').getBoundingClientRect().top;return y>=0&&y<innerHeight-100;});
   }
@@ -283,7 +283,7 @@ try{
   // The other surface changes the synthetic backing revision after listing.
   // Opening must re-read the shared current revision before requesting preview.
   state.revision=2;
-  await page.locator('#case-list button').click();await page.locator('#detail-status').filter({hasText:'közös ügytárból'}).waitFor();
+  await page.locator('#case-list button').click();await page.locator('#detail-status').filter({hasText:'közös foglalástárból'}).waitFor();
   assert.deepEqual(state.previewRevisions,[2]);
   assert.match(await page.locator('#detail-facts').innerText(),/2026-11-20/);
   assert.match(await page.locator('#detail-messages').innerText(),/Kitalált vendégüzenet/);
@@ -298,7 +298,7 @@ try{
   assert.match(await page.locator('#detail-messages').innerText(),/Kitalált vendégüzenet/);
   check(engine,'reading-remains-open-beyond-thirty-seconds');
   state.revision=3;await page.locator('#load-cases').click();await page.locator('#case-list button').waitFor();
-  await page.locator('#case-list button').click();await page.locator('#detail-status').filter({hasText:'közös ügytárból'}).waitFor();
+  await page.locator('#case-list button').click();await page.locator('#detail-status').filter({hasText:'közös foglalástárból'}).waitFor();
   assert.deepEqual(state.previewRevisions,[2,3]);
   check(engine,'reloads-synthetic-new-revision');
   await page.reload();await page.locator('#session-status').filter({hasText:'Bejelentkezve'}).waitFor();
@@ -342,13 +342,13 @@ try{
   const fits=()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth);
   const openTm=async(section,status)=>{await page.reload();await page.locator('#session-status').filter({hasText:'Bejelentkezve'}).waitFor();
    await page.locator('[data-section='+section+']').click();await page.locator('#load-cases').click();
-   await page.locator('#case-list li').filter({hasText:'Tesztlevél-ügy tm-48f2a0b1c2d3e4f0'}).getByRole('button').click();await page.locator('#detail-status').filter({hasText:status}).waitFor();};
+   await page.locator('#case-list li').filter({hasText:'Tesztlevél-foglalás tm-48f2a0b1c2d3e4f0'}).getByRole('button').click();await page.locator('#detail-status').filter({hasText:status}).waitFor();};
   state.role='writer';state.markedMail=true;await page.reload();await page.locator('#session-status').filter({hasText:'Bejelentkezve'}).waitFor();
   await page.waitForFunction(()=>Boolean(window.google?.accounts?.oauth2?.initTokenClient));
   await page.locator('#read-email').click();await page.locator('#email-detail').filter({hasText:'Sárberki élő teszt – HU'}).waitFor();
   await page.locator('#email-save-case:not([disabled])').waitFor();
   await page.locator('#email-save-case').click();
-  await page.locator('#email-save-status').filter({hasText:'Ügyként mentve (tm-48f2a0b1c2d3e4f0)'}).waitFor();
+  await page.locator('#email-save-status').filter({hasText:'Foglalásként mentve (tm-48f2a0b1c2d3e4f0)'}).waitFor();
   await page.locator('#detail-status').filter({hasText:'jóváhagyásra vár'}).waitFor();
   assert.equal(state.tmPosts[0].token,'SYNTHETIC_TOKEN');assert.equal(JSON.stringify(state.tmPosts[0]).split('SYNTHETIC_TOKEN').length,2,'token only in header');
   assert.match(await page.locator('#detail-capacity').innerText(),/szabad helyet a rendszer nem ellenőrzi/);

@@ -75,10 +75,10 @@ test('daily view reuses protected cookie reader, keeps reading open, auto-loads 
   await doc.elements.login.dispatch('submit');assert.equal(doc.elements.password.value,'');assert.equal(doc.elements['load-cases'].disabled,false);
   assert.equal(doc.elements['chat-send'].disabled,false);
   assert.equal(doc.elements['case-list'].children.length,1);
-  assert.equal(doc.elements['count-incoming'].textContent,'1 ügy');assert.equal(doc.elements['count-closed'].textContent,'0 ügy');
+  assert.equal(doc.elements['count-incoming'].textContent,'1 foglalás');assert.equal(doc.elements['count-closed'].textContent,'0 foglalás');
   await doc.nav[3].dispatch('click');assert.equal(doc.elements['case-list'].children.length,0);
-  assert.match(doc.elements['list-status'].textContent,/nincs elérhető tárolt tesztügy/);
-  assert.match(doc.elements['cases-title'].textContent,/Lezárt ügyek/);
+  assert.match(doc.elements['list-status'].textContent,/nincs elérhető tárolt tesztfoglalás/);
+  assert.match(doc.elements['cases-title'].textContent,/Lezárt foglalások/);
   assert.match(doc.elements['section-description'].textContent,/még nincs bekötve/);await doc.nav[0].dispatch('click');
   assert.doesNotMatch(doc.elements['list-status'].textContent,/jelentkezzen be/iu);
   doc.elements['chat-input'].value='Kitalált első üzenet';await doc.elements['chat-form'].dispatch('submit');
@@ -132,7 +132,7 @@ test('distinct daily PWA route retains original test app and never invents statu
  const html=fs.readFileSync('napi-kezelo/index.html','utf8'),manifest=JSON.parse(fs.readFileSync('napi-kezelo/manifest.webmanifest','utf8'));
  for(const text of ['Beérkezett','Jóváhagyásra','Folyamatban','Lezárt','Válasz szerkesztése','Elutasítás'])assert.ok(html.includes(text));
  assert.equal(manifest.id,'/napi-kezelo/');assert.equal(manifest.scope,'/napi-kezelo/');assert.equal(manifest.start_url,'/napi-kezelo/');
- assert.match(html,/közös ügytár tárolt állapotát/iu);
+ assert.match(html,/közös foglalástár tárolt állapotát/iu);
  assert.match(html,/<textarea id="draft-editor"[^>]+disabled>/u);
  assert.match(html,/<button id="approve-draft"[^>]+disabled>/u);
  assert.match(html,/<button id="reject-draft" type="button" disabled>Elutasítás<\/button>/u);assert.match(html,/<button id="return-draft" type="button" disabled>/u);
@@ -431,7 +431,7 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
  try{
   await import(pathToFileURL(resolve('napi-kezelo/napi.mjs')).href+'?test-mailbox=1');await settle();
   e.email.value='writer@synthetic.invalid';e.password.value='SYNTHETIC_ONLY';await e.login.dispatch('submit');await settle();
-  assert.equal(e['count-approval'].textContent,'1 ügy');
+  assert.equal(e['count-approval'].textContent,'1 foglalás');
   await open();
   // A newly inserted case must not rename an existing mailbox case (observed iPhone confusion).
   const originalLabel=e['case-list'].children[0].children[0].textContent;
@@ -500,7 +500,7 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   e['approve-confirm'].checked=true;await e['approve-confirm'].dispatch('change');assert.equal(e['approve-draft'].disabled,false);
   await e['approve-draft'].dispatch('click');await settle();
   assert.deepEqual(posts.at(-1),{tenantId:'sarberki-test',caseId,action:'test-mailbox-decide',decision:'approve',expectedRevision:7,reviewedDraftHash:hash('Kitalált negyedik tervezet.')});
-  assert.match(e['detail-status'].textContent,/Belső jóváhagyás mentve.*Nincs levélküldés vagy foglalás/);
+  assert.match(e['detail-status'].textContent,/Belső jóváhagyás mentve.*Nincs levélküldés vagy Previo-foglalás/);
   assert.equal(e['approve-confirm'].disabled,true);assert.equal(e['draft-editor'].disabled,true);
   // Approved text can be copied for a MANUAL Gmail reply; nothing is sent and no request is made.
   assert.equal(e['copy-approved'].hidden,false);

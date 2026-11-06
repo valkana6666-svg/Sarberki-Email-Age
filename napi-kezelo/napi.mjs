@@ -13,11 +13,11 @@ const TEST_ORIGIN='https://leafy-chimera-2403e5.netlify.app';
 const KNOWN_TENANTS=['sarberki-test','sarberki-live'];
 let TENANT='sarberki-test';
 const sections=Object.freeze({
- incoming:['Beérkezett ügyek','Új vendégüzenetek és feldolgozásra váró megkeresések.'],
+ incoming:['Beérkezett foglalások','Új vendégüzenetek és feldolgozásra váró megkeresések.'],
  approval:['Jóváhagyásra vár','Átnézendő választervezetek.'],
- progress:['Folyamatban','Pontosításra vagy ellenőrzésre váró ügyek.'],
+ progress:['Folyamatban','Pontosításra vagy ellenőrzésre váró foglalások.'],
  // No close/reject lifecycle exists on the server yet; never imply closed cases.
- closed:['Lezárt ügyek','Az ügylezárás még nincs bekötve a szerveren, ezért ide jelenleg egyetlen ügy sem kerülhet. Az elutasított tesztlevél-ügy a Folyamatban részben marad.']
+ closed:['Lezárt foglalások','A foglaláslezárás még nincs bekötve a szerveren, ezért ide jelenleg egyetlen foglalás sem kerülhet. Az elutasított tesztlevél-foglalás a Folyamatban részben marad.']
 });
 const el=id=>document.getElementById(id);
 for(const button of document.querySelectorAll('[data-section]'))button.addEventListener('click',()=>{
@@ -95,24 +95,24 @@ function resetActions(){
  el('approve-draft').disabled=true;el('approve-confirm').checked=false;el('approve-confirm').disabled=true;
 }
 function updateCounts(){
- for(const section of Object.keys(sections))el('count-'+section).textContent=listLoaded?rows.filter(row=>row.category===section).length+' ügy':'Nincs betöltve';
+ for(const section of Object.keys(sections))el('count-'+section).textContent=listLoaded?rows.filter(row=>row.category===section).length+' foglalás':'Nincs betöltve';
 }
 const ROW_STATUS=Object.freeze({approved_internal:'Jóváhagyva – küldhető',returned_for_edit:'Javításra visszaküldve',rejected:'Elutasítva'});
 function renderRows(){
- updateCounts();el('cases-title').textContent=sections[selectedSection][0]+' – tárolt tesztügyek';
+ updateCounts();el('cases-title').textContent=sections[selectedSection][0]+' – tárolt tesztfoglalások';
  // Approved test-mail replies (ready to send) first, so the operator does not have to search for them.
  const visible=rows.filter(row=>row.category===selectedSection).sort((a,b)=>(b.approval==='approved_internal')-(a.approval==='approved_internal')),fragment=document.createDocumentFragment();
  visible.forEach((row,index)=>{
   const li=document.createElement('li'),label=document.createElement('span'),button=document.createElement('button');
   // Mailbox cases keep the identity shown by the save receipt even when the list order changes.
-  label.textContent=row.kind==='test-mailbox'?'Tesztlevél-ügy '+row.caseId+(ROW_STATUS[row.approval]?' · '+ROW_STATUS[row.approval]:''):'Tesztügy '+(rows.indexOf(row)+1);button.type='button';button.textContent='Megnyitás';
+  label.textContent=row.kind==='test-mailbox'?'Tesztlevél-foglalás '+row.caseId+(ROW_STATUS[row.approval]?' · '+ROW_STATUS[row.approval]:''):'Tesztfoglalás '+(rows.indexOf(row)+1);button.type='button';button.textContent='Megnyitás';
   button.setAttribute('aria-label',label.textContent+' megnyitása');
   button.addEventListener('click',()=>openCase(row.caseId));li.append(label,button);fragment.append(li);
  });
  el('case-list').replaceChildren(fragment);
- if(!authenticated)el('list-status').textContent='Az ügylistához jelentkezzen be a Belépés részben.';
- else if(!listLoaded)el('list-status').textContent='A kategória ügylistája még nincs betöltve. Nyomja meg az Ügyek frissítése gombot.';
- else el('list-status').textContent=visible.length?'A kiválasztott kategória: '+visible.length+' tárolt tesztügy.':'Ebben a kategóriában nincs elérhető tárolt tesztügy.';
+ if(!authenticated)el('list-status').textContent='A foglalási listához jelentkezzen be a Belépés részben.';
+ else if(!listLoaded)el('list-status').textContent='A kategória foglalási listája még nincs betöltve. Nyomja meg az Foglalások frissítése gombot.';
+ else el('list-status').textContent=visible.length?'A kiválasztott kategória: '+visible.length+' tárolt tesztfoglalás.':'Ebben a kategóriában nincs elérhető tárolt tesztfoglalás.';
 }
 
 let chatEpoch=0,chatBusy=false;
@@ -201,7 +201,7 @@ el('logout').addEventListener('click',async()=>{
  catch{if(turn===epoch&&!authenticated)el('session-status').textContent='A kijelentkezés nem ellenőrizhető. Próbálja újra.';}
 });
 const tmStatus=Object.freeze({pending:'Jóváhagyásra vár.',returned_for_edit:'Visszaküldve javításra. Writer új tervezetet menthet.',
- rejected:'Elutasítva; az ügy nyitva marad, Writer új tervezettel újranyithatja.',approved_internal:'Belső jóváhagyás mentve (test-mailbox-v1). Nincs levélküldés vagy foglalás.'});
+ rejected:'Elutasítva; a foglalás nyitva marad, Writer új tervezettel újranyithatja.',approved_internal:'Belső jóváhagyás mentve (test-mailbox-v1). Nincs levélküldés vagy Previo-foglalás.'});
 const tmDecisionLabel=Object.freeze({approve:'jóváhagyva',return:'visszaküldve javításra',reject:'elutasítva'});
 // Display known adult/child counts when extraction did not supply a separate total.
 // This is a read-only label: never infer an unknown child count or change stored facts.
@@ -243,7 +243,7 @@ async function openTestMailboxCase(caseId,turn,status){
  el('detail-status').textContent=status||tmStatus[record.approval];
  el('detail-draft').textContent=record.draft.text;
  el('detail-summary').textContent=record.draft.operatorReviewText||'Magyar ellenőrző összefoglaló még nincs.';
- el('detail-capacity').textContent='Tesztlevél-ügy (test-mailbox-v1): a szabad helyet a rendszer nem ellenőrzi (Previo-olvasás nincs bekötve) – ár csak kézi Previo-ellenőrzés után illeszthető be; foglalás nincs.';
+ el('detail-capacity').textContent='Tesztlevél-foglalás (test-mailbox-v1): a szabad helyet a rendszer nem ellenőrzi (Previo-olvasás nincs bekötve) – ár csak kézi Previo-ellenőrzés után illeszthető be; foglalás nincs.';
  el('detail-price').textContent=record.decisions.length?'Döntések: '+record.decisions.map(d=>(tmDecisionLabel[d.decision]||'ismeretlen')+(d.at?' ('+d.at+')':'')+(d.reason?' – '+d.reason:'')).join('; '):'';
  tmCase={caseId,revision:record.revision,hash:record.draft.hash,text:record.draft.text};
  // Only an internally approved draft can be copied; an approved draft cannot change, so it is the reviewed text.
@@ -277,7 +277,7 @@ el('price-calc').addEventListener('click',async()=>{
  const input={arrival:v.arrival,departure:v.departure,cabin:el('price-cabin').value,adults:Number(v.adults),children:Number(v.children||0)===ages.length?ages:[]};
  el('price-insert').disabled=true;el('price-available').checked=false;el('price-available').disabled=true;priceQuote=null;
  if(!/^\d{4}-\d{2}-\d{2}$/.test(input.arrival||'')||!/^\d{4}-\d{2}-\d{2}$/.test(input.departure||'')||!Number.isInteger(input.adults)||input.adults<1||Number(v.children||0)!==ages.length){
-  el('price-result').textContent='Az árhoz pontos érkezés, távozás, felnőttszám és minden gyermek életkora kell az ügyadatokban.';return;}
+  el('price-result').textContent='Az árhoz pontos érkezés, távozás, felnőttszám és minden gyermek életkora kell a foglalási adatokban.';return;}
  el('price-result').textContent='Ár számítása…';
  try{
   const response=await fetch('/api/price-reference',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input),cache:'no-store',credentials:'same-origin'});
@@ -295,9 +295,9 @@ el('unavailable-confirm').addEventListener('change',()=>{const on=el('unavailabl
  if(on){el('price-available').checked=false;el('price-insert').disabled=true;}});
 // Approving the price saves a SERVER-computed, server-attested priced draft (no browser text); the operator
 // confirms availability by hand until the Previo read is connected. Nothing is inserted automatically.
-const priceErrors={PRICE_FACTS_MISSING:'Az ügyadatokból hiányzik a pontos dátum, a felnőttszám vagy egy gyermek életkora.',
+const priceErrors={PRICE_FACTS_MISSING:'A foglalási adatokból hiányzik a pontos dátum, a felnőttszám vagy egy gyermek életkora.',
  PRICE_LINE_MISSING:'A válaszban már nincs meg az általános ármondat (kézzel módosították); az árat kézzel írja be.',
- PRICE_REFUSED:'Az árlista ehhez nem ad igazolt árat; kézi ellenőrzés szükséges.',PREVIO_NO_FREE_UNIT:'A Previo szerint a kért időszakra nincs szabad ilyen ház, ezért ár nem illeszthető be. Válasszon más háztípust, vagy használja a „Nincs szabad hely” gombot.',CASE_CONFLICT:'Az ügy közben megváltozott; nyissa meg újra.',
+ PRICE_REFUSED:'Az árlista ehhez nem ad igazolt árat; kézi ellenőrzés szükséges.',PREVIO_NO_FREE_UNIT:'A Previo szerint a kért időszakra nincs szabad ilyen ház, ezért ár nem illeszthető be. Válasszon más háztípust, vagy használja a „Nincs szabad hely” gombot.',CASE_CONFLICT:'A foglalás közben megváltozott; nyissa meg újra.',
  FORBIDDEN:'Ehhez nincs írási jog, vagy a funkció nincs telepítve.',TEST_MAILBOX_REJECTED:'Az adatbázis elutasította (lehet, hogy a frissítés még nincs telepítve).'};
 el('price-insert').addEventListener('click',async()=>{
  const target=priceCase,quote=priceQuote;if(!authenticated||!target||!quote||!el('price-available').checked||actionBusy)return;
@@ -316,7 +316,7 @@ el('price-insert').addEventListener('click',async()=>{
  }finally{actionBusy=false;}
 });
 const unavailableErrors={ALREADY_UNAVAILABLE:'A válasz már a „nincs szabad hely” szöveg.',DRAFT_SHAPE_UNKNOWN:'A tervezet szerkezete nem ismerhető fel (kézzel módosították); a választ kézzel írja meg.',
- CASE_CONFLICT:'Az ügy közben megváltozott; nyissa meg újra.',FORBIDDEN:'Ehhez nincs írási jog, vagy a funkció nincs telepítve.',
+ CASE_CONFLICT:'A foglalás közben megváltozott; nyissa meg újra.',FORBIDDEN:'Ehhez nincs írási jog, vagy a funkció nincs telepítve.',
  TEST_MAILBOX_REJECTED:'Az adatbázis elutasította (lehet, hogy a frissítés még nincs telepítve).'};
 el('unavailable-insert').addEventListener('click',async()=>{
  const target=priceCase;if(!authenticated||!target||!target.editable||!el('unavailable-confirm').checked||actionBusy)return;
@@ -335,7 +335,7 @@ el('unavailable-insert').addEventListener('click',async()=>{
 });
 // Sends the stored, approved reply through the server (test pair only). The browser sends no text.
 const sendErrors={FORBIDDEN:'A küldés nincs bekapcsolva, vagy nincs jóváhagyói jog.',SEND_OUTCOME_UNKNOWN:'Egy korábbi küldés eredménye nem ismert. Nézze meg a Gmailben (Elküldött levelek); nem küldjük újra automatikusan.',STORAGE_FAILURE:'A küldési napló nem érhető el, ezért nem küldtük el.',NOT_APPROVED:'Csak jóváhagyott válasz küldhető.',
- RECIPIENT_NOT_ALLOWED:'Ez a címzett nem engedélyezett (csak a tesztfeladó).',CASE_CONFLICT:'Az ügy közben megváltozott; nyissa meg újra.',
+ RECIPIENT_NOT_ALLOWED:'Ez a címzett nem engedélyezett (csak a tesztfeladó).',CASE_CONFLICT:'A foglalás közben megváltozott; nyissa meg újra.',
  GMAIL_AUTH_REQUIRED:'A Google-küldési engedély szükséges.',WRONG_GMAIL_ACCOUNT:'A sarberkiprojecttest@gmail.com fiókot válassza.',
  LOADING:'A Google-belépés betöltődik; nyomja meg újra.',CONSENT:'A Google-engedély nem érkezett meg.',CHANGED:'A belépés közben megváltozott; nyomja meg újra.'};
 el('send-approved').addEventListener('click',()=>{
@@ -367,23 +367,23 @@ async function tmMutate(kind){
   if(result?.caseId!==base.caseId||result.revision!==base.revision+1||result.approval!==expected)throw Error('INVALID_DATA');
   rows=[];listLoaded=false;updateCounts();el('case-list').replaceChildren();
   await openTestMailboxCase(base.caseId,turn,kind==='redraft'?'Új tervezet mentve és visszaolvasva. Független jóváhagyásra vár.':
-   kind==='approve'?'Belső jóváhagyás mentve és visszaolvasva (test-mailbox-v1). Nincs levélküldés vagy foglalás.':
-   kind==='return'?'Visszaküldés mentve és visszaolvasva. Writer új tervezetet menthet.':'Elutasítás mentve és visszaolvasva. Az ügy nyitva marad.');
+   kind==='approve'?'Belső jóváhagyás mentve és visszaolvasva (test-mailbox-v1). Nincs levélküldés vagy Previo-foglalás.':
+   kind==='return'?'Visszaküldés mentve és visszaolvasva. Writer új tervezetet menthet.':'Elutasítás mentve és visszaolvasva. A foglalás nyitva marad.');
  }catch(error){if(current(turn)){
   if(error.message==='AUTH_REQUIRED')failed(error);
-  else {clearDetail();el('list-status').textContent=error.message==='FORBIDDEN'?'A művelethez nincs megfelelő jogosultság.':'A mentés eredménye nem igazolt, vagy az ügy közben megváltozott. Töltse be újra; nincs automatikus ismétlés.';}
+  else {clearDetail();el('list-status').textContent=error.message==='FORBIDDEN'?'A művelethez nincs megfelelő jogosultság.':'A mentés eredménye nem igazolt, vagy a foglalás közben megváltozott. Töltse be újra; nincs automatikus ismétlés.';}
  }}finally{actionBusy=false;}
 }
 async function openCase(caseId){
  if(!authenticated||actionBusy)return;
  if(isTestMailboxCaseId(caseId)){
-  clearDetail();const turn=++epoch;el('case-detail').hidden=false;el('detail-status').textContent='Ügy ellenőrzése…';
+  clearDetail();const turn=++epoch;el('case-detail').hidden=false;el('detail-status').textContent='Foglalás ellenőrzése…';
   try{await openTestMailboxCase(caseId,turn);}
-  catch(error){if(current(turn)){clearDetail();if(['AUTH_REQUIRED','FORBIDDEN'].includes(error.message))failed(error);else el('list-status').textContent='Az ügy most nem tölthető be. Töltse be újra az ügyeket.';}}
+  catch(error){if(current(turn)){clearDetail();if(['AUTH_REQUIRED','FORBIDDEN'].includes(error.message))failed(error);else el('list-status').textContent='A foglalás most nem tölthető be. Töltse be újra a foglalásokat.';}}
   return;
  }
  if(!isIsolatedReviewCaseId(caseId))return;
- clearDetail();const turn=++epoch;el('case-detail').hidden=false;el('detail-status').textContent='Ügy ellenőrzése…';
+ clearDetail();const turn=++epoch;el('case-detail').hidden=false;el('detail-status').textContent='Foglalás ellenőrzése…';
  try{
   const record=await request({tenantId:TENANT,caseId,action:'review-record'},'GET');if(!current(turn))return;
   if(record?.tenantId!==TENANT||record.caseId!==caseId||!Number.isSafeInteger(record.revision)||record.revision<1||
@@ -398,14 +398,14 @@ async function openCase(caseId){
   el('detail-messages').replaceChildren(messages);
   el('detail-facts').textContent='Érkezés: '+(values.arrival||'Nincs megadva')+'\nTávozás: '+(values.departure||'Nincs megadva')+
    '\nLétszám: '+guestSummary(values)+'\nHáztípus: '+(values.unit||'Nincs megadva');
-  el('detail-status').textContent=record.data.state.approval==='internally_approved'?'Belső jóváhagyás mentve. Az ügy folyamatban van; nincs elküldött levél vagy foglalás.':'A közös ügytárból betöltött tesztügy.';
+  el('detail-status').textContent=record.data.state.approval==='internally_approved'?'Belső jóváhagyás mentve. A foglalás folyamatban van; nincs elküldött levél vagy Previo-foglalás.':'A közös foglalástárból betöltött tesztfoglalás.';
   el('detail-draft').textContent=draft?.text||'Még nincs tárolt választervezet.';
   el('detail-summary').textContent=draft?.operatorReviewText||'Magyar ellenőrző összefoglaló még nincs.';
   el('detail-capacity').textContent='Tesztadat. Valós foglalhatóság ebből nem igazolt.';
-  el('detail-price').textContent=record.approvalBlockedReason?'A jóváhagyáshoz szükséges ügyre kötött ár- és kapacitásbizonyíték hiányzik.':'';
+  el('detail-price').textContent=record.approvalBlockedReason?'A jóváhagyáshoz szükséges foglalásra kötött ár- és kapacitásbizonyíték hiányzik.':'';
   el('detail-link').href='../cloud-approval.html?'+new URLSearchParams({caseId});
   const draftCurrent=draft?.revision===record.data.state.revision&&draft?.basedOnMessageCount===record.data.messages.length;
-  if(draft&&!draftCurrent)el('detail-price').textContent='A tárolt válasz korábbi ügyállapothoz tartozik. Új ellenőrzött tervezet szükséges; szerkesztése és jóváhagyása itt tiltott.';
+  if(draft&&!draftCurrent)el('detail-price').textContent='A tárolt válasz korábbi foglalási állapothoz tartozik. Új ellenőrzött tervezet szükséges; szerkesztése és jóváhagyása itt tiltott.';
   if(draftCurrent&&record.data.state.approval==='pending'&&draft?.text&&
    (record.approvalBlockedReason==='EXACT_REVIEW_EVIDENCE_REQUIRED'||draft.synthetic===true&&draft.reviewStatus==='internal_review_required')){
    const loaded=await review.load(caseId);if(!current(turn))return;
@@ -414,7 +414,7 @@ async function openCase(caseId){
    el('approve-confirm').disabled=!canApprove;
    if(loaded.canEditDraft){editBase=loaded;el('draft-editor').value=loaded.text;el('draft-editor').disabled=false;}
   }
- }catch(error){if(current(turn)){clearDetail();if(['AUTH_REQUIRED','FORBIDDEN'].includes(error.message))failed(error);else el('list-status').textContent='Az ügy most nem tölthető be. Töltse be újra az ügyeket.';}}
+ }catch(error){if(current(turn)){clearDetail();if(['AUTH_REQUIRED','FORBIDDEN'].includes(error.message))failed(error);else el('list-status').textContent='A foglalás most nem tölthető be. Töltse be újra a foglalásokat.';}}
 }
 el('draft-editor').addEventListener('input',()=>{
  if(tmCase){
@@ -443,11 +443,11 @@ async function mutate(kind){
   const back=await request({tenantId:TENANT,caseId:base.caseId,action:'review-record'},'GET');if(!current(turn))return;
   if(back.revision!==record.revision)throw Error('CASE_CONFLICT');
   rows=[];listLoaded=false;updateCounts();el('case-list').replaceChildren();
-  el('detail-status').textContent=kind==='edit'?'Módosítás mentve és visszaolvasva. A jóváhagyó külön nyissa meg újra.':'Belső jóváhagyás mentve és visszaolvasva. Nincs levélküldés vagy foglalás.';
+  el('detail-status').textContent=kind==='edit'?'Módosítás mentve és visszaolvasva. A jóváhagyó külön nyissa meg újra.':'Belső jóváhagyás mentve és visszaolvasva. Nincs levélküldés vagy Previo-foglalás.';
   el('detail-draft').textContent=back.data.drafts.at(-1).text;
  }catch(error){if(current(turn)){
   if(error.message==='AUTH_REQUIRED')failed(error);
-  else {clearDetail();el('list-status').textContent=error.message==='FORBIDDEN'?'A művelethez nincs megfelelő jogosultság.':'A mentés eredménye nem igazolt, vagy az ügy közben megváltozott. Töltse be újra; nincs automatikus ismétlés.';}
+  else {clearDetail();el('list-status').textContent=error.message==='FORBIDDEN'?'A művelethez nincs megfelelő jogosultság.':'A mentés eredménye nem igazolt, vagy a foglalás közben megváltozott. Töltse be újra; nincs automatikus ismétlés.';}
  }}finally{actionBusy=false;}
 }
 el('save-draft').addEventListener('click',()=>tmCase?tmMutate('redraft'):mutate('edit'));
@@ -456,7 +456,7 @@ el('return-draft').addEventListener('click',()=>tmMutate('return'));
 el('reject-draft').addEventListener('click',()=>tmMutate('reject'));
 async function loadCases({selectAvailable=false}={}){
  if(!authenticated||actionBusy)return;
- clearData('Ügyek ellenőrzése…');const turn=epoch;el('load-cases').disabled=true;
+ clearData('Foglalások ellenőrzése…');const turn=epoch;el('load-cases').disabled=true;
  try{
   const result=await request({tenantId:TENANT,action:'daily-list'},'GET');if(!current(turn))return;
   if(!Array.isArray(result)||result.length>100)throw Error('INVALID_DATA');
@@ -472,7 +472,7 @@ async function loadCases({selectAvailable=false}={}){
 
  }catch(error){if(current(turn)){
   if(['AUTH_REQUIRED','FORBIDDEN'].includes(error.message))failed(error);
-  else {clearData('Az ügykezelési backend most nem elérhető. Később próbálja újra.');}
+  else {clearData('A foglaláskezelési backend most nem elérhető. Később próbálja újra.');}
  }}finally{if(authenticated)el('load-cases').disabled=false;}
 }
 el('load-cases').addEventListener('click',()=>loadCases());

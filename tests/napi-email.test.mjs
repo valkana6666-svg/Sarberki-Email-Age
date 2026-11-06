@@ -115,7 +115,7 @@ test('closed synthetic HU/DE/SI/EN mail gets the exact shared email-adapter draf
   assert.equal(h.e['email-draft-text'].disabled,false);
   assert.match(checks(h),/Kapacitás: nem igazolt/);assert.match(checks(h),/Ár: nem igazolt/);
   assert.match(checks(h),/Emberi jóváhagyás szükséges/);
-  assert.match(h.e['email-draft-status'].textContent,/Helyi előnézet.*nincs mentve.*nem küldhető.*nem foglalás/s);
+  assert.match(h.e['email-draft-status'].textContent,/Helyi előnézet.*nincs mentve.*nem küldhető.*nem Previo-foglalás/s);
   assert.doesNotMatch(h.e['email-draft-text'].value,/visszaigazol(?:juk|tuk) a foglalás|booking is confirmed|Buchung ist bestätigt/i);
  }
  // Editing stays local: no request, storage or new state transition.
@@ -227,7 +227,7 @@ test('marked test-mailbox messages get the exact shared-adapter preview in HU/DE
   assert.equal(h.e['email-draft-text'].value,expected.text,language);
   assert.equal(h.e['email-draft-review'].textContent,expected.operatorReviewText,language);
   assert.match(checks(h),/Kapacitás: nem igazolt/);assert.match(checks(h),/Ár: nem igazolt/);assert.match(checks(h),/Emberi jóváhagyás szükséges/);
-  assert.match(h.e['email-draft-status'].textContent,/Helyi előnézet.*nincs mentve.*nem küldhető.*nem foglalás/s);
+  assert.match(h.e['email-draft-status'].textContent,/Helyi előnézet.*nincs mentve.*nem küldhető.*nem Previo-foglalás/s);
  }
  h.logout();
 });
@@ -302,14 +302,14 @@ test('save-as-case: only a marked mail with a Gmail id; fresh token per click go
  const messages=[marked('Sárberki élő teszt mentés',markedBodies.hu,{id:'48f2a0b1c2d3e4f0'}),marked('Re: Sárberki élő teszt',markedBodies.hu,{id:'48f2a0b1c2d3e4f1'}),
   marked('Sárberki élő teszt rossz azonosító',markedBodies.hu,{id:'NOT-HEX'})];
  const h=await openInbox({messages,now:PREVIEW_NOW,onSaveCase});
- assert.match(h.e['email-status'].textContent,/Csak a jelölt tesztlevél menthető ügyként \(Writer-jogosultsággal\)/);assert.doesNotMatch(h.e['email-status'].textContent,/még nem|minden levél/);
+ assert.match(h.e['email-status'].textContent,/Csak a jelölt tesztlevél menthető foglalásként \(Writer-jogosultsággal\)/);assert.doesNotMatch(h.e['email-status'].textContent,/még nem|minden levél/);
  await select(h,0);assert.equal(h.e['email-save-case'].disabled,false);
  const guard=noNetworkOrStorage();
  try{await h.e['email-save-case'].click();}finally{guard.restore();}
  assert.deepEqual(guard.calls,[]);assert.deepEqual(h.consentRequests.at(-1),{prompt:''});assert.equal(saves.length,0);
  await h.callback({access_token:'FRESH_SYNTHETIC_TOKEN'});
  assert.deepEqual(saves,[{messageId:'48f2a0b1c2d3e4f0',token:'FRESH_SYNTHETIC_TOKEN'}]);
- assert.match(h.e['email-save-status'].textContent,/Ügyként mentve \(tm-48f2a0b1c2d3e4f0\).*nincs küldés vagy foglalás/);
+ assert.match(h.e['email-save-status'].textContent,/Új foglalásként mentve \(tm-48f2a0b1c2d3e4f0\).*nincs küldés vagy Previo-foglalás/);
  // Refused consent or a server rejection is reported, not retried.
  await h.e['email-save-case'].click();await h.callback({});assert.equal(saves.length,1);assert.match(h.e['email-save-status'].textContent,/nem lett mentve/);
  fail='FORBIDDEN';await h.e['email-save-case'].click();await h.callback({access_token:'FRESH_SYNTHETIC_TOKEN'});
@@ -334,7 +334,7 @@ test('iPhone: the Google tab hides the page; a save token that arrives while hid
  assert.doesNotMatch(h.e['email-save-status'].textContent,/nem érkezett meg/);
  h.doc.visibilityState='visible';h.reader.reveal();await new Promise(resolve=>setImmediate(resolve));
  assert.deepEqual(saves,[{messageId:'58f2a0b1c2d3e4f0',token:'FRESH_SYNTHETIC_TOKEN'}]);
- assert.match(h.e['email-save-status'].textContent,/Ügyként mentve \(tm-58f2a0b1c2d3e4f0\)/);
+ assert.match(h.e['email-save-status'].textContent,/Új foglalásként mentve \(tm-58f2a0b1c2d3e4f0\)/);
  // Logout while the token is queued: it is dropped and never used.
  await h.e['email-save-case'].click();h.doc.visibilityState='hidden';h.reader.conceal();
  await h.callback({access_token:'FRESH_SYNTHETIC_TOKEN'});h.logout();h.doc.visibilityState='visible';h.reader.reveal();
@@ -350,7 +350,7 @@ test('save: a Google error response names its code; a token without a current se
  assert.equal(saves.length,0);
 });
 
-test('follow-up (owner 2026-11-06): the test guest\'s Gmail reply offers "Hozzáadás az ügyhöz", no local AI preview; forwards and other senders do not',async()=>{
+test('follow-up (owner 2026-11-06): the test guest\'s Gmail reply offers "Hozzáadás a foglaláshoz", no local AI preview; forwards and other senders do not',async()=>{
  const saves=[];
  const onSaveCase=async input=>{saves.push(input);return {caseId:'tm-48f2a0b1c2d3e4a0',revision:3};};
  const withReply=(m,extra=[])=>({...m,payload:{...m.payload,headers:[...m.payload.headers,{name:'In-Reply-To',value:'<ours@example.test>'},...extra]}});
@@ -359,10 +359,10 @@ test('follow-up (owner 2026-11-06): the test guest\'s Gmail reply offers "Hozzá
   withReply(marked('Re: Érdeklődés',markedBodies.hu,{id:'48f2a0b1c2d3e4a3',from:'Vendég <guest@example.test>'}))];
  const h=await openInbox({messages,now:PREVIEW_NOW,onSaveCase});
  await select(h,0);
- assert.equal(h.e['email-save-case'].textContent,'Hozzáadás az ügyhöz');assert.equal(h.e['email-save-case'].disabled,false);
+ assert.equal(h.e['email-save-case'].textContent,'Hozzáadás a foglaláshoz');assert.equal(h.e['email-save-case'].disabled,false);
  assert.equal(h.e['email-draft-request'].disabled,true,'no local preview for a reply');
  await h.e['email-save-case'].click();await h.callback({access_token:'FRESH_SYNTHETIC_TOKEN'});
  assert.deepEqual(saves,[{messageId:'48f2a0b1c2d3e4a1',token:'FRESH_SYNTHETIC_TOKEN',followup:true}]);
- assert.match(h.e['email-save-status'].textContent,/Hozzáadva az ügyhöz \(tm-48f2a0b1c2d3e4a0\)/);
+ assert.match(h.e['email-save-status'].textContent,/Hozzáadva a foglaláshoz \(tm-48f2a0b1c2d3e4a0\)/);
  for(const index of [1,2]){await select(h,index);assert.equal(h.e['email-save-case'].disabled,true,String(index));}
 });

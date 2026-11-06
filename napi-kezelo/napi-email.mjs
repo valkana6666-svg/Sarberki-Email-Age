@@ -49,17 +49,17 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
   el('email-draft-text').value='';el('email-draft-text').disabled=true;el('email-draft-review').textContent='';el('email-draft-checks').replaceChildren();
   el('email-draft-request').disabled=!source||source.followup===true||!canRead();
   el('email-save-case').disabled=!source?.saveable||!onSaveCase||!canRead();el('email-save-status').textContent='';
-  el('email-save-case').textContent=source?.followup?'Hozzáadás az ügyhöz':'Ügyként mentés';
-  el('email-draft-status').textContent=source?'AI-válaszjavaslat kérhető. Helyi előnézet lesz: nincs mentve, nem küldhető, nem foglalás.':
+  el('email-save-case').textContent=source?.followup?'Hozzáadás a foglaláshoz':'Mentés új foglalásként';
+  el('email-draft-status').textContent=source?'AI-válaszjavaslat kérhető. Helyi előnézet lesz: nincs mentve, nem küldhető, nem Previo-foglalás.':
    'Az AI-válaszjavaslat jelenleg csak a lezárt szintetikus tesztlevelekhez és a tesztvendég (sarberkito@gmail.com) leveleihez érhető el, bármilyen tárggyal (válasz/továbbítás nem); más levélhez külön jóváhagyás szükséges.';
  }
  function showPreview(draft){
   const d=draft.decision,items=[...d.missing.map(code=>'Hiányzó adat: '+(missingLabels[code]||code)),...d.contradictions.map(c=>'Ellentmondás: '+c.message),
    'Kapacitás: '+(d.capacity?.verified?'típusszinten igazolt, ajánlat előtt újra ellenőrizendő':'nem igazolt'),'Ár: '+(d.pricing?.verified?'igazolt összetevők':'nem igazolt'),
-   'Emberi jóváhagyás szükséges; ez nem mentett ügy, nem küldés és nem foglalás.'];
+   'Emberi jóváhagyás szükséges; ez nem mentett foglalás, nem küldés és nem Previo-foglalás.'];
   el('email-draft-checks').replaceChildren(...items.map(text=>{const li=documentImpl.createElement('li');li.textContent=text;return li;}));
   el('email-draft-text').value=draft.text;el('email-draft-text').disabled=false;el('email-draft-review').textContent=draft.operatorReviewText;
-  el('email-draft-status').textContent='Helyi előnézet a közös döntési magból: nincs mentve, nem küldhető, nem foglalás. A szöveg itt szerkeszthető; csak titkosított, 30 percig érvényes helyi másolat készül.';
+  el('email-draft-status').textContent='Helyi előnézet a közös döntési magból: nincs mentve, nem küldhető, nem Previo-foglalás. A szöveg itt szerkeszthető; csak titkosított, 30 percig érvényes helyi másolat készül.';
   onChange();
  }
  el('email-draft-text').addEventListener('input',()=>onChange());
@@ -116,7 +116,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
   });
   chooseMessage=open;el('email-picker').replaceChildren(options);el('email-picker').disabled=!messages.length;el('email-picker-wrap').hidden=false;
   el('email-list').replaceChildren(fragment);
-  el('email-status').textContent=messages.length+' levél beolvasva. Válasszon levelet a választóból vagy a görgethető listából.'+(onSaveCase?' Csak a jelölt tesztlevél menthető ügyként (Writer-jogosultsággal); más levélnél a mentés nem érhető el.':' A felhős ügyként mentés ebben a nézetben nem érhető el.');
+  el('email-status').textContent=messages.length+' levél beolvasva. Válasszon levelet a választóból vagy a görgethető listából.'+(onSaveCase?' Csak a jelölt tesztlevél menthető foglalásként (Writer-jogosultsággal); más levélnél a mentés nem érhető el.':' A felhős foglalásként mentés ebben a nézetben nem érhető el.');
   shown=messages;if(messages.length)open(0);
  }
  function finish(){busy=false;pendingConsent=false;queuedConsent=null;clearTimeout(consentTimer);consentTimer=null;el('read-email').disabled=!canRead();}
@@ -173,7 +173,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
  // (user gesture) and handed to the server once; the server reads the mail itself and enforces every gate.
  const saveErrors={NOT_MARKED_TEST_MESSAGE:'A levél tárgya nem jelölt tesztlevél.',NOT_TEST_PAIR_INQUIRY:'Csak a tesztvendég (sarberkito@gmail.com) új levele menthető.',AUTOMATED_MESSAGE:'Automatikus levél (pl. Previo, hírlevél) nem menthető.',REPLY_NOT_ALLOWED:'Válasz vagy továbbítás nem menthető.',
   FORBIDDEN:'Ehhez a mentéshez nincs jogosultság, vagy a funkció nincs bekapcsolva.',GMAIL_AUTH_REQUIRED:'A Google-olvasási engedély szükséges.',
-  STORAGE_FAILURE:'A mentés nem sikerült, vagy ez a levél már ügyként szerepel.',FOLLOWUP_CASE_NOT_FOUND:'Ehhez a válaszhoz nem található ügy (előbb az első levelet kell ügyként menteni).',ALREADY_IN_CASE:'Ez a levél már szerepel az ügyben.',NOT_A_FOLLOWUP:'Ez nem válaszlevél.',GMAIL_RATE_LIMITED:'A Gmail átmenetileg korlátozta az olvasást.'};
+  STORAGE_FAILURE:'A mentés nem sikerült, vagy ez a levél már foglalásként szerepel.',FOLLOWUP_CASE_NOT_FOUND:'Ehhez a válaszhoz nem található foglalás (előbb az első levelet kell foglalásként menteni).',ALREADY_IN_CASE:'Ez a levél már szerepel a foglalásban.',NOT_A_FOLLOWUP:'Ez nem válaszlevél.',GMAIL_RATE_LIMITED:'A Gmail átmenetileg korlátozta az olvasást.'};
  el('email-save-case').addEventListener('click',()=>{
   const source=previewSource,turn=generation;
   if(!source?.saveable||!onSaveCase||!active(turn)||!clientId||!googleApi?.accounts?.oauth2)return;
@@ -187,9 +187,9 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
      const run=async()=>{
       if(!result?.access_token)return done('A Google-engedély nem érkezett meg; a levél nem lett mentve.'+(typeof result?.error==='string'&&/^[a-z_]{1,40}$/.test(result.error)?' ('+result.error+')':''));
       if(source!==previewSource||!active(turn))return done('A kiválasztott levél vagy a belépés közben megváltozott; a levél nem lett mentve. Nyomja meg újra.');
-      el('email-save-status').textContent='Ügy mentése a szerveren…';
+      el('email-save-status').textContent='Foglalás mentése a szerveren…';
       try{const saved=await onSaveCase({messageId:source.messageId,token:result.access_token,...(source.followup?{followup:true}:{})});
-       if(source===previewSource)el('email-save-status').textContent=(source.followup?'Hozzáadva az ügyhöz (':'Ügyként mentve (')+saved.caseId+'). Új tervezet, jóváhagyásra vár; nincs küldés vagy foglalás.';}
+       if(source===previewSource)el('email-save-status').textContent=(source.followup?'Hozzáadva a foglaláshoz (':'Új foglalásként mentve (')+saved.caseId+'). Új tervezet, jóváhagyásra vár; nincs küldés vagy Previo-foglalás.';}
       catch(error){done(saveErrors[error?.message]||'A mentés nem igazolt. Próbálja újra; nincs automatikus ismétlés.');}
      };
      if(turn===generation&&documentImpl.visibilityState==='hidden'){queuedSave=run;return;}
@@ -247,7 +247,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
   if(p&&previewSource&&str(p.text,20000)&&str(p.review,40000)&&Array.isArray(p.checks)&&p.checks.length<=40&&p.checks.every(x=>str(x,1000))){
    el('email-draft-checks').replaceChildren(...p.checks.map(text=>{const li=documentImpl.createElement('li');li.textContent=text;return li;}));
    el('email-draft-text').value=p.text;el('email-draft-text').disabled=false;el('email-draft-review').textContent=p.review;
-   el('email-draft-status').textContent='Helyi előnézet visszaállítva (titkosított, 30 percig érvényes helyi másolat): nincs mentve ügyként, nem küldhető, nem foglalás.';
+   el('email-draft-status').textContent='Helyi előnézet visszaállítva (titkosított, 30 percig érvényes helyi másolat): nincs mentve foglalásként, nem küldhető, nem Previo-foglalás.';
   }
   el('email-status').textContent=messages.length+' levél visszaállítva a titkosított, 30 percig érvényes helyi másolatból. Új levelekhez olvassa be újra a postafiókot.';
   onChange();return true;
