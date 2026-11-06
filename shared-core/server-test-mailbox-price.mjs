@@ -7,6 +7,7 @@ import {createHash,createHmac} from 'node:crypto';
 import {fetchPublicPriceReference} from '../price-source/public-price-fallback.mjs';
 import {PRICE_LINE,priceSentence,priceExplanation,pricedCabinNote} from './price-insert-sentence.mjs';
 import {replyQuestions} from '../sarberki-core.mjs';
+import {capacityDecision} from './server-previo-rest-read.mjs';
 
 // The engine's cabin-type questions (with/without the 2-person cabin) and the "choose an offered type" line.
 const OFFERED_TYPE_QUESTION=Object.freeze({hu:'Kérjük, válaszoljon erre az e-mailre, és írja meg, melyik felajánlott faháztípust választja.',
@@ -46,11 +47,21 @@ export function attestPrice({key,tenantId,caseId,expectedRevision,draft,checkedA
  return {scope:PRICE_SCOPE,checkedAt,attestation:createHmac('sha256',Buffer.from(key,'hex')).update(fields.join('\n')).digest('hex')};
 }
 
+// Optional Previo gate (owner request 2026-11-04): capacityFn reads the free count read-only
+// (server-previo-rest-read.mjs). A complete "no free unit" stops the price step BEFORE any price is computed;
+// an unknown/failed read leaves today's manual Previo check (checkbox) in force. Off unless the server wires it.
 export async function priceTestMailboxCase({record,cabin,availabilityConfirmed,attestationKey,transport,
- quoteFn=fetchPublicPriceReference,fxFn=null,clock=()=>new Date().toISOString()}={}){
+ quoteFn=fetchPublicPriceReference,fxFn=null,capacityFn=null,clock=()=>new Date().toISOString()}={}){
  if(availabilityConfirmed!==true)fail('AVAILABILITY_NOT_CONFIRMED');
  if(typeof transport!=='function')fail('SETUP_REQUIRED');
  const values=record?.data?.state?.values||{},latest=record?.data?.drafts?.at?.(-1);
+ let previo=null;
+ if(typeof capacityFn==='function'){
+  let read=null;
+  try{read=await capacityFn({cabin,arrival:values.arrival,departure:values.departure});}catch{}
+  previo={decision:capacityDecision(read,cabin,1),free:Number.isSafeInteger(read?.freeByCabin?.[cabin])?read.freeByCabin[cabin]:null,checkedAt:read?.checkedAt??null};
+  if(previo.decision==='UNAVAILABLE')fail('PREVIO_NO_FREE_UNIT');
+ }
  let quote;
  try{quote=quoteFn(quoteInputFromCase(values,cabin));}catch(error){if(error?.code)throw error;const e=Error('PRICE_REFUSED');e.code='PRICE_REFUSED';e.detail=String(error?.message||'').slice(0,300);throw e;}
  if(quote?.status!=='public_reference'||!Number.isSafeInteger(quote.total)||quote.cabin!==cabin)fail('PRICE_REFUSED');
@@ -60,7 +71,9 @@ export async function priceTestMailboxCase({record,cabin,availabilityConfirmed,a
  const full={...quote,eurConversion};
  const language=/^(hu|de|en|si)$/.test(values.language||'')?values.language:'hu';
  const draft=pricedDraft({latest,quote:full,language});
+ if(previo)draft.operatorReviewText+='\n'+(previo.decision==='AVAILABLE'?`Previo (csak olvasó): ${previo.free} szabad egység, ellenőrizve ${previo.checkedAt}. Pillanatfelvétel, nem foglalás.`
+  :'Previo (csak olvasó): az ellenőrzés nem adott biztos eredményt – a kézi Previo-ellenőrzés érvényes.');
  const proof=attestPrice({key:attestationKey,tenantId:record.tenantId,caseId:record.caseId,expectedRevision:record.revision,draft,checkedAt:clock()});
  const saved=await transport('/rest/v1/rpc/sc_tm_price_redraft',{method:'POST',body:{p_tenant:record.tenantId,p_case:record.caseId,p_expected:record.revision,p_draft:draft,p_proof:proof}});
- return {saved,quote:full};
+ return {saved,quote:full,previo};
 }

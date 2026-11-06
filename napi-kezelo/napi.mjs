@@ -296,7 +296,7 @@ el('unavailable-confirm').addEventListener('change',()=>{const on=el('unavailabl
 // confirms availability by hand until the Previo read is connected. Nothing is inserted automatically.
 const priceErrors={PRICE_FACTS_MISSING:'Az ügyadatokból hiányzik a pontos dátum, a felnőttszám vagy egy gyermek életkora.',
  PRICE_LINE_MISSING:'A válaszban már nincs meg az általános ármondat (kézzel módosították); az árat kézzel írja be.',
- PRICE_REFUSED:'Az árlista ehhez nem ad igazolt árat; kézi ellenőrzés szükséges.',CASE_CONFLICT:'Az ügy közben megváltozott; nyissa meg újra.',
+ PRICE_REFUSED:'Az árlista ehhez nem ad igazolt árat; kézi ellenőrzés szükséges.',PREVIO_NO_FREE_UNIT:'A Previo szerint a kért időszakra nincs szabad ilyen ház, ezért ár nem illeszthető be. Válasszon más háztípust, vagy használja a „Nincs szabad hely” gombot.',CASE_CONFLICT:'Az ügy közben megváltozott; nyissa meg újra.',
  FORBIDDEN:'Ehhez nincs írási jog, vagy a funkció nincs telepítve.',TEST_MAILBOX_REJECTED:'Az adatbázis elutasította (lehet, hogy a frissítés még nincs telepítve).'};
 el('price-insert').addEventListener('click',async()=>{
  const target=priceCase,quote=priceQuote;if(!authenticated||!target||!quote||!el('price-available').checked||actionBusy)return;
@@ -306,7 +306,8 @@ el('price-insert').addEventListener('click',async()=>{
   if(!current(turn))return;
   if(result?.caseId!==target.caseId||result.revision!==target.revision+1||result.approval!=='pending')throw Error('INVALID_DATA');
   rows=[];listLoaded=false;updateCounts();el('case-list').replaceChildren();
-  await openTestMailboxCase(target.caseId,turn,'Ár jóváhagyva és beillesztve ('+huf(result.total)+' Ft). A tervezet jóváhagyásra vár.');
+  const previoNote=result.previo?.decision==='AVAILABLE'?' Previo: '+result.previo.free+' szabad (pillanatfelvétel).':result.previo?' Previo: nem adott biztos eredményt, a kézi ellenőrzés érvényes.':'';
+  await openTestMailboxCase(target.caseId,turn,'Ár jóváhagyva és beillesztve ('+huf(result.total)+' Ft).'+previoNote+' A tervezet jóváhagyásra vár.');
  }catch(error){
   if(!current(turn))return;
   if(error?.message==='AUTH_REQUIRED')failed(error);

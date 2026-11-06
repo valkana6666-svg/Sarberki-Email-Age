@@ -18,6 +18,7 @@ import {priceTestMailboxCase} from '../../shared-core/server-test-mailbox-price.
 import {markTestMailboxUnavailable} from '../../shared-core/server-test-mailbox-unavailable.mjs';
 import {fetchMnbEurRate} from './price-quote.mjs';
 import {serverDeployment} from '../../shared-core/server-deployment.mjs';
+import {readPrevioFreeCapacity} from '../../shared-core/server-previo-rest-read.mjs';
 import {translateTestMailboxMessage} from '../../shared-core/server-translation.mjs';
 import {languageFromText} from '../../sarberki-core.mjs';
 import {translationErrorCode} from '../../translation-errors.mjs';
@@ -40,7 +41,7 @@ const TEST_MAILBOX_ERRORS=Object.freeze({GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACC
  TEXT_PART_REQUIRED:422,EMPTY_TEXT:422,TEXT_TOO_LONG:422,UNREADABLE_TEXT:422,INVALID_DRAFT:422,STORAGE_FAILURE:503,
  NOT_APPROVED:409,RECIPIENT_NOT_ALLOWED:403,SOURCE_UNVERIFIED:422,SEND_FAILED:502,SEND_OUTCOME_UNKNOWN:409,CASE_CONFLICT:409,
  PRICE_FACTS_MISSING:422,PRICE_LINE_MISSING:422,PRICE_REFUSED:422,AVAILABILITY_NOT_CONFIRMED:400,TEST_MAILBOX_REJECTED:409,
- UNAVAILABILITY_NOT_CONFIRMED:400,DRAFT_SHAPE_UNKNOWN:422,ALREADY_UNAVAILABLE:409});
+ UNAVAILABILITY_NOT_CONFIRMED:400,DRAFT_SHAPE_UNKNOWN:422,ALREADY_UNAVAILABLE:409,PREVIO_NO_FREE_UNIT:409});
 const TEST_MAILBOX_FIELDS=Object.freeze({
  'test-mailbox-ingest':['action,messageId,tenantId'],
  'test-mailbox-redraft':['action,caseId,draftText,expectedRevision,tenantId'],
@@ -75,6 +76,15 @@ function testMailboxView(record,authority,tenant='sarberki-test'){
   // Display hints only: the database re-checks permission, state, revision, hash and approver independence.
   canEditDraft:permissions.includes('write')&&['pending','returned_for_edit','rejected'].includes(state),
   canDecide:permissions.includes('approve')&&state==='pending'&&(latest.createdBy!==authority?.subject||latest.machineDraft===true)};
+}
+// Read-only Previo capacity before the price step. Owner switch, default off; only the API TEST property
+// (73521, enforced again in the reader). AGENTS.md: switch on only after Previo documented that the read
+// creates no hold/booking. The key and mapping are server env only.
+export function previoCapacityReader(env,fetchImpl){
+ if(env.PREVIO_READ_API_ENABLED!=='sandbox-73521-only')return null;
+ let mapping;try{mapping=JSON.parse(env.PREVIO_ROOM_KIND_MAP||'');}catch{return null;}
+ return ({cabin,arrival,departure})=>readPrevioFreeCapacity({apiKey:env.PREVIO_API_KEY,hotelId:env.PREVIO_HOTEL_ID,ratePlanId:env.PREVIO_RATE_PLAN_ID,
+  mapping,cabins:[cabin],arrival,departure,fetchImpl});
 }
 function testMailboxIngestEnabled(env,cloudApproval){
  return cloudApproval&&env.CASE_TEST_MAILBOX_INGEST_ENABLED==='sarberki-test-fictional-only';
@@ -194,10 +204,10 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
       const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
       if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
       if(record.revision!==input.expectedRevision)return cookieResponse(409,{error:'CASE_CONFLICT'});
-      const {saved,quote}=await priceTestMailboxCase({record,cabin:input.cabin,availabilityConfirmed:input.availabilityConfirmed,
-       attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,transport:cookieSession.transport,fxFn:()=>fetchMnbEurRate(fetchImpl)});
+      const {saved,quote,previo}=await priceTestMailboxCase({record,cabin:input.cabin,availabilityConfirmed:input.availabilityConfirmed,
+       attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,transport:cookieSession.transport,fxFn:()=>fetchMnbEurRate(fetchImpl),capacityFn:live?null:previoCapacityReader(env,fetchImpl)});
       if(!saved)return cookieResponse(409,{error:'CASE_CONFLICT'});
-      return cookieResponse(200,{result:{caseId:saved.case_id,revision:Number(saved.revision),approval:saved.data?.state?.approval,total:quote.total}});
+      return cookieResponse(200,{result:{caseId:saved.case_id,revision:Number(saved.revision),approval:saved.data?.state?.approval,total:quote.total,...(previo?{previo:{decision:previo.decision,free:previo.free}}:{})}});
      }catch(error){
       if(error?.code==='FORBIDDEN')return cookieResponse(403,{error:'FORBIDDEN'});
       const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'TEST_MAILBOX_REJECTED';
