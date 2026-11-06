@@ -23,30 +23,42 @@ function plainTextPart(part){
 // Fixed codes only: the reader's messages are never forwarded, so no token or Gmail text can leak.
 function readerFailure(error){
  const text=String(error?.message||'');
- if(/tesztfiók olvasható/.test(text))return 'WRONG_GMAIL_ACCOUNT';
+ if(/(?:tesztfiók|postafiók) olvasható/.test(text))return 'WRONG_GMAIL_ACCOUNT';
  if(/\(429\)/.test(text))return 'GMAIL_RATE_LIMITED';
  if(/\((?:401|403)\)/.test(text))return 'GMAIL_AUTH_REQUIRED';
  return 'GMAIL_SOURCE_UNVERIFIED';
 }
 
 export async function readVerifiedTestMailboxMessage({token,messageId,fetchImpl=globalThis.fetch,setTimeoutImpl,clearTimeoutImpl,deployment=TEST_DEPLOYMENT}={}){
- // The reader below is bound to the TEST Gmail account. The live reader (Workspace info@, its own ingest rules
- // for guest replies) is a separate, consent-gated step (docs/V1-LIVE-MAILBOX-PLAN.md): fail closed until then.
- if(deployment!==TEST_DEPLOYMENT)fail('LIVE_MAILBOX_READER_PENDING');
+ // TEST: the fictional test mailbox and the test-pair sender gate (unchanged). LIVE (reachable only when the
+ // live mailbox profile is enabled, i.e. after the data controller's consent): the deployment's mailbox, any
+ // real sender, automated/own mail refused, and only NEW inquiries become cases – a guest's reply or a forward
+ // stays in Gmail for the operator (REPLY_HANDLED_IN_GMAIL) until a reviewed follow-up path exists.
+ const live=deployment!==TEST_DEPLOYMENT;
+ if(live&&(deployment?.environment!=='live'||deployment.mailbox?.enabled!==true||deployment.mailbox?.account!=='info@sarberkito.hu'))fail('LIVE_MAILBOX_READER_PENDING');
+ const account=live?deployment.mailbox.account:TEST_GMAIL_ACCOUNT,mailboxId=live?deployment.mailbox.mailboxId:MAILBOX_ID;
  if(typeof token!=='string'||!/^[A-Za-z0-9._~+/-]{20,4096}={0,2}$/.test(token))fail('GMAIL_AUTH_REQUIRED');
  if(typeof messageId!=='string'||!/^[a-f0-9]{12,32}$/.test(messageId))fail('INVALID_INPUT');
  let messages;
  try{
-  messages=await readTestGmailInbox(token,{fetchImpl,search:'?'+new URLSearchParams({syntheticGmailMessageId:messageId}),
+  messages=await readTestGmailInbox(token,{fetchImpl,account,search:'?'+new URLSearchParams({syntheticGmailMessageId:messageId}),
    ...(setTimeoutImpl?{setTimeoutImpl}:{}),...(clearTimeoutImpl?{clearTimeoutImpl}:{})});
  }catch(error){fail(readerFailure(error));}
  const message=messages?.[0];
  if(messages?.length!==1||message?.id!==messageId)fail('GMAIL_SOURCE_UNVERIFIED');
  const headers=Object.fromEntries((message.payload?.headers||[]).map(h=>[String(h.name).toLowerCase(),h.value]));
- if(headers['in-reply-to']||headers.references)fail('REPLY_NOT_ALLOWED');
- if(!isTestPairInquiry(headers))fail('NOT_TEST_PAIR_INQUIRY');
- if(automatedMailReason(headers,{ownAddresses:[PROFILE.account],blockOwnSender:PROFILE.blockOwnSender}))fail('AUTOMATED_MESSAGE');
- if(address(headers.to)!==TEST_GMAIL_ACCOUNT||String(headers.to).includes(','))fail('NOT_ADDRESSED_TO_TEST_MAILBOX');
+ if(live){
+  if(headers['in-reply-to']||headers.references||/^\s*(?:re|aw|sv|odg|fwd?|fw|wg|tr|vs)\s*:/iu.test(String(headers.subject??'')))fail('REPLY_HANDLED_IN_GMAIL');
+  if(automatedMailReason(headers,{ownAddresses:[account],blockOwnSender:true}))fail('AUTOMATED_MESSAGE');
+  // The mailbox must be a direct recipient (To or Cc); BCC/list copies are not inquiries to us.
+  const direct=[headers.to,headers.cc].flatMap(v=>String(v||'').split(',')).map(address);
+  if(!direct.includes(account))fail('NOT_ADDRESSED_TO_TEST_MAILBOX');
+ }else{
+  if(headers['in-reply-to']||headers.references)fail('REPLY_NOT_ALLOWED');
+  if(!isTestPairInquiry(headers))fail('NOT_TEST_PAIR_INQUIRY');
+  if(automatedMailReason(headers,{ownAddresses:[PROFILE.account],blockOwnSender:PROFILE.blockOwnSender}))fail('AUTOMATED_MESSAGE');
+  if(address(headers.to)!==TEST_GMAIL_ACCOUNT||String(headers.to).includes(','))fail('NOT_ADDRESSED_TO_TEST_MAILBOX');
+ }
  const fromEmail=address(headers.from);
  if(!/^[^@\s<>,]+@[^@\s<>,]+\.[^@\s<>,]+$/.test(fromEmail))fail('INVALID_SENDER');
  const rfcMessageId=headers['message-id'];
@@ -58,9 +70,9 @@ export async function readVerifiedTestMailboxMessage({token,messageId,fetchImpl=
  if(typeof text!=='string'||!text.trim())fail('EMPTY_TEXT');
  if(text.length>MAX_TEXT)fail('TEXT_TOO_LONG');
  const received=new Date(Number(message.internalDate)).toISOString();
- const source={provider:'gmail',mailbox_id:MAILBOX_ID,message_id:message.id,thread_id:message.threadId,rfc_message_id:rfcMessageId,
-  in_reply_to:null,references:[],subject:headers.subject,from:headers.from,from_email:fromEmail,to:TEST_GMAIL_ACCOUNT,received_at:received};
- const envelope={sender:fromEmail,text,mailbox_id:MAILBOX_ID,message_id:message.id,thread_id:message.threadId,rfc_message_id:rfcMessageId,references:[],received_at:received};
+ const source={provider:'gmail',mailbox_id:mailboxId,message_id:message.id,thread_id:message.threadId,rfc_message_id:rfcMessageId,
+  in_reply_to:null,references:[],subject:headers.subject,from:headers.from,from_email:fromEmail,to:account,received_at:received};
+ const envelope={sender:fromEmail,text,mailbox_id:mailboxId,message_id:message.id,thread_id:message.threadId,rfc_message_id:rfcMessageId,references:[],received_at:received};
  return Object.freeze({source:Object.freeze(source),envelope:Object.freeze(envelope),bodySha256:createHash('sha256').update(text,'utf8').digest('hex')});
 }
 

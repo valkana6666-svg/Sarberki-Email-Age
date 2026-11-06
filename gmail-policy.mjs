@@ -13,9 +13,9 @@ export const INBOX_QUERY = 'in:inbox after:2026/09/25';
 // Gmail after: uses Pacific midnight; repeat that same boundary locally.
 const AFTER = Date.parse('2026-09-25T00:00:00-07:00');
 
-export function assertTestGmailAccount(profile) {
-  if (profile?.emailAddress?.trim().toLowerCase() !== TEST_GMAIL_ACCOUNT)
-    throw Error(`Csak a ${TEST_GMAIL_ACCOUNT} tesztfiók olvasható. Válaszd ezt a Google-fiókot.`);
+export function assertTestGmailAccount(profile, account = TEST_GMAIL_ACCOUNT) {
+  if (profile?.emailAddress?.trim().toLowerCase() !== account)
+    throw Error(`Csak a ${account} ${account === TEST_GMAIL_ACCOUNT ? 'tesztfiók' : 'postafiók'} olvasható. Válaszd ezt a Google-fiókot.`);
 }
 
 export function isTestInquiry(message) {
@@ -35,7 +35,8 @@ export function syntheticMessageIdFromSearch(search='') {
 }
 
 // Shared readonly transport for both operator surfaces. No persistence or notifications.
-export async function readTestGmailInbox(token,{fetchImpl=globalThis.fetch,search='',setTimeoutImpl=globalThis.setTimeout,clearTimeoutImpl=globalThis.clearTimeout}={}){
+// account: the one mailbox this deployment may read (server-chosen; TEST by default).
+export async function readTestGmailInbox(token,{fetchImpl=globalThis.fetch,search='',setTimeoutImpl=globalThis.setTimeout,clearTimeoutImpl=globalThis.clearTimeout,account=TEST_GMAIL_ACCOUNT}={}){
   async function fetchGmailJson(url, options) {
     const controller = new AbortController();
     let timer;
@@ -67,7 +68,7 @@ export async function readTestGmailInbox(token,{fetchImpl=globalThis.fetch,searc
     const headers = {Authorization:`Bearer ${token}`};
     const profileResponse = await fetchGmailJson('https://gmail.googleapis.com/gmail/v1/users/me/profile', {headers,cache:'no-store'});
     assertGmailResponse(profileResponse, `A Gmail tesztfiók nem ellenőrizhető (${profileResponse.status}).`);
-    assertTestGmailAccount(await profileResponse.json());
+    assertTestGmailAccount(await profileResponse.json(), account);
     if(exactId){
       const response=await fetchGmailJson(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(exactId)}?format=full`,{headers,cache:'no-store'});
       assertGmailResponse(response, `A kijelölt szintetikus Gmail-levél nem olvasható (${response.status}).`);

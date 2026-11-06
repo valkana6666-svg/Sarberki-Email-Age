@@ -32,14 +32,27 @@ test('operator session: a live deployment cannot start (setup required) and neve
  assert.equal(calls.length,0);
 });
 
-test('Gmail source and ingest: a live deployment fails closed before any Gmail call; attestation is tenant-bound',async()=>{
+test('live reader: only with an enabled live profile; new inquiries to info@ only; replies stay in Gmail; attestation tenant-bound',async()=>{
  const {readVerifiedTestMailboxMessage,attestTestMailboxSource}=await import('../shared-core/server-gmail-source.mjs');
- const {ingestTestMailboxMessage}=await import('../shared-core/server-test-mailbox-case.mjs');
- const live=serverDeployment(LIVE,{profiles:enabledLive}),calls=[];
- const fetchImpl=async(...args)=>{calls.push(args);throw Error('no network');};
- await assert.rejects(readVerifiedTestMailboxMessage({token:'t'.repeat(40),messageId:'18f2a0b1c2d3e4f0',fetchImpl,deployment:live}),/LIVE_MAILBOX_READER_PENDING/);
- await assert.rejects(ingestTestMailboxMessage({token:'t'.repeat(40),messageId:'18f2a0b1c2d3e4f0',transport:async()=>{calls.push('db');},attestationKey:'e5'.repeat(32),fetchImpl,deployment:live}),/LIVE_MAILBOX_READER_PENDING/);
- assert.equal(calls.length,0);
+ const live=serverDeployment(LIVE,{profiles:enabledLive});
+ const ID='28f2a0b1c2d3e4f0',b64=t=>Buffer.from(t,'utf8').toString('base64url');
+ const gmail=(headers,{account='info@sarberkito.hu'}={})=>{const calls=[];return {calls,fetchImpl:async url=>{calls.push(String(url));
+  if(String(url).endsWith('/profile'))return new Response(JSON.stringify({emailAddress:account}));
+  return new Response(JSON.stringify({id:ID,threadId:ID,labelIds:['INBOX'],internalDate:String(Date.parse('2026-11-06T10:00:00Z')),
+   payload:{mimeType:'text/plain',headers:Object.entries(headers).map(([name,value])=>({name,value})),body:{data:b64('Jó napot! Május 20-23 között jönnénk ketten. (kitalált)')}}}));}};};
+ const base={From:'Kitalált Vendég <guest@example.test>',To:'info@sarberkito.hu',Subject:'Érdeklődés','Message-ID':'<fictional-live@example.test>'};
+ const read=(headers,opts)=>{const g=gmail(headers,opts);return {g,run:readVerifiedTestMailboxMessage({token:'t'.repeat(40),messageId:ID,fetchImpl:g.fetchImpl,deployment:live})};};
+ const ok=await read(base).run;
+ assert.deepEqual([ok.source.to,ok.source.mailbox_id,ok.source.from_email],['info@sarberkito.hu','sarberkito_info','guest@example.test']);
+ assert.equal((await read({...base,To:'someone@example.test',Cc:'Sárberki <info@sarberkito.hu>'}).run).source.to,'info@sarberkito.hu','info@ in Cc counts');
+ for(const [headers,code] of [[{...base,'In-Reply-To':'<x@y>'},/REPLY_HANDLED_IN_GMAIL/],[{...base,Subject:'Re: Érdeklődés'},/REPLY_HANDLED_IN_GMAIL/],
+  [{...base,'Auto-Submitted':'auto-replied'},/AUTOMATED_MESSAGE/],[{...base,From:'Sárberki <info@sarberkito.hu>'},/AUTOMATED_MESSAGE/],
+  [{...base,From:'Previo <noreply@previo.cz>'},/AUTOMATED_MESSAGE/],[{...base,To:'other@example.test'},/NOT_ADDRESSED_TO_TEST_MAILBOX/]])
+  await assert.rejects(read(headers).run,code,JSON.stringify(headers));
+ await assert.rejects(read(base,{account:'sarberkiprojecttest@gmail.com'}).run,/WRONG_GMAIL_ACCOUNT/,'token of another mailbox');
+ const calls=[];
+ await assert.rejects(readVerifiedTestMailboxMessage({token:'t'.repeat(40),messageId:ID,fetchImpl:async(...a)=>{calls.push(a);},deployment:{...live,mailbox:{...live.mailbox,enabled:false}}}),/LIVE_MAILBOX_READER_PENDING/);
+ assert.equal(calls.length,0,'a disabled live profile never contacts Gmail');
  const source={mailbox_id:'m',message_id:'1',thread_id:'1',rfc_message_id:'<a@b>',from_email:'g@example.test',to:'info@sarberkito.hu',subject:'S',received_at:'2026-11-06T08:00:00.000Z'};
  const envelope={sender:'g@example.test',text:'x',mailbox_id:'m',message_id:'1',thread_id:'1',rfc_message_id:'<a@b>',received_at:source.received_at};
  const checkedAt=new Date().toISOString();
