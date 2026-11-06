@@ -38,3 +38,8 @@ még külön szükséges. A CI önmagában nem bizonyítja a konkrét fizikai ap
 ## Teszt lezárása
 Netlify `PREVIO_CAPACITY_READ_SAFETY_VERIFIED=false`, majd teszttoken törlése/rotálása
 Netlify-ban és GitHubban. A kapu zárt állapotban nem küld kérést a Previo felé.
+
+## REST olvasó kliens – előkészítve 2026-11-06 (Claude), élő hívás nélkül
+- Forrás: nyilvános Previo REST-dokumentáció (https://rest.apidocs.previo.app/, beolvasva 2026-11-06). Művelet: `GET https://api.previo.app/rest/calendar/availability` (`filterFrom`, `filterTo`, `roomKindIds[]`, `ratePlanId`), fejléc: `Authorization: ApiKey …`, `X-Previo-Hotel-Id`; jogosultság: `Booking.getFreeCapacity`. A dokumentáció nem említ ideiglenes zárolást, de a mellékhatás-mentességet **nem igazolja** – ezt a Previótól írásban kell kérni.
+- Kód: `shared-core/server-previo-rest-read.mjs` (csak szerver; teszt: `tests/previo-rest-read.test.mjs`, kitalált adatokkal). Egy próbálkozás, rögzített host, csak GET, átirányítás tiltva, ≤ 15 s; **csak a 73521-es API TESZT szálláshely**, a 753011-es éles azonosító eleve elutasítva. Hiányzó éjszaka vagy háztípus = ismeretlen, sosem „szabad”.
+- Bekötéshez kell: (1) olvasási API-kulcs Netlify szerveroldali változóban (soha nem chatben/GitHubon); (2) a Previo írásos megerősítése, hogy ez a művelet nem hoz létre foglalást/zárolást; (3) `GET rest/rate-plan` és `GET rest/premise/kind?obtId=1` alapján a ratePlanId és a háztípus → roomKindId megfeleltetés tulajdonosi jóváhagyással (az A/B közös pool egy roomKindId). Utána: az árbeillesztés szerveroldali kapuja (`capacityDecision`: UNAVAILABLE → nincs ár; UNKNOWN → marad a kézi Previo-pipa).
