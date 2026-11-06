@@ -63,7 +63,7 @@ export function buildBookingConfirmation({values,quote,previo,language,rules=BUS
  const operatorReviewText=(lang==='hu'?'':T.hu.join('\n\n')+'\n\n')+'Kezelői (a vendég nem látja):\n'+
   `Previo-hivatkozás: ${reference}; rögzítve: ${previo.recordedAt}.\n`+
   `Foglaló: ${policy.depositPct}% × ${huf(quote.accommodation)} Ft = ${huf(amount)} Ft; határidő: ${policy.paymentWindowHours} óra a rögzítéstől (${policy.daysUntilArrival} nap az érkezésig) → ${due.date} ${due.time}.\n`+
-  (pay?'':'Figyelem: a fizetési mód/számlaszám nincs beállítva; a levél csak „külön tájékoztatjuk” mondatot tartalmaz.\n')+
+  (pay?'':'Teendő: a bankszámlaszámot és a fizetés módját külön üzenetben küldd el a vendégnek (tulajdonosi döntés 2026-11-06: a V1 levél nem tartalmazza).\n')+
   'A Previo-rögzítés nem fizetés: a „Foglaló beérkezett” külön lépés.';
  return {text,operatorReviewText,deposit:{pct:policy.depositPct,amount,receiptDeadlineUtc:policy.receiptDeadlineUtc,windowHours:policy.paymentWindowHours},previo:{reference,recordedAt:previo.recordedAt}};
 }

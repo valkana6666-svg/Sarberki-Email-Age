@@ -19,7 +19,7 @@ test('owner example: Deluxe 2027-06-10..13, 2 adults -> 189 000 + 3 300 = 192 30
  assert.match(out.text,/legalább 14 nappal/);
  assert.doesNotMatch(out.text,/TEST-123|Previo/);
  assert.match(out.operatorReviewText,/Previo-hivatkozás: TEST-123/);
- assert.match(out.operatorReviewText,/fizetési mód\/számlaszám nincs beállítva/);
+ assert.match(out.operatorReviewText,/bankszámlaszámot és a fizetés módját külön üzenetben/);
  assert.match(out.operatorReviewText,/nem fizetés/);
 });
 
