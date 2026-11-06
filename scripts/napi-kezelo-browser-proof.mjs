@@ -39,9 +39,9 @@ try{
     const closed=syntheticMailLanguages.map(language=>syntheticMailMime(language));
     const b64=text=>Buffer.from(text).toString('base64url');
     const markedMail=[
-     {id:'48f2a0b1c2d3e4f0',threadId:'48f2a0b1c2d3e4f0',labelIds:['INBOX'],internalDate:String(Date.parse('2026-10-30T12:00:00Z')),payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Sárberki élő teszt – HU'},{name:'From',value:'Teszt <sender@example.test>'}],body:{data:b64('Jó napot! Deluxe faházat szeretnénk foglalni 2027-05-14 és 2027-05-16 között 2 felnőtt, 0 gyermek számára.')}}},
-     {id:'48f2a0b1c2d3e4f1',threadId:'48f2a0b1c2d3e4f1',labelIds:['INBOX'],internalDate:String(Date.parse('2026-10-30T11:00:00Z')),payload:{mimeType:'text/html',headers:[{name:'Subject',value:'Sárberki élő teszt – HTML'},{name:'From',value:'Teszt <sender@example.test>'}],body:{data:b64('<p>Guten Tag! Deluxe Ferienhaus 2027-05-14 bis 2027-05-16, 2 Erwachsene, 0 Kinder.</p><script>window.__xss=1</script><img src="x.png" onerror="window.__xss=2">')}}},
-     {id:'48f2a0b1c2d3e4f2',threadId:'48f2a0b1c2d3e4f2',labelIds:['INBOX'],internalDate:String(Date.parse('2026-10-30T10:00:00Z')),payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Re: Sárberki élő teszt – HU'},{name:'From',value:'Teszt <sender@example.test>'}],body:{data:b64('Idézett válasz 2027-05-14.')}}}];
+     {id:'48f2a0b1c2d3e4f0',threadId:'48f2a0b1c2d3e4f0',labelIds:['INBOX'],internalDate:String(Date.parse('2026-10-30T12:00:00Z')),payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Sárberki élő teszt – HU'},{name:'From',value:'Teszt <sarberkito@gmail.com>'}],body:{data:b64('Jó napot! Deluxe faházat szeretnénk foglalni 2027-05-14 és 2027-05-16 között 2 felnőtt, 0 gyermek számára.')}}},
+     {id:'48f2a0b1c2d3e4f1',threadId:'48f2a0b1c2d3e4f1',labelIds:['INBOX'],internalDate:String(Date.parse('2026-10-30T11:00:00Z')),payload:{mimeType:'text/html',headers:[{name:'Subject',value:'Sárberki élő teszt – HTML'},{name:'From',value:'Teszt <sarberkito@gmail.com>'}],body:{data:b64('<p>Guten Tag! Deluxe Ferienhaus 2027-05-14 bis 2027-05-16, 2 Erwachsene, 0 Kinder.</p><script>window.__xss=1</script><img src="x.png" onerror="window.__xss=2">')}}},
+     {id:'48f2a0b1c2d3e4f2',threadId:'48f2a0b1c2d3e4f2',labelIds:['INBOX'],internalDate:String(Date.parse('2026-10-30T10:00:00Z')),payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Re: Sárberki élő teszt – HU'},{name:'From',value:'Teszt <sarberkito@gmail.com>'}],body:{data:b64('Idézett válasz 2027-05-14.')}}}];
     if(state.markedMail&&!url.pathname.endsWith('/profile'))return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(url.pathname.endsWith('/messages')?{messages:markedMail.map(({id})=>({id}))}:markedMail.find(({id})=>id===url.pathname.split('/').at(-1)))});
     if(state.closedMail&&!url.pathname.endsWith('/profile'))return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(url.pathname.endsWith('/messages')?{messages:closed.map(({id})=>({id}))}:closed.find(({id})=>id===url.pathname.split('/').at(-1)))});
     const body=url.pathname.endsWith('/profile')?{emailAddress:'sarberkiprojecttest@gmail.com'}:url.pathname.endsWith('/messages')?{messages:[{id:'abcdef1234567890'},{id:'abcdef1234567891'},{id:'abcdef1234567892'}]}:{id:url.pathname.split('/').at(-1),internalDate:String(Date.parse('2026-10-20T12:00:00Z')),labelIds:['INBOX'],payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Kitalált napi e-mail '+url.pathname.split('/').at(-1)},{name:'From',value:'guest@synthetic.invalid'}],body:{data:state.unreadableMail&&url.pathname.endsWith('abcdef1234567892')?'%%%':Buffer.from('Kitalált eredeti e-mail.').toString('base64url')}}};
@@ -136,6 +136,20 @@ try{
   await page.locator('#deployed_version').filter({hasText:'egyezik'}).waitFor();
   check(engine,'daily-page-shows-running-build-matches-deployed');
   check(engine,'mail-picker-visible-before-reading');
+  // Simple view is the default (owner 2026-11-04): explanations and rarely used controls hidden, main flow kept.
+  assert.equal(await page.evaluate(()=>document.body.classList.contains('simple')),true);
+  assert.equal(await page.locator('section.intro').isVisible(),false);
+  assert.equal(await page.locator('#read-email').isVisible(),true);
+  assert.equal(await page.locator('#email-save-case').isVisible(),true);
+  assert.equal(await page.locator('#email-draft-text').isVisible(),false);
+  assert.equal(await page.locator('#view-toggle').innerText(),'Teljes nézet');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  check(engine,'simple-view-default-hides-explanations-keeps-main-flow');
+  await page.locator('#view-toggle').click();
+  assert.equal(await page.evaluate(()=>document.body.classList.contains('simple')),false);
+  assert.equal(await page.locator('section.intro').isVisible(),true);
+  assert.equal(await page.locator('#view-toggle').innerText(),'Egyszerű nézet');
+  check(engine,'full-view-toggle-shows-everything');
   assert.equal(await page.locator('nav button').count(),4);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.getByRole('button',{name:/Jóváhagyásra vár/}).click();
@@ -191,7 +205,7 @@ try{
   assert.match(await page.locator('#email-draft-status').innerText(),/Helyi előnézet/);
   assert.match(await page.locator('#email-draft-review').innerText(),/\S/);
   await page.locator('#email-draft-text').fill('Kitalált helyi szerkesztés.');
-  assert.equal(await page.evaluate(()=>localStorage.length+sessionStorage.length),0);
+  assert.equal(await page.evaluate(()=>Object.keys(localStorage).filter(k=>k!=='sarberki-napi-view').length+sessionStorage.length),0);
   await page.locator('#email-next').click();
   assert.equal(await page.locator('#email-draft-text').inputValue(),'');assert.equal(await page.locator('#email-draft-text').isDisabled(),true);
   assert.equal(await page.locator('#email-draft-checks li').count(),0);
@@ -243,7 +257,7 @@ try{
   assert.equal(await page.locator('#email-draft-request').isDisabled(),true);assert.equal(await page.locator('#email-draft-text').inputValue(),'');
   // Only the encrypted snapshot and the timestamp marker may be stored; never plaintext mail or reply text.
   const storedNow=await page.evaluate(()=>({keys:Object.keys(localStorage).sort(),session:sessionStorage.length,text:Object.values(localStorage).join('|')}));
-  assert.equal(storedNow.session,0);assert.ok(storedNow.keys.every(key=>['sarberki-napi-concealed-at','sarberki-napi-state'].includes(key)),storedNow.keys.join());
+  assert.equal(storedNow.session,0);assert.ok(storedNow.keys.every(key=>['sarberki-napi-concealed-at','sarberki-napi-state','sarberki-napi-view'].includes(key)),storedNow.keys.join());
   for(const plain of ['Guten Tag','Jó napot','Sárberki élő teszt','Kedves Vendégünk'])assert.equal(storedNow.text.includes(plain),false,'plaintext stored: '+plain);
   assert.deepEqual(errors,[]);state.markedMail=false;
   check(engine,'marked-test-mailbox-preview-html-inert-and-reply-excluded');
@@ -296,7 +310,7 @@ try{
   assert.equal(await page.locator('#chat-send').isDisabled(),true);
   assert.equal(await page.locator('#email-list li').count(),0);assert.equal(await page.locator('#email-detail').innerText(),'');
   assert.ok(state.caseMethods.every(method=>method==='GET'));
-  assert.equal(await page.evaluate(()=>localStorage.length+sessionStorage.length),0);
+  assert.equal(await page.evaluate(()=>Object.keys(localStorage).filter(k=>k!=='sarberki-napi-view').length+sessionStorage.length),0);
   assert.deepEqual(errors,[]);check(engine,'reload-denied-reader-no-cache-or-writes');
   state.allowRead=true;state.editable=true;state.role='writer';
   await page.reload();await page.locator('#session-status').filter({hasText:'Bejelentkezve'}).waitFor();
@@ -335,16 +349,16 @@ try{
   await page.locator('#email-save-case:not([disabled])').waitFor();
   await page.locator('#email-save-case').click();
   await page.locator('#email-save-status').filter({hasText:'Ügyként mentve (tm-48f2a0b1c2d3e4f0)'}).waitFor();
-  await page.locator('#detail-status').filter({hasText:'Független jóváhagyásra vár'}).waitFor();
+  await page.locator('#detail-status').filter({hasText:'jóváhagyásra vár'}).waitFor();
   assert.equal(state.tmPosts[0].token,'SYNTHETIC_TOKEN');assert.equal(JSON.stringify(state.tmPosts[0]).split('SYNTHETIC_TOKEN').length,2,'token only in header');
-  assert.match(await page.locator('#detail-capacity').innerText(),/kapacitás és ár nem igazolt/);
+  assert.match(await page.locator('#detail-capacity').innerText(),/szabad helyet a rendszer nem ellenőrzi/);
   assert.equal(await page.locator('#approve-confirm').isDisabled(),true);assert.equal(await page.locator('#reject-draft').isDisabled(),true);
   await page.locator('#email-next').click();assert.equal(await page.locator('#email-save-case').isDisabled(),false,'marked HTML mail is saveable');
   await page.locator('#email-next').click();assert.equal(await page.locator('#email-save-case').isDisabled(),true,'reply excluded');
   await page.locator('#draft-editor').fill('Kitalált javított tervezet.');await page.locator('#save-draft').click();
   await page.locator('#detail-status').filter({hasText:'Új tervezet mentve és visszaolvasva'}).waitFor();
   assert.equal(await fits(),true);
-  state.role='approver';await openTm('approval','Független jóváhagyásra vár');
+  state.role='approver';await openTm('approval','jóváhagyásra vár');
   assert.equal(await page.locator('#draft-editor').isDisabled(),true);
   await page.locator('#decision-reason').fill('Kitalált indok');await page.locator('#return-draft').click();
   await page.locator('#detail-status').filter({hasText:'Visszaküldés mentve és visszaolvasva'}).waitFor();
@@ -352,7 +366,7 @@ try{
   state.role='writer';await openTm('progress','Visszaküldve javításra');
   await page.locator('#draft-editor').fill('Kitalált végleges tervezet.');await page.locator('#save-draft').click();
   await page.locator('#detail-status').filter({hasText:'Új tervezet mentve'}).waitFor();
-  state.role='approver';await openTm('approval','Független jóváhagyásra vár');
+  state.role='approver';await openTm('approval','jóváhagyásra vár');
   assert.equal(await page.locator('#approve-draft').isDisabled(),true);
   await page.locator('#approve-confirm').check();await page.locator('#approve-draft').click();
   await page.locator('#detail-status').filter({hasText:'Belső jóváhagyás mentve és visszaolvasva (test-mailbox-v1)'}).waitFor();

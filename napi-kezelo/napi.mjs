@@ -219,7 +219,7 @@ async function showTranslation(caseId,turn){
   if(result?.caseId!==caseId||result.needed!==true)return;
   if(typeof result.text!=='string')throw Error('TRANSLATION_UNVERIFIED');
   note.textContent='Magyar fordítás (gépi, az eredetivel együtt ellenőrizendő):\n'+result.text;
- }catch(error){if(!current(turn)||error?.message==='AUTH_REQUIRED')return;note.className='muted';note.textContent='Magyar fordítás: '+translationErrorMessage(error?.message);}
+ }catch(error){if(!current(turn)||error?.message==='AUTH_REQUIRED')return;note.className='muted note';note.textContent='Magyar fordítás: '+translationErrorMessage(error?.message);}
  el('detail-messages').append(note);
 }
 // Test-mailbox case: same detail panel, own server read model. Edit/decide flags are hints only; the database re-checks.
