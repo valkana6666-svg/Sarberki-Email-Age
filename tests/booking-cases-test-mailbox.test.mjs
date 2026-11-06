@@ -65,6 +65,8 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
     else if(url.pathname.endsWith('/rpc/sc_tm_price_redraft'))result=(await db.query('select sc_tm_price_redraft($1,$2,$3,$4,$5) r',[body.p_tenant,body.p_case,body.p_expected,JSON.stringify(body.p_draft),JSON.stringify(body.p_proof)])).rows[0].r;
     else if(url.pathname.endsWith('/rpc/sc_tm_unavailable_redraft'))result=(await db.query('select sc_tm_unavailable_redraft($1,$2,$3,$4,$5) r',[body.p_tenant,body.p_case,body.p_expected,JSON.stringify(body.p_draft),JSON.stringify(body.p_proof)])).rows[0].r;
     else if(url.pathname.endsWith('/rpc/sc_tm_decide'))result=(await db.query('select sc_tm_decide($1,$2,$3,$4,$5,$6) r',[body.p_tenant,body.p_case,body.p_expected,body.p_draft_hash,body.p_decision,body.p_reason])).rows[0].r;
+    else if(url.pathname.endsWith('/rpc/sc_tm_send_claim'))result=(await db.query('select sc_tm_send_claim($1,$2,$3,$4) r',[body.p_tenant,body.p_case,body.p_expected,body.p_draft_hash])).rows[0].r;
+    else if(url.pathname.endsWith('/rpc/sc_tm_send_finish'))result=(await db.query('select sc_tm_send_finish($1,$2,$3,$4) r',[body.p_tenant,body.p_claim,body.p_status,body.p_gmail_message_id])).rows[0].r;
     else throw Object.assign(Error('unexpected '+url.pathname),{code:'XX'});
     return {ok:true,json:async()=>result};
    }catch(error){return {ok:false,status:error.code==='42501'?403:400};}finally{await db.exec('reset role');}
@@ -242,6 +244,23 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
     assert.equal(body,(await latest(case3)).data.drafts.at(-1).text,'exactly the approved stored text');
     assert.equal((await latest(case3)).revision,2,'sending does not change the case');
    }finally{fromHeader='Teszt <sarberkito@gmail.com>';}
+  });
+  await t.test('send ledger switch: fails closed until the DB ledger exists; then one approved reply is sent once, a repeat is already_sent',async()=>{
+   const ledgerEnv={...enabledEnv,CASE_TEST_MAILBOX_SEND_ENABLED:'sarberki-test-pair-only',CASE_TEST_MAILBOX_SEND_LEDGER:'required'};
+   const id7='18f2a0b1c2d3e4d7',case7='tm-'+id7;
+   await call('writer',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-ingest',messageId:id7},{headers:gmail,status:200});
+   await call('approver',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-decide',caseId:case7,expectedRevision:1,reviewedDraftHash:await hashOf(case7),decision:'approve'},{status:200});
+   const send=options=>call('approver',ledgerEnv,{tenantId:'sarberki-test',action:'test-mailbox-send',caseId:case7,expectedRevision:2},{headers:gmail,...options});
+   const before=gmailSends.length;
+   assert.deepEqual((await send({status:503})).json,{error:'STORAGE_FAILURE'},'ledger required but not installed');
+   assert.equal(gmailSends.length,before,'nothing sent without the ledger');
+   await db.exec(await read('deployment/test-mailbox/send-ledger.sql'));
+   assert.deepEqual((await send({status:200})).json,{result:{caseId:case7,status:'sent'}});
+   assert.equal(gmailSends.length,before+1);
+   assert.deepEqual((await send({status:200})).json,{result:{caseId:case7,status:'already_sent'}},'the ledger blocks a second send even without a thread marker');
+   assert.equal(gmailSends.length,before+1);
+   const row=(await db.query('select status,gmail_message_id from sc_tm_send_ledger where case_id=$1',[case7])).rows[0];
+   assert.deepEqual(row,{status:'sent',gmail_message_id:'synthetic-sent'});
   });
   await t.test('the saver of an unedited machine draft may approve it; the author of an edited draft may not; reject and reopen keep history',async()=>{
    const id2='18f2a0b1c2d3e4f6',case2='tm-'+id2;

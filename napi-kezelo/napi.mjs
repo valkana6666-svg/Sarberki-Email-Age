@@ -330,7 +330,7 @@ el('unavailable-insert').addEventListener('click',async()=>{
  }finally{actionBusy=false;}
 });
 // Sends the stored, approved reply through the server (test pair only). The browser sends no text.
-const sendErrors={FORBIDDEN:'A küldés nincs bekapcsolva, vagy nincs jóváhagyói jog.',NOT_APPROVED:'Csak jóváhagyott válasz küldhető.',
+const sendErrors={FORBIDDEN:'A küldés nincs bekapcsolva, vagy nincs jóváhagyói jog.',SEND_OUTCOME_UNKNOWN:'Egy korábbi küldés eredménye nem ismert. Nézze meg a Gmailben (Elküldött levelek); nem küldjük újra automatikusan.',STORAGE_FAILURE:'A küldési napló nem érhető el, ezért nem küldtük el.',NOT_APPROVED:'Csak jóváhagyott válasz küldhető.',
  RECIPIENT_NOT_ALLOWED:'Ez a címzett nem engedélyezett (csak a tesztfeladó).',CASE_CONFLICT:'Az ügy közben megváltozott; nyissa meg újra.',
  GMAIL_AUTH_REQUIRED:'A Google-küldési engedély szükséges.',WRONG_GMAIL_ACCOUNT:'A sarberkiprojecttest@gmail.com fiókot válassza.',
  LOADING:'A Google-belépés betöltődik; nyomja meg újra.',CONSENT:'A Google-engedély nem érkezett meg.',CHANGED:'A belépés közben megváltozott; nyomja meg újra.'};

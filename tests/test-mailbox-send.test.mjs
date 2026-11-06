@@ -66,3 +66,42 @@ test('send: account check, duplicate check in the thread, then exactly one send 
  await assert.rejects(sendApprovedTestMailboxReply({record:record(),token:'x',fetchImpl:gmail().fetchImpl}),e=>e.code==='GMAIL_AUTH_REQUIRED');
  await assert.rejects(sendApprovedTestMailboxReply({record:record(),token:TOKEN,fetchImpl:gmail({sendStatus:500}).fetchImpl}),e=>e.code==='SEND_FAILED');
 });
+
+// DB send ledger (deployment/test-mailbox/send-ledger.sql): claim before Gmail, finish after.
+function fakeLedger(claimResult={status:'claimed',claimId:'c1'}){
+ const calls=[];
+ return {calls,claim:async args=>{calls.push(['claim',args]);if(claimResult instanceof Error)throw claimResult;return claimResult;},
+  finish:async args=>{calls.push(['finish',args]);return true;}};
+}
+test('ledger: claim with the approved hash, one send, finished as sent with the Gmail id',async()=>{
+ const g=gmail(),ledger=fakeLedger();
+ assert.deepEqual(await sendApprovedTestMailboxReply({record:record(),token:TOKEN,fetchImpl:g.fetchImpl,ledger}),{status:'sent'});
+ assert.deepEqual(ledger.calls,[['claim',{draftHash:sha(TEXT)}],['finish',{claimId:'c1',status:'sent',gmailMessageId:'sent-1'}]]);
+ assert.equal(g.calls.filter(c=>c.url.endsWith('/messages/send')).length,1);
+});
+test('ledger: already sent, in flight, unknown, stale revision or missing ledger -> no Gmail send',async()=>{
+ for(const [result,expect] of [[{status:'sent'},{status:'already_sent'}],[{status:'sending'},/SEND_OUTCOME_UNKNOWN/],[{status:'outcome_unknown'},/SEND_OUTCOME_UNKNOWN/],
+  [null,/CASE_CONFLICT/],[Error('relation does not exist'),/STORAGE_FAILURE/],[Object.assign(Error('x'),{code:'FORBIDDEN'}),/FORBIDDEN/]]){
+  const g=gmail(),ledger=fakeLedger(result);
+  const run=sendApprovedTestMailboxReply({record:record(),token:TOKEN,fetchImpl:g.fetchImpl,ledger});
+  if(expect instanceof RegExp)await assert.rejects(run,expect);else assert.deepEqual(await run,expect);
+  assert.equal(g.calls.filter(c=>c.url.endsWith('/messages/send')).length,0,JSON.stringify(result));
+  assert.equal(ledger.calls.filter(c=>c[0]==='finish').length,0);
+ }
+});
+test('ledger: Gmail 4xx releases the claim (failed); 5xx or timeout marks outcome_unknown',async()=>{
+ for(const [status,code,mark] of [[403,/GMAIL_AUTH_REQUIRED/,'failed'],[429,/GMAIL_RATE_LIMITED/,'failed'],[400,/SEND_FAILED/,'failed'],[503,/SEND_FAILED/,'outcome_unknown']]){
+  const g=gmail({sendStatus:status}),ledger=fakeLedger();
+  await assert.rejects(sendApprovedTestMailboxReply({record:record(),token:TOKEN,fetchImpl:g.fetchImpl,ledger}),code);
+  assert.deepEqual(ledger.calls.at(-1),['finish',{claimId:'c1',status:mark}],String(status));
+ }
+ const hang={fetchImpl:async(url,options)=>url.endsWith('/messages/send')?new Promise((_,reject)=>options.signal.addEventListener('abort',()=>reject(Error('aborted')))):gmail().fetchImpl(url,options)};
+ const ledger=fakeLedger();
+ await assert.rejects(sendApprovedTestMailboxReply({record:record(),token:TOKEN,fetchImpl:hang.fetchImpl,ledger,timeoutMs:20}),/SEND_FAILED/);
+ assert.deepEqual(ledger.calls.at(-1),['finish',{claimId:'c1',status:'outcome_unknown'}]);
+});
+test('ledger: the thread marker still wins before any claim',async()=>{
+ const g=gmail({marker:'tm-1a1a32e75c490832:'+sha(TEXT)}),ledger=fakeLedger();
+ assert.deepEqual(await sendApprovedTestMailboxReply({record:record(),token:TOKEN,fetchImpl:g.fetchImpl,ledger}),{status:'already_sent'});
+ assert.equal(ledger.calls.length,0);
+});

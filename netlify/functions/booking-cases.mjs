@@ -37,7 +37,7 @@ export function syntheticCaseSummaries(records,exactReceipt=null){
 const TEST_MAILBOX_ERRORS=Object.freeze({GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACCOUNT:403,FORBIDDEN:403,GMAIL_RATE_LIMITED:429,INVALID_INPUT:400,
  GMAIL_SOURCE_UNVERIFIED:422,NOT_MARKED_TEST_MESSAGE:422,NOT_TEST_PAIR_INQUIRY:422,AUTOMATED_MESSAGE:422,REPLY_NOT_ALLOWED:422,NOT_ADDRESSED_TO_TEST_MAILBOX:422,INVALID_SENDER:422,MESSAGE_ID_REQUIRED:422,
  TEXT_PART_REQUIRED:422,EMPTY_TEXT:422,TEXT_TOO_LONG:422,UNREADABLE_TEXT:422,INVALID_DRAFT:422,STORAGE_FAILURE:503,
- NOT_APPROVED:409,RECIPIENT_NOT_ALLOWED:403,SOURCE_UNVERIFIED:422,SEND_FAILED:502,CASE_CONFLICT:409,
+ NOT_APPROVED:409,RECIPIENT_NOT_ALLOWED:403,SOURCE_UNVERIFIED:422,SEND_FAILED:502,SEND_OUTCOME_UNKNOWN:409,CASE_CONFLICT:409,
  PRICE_FACTS_MISSING:422,PRICE_LINE_MISSING:422,PRICE_REFUSED:422,AVAILABILITY_NOT_CONFIRMED:400,TEST_MAILBOX_REJECTED:409,
  UNAVAILABILITY_NOT_CONFIRMED:400,DRAFT_SHAPE_UNKNOWN:422,ALREADY_UNAVAILABLE:409});
 const TEST_MAILBOX_FIELDS=Object.freeze({
@@ -166,7 +166,13 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
       const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
       if(!record||!isTestMailboxCase(record))return cookieResponse(404,{error:'NOT_FOUND'});
       if(record.revision!==input.expectedRevision)return cookieResponse(409,{error:'CASE_CONFLICT'});
-      const result=await sendApprovedTestMailboxReply({record,token:tokens[0],fetchImpl});
+      // Owner switch: with the DB send ledger installed (deployment/test-mailbox/send-ledger.sql) every send is
+      // claimed atomically under the approver's own session; if the ledger is required but missing, nothing is sent.
+      const rpc=(name,body)=>cookieSession.transport('/rest/v1/rpc/'+name,{method:'POST',body});
+      const ledger=env.CASE_TEST_MAILBOX_SEND_LEDGER==='required'?{
+       claim:({draftHash})=>rpc('sc_tm_send_claim',{p_tenant:record.tenantId,p_case:record.caseId,p_expected:record.revision,p_draft_hash:draftHash}),
+       finish:({claimId,status,gmailMessageId=null})=>rpc('sc_tm_send_finish',{p_tenant:record.tenantId,p_claim:claimId,p_status:status,p_gmail_message_id:gmailMessageId})}:null;
+      const result=await sendApprovedTestMailboxReply({record,token:tokens[0],fetchImpl,ledger});
       return cookieResponse(200,{result:{caseId:record.caseId,status:result.status}});
      }catch(error){
       const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'SEND_FAILED';
