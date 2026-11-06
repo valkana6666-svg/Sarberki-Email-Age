@@ -60,6 +60,8 @@ test('send ledger: one claim per approved draft, failed may retry, unknown never
    await assert.rejects(db.exec(ledger),/verified test project/);await db.exec('rollback');
    await db.query("select set_config('sarberki.tm_install_project_ref','mojnqizbcaczstguikpv',false)");
    await db.exec(ledger);await db.exec(ledger);
+   const verify=await db.exec(await read('deployment/test-mailbox/send-ledger.verify.sql'));
+   assert.equal(verify.at(-1).rows[0].result,'VERIFY PASS','post-install verification');
   });
   await t.test('first claim wins; every later claim sees the state; sent is final',async()=>{
    const c=await approved(1);

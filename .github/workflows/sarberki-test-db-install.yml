@@ -1,0 +1,65 @@
+name: Sarberki TEST database install (owner-approved)
+
+# Owner decision 2026-11-06: TEST database changes are installed by this workflow instead of a manual
+# Work session. It runs ONLY when (1) a commit on the test branch carries [test-db-install <deployment/...sql>],
+# (2) the owner approves the run in the protected GitHub environment "test-db-install" (phone: GitHub app),
+# (3) a successful Drive backup of at most 3 hours exists, and (4) the database URL is the TEST project.
+# The URL is an ENVIRONMENT secret of "test-db-install": an unprotected environment has no secret and fails.
+# Never production; never the live project.
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: sarberki-test-db-install
+  cancel-in-progress: false
+
+jobs:
+  install:
+    if: contains(github.event.head_commit.message, '[test-db-install ')
+    runs-on: ubuntu-24.04
+    container: postgres:17-bookworm
+    environment: test-db-install
+    timeout-minutes: 15
+    steps:
+      - name: Install tools
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 ca-certificates git
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Gate (marker, TEST project only, fresh Drive backup)
+        id: gate
+        env:
+          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          SARBERKI_TEST_DB_INSTALL_URL: ${{ secrets.SARBERKI_TEST_DB_INSTALL_URL }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/test-db-install-gate.py
+      - name: Install in one session (fails on the first error)
+        env:
+          SARBERKI_TEST_DB_INSTALL_URL: ${{ secrets.SARBERKI_TEST_DB_INSTALL_URL }}
+          SQL_FILE: ${{ steps.gate.outputs.sql_file }}
+          BACKUP_SHA: ${{ steps.gate.outputs.backup_sha256 }}
+        run: |
+          set -eu
+          {
+            for p in tm approval receipt; do
+              echo "select set_config('sarberki.${p}_install_project_ref','mojnqizbcaczstguikpv',false);"
+              echo "select set_config('sarberki.${p}_backup_sha256','${BACKUP_SHA}',false);"
+            done
+            echo "\\i ${SQL_FILE}"
+            verify="${SQL_FILE%.sql}.verify.sql"
+            if [ -f "$verify" ]; then echo "\\echo VERIFY"; echo "\\i ${verify}"; fi
+          } > /tmp/install.psql
+          psql "$SARBERKI_TEST_DB_INSTALL_URL" -X -q -v ON_ERROR_STOP=1 -f /tmp/install.psql
+      - name: Summary
+        env:
+          SQL_FILE: ${{ steps.gate.outputs.sql_file }}
+          BACKUP_RUN: ${{ steps.gate.outputs.backup_run }}
+        run: |
+          echo "### TEST DB install PASS" >> "$GITHUB_STEP_SUMMARY"
+          echo "- file: \`$SQL_FILE\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- pre-install Drive backup run: $BACKUP_RUN" >> "$GITHUB_STEP_SUMMARY"
