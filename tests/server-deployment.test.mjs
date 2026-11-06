@@ -47,3 +47,14 @@ test('Gmail source and ingest: a live deployment fails closed before any Gmail c
  assert.throws(()=>attestTestMailboxSource({key:'e5'.repeat(32),tenantId:'sarberki-live',source,envelope,checkedAt}),/INVALID_EVIDENCE/,'TEST deployment refuses the live tenant');
  assert.throws(()=>attestTestMailboxSource({key:'e5'.repeat(32),tenantId:'sarberki-test',source,envelope,checkedAt,deployment:live}),/INVALID_EVIDENCE/,'live deployment refuses the TEST tenant');
 });
+
+test('booking-cases: a live deployment is closed (503) while the live mailbox is disabled, for every route',async()=>{
+ const {createCaseHandler}=await import('../netlify/functions/booking-cases.mjs');
+ const calls=[];
+ const handler=createCaseHandler({env:{...LIVE,URL:LIVE.SARBERKI_LIVE_ORIGIN,CASE_STORE_ENABLED:'sarberki-live',CASE_LIVE_MAILBOX_ENABLED:'sarberki-live-mailbox'},fetchImpl:async(...a)=>{calls.push(a);throw Error('no network');}});
+ for(const [method,body] of [['GET',{tenantId:'sarberki-live',action:'daily-list'}],['POST',{tenantId:'sarberki-live',action:'test-mailbox-send',caseId:'tm-18f2a0b1c2d3e4f0',expectedRevision:1}]]){
+  const r=await handler({httpMethod:method,headers:{cookie:'x','x-sarberki-operator':'1'},queryStringParameters:method==='GET'?body:{},body:method==='POST'?JSON.stringify(body):''});
+  assert.equal(r.statusCode,503);assert.deepEqual(JSON.parse(r.body),{error:'CASE_STORE_DISABLED'});
+ }
+ assert.equal(calls.length,0);
+});

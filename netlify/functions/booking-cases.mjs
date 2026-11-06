@@ -17,6 +17,7 @@ import {sendApprovedTestMailboxReply} from '../../shared-core/server-test-mailbo
 import {priceTestMailboxCase} from '../../shared-core/server-test-mailbox-price.mjs';
 import {markTestMailboxUnavailable} from '../../shared-core/server-test-mailbox-unavailable.mjs';
 import {fetchMnbEurRate} from './price-quote.mjs';
+import {serverDeployment} from '../../shared-core/server-deployment.mjs';
 import {translateTestMailboxMessage} from '../../shared-core/server-translation.mjs';
 import {languageFromText} from '../../sarberki-core.mjs';
 import {translationErrorCode} from '../../translation-errors.mjs';
@@ -59,13 +60,13 @@ function validTestMailboxInput(input){
   (input.reason===undefined||typeof input.reason==='string'&&input.reason.length<=500&&!/[\r\n]/.test(input.reason));
 }
 // Only sc_tm_create produces this shape: synthetic writers are limited to .invalid senders.
-function isTestMailboxCase(record){
- return record?.tenantId==='sarberki-test'&&typeof record.caseId==='string'&&/^tm-[a-f0-9]{12,32}$/.test(record.caseId)&&
+function isTestMailboxCase(record,tenant='sarberki-test'){
+ return record?.tenantId===tenant&&typeof record.caseId==='string'&&/^tm-[a-f0-9]{12,32}$/.test(record.caseId)&&
   typeof record.data?.sender==='string'&&!/\.invalid$/i.test(record.data.sender)&&record.data.testMailbox?.scope==='test-mailbox-source-v1'&&
   Array.isArray(record.data.drafts)&&record.data.drafts.length>0&&Array.isArray(record.data.messages);
 }
-function testMailboxView(record,authority){
- const data=record.data,state=data.state?.approval,latest=data.drafts.at(-1),permissions=authority?.tenants?.['sarberki-test']||[];
+function testMailboxView(record,authority,tenant='sarberki-test'){
+ const data=record.data,state=data.state?.approval,latest=data.drafts.at(-1),permissions=authority?.tenants?.[tenant]||[];
  return {caseId:record.caseId,revision:record.revision,approval:state,
   messages:data.messages.map(m=>({text:m.text,received_at:m.received_at})),values:data.state?.values||{},
   draft:{text:latest.text,operatorReviewText:latest.operatorReviewText??null,createdAt:latest.createdAt??null,hash:createHash('sha256').update(String(latest.text),'utf8').digest('hex')},
@@ -84,11 +85,18 @@ function testMailboxSendEnabled(env,cloudApproval){
 }
 export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedApproval=false,reviewProviders=null,serviceBindingProvider=null,serviceAvailabilityProvider=null}={}){
  return async event=>{
-  // Fail closed even when deployed automatically with the repository.
-  if(env.CASE_STORE_ENABLED!=='synthetic-only'||env.URL!=='https://leafy-chimera-2403e5.netlify.app'||env.CASE_STORE_TEST_TENANTS!=='sarberki-test,demo-test')return response(503,{error:'CASE_STORE_DISABLED'});
+  // Fail closed even when deployed automatically with the repository. One deployment decision (live store
+  // slice 2): TEST keeps every existing gate; LIVE needs its own site, store switch and mailbox switch, and
+  // exposes ONLY the mailbox routes below, never the synthetic/legacy routes and never sending (AGENTS.md).
+  let deployment;try{deployment=serverDeployment(env);}catch{return response(503,{error:'CASE_STORE_DISABLED'});}
+  const live=deployment.environment==='live',TENANT=deployment.tenantId;
+  if(live?(env.CASE_STORE_ENABLED!=='sarberki-live'||env.URL!==deployment.origin||env.CASE_LIVE_MAILBOX_ENABLED!=='sarberki-live-mailbox')
+   :(env.CASE_STORE_ENABLED!=='synthetic-only'||env.URL!=='https://leafy-chimera-2403e5.netlify.app'||env.CASE_STORE_TEST_TENANTS!=='sarberki-test,demo-test'))
+   return response(503,{error:'CASE_STORE_DISABLED'});
   if(!['GET','POST'].includes(event.httpMethod))return response(405,{error:'METHOD_NOT_ALLOWED'});
   const authorization=event.headers?.authorization||event.headers?.Authorization;
-  const cloudApproval=cloudSyntheticApprovalEnabled(env);
+  const cloudApproval=!live&&cloudSyntheticApprovalEnabled(env);
+  const mailboxOn=live||testMailboxIngestEnabled(env,cloudApproval);
   const exactReceipt=createExactGmailReceipt(env);
   const exactEditReceipt=cloudApproval?exactGmailEditReceipt(env,exactReceipt):null;
   const exactEditable=record=>matchesExactGmailEditRecord(record,exactEditReceipt);
@@ -114,15 +122,15 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    // is never stored or echoed. Fixed public error codes only.
    // Hungarian translation of a stored foreign-language test-mailbox message, shown under the message.
    if(input.action==='test-mailbox-translate'){
-    if(event.httpMethod!=='GET'||!cookieMode||!testMailboxIngestEnabled(env,cloudApproval)||input.tenantId!=='sarberki-test'||Object.keys(input).sort().join(',')!=='action,caseId,tenantId')
+    if(event.httpMethod!=='GET'||!cookieMode||!mailboxOn||input.tenantId!==TENANT||Object.keys(input).sort().join(',')!=='action,caseId,tenantId')
      return cookieResponse(403,{error:'FORBIDDEN'});
     if(typeof input.caseId!=='string'||!/^tm-[a-f0-9]{12,32}$/.test(input.caseId))return cookieResponse(400,{error:'INVALID_INPUT'});
     cookieSession=await createOperatorCookieSession({env,fetchImpl}).protectedRead(event);
     rotatedCookie=cookieSession.setCookie;
-    const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.sarberki-test&case_id=eq.'+encodeURIComponent(input.caseId));
+    const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.'+TENANT+'&case_id=eq.'+encodeURIComponent(input.caseId));
     const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
     const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
-    if(!record||!isTestMailboxCase(record))return cookieResponse(404,{error:'NOT_FOUND'});
+    if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
     const text=String(record.data.messages[0]?.text||''),language=languageFromText(text);
     if(!['de','en','si'].includes(language))return cookieResponse(200,{result:{caseId:record.caseId,needed:false,language}});
     const key=record.caseId+':'+createHash('sha256').update(text,'utf8').digest('hex');
@@ -136,21 +144,21 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     }catch(error){return cookieResponse(503,{error:translationErrorCode(error?.message)});}
    }
    if(input.action==='test-mailbox-record'){
-    if(event.httpMethod!=='GET'||!cookieMode||!testMailboxIngestEnabled(env,cloudApproval)||input.tenantId!=='sarberki-test'||Object.keys(input).sort().join(',')!=='action,caseId,tenantId')
+    if(event.httpMethod!=='GET'||!cookieMode||!mailboxOn||input.tenantId!==TENANT||Object.keys(input).sort().join(',')!=='action,caseId,tenantId')
      return cookieResponse(403,{error:'FORBIDDEN'});
     if(typeof input.caseId!=='string'||!/^tm-[a-f0-9]{12,32}$/.test(input.caseId))return cookieResponse(400,{error:'INVALID_INPUT'});
     cookieSession=await createOperatorCookieSession({env,fetchImpl}).protectedRead(event);
     rotatedCookie=cookieSession.setCookie;
-    const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.sarberki-test&case_id=eq.'+encodeURIComponent(input.caseId));
+    const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.'+TENANT+'&case_id=eq.'+encodeURIComponent(input.caseId));
     const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
     const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
-    if(!record||!isTestMailboxCase(record))return cookieResponse(404,{error:'NOT_FOUND'});
-    return cookieResponse(200,{result:testMailboxView(record,cookieSession.authority)});
+    if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
+    return cookieResponse(200,{result:testMailboxView(record,cookieSession.authority,TENANT)});
    }
    if(TEST_MAILBOX_FIELDS[input.action]){
     const keys=Object.keys(input).sort().join(',');
-    if(event.httpMethod!=='POST'||!cookieMode||!testMailboxIngestEnabled(env,cloudApproval)||input.tenantId!=='sarberki-test'||!TEST_MAILBOX_FIELDS[input.action].includes(keys)
-     ||input.action==='test-mailbox-send'&&!testMailboxSendEnabled(env,cloudApproval))
+    if(event.httpMethod!=='POST'||!cookieMode||!mailboxOn||input.tenantId!==TENANT||!TEST_MAILBOX_FIELDS[input.action].includes(keys)
+     ||input.action==='test-mailbox-send'&&(live||!testMailboxSendEnabled(env,cloudApproval)))
      return cookieResponse(403,{error:'FORBIDDEN'});
     if(!validTestMailboxInput(input))return cookieResponse(400,{error:'INVALID_INPUT'});
     const session=createOperatorCookieSession({env,fetchImpl});
@@ -161,10 +169,10 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      if(tokens.length!==1||typeof tokens[0]!=='string'||tokens[0].length>4096)return cookieResponse(401,{error:'GMAIL_AUTH_REQUIRED'});
      try{
       // Read with the approver's own session (RLS); the exact reviewed revision is required.
-      const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.sarberki-test&case_id=eq.'+encodeURIComponent(input.caseId));
+      const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.'+TENANT+'&case_id=eq.'+encodeURIComponent(input.caseId));
       const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
       const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
-      if(!record||!isTestMailboxCase(record))return cookieResponse(404,{error:'NOT_FOUND'});
+      if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
       if(record.revision!==input.expectedRevision)return cookieResponse(409,{error:'CASE_CONFLICT'});
       // Owner switch: with the DB send ledger installed (deployment/test-mailbox/send-ledger.sql) every send is
       // claimed atomically under the approver's own session; if the ledger is required but missing, nothing is sent.
@@ -181,10 +189,10 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     }
     if(input.action==='test-mailbox-price'){
      try{
-      const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.sarberki-test&case_id=eq.'+encodeURIComponent(input.caseId));
+      const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.'+TENANT+'&case_id=eq.'+encodeURIComponent(input.caseId));
       const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
       const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
-      if(!record||!isTestMailboxCase(record))return cookieResponse(404,{error:'NOT_FOUND'});
+      if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
       if(record.revision!==input.expectedRevision)return cookieResponse(409,{error:'CASE_CONFLICT'});
       const {saved,quote}=await priceTestMailboxCase({record,cabin:input.cabin,availabilityConfirmed:input.availabilityConfirmed,
        attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,transport:cookieSession.transport,fxFn:()=>fetchMnbEurRate(fetchImpl)});
@@ -198,10 +206,10 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     }
     if(input.action==='test-mailbox-unavailable'){
      try{
-      const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.sarberki-test&case_id=eq.'+encodeURIComponent(input.caseId));
+      const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.'+TENANT+'&case_id=eq.'+encodeURIComponent(input.caseId));
       const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
       const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
-      if(!record||!isTestMailboxCase(record))return cookieResponse(404,{error:'NOT_FOUND'});
+      if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
       if(record.revision!==input.expectedRevision)return cookieResponse(409,{error:'CASE_CONFLICT'});
       const saved=await markTestMailboxUnavailable({record,unavailableConfirmed:input.unavailableConfirmed,
        attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,transport:cookieSession.transport});
@@ -217,7 +225,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      const tokens=Object.entries(event.headers||{}).filter(([key])=>key.toLowerCase()==='x-sarberki-gmail-token').map(([,value])=>value);
      if(tokens.length!==1||typeof tokens[0]!=='string'||tokens[0].length>4096)return cookieResponse(401,{error:'GMAIL_AUTH_REQUIRED'});
      try{
-      const result=await ingestTestMailboxMessage({token:tokens[0],messageId:input.messageId,transport:cookieSession.transport,attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,fetchImpl});
+      const result=await ingestTestMailboxMessage({token:tokens[0],messageId:input.messageId,transport:cookieSession.transport,attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,fetchImpl,deployment});
       return cookieResponse(200,{result:{caseId:result.caseId,revision:Number(result.revision)}});
      }catch(error){
       const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'STORAGE_FAILURE';
@@ -233,6 +241,18 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     catch(error){return error?.code==='FORBIDDEN'?cookieResponse(403,{error:'FORBIDDEN'}):cookieResponse(409,{error:'TEST_MAILBOX_REJECTED'});}
     if(!record)return cookieResponse(409,{error:'CASE_CONFLICT'});
     return cookieResponse(200,{result:{caseId:record.case_id,revision:Number(record.revision),approval:record.data?.state?.approval}});
+   }
+   // LIVE: only the mailbox routes above and this mailbox-only daily list; everything else is refused.
+   if(live){
+    if(event.httpMethod!=='GET'||input.action!=='daily-list'||!cookieMode||input.tenantId!==TENANT||Object.keys(input).sort().join(',')!=='action,tenantId')
+     return response(403,{error:'FORBIDDEN'});
+    cookieSession=await createOperatorCookieSession({env,fetchImpl}).protectedRead(event);
+    rotatedCookie=cookieSession.setCookie;
+    const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.'+TENANT);
+    const records=(Array.isArray(rows)?rows:[]).map(row=>({tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data}));
+    return cookieResponse(200,{result:records.filter(record=>isTestMailboxCase(record,TENANT)).slice(0,100).map(record=>({tenantId:record.tenantId,caseId:record.caseId,revision:record.revision,
+     category:record.data.state?.approval==='pending'?'approval':'progress',kind:'test-mailbox',
+     approval:['pending','approved_internal','returned_for_edit','rejected'].includes(record.data.state?.approval)?record.data.state.approval:null}))});
    }
    const exactAttempt=event.httpMethod==='POST'&&(input.action==='diagnose-exact-receipt'||input.action==='ingest-and-draft'&&Object.hasOwn(input,'sourceReceipt'));
    if(exactAttempt){
@@ -311,7 +331,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      const records=await service.listCases({tenantId:input.tenantId});
      result=records.filter(record=>{try{assertReviewAccess(record);return true;}catch(error){if(error.code==='FORBIDDEN')return false;throw error;}}).slice(0,100).map(dailyCaseSummary);
      // Test-mailbox cases appear only while the owner switch is on; pending awaits an independent decision.
-     if(testMailboxIngestEnabled(env,cloudApproval))result=result.concat(records.filter(isTestMailboxCase).map(record=>({tenantId:record.tenantId,caseId:record.caseId,revision:record.revision,
+     if(testMailboxIngestEnabled(env,cloudApproval))result=result.concat(records.filter(record=>isTestMailboxCase(record)).map(record=>({tenantId:record.tenantId,caseId:record.caseId,revision:record.revision,
       category:record.data.state?.approval==='pending'?'approval':'progress',kind:'test-mailbox',
       // State label only (metadata, no guest content): lets the operator find an approved reply to send.
       approval:['pending','approved_internal','returned_for_edit','rejected'].includes(record.data.state?.approval)?record.data.state.approval:null}))).slice(0,100);
