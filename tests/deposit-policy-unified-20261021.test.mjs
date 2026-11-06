@@ -11,7 +11,7 @@ import {renderChatbotIntent} from '../chatbot-v1.mjs';
 const bookingAt='2026-10-21T10:00:00+02:00';
 test('one approved configuration controls the public data, simulation and calculation at 14/15/16 guests',()=>{
  assert.equal(PUBLIC_REPLY_DATA.booking,BUSINESS.bookingRules);
- for(const [guestCount,pct] of [[1,50],[14,50],[15,80],[16,80]]){
+ for(const [guestCount,pct] of [[1,50],[14,50],[15,50],[16,80]]){
   assert.equal(depositPercentForGuestCount(guestCount),pct);
   assert.equal(depositPercentForGuests(guestCount),pct);
   assert.equal(depositPolicyForBooking({guestCount,bookingAt,arrivalDate:'2026-11-06'}).depositPct,pct);
@@ -57,8 +57,8 @@ test('the calendar-day threshold uses Hungary time rather than the sender offset
 });
 test('HU DE EN SI main-config drafts and public replies never reinstate the obsolete ten-day deadline or cancellation promise',()=>{
  for(const language of ['hu','de','en','si']){
-  const draft=buildReplyDraft({language,original:'booking terms foglalási feltételek',arrival:'2026-11-06',departure:'2026-11-08',guests:15,adults:15,children:0,cabin:'Deluxe',bookingRules:BUSINESS.bookingRules});
-  const reply=composeGuestReply({facts:{language,guests:15},topics:['booking_terms']});
+  const draft=buildReplyDraft({language,original:'booking terms foglalási feltételek',arrival:'2026-11-06',departure:'2026-11-08',guests:16,adults:16,children:0,cabin:'Deluxe',bookingRules:BUSINESS.bookingRules});
+  const reply=composeGuestReply({facts:{language,guests:16},topics:['booking_terms']});
   for(const text of [draft,reply]){
    assert.match(text,/80%/u);
    assert.doesNotMatch(text,/10 (?:nap|days|Tagen|dneh)|cancellation deadline is|Stornierungsfrist beträgt|rok za odpoved je|lemondási határidő az érkezés előtt/iu);
@@ -69,7 +69,7 @@ test('HU DE EN SI main-config drafts and public replies never reinstate the obso
 });
 test('approved payment context can display the owner-approved 24-hour deadline at exactly 14 days',()=>{
  for(const [language,marker]of [['hu',/Jóváhagyott fizetési tájékoztatás: 80%/u],['de',/Freigegebene Zahlungsinformation: 80%/u],['en',/Approved payment information: 80% deposit/u],['si',/Odobreno plačilo: 80%/u]]){
-  const draft=buildReplyDraft({language,original:'When is the deposit due?',arrival:'2026-11-04',departure:'2026-11-06',guests:15,adults:15,children:0,cabin:'Deluxe',bookingRules:BUSINESS.bookingRules,approvedPaymentContext:{operatorApproved:true,bookingConfirmed:true,bookingAt}});
+  const draft=buildReplyDraft({language,original:'When is the deposit due?',arrival:'2026-11-04',departure:'2026-11-06',guests:16,adults:16,children:0,cabin:'Deluxe',bookingRules:BUSINESS.bookingRules,approvedPaymentContext:{operatorApproved:true,bookingConfirmed:true,bookingAt}});
   assert.match(draft,marker);assert.doesNotMatch(draft,/exact 14-day boundary requires separate|pontosan 14 napos határ miatt|wegen der Grenze von genau 14 Tagen|Meja natanko 14 dni zahteva/iu);
  }
 });

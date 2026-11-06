@@ -609,16 +609,17 @@ test('dense operational questions are answered from verified config',()=>{
   assert.match(draft,/not applied automatically/u);
 });
 
-test('deposit percentage changes from 15 guests and unknown group size stays explicit',()=>{
+test('deposit percentage changes from 16 guests (15 still 50%) and unknown group size stays explicit',()=>{
   const rules={depositPctUnder15Guests:50,depositPctFrom15Guests:80,depositDueDays:10,cancellationDaysUnder15Guests:14,cancellationDaysFrom15Guests:30};
   const under=buildReplyDraft({language:'hu',original:'Mekkora előleg kell?',guests:14,phone:'x',cabin:'Deluxe',bookingRules:rules});
   const boundary=buildReplyDraft({language:'hu',original:'Mekkora előleg kell?',guests:15,phone:'x',cabin:'Deluxe',bookingRules:rules});
   const over=buildReplyDraft({language:'hu',original:'Mekkora előleg kell?',guests:16,phone:'x',cabin:'Deluxe',bookingRules:rules});
   const unknown=buildReplyDraft({language:'hu',original:'Mekkora előleg kell?',guests:null,phone:'x',cabin:'Deluxe',bookingRules:rules});
   assert.match(under,/50%/u);
-  assert.match(boundary,/80%/u);
+  assert.match(boundary,/50%/u);
+  assert.doesNotMatch(boundary,/80%/u);
   assert.match(over,/80%/u);
-  assert.match(unknown,/Az előleg 15 fő alatt a szállásdíj 50%-a, 15 főtől 80%-a\./u);
+  assert.match(unknown,/Az előleg 15 főig a szállásdíj 50%-a, 16 főtől 80%-a\./u);
 });
 
 

@@ -380,7 +380,7 @@ test('approved child quote includes age, HUF, EUR and under-15 booking terms',as
   assert.match(draft,/lemondási feltételeket emberi ellenőrzés után/u);
 });
 
-test('approved quote switches to 80 percent deposit from 15 guests and defers unverified cancellation',async()=>{
+test('approved quote keeps 50 percent deposit at exactly 15 guests (80 percent only from 16) and defers unverified cancellation',async()=>{
   const message='Kedves Sárberki Horgásztó! 2027. október 1–3. között 15 felnőtt mennénk, gyermek nélkül, három Családi házat szeretnénk. Mennyi a teljes ár?';
   const h=harness(message,input=>{
     assert.equal(input.cabin,'family');
@@ -403,7 +403,8 @@ test('approved quote switches to 80 percent deposit from 15 guests and defers un
   assert.doesNotMatch(r.draft,/328.500|328 500/u);
   h.element('approve_price').onclick();
   const draft=h.element('draft').value;
-  assert.match(draft,/80%-a/u);
+  assert.match(draft,/50%-a/u);
+  assert.doesNotMatch(draft,/80%-a/u);
   assert.doesNotMatch(draft,/30\. napig|10 napon belül/u);
   assert.match(draft,/lemondási feltételeket emberi ellenőrzés után/u);
   assert.match(draft,/328.500|328 500/u);

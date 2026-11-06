@@ -9,8 +9,10 @@ export const BUSINESS = Object.freeze({
   locale: 'hu-HU',
   timezone: 'Europe/Budapest',
   bookingRules: Object.freeze({
+    // Owner confirmation 2026-11-06: 1–15 guests 50%, from 16 guests 80% (key names are historical).
     depositPctUnder15Guests: 50,
     depositPctFrom15Guests: 80,
+    depositLargeGroupMinGuests: 16,
     // Owner instruction 2026-10-22: exactly 14 calendar days uses 24 hours.
     // Owner clarification: cancellation threshold is 14 days for every group;
     // individual cancellation/payment handling still requires human review.

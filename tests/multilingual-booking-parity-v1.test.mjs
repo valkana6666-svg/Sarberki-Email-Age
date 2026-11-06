@@ -114,11 +114,11 @@ for(const language of languages){
 
 for(const language of languages){
   for(const guests of [14,15,16]){
-    test(`V1 language ${language}: ${guests}-guest deposit respects at-least-15 threshold`,()=>{
+    test(`V1 language ${language}: ${guests}-guest deposit respects the 16-guest threshold (owner 2026-11-06)`,()=>{
       const draft=buildReplyDraft({...request,language,guests,adults:guests,original:'booking terms',bookingRules:{depositPctUnder15Guests:50,depositPctFrom15Guests:80}});
-      const expected=guests>=15?'80%':'50%';
+      const expected=guests>=16?'80%':'50%';
       assert.match(draft,new RegExp(expected.replace('%','%'),'u'));
-      assert.doesNotMatch(draft,new RegExp(guests>=15?'50%':'80%','u'));
+      assert.doesNotMatch(draft,new RegExp(guests>=16?'50%':'80%','u'));
     });
   }
 }
@@ -133,7 +133,7 @@ for(const [days,expectedHours] of [[1,24],[3,24],[13,24],[14,24],[15,168],[30,16
     assert.equal(result.paymentMustBeReceived,true);
   });
 }
-for(const [guestCount,expectedPct] of [[14,50],[15,80],[16,80]]){
+for(const [guestCount,expectedPct] of [[14,50],[15,50],[16,80]]){
   test(`V1 deposit policy: ${guestCount} guests require ${expectedPct}%`,()=>{
     const result=depositPolicyForBooking({guestCount,bookingAt:'2026-10-17T09:00:00',arrivalDate:'2026-11-10'});
     assert.equal(result.depositPct,expectedPct);

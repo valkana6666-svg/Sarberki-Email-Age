@@ -646,7 +646,8 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
     const fromRaw=rules.depositPctFrom15Guests ?? rules.depositPct;
     const under15=validPercent(underRaw)?Number(underRaw):NaN;
     const from15=validPercent(fromRaw)?Number(fromRaw):NaN;
-    const pct=knownGuests?(g<15?under15:from15):null;
+    const pct=knownGuests?(isLargeDepositGroup(g,rules)?from15:under15):null;
+    const minLarge=Number.isSafeInteger(rules.depositLargeGroupMinGuests)?rules.depositLargeGroupMinGuests:16;
     // Owner-approved wording (2026-11-05).
     if(Number.isFinite(pct)) lines.push({
       hu:`Az előleg a szállásdíj ${pct}%-a.`,
@@ -655,10 +656,10 @@ function bookingPolicyLines(language='hu',original='',guests=null,rules=null){
       si:`Predplačilo znaša ${pct}% cene nastanitve.`
     }[lang]);
     else if(Number.isFinite(under15)&&Number.isFinite(from15)&&under15!==from15) lines.push({
-      hu:`Az előleg 15 fő alatt a szállásdíj ${under15}%-a, 15 főtől ${from15}%-a.`,
-      de:`Die Anzahlung beträgt unter 15 Personen ${under15}% und ab 15 Personen ${from15}% des Übernachtungspreises.`,
-      en:`The deposit is ${under15}% of the accommodation price for fewer than 15 guests and ${from15}% from 15 guests.`,
-      si:`Predplačilo znaša pri manj kot 15 osebah ${under15}%, od 15 oseb naprej pa ${from15}% cene nastanitve.`
+      hu:`Az előleg ${minLarge-1} főig a szállásdíj ${under15}%-a, ${minLarge} főtől ${from15}%-a.`,
+      de:`Die Anzahlung beträgt bis ${minLarge-1} Personen ${under15}% und ab ${minLarge} Personen ${from15}% des Übernachtungspreises.`,
+      en:`The deposit is ${under15}% of the accommodation price for up to ${minLarge-1} guests and ${from15}% from ${minLarge} guests.`,
+      si:`Predplačilo znaša do ${minLarge-1} oseb ${under15}%, od ${minLarge} oseb naprej pa ${from15}% cene nastanitve.`
     }[lang]);
   }
   if(q.depositDeadline&&rules.depositExactBoundaryRequiresReview===true)lines.push({
@@ -1111,9 +1112,14 @@ export function specialRequestsFromText(text='') {
  * The caller must supply a verified booking timestamp and arrival date.
  * No automatic payment collection or reservation confirmation is performed.
  */
+// Single deposit threshold for every channel (owner 2026-11-06: 80% from 16 guests).
+export function isLargeDepositGroup(guestCount,rules=BUSINESS.bookingRules){
+  const min=Number.isSafeInteger(rules?.depositLargeGroupMinGuests)?rules.depositLargeGroupMinGuests:16;
+  return Number(guestCount)>=min;
+}
 export function depositPercentForGuestCount(guestCount,rules=BUSINESS.bookingRules){
   if(!Number.isSafeInteger(guestCount)||guestCount<1)return null;
-  const value=rules?.[guestCount>=15?'depositPctFrom15Guests':'depositPctUnder15Guests'];
+  const value=rules?.[isLargeDepositGroup(guestCount,rules)?'depositPctFrom15Guests':'depositPctUnder15Guests'];
   return typeof value==='number'&&Number.isFinite(value)&&value>0&&value<=100?value:null;
 }
 

@@ -319,7 +319,7 @@ function draft(v,intent='booking_request',analysis=null){
  if(asks.electricity) lines.push('','Az áramfogyasztás külön fizetendő, a tényleges fogyasztás alapján.');
  if(asks.pier) lines.push('','Minden faházhoz tartozik stég; az osztott egységeknél a stéghasználat egységtől függ.');
  if(asks.parking) lines.push('','Parkolási lehetőség biztosított; nagyobb számú autó esetén külön kezelői ellenőrzés szükséges.');
- if(asks.deposit&&v.guests&&Number(v.guests)<15) lines.push('','A foglaláshoz 50% előleg szükséges.');
+ if(asks.deposit&&v.guests&&Number(v.guests)<=15) lines.push('','A foglaláshoz 50% előleg szükséges.');
  if(asks.cancellation&&v.guests&&Number(v.guests)<15) lines.push('','15 fő alatt a foglalás érkezés előtt 14 nappal mondható le a vonatkozó feltételek szerint.');
  if(asks.arrivalTime) lines.push('','A késői érkezést külön ellenőrizzük; a távozás napján a szállást 10:00 óráig kell elhagyni.');
  if(asks.firewood) lines.push('','Tűzifa kérhető felár ellenében; a pontos díjat ellenőrizni kell.');

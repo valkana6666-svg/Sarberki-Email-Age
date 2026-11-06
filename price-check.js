@@ -111,7 +111,7 @@
   function bookingTermsForGuests(guests){
     const n=Number(guests);
     const rules=window.SarberkiConfig?.bookingRules||{};
-    const large=Number.isInteger(n)&&n>=15;
+    const large=Number.isInteger(n)&&n>=(Number.isInteger(rules.depositLargeGroupMinGuests)?rules.depositLargeGroupMinGuests:16);
     return {
       depositPct:Number.isInteger(n)&&n>0?Number(large?rules.depositPctFrom15Guests:rules.depositPctUnder15Guests):null
     };
