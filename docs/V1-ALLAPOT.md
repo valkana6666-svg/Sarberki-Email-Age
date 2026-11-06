@@ -1,6 +1,6 @@
 # Sárberki V1 – aktuális állapot (legfeljebb 40 sor; minden feladat a saját commitjában frissíti)
 
-Utolsó frissítés: 2026-11-06 CET. **Munkamegosztás (tulajdonos, 11-06): Claude visz mindent, ami innen elvégezhető; Work csak kattintásos feladatot kap (AGENTS.md).** Szerepek: AGENTS.md „FÓKUSZ ÉS HATÉKONYSÁG”. Részletes előzmény (archív): `docs/V1-FOLYTATASI-PONT.md`, `docs/V1-AUTOMATION-STATUS-2026-11-01.md`.
+Utolsó frissítés: 2026-11-06 CET. **Munkamegosztás (tulajdonos, 11-06): ChatGPT marad; Claude ugyanazokhoz a hozzáférésekhez jut, mint ChatGPT; Work csak azt kapja, amit egyikük sem tud (AGENTS.md).** Szerepek: AGENTS.md „FÓKUSZ ÉS HATÉKONYSÁG”. Részletes előzmény (archív): `docs/V1-FOLYTATASI-PONT.md`, `docs/V1-AUTOMATION-STATUS-2026-11-01.md`.
 
 ## Kész, igazolt – ne ismételd
 | Terület | Bizonyíték |
