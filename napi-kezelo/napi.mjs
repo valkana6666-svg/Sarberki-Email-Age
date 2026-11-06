@@ -88,7 +88,7 @@ const COPY_LABEL='Jóváhagyott szöveg másolása',SEND_LABEL='Válasz küldés
 let approvedCase=null;
 // Price from the existing public price-list calculator (/api/price-reference, TEST site only): the
 // operator picks the cabin after checking availability; the result can be inserted into the editor.
-let priceCase=null,priceQuote=null;
+let priceCase=null,priceQuote=null,bookingCase=null;
 const isTestMailboxCaseId=id=>typeof id==='string'&&/^tm-[a-f0-9]{12,32}$/.test(id);
 const request=createEpochRequestQueue({getEpoch:()=>epoch,isAuthenticated:()=>authenticated,
  prepare:()=>session.restore(),execute:createCloudCaseRequest()});
@@ -155,6 +155,9 @@ function clearDetail(){
  el('send-approved').hidden=true;el('send-approved').disabled=false;el('send-approved').textContent=SEND_LABEL;approvedCase=null;
  el('price-panel').hidden=true;el('price-result').textContent='';el('price-insert').disabled=true;el('price-available').checked=false;el('price-available').disabled=true;priceCase=null;priceQuote=null;
  el('unavailable-confirm').checked=false;el('unavailable-confirm').disabled=true;el('unavailable-insert').disabled=true;el('unavailable-result').textContent='';
+ el('booking-panel').hidden=true;bookingCase=null;el('booking-state').textContent='';el('booking-result').textContent='';
+ for(const id of ['previo-ref','previo-recorded','booking-finalize','deposit-date','deposit-confirm','deposit-mark'])el(id).disabled=true;
+ el('previo-ref').value='';el('previo-recorded').checked=false;el('deposit-confirm').checked=false;el('deposit-date').value='';
  el('detail-link').href='../cloud-approval.html';
 }
 function clearData(message='A listához jelentkezzen be.'){
@@ -256,6 +259,7 @@ async function openTestMailboxCase(caseId,turn,status){
  // Only an internally approved draft can be copied; an approved draft cannot change, so it is the reviewed text.
  priceCase={caseId,revision:record.revision,values,language:/^(hu|de|en|si)$/.test(values.language||'')?values.language:'hu',editable:record.canEditDraft===true};el('price-panel').hidden=false;el('unavailable-confirm').checked=false;el('unavailable-confirm').disabled=!priceCase.editable;el('unavailable-insert').disabled=true;
  if(CABIN_NAMES[values.unit])el('price-cabin').value=values.unit;
+ showBooking(caseId,record);
  if(record.approval==='approved_internal'){approvedText=record.draft.text;el('copy-approved').hidden=false;approvedCase={caseId,revision:record.revision};el('send-approved').hidden=false;}
  if(record.canEditDraft===true){el('draft-editor').value=record.draft.text;el('draft-editor').disabled=false;}
  if(record.canDecide===true&&record.approval==='pending'){
@@ -342,6 +346,47 @@ el('unavailable-insert').addEventListener('click',async()=>{
   else{el('unavailable-result').textContent='Nem sikerült: '+(unavailableErrors[error?.message]||'a mentés nem igazolt; nincs automatikus ismétlés.');el('unavailable-insert').disabled=false;}
  }finally{actionBusy=false;}
 });
+
+// V1 booking completion (2026-11-06): finalized only after the operator's Previo attestation; the deposit is a
+// separate step. The server builds the confirmation letter; it still goes through approval and the send button.
+const bookingStatus={finalized:'Véglegesítve (Previóban rögzítve) – a foglaló még nem érkezett meg.',deposit_received:'Foglaló beérkezett.'};
+function showBooking(caseId,record){
+ const b=record.booking;bookingCase={caseId,revision:record.revision};el('booking-panel').hidden=false;
+ const dep=b?.deposit&&Number.isSafeInteger(b.deposit.amount)?'\nFoglaló: '+b.deposit.pct+'% = '+huf(b.deposit.amount)+' Ft, határidő: '+new Date(b.deposit.deadlineUtc).toLocaleString('hu-HU',{timeZone:'Europe/Budapest'}):'';
+ el('booking-state').textContent=b?(bookingStatus[b.status]||'Ismeretlen állapot')+(b.previoReference?'\nPrevio-hivatkozás: '+b.previoReference:'')+dep+(b.depositReceivedOn?'\nBeérkezett: '+b.depositReceivedOn:''):'Még nincs véglegesítve.';
+ const fin=record.canFinalize===true,dpt=record.canMarkDeposit===true;
+ for(const id of ['previo-ref','previo-recorded'])el(id).disabled=!fin;
+ for(const id of ['deposit-date','deposit-confirm'])el(id).disabled=!dpt;
+ if(dpt)el('deposit-date').value=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Budapest'});
+}
+const bookingErrors={PREVIO_RECORDING_REQUIRED:'Add meg a Previo-hivatkozást, és pipáld be a rögzítést.',ALREADY_FINALIZED:'Ez a foglalás már véglegesítve van.',
+ CONFIRMATION_FACTS_MISSING:'Hiányzik a pontos dátum, a felnőttszám vagy egy gyermek életkora.',CONFIRMATION_CABIN_UNKNOWN:'A háztípus nincs egyértelműen megadva.',
+ CONFIRMATION_PRICE_MISSING:'Az árlista ehhez nem ad igazolt árat; kézi ellenőrzés szükséges.',DEPOSIT_POLICY_UNVERIFIED:'A foglaló határideje nem számítható (pl. múltbeli érkezés).',
+ NOT_FINALIZED:'Előbb véglegesíteni kell a foglalást.',INVALID_DATE:'Érvénytelen dátum.',CASE_CONFLICT:'A foglalás közben megváltozott; nyisd meg újra.',
+ FORBIDDEN:'Ehhez nincs írási jog.',STORAGE_FAILURE:'Az adatbázis-funkció nem érhető el (valószínűleg még nincs telepítve). Szólj Claude-nak.',
+ TEST_MAILBOX_REJECTED:'Az adatbázis elutasította (lehet, hogy a frissítés még nincs telepítve).',NOT_FOUND:'A foglalás nem található; töltsd be újra a listát.'};
+const bookingInputs=()=>{el('booking-finalize').disabled=!(bookingCase&&!el('previo-ref').disabled&&/^[A-Za-z0-9\/_.-]{1,40}$/.test(el('previo-ref').value.trim())&&el('previo-recorded').checked);
+ el('deposit-mark').disabled=!(bookingCase&&!el('deposit-confirm').disabled&&el('deposit-confirm').checked&&/^\d{4}-\d{2}-\d{2}$/.test(el('deposit-date').value));};
+for(const id of ['previo-ref','previo-recorded','deposit-date','deposit-confirm'])el(id).addEventListener('input',bookingInputs),el(id).addEventListener('change',bookingInputs);
+async function bookingAction(button,body,done){
+ const target=bookingCase;if(!authenticated||!target||actionBusy)return;
+ const turn=epoch;actionBusy=true;el(button).disabled=true;el('booking-result').textContent='Mentés…';
+ try{
+  const result=await request({tenantId:TENANT,caseId:target.caseId,expectedRevision:target.revision,...body});
+  if(!current(turn))return;
+  if(result?.caseId!==target.caseId||result.revision!==target.revision+1)throw Error('INVALID_DATA');
+  rows=[];listLoaded=false;updateCounts();el('case-list').replaceChildren();
+  await openTestMailboxCase(target.caseId,turn,done(result));
+ }catch(error){
+  if(!current(turn))return;
+  if(error?.message==='AUTH_REQUIRED')failed(error);
+  else{el('booking-result').textContent='Nem sikerült: '+(bookingErrors[error?.message]||'a mentés nem igazolt; nincs automatikus ismétlés.');el(button).disabled=false;}
+ }finally{actionBusy=false;}
+}
+el('booking-finalize').addEventListener('click',()=>bookingAction('booking-finalize',{action:'test-mailbox-confirm',previoReference:el('previo-ref').value.trim(),previoRecorded:el('previo-recorded').checked},
+ r=>'Véglegesítve. Visszaigazoló levél elkészült'+(r.deposit?' (foglaló: '+huf(r.deposit.amount)+' Ft)':'')+'; jóváhagyásra vár, utána küldhető.'));
+el('deposit-mark').addEventListener('click',()=>bookingAction('deposit-mark',{action:'test-mailbox-deposit',receivedOn:el('deposit-date').value,depositConfirmed:el('deposit-confirm').checked},
+ ()=>'Foglaló beérkezése rögzítve.'));
 // Sends the stored, approved reply through the server (test pair only). The browser sends no text.
 const sendErrors={FORBIDDEN:'A küldés nincs bekapcsolva, vagy nincs jóváhagyói jog.',SEND_OUTCOME_UNKNOWN:'Egy korábbi küldés eredménye nem ismert. Nézze meg a Gmailben (Elküldött levelek); nem küldjük újra automatikusan.',STORAGE_FAILURE:'A küldési napló nem érhető el, ezért nem küldtük el.',NOT_APPROVED:'Csak jóváhagyott válasz küldhető.',
  RECIPIENT_NOT_ALLOWED:'Ez a címzett nem engedélyezett (csak a tesztfeladó).',CASE_CONFLICT:'A foglalás közben megváltozott; nyissa meg újra.',

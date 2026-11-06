@@ -16,6 +16,7 @@ import {ingestTestMailboxMessage} from '../../shared-core/server-test-mailbox-ca
 import {appendTestMailboxFollowup,triageTestMailboxMessages} from '../../shared-core/server-test-mailbox-followup.mjs';
 import {sendApprovedTestMailboxReply} from '../../shared-core/server-test-mailbox-send.mjs';
 import {priceTestMailboxCase} from '../../shared-core/server-test-mailbox-price.mjs';
+import {confirmTestMailboxBooking,markTestMailboxDepositReceived} from '../../shared-core/server-test-mailbox-confirm.mjs';
 import {markTestMailboxUnavailable} from '../../shared-core/server-test-mailbox-unavailable.mjs';
 import {fetchMnbEurRate} from './price-quote.mjs';
 import {serverDeployment} from '../../shared-core/server-deployment.mjs';
@@ -42,7 +43,9 @@ const TEST_MAILBOX_ERRORS=Object.freeze({GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACC
  TEXT_PART_REQUIRED:422,EMPTY_TEXT:422,TEXT_TOO_LONG:422,UNREADABLE_TEXT:422,INVALID_DRAFT:422,STORAGE_FAILURE:503,
  NOT_APPROVED:409,RECIPIENT_NOT_ALLOWED:403,SOURCE_UNVERIFIED:422,SEND_FAILED:502,SEND_OUTCOME_UNKNOWN:409,CASE_CONFLICT:409,
  PRICE_FACTS_MISSING:422,PRICE_LINE_MISSING:422,PRICE_REFUSED:422,AVAILABILITY_NOT_CONFIRMED:400,TEST_MAILBOX_REJECTED:409,
- UNAVAILABILITY_NOT_CONFIRMED:400,DRAFT_SHAPE_UNKNOWN:422,ALREADY_UNAVAILABLE:409,PREVIO_NO_FREE_UNIT:409});
+ UNAVAILABILITY_NOT_CONFIRMED:400,DRAFT_SHAPE_UNKNOWN:422,ALREADY_UNAVAILABLE:409,PREVIO_NO_FREE_UNIT:409,
+ PREVIO_RECORDING_REQUIRED:400,ALREADY_FINALIZED:409,CONFIRMATION_FACTS_MISSING:422,CONFIRMATION_PRICE_MISSING:422,CONFIRMATION_CABIN_UNKNOWN:422,
+ DEPOSIT_POLICY_UNVERIFIED:422,DEPOSIT_NOT_CONFIRMED:400,NOT_FINALIZED:409,INVALID_DATE:400});
 const TEST_MAILBOX_FIELDS=Object.freeze({
  'test-mailbox-ingest':['action,messageId,tenantId'],
  'test-mailbox-followup':['action,messageId,tenantId'],
@@ -51,7 +54,9 @@ const TEST_MAILBOX_FIELDS=Object.freeze({
  'test-mailbox-decide':['action,caseId,decision,expectedRevision,reviewedDraftHash,tenantId','action,caseId,decision,expectedRevision,reason,reviewedDraftHash,tenantId'],
  'test-mailbox-send':['action,caseId,expectedRevision,tenantId'],
  'test-mailbox-price':['action,availabilityConfirmed,cabin,caseId,expectedRevision,tenantId'],
- 'test-mailbox-unavailable':['action,caseId,expectedRevision,tenantId,unavailableConfirmed']
+ 'test-mailbox-unavailable':['action,caseId,expectedRevision,tenantId,unavailableConfirmed'],
+ 'test-mailbox-confirm':['action,caseId,expectedRevision,previoRecorded,previoReference,tenantId'],
+ 'test-mailbox-deposit':['action,caseId,depositConfirmed,expectedRevision,receivedOn,tenantId']
 });
 function validTestMailboxInput(input){
  if(input.action==='test-mailbox-triage')return Array.isArray(input.messageIds)&&input.messageIds.length>0&&input.messageIds.length<=25&&input.messageIds.every(id=>typeof id==='string'&&/^[a-f0-9]{12,32}$/.test(id));
@@ -59,6 +64,8 @@ function validTestMailboxInput(input){
  if(typeof input.caseId!=='string'||!/^tm-[a-f0-9]{12,32}$/.test(input.caseId)||!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<1)return false;
  if(input.action==='test-mailbox-send')return true;
  if(input.action==='test-mailbox-unavailable')return input.unavailableConfirmed===true;
+ if(input.action==='test-mailbox-confirm')return input.previoRecorded===true&&typeof input.previoReference==='string'&&/^[A-Za-z0-9\/_.-]{1,40}$/.test(input.previoReference);
+ if(input.action==='test-mailbox-deposit')return input.depositConfirmed===true&&typeof input.receivedOn==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(input.receivedOn);
  if(input.action==='test-mailbox-price')return input.availabilityConfirmed===true&&['deluxe','family','vip','small','splitA','splitB','splitC'].includes(input.cabin);
  if(input.action==='test-mailbox-redraft')return typeof input.draftText==='string'&&input.draftText.trim().length>0&&input.draftText.length<=20000;
  return typeof input.reviewedDraftHash==='string'&&/^[a-f0-9]{64}$/.test(input.reviewedDraftHash)&&['approve','return','reject'].includes(input.decision)&&
@@ -79,7 +86,11 @@ function testMailboxView(record,authority,tenant='sarberki-test'){
   internalApproval:data.internalApproval?{scope:data.internalApproval.scope,at:data.internalApproval.at,capacityVerified:false,priceVerified:false,sendAllowed:false,bookingAllowed:false}:null,
   // Display hints only: the database re-checks permission, state, revision, hash and approver independence.
   canEditDraft:permissions.includes('write')&&['pending','returned_for_edit','rejected'].includes(state),
-  canDecide:permissions.includes('approve')&&state==='pending'&&(latest.createdBy!==authority?.subject||latest.machineDraft===true)};
+  canDecide:permissions.includes('approve')&&state==='pending'&&(latest.createdBy!==authority?.subject||latest.machineDraft===true),
+  // V1 booking completion: finalized only after the operator's Previo attestation; deposit received is separate.
+  booking:data.booking?{status:data.booking.status,previoReference:data.booking.previo?.reference??null,deposit:data.booking.deposit??null,depositReceivedOn:data.booking.depositReceived?.on??null}:null,
+  canFinalize:permissions.includes('write')&&!['finalized','deposit_received'].includes(data.booking?.status),
+  canMarkDeposit:permissions.includes('write')&&data.booking?.status==='finalized'};
 }
 // Read-only Previo capacity before the price step. Owner switch, default off; only the API TEST property
 // (73521, enforced again in the reader). AGENTS.md: switch on only after Previo documented that the read
@@ -240,6 +251,26 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
        attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,transport:cookieSession.transport});
       if(!saved)return cookieResponse(409,{error:'CASE_CONFLICT'});
       return cookieResponse(200,{result:{caseId:saved.case_id,revision:Number(saved.revision),approval:saved.data?.state?.approval}});
+     }catch(error){
+      if(error?.code==='FORBIDDEN')return cookieResponse(403,{error:'FORBIDDEN'});
+      const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'TEST_MAILBOX_REJECTED';
+      return cookieResponse(TEST_MAILBOX_ERRORS[code],{error:code});
+     }
+    }
+    if(input.action==='test-mailbox-confirm'||input.action==='test-mailbox-deposit'){
+     try{
+      const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.'+TENANT+'&case_id=eq.'+encodeURIComponent(input.caseId));
+      const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
+      const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
+      if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
+      if(record.revision!==input.expectedRevision)return cookieResponse(409,{error:'CASE_CONFLICT'});
+      let saved,deposit=null;
+      if(input.action==='test-mailbox-confirm')({saved,deposit}=await confirmTestMailboxBooking({record,previoReference:input.previoReference,previoRecorded:input.previoRecorded,
+       attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,transport:cookieSession.transport}));
+      else saved=await markTestMailboxDepositReceived({record,receivedOn:input.receivedOn,depositConfirmed:input.depositConfirmed,transport:cookieSession.transport});
+      if(!saved)return cookieResponse(409,{error:'CASE_CONFLICT'});
+      return cookieResponse(200,{result:{caseId:saved.case_id,revision:Number(saved.revision),approval:saved.data?.state?.approval,bookingStatus:saved.data?.booking?.status,
+       ...(deposit?{deposit:{pct:deposit.pct,amount:deposit.amount,receiptDeadlineUtc:deposit.receiptDeadlineUtc}}:{})}});
      }catch(error){
       if(error?.code==='FORBIDDEN')return cookieResponse(403,{error:'FORBIDDEN'});
       const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'TEST_MAILBOX_REJECTED';
