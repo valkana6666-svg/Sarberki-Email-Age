@@ -47,3 +47,18 @@ test('after pricing, the cabin-type question becomes a note about the priced cab
  const en=pricedDraft({latest:{text:PRICE_LINE.en+'\nPlease reply to this email and tell us which of the offered cabin types you would like to choose.'},quote,language:'en'});
  assert.match(en.text,/The price above is for the Deluxe; if you would like a different cabin type, please let us know\./);
 });
+
+// Owner test 2026-11-06: after a follow-up without a price question the complete draft had no generic price
+// sentence, only the internal "capacity not yet verified" status line -> PRICE_LINE_MISSING, no price inserted.
+test('a complete draft without the generic price sentence gets the price in place of the capacity status line',async()=>{
+ const {pricedDraft}=await import('../shared-core/server-test-mailbox-price.mjs');
+ const body='Kedves Vendégünk!\n\nKöszönjük érdeklődését.\n\nSzállás\n2027.06.10. és 2027.06.13. között 2 fő (2 felnőtt) részére keresnek szállást.\nA kért háztípus: Deluxe.\n\nA kapacitás ellenőrzése még nem igazolt.\n\nÜdvözlettel:\nSárberki Horgásztó';
+ const out=pricedDraft({latest:{text:body,operatorReviewText:body},quote,language:'hu'});
+ assert.match(out.text,/Tájékoztató ár \(Deluxe\): 128 200 Ft/);
+ assert.doesNotMatch(out.text,/kapacitás ellenőrzése még nem igazolt/);
+ assert.match(out.operatorReviewText,/Tájékoztató ár \(Deluxe\)/);
+ assert.match(out.operatorReviewText,/Ár-részletezés \(kezelői, a vendég nem látja\)/);
+ const de=pricedDraft({latest:{text:'Guten Tag\n\nDie Verfügbarkeit ist noch nicht verifiziert.\n'},quote,language:'de'});
+ assert.match(de.text,/Richtpreis \(Deluxe\)/);
+ assert.throws(()=>pricedDraft({latest:{text:'Kedves Vendégünk!\n\nÜdvözlettel:'},quote,language:'hu'}),/PRICE_LINE_MISSING/);
+});

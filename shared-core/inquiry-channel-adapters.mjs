@@ -9,6 +9,8 @@ const words={
  en:{pending:'Availability has not yet been verified.',available:'Suitable capacity at accommodation-type level has been verified for the entire stay. The final offer requires human approval.',unavailable:'There is insufficient verified availability for the requested accommodation.',review:'The details need clarification or human review.',date:'Please confirm the year of arrival and departure.',units:'How many accommodation units would you like?',price:'The verified price is awaiting internal approval and is not a final offer.'},
  si:{pending:'Razpoložljivost še ni preverjena.',available:'Ustrezna kapaciteta na ravni tipa nastanitve je preverjena za celotno bivanje. Končna ponudba potrebuje ročno odobritev.',unavailable:'Za zahtevano nastanitev ni dovolj preverjene proste kapacitete.',review:'Podatke je treba pojasniti ali ročno preveriti.',date:'Prosimo, potrdite leto prihoda in odhoda.',units:'Koliko nastanitvenih enot želite?',price:'Preverjena cena čaka na interno odobritev in še ni končna ponudba.'}
 };
+// The status line written when every fact is known; the server price step puts the price in its place.
+export const CAPACITY_PENDING_LINE=Object.freeze(Object.fromEntries(Object.entries(words).map(([k,v])=>[k,v.pending])));
 // Either the open questions of the shared decision, or (when nothing is missing) one status line.
 function centralConversationParts(decision,language){
  const f=decision.facts,m=new Set(decision.missing),t=words[language]||words.hu;

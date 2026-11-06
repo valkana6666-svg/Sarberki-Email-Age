@@ -8,6 +8,7 @@ import {fetchPublicPriceReference} from '../price-source/public-price-fallback.m
 import {PRICE_LINE,priceSentence,priceExplanation,pricedCabinNote} from './price-insert-sentence.mjs';
 import {replyQuestions} from '../sarberki-core.mjs';
 import {capacityDecision} from './server-previo-rest-read.mjs';
+import {CAPACITY_PENDING_LINE} from './inquiry-channel-adapters.mjs';
 
 // The engine's cabin-type questions (with/without the 2-person cabin) and the "choose an offered type" line.
 const OFFERED_TYPE_QUESTION=Object.freeze({hu:'Kérjük, válaszoljon erre az e-mailre, és írja meg, melyik felajánlott faháztípust választja.',
@@ -30,12 +31,29 @@ export function quoteInputFromCase(values,cabin){
  return {arrival:values.arrival,departure:values.departure,cabin,adults,children:ages};
 }
 
+// The engine writes the generic price sentence only when the guest's text asked about price. A complete case
+// (e.g. after a follow-up without a price question, owner test 2026-11-06) carries the internal status line
+// "capacity not yet verified" instead: the price sentence takes its place (it also says the final price follows
+// the availability check). Neither present -> refused, as before.
+// After pricing the status line is gone in both cases, so a second pricing is refused (no double price).
+function placePrice(text,lang,sentence){
+ if(typeof text!=='string')return null;
+ const generic=PRICE_LINE[lang],pending=CAPACITY_PENDING_LINE[lang];
+ const lines=text.split('\n'),at=lines.findIndex(l=>l.startsWith(pending));
+ if(text.includes(generic)){
+  if(at<0)return text.replace(generic,sentence);
+  lines.splice(at,1);return lines.join('\n').replace(/\n{3,}/g,'\n\n').replace(generic,sentence);
+ }
+ if(at<0)return null;
+ lines[at]=sentence;return lines.join('\n');
+}
 export function pricedDraft({latest,quote,language}){
- const lang=PRICE_LINE[language]?language:'hu',generic=PRICE_LINE[lang];
- if(typeof latest?.text!=='string'||!latest.text.includes(generic))fail('PRICE_LINE_MISSING');
- const text=replaceCabinQuestion(latest.text.replace(generic,priceSentence(quote,lang)),lang,pricedCabinNote(quote,lang));
- const review=typeof latest.operatorReviewText==='string'&&latest.operatorReviewText.includes(PRICE_LINE.hu)?
-  replaceCabinQuestion(latest.operatorReviewText.replace(PRICE_LINE.hu,priceSentence(quote,'hu')),'hu',pricedCabinNote(quote,'hu')):String(latest.operatorReviewText||'');
+ const lang=PRICE_LINE[language]?language:'hu';
+ const placed=placePrice(latest?.text,lang,priceSentence(quote,lang));
+ if(placed===null)fail('PRICE_LINE_MISSING');
+ const text=replaceCabinQuestion(placed,lang,pricedCabinNote(quote,lang));
+ const reviewPlaced=placePrice(latest?.operatorReviewText,'hu',priceSentence(quote,'hu'));
+ const review=reviewPlaced!==null?replaceCabinQuestion(reviewPlaced,'hu',pricedCabinNote(quote,'hu')):String(latest?.operatorReviewText||'');
  const operatorReviewText=(review?review+'\n\n':'')+'Ár-részletezés (kezelői, a vendég nem látja):\n'+priceExplanation(quote);
  return {text,operatorReviewText};
 }
