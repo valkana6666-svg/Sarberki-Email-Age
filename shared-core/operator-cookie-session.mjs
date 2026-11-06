@@ -3,13 +3,11 @@
 import {randomBytes,createCipheriv,createDecipheriv,createHmac,timingSafeEqual} from 'node:crypto';
 import {createSupabaseTransport,createSupabaseAuthority} from './supabase-case-repository.mjs';
 import {isPublishableKey} from '../netlify/functions/chatbot-test-config.mjs';
-const origin='https://leafy-chimera-2403e5.netlify.app';
-const project='https://mojnqizbcaczstguikpv.supabase.co';
+import {serverDeployment} from './server-deployment.mjs';
 const name='__Host-sarberki-operator',ttl=7*24*60*60*1000;
 // Inactivity limit, decided only by the server clock inside the encrypted cookie.
 // The skew allowance only tolerates clock differences between function instances.
 const idle=30*60*1000,skew=60*1000;
-const aad=Buffer.from(name+'|'+origin+'|'+project+'|v1');
 export const clearOperatorCookie=name+'=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
 export class OperatorSessionError extends Error{
  constructor(status,code,setCookie=null,category=code){super(code);this.status=status;this.code=code;this.setCookie=setCookie;this.category=category;}
@@ -27,8 +25,14 @@ function header(event,key){
  return values[0]??multi[0];
 }
 export function createOperatorCookieSession({env=process.env,fetchImpl=fetch,now=Date.now}={}){
+ // Site, project and tenant come from the one deployment decision (TEST by default, unchanged values).
+ let deployment;try{deployment=serverDeployment(env);}catch{deployment=null;}
+ const origin=deployment?.origin,project=deployment?.supabaseUrl,tenant=deployment?.tenantId;
+ const aad=Buffer.from(name+'|'+origin+'|'+project+'|v1');
+ const storeEnabled=()=>deployment?.environment==='live'?env.CASE_STORE_ENABLED==='sarberki-live'&&!env.CASE_STORE_TEST_TENANTS
+  :env.CASE_STORE_ENABLED==='synthetic-only'&&env.CASE_STORE_TEST_TENANTS==='sarberki-test,demo-test';
  function setup(){
-  if(env.URL!==origin||env.CASE_STORE_ENABLED!=='synthetic-only'||env.CASE_STORE_TEST_TENANTS!=='sarberki-test,demo-test'||
+  if(!deployment||env.URL!==origin||!storeEnabled()||
     env.SUPABASE_URL!==project||!isPublishableKey(env.SUPABASE_PUBLISHABLE_KEY)||!/^[a-f0-9]{64}$/.test(env.SARBERKI_OPERATOR_SESSION_KEY||''))fail(503,'SESSION_SETUP_REQUIRED');
   return Buffer.from(env.SARBERKI_OPERATOR_SESSION_KEY,'hex');
  }
@@ -98,13 +102,13 @@ export function createOperatorCookieSession({env=process.env,fetchImpl=fetch,now
   try{resolved=await createSupabaseAuthority(transport)();}
   catch(error){if(error.code==='FORBIDDEN')fail(403,'FORBIDDEN',null,'AUTHORITY_REJECTED');fail(503,'SESSION_SERVICE_UNAVAILABLE');}
   let subject;try{subject=JSON.parse(Buffer.from(token.split('.')[1],'base64url').toString()).sub;}catch{}
-  if(resolved.subject!==subject||!resolved.tenants?.['sarberki-test']?.includes('read'))fail(403,'FORBIDDEN',null,'MEMBERSHIP_DENIED');
+  if(resolved.subject!==subject||!resolved.tenants?.[tenant]?.includes('read'))fail(403,'FORBIDDEN',null,'MEMBERSHIP_DENIED');
   return {authority:resolved,transport};
  }
   // Per-login key for the daily view's encrypted local snapshot. Derived from the server secret and this
  // login's CSRF nonce: obtainable only through an authenticated, non-idle session; never stored in the cookie.
- const stateKey=payload=>createHmac('sha256',setup()).update('napi-state-v1|sarberki-test|'+payload.csrfToken).digest('hex');
- const metadata=payload=>({authenticated:true,tenantId:'sarberki-test',expiresAt:new Date(payload.expiresAt).toISOString(),csrfToken:payload.csrfToken,stateKey:stateKey(payload)});
+ const stateKey=payload=>createHmac('sha256',setup()).update('napi-state-v1|'+tenant+'|'+payload.csrfToken).digest('hex');
+ const metadata=payload=>({authenticated:true,tenantId:tenant,expiresAt:new Date(payload.expiresAt).toISOString(),csrfToken:payload.csrfToken,stateKey:stateKey(payload)});
  async function refreshed(payload){
   const result=tokens(await auth('token?grant_type=refresh_token',{body:{refresh_token:payload.refreshToken}}));
   const verified=await authority(result.access_token);
@@ -128,7 +132,7 @@ export function createOperatorCookieSession({env=process.env,fetchImpl=fetch,now
    if(event.httpMethod!=='POST')fail(405,'METHOD_NOT_ALLOWED');
    const payload=read(event);csrf(event,payload);
    const verified=await refreshed(payload);
-   if(!verified.authority.tenants?.['sarberki-test']?.includes('approve'))fail(403,'FORBIDDEN',verified.setCookie);
+   if(!verified.authority.tenants?.[tenant]?.includes('approve'))fail(403,'FORBIDDEN',verified.setCookie);
    return verified;
   },
   async protectedWrite(event){
@@ -138,7 +142,7 @@ export function createOperatorCookieSession({env=process.env,fetchImpl=fetch,now
    const verified=await refreshed(payload);
    // Fresh Auth + DB membership, never a browser role or cookie claim.
    // Preserve the rotated Reader cookie even when this write is denied.
-   if(!verified.authority.tenants?.['sarberki-test']?.includes('write'))fail(403,'FORBIDDEN',verified.setCookie);
+   if(!verified.authority.tenants?.[tenant]?.includes('write'))fail(403,'FORBIDDEN',verified.setCookie);
    return verified;
   },
   async logout(event){
