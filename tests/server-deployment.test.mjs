@@ -71,3 +71,18 @@ test('booking-cases: a live deployment is closed (503) while the live mailbox is
  }
  assert.equal(calls.length,0);
 });
+
+test('a TEST mail without subject is saveable: fixed marker, attestable; the reply subject is a bare "Re:"',async()=>{
+ const {readVerifiedTestMailboxMessage,attestTestMailboxSource,NO_SUBJECT}=await import('../shared-core/server-gmail-source.mjs');
+ const {replyMime}=await import('../shared-core/server-test-mailbox-send.mjs');
+ const id='18f2a0b1c2d3e4c9';
+ for(const headers of [[],[{name:'Subject',value:'   '}]]){
+  const f=async u=>String(u).endsWith('/profile')?new Response(JSON.stringify({emailAddress:'sarberkiprojecttest@gmail.com'})):new Response(JSON.stringify({id,threadId:id,labelIds:['INBOX'],internalDate:String(Date.parse('2026-11-06T18:00:00Z')),
+   payload:{mimeType:'text/plain',headers:[{name:'From',value:'Kiss Anna <sarberkito@gmail.com>'},{name:'To',value:'sarberkiprojecttest@gmail.com'},{name:'Message-ID',value:'<x@y>'},...headers],body:{data:Buffer.from('Jó napot! (kitalált)').toString('base64url')}}}));
+  const r=await readVerifiedTestMailboxMessage({token:'t'.repeat(40),messageId:id,fetchImpl:f});
+  assert.equal(r.source.subject,NO_SUBJECT);
+  assert.equal(attestTestMailboxSource({key:'e5'.repeat(32),tenantId:'sarberki-test',source:r.source,envelope:r.envelope,checkedAt:new Date().toISOString()}).scope,'test-mailbox-source-v1');
+ }
+ const mime=replyMime({recipient:'sarberkito@gmail.com',text:'x',subject:NO_SUBJECT,inReplyTo:'<x@y>',marker:'m'});
+ assert.equal(Buffer.from(/Subject: =\?UTF-8\?B\?([^?]+)\?=/.exec(mime)[1],'base64').toString('utf8'),'Re:');
+});

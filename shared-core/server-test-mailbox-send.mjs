@@ -35,7 +35,9 @@ export function approvedTestMailboxReply(record){
 }
 
 export function replyMime({recipient,text,subject,inReplyTo,marker}){
- const reSubject=/^re:/i.test(subject.trim())?subject.trim():'Re: '+subject.trim();
+ // A mail without subject is stored as '(nincs tárgy)'; the reply then carries a bare 'Re:' (same thread).
+ const base=subject.trim()==='(nincs tárgy)'?'':subject.trim();
+ const reSubject=/^re:/i.test(base)?base:('Re: '+base).trim();
  return ['From: '+TEST_GMAIL_ACCOUNT,'To: '+recipient,'Subject: =?UTF-8?B?'+b64(reSubject)+'?=','In-Reply-To: '+inReplyTo,'References: '+inReplyTo,
   'X-Sarberki-Reply: '+marker,'MIME-Version: 1.0','Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',
   b64(text.replace(/\r?\n/g,'\r\n')).replace(/.{76}/g,'$&\r\n')].join('\r\n');

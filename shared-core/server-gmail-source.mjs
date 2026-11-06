@@ -14,6 +14,10 @@ if(PROFILE.account!==TEST_GMAIL_ACCOUNT||PROFILE.sourceScope!=='test-mailbox-sou
 export const TEST_MAILBOX_SOURCE_SCOPE=PROFILE.sourceScope;
 const MAILBOX_ID=PROFILE.mailboxId,MAX_TEXT=20000;
 const fail=code=>{const error=Error(code);error.code=code;throw error;};
+// Owner test 2026-11-06: a mail WITHOUT subject must be saveable. Attestation and database need a non-empty
+// field, so a missing/blank subject is stored as this fixed marker (the reply then uses a bare "Re:").
+export const NO_SUBJECT='(nincs tárgy)';
+const subjectOf=headers=>{const s=typeof headers.subject==='string'?headers.subject.replace(/[\r\n]+/g,' ').trim():'';return s||NO_SUBJECT;};
 const address=value=>{const match=/<([^<>\s]+)>\s*$/.exec(value||'');return (match?match[1]:String(value||'').trim()).toLowerCase();};
 function plainTextPart(part){
  if(part?.mimeType==='text/plain'&&part.body?.data)return part;
@@ -83,7 +87,7 @@ export async function readVerifiedTestMailboxMessage({token,messageId,fetchImpl=
  const received=new Date(Number(message.internalDate)).toISOString();
  const refs=followup?String(headers.references||'').match(/<[^<>\s]+>/g)||[]:[];
  const source={provider:'gmail',mailbox_id:mailboxId,message_id:message.id,thread_id:message.threadId,rfc_message_id:rfcMessageId,
-  in_reply_to:followup?(String(headers['in-reply-to']||'').match(/<[^<>\s]+>/)?.[0]??null):null,references:refs,subject:headers.subject,from:headers.from,from_email:fromEmail,to:account,received_at:received};
+  in_reply_to:followup?(String(headers['in-reply-to']||'').match(/<[^<>\s]+>/)?.[0]??null):null,references:refs,subject:subjectOf(headers),from:headers.from,from_email:fromEmail,to:account,received_at:received};
  const envelope={sender:fromEmail,text,mailbox_id:mailboxId,message_id:message.id,thread_id:message.threadId,rfc_message_id:rfcMessageId,references:[],received_at:received};
  return Object.freeze({source:Object.freeze(source),envelope:Object.freeze(envelope),bodySha256:createHash('sha256').update(text,'utf8').digest('hex')});
 }
