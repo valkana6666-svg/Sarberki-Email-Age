@@ -33,8 +33,11 @@ create table if not exists public.sc_deployment_profile(
  environment text not null check(environment in ('test','live')),
  tenant_id text not null,
  project_ref text not null check(project_ref~'^[a-z]{20}$'),
+ -- The one mailbox this project may ingest and answer from (TEST: the fictional test mailbox).
+ mailbox_address text not null,
  created_at timestamptz not null default now(),
  check((environment='test')=(project_ref='mojnqizbcaczstguikpv')),
+ check((environment='test' and mailbox_address='sarberkiprojecttest@gmail.com') or (environment='live' and mailbox_address='info@sarberkito.hu')),
  check((environment='test' and tenant_id='sarberki-test') or (environment='live' and tenant_id='sarberki-live'))
 );
 alter table public.sc_deployment_profile enable row level security;
@@ -51,10 +54,11 @@ drop trigger if exists sc_deployment_profile_no_truncate on public.sc_deployment
 create trigger sc_deployment_profile_no_truncate before truncate on public.sc_deployment_profile
  for each statement execute function public.sc_deployment_profile_immutable();
 
-insert into public.sc_deployment_profile(environment,tenant_id,project_ref)
+insert into public.sc_deployment_profile(environment,tenant_id,project_ref,mailbox_address)
  select current_setting('sarberki.deployment_environment',true),
   case current_setting('sarberki.deployment_environment',true) when 'live' then 'sarberki-live' else 'sarberki-test' end,
-  current_setting('sarberki.deployment_project_ref',true)
+  current_setting('sarberki.deployment_project_ref',true),
+  case current_setting('sarberki.deployment_environment',true) when 'live' then 'info@sarberkito.hu' else 'sarberkiprojecttest@gmail.com' end
  where not exists(select 1 from public.sc_deployment_profile);
 
 -- Read helpers for definer functions only (no client grant).
@@ -67,6 +71,10 @@ $$ select coalesce((select environment='live' from public.sc_deployment_profile 
 create or replace function public.sc_deployment_issuer() returns text
 language sql stable security definer set search_path='' as
 $$ select 'https://'||project_ref||'.supabase.co/auth/v1' from public.sc_deployment_profile where singleton $$;
+create or replace function public.sc_deployment_mailbox() returns text
+language sql stable security definer set search_path='' as
+$$ select mailbox_address from public.sc_deployment_profile where singleton $$;
+revoke all on function public.sc_deployment_mailbox() from public,anon,authenticated;
 revoke all on function public.sc_deployment_tenant() from public,anon,authenticated;
 revoke all on function public.sc_is_live_deployment() from public,anon,authenticated;
 revoke all on function public.sc_deployment_issuer() from public,anon,authenticated;

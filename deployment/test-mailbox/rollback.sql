@@ -13,4 +13,5 @@ drop function if exists public.sc_tm_price_redraft(text,text,bigint,jsonb,jsonb)
 drop function if exists public.sc_tm_unavailable_redraft(text,text,bigint,jsonb,jsonb);
 drop function if exists public.sc_tm_create(text,text,jsonb,jsonb);
 drop function if exists public.sc_tm_actor(text,text);
+drop function if exists public.sc_tm_mailbox();
 commit;

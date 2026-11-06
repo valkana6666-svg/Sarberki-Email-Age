@@ -2,9 +2,21 @@
 -- cases. Existing functions (sc_write_case, sc_approve_case, sc_approve_clarification), memberships,
 -- RLS policies and grants are NOT changed. Disabled by default; the owner enables it explicitly.
 -- sc_write_case keeps rejecting these cases (non-.invalid sender), so only the RPCs below can change them.
+-- Live store slice 2 (2026-11-06): when the deployment profile (deployment/deployment-profile/install.sql) is
+-- installed, the project, tenant, Auth issuer and mailbox come from it; without it the original TEST literals apply.
 begin;
-do $$ begin
- if current_setting('sarberki.tm_install_project_ref',true) is distinct from 'mojnqizbcaczstguikpv'
+do $$ declare p record; begin
+ if to_regclass('public.sc_deployment_profile') is not null then
+  execute 'select environment,tenant_id,project_ref from public.sc_deployment_profile where singleton' into p;
+  if p.project_ref is null or current_setting('sarberki.tm_install_project_ref',true) is distinct from p.project_ref
+  or coalesce(current_setting('sarberki.tm_backup_sha256',true),'')!~'^[a-f0-9]{64}$'
+  or not exists(select 1 from public.sc_cloud_approval_binding where singleton and project_ref=p.project_ref)
+  or not exists(select 1 from public.sc_isolated_approval_key where singleton)
+  or not exists(select 1 from public.sc_tenants where tenant_id=p.tenant_id and test_only=(p.environment='test'))
+  or exists(select 1 from public.sc_tenants where tenant_id<>p.tenant_id and not (p.environment='test' and tenant_id='demo-test' and test_only)) then
+   raise exception 'verified test project, attestation key and fresh backup required';
+  end if;
+ elsif current_setting('sarberki.tm_install_project_ref',true) is distinct from 'mojnqizbcaczstguikpv'
  or coalesce(current_setting('sarberki.tm_backup_sha256',true),'')!~'^[a-f0-9]{64}$'
  or not exists(select 1 from public.sc_cloud_approval_binding where singleton and project_ref='mojnqizbcaczstguikpv')
  or not exists(select 1 from public.sc_isolated_approval_key where singleton)
@@ -40,11 +52,34 @@ do $$ begin
  end if;
 end $$;
 
--- Shared guard: enabled switch, test binding, real Auth session (not revoked, not expired), permission.
+-- The one mailbox this project may ingest: from the deployment profile, else the fictional TEST mailbox.
+create or replace function public.sc_tm_mailbox() returns text
+language plpgsql stable security definer set search_path='' as $$
+declare m text;
+begin
+ if to_regclass('public.sc_deployment_profile') is not null then
+  execute 'select mailbox_address from public.sc_deployment_profile where singleton' into m;
+  if m is null then raise exception 'deployment profile required' using errcode='55000'; end if;
+  return m;
+ end if;
+ return 'sarberkiprojecttest@gmail.com';
+end $$;
+
+-- Shared guard: enabled switch, project binding, real Auth session (not revoked, not expired), permission.
+-- With the deployment profile: the profile-bound sc_deployment_actor (own tenant, own issuer) + binding.
 create or replace function public.sc_tm_actor(p_tenant text,p_permission text)
 returns uuid language plpgsql stable security definer set search_path='' as $$
-declare actor uuid:=auth.uid(); claims jsonb:=nullif(current_setting('request.jwt.claims',true),'')::jsonb;
+declare actor uuid:=auth.uid(); claims jsonb:=nullif(current_setting('request.jwt.claims',true),'')::jsonb; ref text;
 begin
+ if to_regclass('public.sc_deployment_profile') is not null then
+  execute 'select project_ref from public.sc_deployment_profile where singleton' into ref;
+  if not exists(select 1 from public.sc_test_mailbox_config where singleton and enabled)
+  or not exists(select 1 from public.sc_cloud_approval_binding where singleton and project_ref=ref) then
+   raise exception 'forbidden or expired' using errcode='42501';
+  end if;
+  execute 'select public.sc_deployment_actor($1,$2)' into actor using p_tenant,p_permission;
+  return actor;
+ end if;
  if p_tenant is distinct from 'sarberki-test'
  or not exists(select 1 from public.sc_test_mailbox_config where singleton and enabled)
  or not exists(select 1 from public.sc_cloud_approval_binding where singleton and project_ref='mojnqizbcaczstguikpv')
@@ -77,7 +112,7 @@ begin
   raise exception 'invalid test-mailbox case' using errcode='22023';
  end if;
  src:=p_data->'sourceReceipt';msg:=p_data->'messages'->0;draft:=p_data->'drafts'->0;
- if jsonb_typeof(src) is distinct from 'object' or src->>'provider' is distinct from 'gmail' or src->>'to' is distinct from 'sarberkiprojecttest@gmail.com'
+ if jsonb_typeof(src) is distinct from 'object' or src->>'provider' is distinct from 'gmail' or src->>'to' is distinct from public.sc_tm_mailbox()
  or src->'in_reply_to' is distinct from 'null'::jsonb or src->'references' is distinct from '[]'::jsonb or msg->'references' is distinct from '[]'::jsonb
  or p_data->>'sender' is distinct from src->>'from_email' or msg->>'sender' is distinct from src->>'from_email'
  or coalesce(src->>'from_email','')~'\.invalid$'
@@ -265,12 +300,12 @@ begin
  return to_jsonb(result);
 end $$;
 
-revoke all on function public.sc_tm_actor(text,text) from public,anon,authenticated;
+revoke all on function public.sc_tm_actor(text,text),public.sc_tm_mailbox() from public,anon,authenticated;
 revoke all on function public.sc_tm_create(text,text,jsonb,jsonb),public.sc_tm_redraft(text,text,bigint,jsonb),public.sc_tm_price_redraft(text,text,bigint,jsonb,jsonb),public.sc_tm_unavailable_redraft(text,text,bigint,jsonb,jsonb),public.sc_tm_decide(text,text,bigint,text,text,text) from public,anon;
 grant execute on function public.sc_tm_create(text,text,jsonb,jsonb),public.sc_tm_redraft(text,text,bigint,jsonb),public.sc_tm_price_redraft(text,text,bigint,jsonb,jsonb),public.sc_tm_unavailable_redraft(text,text,bigint,jsonb,jsonb),public.sc_tm_decide(text,text,bigint,text,text,text) to authenticated;
 do $$ begin
  if exists(select 1 from pg_roles where rolname='service_role') then
-  execute 'revoke all on function public.sc_tm_actor(text,text),public.sc_tm_create(text,text,jsonb,jsonb),public.sc_tm_redraft(text,text,bigint,jsonb),public.sc_tm_price_redraft(text,text,bigint,jsonb,jsonb),public.sc_tm_unavailable_redraft(text,text,bigint,jsonb,jsonb),public.sc_tm_decide(text,text,bigint,text,text,text) from service_role';
+  execute 'revoke all on function public.sc_tm_mailbox(),public.sc_tm_actor(text,text),public.sc_tm_create(text,text,jsonb,jsonb),public.sc_tm_redraft(text,text,bigint,jsonb),public.sc_tm_price_redraft(text,text,bigint,jsonb,jsonb),public.sc_tm_unavailable_redraft(text,text,bigint,jsonb,jsonb),public.sc_tm_decide(text,text,bigint,text,text,text) from service_role';
  end if;
 end $$;
 commit;

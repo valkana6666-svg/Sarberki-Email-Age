@@ -55,7 +55,7 @@ test('profile is immutable and invisible to clients',async()=>{
  await fails(db.exec("update sc_deployment_profile set environment='test',tenant_id='sarberki-test'"),'DEPLOYMENT_PROFILE_IMMUTABLE');
  await fails(db.exec('delete from sc_deployment_profile'),'DEPLOYMENT_PROFILE_IMMUTABLE');
  await fails(db.exec('truncate sc_deployment_profile'),'DEPLOYMENT_PROFILE_IMMUTABLE');
- await fails(db.exec("insert into sc_deployment_profile(singleton,environment,tenant_id,project_ref) values(true,'test','sarberki-test','mojnqizbcaczstguikpv')"),'duplicate key');
+ await fails(db.exec("insert into sc_deployment_profile(singleton,environment,tenant_id,project_ref,mailbox_address) values(true,'test','sarberki-test','mojnqizbcaczstguikpv','sarberkiprojecttest@gmail.com')"),'duplicate key');
  for(const role of ['anon','authenticated']){
   await db.exec('set role '+role);
   try{
@@ -74,6 +74,7 @@ test('project ref: required, TEST = the TEST project, LIVE = any other project; 
  await fails(install(db,'live','Bad-Ref'),'DEPLOYMENT_PROJECT_REF_REQUIRED',db);
  await install(db,'live');
  assert.equal((await one(db,'select public.sc_deployment_issuer() i')).i,'https://'+LIVE_REF+'.supabase.co/auth/v1');
+ assert.equal((await one(db,'select public.sc_deployment_mailbox() m')).m,'info@sarberkito.hu');
  await fails(install(db,'live','otherxprojectxrefxab'),'DEPLOYMENT_PROFILE_MISMATCH',db);
  await fails(db.exec("update sc_deployment_profile set project_ref='"+TEST_REF+"'"),'DEPLOYMENT_PROFILE_IMMUTABLE');
 });
