@@ -34,8 +34,9 @@ let authenticated=false,epoch=0;
 const emailReader=createDailyEmailReader({canRead:()=>authenticated,restoreSession:async()=>rememberKey(await session.restore()),
  clientId:document.querySelector('meta[name="google-oauth-client-id"]')?.content,onChange:()=>scheduleSave(),
  // Writer saves a marked test mail as a pending case; the server re-reads it from Gmail with this one-off token.
- onSaveCase:async({messageId,token})=>{
-  const result=await request({tenantId:TENANT,action:'test-mailbox-ingest',messageId},'POST',{'X-Sarberki-Gmail-Token':token});
+ // A guest's reply (followup) continues its existing case (owner decision 2026-11-06).
+ onSaveCase:async({messageId,token,followup=false})=>{
+  const result=await request({tenantId:TENANT,action:followup?'test-mailbox-followup':'test-mailbox-ingest',messageId},'POST',{'X-Sarberki-Gmail-Token':token});
   if(!isTestMailboxCaseId(result?.caseId)||!Number.isSafeInteger(result.revision))throw Error('INVALID_DATA');
   await loadCases();void openCase(result.caseId);return result;
  }});

@@ -349,3 +349,20 @@ test('save: a Google error response names its code; a token without a current se
  await h.e['email-save-case'].click();await select(h,1);await h.callback({access_token:'FRESH_SYNTHETIC_TOKEN'});
  assert.equal(saves.length,0);
 });
+
+test('follow-up (owner 2026-11-06): the test guest\'s Gmail reply offers "Hozzáadás az ügyhöz", no local AI preview; forwards and other senders do not',async()=>{
+ const saves=[];
+ const onSaveCase=async input=>{saves.push(input);return {caseId:'tm-48f2a0b1c2d3e4a0',revision:3};};
+ const withReply=(m,extra=[])=>({...m,payload:{...m.payload,headers:[...m.payload.headers,{name:'In-Reply-To',value:'<ours@example.test>'},...extra]}});
+ const messages=[withReply(marked('Re: Érdeklődés',markedBodies.hu,{id:'48f2a0b1c2d3e4a1'})),
+  withReply(marked('Fwd: Érdeklődés',markedBodies.hu,{id:'48f2a0b1c2d3e4a2'})),
+  withReply(marked('Re: Érdeklődés',markedBodies.hu,{id:'48f2a0b1c2d3e4a3',from:'Vendég <guest@example.test>'}))];
+ const h=await openInbox({messages,now:PREVIEW_NOW,onSaveCase});
+ await select(h,0);
+ assert.equal(h.e['email-save-case'].textContent,'Hozzáadás az ügyhöz');assert.equal(h.e['email-save-case'].disabled,false);
+ assert.equal(h.e['email-draft-request'].disabled,true,'no local preview for a reply');
+ await h.e['email-save-case'].click();await h.callback({access_token:'FRESH_SYNTHETIC_TOKEN'});
+ assert.deepEqual(saves,[{messageId:'48f2a0b1c2d3e4a1',token:'FRESH_SYNTHETIC_TOKEN',followup:true}]);
+ assert.match(h.e['email-save-status'].textContent,/Hozzáadva az ügyhöz \(tm-48f2a0b1c2d3e4a0\)/);
+ for(const index of [1,2]){await select(h,index);assert.equal(h.e['email-save-case'].disabled,true,String(index));}
+});

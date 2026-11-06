@@ -1,4 +1,4 @@
-import {readTestGmailInbox,TEST_GMAIL_ACCOUNT,gmailReadableBody,isTestInquiry,isTestPairInquiry} from '../gmail-policy.mjs';
+import {readTestGmailInbox,TEST_GMAIL_ACCOUNT,gmailReadableBody,isTestInquiry,isTestPairInquiry,senderAddress,TEST_GUEST_SENDER} from '../gmail-policy.mjs';
 import {automatedMailReason} from '../shared-core/automated-mail-filter.mjs';
 import {buildEmailInquiryDraft} from '../shared-core/inquiry-channel-adapters.mjs';
 import {closedMailRequestFromGmailRecord} from '../shared-core/synthetic-mail-fixtures.mjs';
@@ -23,8 +23,12 @@ const MAX_PREVIEW_CHARS=20000;
 // Only a marked mail with a real Gmail id can be saved as a case; the server re-reads it from Gmail itself.
 function previewText(message,header,body){
  const closed=closedPreviewText(message,header,body);if(closed)return {text:closed,saveable:false};
- return isTestInquiry(message)&&isTestPairInquiry(header)&&!automatedMailReason(header)&&body.trim()&&body.length<=MAX_PREVIEW_CHARS?
-  {text:body,saveable:/^[a-f0-9]{12,32}$/.test(message.id||''),messageId:message.id}:null;
+ const ok=isTestInquiry(message)&&!automatedMailReason(header)&&body.trim()&&body.length<=MAX_PREVIEW_CHARS&&/^[a-f0-9]{12,32}$/.test(message.id||'');
+ if(ok&&isTestPairInquiry(header))return {text:body,saveable:true,messageId:message.id};
+ // The test guest's reply (not a forward) can be added to its existing case; the server finds the case by thread.
+ const reply=Boolean(header['in-reply-to']||header.references)&&!/^\s*(?:fwd?|fw|wg|tr)\s*:/iu.test(String(header.subject??''));
+ if(ok&&reply&&senderAddress(header.from)===TEST_GUEST_SENDER)return {text:body,saveable:true,followup:true,messageId:message.id};
+ return null;
 }
 function closedPreviewText(message,header,body){
  try{
@@ -43,8 +47,9 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
  function clearPreview(source=null){
   previewTurn++;previewSource=source;
   el('email-draft-text').value='';el('email-draft-text').disabled=true;el('email-draft-review').textContent='';el('email-draft-checks').replaceChildren();
-  el('email-draft-request').disabled=!source||!canRead();
+  el('email-draft-request').disabled=!source||source.followup===true||!canRead();
   el('email-save-case').disabled=!source?.saveable||!onSaveCase||!canRead();el('email-save-status').textContent='';
+  el('email-save-case').textContent=source?.followup?'Hozzáadás az ügyhöz':'Ügyként mentés';
   el('email-draft-status').textContent=source?'AI-válaszjavaslat kérhető. Helyi előnézet lesz: nincs mentve, nem küldhető, nem foglalás.':
    'Az AI-válaszjavaslat jelenleg csak a lezárt szintetikus tesztlevelekhez és a tesztvendég (sarberkito@gmail.com) leveleihez érhető el, bármilyen tárggyal (válasz/továbbítás nem); más levélhez külön jóváhagyás szükséges.';
  }
@@ -168,7 +173,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
  // (user gesture) and handed to the server once; the server reads the mail itself and enforces every gate.
  const saveErrors={NOT_MARKED_TEST_MESSAGE:'A levél tárgya nem jelölt tesztlevél.',NOT_TEST_PAIR_INQUIRY:'Csak a tesztvendég (sarberkito@gmail.com) új levele menthető.',AUTOMATED_MESSAGE:'Automatikus levél (pl. Previo, hírlevél) nem menthető.',REPLY_NOT_ALLOWED:'Válasz vagy továbbítás nem menthető.',
   FORBIDDEN:'Ehhez a mentéshez nincs jogosultság, vagy a funkció nincs bekapcsolva.',GMAIL_AUTH_REQUIRED:'A Google-olvasási engedély szükséges.',
-  STORAGE_FAILURE:'A mentés nem sikerült, vagy ez a levél már ügyként szerepel.',GMAIL_RATE_LIMITED:'A Gmail átmenetileg korlátozta az olvasást.'};
+  STORAGE_FAILURE:'A mentés nem sikerült, vagy ez a levél már ügyként szerepel.',FOLLOWUP_CASE_NOT_FOUND:'Ehhez a válaszhoz nem található ügy (előbb az első levelet kell ügyként menteni).',ALREADY_IN_CASE:'Ez a levél már szerepel az ügyben.',NOT_A_FOLLOWUP:'Ez nem válaszlevél.',GMAIL_RATE_LIMITED:'A Gmail átmenetileg korlátozta az olvasást.'};
  el('email-save-case').addEventListener('click',()=>{
   const source=previewSource,turn=generation;
   if(!source?.saveable||!onSaveCase||!active(turn)||!clientId||!googleApi?.accounts?.oauth2)return;
@@ -183,8 +188,8 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
       if(!result?.access_token)return done('A Google-engedély nem érkezett meg; a levél nem lett mentve.'+(typeof result?.error==='string'&&/^[a-z_]{1,40}$/.test(result.error)?' ('+result.error+')':''));
       if(source!==previewSource||!active(turn))return done('A kiválasztott levél vagy a belépés közben megváltozott; a levél nem lett mentve. Nyomja meg újra.');
       el('email-save-status').textContent='Ügy mentése a szerveren…';
-      try{const saved=await onSaveCase({messageId:source.messageId,token:result.access_token});
-       if(source===previewSource)el('email-save-status').textContent='Ügyként mentve ('+saved.caseId+'). Jóváhagyásra vár; nincs küldés vagy foglalás.';}
+      try{const saved=await onSaveCase({messageId:source.messageId,token:result.access_token,...(source.followup?{followup:true}:{})});
+       if(source===previewSource)el('email-save-status').textContent=(source.followup?'Hozzáadva az ügyhöz (':'Ügyként mentve (')+saved.caseId+'). Új tervezet, jóváhagyásra vár; nincs küldés vagy foglalás.';}
       catch(error){done(saveErrors[error?.message]||'A mentés nem igazolt. Próbálja újra; nincs automatikus ismétlés.');}
      };
      if(turn===generation&&documentImpl.visibilityState==='hidden'){queuedSave=run;return;}

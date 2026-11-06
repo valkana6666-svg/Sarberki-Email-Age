@@ -13,6 +13,7 @@ import {closedSyntheticMailLanguage,isClosedTubFollowup,isClosedTubPreviousRecor
 import {resolveBookingCase} from '../../booking-cases.mjs';
 import {dailyCaseSummary} from '../../shared-core/server-daily-case-view.mjs';
 import {ingestTestMailboxMessage} from '../../shared-core/server-test-mailbox-case.mjs';
+import {appendTestMailboxFollowup} from '../../shared-core/server-test-mailbox-followup.mjs';
 import {sendApprovedTestMailboxReply} from '../../shared-core/server-test-mailbox-send.mjs';
 import {priceTestMailboxCase} from '../../shared-core/server-test-mailbox-price.mjs';
 import {markTestMailboxUnavailable} from '../../shared-core/server-test-mailbox-unavailable.mjs';
@@ -37,13 +38,14 @@ export function syntheticCaseSummaries(records,exactReceipt=null){
 }
 // Fixed public codes for the test-mailbox action; anything else becomes STORAGE_FAILURE.
 const TEST_MAILBOX_ERRORS=Object.freeze({GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACCOUNT:403,FORBIDDEN:403,GMAIL_RATE_LIMITED:429,INVALID_INPUT:400,
- GMAIL_SOURCE_UNVERIFIED:422,NOT_MARKED_TEST_MESSAGE:422,NOT_TEST_PAIR_INQUIRY:422,REPLY_HANDLED_IN_GMAIL:422,LIVE_MAILBOX_READER_PENDING:503,AUTOMATED_MESSAGE:422,REPLY_NOT_ALLOWED:422,NOT_ADDRESSED_TO_TEST_MAILBOX:422,INVALID_SENDER:422,MESSAGE_ID_REQUIRED:422,
+ GMAIL_SOURCE_UNVERIFIED:422,NOT_MARKED_TEST_MESSAGE:422,NOT_TEST_PAIR_INQUIRY:422,REPLY_HANDLED_IN_GMAIL:422,NOT_A_FOLLOWUP:422,FOLLOWUP_CASE_NOT_FOUND:404,ALREADY_IN_CASE:409,LIVE_MAILBOX_READER_PENDING:503,AUTOMATED_MESSAGE:422,REPLY_NOT_ALLOWED:422,NOT_ADDRESSED_TO_TEST_MAILBOX:422,INVALID_SENDER:422,MESSAGE_ID_REQUIRED:422,
  TEXT_PART_REQUIRED:422,EMPTY_TEXT:422,TEXT_TOO_LONG:422,UNREADABLE_TEXT:422,INVALID_DRAFT:422,STORAGE_FAILURE:503,
  NOT_APPROVED:409,RECIPIENT_NOT_ALLOWED:403,SOURCE_UNVERIFIED:422,SEND_FAILED:502,SEND_OUTCOME_UNKNOWN:409,CASE_CONFLICT:409,
  PRICE_FACTS_MISSING:422,PRICE_LINE_MISSING:422,PRICE_REFUSED:422,AVAILABILITY_NOT_CONFIRMED:400,TEST_MAILBOX_REJECTED:409,
  UNAVAILABILITY_NOT_CONFIRMED:400,DRAFT_SHAPE_UNKNOWN:422,ALREADY_UNAVAILABLE:409,PREVIO_NO_FREE_UNIT:409});
 const TEST_MAILBOX_FIELDS=Object.freeze({
  'test-mailbox-ingest':['action,messageId,tenantId'],
+ 'test-mailbox-followup':['action,messageId,tenantId'],
  'test-mailbox-redraft':['action,caseId,draftText,expectedRevision,tenantId'],
  'test-mailbox-decide':['action,caseId,decision,expectedRevision,reviewedDraftHash,tenantId','action,caseId,decision,expectedRevision,reason,reviewedDraftHash,tenantId'],
  'test-mailbox-send':['action,caseId,expectedRevision,tenantId'],
@@ -51,7 +53,7 @@ const TEST_MAILBOX_FIELDS=Object.freeze({
  'test-mailbox-unavailable':['action,caseId,expectedRevision,tenantId,unavailableConfirmed']
 });
 function validTestMailboxInput(input){
- if(input.action==='test-mailbox-ingest')return typeof input.messageId==='string'&&/^[a-f0-9]{12,32}$/.test(input.messageId);
+ if(input.action==='test-mailbox-ingest'||input.action==='test-mailbox-followup')return typeof input.messageId==='string'&&/^[a-f0-9]{12,32}$/.test(input.messageId);
  if(typeof input.caseId!=='string'||!/^tm-[a-f0-9]{12,32}$/.test(input.caseId)||!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<1)return false;
  if(input.action==='test-mailbox-send')return true;
  if(input.action==='test-mailbox-unavailable')return input.unavailableConfirmed===true;
@@ -228,6 +230,18 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      }catch(error){
       if(error?.code==='FORBIDDEN')return cookieResponse(403,{error:'FORBIDDEN'});
       const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'TEST_MAILBOX_REJECTED';
+      return cookieResponse(TEST_MAILBOX_ERRORS[code],{error:code});
+     }
+    }
+    // Owner decision 2026-11-06: a guest's reply continues its case (same thread, same guest; DB re-checks).
+    if(input.action==='test-mailbox-followup'){
+     const tokens=Object.entries(event.headers||{}).filter(([key])=>key.toLowerCase()==='x-sarberki-gmail-token').map(([,value])=>value);
+     if(tokens.length!==1||typeof tokens[0]!=='string'||tokens[0].length>4096)return cookieResponse(401,{error:'GMAIL_AUTH_REQUIRED'});
+     try{
+      const result=await appendTestMailboxFollowup({token:tokens[0],messageId:input.messageId,transport:cookieSession.transport,attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,fetchImpl,deployment});
+      return cookieResponse(200,{result:{caseId:result.caseId,revision:result.revision}});
+     }catch(error){
+      const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'STORAGE_FAILURE';
       return cookieResponse(TEST_MAILBOX_ERRORS[code],{error:code});
      }
     }

@@ -29,7 +29,9 @@ export function approvedTestMailboxReply(record){
  if(!ALLOWED_TEST_REPLY_RECIPIENTS.includes(recipient)||src?.to!==TEST_GMAIL_ACCOUNT)fail('RECIPIENT_NOT_ALLOWED');
  if(!/^[A-Za-z0-9_-]{1,256}$/.test(String(src.thread_id||''))||!headerSafe(src.rfc_message_id)||!headerSafe(src.subject||'x'))fail('SOURCE_UNVERIFIED');
  const marker=record.caseId+':'+sha(latest.text);
- return {recipient,text:latest.text,threadId:src.thread_id,inReplyTo:src.rfc_message_id,subject:String(src.subject||''),marker,draftHash:sha(latest.text)};
+ // Reply to the guest's latest message (a follow-up sets latestReceipt), same thread.
+ const inReplyTo=headerSafe(data.latestReceipt?.rfc_message_id)?data.latestReceipt.rfc_message_id:src.rfc_message_id;
+ return {recipient,text:latest.text,threadId:src.thread_id,inReplyTo,subject:String(src.subject||''),marker,draftHash:sha(latest.text)};
 }
 
 export function replyMime({recipient,text,subject,inReplyTo,marker}){

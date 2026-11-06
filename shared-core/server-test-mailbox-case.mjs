@@ -12,7 +12,7 @@ import {readVerifiedTestMailboxMessage,attestTestMailboxSource} from './server-g
 import {TEST_DEPLOYMENT} from './server-deployment.mjs';
 
 const fail=code=>{const error=Error(code);error.code=code;throw error;};
-const scope=(message,reverse=false)=>{
+export const scope=(message,reverse=false)=>{
  const prefix=message.mailbox_id+':',change=value=>reverse?value.slice(prefix.length):prefix+value;
  const refs=value=>String(value).replace(/<([^>]+)>/g,(_,id)=>'<'+change(id)+'>');
  return {...message,message_id:change(message.message_id),thread_id:change(message.thread_id),rfc_message_id:refs(message.rfc_message_id)};

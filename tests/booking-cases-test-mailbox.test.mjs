@@ -262,6 +262,14 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
    const row=(await db.query('select status,gmail_message_id from sc_tm_send_ledger where case_id=$1',[case7])).rows[0];
    assert.deepEqual(row,{status:'sent',gmail_message_id:'synthetic-sent'});
   });
+  await t.test('follow-up route: writer only, Gmail token in its own header, valid id, switch on',async()=>{
+   const body={tenantId:'sarberki-test',action:'test-mailbox-followup',messageId:'38f2a0b1c2d3e4a1'};
+   assert.equal((await call('writer',baseEnv,body,{headers:gmail,status:403})).json.error,'FORBIDDEN','off without the ingest switch');
+   await call('reader',enabledEnv,body,{headers:gmail,status:403});
+   assert.equal((await call('writer',enabledEnv,body,{status:401})).json.error,'GMAIL_AUTH_REQUIRED');
+   await call('writer',enabledEnv,{...body,messageId:'nope'},{headers:gmail,status:400});
+   await call('writer',enabledEnv,{...body,extra:1},{headers:gmail,status:403});
+  });
   await t.test('the saver of an unedited machine draft may approve it; the author of an edited draft may not; reject and reopen keep history',async()=>{
    const id2='18f2a0b1c2d3e4f6',case2='tm-'+id2;
    await call('both',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-ingest',messageId:id2},{headers:gmail,status:200});

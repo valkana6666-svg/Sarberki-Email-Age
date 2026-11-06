@@ -3,7 +3,7 @@
 // request shape from SERVER-read content. The token is neither stored nor returned. Not wired to any
 // case write here: storing still requires the server-attested write path of the next work package.
 import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
-import {readTestGmailInbox,gmailReadableBody,TEST_GMAIL_ACCOUNT,isTestPairInquiry} from '../gmail-policy.mjs';
+import {readTestGmailInbox,gmailReadableBody,TEST_GMAIL_ACCOUNT,isTestPairInquiry,senderAddress,TEST_GUEST_SENDER} from '../gmail-policy.mjs';
 import {automatedMailReason} from './automated-mail-filter.mjs';
 import {enabledMailboxProfile} from './server-mailbox-profiles.mjs';
 import {TEST_DEPLOYMENT} from './server-deployment.mjs';
@@ -29,7 +29,9 @@ function readerFailure(error){
  return 'GMAIL_SOURCE_UNVERIFIED';
 }
 
-export async function readVerifiedTestMailboxMessage({token,messageId,fetchImpl=globalThis.fetch,setTimeoutImpl,clearTimeoutImpl,deployment=TEST_DEPLOYMENT}={}){
+// followup:true (owner decision 2026-11-06): a guest's reply in an existing case thread is read for appending to
+// that case; the database then requires the same thread and the same guest. Same mailbox/sender/automated gates.
+export async function readVerifiedTestMailboxMessage({token,messageId,fetchImpl=globalThis.fetch,setTimeoutImpl,clearTimeoutImpl,deployment=TEST_DEPLOYMENT,followup=false}={}){
  // TEST: the fictional test mailbox and the test-pair sender gate (unchanged). LIVE (reachable only when the
  // live mailbox profile is enabled, i.e. after the data controller's consent): the deployment's mailbox, any
  // real sender, automated/own mail refused, and only NEW inquiries become cases – a guest's reply or a forward
@@ -47,12 +49,21 @@ export async function readVerifiedTestMailboxMessage({token,messageId,fetchImpl=
  const message=messages?.[0];
  if(messages?.length!==1||message?.id!==messageId)fail('GMAIL_SOURCE_UNVERIFIED');
  const headers=Object.fromEntries((message.payload?.headers||[]).map(h=>[String(h.name).toLowerCase(),h.value]));
+ // A follow-up is a real Gmail reply (In-Reply-To/References), never a forward. A new inquiry has neither
+ // reply headers nor a reply/forward subject prefix.
+ const replyHeaders=Boolean(headers['in-reply-to']||headers.references),subject=String(headers.subject??'');
+ const isForward=/^\s*(?:fwd?|fw|wg|tr)\s*:/iu.test(subject);
+ if(followup&&(!replyHeaders||isForward))fail('NOT_A_FOLLOWUP');
  if(live){
-  if(headers['in-reply-to']||headers.references||/^\s*(?:re|aw|sv|odg|fwd?|fw|wg|tr|vs)\s*:/iu.test(String(headers.subject??'')))fail('REPLY_HANDLED_IN_GMAIL');
+  if(!followup&&(replyHeaders||/^\s*(?:re|aw|sv|odg|fwd?|fw|wg|tr|vs)\s*:/iu.test(subject)))fail('REPLY_HANDLED_IN_GMAIL');
   if(automatedMailReason(headers,{ownAddresses:[account],blockOwnSender:true}))fail('AUTOMATED_MESSAGE');
   // The mailbox must be a direct recipient (To or Cc); BCC/list copies are not inquiries to us.
   const direct=[headers.to,headers.cc].flatMap(v=>String(v||'').split(',')).map(address);
   if(!direct.includes(account))fail('NOT_ADDRESSED_TO_TEST_MAILBOX');
+ }else if(followup){
+  if(senderAddress(headers.from)!==TEST_GUEST_SENDER)fail('NOT_TEST_PAIR_INQUIRY');
+  if(automatedMailReason(headers,{ownAddresses:[PROFILE.account],blockOwnSender:PROFILE.blockOwnSender}))fail('AUTOMATED_MESSAGE');
+  if(address(headers.to)!==TEST_GMAIL_ACCOUNT||String(headers.to).includes(','))fail('NOT_ADDRESSED_TO_TEST_MAILBOX');
  }else{
   if(headers['in-reply-to']||headers.references)fail('REPLY_NOT_ALLOWED');
   if(!isTestPairInquiry(headers))fail('NOT_TEST_PAIR_INQUIRY');
@@ -70,8 +81,9 @@ export async function readVerifiedTestMailboxMessage({token,messageId,fetchImpl=
  if(typeof text!=='string'||!text.trim())fail('EMPTY_TEXT');
  if(text.length>MAX_TEXT)fail('TEXT_TOO_LONG');
  const received=new Date(Number(message.internalDate)).toISOString();
+ const refs=followup?String(headers.references||'').match(/<[^<>\s]+>/g)||[]:[];
  const source={provider:'gmail',mailbox_id:mailboxId,message_id:message.id,thread_id:message.threadId,rfc_message_id:rfcMessageId,
-  in_reply_to:null,references:[],subject:headers.subject,from:headers.from,from_email:fromEmail,to:account,received_at:received};
+  in_reply_to:followup?(String(headers['in-reply-to']||'').match(/<[^<>\s]+>/)?.[0]??null):null,references:refs,subject:headers.subject,from:headers.from,from_email:fromEmail,to:account,received_at:received};
  const envelope={sender:fromEmail,text,mailbox_id:mailboxId,message_id:message.id,thread_id:message.threadId,rfc_message_id:rfcMessageId,references:[],received_at:received};
  return Object.freeze({source:Object.freeze(source),envelope:Object.freeze(envelope),bodySha256:createHash('sha256').update(text,'utf8').digest('hex')});
 }
