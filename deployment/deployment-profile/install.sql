@@ -4,18 +4,22 @@
 -- 'sarberki-test' literals with sc_deployment_tenant(); this file changes no existing function.
 --
 -- Usage (operator, inside ONE transaction, never from a client):
---   begin; select set_config('sarberki.deployment_environment','test',true); \i install.sql  -- or 'live'
--- An unset or unknown environment aborts. Re-running with the same environment is a no-op;
--- a different environment aborts. Requires the case store (supabase/migrations/202610090001).
+--   begin; select set_config('sarberki.deployment_environment','test',true);   -- or 'live'
+--          select set_config('sarberki.deployment_project_ref','<supabase project ref>',true); \i install.sql
+-- An unset or unknown environment or project ref aborts. The TEST project is mojnqizbcaczstguikpv; a LIVE
+-- project must be a different one. Re-running with the same values is a no-op; different values abort.
+-- Requires the case store (supabase/migrations/202610090001).
 do $$
 declare env text:=current_setting('sarberki.deployment_environment',true);
-declare existing text;
+declare ref text:=current_setting('sarberki.deployment_project_ref',true);
+declare existing text; existing_ref text;
 begin
  if env is null or env not in ('test','live') then raise exception 'DEPLOYMENT_ENVIRONMENT_REQUIRED' using errcode='22023'; end if;
+ if coalesce(ref,'')!~'^[a-z]{20}$' or (env='test')<>(ref='mojnqizbcaczstguikpv') then raise exception 'DEPLOYMENT_PROJECT_REF_REQUIRED' using errcode='22023'; end if;
  if to_regclass('public.sc_tenants') is null then raise exception 'CASE_STORE_REQUIRED' using errcode='55000'; end if;
  if to_regclass('public.sc_deployment_profile') is not null then
-  select environment into existing from public.sc_deployment_profile where singleton;
-  if existing is distinct from env then raise exception 'DEPLOYMENT_PROFILE_MISMATCH' using errcode='55000'; end if;
+  select environment,project_ref into existing,existing_ref from public.sc_deployment_profile where singleton;
+  if existing is distinct from env or existing_ref is distinct from ref then raise exception 'DEPLOYMENT_PROFILE_MISMATCH' using errcode='55000'; end if;
  end if;
  -- A LIVE project must start empty: no test tenants, cases or memberships are carried over.
  if env='live' and (exists(select 1 from public.sc_tenants where tenant_id<>'sarberki-live')
@@ -28,7 +32,9 @@ create table if not exists public.sc_deployment_profile(
  singleton boolean primary key default true check(singleton),
  environment text not null check(environment in ('test','live')),
  tenant_id text not null,
+ project_ref text not null check(project_ref~'^[a-z]{20}$'),
  created_at timestamptz not null default now(),
+ check((environment='test')=(project_ref='mojnqizbcaczstguikpv')),
  check((environment='test' and tenant_id='sarberki-test') or (environment='live' and tenant_id='sarberki-live'))
 );
 alter table public.sc_deployment_profile enable row level security;
@@ -45,9 +51,10 @@ drop trigger if exists sc_deployment_profile_no_truncate on public.sc_deployment
 create trigger sc_deployment_profile_no_truncate before truncate on public.sc_deployment_profile
  for each statement execute function public.sc_deployment_profile_immutable();
 
-insert into public.sc_deployment_profile(environment,tenant_id)
+insert into public.sc_deployment_profile(environment,tenant_id,project_ref)
  select current_setting('sarberki.deployment_environment',true),
-  case current_setting('sarberki.deployment_environment',true) when 'live' then 'sarberki-live' else 'sarberki-test' end
+  case current_setting('sarberki.deployment_environment',true) when 'live' then 'sarberki-live' else 'sarberki-test' end,
+  current_setting('sarberki.deployment_project_ref',true)
  where not exists(select 1 from public.sc_deployment_profile);
 
 -- Read helpers for definer functions only (no client grant).
@@ -57,8 +64,37 @@ $$ select tenant_id from public.sc_deployment_profile where singleton $$;
 create or replace function public.sc_is_live_deployment() returns boolean
 language sql stable security definer set search_path='' as
 $$ select coalesce((select environment='live' from public.sc_deployment_profile where singleton),false) $$;
+create or replace function public.sc_deployment_issuer() returns text
+language sql stable security definer set search_path='' as
+$$ select 'https://'||project_ref||'.supabase.co/auth/v1' from public.sc_deployment_profile where singleton $$;
 revoke all on function public.sc_deployment_tenant() from public,anon,authenticated;
 revoke all on function public.sc_is_live_deployment() from public,anon,authenticated;
+revoke all on function public.sc_deployment_issuer() from public,anon,authenticated;
+
+-- Shared actor guard for the minimal live path (slice 2). Profile-bound replacement for the literal checks in
+-- sc_tm_actor / cloud-approval: the tenant is this project's single tenant with the matching test flag, the
+-- JWT comes from this project's Auth, is unexpired, its session is not revoked, and the member has p_permission.
+create or replace function public.sc_deployment_actor(p_tenant text,p_permission text)
+returns uuid language plpgsql stable security definer set search_path='' as $$
+declare actor uuid:=auth.uid(); claims jsonb:=nullif(current_setting('request.jwt.claims',true),'')::jsonb;
+ profile public.sc_deployment_profile%rowtype;
+begin
+ select * into profile from public.sc_deployment_profile where singleton;
+ if not found or p_tenant is distinct from profile.tenant_id
+ or not exists(select 1 from public.sc_tenants where tenant_id=p_tenant and test_only=(profile.environment='test'))
+ or actor is null or not public.sc_has_permission(p_tenant,p_permission)
+ or claims->>'iss' is distinct from 'https://'||profile.project_ref||'.supabase.co/auth/v1'
+ or claims->>'role' is distinct from 'authenticated'
+ or coalesce(claims->>'exp','')!~'^[0-9]+$' or (claims->>'exp')::numeric<=extract(epoch from now())
+ or coalesce(claims->>'session_id','')!~'^[a-f0-9-]{36}$' then
+  raise exception 'forbidden or expired' using errcode='42501';
+ end if;
+ if not exists(select 1 from auth.sessions where id=(claims->>'session_id')::uuid and user_id=actor and (not_after is null or not_after>now())) then
+  raise exception 'session revoked' using errcode='42501';
+ end if;
+ return actor;
+end $$;
+revoke all on function public.sc_deployment_actor(text,text) from public,anon,authenticated;
 
 -- Tenant fence. TEST keeps the original check(test_only) and gains: only the TEST tenants.
 -- LIVE drops check(test_only) and allows exactly one tenant: 'sarberki-live', test_only=false.
