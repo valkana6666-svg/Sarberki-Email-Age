@@ -10,7 +10,7 @@ Minden más elő van készítve. A sorrend a fontosság. Titkot (jelszót, kulcs
    - Value: Supabase → a **TEST** projekt (`mojnqizbcaczstguikpv`) → **Connect** (vagy Project Settings → Database) → **Session pooler** URI, a `[YOUR-PASSWORD]` helyére az adatbázis jelszava.
 4. Szólj Claude-nak: „Kész a GitHub-környezet.” → Claude egy **csak olvasó próbafutást** indít (`deployment/test-db-install/healthcheck.sql`, semmit nem módosít); te a GitHub-alkalmazásban **Approve**. Utána jöhetnek a valódi telepítések, mindegyik a te jóváhagyásoddal.
 
-## 2. Netlify: a küldési napló kapcsolója – CSAK miután Work a #9-be PASS-t írt
+## 2. Netlify: a küldési napló kapcsolója – MOST MÁR MEHET (Work 11-06 12:31: telepítés PASS)
 1. app.netlify.com → `leafy-chimera-2403e5` → **Site configuration → Environment variables → Add a variable**: `CASE_TEST_MAILBOX_SEND_LEDGER` = `required`.
 2. Írd Claude-nak: „Engedélyezem a TEST-kiadást” → Claude kiadja és élőben ellenőrzi.
 - Visszavonás: a változó törlése + TEST-kiadás.
