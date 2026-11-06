@@ -1,0 +1,65 @@
+name: Sarberki restore drill into a new Supabase project (owner-approved)
+
+# Owner plan 2026-11-06 (docs/UJRAEPITESI-PROBA.md). Runs ONLY on a test-branch commit carrying [restore-drill]
+# and after the owner approves the protected environment "restore-drill" (GitHub app). Fresh read-only export
+# of the TEST project -> Drive upload -> exact-ID readback -> restore of the DOWNLOADED package into the NEW,
+# EMPTY project given by the environment secret. Refuses the TEST project and any non-empty database.
+# Status: prepared; NOT VERIFIED until the first drill.
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: sarberki-restore-drill
+  cancel-in-progress: false
+
+jobs:
+  drill:
+    if: contains(github.event.head_commit.message, '[restore-drill]')
+    runs-on: ubuntu-24.04
+    container: postgres:17-bookworm
+    environment: restore-drill
+    timeout-minutes: 40
+    env:
+      SARBERKI_EFFECTIVE_PROVIDER: drive
+    steps:
+      - name: Install tools
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 gnupg ca-certificates git
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Git history for the recovery bundle
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          test "$(git rev-parse --is-shallow-repository)" = false
+      - name: Verify Drive authorization
+        env:
+          SARBERKI_V2_DRIVE_FOLDER_ID: 19WOxZQK6M-kqou3OU43084bZce9Dnhyg
+          SARBERKI_V2_DRIVE_OAUTH_JSON: ${{ secrets.SARBERKI_V2_DRIVE_OAUTH_JSON }}
+        run: python3 scripts/backup-v2-drive.py preflight
+      - name: Read-only export of the TEST project
+        env:
+          SARBERKI_V2_ENABLED: ${{ vars.SARBERKI_V2_ENABLED }}
+          SARBERKI_V2_STORAGE_PROVIDER: drive
+          SARBERKI_V2_DRIVE_FOLDER_ID: 19WOxZQK6M-kqou3OU43084bZce9Dnhyg
+          SARBERKI_V2_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_V2_PASSPHRASE }}
+          SARBERKI_BACKUP_DB_URL: ${{ secrets.SARBERKI_BACKUP_DB_URL }}
+          SARBERKI_BACKUP_SESSION_HOST: aws-0-eu-west-2.pooler.supabase.com
+        run: python3 scripts/backup-v2.py export
+      - name: Drive upload and exact-file SHA256 readback
+        env:
+          SARBERKI_V2_DRIVE_FOLDER_ID: 19WOxZQK6M-kqou3OU43084bZce9Dnhyg
+          SARBERKI_V2_DRIVE_OAUTH_JSON: ${{ secrets.SARBERKI_V2_DRIVE_OAUTH_JSON }}
+        run: python3 scripts/backup-v2-drive.py
+      - name: Validate the exact-ID downloaded Drive package
+        run: python3 scripts/backup-v2-readback.py
+      - name: Restore the downloaded package into the NEW project and verify
+        env:
+          SARBERKI_RESTORE_DRILL_DB_URL: ${{ secrets.SARBERKI_RESTORE_DRILL_DB_URL }}
+          SARBERKI_BACKUP_PASSPHRASE: ${{ secrets.SARBERKI_BACKUP_V2_PASSPHRASE }}
+        run: python3 scripts/backup-v2-drill-restore.py
