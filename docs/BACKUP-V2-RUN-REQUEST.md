@@ -99,3 +99,10 @@ Purpose: fresh verified encrypted Drive backup and isolated restore before owner
 Provider: drive. Request marker: [backup-v2-run].
 Request 2026-11-05T06:47:56Z: owner-requested make-up Drive backup for 2026-11-05 (the daily ChatGPT trigger did not run). Same workflow: preflight, read-only export, isolated restore, Drive upload, exact-ID readback, restore from the Drive bytes.
 Daily request 2026-11-06T11:20:03Z: Claude make-up backup (scheduled run had no GitHub access).
+
+## Owner-authorized TEST send-ledger pre-install backup
+Requested at: 2026-11-06T12:11:57.967Z.
+Source project: mojnqizbcaczstguikpv (sarberki-test).
+Authority: owner requested reading and executing Claude's #9 instruction 6683489501 on 2026-11-06.
+Authorized SQL: deployment/test-mailbox/send-ledger.sql, blob 1674d72f0666cd3a5fc8e431a2bb9c0e0694886e.
+Fresh encrypted Drive backup, exact-ID readback and isolated restore before installation; no database change until verified success. Provider: drive. No deployment profile, new test-mailbox install, Netlify change or email sending.
