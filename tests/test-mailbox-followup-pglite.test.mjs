@@ -5,6 +5,7 @@ import {createHash} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 import {ingestTestMailboxMessage} from '../shared-core/server-test-mailbox-case.mjs';
 import {appendTestMailboxFollowup,triageTestMailboxMessages} from '../shared-core/server-test-mailbox-followup.mjs';
+import {markTestMailboxUnavailable} from '../shared-core/server-test-mailbox-unavailable.mjs';
 
 // Owner decision 2026-11-06: a guest's reply continues the case in the operator system. Real PostgreSQL
 // (PGlite), fictional mails only, the real server modules end to end (Gmail is a fixture).
@@ -42,7 +43,7 @@ test('a reply in the case thread from the same guest is appended; facts merged; 
     return (await db.query("select * from sc_cases where tenant_id=$1 and ($2::text is null or data->'sourceReceipt'->>'thread_id'=$2)",[url.searchParams.get('tenant_id').slice(3),thread??null])).rows;
    }
    const fn=url.pathname.split('/').at(-1);
-   const args={sc_tm_create:['p_tenant','p_case','p_data','p_proof'],sc_tm_followup:['p_tenant','p_case','p_expected','p_message','p_values','p_draft','p_proof'],sc_tm_decide:['p_tenant','p_case','p_expected','p_draft_hash','p_decision','p_reason']}[fn];
+   const args={sc_tm_create:['p_tenant','p_case','p_data','p_proof'],sc_tm_followup:['p_tenant','p_case','p_expected','p_message','p_values','p_draft','p_proof'],sc_tm_decide:['p_tenant','p_case','p_expected','p_draft_hash','p_decision','p_reason'],sc_tm_unavailable_redraft:['p_tenant','p_case','p_expected','p_draft','p_proof']}[fn];
    const vals=args.map(k=>typeof body[k]==='object'&&body[k]!==null?JSON.stringify(body[k]):body[k]??null);
    return (await db.query(`select ${fn}(${vals.map((_,i)=>'$'+(i+1)).join(',')}) r`,vals)).rows[0].r;
   }catch(error){throw Object.assign(Error('DB'),{code:error.code==='42501'?'FORBIDDEN':'DB',detail:error.message});}
@@ -88,6 +89,17 @@ test('a reply in the case thread from the same guest is appended; facts merged; 
   await ingestTestMailboxMessage({...common,messageId:'38f2a0b1c2d3e4a4'});
   const same=await triageTestMailboxMessages({token:'t'.repeat(40),transport:transportFor('writer'),fetchImpl:gmailFetch,messageIds:['38f2a0b1c2d3e4a5']});
   assert.deepEqual(same,[{messageId:'38f2a0b1c2d3e4a5',kind:'uncertain',reason:'same_guest_same_dates',caseIds:['tm-38f2a0b1c2d3e4a4']}],'same guest, new thread, same stay: the operator decides');
+  // 2c. Owner video 2026-11-06: TEST DB without sc_tm_unavailable_redraft -> the button fails; the minimal
+  // install restores it and the button works end to end (server-built, attested, no price).
+  await db.exec('drop function sc_tm_unavailable_redraft(text,text,bigint,jsonb,jsonb)');
+  const nb=(await db.query('select * from sc_cases where case_id=$1',['tm-38f2a0b1c2d3e4a4'])).rows[0];
+  const recordOf=r=>({tenantId:r.tenant_id,caseId:r.case_id,revision:Number(r.revision),data:r.data});
+  await assert.rejects(markTestMailboxUnavailable({record:recordOf(nb),unavailableConfirmed:true,attestationKey:KEY,transport:transportFor('writer')}),/DB/,'missing function');
+  await db.exec(await read('deployment/test-mailbox/unavailable.sql'));
+  assert.equal((await db.exec(await read('deployment/test-mailbox/unavailable.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
+  const marked=await markTestMailboxUnavailable({record:recordOf(nb),unavailableConfirmed:true,attestationKey:KEY,transport:transportFor('writer')});
+  assert.equal(marked.revision,2);assert.match(marked.data.drafts.at(-1).text,/nincs a megadott létszámnak megfelelő szabad faházunk/);
+  assert.doesNotMatch(marked.data.drafts.at(-1).text,/Ft\b/);
   // 3. The database alone refuses a forged message for another thread or guest, even with a valid writer session.
   const forged={sender:'sarberkito@gmail.com',text:'x',mailbox_id:row.data.sourceReceipt.mailbox_id,message_id:'38f2a0b1c2d3e4a9',thread_id:'38f2a0b1c2d3e4ff',rfc_message_id:'<f@x>',references:[],received_at:'2026-11-06T10:10:00.000Z'};
   await assert.rejects(transportFor('writer')('/rest/v1/rpc/sc_tm_followup',{method:'POST',body:{p_tenant:TENANT,p_case:caseId,p_expected:3,p_message:forged,p_values:{},p_draft:{text:'y'},p_proof:{}}}),e=>e.detail.includes('does not belong'));

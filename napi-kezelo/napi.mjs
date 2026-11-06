@@ -304,7 +304,7 @@ el('unavailable-confirm').addEventListener('change',()=>{const on=el('unavailabl
 // confirms availability by hand until the Previo read is connected. Nothing is inserted automatically.
 const priceErrors={PRICE_FACTS_MISSING:'A foglalási adatokból hiányzik a pontos dátum, a felnőttszám vagy egy gyermek életkora.',
  PRICE_LINE_MISSING:'A válaszban már nincs meg az általános ármondat (kézzel módosították); az árat kézzel írja be.',
- PRICE_REFUSED:'Az árlista ehhez nem ad igazolt árat; kézi ellenőrzés szükséges.',PREVIO_NO_FREE_UNIT:'A Previo szerint a kért időszakra nincs szabad ilyen ház, ezért ár nem illeszthető be. Válasszon más háztípust, vagy használja a „Nincs szabad hely” gombot.',CASE_CONFLICT:'A foglalás közben megváltozott; nyissa meg újra.',
+ PRICE_REFUSED:'Az árlista ehhez nem ad igazolt árat; kézi ellenőrzés szükséges.',STORAGE_FAILURE:'Az adatbázis-funkció nem érhető el (valószínűleg még nincs telepítve). Szóljon Claude-nak.',NOT_FOUND:'A foglalás nem található; töltse be újra a listát.',PREVIO_NO_FREE_UNIT:'A Previo szerint a kért időszakra nincs szabad ilyen ház, ezért ár nem illeszthető be. Válasszon más háztípust, vagy használja a „Nincs szabad hely” gombot.',CASE_CONFLICT:'A foglalás közben megváltozott; nyissa meg újra.',
  FORBIDDEN:'Ehhez nincs írási jog, vagy a funkció nincs telepítve.',TEST_MAILBOX_REJECTED:'Az adatbázis elutasította (lehet, hogy a frissítés még nincs telepítve).'};
 el('price-insert').addEventListener('click',async()=>{
  const target=priceCase,quote=priceQuote;if(!authenticated||!target||!quote||!el('price-available').checked||actionBusy)return;
@@ -324,7 +324,9 @@ el('price-insert').addEventListener('click',async()=>{
 });
 const unavailableErrors={ALREADY_UNAVAILABLE:'A válasz már a „nincs szabad hely” szöveg.',DRAFT_SHAPE_UNKNOWN:'A tervezet szerkezete nem ismerhető fel (kézzel módosították); a választ kézzel írja meg.',
  CASE_CONFLICT:'A foglalás közben megváltozott; nyissa meg újra.',FORBIDDEN:'Ehhez nincs írási jog, vagy a funkció nincs telepítve.',
- TEST_MAILBOX_REJECTED:'Az adatbázis elutasította (lehet, hogy a frissítés még nincs telepítve).'};
+ TEST_MAILBOX_REJECTED:'Az adatbázis elutasította (lehet, hogy a frissítés még nincs telepítve).',
+ // Owner video 2026-11-06: a missing database function surfaced only as a generic message.
+ STORAGE_FAILURE:'Az adatbázis-funkció nem érhető el (valószínűleg még nincs telepítve). Szóljon Claude-nak; addig a választ kézzel írja meg.',NOT_FOUND:'A foglalás nem található; töltse be újra a listát.'};
 el('unavailable-insert').addEventListener('click',async()=>{
  const target=priceCase;if(!authenticated||!target||!target.editable||!el('unavailable-confirm').checked||actionBusy)return;
  const turn=epoch;actionBusy=true;el('unavailable-insert').disabled=true;el('unavailable-result').textContent='Ár nélküli „nincs szabad hely” válasz mentése…';
