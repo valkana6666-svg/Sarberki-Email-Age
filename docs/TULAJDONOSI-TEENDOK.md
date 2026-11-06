@@ -20,15 +20,8 @@ Minden más elő van készítve. A sorrend a fontosság. Titkot (jelszót, kulcs
 - Kockázat: a kulcs a Netlify-fiók minden oldalához hozzáfér; Claude csak a TEST-oldalnál használná (AGENTS.md-be rögzítve).
 - Ha kéred: Netlify → User settings → Applications → **Personal access tokens → New access token** (lejárat: 90 nap) → majd szólj Claude-nak, és a kulcsot a megjelenő **biztonságos űrlapba** írod (nem a chatbe).
 
-## 4. Previo: levél a meglévő ügyre (previohu#63899) – másold be, küldd el te
-Magyarul:
-> Tisztelt Previo Ügyfélszolgálat!
-> A #63899 ügyhöz kapcsolódóan két kérésünk van:
-> 1. Kérjük a REST API **olvasási** kulcsot az API TESZT szálláshelyhez (73521), kizárólag a `Booking.getFreeCapacity` és `Hotel.getRates` / `Hotel.getObjectKinds` jogosultsággal, írási jog nélkül.
-> 2. Kérjük **írásos megerősítésüket**, hogy a `GET /rest/calendar/availability` hívás semmilyen foglalást, ideiglenes zárolást (hold) vagy egyéb módosítást nem hoz létre a szálláshelyen.
-> Köszönettel: Kovács László, Sárberki Horgásztó
-
-A kulcsot ne küldd el senkinek: ha megjött, szólj Claude-nak, és a biztonságos űrlapon adod meg.
+## 4. Previo: szerkezet-másolás kérése a 73521-es tesztbe – másold be, küldd el te
+A kulcs megjött és működik (11-06). A levél szövege: [`PREVIO-TEST-23-EGYSEG-2026-11-06.md`](PREVIO-TEST-23-EGYSEG-2026-11-06.md) 4. pont (a #63899-es ügyre válaszként).
 
 ## 5. Tesztlevelek (ha van 15 perced): `TESZTLEVELEK-2026-11.md` – 7 kész szöveg a sarberkito@gmail.com-ról
 
