@@ -31,10 +31,11 @@ TEST-oldal: `leafy-chimera-2403e5`, **telepített `1304f96` (2026-11-06, tulajdo
 | PREVIO-READ-PLAN | Claude | ELSŐ OLVASÁS PASS (11-06, tulajdonosi jóváhagyás) | `scripts/previo-readonly-discovery.mjs` 3 listázó GET a 73521-en: mind HTTP 200 → a kulcs hitelesít, olvasási jog a 73521-hez IGAZOLT. **A 73521 általános minta:** 1 árcsomag „Alap”, 1 háztípus „Apartmanok” (4 fő), 5 egység „Apartman 1–5” – NEM a Sárberki 23 egysége → leképezés most nem lehetséges. Kulcs: munkamenet-környezet titka (proxy) + Netlify. 753011-hozzáférés hiánya NEM IGAZOLT (éles hívás tiltott). `PREVIO_READ_API_ENABLED` KI; naptár: külön döntés. |
 
 ## Akadályok
-- Gmail OAuth élő újrapróbája és a fizikai iPhone-lépések emberi lépést igényelnek.
 - Previo: saját API-hozzáférés és éles honlap → Previo kapcsolat nem igazolt; Previo-írás műveletenkénti tulajdonosi engedéllyel.
 
 ## Engedélyek (Previo-írás, TEST is – AGENTS.md; végrehajtás ELŐTT rögzítendő)
 | Típus (ELŐZETES / UTÓLAGOS TUDOMÁSULVÉTEL) | Engedélyező | Időpont | Pontos művelet | Tesztadat | Lezárás módja |
 |---|---|---|---|---|---|
 | UTÓLAGOS TUDOMÁSULVÉTEL (nem előzetes engedély) | Tulajdonos | Végrehajtás: 2026-11-02 09:39–11:56 CET (Work); tudomásulvétel: 2026-11-02 ~13:00 CET | Previo 73521 API TESZT: foglalás létrehozása (voucher 20260001), voucher-PDF előállítása küldés nélkül, majd lemondás | „TESZT WORK VOUCHER 20261102”, 1 felnőtt, várólista, e-mail/telefon nélkül | Lemondott; auditcélból megmarad; pénzügyi rendezés nincs (`c09ecc5`, `3d2cae9`) |
+
+| ELŐZETES | Tulajdonos (chat, Claude-munkamenet) | 2026-11-07 ~08:00 CET, végrehajtás előtt | Previo **73521** API TESZT, webes felület (Work): **6 szállástípus** felvétele (VIP apartman 7+0, Családi faház 8+0, Deluxe faház 6+0, Különálló 2 fős faház 2+1, 2 fős apartman 2+0, 4 fős apartman 4+1) és **23 egység** (1→VIP; 2–6→Családi; 7/A–10/A, 7/B–10/B→2 fős; 7/C–10/C→4 fős; 11–14→Deluxe; 15→Különálló). NEM: foglalás, vendég, ár, árcsomag, csatorna, integráció, API-beállítás, az 5 mintapartman; 753011 érintetlen | Szerkezeti törzsadat, vendégadat nélkül (`docs/PREVIO-TEST-23-EGYSEG-2026-11-06.md` 1c) | Work jelentés a #9-be; Claude 3 olvasó GET-tel ellenőrzi (külön tulajdonosi jóváhagyással) |
