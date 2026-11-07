@@ -24,15 +24,15 @@ Megjegyzés: az élő Previóban az A és a B **egy típus** (8-as pool). A „m
 | 7/A, 8/A, 9/A, 10/A | 2+0 | Osztott A 2 / 2 | igen | képen igazolt |
 | 7/B, 8/B, 9/B, 10/B | 2+0 | Osztott B 2 / 2 | igen | képen igazolt |
 | 7/C, 8/C, 9/C | 4+1 | Osztott C 4 / 5 (5. fő pótágy) | igen | képen igazolt |
-| 10/C | (4+1?) | uaz. | valószínű | a képen nem látszik → **kell egy kép** |
-| 11, 12, 13, 14 | (5+1?) régi belső adat | Deluxe 4 / 6 | max 6 egyezik | **kell egy kép** |
-| 15 | (2, gyermek-pótágy?) régi adat | Különálló 2 / 3 | bizonytalan | **kell egy kép** |
+| 10/C | 4+1 | Osztott C 4 / 5 | igen | képen igazolt (tulajdonosi fotó 11-07) |
+| 11, 12, 13, 14 | **6+0** (a régi 5+1 adat téves) | Deluxe 4 / 6 | igen (max 6) | képen igazolt (tulajdonosi fotó 11-07) |
+| 15 | 2+1 | Különálló 2 / 3 | igen | képen igazolt (tulajdonosi fotó 11-07) |
 
 Eltérés a kódtól nincs; az egységek a Previóban **egyenként, házszám/betű névvel** szerepelnek (pl. „7/A”) → a 73521-ben is így kell felvenni, hogy az A/B/C egyedileg leképezhető legyen.
-Hiányzik még: a 10/C, 11–15 sorok képe, és a naptár **színeinek jelentése** (tulajdonos/apu).
+**Mind a 23 egység képen igazolt, eltérés a kódtól nincs.** Hiányzik még: a naptár **színeinek** és az „R”/„B” jeleknek a jelentése (tulajdonos/apu).
 
 ## 1c. Felépítési lista a 73521-hez (Work, előzetes tulajdonosi engedély után)
-Típusok (név → kapacitás): VIP apartman 7+0 · Családi faház 8+0 · Deluxe faház (5+1, megerősítendő) · Különálló 2 fős faház (2+?, megerősítendő) · 2 fős apartman 2+0 · 4 fős apartman 4+1.
+Típusok (név → kapacitás): VIP apartman 7+0 · Családi faház 8+0 · Deluxe faház 6+0 · Különálló 2 fős faház 2+1 · 2 fős apartman 2+0 · 4 fős apartman 4+1.
 Egységek (név → típus): 1 → VIP · 2–6 → Családi · 7/A, 7/B, 8/A, 8/B, 9/A, 9/B, 10/A, 10/B → 2 fős apartman · 7/C, 8/C, 9/C, 10/C → 4 fős apartman · 11–14 → Deluxe · 15 → Különálló. Összesen 23.
 Nem változik: foglalás, ár, árcsomag, csatorna, integráció; az 5 mintapartman marad (nem kötjük semmihez).
 
