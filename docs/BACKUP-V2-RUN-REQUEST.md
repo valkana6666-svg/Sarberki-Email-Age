@@ -121,3 +121,4 @@ Source project: mojnqizbcaczstguikpv only. Source commit: cd03aa0f3632505229634e
 Authorized SQL: deployment/test-mailbox/booking-status.sql, blob 7f27558af06655b13907c7c4c093d4a9940022aa; then booking-status.verify.sql.
 Fresh encrypted Drive export, exact-ID readback and isolated SQL restore before deployment. No Netlify, source data changes, Previo writes or email sending.
 Provider: drive. Marker: [backup-v2-run].
+Daily request 2026-11-07T05:47Z: Claude scheduled daily Drive backup.
