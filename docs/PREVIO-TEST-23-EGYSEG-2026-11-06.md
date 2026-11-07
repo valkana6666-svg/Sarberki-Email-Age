@@ -92,6 +92,8 @@ Csak a 73521 TESZT-re érvényes (az éles ID-k mások). Beállítása a Netlify
 | „R” | foglalás a Sárberki honlapjáról | forrás |
 | „S” | foglalás a Szállás.hu-ról | forrás |
 | „B.” | foglalás a Booking.com-ról | forrás |
+| Rövid nagybetűs jel a sáv elején (pl. „MEG”) | **céges foglalás** (tulajdonos 11-07); a jel valószínűleg a cégnév rövidítése – NEM IGAZOLT | forrás/vevőtípus: cég (céges számla) |
+| „PALK” | valószínűleg szintén céges rövidítés – NEM IGAZOLT | – |
 | „-3”, „-4” a sáv elején | **NEM IGAZOLT** – kérdés a tulajdonosnak/apunak | – |
 
 Életút: opció (sárga) → megerősítve (zöld) → itt van (kék) → elment (szürke). A V1 most az első kettőt kezeli; a „kék/szürke” és a forrásjel későbbi bővítés.
