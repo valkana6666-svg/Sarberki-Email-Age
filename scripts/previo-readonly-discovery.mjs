@@ -19,14 +19,18 @@ export const CALLS=Object.freeze([
 const pick=(o,keys)=>Object.fromEntries(keys.filter(k=>o&&o[k]!==undefined).map(k=>[k,o[k]]));
 const SAFE={ratePlans:['ratePlanId','name','isBasePlan'],roomKinds:['prkId','roomKindId','id','name','capacity','extraBeds'],rooms:['roomId','name','roomKindId','isActive','active']};
 
-export async function discover({fetchImpl=fetch,hotelId=HOTEL}={}){
- if(String(hotelId)!==HOTEL||LIVE.includes(String(hotelId)))throw Error('ONLY_TEST_PROPERTY_73521');
- const report={hotelId:HOTEL,calls:[]};
- for(const call of CALLS){
+// Live scope check (prepared 2026-11-07, run only after the owner's recorded approval): ONE listing GET
+// /rest/rooms on 753011 – room names/ids only, no calendar, reservation or guest data. 403 means no live access.
+export async function discover({fetchImpl=fetch,hotelId=HOTEL,liveRoomsOnly=false}={}){
+ const live=liveRoomsOnly===true&&String(hotelId)==='753011';
+ if(!live&&(String(hotelId)!==HOTEL||LIVE.includes(String(hotelId))))throw Error('ONLY_TEST_PROPERTY_73521');
+ const hotel=live?'753011':HOTEL,calls=live?CALLS.filter(c=>c.name==='rooms'):CALLS;
+ const report={hotelId:hotel,calls:[]};
+ for(const call of calls){
   let status=null,items=null,error=null;
   try{
    const response=await fetchImpl(ORIGIN+call.path,{method:'GET',redirect:'error',cache:'no-store',
-    headers:{Authorization:'ApiKey PROXY_REPLACES_THIS',Accept:'application/json','X-Previo-Hotel-Id':HOTEL,'X-Previo-Language-Id':'2'}});
+    headers:{Authorization:'ApiKey PROXY_REPLACES_THIS',Accept:'application/json','X-Previo-Hotel-Id':hotel,'X-Previo-Language-Id':'2'}});
    status=response.status;
    if(response.ok){const body=await response.json();const list=Array.isArray(body)?body:Array.isArray(body?.data)?body.data:null;
     items=list?list.slice(0,200).map(x=>pick(x,SAFE[call.name])):null;if(!list)error='UNEXPECTED_SHAPE';}
@@ -38,6 +42,7 @@ export async function discover({fetchImpl=fetch,hotelId=HOTEL}={}){
 }
 
 if(import.meta.url===`file://${process.argv[1]}`){
- if(!process.argv.includes('--approved-73521')){console.log('Refused: run only after the owner approved this exact read (flag --approved-73521).');process.exit(2);}
- discover().then(r=>console.log(JSON.stringify(r,null,1))).catch(e=>{console.log('BLOCKED',e.message);process.exit(1);});
+ const liveRooms=process.argv.includes('--approved-753011-rooms-only');
+ if(!process.argv.includes('--approved-73521')&&!liveRooms){console.log('Refused: run only after the owner approved this exact read (flag --approved-73521 or --approved-753011-rooms-only).');process.exit(2);}
+ discover(liveRooms?{hotelId:'753011',liveRoomsOnly:true}:{}).then(r=>console.log(JSON.stringify(r,null,1))).catch(e=>{console.log('BLOCKED',e.message);process.exit(1);});
 }

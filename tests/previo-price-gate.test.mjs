@@ -51,3 +51,20 @@ test('server wiring: off unless the owner switch is set; sandbox only; key never
  const live=previoCapacityReader({...base,PREVIO_HOTEL_ID:'753011'},async()=>{throw Error('must not be called');});
  await assert.rejects(live({cabin:'deluxe',arrival:'2027-05-14',departure:'2027-05-16'}),/LIVE_PROPERTY_REFUSED/);
 });
+
+// Prepared 2026-11-07, NOT enabled: the live read needs its own switch and mapping; nothing else changes.
+test('live read 753011: only with PREVIO_LIVE_READ=availability-only, own mapping, calendar GET only',async()=>{
+ const key='synthetic-previo-key-0123456789';
+ assert.equal(previoCapacityReader({PREVIO_LIVE_READ:'true',PREVIO_API_KEY:key},fetch),null);
+ assert.equal(previoCapacityReader({PREVIO_LIVE_READ:'availability-only',PREVIO_API_KEY:key,PREVIO_LIVE_ROOM_KIND_MAP:'{bad'},fetch),null);
+ const calls=[];
+ const reader=previoCapacityReader({PREVIO_LIVE_READ:'availability-only',PREVIO_API_KEY:key,PREVIO_LIVE_RATE_PLAN_ID:'700001',PREVIO_LIVE_ROOM_KIND_MAP:JSON.stringify({deluxe:'766439'}),
+  PREVIO_HOTEL_ID:'73521'},async(url,options)=>{calls.push({url,options});return new Response(JSON.stringify([{ratePlanId:700001,availability:[{date:'2027-06-10',roomKinds:[{id:766439,availability:2}]},{date:'2027-06-11',roomKinds:[{id:766439,availability:1}]},{date:'2027-06-12',roomKinds:[{id:766439,availability:1}]}]}]));});
+ const r=await reader({cabin:'deluxe',arrival:'2027-06-10',departure:'2027-06-13'});
+ assert.equal(r.freeByCabin.deluxe,1);assert.equal(r.hotelId,'753011');assert.equal(r.bookingCreated,false);assert.equal(r.writeAttempted,false);
+ assert.equal(calls.length,1);assert.equal(calls[0].options.method,'GET');assert.equal(calls[0].options.headers['X-Previo-Hotel-Id'],'753011');
+ assert.match(calls[0].url,/^https:\/\/api\.previo\.app\/rest\/calendar\/availability\?/);
+ // Without the live switch the sandbox path still refuses the live id.
+ const {readPrevioFreeCapacity}=await import('../shared-core/server-previo-rest-read.mjs');
+ await assert.rejects(readPrevioFreeCapacity({apiKey:key,hotelId:'753011',ratePlanId:'1',mapping:{deluxe:'1'},cabins:['deluxe'],arrival:'2027-06-10',departure:'2027-06-13',fetchImpl:async()=>{throw Error('no');}}),/LIVE_PROPERTY_REFUSED/);
+});

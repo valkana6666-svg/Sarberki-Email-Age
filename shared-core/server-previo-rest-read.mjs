@@ -37,9 +37,12 @@ export function validateRoomKindMapping(mapping){
  return Object.freeze(Object.fromEntries(keys.map(k=>[k,String(mapping[k])])));
 }
 
-export function previoAvailabilityRequest({hotelId,ratePlanId,roomKindIds,arrival,departure}){
- if(LIVE_HOTEL_IDS.includes(String(hotelId)))fail('LIVE_PROPERTY_REFUSED');
- if(String(hotelId)!==PREVIO_SANDBOX_HOTEL_ID)fail('SANDBOX_ONLY');
+// Live property (753011) only with the separate, default-off live switch (owner/ChatGPT 2026-11-07, prepared,
+// NOT enabled): availability read only, same GET-only client. Any other hotel id is refused.
+export function previoAvailabilityRequest({hotelId,ratePlanId,roomKindIds,arrival,departure,allowLive=false}){
+ const live=LIVE_HOTEL_IDS.includes(String(hotelId));
+ if(live&&allowLive!==true)fail('LIVE_PROPERTY_REFUSED');
+ if(!live&&String(hotelId)!==PREVIO_SANDBOX_HOTEL_ID)fail('SANDBOX_ONLY');
  if(!intId(ratePlanId))fail('RATE_PLAN_UNVERIFIED');
  if(!Array.isArray(roomKindIds)||!roomKindIds.length||roomKindIds.length>23||!roomKindIds.every(intId)||new Set(roomKindIds.map(String)).size!==roomKindIds.length)fail('MAPPING_UNVERIFIED');
  const nights=stayNights(arrival,departure);
@@ -70,12 +73,12 @@ export function normalizePrevioAvailability(body,request){
 }
 
 // One attempt, pinned host, GET only, no redirects, timeout <= 15 s. Returns per-cabin free counts.
-export async function readPrevioFreeCapacity({apiKey,hotelId,ratePlanId,mapping,cabins,arrival,departure,fetchImpl=globalThis.fetch,timeoutMs=8000,clock=()=>new Date().toISOString()}={}){
+export async function readPrevioFreeCapacity({apiKey,hotelId,ratePlanId,mapping,cabins,arrival,departure,allowLive=false,fetchImpl=globalThis.fetch,timeoutMs=8000,clock=()=>new Date().toISOString()}={}){
  if(typeof apiKey!=='string'||!/^[A-Za-z0-9._~+/=-]{16,512}$/.test(apiKey))fail('PREVIO_KEY_MISSING');
  if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>15000)fail('INVALID_TIMEOUT');
  const map=validateRoomKindMapping(mapping);
  if(!Array.isArray(cabins)||!cabins.length||cabins.some(c=>!map[c]))fail('MAPPING_UNVERIFIED');
- const request=previoAvailabilityRequest({hotelId,ratePlanId,roomKindIds:[...new Set(cabins.map(c=>map[c]))],arrival,departure});
+ const request=previoAvailabilityRequest({hotelId,ratePlanId,roomKindIds:[...new Set(cabins.map(c=>map[c]))],arrival,departure,allowLive});
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
  let body;
  try{

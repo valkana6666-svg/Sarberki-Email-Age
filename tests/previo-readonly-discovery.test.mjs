@@ -19,3 +19,14 @@ test('first Previo read: only three listing GETs on 73521, safe fields only, liv
  const failing=await discover({fetchImpl:async()=>new Response('no',{status:403})});
  assert.deepEqual(failing.calls.map(c=>c.error),['HTTP_403','HTTP_403','HTTP_403']);
 });
+
+test('live scope check: exactly one GET /rest/rooms on 753011, only with the explicit flag',async()=>{
+ const seen=[];
+ const fetchImpl=async(url,init)=>{seen.push({url,init});return new Response(JSON.stringify([{roomId:1,name:'7/A',roomKindId:766441,guest:'x'}]),{status:200});};
+ await assert.rejects(discover({fetchImpl,hotelId:'753011'}),/ONLY_TEST_PROPERTY_73521/);
+ assert.equal(seen.length,0);
+ const r=await discover({fetchImpl,hotelId:'753011',liveRoomsOnly:true});
+ assert.equal(seen.length,1);assert.equal(seen[0].url,'https://api.previo.app/rest/rooms');assert.equal(seen[0].init.method,'GET');
+ assert.equal(seen[0].init.headers['X-Previo-Hotel-Id'],'753011');assert.equal(r.hotelId,'753011');assert.equal(JSON.stringify(r).includes('guest'),false);
+ await assert.rejects(discover({fetchImpl,hotelId:'12345',liveRoomsOnly:true}),/ONLY_TEST_PROPERTY_73521/);
+});
