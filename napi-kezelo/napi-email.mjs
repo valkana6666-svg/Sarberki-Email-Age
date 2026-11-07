@@ -1,3 +1,11 @@
+// Owner feedback 2026-11-06: the Hungarian draft is shown once; the review shows only what differs.
+export function reviewDisplay(text,review){
+ const t=String(text??''),r=typeof review==='string'?review:'';
+ if(!r.trim())return '';
+ if(r.trim()===t.trim())return 'A magyar ellenőrző szöveg megegyezik a választervezettel.';
+ if(t&&r.startsWith(t))return r.slice(t.length).trim()||'A magyar ellenőrző szöveg megegyezik a választervezettel.';
+ return r;
+}
 import {readTestGmailInbox,TEST_GMAIL_ACCOUNT,gmailReadableBody,isTestInquiry,isTestPairInquiry,senderAddress,TEST_GUEST_SENDER} from '../gmail-policy.mjs';
 import {automatedMailReason} from '../shared-core/automated-mail-filter.mjs';
 import {buildEmailInquiryDraft} from '../shared-core/inquiry-channel-adapters.mjs';
@@ -66,7 +74,7 @@ export function createDailyEmailReader({canRead,restoreSession,loadGoogleImpl=lo
    'Kapacitás: '+(d.capacity?.verified?'típusszinten igazolt, ajánlat előtt újra ellenőrizendő':'nem igazolt'),'Ár: '+(d.pricing?.verified?'igazolt összetevők':'nem igazolt'),
    'Emberi jóváhagyás szükséges; ez nem mentett foglalás, nem küldés és nem Previo-foglalás.'];
   el('email-draft-checks').replaceChildren(...items.map(text=>{const li=documentImpl.createElement('li');li.textContent=text;return li;}));
-  el('email-draft-text').value=draft.text;el('email-draft-text').disabled=false;el('email-draft-review').textContent=draft.operatorReviewText;
+  el('email-draft-text').value=draft.text;el('email-draft-text').disabled=false;el('email-draft-review').textContent=reviewDisplay(draft.text,draft.operatorReviewText);
   el('email-draft-status').textContent='Helyi előnézet a közös döntési magból: nincs mentve, nem küldhető, nem Previo-foglalás. A szöveg itt szerkeszthető; csak titkosított, 30 percig érvényes helyi másolat készül.';
   onChange();
  }

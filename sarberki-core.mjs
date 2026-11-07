@@ -47,6 +47,8 @@ export function activeMessageText(text=''){
 }
 // A capitalised word that ends a letter but is a greeting/thanks, never a name.
 const NOT_A_NAME=/^(?:köszönöm|köszi|köszönettel|üdv|üdvözlettel|üdvözlet|tisztelettel|szia|sziasztok|helló|hello|hali|igen|nem|danke|grüße|gruß|thanks|thank|regards|cheers|best|hvala|pozdrav|lp)$/iu;
+// "Szép Napot", "Schönen Tag", "Good Day" after a sign-off are wishes, not names.
+const greetingWords=value=>value.trim().split(/\s+/).some(w=>NOT_A_NAME.test(w)||/^(?:szép|jó|kellemes|boldog|napot|estét|hétvégét|napo[tk]|tag|abend|schön\p{L}*|gute[nr]?|day|evening|weekend|good|nice|great|lovely|have|dan|lep\p{L}*)$/iu.test(w));
 export function nameFromText(text=''){
   const current=activeMessageText(text);
   const word='[A-ZÁÉÍÓÖŐÚÜŰČŠŽÄÖÜ][\\p{L}-]+';
@@ -62,7 +64,19 @@ export function nameFromText(text=''){
   ];
   for(const pattern of patterns){
     const match=current.match(pattern);
-    if(match?.[1]&&!NOT_A_NAME.test(match[1].trim())) return match[1].trim();
+    if(match?.[1]&&!NOT_A_NAME.test(match[1].trim())&&!greetingWords(match[1])) return match[1].trim();
+  }
+  // Owner tests 2026-11-06: the signature at the very END of the letter but on the same line as the text
+  // ("…0000. Üdv: Kis Anna", "…faházba. Kiss Anna”"). Only the end of the whole letter counts; a trailing
+  // quote or full stop is ignored; a bare full name needs a sentence end before it.
+  const tail=current.replace(/[\s"'”“„»«.!]+$/u,'');
+  const tailPatterns=[
+    new RegExp('(?:^|\\s)(?:üdv(?:özlettel|özlet)?|tisztelettel|köszönettel|köszönöm|köszi|mit\\s+freundlichen\\s+grüßen|viele\\s+grüße|liebe\\s+grüße|best\\s+regards|kind\\s+regards|regards|lep\\s+pozdrav|pozdrav)(?!\\p{L})\\s*[,.:;-]?\\s*'+signedName+'$','iu'),
+    new RegExp('[.!?]\\s+'+fullName+'$','u')
+  ];
+  for(const pattern of tailPatterns){
+    const match=tail.match(pattern);
+    if(match?.[1]&&!NOT_A_NAME.test(match[1].trim())&&!greetingWords(match[1])) return match[1].trim();
   }
   // A single given name alone on the last line of a multi-line letter ("…?\nPéter").
   const lines=current.split('\n').map(l=>l.trim()).filter(Boolean);

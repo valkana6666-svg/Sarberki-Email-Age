@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createDailyEmailReader} from '../napi-kezelo/napi-email.mjs';
+import {createDailyEmailReader,reviewDisplay} from '../napi-kezelo/napi-email.mjs';
 import {buildEmailInquiryDraft} from '../shared-core/inquiry-channel-adapters.mjs';
 import {syntheticMailMime,syntheticMailEnvelope,syntheticMailLanguages} from '../shared-core/synthetic-mail-fixtures.mjs';
 import {languageFromText} from '../sarberki-core.mjs';
@@ -111,7 +111,7 @@ test('closed synthetic HU/DE/SI/EN mail gets the exact shared email-adapter draf
   assert.deepEqual(guard.calls,[]);assert.equal(h.restores,before+1);
   const expected=buildEmailInquiryDraft({message:syntheticMailEnvelope(language).text,language,now:PREVIEW_NOW,tenantId:'sarberki-test'});
   assert.equal(h.e['email-draft-text'].value,expected.text,language);
-  assert.equal(h.e['email-draft-review'].textContent,expected.operatorReviewText,language);
+  assert.equal(h.e['email-draft-review'].textContent,reviewDisplay(expected.text,expected.operatorReviewText),language);
   assert.equal(h.e['email-draft-text'].disabled,false);
   assert.match(checks(h),/Kapacitás: nem igazolt/);assert.match(checks(h),/Ár: nem igazolt/);
   assert.match(checks(h),/Emberi jóváhagyás szükséges/);
@@ -225,7 +225,7 @@ test('marked test-mailbox messages get the exact shared-adapter preview in HU/DE
   assert.equal(languageFromText(markedBodies[language]),language);
   const expected=buildEmailInquiryDraft({message:markedBodies[language],language,now:PREVIEW_NOW,tenantId:'sarberki-test'});
   assert.equal(h.e['email-draft-text'].value,expected.text,language);
-  assert.equal(h.e['email-draft-review'].textContent,expected.operatorReviewText,language);
+  assert.equal(h.e['email-draft-review'].textContent,reviewDisplay(expected.text,expected.operatorReviewText),language);
   assert.match(checks(h),/Kapacitás: nem igazolt/);assert.match(checks(h),/Ár: nem igazolt/);assert.match(checks(h),/Emberi jóváhagyás szükséges/);
   assert.match(h.e['email-draft-status'].textContent,/Helyi előnézet.*nincs mentve.*nem küldhető.*nem Previo-foglalás/s);
  }

@@ -75,7 +75,7 @@ test('V1 completion: Previo attestation -> confirmation with deposit -> finalize
   assert.equal(record.data.booking.status,'finalized');assert.equal(record.data.booking.previo.reference,'TEST-73521-1');
   assert.equal(record.data.booking.deposit.amount,94500);assert.equal(record.data.state.approval,'pending','confirmation still needs human approval');
   const draft=record.data.drafts.at(-1);assert.equal(draft.confirmation,true);
-  assert.match(draft.text,/^Kedves (?:Kis Anna|Vendégünk)!/); // name extraction from the signature: separate open fix
+  assert.match(draft.text,/^Kedves Kis Anna!/); // name from the signature (fixed 2026-11-07)
   assert.match(draft.text,/összesen: 192 300 Ft/);assert.match(draft.text,/50%-a: 94 500 Ft/);
   assert.doesNotMatch(draft.text,/TEST-73521-1/);
   // Twice: refused.

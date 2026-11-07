@@ -1,4 +1,4 @@
-import {createDailyEmailReader} from './napi-email.mjs';
+import {createDailyEmailReader,reviewDisplay} from './napi-email.mjs';
 import {createOperatorSession} from '../sarberki-chatbot-project/operator-session.mjs';
 import {isIsolatedReviewCaseId} from '../shared-core/isolated-review-case-id.mjs';
 import {createCloudCaseRequest} from '../shared-core/cloud-case-request.mjs';
@@ -236,6 +236,10 @@ async function showTranslation(caseId,turn){
  el('detail-messages').append(note);
 }
 // Test-mailbox case: same detail panel, own server read model. Edit/decide flags are hints only; the database re-checks.
+// Owner feedback 2026-11-06: readable Hungarian time, and the Hungarian draft shown only once.
+function localTime(iso){const d=new Date(iso);if(!Number.isFinite(d.getTime()))return String(iso);
+ return d.toLocaleString('hu-HU',{timeZone:'Europe/Budapest',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});}
+function reviewSummary(text,review){return reviewDisplay(text,review)||'Magyar ellenőrző összefoglaló még nincs.';}
 async function openTestMailboxCase(caseId,turn,status){
  const record=await request({tenantId:TENANT,caseId,action:'test-mailbox-record'},'GET');if(!current(turn))return;
  if(record?.caseId!==caseId||!Number.isSafeInteger(record.revision)||record.revision<1||!tmStatus[record.approval]||
@@ -244,7 +248,7 @@ async function openTestMailboxCase(caseId,turn,status){
  for(const message of record.messages){
   if(typeof message.text!=='string')throw Error('INVALID_DATA');
   const item=document.createElement('p');item.className='readout';
-  item.textContent=(message.received_at?message.received_at+'\n':'')+message.text;messages.append(item);
+  item.textContent=(message.received_at?localTime(message.received_at)+'\n':'')+message.text;messages.append(item);
  }
  const values=record.values||{};
  el('detail-messages').replaceChildren(messages);void showTranslation(caseId,turn);
@@ -252,9 +256,9 @@ async function openTestMailboxCase(caseId,turn,status){
   '\nLétszám: '+guestSummary(values)+'\nHáztípus: '+(values.unit||'Nincs megadva');
  el('detail-status').textContent=status||tmStatus[record.approval];
  el('detail-draft').textContent=record.draft.text;
- el('detail-summary').textContent=record.draft.operatorReviewText||'Magyar ellenőrző összefoglaló még nincs.';
+ el('detail-summary').textContent=reviewSummary(record.draft.text,record.draft.operatorReviewText);
  el('detail-capacity').textContent='Tesztlevél-foglalás (test-mailbox-v1): a szabad helyet a rendszer nem ellenőrzi (Previo-olvasás nincs bekötve) – ár csak kézi Previo-ellenőrzés után illeszthető be; foglalás nincs.';
- el('detail-price').textContent=record.decisions.length?'Döntések: '+record.decisions.map(d=>(tmDecisionLabel[d.decision]||'ismeretlen')+(d.at?' ('+d.at+')':'')+(d.reason?' – '+d.reason:'')).join('; '):'';
+ el('detail-price').textContent=record.decisions.length?'Döntések: '+record.decisions.map(d=>(tmDecisionLabel[d.decision]||'ismeretlen')+(d.at?' ('+localTime(d.at)+')':'')+(d.reason?' – '+d.reason:'')).join('; '):'';
  tmCase={caseId,revision:record.revision,hash:record.draft.hash,text:record.draft.text};
  // Only an internally approved draft can be copied; an approved draft cannot change, so it is the reviewed text.
  priceCase={caseId,revision:record.revision,values,language:/^(hu|de|en|si)$/.test(values.language||'')?values.language:'hu',editable:record.canEditDraft===true};el('price-panel').hidden=false;el('unavailable-confirm').checked=false;el('unavailable-confirm').disabled=!priceCase.editable;el('unavailable-insert').disabled=true;
@@ -447,7 +451,7 @@ async function openCase(caseId){
   for(const message of record.data.messages){
    if(typeof message.text!=='string')throw Error('INVALID_DATA');
    const item=document.createElement('p');item.className='readout';
-   item.textContent=(message.received_at?message.received_at+'\n':'')+message.text;messages.append(item);
+   item.textContent=(message.received_at?localTime(message.received_at)+'\n':'')+message.text;messages.append(item);
   }
   el('detail-messages').replaceChildren(messages);
   el('detail-facts').textContent='Érkezés: '+(values.arrival||'Nincs megadva')+'\nTávozás: '+(values.departure||'Nincs megadva')+
