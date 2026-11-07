@@ -7,6 +7,7 @@ Minden más elő van készítve. A sorrend a fontosság. Titkot (jelszót, kulcs
 2. **Véglegesítés** (Kis Anna-foglalás): Previo-hivatkozás `TESZT-1` → Véglegesítés → levél (94 500 Ft foglaló, „Kedves Kis Anna!”) → jóváhagyás → küldés → „Foglaló beérkezett”.
 3. **Levéllista-címkék**: [Új] / [Folytatás] / [Már beolvasva] látszik-e a levelek mellett.
 4. Színek jelentése a Previo-naptárban (apu): szürke, zöld, kék, narancs („-3”), „R”, „B.”.
+5. **NTAK-értékek az éles Previóból** (Beállítások → Hotel → Szoba, 6 típus): a teszt most ideiglenesen Üdülőház / Apartman; utána a tesztet az élőhöz igazítjuk.
 
 ## 1. GitHub: telefonról jóváhagyható adatbázis-telepítés (kb. 10 perc) – ezzel Work fő feladata megszűnik
 1. github.com → `valkana6666-svg/Sarberki-Email-Age` → **Settings → Environments → New environment** → név: `test-db-install` → **Configure environment**.
