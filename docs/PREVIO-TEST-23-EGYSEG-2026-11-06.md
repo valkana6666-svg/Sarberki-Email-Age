@@ -64,3 +64,20 @@ Nem változik: foglalás, ár, árcsomag, csatorna, integráció; az 5 mintapart
 1. A már jóváhagyott 3 olvasó lekérdezés megismétlése a 73521-en (új tulajdonosi jóváhagyással) → 6 típus / 23 egység ellenőrzése a fenti táblázattal.
 2. Leképezés (`PREVIO_ROOM_KIND_MAP`) javaslat, tulajdonosi jóváhagyásra.
 3. Naptár (szabad hely) olvasása csak külön döntéssel; `PREVIO_READ_API_ENABLED` addig KI.
+
+## 6. Ellenőrzés a felépítés után (Claude, 2026-11-07, tulajdonosi jóváhagyással; 3 olvasó GET a 73521-en, mind HTTP 200)
+- Árcsomag: 1 – `385033` „Alap”. Típusok: 7 (6 új + „Apartmanok”). Egységek: 28 = **23 Sárberki** + 5 minta („Apartman 1–5”, `1012357`, nem használjuk).
+- A 23 egység API-n is pontosan a 1c lista szerint:
+
+| Típus (TEST roomKindId) | Egységek (név → roomId) |
+|---|---|
+| VIP apartman `1012895` | 1 → 2392185 |
+| Családi faház `1012897` | 2 → 2392187 · 3 → 2392189 · 4 → 2392191 · 5 → 2392193 · 6 → 2392195 |
+| Deluxe faház `1012899` | 11 → 2392197 · 12 → 2392199 · 13 → 2392201 · 14 → 2392203 |
+| Különálló 2 fős faház `1012901` | 15 → 2392205 |
+| 2 fős apartman `1012903` | 7/A → 2392207 · 7/B → 2392209 · 8/A → 2392211 · 8/B → 2392213 · 9/A → 2392215 · 9/B → 2392217 · 10/A → 2392219 · 10/B → 2392221 |
+| 4 fős apartman `1012905` | 7/C → 2392223 · 8/C → 2392225 · 9/C → 2392227 · 10/C → 2392229 |
+
+**Leképezés-javaslat** (`PREVIO_ROOM_KIND_MAP`, a meglévő `validateRoomKindMapping` elfogadja; A és B közös típus):
+`{"vip":1012895,"family":1012897,"deluxe":1012899,"small":1012901,"splitA":1012903,"splitB":1012903,"splitC":1012905}`; `PREVIO_HOTEL_ID=73521`, `PREVIO_RATE_PLAN_ID=385033`.
+Csak a 73521 TESZT-re érvényes (az éles ID-k mások). Beállítása a Netlifyn és a szabadhely-olvasás (`PREVIO_READ_API_ENABLED`) külön tulajdonosi döntés; addig KI.
