@@ -7,6 +7,7 @@ import {createIsolatedApprovalReview} from '../shared-core/isolated-approval-rev
 import {createServerChatClient} from '../sarberki-chatbot-project/remote-chat-client.mjs';
 import {translationErrorMessage} from '../translation-errors.mjs';
 import {CABIN_NAMES,huf,priceExplanation} from '../shared-core/price-insert-sentence.mjs';
+import {unitsOfType} from '../shared-core/unit-inventory.mjs';
 
 const TEST_ORIGIN='https://leafy-chimera-2403e5.netlify.app';
 // The server session states the deployment's single tenant (live store slice 2); TEST until it says otherwise.
@@ -156,7 +157,8 @@ function clearDetail(){
  el('price-panel').hidden=true;el('price-result').textContent='';el('price-insert').disabled=true;el('price-available').checked=false;el('price-available').disabled=true;priceCase=null;priceQuote=null;
  el('unavailable-confirm').checked=false;el('unavailable-confirm').disabled=true;el('unavailable-insert').disabled=true;el('unavailable-result').textContent='';
  el('booking-panel').hidden=true;bookingCase=null;el('booking-state').textContent='';el('booking-result').textContent='';
- for(const id of ['previo-ref','previo-recorded','booking-finalize','deposit-date','deposit-confirm','deposit-mark'])el(id).disabled=true;
+ for(const id of ['booking-unit','previo-ref','previo-recorded','booking-finalize','deposit-date','deposit-confirm','deposit-mark'])el(id).disabled=true;
+ el('booking-unit').replaceChildren();
  el('previo-ref').value='';el('previo-recorded').checked=false;el('deposit-confirm').checked=false;el('deposit-date').value='';
  el('detail-link').href='../cloud-approval.html';
 }
@@ -357,8 +359,13 @@ const bookingStatus={finalized:'Véglegesítve (Previóban rögzítve) – a fog
 function showBooking(caseId,record){
  const b=record.booking;bookingCase={caseId,revision:record.revision};el('booking-panel').hidden=false;
  const dep=b?.deposit&&Number.isSafeInteger(b.deposit.amount)?'\nFoglaló: '+b.deposit.pct+'% = '+huf(b.deposit.amount)+' Ft, határidő: '+new Date(b.deposit.deadlineUtc).toLocaleString('hu-HU',{timeZone:'Europe/Budapest'}):'';
- el('booking-state').textContent=b?(bookingStatus[b.status]||'Ismeretlen állapot')+(b.previoReference?'\nPrevio-hivatkozás: '+b.previoReference:'')+dep+(b.depositReceivedOn?'\nBeérkezett: '+b.depositReceivedOn:''):'Még nincs véglegesítve.';
+ el('booking-state').textContent=b?(bookingStatus[b.status]||'Ismeretlen állapot')+(b.unit?'\nEgység: '+b.unit:'')+(b.previoReference?'\nPrevio-hivatkozás: '+b.previoReference:'')+dep+(b.depositReceivedOn?'\nBeérkezett: '+b.depositReceivedOn:''):'Még nincs véglegesítve.';
  const fin=record.canFinalize===true,dpt=record.canMarkDeposit===true;
+ // Units of the booking's cabin type only (V2 step 1b); the server and database re-check collisions.
+ const cabinKey=Object.entries(CABIN_NAMES).find(([,n])=>n.hu.toLowerCase()===String(record.values?.unit||'').trim().toLowerCase())?.[0];
+ const options=cabinKey?unitsOfType(cabinKey).map(u=>{const o=document.createElement('option');o.value=u.id;o.textContent=u.id;return o;}):[];
+ const blank=document.createElement('option');blank.value='';blank.textContent=cabinKey?'– válassz –':'Előbb add meg a háztípust';
+ el('booking-unit').replaceChildren(blank,...options);el('booking-unit').disabled=!fin||!cabinKey;
  for(const id of ['previo-ref','previo-recorded'])el(id).disabled=!fin;
  for(const id of ['deposit-date','deposit-confirm'])el(id).disabled=!dpt;
  if(dpt)el('deposit-date').value=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Budapest'});
@@ -366,12 +373,12 @@ function showBooking(caseId,record){
 const bookingErrors={PREVIO_RECORDING_REQUIRED:'Add meg a Previo-hivatkozást, és pipáld be a rögzítést.',ALREADY_FINALIZED:'Ez a foglalás már véglegesítve van.',
  CONFIRMATION_FACTS_MISSING:'Hiányzik a pontos dátum, a felnőttszám vagy egy gyermek életkora.',CONFIRMATION_CABIN_UNKNOWN:'A háztípus nincs egyértelműen megadva.',
  CONFIRMATION_PRICE_MISSING:'Az árlista ehhez nem ad igazolt árat; kézi ellenőrzés szükséges.',DEPOSIT_POLICY_UNVERIFIED:'A foglaló határideje nem számítható (pl. múltbeli érkezés).',
- NOT_FINALIZED:'Előbb véglegesíteni kell a foglalást.',INVALID_DATE:'Érvénytelen dátum.',CASE_CONFLICT:'A foglalás közben megváltozott; nyisd meg újra.',
+ NOT_FINALIZED:'Előbb véglegesíteni kell a foglalást.',UNIT_TAKEN:'Ez az egység erre az időszakra már foglalt (egy másik véglegesített foglalás miatt). Válassz másik egységet.',UNIT_NOT_IN_TYPE:'Ez az egység nem a foglalás háztípusához tartozik.',INVALID_DATE:'Érvénytelen dátum.',CASE_CONFLICT:'A foglalás közben megváltozott; nyisd meg újra.',
  FORBIDDEN:'Ehhez nincs írási jog.',STORAGE_FAILURE:'Az adatbázis-funkció nem érhető el (valószínűleg még nincs telepítve). Szólj Claude-nak.',
  TEST_MAILBOX_REJECTED:'Az adatbázis elutasította (lehet, hogy a frissítés még nincs telepítve).',NOT_FOUND:'A foglalás nem található; töltsd be újra a listát.'};
-const bookingInputs=()=>{el('booking-finalize').disabled=!(bookingCase&&!el('previo-ref').disabled&&/^[A-Za-z0-9\/_.-]{1,40}$/.test(el('previo-ref').value.trim())&&el('previo-recorded').checked);
+const bookingInputs=()=>{el('booking-finalize').disabled=!(bookingCase&&!el('previo-ref').disabled&&el('booking-unit').value&&/^[A-Za-z0-9\/_.-]{1,40}$/.test(el('previo-ref').value.trim())&&el('previo-recorded').checked);
  el('deposit-mark').disabled=!(bookingCase&&!el('deposit-confirm').disabled&&el('deposit-confirm').checked&&/^\d{4}-\d{2}-\d{2}$/.test(el('deposit-date').value));};
-for(const id of ['previo-ref','previo-recorded','deposit-date','deposit-confirm'])el(id).addEventListener('input',bookingInputs),el(id).addEventListener('change',bookingInputs);
+for(const id of ['booking-unit','previo-ref','previo-recorded','deposit-date','deposit-confirm'])el(id).addEventListener('input',bookingInputs),el(id).addEventListener('change',bookingInputs);
 async function bookingAction(button,body,done){
  const target=bookingCase;if(!authenticated||!target||actionBusy)return;
  const turn=epoch;actionBusy=true;el(button).disabled=true;el('booking-result').textContent='Mentés…';
@@ -387,7 +394,7 @@ async function bookingAction(button,body,done){
   else{el('booking-result').textContent='Nem sikerült: '+(bookingErrors[error?.message]||'a mentés nem igazolt; nincs automatikus ismétlés.');el(button).disabled=false;}
  }finally{actionBusy=false;}
 }
-el('booking-finalize').addEventListener('click',()=>bookingAction('booking-finalize',{action:'test-mailbox-confirm',previoReference:el('previo-ref').value.trim(),previoRecorded:el('previo-recorded').checked},
+el('booking-finalize').addEventListener('click',()=>bookingAction('booking-finalize',{action:'test-mailbox-confirm',unit:el('booking-unit').value,previoReference:el('previo-ref').value.trim(),previoRecorded:el('previo-recorded').checked},
  r=>'Véglegesítve. Visszaigazoló levél elkészült'+(r.deposit?' (foglaló: '+huf(r.deposit.amount)+' Ft)':'')+'; jóváhagyásra vár, utána küldhető.'));
 el('deposit-mark').addEventListener('click',()=>bookingAction('deposit-mark',{action:'test-mailbox-deposit',receivedOn:el('deposit-date').value,depositConfirmed:el('deposit-confirm').checked},
  ()=>'Foglaló beérkezése rögzítve.'));

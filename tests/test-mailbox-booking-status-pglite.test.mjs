@@ -16,7 +16,8 @@ const sha=t=>createHash('sha256').update(t,'utf8').digest('hex');
 const b64=t=>Buffer.from(t,'utf8').toString('base64url');
 const THREAD='38f2a0b1c2d3e4a0';
 const mails={
- [THREAD]:{from:'Kis Anna <sarberkito@gmail.com>',subject:'Foglalás',text:'Jó napot! 2027. június 10-től 13-ig jönnénk 2 felnőtt, gyerek nélkül, a Deluxe faházba. Telefon: +36 30 000 0000. Üdv: Kis Anna',msgid:'<first@example.test>'}
+ [THREAD]:{from:'Kis Anna <sarberkito@gmail.com>',subject:'Foglalás',text:'Jó napot! 2027. június 10-től 13-ig jönnénk 2 felnőtt, gyerek nélkül, a Deluxe faházba. Telefon: +36 30 000 0000. Üdv: Kis Anna',msgid:'<first@example.test>'},
+ '38f2a0b1c2d3e5b1':{from:'Teszt Elek <sarberkito@gmail.com>',subject:'Másik foglalás',text:'Jó napot! 2027. június 12-től 14-ig jönnénk 2 felnőtt, gyerek nélkül, a Deluxe faházba. Üdv: Teszt Elek',msgid:'<second@example.test>',thread:'38f2a0b1c2d3e5b1'}
 };
 const gmailFetch=async url=>{
  const u=String(url);if(u.endsWith('/profile'))return new Response(JSON.stringify({emailAddress:'sarberkiprojecttest@gmail.com'}));
@@ -50,11 +51,12 @@ test('V1 completion: Previo attestation -> confirmation with deposit -> finalize
   await db.exec("insert into sc_tenants values('sarberki-test','Fictional',true),('demo-test','Fictional other',true)");
   for(const f of ['deployment/cloud-approval/install.sql','deployment/cloud-approval/separate-approver-permission.sql','deployment/exact-receipt/install.sql'])await db.exec(await read(f));
   await db.query('insert into sc_isolated_approval_key(key_hex) values($1)',[KEY]);
-  for(const f of ['deployment/test-mailbox/install.sql','deployment/test-mailbox/booking-status.sql'])await db.exec(await read(f));
+  for(const f of ['deployment/test-mailbox/install.sql','deployment/test-mailbox/booking-status.sql','deployment/test-mailbox/booking-unit.sql'])await db.exec(await read(f));
   await db.exec('update sc_test_mailbox_config set enabled=true');
   for(const [role,id] of Object.entries(ids)){await db.query('insert into auth.users values($1)',[id]);await db.query('insert into auth.sessions values($1,$2,null)',[sessions[role],id]);}
   await db.query('insert into sc_memberships values($1,$2,true,true,false),($1,$3,true,false,true)',[TENANT,ids.writer,ids.approver]);
   assert.equal((await db.exec(await read('deployment/test-mailbox/booking-status.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
+  assert.equal((await db.exec(await read('deployment/test-mailbox/booking-unit.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
   const common={token:'t'.repeat(40),transport:transportFor('writer'),attestationKey:KEY,fetchImpl:gmailFetch};
   const {caseId}=await ingestTestMailboxMessage({...common,messageId:THREAD});
   const load=async()=>{const r=(await db.query('select * from sc_cases where case_id=$1',[caseId])).rows[0];return {tenantId:r.tenant_id,caseId:r.case_id,revision:Number(r.revision),data:r.data};};
@@ -64,12 +66,12 @@ test('V1 completion: Previo attestation -> confirmation with deposit -> finalize
   await assert.rejects(markTestMailboxDepositReceived({record,receivedOn:'2026-11-06',depositConfirmed:true,transport:transportFor('writer')}),/NOT_FINALIZED/);
   await assert.rejects(transportFor('writer')('/rest/v1/rpc/sc_tm_deposit_received',{method:'POST',body:{p_tenant:TENANT,p_case:caseId,p_expected:record.revision,p_received_on:'2026-11-06'}}),/DB/);
   // Without the operator's Previo attestation: refused.
-  await assert.rejects(confirmTestMailboxBooking({record,previoReference:'P-1',previoRecorded:false,attestationKey:KEY,transport:transportFor('writer')}),/PREVIO_RECORDING_REQUIRED/);
+  await assert.rejects(confirmTestMailboxBooking({record,previoReference:'P-1',previoRecorded:false,unit:'11',attestationKey:KEY,transport:transportFor('writer')}),/PREVIO_RECORDING_REQUIRED/);
   // Approver-only member cannot write; a forged/foreign proof is refused.
-  await assert.rejects(confirmTestMailboxBooking({record,previoReference:'P-1',previoRecorded:true,attestationKey:KEY,transport:transportFor('approver')}),/FORBIDDEN|DB/);
-  await assert.rejects(confirmTestMailboxBooking({record,previoReference:'P-1',previoRecorded:true,attestationKey:'f0'.repeat(32),transport:transportFor('writer')}),/FORBIDDEN/);
+  await assert.rejects(confirmTestMailboxBooking({record,previoReference:'P-1',previoRecorded:true,unit:'11',attestationKey:KEY,transport:transportFor('approver')}),/FORBIDDEN|DB/);
+  await assert.rejects(confirmTestMailboxBooking({record,previoReference:'P-1',previoRecorded:true,unit:'11',attestationKey:'f0'.repeat(32),transport:transportFor('writer')}),/FORBIDDEN/);
   // Finalize.
-  const {saved,deposit}=await confirmTestMailboxBooking({record,previoReference:'TEST-73521-1',previoRecorded:true,attestationKey:KEY,transport:transportFor('writer')});
+  const {saved,deposit}=await confirmTestMailboxBooking({record,previoReference:'TEST-73521-1',previoRecorded:true,unit:'11',attestationKey:KEY,transport:transportFor('writer')});
   assert.equal(saved.revision,record.revision+1);assert.deepEqual([deposit.pct,deposit.amount,deposit.windowHours],[50,94500,168]);
   record=await load();
   assert.equal(record.data.booking.status,'finalized');assert.equal(record.data.booking.previo.reference,'TEST-73521-1');
@@ -79,8 +81,21 @@ test('V1 completion: Previo attestation -> confirmation with deposit -> finalize
   assert.match(draft.text,/összesen: 192 300 Ft/);assert.match(draft.text,/50%-a: 94 500 Ft/);
   assert.doesNotMatch(draft.text,/TEST-73521-1/);
   // Twice: refused.
-  await assert.rejects(confirmTestMailboxBooking({record,previoReference:'TEST-73521-2',previoRecorded:true,attestationKey:KEY,transport:transportFor('writer')}),/ALREADY_FINALIZED/);
-  await assert.rejects(confirmTestMailboxBooking({record:{...record,data:{...record.data,booking:undefined}},previoReference:'TEST-73521-2',previoRecorded:true,attestationKey:KEY,transport:transportFor('writer')}),/DB/);
+  await assert.rejects(confirmTestMailboxBooking({record,previoReference:'TEST-73521-2',previoRecorded:true,unit:'11',attestationKey:KEY,transport:transportFor('writer')}),/ALREADY_FINALIZED/);
+  await assert.rejects(confirmTestMailboxBooking({record:{...record,data:{...record.data,booking:undefined}},previoReference:'TEST-73521-2',previoRecorded:true,unit:'11',attestationKey:KEY,transport:transportFor('writer')}),/DB/);
+  // Collision protection (V2 step 1b): a second booking overlapping on unit 11 is refused (server pre-check and
+  // database under lock); a different Deluxe unit is accepted; a unit of another type is refused.
+  const second=await ingestTestMailboxMessage({...common,messageId:'38f2a0b1c2d3e5b1'});
+  const r2=(await db.query('select * from sc_cases where case_id=$1',[second.caseId])).rows[0];
+  let rec2={tenantId:r2.tenant_id,caseId:r2.case_id,revision:Number(r2.revision),data:r2.data};
+  await assert.rejects(confirmTestMailboxBooking({record:rec2,previoReference:'TEST-2',previoRecorded:true,unit:'11',attestationKey:KEY,transport:transportFor('writer')}),/UNIT_TAKEN/);
+  const noPrecheck=async(path,o={})=>path.startsWith('/rest/v1/sc_cases')?[]:transportFor('writer')(path,o);
+  await assert.rejects(confirmTestMailboxBooking({record:rec2,previoReference:'TEST-2',previoRecorded:true,unit:'11',attestationKey:KEY,transport:noPrecheck}),/DB/);
+  await assert.rejects(confirmTestMailboxBooking({record:rec2,previoReference:'TEST-2',previoRecorded:true,unit:'7/A',attestationKey:KEY,transport:transportFor('writer')}),/UNIT_NOT_IN_TYPE/);
+  const ok2=await confirmTestMailboxBooking({record:rec2,previoReference:'TEST-2',previoRecorded:true,unit:'12',attestationKey:KEY,transport:transportFor('writer')});
+  assert.equal(ok2.saved.data.booking.unit,'12');
+  assert.doesNotMatch(ok2.saved.data.drafts.at(-1).text,/\b12\b.*egység|Egység: 12/,'unit number never in the guest letter');
+  assert.match(ok2.saved.data.drafts.at(-1).operatorReviewText,/Egység: 12/);
   // Deposit received: future date refused; today accepted; separate state.
   await assert.rejects(transportFor('writer')('/rest/v1/rpc/sc_tm_deposit_received',{method:'POST',body:{p_tenant:TENANT,p_case:caseId,p_expected:record.revision,p_received_on:'2999-01-01'}}),/DB/);
   const today=new Date().toISOString().slice(0,10);
@@ -89,6 +104,7 @@ test('V1 completion: Previo attestation -> confirmation with deposit -> finalize
   assert.equal(record.data.booking.status,'deposit_received');assert.equal(record.data.booking.depositReceived.on,today);
   const audit=(await db.query('select kind from sc_audit where case_id=$1 order by revision',[caseId])).rows.map(r=>r.kind);
   assert.deepEqual(audit,['tm_create','tm_booking_finalized','tm_deposit_received']);
+  assert.equal(record.data.booking.unit,'11');
   // anon has no execute.
   assert.equal((await db.query("select has_function_privilege('anon','public.sc_tm_confirm_booking(text,text,bigint,jsonb,jsonb,jsonb)','execute') a")).rows[0].a,false);
  }finally{await db.close();}

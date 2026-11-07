@@ -45,7 +45,7 @@ const TEST_MAILBOX_ERRORS=Object.freeze({GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACC
  PRICE_FACTS_MISSING:422,PRICE_LINE_MISSING:422,PRICE_REFUSED:422,AVAILABILITY_NOT_CONFIRMED:400,TEST_MAILBOX_REJECTED:409,
  UNAVAILABILITY_NOT_CONFIRMED:400,DRAFT_SHAPE_UNKNOWN:422,ALREADY_UNAVAILABLE:409,PREVIO_NO_FREE_UNIT:409,
  PREVIO_RECORDING_REQUIRED:400,ALREADY_FINALIZED:409,CONFIRMATION_FACTS_MISSING:422,CONFIRMATION_PRICE_MISSING:422,CONFIRMATION_CABIN_UNKNOWN:422,
- DEPOSIT_POLICY_UNVERIFIED:422,DEPOSIT_NOT_CONFIRMED:400,NOT_FINALIZED:409,INVALID_DATE:400});
+ DEPOSIT_POLICY_UNVERIFIED:422,DEPOSIT_NOT_CONFIRMED:400,NOT_FINALIZED:409,INVALID_DATE:400,UNIT_TAKEN:409,UNIT_NOT_IN_TYPE:422});
 const TEST_MAILBOX_FIELDS=Object.freeze({
  'test-mailbox-ingest':['action,messageId,tenantId'],
  'test-mailbox-followup':['action,messageId,tenantId'],
@@ -55,7 +55,7 @@ const TEST_MAILBOX_FIELDS=Object.freeze({
  'test-mailbox-send':['action,caseId,expectedRevision,tenantId'],
  'test-mailbox-price':['action,availabilityConfirmed,cabin,caseId,expectedRevision,tenantId'],
  'test-mailbox-unavailable':['action,caseId,expectedRevision,tenantId,unavailableConfirmed'],
- 'test-mailbox-confirm':['action,caseId,expectedRevision,previoRecorded,previoReference,tenantId'],
+ 'test-mailbox-confirm':['action,caseId,expectedRevision,previoRecorded,previoReference,tenantId,unit'],
  'test-mailbox-deposit':['action,caseId,depositConfirmed,expectedRevision,receivedOn,tenantId']
 });
 function validTestMailboxInput(input){
@@ -64,7 +64,7 @@ function validTestMailboxInput(input){
  if(typeof input.caseId!=='string'||!/^tm-[a-f0-9]{12,32}$/.test(input.caseId)||!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<1)return false;
  if(input.action==='test-mailbox-send')return true;
  if(input.action==='test-mailbox-unavailable')return input.unavailableConfirmed===true;
- if(input.action==='test-mailbox-confirm')return input.previoRecorded===true&&typeof input.previoReference==='string'&&/^[A-Za-z0-9\/_.-]{1,40}$/.test(input.previoReference);
+ if(input.action==='test-mailbox-confirm')return input.previoRecorded===true&&typeof input.previoReference==='string'&&/^[A-Za-z0-9\/_.-]{1,40}$/.test(input.previoReference)&&typeof input.unit==='string'&&/^(?:[1-9]|1[0-5]|(?:7|8|9|10)\/[ABC])$/.test(input.unit);
  if(input.action==='test-mailbox-deposit')return input.depositConfirmed===true&&typeof input.receivedOn==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(input.receivedOn);
  if(input.action==='test-mailbox-price')return input.availabilityConfirmed===true&&['deluxe','family','vip','small','splitA','splitB','splitC'].includes(input.cabin);
  if(input.action==='test-mailbox-redraft')return typeof input.draftText==='string'&&input.draftText.trim().length>0&&input.draftText.length<=20000;
@@ -88,7 +88,7 @@ function testMailboxView(record,authority,tenant='sarberki-test'){
   canEditDraft:permissions.includes('write')&&['pending','returned_for_edit','rejected'].includes(state),
   canDecide:permissions.includes('approve')&&state==='pending'&&(latest.createdBy!==authority?.subject||latest.machineDraft===true),
   // V1 booking completion: finalized only after the operator's Previo attestation; deposit received is separate.
-  booking:data.booking?{status:data.booking.status,previoReference:data.booking.previo?.reference??null,deposit:data.booking.deposit??null,depositReceivedOn:data.booking.depositReceived?.on??null}:null,
+  booking:data.booking?{status:data.booking.status,unit:data.booking.unit??null,previoReference:data.booking.previo?.reference??null,deposit:data.booking.deposit??null,depositReceivedOn:data.booking.depositReceived?.on??null}:null,
   canFinalize:permissions.includes('write')&&!['finalized','deposit_received'].includes(data.booking?.status),
   canMarkDeposit:permissions.includes('write')&&data.booking?.status==='finalized'};
 }
@@ -272,7 +272,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
       if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
       if(record.revision!==input.expectedRevision)return cookieResponse(409,{error:'CASE_CONFLICT'});
       let saved,deposit=null;
-      if(input.action==='test-mailbox-confirm')({saved,deposit}=await confirmTestMailboxBooking({record,previoReference:input.previoReference,previoRecorded:input.previoRecorded,
+      if(input.action==='test-mailbox-confirm')({saved,deposit}=await confirmTestMailboxBooking({record,previoReference:input.previoReference,previoRecorded:input.previoRecorded,unit:input.unit,
        attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,transport:cookieSession.transport}));
       else saved=await markTestMailboxDepositReceived({record,receivedOn:input.receivedOn,depositConfirmed:input.depositConfirmed,transport:cookieSession.transport});
       if(!saved)return cookieResponse(409,{error:'CASE_CONFLICT'});
