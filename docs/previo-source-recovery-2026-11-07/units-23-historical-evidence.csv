@@ -1,0 +1,24 @@
+internal_code,physical_house,part,type,historical_capacity_literal,evidence_status,previo_room_id,target_73521_room_id,note
+SBH-01,1,,VIP,7+0,KEPEN IGAZOLT,,,A kep 7+0 jeloleset mutatja; nem igazol 5+2 vagy 4/7 agyfelosztast.
+SBH-02,2,,Csaladi,8+0,KEPEN IGAZOLT,,,A 2-6 szam es 8+0 kepen olvashato.
+SBH-03,3,,Csaladi,8+0,KEPEN IGAZOLT,,,A 2-6 szam es 8+0 kepen olvashato.
+SBH-04,4,,Csaladi,8+0,KEPEN IGAZOLT,,,A 2-6 szam es 8+0 kepen olvashato.
+SBH-05,5,,Csaladi,8+0,KEPEN IGAZOLT,,,A 2-6 szam es 8+0 kepen olvashato.
+SBH-06,6,,Csaladi,8+0,KEPEN IGAZOLT,,,A 2-6 szam es 8+0 kepen olvashato.
+SBH-07A,7,A,Osztott A,2+0,KEPEN IGAZOLT,,,A/B/C fizikai hazszamhoz kotott jeloles. A jobb/bal/felso helyzet csak korabbi elemzes; a +1 feltetele nincs igazolva.
+SBH-07B,7,B,Osztott B,2+0,KEPEN IGAZOLT,,,A/B/C fizikai hazszamhoz kotott jeloles. A jobb/bal/felso helyzet csak korabbi elemzes; a +1 feltetele nincs igazolva.
+SBH-07C,7,C,Osztott C,4+1,KEPEN IGAZOLT,,,A/B/C fizikai hazszamhoz kotott jeloles. A jobb/bal/felso helyzet csak korabbi elemzes; a +1 feltetele nincs igazolva.
+SBH-08A,8,A,Osztott A,2+0,KEPEN IGAZOLT,,,A/B/C fizikai hazszamhoz kotott jeloles. A jobb/bal/felso helyzet csak korabbi elemzes; a +1 feltetele nincs igazolva.
+SBH-08B,8,B,Osztott B,2+0,KEPEN IGAZOLT,,,A/B/C fizikai hazszamhoz kotott jeloles. A jobb/bal/felso helyzet csak korabbi elemzes; a +1 feltetele nincs igazolva.
+SBH-08C,8,C,Osztott C,4+1,KEPEN IGAZOLT,,,A/B/C fizikai hazszamhoz kotott jeloles. A jobb/bal/felso helyzet csak korabbi elemzes; a +1 feltetele nincs igazolva.
+SBH-09A,9,A,Osztott A,2+0,KEPEN IGAZOLT,,,A/B/C fizikai hazszamhoz kotott jeloles. A jobb/bal/felso helyzet csak korabbi elemzes; a +1 feltetele nincs igazolva.
+SBH-09B,9,B,Osztott B,2+0,KEPEN IGAZOLT,,,A/B/C fizikai hazszamhoz kotott jeloles. A jobb/bal/felso helyzet csak korabbi elemzes; a +1 feltetele nincs igazolva.
+SBH-09C,9,C,Osztott C,4+1,KEPEN IGAZOLT,,,A/B/C fizikai hazszamhoz kotott jeloles. A jobb/bal/felso helyzet csak korabbi elemzes; a +1 feltetele nincs igazolva.
+SBH-10A,10,A,Osztott A,2+0,KEPEN IGAZOLT,,,A/B/C fizikai hazszamhoz kotott jeloles. A jobb/bal/felso helyzet csak korabbi elemzes; a +1 feltetele nincs igazolva.
+SBH-10B,10,B,Osztott B,2+0,KEPEN IGAZOLT,,,A/B/C fizikai hazszamhoz kotott jeloles. A jobb/bal/felso helyzet csak korabbi elemzes; a +1 feltetele nincs igazolva.
+SBH-10C,10,C,Osztott C,4+1,KORABBI ELEMZES,,,A/B/C fizikai hazszamhoz kotott jeloles. A jobb/bal/felso helyzet csak korabbi elemzes; a +1 feltetele nincs igazolva.
+SBH-11,11,,Deluxe,5+1,KORABBI BELSO ADAT; NEM IGAZOLT KEPEN,,,Regi adat. A jelenlegi Claude-dokumentum 4/6 erteket hasznal; ne irja felul.
+SBH-12,12,,Deluxe,5+1,KORABBI BELSO ADAT; NEM IGAZOLT KEPEN,,,Regi adat. A jelenlegi Claude-dokumentum 4/6 erteket hasznal; ne irja felul.
+SBH-13,13,,Deluxe,5+1,KORABBI BELSO ADAT; NEM IGAZOLT KEPEN,,,Regi adat. A jelenlegi Claude-dokumentum 4/6 erteket hasznal; ne irja felul.
+SBH-14,14,,Deluxe,5+1,KORABBI BELSO ADAT; NEM IGAZOLT KEPEN,,,Regi adat. A jelenlegi Claude-dokumentum 4/6 erteket hasznal; ne irja felul.
+SBH-15,15,,Kulonallo,2,KORABBI BELSO ADAT; NEM IGAZOLT KEPEN,,,A gyermek-potagy feltetele nincs igazolva; aktualis Claude-dokumentum 2/3.

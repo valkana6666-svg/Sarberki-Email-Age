@@ -1,0 +1,839 @@
+{
+  "checked_at_utc": "2026-11-07T06:01:10.095146+00:00",
+  "sources": [
+    {
+      "name": "chart-1(20260924-164032).png",
+      "library_file_id": "libfile_abc8a4cd91fc819188e1d10425a8cbd2",
+      "file_id": "file_00000000d69081f5a0f9a5dc46a6ece4",
+      "created_at": "2026-09-24T16:40:32.226946+00:00",
+      "size_bytes": 382386,
+      "kind": "historical_PNG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_abc8a4cd91fc819188e1d10425a8cbd2&account_id=personal",
+      "sha256": "308639a8eb386a90e6635ffc60c7ed24efa1137f58421aa8053ca1c79de37988",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055.mp4",
+      "library_file_id": "libfile_67183b2116208191a87101ffe5458fce",
+      "file_id": "file_0000000021ac821195ac34e8f19fa6e0",
+      "created_at": "2026-09-24T16:55:43.755493+00:00",
+      "size_bytes": 55897473,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_67183b2116208191a87101ffe5458fce&account_id=personal",
+      "sha256": "8be050a8e43b490efdecafe52c08b8382b159d64496e051fbbc34b6d56326e66",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(1).mp4",
+      "library_file_id": "libfile_c3f370257cec8191939d2bc5142572c6",
+      "file_id": "file_0000000081d4820aae4d52447c941d15",
+      "created_at": "2026-09-24T17:04:05.103889+00:00",
+      "size_bytes": 56445409,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_c3f370257cec8191939d2bc5142572c6&account_id=personal",
+      "sha256": "d67aba2089d7adc2562f24c4a153ae47ade22981c81ec7f75f9c0322d5fe88dc",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(2).mp4",
+      "library_file_id": "libfile_32934099d97c8191b0136d5eed57ccb1",
+      "file_id": "file_00000000ab9881f4872b558bf6749516",
+      "created_at": "2026-09-24T17:21:14.003040+00:00",
+      "size_bytes": 54469536,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_32934099d97c8191b0136d5eed57ccb1&account_id=personal",
+      "sha256": "0fd299e425317d3aff323876c0c97e7e0e07af6d9f6612feb207b4b5f22950f9",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(3).mp4",
+      "library_file_id": "libfile_ba2821180c7c8191b4698c6f2d37d8f9",
+      "file_id": "file_00000000484c820eb14fabfd0c3d3c12",
+      "created_at": "2026-09-24T17:54:20.166563+00:00",
+      "size_bytes": 59363305,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_ba2821180c7c8191b4698c6f2d37d8f9&account_id=personal",
+      "sha256": "1a868ec9ab04dfbd0f0f0c38b98e9d449e07ed7fd97d89f19e9a02406887a207",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "chart-1(20260924-175509).png",
+      "library_file_id": "libfile_387529da792c8191aab9885eb96a25de",
+      "file_id": "file_0000000031988210bdf6c78fdce39016",
+      "created_at": "2026-09-24T17:55:08.910114+00:00",
+      "size_bytes": 711694,
+      "kind": "historical_PNG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_387529da792c8191aab9885eb96a25de&account_id=personal",
+      "sha256": "95de1c37b7ee658ebc4b7854845d248d7ee70c114dba25740908671a44ffa4d1",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(4).mp4",
+      "library_file_id": "libfile_0f0d055062688191ae915ecbdfad0a88",
+      "file_id": "file_000000005dac8211a1637b6270e1e1d3",
+      "created_at": "2026-09-24T17:55:52.660042+00:00",
+      "size_bytes": 59364882,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_0f0d055062688191ae915ecbdfad0a88&account_id=personal",
+      "sha256": "f58250da216d16f510483ee3bf79e82a4eaaf876425b3c5dbeb5ce2274f2f310",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(5).mp4",
+      "library_file_id": "libfile_dc78a758d9c881918ab26253a8b669cf",
+      "file_id": "file_0000000021a081f5bd526a61c4603b62",
+      "created_at": "2026-09-24T18:00:47.721532+00:00",
+      "size_bytes": 75863076,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_dc78a758d9c881918ab26253a8b669cf&account_id=personal",
+      "sha256": "28ee0b095e260b73c34019be0f19609db8d0f8714a8b4382e1fb1b183637f317",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "chart-1(20260924-180202).png",
+      "library_file_id": "libfile_76f4f9999bbc8191a6937573b9bfd9d2",
+      "file_id": "file_00000000009881f4af4e7b77e5ba7b86",
+      "created_at": "2026-09-24T18:02:01.973756+00:00",
+      "size_bytes": 1240736,
+      "kind": "historical_PNG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_76f4f9999bbc8191a6937573b9bfd9d2&account_id=personal",
+      "sha256": "5bc371341ed4d4a60f3f7313023a5c5990dff81383617da8e64c27ca3e34b824",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(6).mp4",
+      "library_file_id": "libfile_7824e55c99388191b0c807b0eea322a7",
+      "file_id": "file_00000000ac64821082e6314d4e5498fe",
+      "created_at": "2026-09-24T18:09:35.064325+00:00",
+      "size_bytes": 76493650,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_7824e55c99388191b0c807b0eea322a7&account_id=personal",
+      "sha256": "17c275ecb7d3464ccd62eb697112862fff9551bcf1615ba05e244e6849d84d91",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "chart-1(20260924-181038).png",
+      "library_file_id": "libfile_a159756ec2288191a81be27431bebab2",
+      "file_id": "file_000000005f3882109a825c7496c083ea",
+      "created_at": "2026-09-24T18:10:38.424924+00:00",
+      "size_bytes": 1430222,
+      "kind": "historical_PNG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_a159756ec2288191a81be27431bebab2&account_id=personal",
+      "sha256": "7108ad5dd36e87eda7832851848bfb4b09247c380a03a6795d4266956126d00b",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(7).mp4",
+      "library_file_id": "libfile_82e555eb82248191a88b05b423ce933a",
+      "file_id": "file_000000004630822fb8ae4a1262a5a546",
+      "created_at": "2026-09-24T18:23:52.467169+00:00",
+      "size_bytes": 121488947,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_82e555eb82248191a88b05b423ce933a&account_id=personal",
+      "sha256": "3ebfb67ce6c4a9885256cf4fdc8eadf6547db66c547322c6308df3bd3a7f8cb3",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(8).mp4",
+      "library_file_id": "libfile_60f9ac29e26881918e0761f899530376",
+      "file_id": "file_00000000be088210a1dabb9e39871737",
+      "created_at": "2026-09-24T18:34:48.502254+00:00",
+      "size_bytes": 121121992,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_60f9ac29e26881918e0761f899530376&account_id=personal",
+      "sha256": "19e22547dc6708fda14792832b7ebaabca528fde8682fe67050d535b61732df0",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "chart-1(20260924-183559).png",
+      "library_file_id": "libfile_a30121c681f08191804bd6304d11297d",
+      "file_id": "file_00000000eaec821182446733fb1ea238",
+      "created_at": "2026-09-24T18:35:58.858049+00:00",
+      "size_bytes": 1044322,
+      "kind": "historical_PNG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_a30121c681f08191804bd6304d11297d&account_id=personal",
+      "sha256": "f7874cbd049a24e591230fc0b5a6a5242277f7e5e52ea25f2df755d3577b78b0",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(9).mp4",
+      "library_file_id": "libfile_ae6baf448bfc8191a4ddaadbbe82957c",
+      "file_id": "file_0000000022d08210acf1b64c977a3da8",
+      "created_at": "2026-09-24T18:43:16.744931+00:00",
+      "size_bytes": 74441864,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_ae6baf448bfc8191a4ddaadbbe82957c&account_id=personal",
+      "sha256": "beea8e936b16c7663a0cbc894cb3dd9d14041d3114b3da0c1c774dcf73a392df",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "0B5886D6-A875-47CC-A44C-E170384E1448.jpeg",
+      "library_file_id": "libfile_95b1183ccef88191a52559ae4d14c658",
+      "file_id": "file_00000000dbec81f4bf07e66e0c8d61f3",
+      "created_at": "2026-09-24T20:02:52.974891+00:00",
+      "size_bytes": 104806,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_95b1183ccef88191a52559ae4d14c658&account_id=personal",
+      "sha256": "3401620f3c32a2d7f51c578fa8625b1ebfe3f09782d23ad534438b9a9e992bc1",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "93B410C3-70DA-4780-B7BC-03267D97EC32.jpeg",
+      "library_file_id": "libfile_0b79e3fb7a8881918207ca1e6528994d",
+      "file_id": "file_00000000ce6082118ccce49195cc186b",
+      "created_at": "2026-09-24T20:02:53.506634+00:00",
+      "size_bytes": 111932,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_0b79e3fb7a8881918207ca1e6528994d&account_id=personal",
+      "sha256": "309d645823b7d96e405af7653ed83fd0d12d0d23ef31bb7cef1a5028c4597787",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(10).mp4",
+      "library_file_id": "libfile_ad77fa1f96888191823d4f452917a546",
+      "file_id": "file_00000000b2c88211a89bc799b03cf529",
+      "created_at": "2026-09-24T20:04:50.495784+00:00",
+      "size_bytes": 55932671,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_ad77fa1f96888191823d4f452917a546&account_id=personal",
+      "sha256": "b51c8e0672ac2e4c5b90e81dda0175f4e5b1e13299ddb638d3441279facf4578",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "chart-1(20260924-200607).png",
+      "library_file_id": "libfile_efd3a8c91a688191ba5809444b38814c",
+      "file_id": "file_00000000dddc8246859843895f6856dc",
+      "created_at": "2026-09-24T20:06:06.977676+00:00",
+      "size_bytes": 1325372,
+      "kind": "historical_PNG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_efd3a8c91a688191ba5809444b38814c&account_id=personal",
+      "sha256": "2cae1c9b0c89f88b8c30f5aa8171140cc6b4fb6d7ad0c8aff40e5647a8a69198",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "8861E34A-E039-4E33-9058-3DBC9DF63110.jpeg",
+      "library_file_id": "libfile_65f4b934572081919627fb549686a268",
+      "file_id": "file_00000000db7881f4a14d4e8cce7c61ec",
+      "created_at": "2026-09-24T20:14:59.664934+00:00",
+      "size_bytes": 165444,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_65f4b934572081919627fb549686a268&account_id=personal",
+      "sha256": "a2612a5ad0198aecc5be14aab2906a70707ad4667d33ee3c733ec94bc7c6dc7b",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "Legutóbbi fotók megtekintése(1).jpeg",
+      "library_file_id": "libfile_fbb599c58b2c81919593f896979dc8b9",
+      "file_id": "file_0000000085f081f49cb61ffe1b50936e",
+      "created_at": "2026-09-24T20:15:42.980196+00:00",
+      "size_bytes": 172130,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_fbb599c58b2c81919593f896979dc8b9&account_id=personal",
+      "sha256": "91bf8df37307c72aa5375c3a73c5d6e2bdc5b8ee46be5f70ab60a35fad6804df",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "DE0B5D36-4968-4308-AF82-AA5EEE5589C4.jpeg",
+      "library_file_id": "libfile_9a0b817665dc8191b61a3170c74a83ec",
+      "file_id": "file_000000001a988210a10bee5463a179ad",
+      "created_at": "2026-09-24T20:17:54.688702+00:00",
+      "size_bytes": 256980,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_9a0b817665dc8191b61a3170c74a83ec&account_id=personal",
+      "sha256": "c2ecb214bd615928d9699f5bc5d52394b4aa2e05504648392671e9c953c75ba9",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "D5DAB6A4-724F-4A80-A2B1-B88F95F70AD2.jpeg",
+      "library_file_id": "libfile_b71929ba34388191a5d546dd7d7457e1",
+      "file_id": "file_00000000016c81f497f59d863f9cd693",
+      "created_at": "2026-09-24T20:20:01.277705+00:00",
+      "size_bytes": 279988,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_b71929ba34388191a5d546dd7d7457e1&account_id=personal",
+      "sha256": "7d40a9296392dcdee95f13ab857eadbbd94a58b3af28e1a7e7b1b6eb04c30c3d",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "chart-1(20260924-202026).png",
+      "library_file_id": "libfile_11cf15e69cec819188edddf3fb15859e",
+      "file_id": "file_000000008bc081f4bc4d5ce0d291f5eb",
+      "created_at": "2026-09-24T20:20:26.117207+00:00",
+      "size_bytes": 549713,
+      "kind": "historical_PNG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_11cf15e69cec819188edddf3fb15859e&account_id=personal",
+      "sha256": "c0e601062b867d173facb61b0b8ece6d336c5afcc909bc7c33fa54d47e5ac878",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "DCFB22F5-F001-4669-A338-F593D0FDCDBD.jpeg",
+      "library_file_id": "libfile_70f4f8d770308191adfb33972a8345d5",
+      "file_id": "file_00000000c96481f4ad42fb5b587f5b20",
+      "created_at": "2026-09-24T20:28:04.005042+00:00",
+      "size_bytes": 290998,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_70f4f8d770308191adfb33972a8345d5&account_id=personal",
+      "sha256": "64e839bd8ab68e05f152937dc9f895236d12b2a3c8f6f237df68c2b359ac2524",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "DD315931-AEC8-40B6-A465-E9643A2B9F94.jpeg",
+      "library_file_id": "libfile_65b2a57b61588191bc90bf7b40591151",
+      "file_id": "file_00000000a37c821097f2f70fa046ecbe",
+      "created_at": "2026-09-24T20:32:26.039153+00:00",
+      "size_bytes": 222794,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_65b2a57b61588191bc90bf7b40591151&account_id=personal",
+      "sha256": "f09019366e0347f36ab09411f306ca6e757093a283cd611800c39c6bb4e46de9",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "6266DF35-D54C-4C3B-8AB8-05CC4D78891F.jpeg",
+      "library_file_id": "libfile_99c1bb5e9dfc8191970e3f01ae59efb8",
+      "file_id": "file_000000003860821083edb06ca985b25a",
+      "created_at": "2026-09-24T20:32:26.381822+00:00",
+      "size_bytes": 233089,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_99c1bb5e9dfc8191970e3f01ae59efb8&account_id=personal",
+      "sha256": "628754a307be202168e9857d53a53d9bc32c9cffbed59b1a3d67eb4f706b9985",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(20260924-203754).mp4",
+      "library_file_id": "libfile_990ab32083408191b7ff76d0a5edc664",
+      "file_id": "file_0000000085fc81f49a11238a9a79e63a",
+      "created_at": "2026-09-24T20:37:54.287615+00:00",
+      "size_bytes": 55931206,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_990ab32083408191b7ff76d0a5edc664&account_id=personal",
+      "sha256": "c6c7ef1516dce3924e63e87da9279f5c9c785d4fe5d74a378a524470167a68c8",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "chart-1(20260924-203952).png",
+      "library_file_id": "libfile_f376c9e174308191957bcd4982330a3d",
+      "file_id": "file_000000001aa881f4b606d4963aadac21",
+      "created_at": "2026-09-24T20:39:51.674675+00:00",
+      "size_bytes": 2578224,
+      "kind": "historical_PNG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_f376c9e174308191957bcd4982330a3d&account_id=personal",
+      "sha256": "5de1e78d6306b18405d6a4a3bb3fc87f05baff5817a2df4a3eac0e1335725174",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(20260924-204415).mp4",
+      "library_file_id": "libfile_a3b95fba3bf48191ac3140672d659f35",
+      "file_id": "file_000000009e6881f4a8a5c69bb361aa86",
+      "created_at": "2026-09-24T20:44:15.009357+00:00",
+      "size_bytes": 56447632,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_a3b95fba3bf48191ac3140672d659f35&account_id=personal",
+      "sha256": "b2279e5961a5cda551afab1f037a29894d260422ed28636260ecbb29431740e4",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(20260924-204418).mp4",
+      "library_file_id": "libfile_4da9e762c648819191f0fe2ee1213692",
+      "file_id": "file_0000000067788246bf262c059d334562",
+      "created_at": "2026-09-24T20:44:17.680248+00:00",
+      "size_bytes": 56426437,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_4da9e762c648819191f0fe2ee1213692&account_id=personal",
+      "sha256": "04637142668fec4292ad118cf1a2a9b0d58111896ca38c093a3a4411b9478802",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "chart-1(20260924-204610).png",
+      "library_file_id": "libfile_ea51ae98ffc48191bba2fc9dc3d5c6cf",
+      "file_id": "file_000000009ce481f49b1e3db10dec740a",
+      "created_at": "2026-09-24T20:46:09.430321+00:00",
+      "size_bytes": 2626647,
+      "kind": "historical_PNG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_ea51ae98ffc48191bba2fc9dc3d5c6cf&account_id=personal",
+      "sha256": "348e0919f22f162683cb6c7ad39994028756053f661340afe52de0e5a56bdba7",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "9B509616-BA51-4E17-8052-011C0C7EFF73.jpeg",
+      "library_file_id": "libfile_4fcb21c6c5908191b4c8c3eff5707bcf",
+      "file_id": "file_00000000de4c820abaf7fb91394cb153",
+      "created_at": "2026-09-24T20:49:14.881487+00:00",
+      "size_bytes": 222100,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_4fcb21c6c5908191b4c8c3eff5707bcf&account_id=personal",
+      "sha256": "2951c1b4000dc419329ba8025de2a9bc61a7306242bd2e0e5f40cf471390b386",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "A7838686-4998-49D0-8277-A6BDE0032E66.jpeg",
+      "library_file_id": "libfile_e3817bb76760819198eb0af654e48037",
+      "file_id": "file_00000000b8f48210a32eb85ab1dec2d6",
+      "created_at": "2026-09-24T20:49:15.536892+00:00",
+      "size_bytes": 234572,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_e3817bb76760819198eb0af654e48037&account_id=personal",
+      "sha256": "033e0488275eed8ee98933bcde98e3c7d7da2755523aaf97fe74a0116ff8d528",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "A32EC4D9-5863-49F0-A953-9AF8ABB5C5F2.jpeg",
+      "library_file_id": "libfile_85db2074250481918699a422e9992690",
+      "file_id": "file_00000000fed082468980c57032b4e779",
+      "created_at": "2026-09-24T20:49:16.359489+00:00",
+      "size_bytes": 222794,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_85db2074250481918699a422e9992690&account_id=personal",
+      "sha256": "f09019366e0347f36ab09411f306ca6e757093a283cd611800c39c6bb4e46de9",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "64246DE7-8775-4B0A-BD52-70AE0B578BCA.jpeg",
+      "library_file_id": "libfile_73f21d91f26c81919decdb2ddf72618c",
+      "file_id": "file_00000000a36c821080225671f468a525",
+      "created_at": "2026-09-24T20:49:16.402605+00:00",
+      "size_bytes": 233739,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_73f21d91f26c81919decdb2ddf72618c&account_id=personal",
+      "sha256": "c2c99c88882fe9f8d3da991861a0f989f4beb3dfe8774b6ebaae0fcd6e4cb623",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "D8339AA0-4094-4198-8DFD-D4CF1FF6FC4B.jpeg",
+      "library_file_id": "libfile_306570b069c08191ba82ae41317f55ac",
+      "file_id": "file_0000000055c881f4937fb8b2826201bf",
+      "created_at": "2026-09-24T20:49:27.058344+00:00",
+      "size_bytes": 222794,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_306570b069c08191ba82ae41317f55ac&account_id=personal",
+      "sha256": "f09019366e0347f36ab09411f306ca6e757093a283cd611800c39c6bb4e46de9",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "AC6175B9-E377-4C24-8481-D7EF34AFE344.jpeg",
+      "library_file_id": "libfile_a6ead4f0cdfc81919167a32ce9ab409a",
+      "file_id": "file_00000000d3f4821096d8884a7e7785d6",
+      "created_at": "2026-09-24T20:49:56.859240+00:00",
+      "size_bytes": 222100,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_a6ead4f0cdfc81919167a32ce9ab409a&account_id=personal",
+      "sha256": "2951c1b4000dc419329ba8025de2a9bc61a7306242bd2e0e5f40cf471390b386",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "0F48E824-2934-4241-9385-44D350555463.jpeg",
+      "library_file_id": "libfile_fe3cc02424f4819182f5766c173976be",
+      "file_id": "file_00000000c2b881f4b5a6ee1476363bc8",
+      "created_at": "2026-09-24T20:49:57.443585+00:00",
+      "size_bytes": 233739,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_fe3cc02424f4819182f5766c173976be&account_id=personal",
+      "sha256": "c2c99c88882fe9f8d3da991861a0f989f4beb3dfe8774b6ebaae0fcd6e4cb623",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "0940784F-A374-492D-B850-D301F0226A45.jpeg",
+      "library_file_id": "libfile_c00377b736a88191b0094e04ea032bf6",
+      "file_id": "file_000000001d6c8210979e23560f09b6b0",
+      "created_at": "2026-09-24T20:49:58.031801+00:00",
+      "size_bytes": 234572,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_c00377b736a88191b0094e04ea032bf6&account_id=personal",
+      "sha256": "033e0488275eed8ee98933bcde98e3c7d7da2755523aaf97fe74a0116ff8d528",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(20260924-205304).mp4",
+      "library_file_id": "libfile_eefd8e5f76e8819193dc5a508677c150",
+      "file_id": "file_0000000092e881f4acee7e11481e2d65",
+      "created_at": "2026-09-24T20:53:04.319114+00:00",
+      "size_bytes": 54453863,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_eefd8e5f76e8819193dc5a508677c150&account_id=personal",
+      "sha256": "29403ae4cf90940bf6173521739ddb40a7c9c0f168ac69f97050da3df67ee7c0",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "chart-1(20260924-205520).png",
+      "library_file_id": "libfile_b42b18d18d9081918d5e7637d8cac50b",
+      "file_id": "file_00000000238481f4b2dfe3c70492af8b",
+      "created_at": "2026-09-24T20:55:19.044068+00:00",
+      "size_bytes": 1240247,
+      "kind": "historical_PNG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_b42b18d18d9081918d5e7637d8cac50b&account_id=personal",
+      "sha256": "63da51f94b581b6e3fef152461313f7377cbec072e49c8c00efe5e317d01a1a7",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "A74AB040-82F4-4A07-97EB-53455BA58597.jpeg",
+      "library_file_id": "libfile_fc83f0f886688191a9b9de464386c9ab",
+      "file_id": "file_00000000f39081f4bb8b8acca950a6b7",
+      "created_at": "2026-09-24T20:57:27.248767+00:00",
+      "size_bytes": 231551,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_fc83f0f886688191a9b9de464386c9ab&account_id=personal",
+      "sha256": "25cb7098810399deac7aa35c690124ff273172504f46d7c3c56caea9da17c992",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "8F4F7323-23FA-4A7D-9194-4EEF641FDCDB.jpeg",
+      "library_file_id": "libfile_4a5e5785410c81918177e8c27f268443",
+      "file_id": "file_00000000b0c481f4b412558582f53b65",
+      "created_at": "2026-09-24T20:59:27.932897+00:00",
+      "size_bytes": 212501,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_4a5e5785410c81918177e8c27f268443&account_id=personal",
+      "sha256": "2d0b11c801c46a5af75afe2c6cf1b73ced274d785e0c9f270f326e0a2f3414a4",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "DFA9181A-4DE5-452A-9EEB-57314C933EDC.jpeg",
+      "library_file_id": "libfile_c7d603df9f7c819193ba0fd2e7f87f4b",
+      "file_id": "file_00000000360c81f49a46768c30832b24",
+      "created_at": "2026-09-24T20:59:28.058610+00:00",
+      "size_bytes": 216381,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_c7d603df9f7c819193ba0fd2e7f87f4b&account_id=personal",
+      "sha256": "66de79f9c8a3245872a8affb98b2bf1c3255aca89e3dbd32399a3f280cc9a690",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "91448B7E-D3F9-4D84-95AB-C5242768CCE3.jpeg",
+      "library_file_id": "libfile_33315e948fb0819196fb0099527d266c",
+      "file_id": "file_00000000f954820ab9695a0e176801aa",
+      "created_at": "2026-09-24T20:59:28.525222+00:00",
+      "size_bytes": 208189,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_33315e948fb0819196fb0099527d266c&account_id=personal",
+      "sha256": "7d2a44876fd5047369434cc7f18de75681a766d355e5e71c4de6746178b81ecf",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(20260924-210444).mp4",
+      "library_file_id": "libfile_db4409cf172c819197856dc68161b694",
+      "file_id": "file_000000002dc081f4929ab5e23fe821e0",
+      "created_at": "2026-09-24T21:04:44.345061+00:00",
+      "size_bytes": 59349700,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_db4409cf172c819197856dc68161b694&account_id=personal",
+      "sha256": "d9600712a873ef4d54ebcac1ae2b1645a10c6a7be3fc20900f3f3209dee4b5dc",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "AD0211A5-E7D6-405F-8EF1-11B879C4E432.jpeg",
+      "library_file_id": "libfile_f6683ceb1544819187733e2adeba4593",
+      "file_id": "file_0000000086e881f49268bba85f99db33",
+      "created_at": "2026-09-24T21:13:22.013755+00:00",
+      "size_bytes": 156960,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_f6683ceb1544819187733e2adeba4593&account_id=personal",
+      "sha256": "e81656000ce6eca5b134901e48665046b4919738c2b91bf069dba7928b626912",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "B309D3FD-F1D1-41A5-8848-01420FA616D0.jpeg",
+      "library_file_id": "libfile_04da427f256c8191a79056fa3f589b8a",
+      "file_id": "file_000000001140824697537a06e24ad5c2",
+      "created_at": "2026-09-24T21:13:22.719010+00:00",
+      "size_bytes": 122199,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_04da427f256c8191a79056fa3f589b8a&account_id=personal",
+      "sha256": "10f1ff717216f800c3c1c7a5e675b115050fdf260bc75fe35bc04b4c9efa6867",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "30F0DE9E-4DB9-4B35-A001-D6F60B7E3D1F.jpeg",
+      "library_file_id": "libfile_fccf700253b481919b9b89abd31f9ff7",
+      "file_id": "file_000000001fac81f4b4c52401f0c57c41",
+      "created_at": "2026-09-24T21:13:22.932617+00:00",
+      "size_bytes": 122800,
+      "kind": "historical_JPEG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_fccf700253b481919b9b89abd31f9ff7&account_id=personal",
+      "sha256": "bb85d085a74769b177676906be72dda905822b3ea9d18b5532a4dd2b2dc3ca0e",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(20260925-082346).mp4",
+      "library_file_id": "libfile_24e98c7a1c4481919cac49269e02f312",
+      "file_id": "file_00000000755481f4b2b1fb23bf6bca3e",
+      "created_at": "2026-09-25T08:23:46.168749+00:00",
+      "size_bytes": 75878459,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_24e98c7a1c4481919cac49269e02f312&account_id=personal",
+      "sha256": "8c298e9bb693143d05fc785b21ac71e0d637e1edae0db14fa292aad715478f94",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(20260925-084525).mp4",
+      "library_file_id": "libfile_3796407edea48191ae1f84aaea6efd83",
+      "file_id": "file_00000000a988821197061db3ef26a5cc",
+      "created_at": "2026-09-25T08:45:24.643037+00:00",
+      "size_bytes": 76488277,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_3796407edea48191ae1f84aaea6efd83&account_id=personal",
+      "sha256": "59bdbca78e36a211f0b900464168401ba47b4d41c354faf28896e894c1b766ee",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(20260925-123910).mp4",
+      "library_file_id": "libfile_9eb263bcb9648191bec02725190854f7",
+      "file_id": "file_00000000aed881f4bf9aa56ca8275b6c",
+      "created_at": "2026-09-25T12:39:09.811889+00:00",
+      "size_bytes": 121102706,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_9eb263bcb9648191bec02725190854f7&account_id=personal",
+      "sha256": "bbcd3bd5d764eae91cb14495d312233c8c3f87261ae80c104421efd4dd154342",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(20260925-124956).mp4",
+      "library_file_id": "libfile_2731dd166c288191a8c34143350177a8",
+      "file_id": "file_0000000045e081fb89bae80d88ec427c",
+      "created_at": "2026-09-25T12:49:51.037417+00:00",
+      "size_bytes": 154501293,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_2731dd166c288191a8c34143350177a8&account_id=personal",
+      "sha256": "0438f0b5785382bff747fecd6ac9e04ed055b49fa4461715ba14a2a1f2bde9a4",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "chart-1(20260925-125258).png",
+      "library_file_id": "libfile_09321544eb6c81918c6d45f725ad9a15",
+      "file_id": "file_0000000037548210ae70477331157721",
+      "created_at": "2026-09-25T12:52:58.311174+00:00",
+      "size_bytes": 928506,
+      "kind": "historical_PNG",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_09321544eb6c81918c6d45f725ad9a15&account_id=personal",
+      "sha256": "da95a632b7088fd007ddf71c30aad5fd19103acd8cbbd261cd13cb724b772191",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(20260925-125546).mp4",
+      "library_file_id": "libfile_ed61129a46808191bb931df03d202336",
+      "file_id": "file_00000000373c81f48a9370b12e4805d2",
+      "created_at": "2026-09-25T12:55:46.386765+00:00",
+      "size_bytes": 74404132,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_ed61129a46808191bb931df03d202336&account_id=personal",
+      "sha256": "2b435f810832b5d6fd6e4ed54b83a83ff567b191f00f9aa814af4376e317885e",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(20260925-133145).mp4",
+      "library_file_id": "libfile_e8173e057e1c8191bb18027cf84a6250",
+      "file_id": "file_00000000068c82108f29d43a9e5aefd1",
+      "created_at": "2026-09-25T13:31:44.547126+00:00",
+      "size_bytes": 74445048,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_e8173e057e1c8191bb18027cf84a6250&account_id=personal",
+      "sha256": "34d203f4eb3b1911cdee25736fe64bdbd6a2cea6a43bd0ffc4b8867b09024d61",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(20260925-133516).mp4",
+      "library_file_id": "libfile_5ce1d95f7ae881918a0266f637c7634e",
+      "file_id": "file_00000000385481f4a8e39b539b45d811",
+      "created_at": "2026-09-25T13:35:15.501034+00:00",
+      "size_bytes": 74449529,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_5ce1d95f7ae881918a0266f637c7634e&account_id=personal",
+      "sha256": "b37c72b4f0afddc65ebe944ba10fce773702d3609491b4e09263ab2b4e8f372c",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(20260925-133521).mp4",
+      "library_file_id": "libfile_f45fd53f1e0c8191963842a6f290ad7d",
+      "file_id": "file_000000000d18824690b7e2afb0a10d61",
+      "created_at": "2026-09-25T13:35:20.716741+00:00",
+      "size_bytes": 74412472,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_f45fd53f1e0c8191963842a6f290ad7d&account_id=personal",
+      "sha256": "72e5e38ef706fd2df97479f6c0cb81e5eec884ddce7f6061dbba54d11840a0c1",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "IMG_6055(20260925-142046).mp4",
+      "library_file_id": "libfile_741ad5c6719c8191bb27ea3ccddecd09",
+      "file_id": "file_0000000060c881f4be58ced0cce19959",
+      "created_at": "2026-09-25T14:20:45.751423+00:00",
+      "size_bytes": 74465189,
+      "kind": "video",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_741ad5c6719c8191bb27ea3ccddecd09&account_id=personal",
+      "sha256": "8fbc48f6f2c533847e51c49a0ce5e712a4f620b72442a42890cb73aa2ef14d1e",
+      "sharing": "PRIVATE ORIGINAL; DO NOT PUBLISH"
+    },
+    {
+      "name": "Sarberki_Horgaszto_teljes_projektexport_2026-09-24.md",
+      "library_file_id": "libfile_a8e2820b3a7c81919f8b482d61596e87",
+      "file_id": "file_000000006a2c81f481166ded36e000ad",
+      "size_bytes": 95746,
+      "kind": "analysis_MD",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_a8e2820b3a7c81919f8b482d61596e87&account_id=personal",
+      "sha256": "33b5274f1836e60ed723f90409eb47c54ec8f09173a7beb7253c5e1e5e231bd3",
+      "sharing": "PRIVATE ORIGINAL; SANITIZED SUMMARY IN REPORT"
+    },
+    {
+      "name": "Sarberki_mentes_2026-09-24_kiegeszites.md",
+      "library_file_id": "libfile_8d54f38d3c608191b17cebc9a84ea871",
+      "file_id": "file_000000007ba48210b414ab55092f0b45",
+      "size_bytes": 4082,
+      "kind": "analysis_MD",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_8d54f38d3c608191b17cebc9a84ea871&account_id=personal",
+      "sha256": "18a0e40de4a114a7816a468cb518aa66f17aee98c09b1ea537b492a7d66874be",
+      "sharing": "PRIVATE ORIGINAL; SANITIZED SUMMARY IN REPORT"
+    },
+    {
+      "name": "Sarberki_teljes_projektatadas_5_6_Sol_2026-09-25.md",
+      "library_file_id": "libfile_6214f3a4d3d08191a1607449fb5ed7ed",
+      "file_id": "file_00000000e6e48243ab7ab764e5d9a28e",
+      "size_bytes": 23651,
+      "kind": "analysis_MD",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_6214f3a4d3d08191a1607449fb5ed7ed&account_id=personal",
+      "sha256": "2e4e5637e088f00ea6509aeb0ca3ca5cb78cffbe04627f401eda11258d34c57c",
+      "sharing": "PRIVATE ORIGINAL; SANITIZED SUMMARY IN REPORT"
+    },
+    {
+      "name": "Sarberki_teljes_biztonsagi_mentes_2026-09-25.md",
+      "library_file_id": "libfile_5b3a6597159c819190f59d029f7f4ee2",
+      "file_id": "file_000000005ee881f589fb4b8cbee898d5",
+      "size_bytes": 32015,
+      "kind": "analysis_MD",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_5b3a6597159c819190f59d029f7f4ee2&account_id=personal",
+      "sha256": "a4bcc00a9f3cabbad7c133645c6b08524247bbafc5cebf63b30f82f55c410b99",
+      "sharing": "PRIVATE ORIGINAL; SANITIZED SUMMARY IN REPORT"
+    },
+    {
+      "name": "Sarberki_Previo_konkurencia_atadas_2026-09-25.md",
+      "library_file_id": "libfile_03ed8dc4f51481918ca65f41b380dc17",
+      "kind": "related_analysis_MD",
+      "owner_source_url": "https://chatgpt.com/library?file_id=libfile_03ed8dc4f51481918ca65f41b380dc17&account_id=personal",
+      "sharing": "TEXT READ; ORIGINAL NOT REPUBLISHED"
+    }
+  ],
+  "video_probe": [
+    {
+      "name": "IMG_6055(1).mp4",
+      "duration": 89.233333,
+      "size": 56445409
+    },
+    {
+      "name": "IMG_6055(10).mp4",
+      "duration": 88.266667,
+      "size": 55932671
+    },
+    {
+      "name": "IMG_6055(2).mp4",
+      "duration": 85.933333,
+      "size": 54469536
+    },
+    {
+      "name": "IMG_6055(20260924-203754).mp4",
+      "duration": 88.266667,
+      "size": 55931206
+    },
+    {
+      "name": "IMG_6055(20260924-204415).mp4",
+      "duration": 89.233333,
+      "size": 56447632
+    },
+    {
+      "name": "IMG_6055(20260924-204418).mp4",
+      "duration": 89.233333,
+      "size": 56426437
+    },
+    {
+      "name": "IMG_6055(20260924-205304).mp4",
+      "duration": 85.933333,
+      "size": 54453863
+    },
+    {
+      "name": "IMG_6055(20260924-210444).mp4",
+      "duration": 93.866667,
+      "size": 59349700
+    },
+    {
+      "name": "IMG_6055(20260925-082346).mp4",
+      "duration": 119.666667,
+      "size": 75878459
+    },
+    {
+      "name": "IMG_6055(20260925-084525).mp4",
+      "duration": 120.833333,
+      "size": 76488277
+    },
+    {
+      "name": "IMG_6055(20260925-123910).mp4",
+      "duration": 191.8,
+      "size": 121102706
+    },
+    {
+      "name": "IMG_6055(20260925-124956).mp4",
+      "duration": 244.233333,
+      "size": 154501293
+    },
+    {
+      "name": "IMG_6055(20260925-125546).mp4",
+      "duration": 117.6,
+      "size": 74404132
+    },
+    {
+      "name": "IMG_6055(20260925-133145).mp4",
+      "duration": 117.6,
+      "size": 74445048
+    },
+    {
+      "name": "IMG_6055(20260925-133516).mp4",
+      "duration": 117.6,
+      "size": 74449529
+    },
+    {
+      "name": "IMG_6055(20260925-133521).mp4",
+      "duration": 117.6,
+      "size": 74412472
+    },
+    {
+      "name": "IMG_6055(20260925-142046).mp4",
+      "duration": 117.6,
+      "size": 74465189
+    },
+    {
+      "name": "IMG_6055(3).mp4",
+      "duration": 93.866667,
+      "size": 59363305
+    },
+    {
+      "name": "IMG_6055(4).mp4",
+      "duration": 93.866667,
+      "size": 59364882
+    },
+    {
+      "name": "IMG_6055(5).mp4",
+      "duration": 119.666667,
+      "size": 75863076
+    },
+    {
+      "name": "IMG_6055(6).mp4",
+      "duration": 120.833333,
+      "size": 76493650
+    },
+    {
+      "name": "IMG_6055(7).mp4",
+      "duration": 192.1,
+      "size": 121488947
+    },
+    {
+      "name": "IMG_6055(8).mp4",
+      "duration": 191.8,
+      "size": 121121992
+    },
+    {
+      "name": "IMG_6055(9).mp4",
+      "duration": 117.6,
+      "size": 74441864
+    },
+    {
+      "name": "IMG_6055.mp4",
+      "duration": 88.266667,
+      "size": 55897473
+    }
+  ]
+}
