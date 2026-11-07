@@ -11,6 +11,7 @@
 //   NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt node scripts/previo-readonly-discovery.mjs --approved-73521
 // First run 2026-11-06 (owner-approved): 3x HTTP 200; 1 rate plan, 1 room kind ('Apartmanok', 4), 5 rooms –
 // the API TEST property is a generic template, NOT the Sárberki 23-unit layout.
+// Live scope check 2026-11-07 (owner-approved): GET /rest/rooms on 753011 -> HTTP 401: the key has no live access.
 export const ORIGIN='https://api.previo.app',HOTEL='73521',LIVE=['753011'];
 export const CALLS=Object.freeze([
  {name:'ratePlans',path:'/rest/rate-plan'},
