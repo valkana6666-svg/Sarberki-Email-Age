@@ -122,3 +122,11 @@ Authorized SQL: deployment/test-mailbox/booking-status.sql, blob 7f27558af06655b
 Fresh encrypted Drive export, exact-ID readback and isolated SQL restore before deployment. No Netlify, source data changes, Previo writes or email sending.
 Provider: drive. Marker: [backup-v2-run].
 Daily request 2026-11-07T05:47Z: Claude scheduled daily Drive backup.
+
+## Owner-authorized TEST booking-unit pre-install backup
+Requested at: 2026-11-07T13:43:17.746Z.
+Authority: owner directly confirmed Work's concrete backup + booking-unit.sql TEST installation question with "Igen" on 2026-11-07; Claude request #9 comment 6707666940.
+Source project: mojnqizbcaczstguikpv only. Source commit: 2de9dd3b1480f7204e3e90ed1c07aba33aaee8ed.
+Authorized SQL: deployment/test-mailbox/booking-unit.sql (blob 48ebfc7aafcc0f754f21996f460f06884e4c202b), then booking-unit.verify.sql.
+Fresh encrypted Drive export, exact-ID readback and isolated restore required before replacement of sc_tm_confirm_booking. No Netlify release, Previo operation or email sending.
+Provider: drive. Marker: [backup-v2-run].
