@@ -1,0 +1,105 @@
+{
+  "propertyId": 73521,
+  "types": [
+    {
+      "name": "VIP apartman",
+      "beds": "7",
+      "extra": "0",
+      "ntak": "UDULOHAZ",
+      "units": [
+        "1"
+      ],
+      "testRoomKindId": 1012895,
+      "onlineOffer": false,
+      "roomIdsVerified": false
+    },
+    {
+      "name": "Családi faház",
+      "beds": "8",
+      "extra": "0",
+      "ntak": "UDULOHAZ",
+      "units": [
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+      ],
+      "testRoomKindId": 1012897,
+      "onlineOffer": false,
+      "roomIdsVerified": false
+    },
+    {
+      "name": "Deluxe faház",
+      "beds": "6",
+      "extra": "0",
+      "ntak": "UDULOHAZ",
+      "units": [
+        "11",
+        "12",
+        "13",
+        "14"
+      ],
+      "testRoomKindId": 1012899,
+      "onlineOffer": false,
+      "roomIdsVerified": false
+    },
+    {
+      "name": "Különálló 2 fős faház",
+      "beds": "2",
+      "extra": "1",
+      "ntak": "UDULOHAZ",
+      "units": [
+        "15"
+      ],
+      "testRoomKindId": 1012901,
+      "onlineOffer": false,
+      "roomIdsVerified": false
+    },
+    {
+      "name": "2 fős apartman",
+      "beds": "2",
+      "extra": "0",
+      "ntak": "APARTMAN",
+      "units": [
+        "7/A",
+        "7/B",
+        "8/A",
+        "8/B",
+        "9/A",
+        "9/B",
+        "10/A",
+        "10/B"
+      ],
+      "testRoomKindId": 1012903,
+      "onlineOffer": false,
+      "roomIdsVerified": false
+    },
+    {
+      "name": "4 fős apartman",
+      "beds": "4",
+      "extra": "1",
+      "ntak": "APARTMAN",
+      "units": [
+        "7/C",
+        "8/C",
+        "9/C",
+        "10/C"
+      ],
+      "testRoomKindId": 1012905,
+      "onlineOffer": false,
+      "roomIdsVerified": false
+    }
+  ],
+  "originalUnits": [
+    "Apartman 1",
+    "Apartman 2",
+    "Apartman 3",
+    "Apartman 4",
+    "Apartman 5"
+  ],
+  "newUnitCount": 23,
+  "totalUnits": 28,
+  "verifiedAt": "2026-11-07T09:41:00+01:00",
+  "evidence": "UI after page reload; not API"
+}
