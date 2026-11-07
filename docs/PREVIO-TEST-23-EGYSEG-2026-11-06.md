@@ -81,3 +81,17 @@ Nem változik: foglalás, ár, árcsomag, csatorna, integráció; az 5 mintapart
 **Leképezés-javaslat** (`PREVIO_ROOM_KIND_MAP`, a meglévő `validateRoomKindMapping` elfogadja; A és B közös típus):
 `{"vip":1012895,"family":1012897,"deluxe":1012899,"small":1012901,"splitA":1012903,"splitB":1012903,"splitC":1012905}`; `PREVIO_HOTEL_ID=73521`, `PREVIO_RATE_PLAN_ID=385033`.
 Csak a 73521 TESZT-re érvényes (az éles ID-k mások). Beállítása a Netlifyn és a szabadhely-olvasás (`PREVIO_READ_API_ENABLED`) külön tulajdonosi döntés; addig KI.
+
+## 7. Previo-naptár jelölései (tulajdonos, 2026-11-07, chatben) → V1-állapotok
+| Jelölés | Jelentés (éles Previo) | Sárberki V1 megfelelője |
+|---|---|---|
+| **Sárga** sáv | opció: lefoglalva, az előleg még nincs kifizetve | „Véglegesítve” (Previóban rögzítve, foglalóra vár) |
+| **Zöld** sáv | megerősítve, a foglaló kifizetve | „Foglaló beérkezett” |
+| **Kék** sáv | a vendég éppen itt van | később: „Itt tartózkodik” |
+| **Szürke** sáv | a vendég elment, kijelentkezett | később: „Lezárva” |
+| „R” | foglalás a Sárberki honlapjáról | forrás |
+| „S” | foglalás a Szállás.hu-ról | forrás |
+| „B.” | foglalás a Booking.com-ról | forrás |
+| „-3”, „-4” a sáv elején | **NEM IGAZOLT** – kérdés a tulajdonosnak/apunak | – |
+
+Életút: opció (sárga) → megerősítve (zöld) → itt van (kék) → elment (szürke). A V1 most az első kettőt kezeli; a „kék/szürke” és a forrásjel későbbi bővítés.
