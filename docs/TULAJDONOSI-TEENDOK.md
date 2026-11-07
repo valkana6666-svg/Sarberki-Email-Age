@@ -34,3 +34,4 @@ Te: új, ingyenes Supabase-projekt és egy új Netlify-oldal létrehozása (Clau
 ## Nem most (tájékoztatás)
 - **info@sarberkito.hu**: csak a teljes TEST-próba (Previóval, a sarberkito@gmail.com tesztlevelekkel) után, édesapád hozzájárulásával és frissített adatkezelési tájékoztatóval.
 - Éles adatbázis/oldal: külön engedéllyel, a fentiek után.
+- **Később (tulajdonosi terv, 11-07):** ha a TEST-rendszer működik és apunak tetszik → Work olvasási hozzáférést kap az éles Previóhoz (753011), feltérképezi a funkciókat/beállításokat, és átteszi a 73521-es tesztbe. Feltételek: külön, csak olvasó Previo-felhasználó (nem apu fiókja), csak beállítási oldalak, vendég-/pénzügyi adat nem kerül ki, apu hozzájárulása, előzetes rögzített engedély; az átvezetés a tesztbe külön engedély.
