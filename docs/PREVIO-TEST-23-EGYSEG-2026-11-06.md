@@ -41,8 +41,8 @@ Nem változik: foglalás, ár, árcsomag, csatorna, integráció; az 5 mintapart
 **Eltérés:** a 6 típus és a 23 egység teljesen hiányzik → leképezés és szabadhely-próba most nem lehetséges.
 
 ## 3. Módszer
-- **Választott: B – Previo-támogatás másolja át a szerkezetet** (ChatGPT egyetért, #9 6697760145). Pontos, kevés tulajdonosi munka.
-- Tartalék: A – tulajdonos kézzel veszi fel a 6 típust és 23 egységet a 73521 webes felületén (a fenti táblázat alapján).
+- **Választott (11-07): A – mi építjük fel**: Kántor Gergő 11-04-i levele szerint a tesztet nekünk kell az élőhöz hasonlóvá beállítani. Végrehajtó: Work a 73521 webes felületén, az 1c lista szerint, előzetes, rögzített tulajdonosi engedéllyel.
+- B (Previo-másolás) csak kiegészítő kérdés lehet; nem várunk rá.
 - API-s létrehozás: nem (írási jog nincs, és nem is kérünk).
 - **Work most nem kell:** a szerkezet a repóban dokumentált; a régi videóanyag nem szükséges ehhez a lépéshez. Work csak akkor, ha a másolás után a Previo webes felületén kell valamit ellenőrizni, amit az olvasó API nem mutat.
 
