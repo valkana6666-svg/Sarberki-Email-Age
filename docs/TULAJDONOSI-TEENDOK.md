@@ -4,12 +4,14 @@ Minden más elő van készítve. A sorrend a fontosság. Titkot (jelszót, kulcs
 
 ## 00. Hozzáférések Claude-nak – a Work minimalizálása (tulajdonosi döntés 2026-11-09; Claude emlékeztet)
 1. **GitHub-környezet `test-db-install`** (10 perc): lásd 1. pont. Utána az adatbázis-telepítést Claude indítja, te a GitHub-alkalmazásban jóváhagyod – Work nélkül.
-2. **Netlify-kulcs Claude-nak** (5 perc): Netlify → User settings → Applications → Personal access tokens → New access token (lejárat 90 nap) → Claude-nak szólsz, és a **biztonságos űrlapon** adod meg (nem chatben). Claude csak a TEST-oldalon (`leafy-chimera-2403e5`) használja.
+2. **Previo webes belépés Claude-nak – OTTHON, gépről (2 perc; tulajdonos kérte 11-09, Claude emlékeztet):** claude.ai/code → ez a beszélgetés → fejléc: **„Sarberki TEST E2E”** → szerkesztés (Edit) → **Environment variables**, a meglévő 4 sor alá: `PREVIO_TEST_WEB_USER=`*Previo-e-mail* és `PREVIO_TEST_WEB_PASSWORD=`*Previo-jelszó* → Mentés → új beszélgetés: „Lépj be a Previóba.” (A hálózati engedély már megvan. Chatbe NEM írjuk. Claude csak a 73521-et nyitja meg.)
+   (Netlify-kulcs már NEM kell: a kapcsolót Work állította be 11-09.)
 3. **Previo írási API-kulcs** – később, a 2. szintnél (Previótól kérjük).
 (Tulajdonosi döntés 2026-11-09: a Previótól a lehető legkevesebbet kérünk; a vendégkategória-azonosítót nem kérjük tőlük – a Previo felületéről olvassuk ki.)
 Szándékosan NEM: Supabase management token, saját jelszavaid. Work marad: Facebook, Previo webes beállítások, ChatGPT-fájltár.
 
 ## 0. Később, ha lesz időd – élő tesztek a telefonon (Claude nem tudja helyetted: a Gmail-belépés a te telefonodon van)
+0. **1. szint igazolása (MOST A LEGFONTOSABB):** napi kezelő → „Teszt Vendég 9” levele (Deluxe, 2027-06-15→17, 2 felnőtt) beolvasása → képernyőkép. Elvárt: „A kért időszakra jelenleg van szabad helyünk ebben a háztípusban.” + 126 000 Ft + 2 200 Ft IFA.
 1. **Név a megszólításban** (kiadva 11-07, `8f85b58`): új levél a sarberkito@gmail.com-ról a sarberkiprojecttest@gmail.com-ra, pl. „Jó napot! 2027. július 8-tól 11-ig jönnénk 4 felnőtt, a Családi faházba. Mennyibe kerül? Üdv: Teszt Péter” → beolvasás → mentés → elvárt: „Kedves Péter!”, olvasható időpont, „FOGLALÁS ÁTTEKINTÉSE”, a magyar tervezet egyszer.
 2. **Véglegesítés** (Kis Anna-foglalás): Previo-hivatkozás `TESZT-1` → Véglegesítés → levél (94 500 Ft foglaló, „Kedves Kis Anna!”) → jóváhagyás → küldés → „Foglaló beérkezett”.
 3. **Levéllista-címkék**: [Új] / [Folytatás] / [Már beolvasva] látszik-e a levelek mellett.
