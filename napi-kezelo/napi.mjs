@@ -359,7 +359,8 @@ const bookingStatus={finalized:'Véglegesítve (Previóban rögzítve) – a fog
 function showBooking(caseId,record){
  const b=record.booking;bookingCase={caseId,revision:record.revision};el('booking-panel').hidden=false;
  const dep=b?.deposit&&Number.isSafeInteger(b.deposit.amount)?'\nFoglaló: '+b.deposit.pct+'% = '+huf(b.deposit.amount)+' Ft, határidő: '+new Date(b.deposit.deadlineUtc).toLocaleString('hu-HU',{timeZone:'Europe/Budapest'}):'';
- el('booking-state').textContent=b?(bookingStatus[b.status]||'Ismeretlen állapot')+(b.unit?'\nEgység: '+b.unit:'')+(b.previoReference?'\nPrevio-hivatkozás: '+b.previoReference:'')+dep+(b.depositReceivedOn?'\nBeérkezett: '+b.depositReceivedOn:''):'Még nincs véglegesítve.';
+ const intent=typeof record.bookingIntent==='string'&&record.bookingIntent?'🟢 A vendég foglalni szeretne („'+record.bookingIntent+'”). Rögzítsd a Previóban, majd: Véglegesítés.\n':'';
+ el('booking-state').textContent=intent+(b?(bookingStatus[b.status]||'Ismeretlen állapot')+(b.unit?'\nEgység: '+b.unit:'')+(b.previoReference?'\nPrevio-hivatkozás: '+b.previoReference:'')+dep+(b.depositReceivedOn?'\nBeérkezett: '+b.depositReceivedOn:''):'Még nincs véglegesítve.');
  const fin=record.canFinalize===true,dpt=record.canMarkDeposit===true;
  // Units of the booking's cabin type only (V2 step 1b); the server and database re-check collisions.
  const cabinKey=Object.entries(CABIN_NAMES).find(([,n])=>n.hu.toLowerCase()===String(record.values?.unit||'').trim().toLowerCase())?.[0];

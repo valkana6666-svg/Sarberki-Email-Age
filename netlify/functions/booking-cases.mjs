@@ -17,6 +17,7 @@ import {appendTestMailboxFollowup,triageTestMailboxMessages} from '../../shared-
 import {sendApprovedTestMailboxReply} from '../../shared-core/server-test-mailbox-send.mjs';
 import {priceTestMailboxCase} from '../../shared-core/server-test-mailbox-price.mjs';
 import {confirmTestMailboxBooking,markTestMailboxDepositReceived} from '../../shared-core/server-test-mailbox-confirm.mjs';
+import {bookingIntentHint} from '../../shared-core/booking-intent.mjs';
 import {markTestMailboxUnavailable} from '../../shared-core/server-test-mailbox-unavailable.mjs';
 import {fetchMnbEurRate} from './price-quote.mjs';
 import {serverDeployment} from '../../shared-core/server-deployment.mjs';
@@ -89,6 +90,8 @@ function testMailboxView(record,authority,tenant='sarberki-test'){
   canDecide:permissions.includes('approve')&&state==='pending'&&(latest.createdBy!==authority?.subject||latest.machineDraft===true),
   // V1 booking completion: finalized only after the operator's Previo attestation; deposit received is separate.
   booking:data.booking?{status:data.booking.status,unit:data.booking.unit??null,previoReference:data.booking.previo?.reference??null,deposit:data.booking.deposit??null,depositReceivedOn:data.booking.depositReceived?.on??null}:null,
+  // Hint only (V1): the guest's reply reads as an explicit booking acceptance; nothing is booked here.
+  bookingIntent:bookingIntentHint(data.messages,data.booking?.status),
   canFinalize:permissions.includes('write')&&!['finalized','deposit_received'].includes(data.booking?.status),
   canMarkDeposit:permissions.includes('write')&&data.booking?.status==='finalized'};
 }
