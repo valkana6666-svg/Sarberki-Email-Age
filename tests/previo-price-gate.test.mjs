@@ -31,7 +31,7 @@ test('Previo says free: priced as before, operator note records the snapshot (gu
  const r=await h.run();
  assert.deepEqual(r.previo,{decision:'AVAILABLE',free:2,checkedAt:'2027-01-01T00:00:00Z'});
  const d=h.calls.saved[0].p_draft;
- assert.match(d.operatorReviewText,/Previo \(csak olvasó\): 2 szabad egység/);assert.doesNotMatch(d.text,/Previo/,'the guest never sees Previo');
+ assert.match(d.operatorReviewText,/Previo \(csak olvasó\): 2 szabad egység/);assert.doesNotMatch(d.operatorReviewText,/NEM ellenőrizte/);assert.doesNotMatch(d.text,/Previo/,'the guest never sees Previo');
 });
 test('Previo read fails or is incomplete: UNKNOWN, the manual check stays in force',async()=>{
  for(const fn of [async()=>{throw Object.assign(Error('PREVIO_TIMEOUT'),{code:'PREVIO_TIMEOUT'});},async()=>({freeByCabin:{deluxe:null}})]){

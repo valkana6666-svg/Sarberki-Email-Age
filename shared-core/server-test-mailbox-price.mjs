@@ -93,6 +93,8 @@ export async function priceTestMailboxCase({record,cabin,availabilityConfirmed,a
  const full={...quote,eurConversion};
  const language=/^(hu|de|en|si)$/.test(values.language||'')?values.language:'hu';
  const draft=pricedDraft({latest,quote:full,language});
+ // The price-list explanation says the free unit was not checked; with a verified Previo read, say what was checked.
+ if(previo?.decision==='AVAILABLE')draft.operatorReviewText=draft.operatorReviewText.replace('Szabad hely: a rendszer NEM ellenőrizte.','Szabad hely: Previo-teszt (csak olvasó), lásd lent.');
  if(previo)draft.operatorReviewText+='\n'+(previo.decision==='AVAILABLE'?`Previo (csak olvasó): ${previo.free} szabad egység, ellenőrizve ${previo.checkedAt}. Pillanatfelvétel, nem foglalás.`
   :'Previo (csak olvasó): az ellenőrzés nem adott biztos eredményt – a kézi Previo-ellenőrzés érvényes.');
  // Operator-only cross-check against the Previo price (read-only; the guest text is unchanged).
