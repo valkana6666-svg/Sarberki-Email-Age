@@ -409,7 +409,7 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
    if(action==='test-mailbox-record'){
     assert.equal(u.searchParams.get('caseId'),caseId);
     return response({result:{caseId,revision:state.revision,approval:state.approval,messages:[{text:'Kitalált tesztlevél',received_at:'2026-11-01T06:00:00Z'}],
-     values:{arrival:'2026-11-20',departure:'2026-11-22',...guestValues,unit:'C'},draft:{text:state.text,operatorReviewText:'Kitalált ellenőrzés',hash:hash(state.text)},
+     values:{arrival:'2026-11-20',departure:'2026-11-22',unit:'C',...guestValues},draft:{text:state.text,operatorReviewText:'Kitalált ellenőrzés',hash:hash(state.text)},
      decisions:state.decisions,internalApproval:null,
      canEditDraft:role==='writer'&&['pending','returned_for_edit','rejected'].includes(state.approval),canDecide:role==='approver'&&state.approval==='pending'}});
    }
@@ -454,6 +454,9 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
    guestValues=values;await open();
    assert.equal(e['detail-facts'].textContent.split('Létszám: ')[1].split('\n')[0],expected);
   }
+  // Owner iPhone test 2026-11-09: a Családi case must not be priced with the Deluxe default.
+  guestValues={adults:'4',children:'0',unit:'Családi'};await open();assert.equal(e['price-cabin'].value,'family');
+  guestValues={adults:'4',children:'0',unit:'VIP'};await open();assert.equal(e['price-cabin'].value,'vip');
   guestValues={adults:'4',children:'0'};await open();
   assert.equal(e['detail-draft'].textContent,'Kitalált első tervezet.');assert.match(e['detail-capacity'].textContent,/szabad helyet a rendszer nem ellenőrzi.*kézi Previo-ellenőrzés/);
   assert.match(e['detail-status'].textContent,/^Jóváhagyásra vár\./);

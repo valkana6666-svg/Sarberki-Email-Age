@@ -266,7 +266,10 @@ async function openTestMailboxCase(caseId,turn,status){
  tmCase={caseId,revision:record.revision,hash:record.draft.hash,text:record.draft.text};
  // Only an internally approved draft can be copied; an approved draft cannot change, so it is the reviewed text.
  priceCase={caseId,revision:record.revision,values,language:/^(hu|de|en|si)$/.test(values.language||'')?values.language:'hu',editable:record.canEditDraft===true};el('price-panel').hidden=false;el('unavailable-confirm').checked=false;el('unavailable-confirm').disabled=!priceCase.editable;el('unavailable-insert').disabled=true;
- if(CABIN_NAMES[values.unit])el('price-cabin').value=values.unit;
+ // The case stores the reviewed Hungarian type name ("Családi"); preselect that type, never a silent Deluxe default
+ // (owner iPhone test 2026-11-09: a Családi request was priced as Deluxe). Osztott without A/B/C: no preselection.
+ const caseCabin=CABIN_NAMES[values.unit]?values.unit:Object.entries(CABIN_NAMES).find(([,n])=>n.hu.toLowerCase()===String(values.unit||'').trim().toLowerCase())?.[0];
+ if(caseCabin)el('price-cabin').value=caseCabin;
  showBooking(caseId,record);
  if(record.approval==='approved_internal'){approvedText=record.draft.text;el('copy-approved').hidden=false;approvedCase={caseId,revision:record.revision};el('send-approved').hidden=false;}
  if(record.canEditDraft===true){el('draft-editor').value=record.draft.text;el('draft-editor').disabled=false;}
