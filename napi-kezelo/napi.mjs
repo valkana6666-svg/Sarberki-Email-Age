@@ -259,7 +259,9 @@ async function openTestMailboxCase(caseId,turn,status){
  el('detail-status').textContent=status||tmStatus[record.approval];
  el('detail-draft').textContent=record.draft.text;
  el('detail-summary').textContent=reviewSummary(record.draft.text,record.draft.operatorReviewText);
- el('detail-capacity').textContent='Tesztlevél-foglalás (test-mailbox-v1): a szabad helyet a rendszer nem ellenőrzi (Previo-olvasás nincs bekötve) – ár csak kézi Previo-ellenőrzés után illeszthető be; foglalás nincs.';
+ el('detail-capacity').textContent=record.previoRead===true
+  ?'Tesztlevél-foglalás: a szabad helyet és az árat a rendszer a Previo-tesztből (73521) csak olvasva ellenőrzi; ez pillanatfelvétel, nem foglalás – küldés előtt a Previóban is nézd meg.'
+  :'Tesztlevél-foglalás (test-mailbox-v1): a szabad helyet a rendszer nem ellenőrzi (Previo-olvasás nincs bekötve) – ár csak kézi Previo-ellenőrzés után illeszthető be; foglalás nincs.';
  el('detail-price').textContent=record.decisions.length?'Döntések: '+record.decisions.map(d=>(tmDecisionLabel[d.decision]||'ismeretlen')+(d.at?' ('+localTime(d.at)+')':'')+(d.reason?' – '+d.reason:'')).join('; '):'';
  tmCase={caseId,revision:record.revision,hash:record.draft.hash,text:record.draft.text};
  // Only an internally approved draft can be copied; an approved draft cannot change, so it is the reviewed text.

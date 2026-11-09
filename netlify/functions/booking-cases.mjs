@@ -81,11 +81,13 @@ function isTestMailboxCase(record,tenant='sarberki-test'){
   typeof record.data?.sender==='string'&&!/\.invalid$/i.test(record.data.sender)&&record.data.testMailbox?.scope==='test-mailbox-source-v1'&&
   Array.isArray(record.data.drafts)&&record.data.drafts.length>0&&Array.isArray(record.data.messages);
 }
-function testMailboxView(record,authority,tenant='sarberki-test'){
+function testMailboxView(record,authority,tenant='sarberki-test',previoRead=false){
  const data=record.data,state=data.state?.approval,latest=data.drafts.at(-1),permissions=authority?.tenants?.[tenant]||[];
  return {caseId:record.caseId,revision:record.revision,approval:state,
   messages:data.messages.map(m=>({text:m.text,received_at:m.received_at})),values:data.state?.values||{},
   draft:{text:latest.text,operatorReviewText:latest.operatorReviewText??null,createdAt:latest.createdAt??null,hash:createHash('sha256').update(String(latest.text),'utf8').digest('hex')},
+  // Display hint: the owner switch for the read-only Previo checks (free units, price, unit) is on.
+  previoRead:previoRead===true,
   decisions:(data.decisions||[]).map(d=>({decision:d.decision,at:d.at,reason:d.reason??null,reviewedRevision:d.reviewedRevision})),
   internalApproval:data.internalApproval?{scope:data.internalApproval.scope,at:data.internalApproval.at,capacityVerified:false,priceVerified:false,sendAllowed:false,bookingAllowed:false}:null,
   // Display hints only: the database re-checks permission, state, revision, hash and approver independence.
@@ -202,7 +204,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
     const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
     if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
-    return cookieResponse(200,{result:testMailboxView(record,cookieSession.authority,TENANT)});
+    return cookieResponse(200,{result:testMailboxView(record,cookieSession.authority,TENANT,!live&&env.PREVIO_READ_API_ENABLED==='sandbox-73521-only')});
    }
    if(TEST_MAILBOX_FIELDS[input.action]){
     const keys=Object.keys(input).sort().join(',');
