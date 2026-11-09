@@ -22,3 +22,12 @@ Következmény a kódban (már javítva): minden 0–17 éves gyereket a „Gyer
 `node scripts/previo-price-compare.mjs --children` – Previo-végösszeg és árlista minden esetre. Elvárt értékek: 128 200 (alaplétszámon belül) / 140 400 (gyerek 5) / 130 400 (gyerek 1) / 150 400 (gyerek 12) / 140 400 (gyerek 5 és 1). Ha bármelyik eltér, a beállítást Work visszaállítja. A visszaállítás: az új kategóriák törlése, a „Gyerek” korhatára vissza 0–17-re.
 
 Az új kategóriák azonosítóját Claude a nyilvános foglalóoldalról olvassa ki, és beírja a `PREVIO_TEST_73521.guestCategories` értékbe.
+
+## Pontosítás Work olvasása után (#9 6741236499, 11-09) – tulajdonosi engedélyre vár
+A Previo-beállítás jelenleg: számítási mód **2. „az utolsó ágyból”** (= százalék × (n fő ára − (n−1) fő ára)), és be van kapcsolva a **„csak a pótágyakra vonatkozik”**.
+- Az árkalkulátor szerint a gyerek felára mindig **a pótfelnőtt felárának fele**: alap 10 000 → 5 000; főszezonban 11 000 → 5 500; egy éjszakánál +20%. Ezért **százalékos** kedvezmény kell, nem forintos: **Gyerek 3–8 = 50%, Baba 0–2 = 100%**. A 2. mód ezt adja, és alaplétszámon belül a különbség 0, így ott nincs levonás.
+- **Kockázat:** a „csak a pótágyakra” jelölő a fizikai pótágyra vonatkozhat. A Deluxe 6+0, vagyis nincs pótágya, így a kedvezmény sosem érvényesülne.
+**Lépések (Work, kettő, mindkettő után Claude ellenőriz – `previo-price-compare.mjs --children`):**
+1. A kategóriák a fentiek szerint, de **50% / 100%**, a számítási mód marad. → Claude ellenőrzi. Ha a gyerek 5 / gyerek 1 eset egyezik → kész.
+2. Csak ha az 1. után nem egyezik: a **„csak a pótágyakra vonatkozik” kikapcsolása**. → Claude ellenőrzi. Ha az alaplétszámon belüli eset (128 200) megváltozik, vagy bármi eltér → minden visszaállítása.
+**Visszaállítás:** az új kategóriák törlése, „Gyerek” vissza 0–17-re, a jelölő vissza bekapcsoltra.
