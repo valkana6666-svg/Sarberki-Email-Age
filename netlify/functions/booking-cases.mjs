@@ -18,6 +18,7 @@ import {sendApprovedTestMailboxReply} from '../../shared-core/server-test-mailbo
 import {priceTestMailboxCase} from '../../shared-core/server-test-mailbox-price.mjs';
 import {confirmTestMailboxBooking,markTestMailboxDepositReceived} from '../../shared-core/server-test-mailbox-confirm.mjs';
 import {bookingIntentHint} from '../../shared-core/booking-intent.mjs';
+import {previoAvailabilitySource} from '../../shared-core/server-capacity-draft.mjs';
 import {markTestMailboxUnavailable} from '../../shared-core/server-test-mailbox-unavailable.mjs';
 import {fetchMnbEurRate} from './price-quote.mjs';
 import {serverDeployment} from '../../shared-core/server-deployment.mjs';
@@ -299,7 +300,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      const tokens=Object.entries(event.headers||{}).filter(([key])=>key.toLowerCase()==='x-sarberki-gmail-token').map(([,value])=>value);
      if(tokens.length!==1||typeof tokens[0]!=='string'||tokens[0].length>4096)return cookieResponse(401,{error:'GMAIL_AUTH_REQUIRED'});
      try{
-      const result=await appendTestMailboxFollowup({token:tokens[0],messageId:input.messageId,transport:cookieSession.transport,attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,fetchImpl,deployment});
+      const result=await appendTestMailboxFollowup({token:tokens[0],messageId:input.messageId,transport:cookieSession.transport,attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,fetchImpl,deployment,availabilitySource:live?null:previoAvailabilitySource(previoCapacityReader(env,fetchImpl))});
       return cookieResponse(200,{result:{caseId:result.caseId,revision:result.revision}});
      }catch(error){
       const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'STORAGE_FAILURE';
@@ -310,7 +311,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      const tokens=Object.entries(event.headers||{}).filter(([key])=>key.toLowerCase()==='x-sarberki-gmail-token').map(([,value])=>value);
      if(tokens.length!==1||typeof tokens[0]!=='string'||tokens[0].length>4096)return cookieResponse(401,{error:'GMAIL_AUTH_REQUIRED'});
      try{
-      const result=await ingestTestMailboxMessage({token:tokens[0],messageId:input.messageId,transport:cookieSession.transport,attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,fetchImpl,deployment});
+      const result=await ingestTestMailboxMessage({token:tokens[0],messageId:input.messageId,transport:cookieSession.transport,attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,fetchImpl,deployment,availabilitySource:live?null:previoAvailabilitySource(previoCapacityReader(env,fetchImpl))});
       return cookieResponse(200,{result:{caseId:result.caseId,revision:Number(result.revision)}});
      }catch(error){
       const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'STORAGE_FAILURE';

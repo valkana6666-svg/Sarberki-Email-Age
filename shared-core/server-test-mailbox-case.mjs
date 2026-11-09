@@ -7,7 +7,7 @@
 import {createBookingCaseStore} from '../booking-cases.mjs';
 import {extractServerMessage} from './server-message-extraction.mjs';
 import {serverInquiryOptions} from './server-inquiry-options.mjs';
-import {buildEmailInquiryDraft} from './inquiry-channel-adapters.mjs';
+import {emailDraftWithCapacity} from './server-capacity-draft.mjs';
 import {readVerifiedTestMailboxMessage,attestTestMailboxSource} from './server-gmail-source.mjs';
 import {TEST_DEPLOYMENT} from './server-deployment.mjs';
 
@@ -23,7 +23,7 @@ function storageFailure(error){
  return 'STORAGE_FAILURE';
 }
 
-export async function ingestTestMailboxMessage({token,messageId,transport,attestationKey,fetchImpl=globalThis.fetch,clock=()=>new Date().toISOString(),deployment=TEST_DEPLOYMENT}={}){
+export async function ingestTestMailboxMessage({token,messageId,transport,attestationKey,fetchImpl=globalThis.fetch,clock=()=>new Date().toISOString(),deployment=TEST_DEPLOYMENT,availabilitySource=null}={}){
  const TENANT=deployment.tenantId;
  if(typeof transport!=='function')fail('SETUP_REQUIRED');
  // 1. Server-side Gmail read and gates (marked subject, single recipient, no reply, plain text...).
@@ -43,7 +43,7 @@ export async function ingestTestMailboxMessage({token,messageId,transport,attest
  data.sender=envelope.sender;
  data.sourceReceipt=structuredClone(source);
  const at=clock();
- const plan=buildEmailInquiryDraft(serverInquiryOptions({tenantId:TENANT,caseId,data},new Date(at)));
+ const plan=await emailDraftWithCapacity(serverInquiryOptions({tenantId:TENANT,caseId,data},new Date(at)),availabilitySource);
  if(typeof plan.text!=='string'||!plan.text.trim())fail('INVALID_DRAFT');
  data.drafts=[{text:plan.text,operatorReviewText:plan.operatorReviewText,at,revision:data.state.revision,basedOnMessageCount:1,reviewStatus:'manual_review_required'}];
  data.state.approval='pending';

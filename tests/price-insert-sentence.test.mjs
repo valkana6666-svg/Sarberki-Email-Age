@@ -62,3 +62,11 @@ test('a complete draft without the generic price sentence gets the price in plac
  assert.match(de.text,/Richtpreis \(Deluxe\)/);
  assert.throws(()=>pricedDraft({latest:{text:'Kedves Vendégünk!\n\nÜdvözlettel:'},quote,language:'hu'}),/PRICE_LINE_MISSING/);
 });
+
+test('level 1: with the Previo-verified free line the price follows it, once',async()=>{
+ const {pricedDraft}=await import('../shared-core/server-test-mailbox-price.mjs');
+ const body='Kedves Teszt Elek!\n\nA kért időszakra jelenleg van szabad helyünk ebben a háztípusban. A foglalás a visszaigazolásunkkal válik érvényessé.\n\nÜdvözlettel:\nSárberki Horgásztó';
+ const out=pricedDraft({latest:{text:body},quote,language:'hu'});
+ assert.match(out.text,/van szabad helyünk[^\n]*\n\nTájékoztató ár \(Deluxe\)/);
+ assert.throws(()=>pricedDraft({latest:{text:out.text},quote,language:'hu'}),/PRICE_LINE_MISSING/);
+});

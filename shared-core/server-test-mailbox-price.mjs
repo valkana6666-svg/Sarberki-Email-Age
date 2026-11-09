@@ -8,7 +8,7 @@ import {fetchPublicPriceReference} from '../price-source/public-price-fallback.m
 import {PRICE_LINE,priceSentence,priceExplanation,pricedCabinNote} from './price-insert-sentence.mjs';
 import {replyQuestions} from '../sarberki-core.mjs';
 import {capacityDecision} from './server-previo-rest-read.mjs';
-import {CAPACITY_PENDING_LINE} from './inquiry-channel-adapters.mjs';
+import {CAPACITY_PENDING_LINE,CAPACITY_AVAILABLE_LINE} from './inquiry-channel-adapters.mjs';
 
 // The engine's cabin-type questions (with/without the 2-person cabin) and the "choose an offered type" line.
 const OFFERED_TYPE_QUESTION=Object.freeze({hu:'Kérjük, válaszoljon erre az e-mailre, és írja meg, melyik felajánlott faháztípust választja.',
@@ -44,8 +44,11 @@ function placePrice(text,lang,sentence){
   if(at<0)return text.replace(generic,sentence);
   lines.splice(at,1);return lines.join('\n').replace(/\n{3,}/g,'\n\n').replace(generic,sentence);
  }
- if(at<0)return null;
- lines[at]=sentence;return lines.join('\n');
+ if(at>=0){lines[at]=sentence;return lines.join('\n');}
+ // Level 1: the Previo-verified free line stays; the price follows it (once).
+ const free=CAPACITY_AVAILABLE_LINE[lang],fi=lines.findIndex(l=>l.startsWith(free));
+ if(fi<0||text.includes(sentence.split(':')[0]+':'))return null;
+ lines.splice(fi+1,0,'',sentence);return lines.join('\n');
 }
 export function pricedDraft({latest,quote,language}){
  const lang=PRICE_LINE[language]?language:'hu';

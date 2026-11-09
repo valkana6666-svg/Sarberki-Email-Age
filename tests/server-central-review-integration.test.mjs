@@ -34,7 +34,7 @@ test('new guest draft accurately renders stored facts and Hungarian operator rev
  assert.equal(review.draft,expected);assert.equal(review.operatorReviewLanguage,'hu');
  assert.match(review.operatorReviewText,/Kedves|Köszönjük/);assert.match(review.operatorReviewText,/2 felnőtt/);
  assert.match(review.operatorReviewText,/2026\.11\.01\./);assert.match(review.operatorReviewText,/2026\.11\.03\./);
- assert.match(review.operatorReviewText,/kapacitás igazolt/);assert.match(review.draft,/2 guests/);assert.doesNotMatch(review.draft,/null adults/);assert.doesNotMatch(review.draft,/200/);
+ assert.match(review.operatorReviewText,/van szabad helyünk ebben a háztípusban/);assert.match(review.draft,/2 guests/);assert.doesNotMatch(review.draft,/null adults/);assert.doesNotMatch(review.draft,/200/);
  const repeated=await prepareSyntheticBookingReview({...f,currentNow:()=>at+1000});assert.equal(repeated.draft,review.draft);
 });
 test('common missing/contradictory/past-date checks block both fixture transports',async()=>{

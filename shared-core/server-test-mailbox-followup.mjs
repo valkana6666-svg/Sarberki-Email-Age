@@ -7,7 +7,7 @@ import {createHash,createHmac} from 'node:crypto';
 import {createBookingCaseStore} from '../booking-cases.mjs';
 import {extractServerMessage} from './server-message-extraction.mjs';
 import {serverInquiryOptions} from './server-inquiry-options.mjs';
-import {buildEmailInquiryDraft} from './inquiry-channel-adapters.mjs';
+import {emailDraftWithCapacity} from './server-capacity-draft.mjs';
 import {readVerifiedTestMailboxMessage} from './server-gmail-source.mjs';
 import {scope} from './server-test-mailbox-case.mjs';
 import {TEST_DEPLOYMENT} from './server-deployment.mjs';
@@ -25,7 +25,7 @@ export function attestFollowup({key,tenantId,caseId,expectedRevision,message,dra
  return {scope:FOLLOWUP_SCOPE,checkedAt,attestation:createHmac('sha256',Buffer.from(key,'hex')).update(fields.join('\n')).digest('hex')};
 }
 
-export async function appendTestMailboxFollowup({token,messageId,transport,attestationKey,fetchImpl=globalThis.fetch,clock=()=>new Date().toISOString(),deployment=TEST_DEPLOYMENT}={}){
+export async function appendTestMailboxFollowup({token,messageId,transport,attestationKey,fetchImpl=globalThis.fetch,clock=()=>new Date().toISOString(),deployment=TEST_DEPLOYMENT,availabilitySource=null}={}){
  if(typeof transport!=='function')fail('SETUP_REQUIRED');
  const TENANT=deployment.tenantId;
  const {source,envelope}=await readVerifiedTestMailboxMessage({token,messageId,fetchImpl,deployment,followup:true});
@@ -46,7 +46,7 @@ export async function appendTestMailboxFollowup({token,messageId,transport,attes
  if(!merged||result?.resolution?.caseId!==caseId||merged.messages.length!==row.data.messages.length+1)fail('INVALID_DRAFT');
  const values=Object.fromEntries(Object.entries(merged.state.values||{}).filter(([k,v])=>VALUE_KEYS.includes(k)&&v!==null&&v!==undefined&&v!=='').map(([k,v])=>[k,String(v)]));
  const data={...row.data,messages:[...row.data.messages,envelope],state:{...row.data.state,values}};
- const plan=buildEmailInquiryDraft(serverInquiryOptions({tenantId:TENANT,caseId,data},new Date(clock())));
+ const plan=await emailDraftWithCapacity(serverInquiryOptions({tenantId:TENANT,caseId,data},new Date(clock())),availabilitySource);
  if(typeof plan.text!=='string'||!plan.text.trim())fail('INVALID_DRAFT');
  const draft={text:plan.text,operatorReviewText:String(plan.operatorReviewText||'')};
  const proof=attestFollowup({key:attestationKey,tenantId:TENANT,caseId,expectedRevision:revision,message:envelope,draftText:draft.text,checkedAt:clock()});
