@@ -22,3 +22,9 @@ test('unknown or missing facts refuse instead of guessing',()=>{
  assert.throws(()=>previoPriceRequest({values:v,cabin:'deluxe',guestCategories:null,mealTypeId:1}),/GUEST_CATEGORY_UNVERIFIED/);
  assert.throws(()=>previoPriceRequest({values:{...v,children:'1',child_ages:'4'},cabin:'deluxe',guestCategories:{adult:1,child:[]},mealTypeId:1}),/GUEST_CATEGORY_UNVERIFIED/);
 });
+
+test('73521 defaults: own guest categories (Felnőtt 472221, Gyerek 472223), no meal plan -> the body the suggester accepted',()=>{
+ const r=previoPriceRequest({values:{arrival:'2027-06-15',departure:'2027-06-17',adults:'2',children:'2',child_ages:'4,12'},cabin:'deluxe'});
+ assert.deepEqual(r.body.rooms[0].guests,[{guestCategoryId:472221},{guestCategoryId:472221},{guestCategoryId:472221},{guestCategoryId:472223}]);
+ assert.throws(()=>previoPriceRequest({values:{arrival:'2027-06-15',departure:'2027-06-17',adults:'2',children:'0'},cabin:'deluxe',mealTypeId:'x'}),/GUEST_CATEGORY_UNVERIFIED/);
+});
