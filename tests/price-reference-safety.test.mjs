@@ -32,9 +32,9 @@ test('missing EUR never invents a conversion; HUF reference persists',async()=>{
  const body=await result.json();
  assert.equal(body.total,128200);assert.equal(body.eurConversion.status,'unavailable');
 });
-test('2027 unresolved child pricing returns 422 rather than inaccurate total',async()=>{
- const result=await handlePriceReference(request({...quote,children:[5]}),undefined,async()=>({rate:400,date:'2026-10-09'}),true);
- assert.equal(result.status,422);assert.equal((await result.json()).status,'unverified');
+test('2027 child above capacity returns 422 rather than an inaccurate total',async()=>{
+ const result=await handlePriceReference(request({...quote,adults:6,children:[5,5]}),undefined,async()=>({rate:400,date:'2026-10-09'}),true);
+ assert.equal(result.status,422);
 });
 test('rejects identity fields and permits no PMS or booking actions',async()=>{
  const result=await handlePriceReference(request({...quote,email:'private@example.com'}),undefined,async()=>({rate:400,date:'2026-10-09'}),true);

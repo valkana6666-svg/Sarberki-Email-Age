@@ -41,12 +41,16 @@ test('2027 adult-only occupancy rows charge exactly 10000 HUF per excess adult p
  assert.throws(()=>quote('small',3),/kapacitását/u);
  assert.throws(()=>quote('splitA',3),/kapacitását/u);
 });
-test('2027 0–2y children are free; age >=3 is held for explicit child-price clarification',()=>{
+test('2027 child rule (owner 2026-11-09): included occupancy for all, 3–8 +5000 above it, 0–2 free, 9+ adult, house 15 extra bed child only',()=>{
  assert.equal(quote('deluxe',2,{children:[0,2]}).accommodation,126000);
- assert.throws(()=>quote('deluxe',2,{children:[3]}),/gyermekár/u);
- assert.throws(()=>quote('deluxe',2,{children:[5,8]}),/gyermekár/u);
- assert.throws(()=>quote('deluxe',2,{children:[12]}),/gyermekár/u);
- assert.throws(()=>quote('deluxe',4,{children:[2]}),/pótvendég-\/gyermekár/u);
+ assert.equal(quote('deluxe',2,{children:[3]}).accommodation,126000);
+ assert.equal(quote('deluxe',2,{children:[5,8]}).accommodation,126000);
+ assert.equal(quote('deluxe',3,{children:[12]}).accommodation,126000);
+ assert.equal(quote('deluxe',4,{children:[2]}).accommodation,126000,'0–2 above the included occupancy is free');
+ assert.equal(quote('deluxe',4,{children:[5]}).accommodation,136000,'3–8 above it: +5000/night');
+ assert.equal(quote('deluxe',4,{children:[10]}).accommodation,146000,'9+ counts as adult: +10000/night');
+ assert.equal(quote('small',2,{children:[6]}).accommodation,73000);
+ assert.throws(()=>quote('small',3,{}));
 });
 test('2027 owner-confirmed high season includes August 22, 2026 remains August 20',()=>{
  assert.equal(SARBERKI_TARIFF_2027.highSeasonStart,'07-01');

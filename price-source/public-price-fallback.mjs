@@ -48,34 +48,40 @@ export function fetchPublicPriceReference(raw){
   // Do not silently skip the PDF's seventh-free-night benefit.
   if(uses2027&&count>=7)
     throw Error('A 2027-es hetedik ingyenes éjszaka beszámítása ellenőrizendő; kézi árazás szükséges.');
-  // Ages 0-2 are explicitly free. Ages >=3 need a decision on the 3y
-  // boundary and interaction of the 5000 HUF fee with house occupancy.
-  if(uses2027&&input.children.some(age=>age>=3))
-    throw Error('A 2027-es gyermekár és az alaplétszám együttes alkalmazása ellenőrizendő.');
-
+  // Owner decision 2026-11-09 (2027, single unit): everyone counts toward the included occupancy; children aged
+  // 9+ count as adults for the price. Above the included occupancy: adult +10 000, child 3–8 +5 000, child 0–2
+  // free (adults fill the included places first, then the oldest children, so the youngest are the extras).
+  // House 15 (extraAdultPricing 'not-allowed'): the extra bed is for a child only. The high-season surcharge
+  // applies to the whole nightly amount as for extra adults. IFA stays on the adults given by the guest.
   let extraAdultNightlyHuf=0;
-  if(guests>included*units||input.adults>included*units){
-    // The signed 2027 adult occupancy rows establish +10000 HUF per adult
-    // per normal night for a SINGLE unit; no assumptions for mixed-age,
-    // multi-unit or cross-year extra-person allocation.
-    if(all2027&&units===1&&input.children.length===0&&input.adults>included&&
-       type.extraAdultPricing==='standard'&&Number.isSafeInteger(SARBERKI_TARIFF_2027.extraAdultNightlyHuf)){
-      extraAdultNightlyHuf=(input.adults-included)*SARBERKI_TARIFF_2027.extraAdultNightlyHuf;
-    }else{
-      throw Error('A publikus pótvendég-/gyermekár nem hitelesített aktuális díj; kézi vagy Previo-ellenőrzés szükséges.');
-    }
+  const priceAdults=input.adults+input.children.filter(age=>age>=9).length;
+  const kids=input.children.filter(age=>age<9).sort((a,b)=>b-a);
+  if(uses2027&&units===1&&(input.children.length>0||guests>included)){
+    if(!all2027||!Number.isSafeInteger(SARBERKI_TARIFF_2027.extraAdultNightlyHuf)||!Number.isSafeInteger(SARBERKI_TARIFF_2027.child3to8NightlyHuf))
+      throw Error('A pótvendég-/gyermekár éven átnyúló tartózkodásnál kézi ellenőrzést igényel.');
+    if(Number.isSafeInteger(type.maxGuests)&&guests>type.maxGuests)throw Error('A létszám meghaladja a ház férőhelyét.');
+    const extraAdults=Math.max(0,priceAdults-included);
+    const extraKids=kids.slice(Math.max(0,included-priceAdults));
+    if(extraAdults>0&&type.extraAdultPricing!=='standard')throw Error('Ebben a házban a pótágy csak gyermeknek adható.');
+    extraAdultNightlyHuf=extraAdults*SARBERKI_TARIFF_2027.extraAdultNightlyHuf+
+      extraKids.filter(age=>age>=3).length*SARBERKI_TARIFF_2027.child3to8NightlyHuf;
+  }else if(uses2027&&input.children.some(age=>age>=3)){
+    throw Error('Több egységnél a 2027-es gyermekár elosztása kézi ellenőrzést igényel.');
+  }else if(guests>included*units||input.adults>included*units){
+    throw Error('A publikus pótvendég-/gyermekár nem hitelesített aktuális díj; kézi vagy Previo-ellenőrzés szükséges.');
   }
 
   // At least one adult per unit; distribution changes tax, not fixed house price.
   const parties=Array.from({length:units},()=>({adults:1,children:[]}));
-  let remainingAdults=input.adults-units;
+  if(units===1&&uses2027){parties[0]={adults:input.adults,children:[...input.children]};}
+  let remainingAdults=units===1&&uses2027?0:input.adults-units;
   for(let i=0;remainingAdults>0;i=(i+1)%units){
     if(parties[i].adults+parties[i].children.length<included+
       (extraAdultNightlyHuf>0 ? input.adults-included : 0)){
       parties[i].adults++;remainingAdults--;
     }
   }
-  for(const age of input.children){
+  for(const age of (units===1&&uses2027?[]:input.children)){
     const unit=parties.find(p=>p.adults+p.children.length<included);
     if(!unit)throw Error('A vendégek az alapárban foglalt férőhelyekre nem oszthatók el.');
     unit.children.push(age);
