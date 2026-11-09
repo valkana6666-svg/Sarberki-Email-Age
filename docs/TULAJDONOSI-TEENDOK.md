@@ -2,6 +2,12 @@
 
 Minden más elő van készítve. A sorrend a fontosság. Titkot (jelszót, kulcsot) **sehol ne írj chatbe vagy ide** – csak a megadott felületre.
 
+## 00. Hozzáférések Claude-nak – a Work minimalizálása (tulajdonosi döntés 2026-11-09; Claude emlékeztet)
+1. **GitHub-környezet `test-db-install`** (10 perc): lásd 1. pont. Utána az adatbázis-telepítést Claude indítja, te a GitHub-alkalmazásban jóváhagyod – Work nélkül.
+2. **Netlify-kulcs Claude-nak** (5 perc): Netlify → User settings → Applications → Personal access tokens → New access token (lejárat 90 nap) → Claude-nak szólsz, és a **biztonságos űrlapon** adod meg (nem chatben). Claude csak a TEST-oldalon (`leafy-chimera-2403e5`) használja.
+3. **Previo írási API-kulcs** – később, a 2. szintnél (Previótól kérjük).
+Szándékosan NEM: Supabase management token, saját jelszavaid. Work marad: Facebook, Previo webes beállítások, ChatGPT-fájltár.
+
 ## 0. Később, ha lesz időd – élő tesztek a telefonon (Claude nem tudja helyetted: a Gmail-belépés a te telefonodon van)
 1. **Név a megszólításban** (kiadva 11-07, `8f85b58`): új levél a sarberkito@gmail.com-ról a sarberkiprojecttest@gmail.com-ra, pl. „Jó napot! 2027. július 8-tól 11-ig jönnénk 4 felnőtt, a Családi faházba. Mennyibe kerül? Üdv: Teszt Péter” → beolvasás → mentés → elvárt: „Kedves Péter!”, olvasható időpont, „FOGLALÁS ÁTTEKINTÉSE”, a magyar tervezet egyszer.
 2. **Véglegesítés** (Kis Anna-foglalás): Previo-hivatkozás `TESZT-1` → Véglegesítés → levél (94 500 Ft foglaló, „Kedves Kis Anna!”) → jóváhagyás → küldés → „Foglaló beérkezett”.
