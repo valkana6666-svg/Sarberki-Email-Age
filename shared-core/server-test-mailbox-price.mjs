@@ -3,6 +3,7 @@
 // and the cabin the operator chose after checking availability by hand, replaces the engine's generic price
 // sentence in the latest draft and attests the exact new text for sc_tm_price_redraft. The browser sends
 // no text. No price rule, tariff, availability or booking is changed.
+import {previoPriceLine} from './server-previo-price-check.mjs';
 import {createHash,createHmac} from 'node:crypto';
 import {fetchPublicPriceReference} from '../price-source/public-price-fallback.mjs';
 import {PRICE_LINE,priceSentence,priceExplanation,pricedCabinNote} from './price-insert-sentence.mjs';
@@ -72,7 +73,7 @@ export function attestPrice({key,tenantId,caseId,expectedRevision,draft,checkedA
 // (server-previo-rest-read.mjs). A complete "no free unit" stops the price step BEFORE any price is computed;
 // an unknown/failed read leaves today's manual Previo check (checkbox) in force. Off unless the server wires it.
 export async function priceTestMailboxCase({record,cabin,availabilityConfirmed,attestationKey,transport,
- quoteFn=fetchPublicPriceReference,fxFn=null,capacityFn=null,clock=()=>new Date().toISOString()}={}){
+ quoteFn=fetchPublicPriceReference,fxFn=null,capacityFn=null,priceCheckFn=null,clock=()=>new Date().toISOString()}={}){
  if(availabilityConfirmed!==true)fail('AVAILABILITY_NOT_CONFIRMED');
  if(typeof transport!=='function')fail('SETUP_REQUIRED');
  const values=record?.data?.state?.values||{},latest=record?.data?.drafts?.at?.(-1);
@@ -94,6 +95,8 @@ export async function priceTestMailboxCase({record,cabin,availabilityConfirmed,a
  const draft=pricedDraft({latest,quote:full,language});
  if(previo)draft.operatorReviewText+='\n'+(previo.decision==='AVAILABLE'?`Previo (csak olvasó): ${previo.free} szabad egység, ellenőrizve ${previo.checkedAt}. Pillanatfelvétel, nem foglalás.`
   :'Previo (csak olvasó): az ellenőrzés nem adott biztos eredményt – a kézi Previo-ellenőrzés érvényes.');
+ // Operator-only cross-check against the Previo price (read-only; the guest text is unchanged).
+ if(typeof priceCheckFn==='function'){let check=null;try{check=await priceCheckFn({values,cabin});}catch{}draft.operatorReviewText+='\n'+previoPriceLine(check,quote.total);}
  const proof=attestPrice({key:attestationKey,tenantId:record.tenantId,caseId:record.caseId,expectedRevision:record.revision,draft,checkedAt:clock()});
  const saved=await transport('/rest/v1/rpc/sc_tm_price_redraft',{method:'POST',body:{p_tenant:record.tenantId,p_case:record.caseId,p_expected:record.revision,p_draft:draft,p_proof:proof}});
  return {saved,quote:full,previo};

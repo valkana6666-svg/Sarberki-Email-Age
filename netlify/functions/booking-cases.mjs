@@ -16,6 +16,7 @@ import {ingestTestMailboxMessage} from '../../shared-core/server-test-mailbox-ca
 import {appendTestMailboxFollowup,triageTestMailboxMessages} from '../../shared-core/server-test-mailbox-followup.mjs';
 import {sendApprovedTestMailboxReply} from '../../shared-core/server-test-mailbox-send.mjs';
 import {priceTestMailboxCase} from '../../shared-core/server-test-mailbox-price.mjs';
+import {previoPriceChecker} from '../../shared-core/server-previo-price-check.mjs';
 import {confirmTestMailboxBooking,markTestMailboxDepositReceived} from '../../shared-core/server-test-mailbox-confirm.mjs';
 import {bookingIntentHint} from '../../shared-core/booking-intent.mjs';
 import {previoAvailabilitySource} from '../../shared-core/server-capacity-draft.mjs';
@@ -242,7 +243,8 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
       if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
       if(record.revision!==input.expectedRevision)return cookieResponse(409,{error:'CASE_CONFLICT'});
       const {saved,quote,previo}=await priceTestMailboxCase({record,cabin:input.cabin,availabilityConfirmed:input.availabilityConfirmed,
-       attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,transport:cookieSession.transport,fxFn:()=>fetchMnbEurRate(fetchImpl),capacityFn:live?null:previoCapacityReader(env,fetchImpl)});
+       attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,transport:cookieSession.transport,fxFn:()=>fetchMnbEurRate(fetchImpl),capacityFn:live?null:previoCapacityReader(env,fetchImpl),
+       priceCheckFn:live?null:previoPriceChecker(env,fetchImpl)});
       if(!saved)return cookieResponse(409,{error:'CASE_CONFLICT'});
       return cookieResponse(200,{result:{caseId:saved.case_id,revision:Number(saved.revision),approval:saved.data?.state?.approval,total:quote.total,...(previo?{previo:{decision:previo.decision,free:previo.free}}:{})}});
      }catch(error){
