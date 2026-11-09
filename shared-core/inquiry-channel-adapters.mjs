@@ -53,7 +53,11 @@ function renderEmailDecision(decision,original,language){
   additions=additions.filter(line=>!generic.has(line));
  }
  const withQuestions=placeAdditions(draft,additions,language);
- const full=parts.status&&!draft.includes(parts.status)?placeStatus(withQuestions,parts.status,language):withQuestions;
+ // A verified Previo answer (Level 1) takes the place of "we will confirm availability separately" in the
+ // accommodation section, so the letter never says both; otherwise the status goes before the closing as before.
+ const verified=['AVAILABLE','UNAVAILABLE'].includes(decision.capacity?.status);
+ const full=!parts.status||draft.includes(parts.status)?withQuestions
+  :verified&&replacePlaceholder(withQuestions,parts.status,language)||placeStatus(withQuestions,parts.status,language);
  return shortMissingDetailsReply(full,language,decision)||shortDatedReply(full,language,decision,original)||full;
 }
 // Owner decision 2026-11-04: when the dates are still missing and the letter holds nothing but the
@@ -136,6 +140,12 @@ const MISSING_TITLE={hu:'Az ajánlathoz még szükségünk van',de:'Noch benöti
 const STATUS_TITLE={hu:'Foglalás állapota',de:'Reservierungsstatus',en:'Booking status',si:'Status rezervacije'};
 const CLOSING={hu:'Üdvözlettel:',de:'Mit freundlichen Grüßen',en:'Kind regards,',si:'Lep pozdrav'};
 // A status sentence is its own paragraph directly before the closing, never after the signature.
+function replacePlaceholder(draft,status,language){
+ const lines=draft.split('\n'),ph=PLACEHOLDER[PLACEHOLDER[language]?language:'hu'];
+ const at=lines.findIndex(line=>line.trim()===ph[0]||line.trim()===ph[1]);
+ if(at<0)return null;
+ lines[at]=status;return lines.join('\n');
+}
 function placeStatus(draft,status,language){
  const lines=draft.split('\n'),at=lines.indexOf(CLOSING[MISSING_TITLE[language]?language:'hu']);
  if(at<0)return draft+'\n\n'+status;
