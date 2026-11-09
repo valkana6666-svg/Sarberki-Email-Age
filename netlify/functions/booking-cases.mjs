@@ -17,6 +17,7 @@ import {appendTestMailboxFollowup,triageTestMailboxMessages} from '../../shared-
 import {sendApprovedTestMailboxReply} from '../../shared-core/server-test-mailbox-send.mjs';
 import {priceTestMailboxCase} from '../../shared-core/server-test-mailbox-price.mjs';
 import {previoPriceChecker} from '../../shared-core/server-previo-price-check.mjs';
+import {previoUnitChecker} from '../../shared-core/server-previo-unit-check.mjs';
 import {confirmTestMailboxBooking,markTestMailboxDepositReceived} from '../../shared-core/server-test-mailbox-confirm.mjs';
 import {bookingIntentHint} from '../../shared-core/booking-intent.mjs';
 import {previoAvailabilitySource} from '../../shared-core/server-capacity-draft.mjs';
@@ -48,7 +49,7 @@ const TEST_MAILBOX_ERRORS=Object.freeze({GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACC
  PRICE_FACTS_MISSING:422,PRICE_LINE_MISSING:422,PRICE_REFUSED:422,AVAILABILITY_NOT_CONFIRMED:400,TEST_MAILBOX_REJECTED:409,
  UNAVAILABILITY_NOT_CONFIRMED:400,DRAFT_SHAPE_UNKNOWN:422,ALREADY_UNAVAILABLE:409,PREVIO_NO_FREE_UNIT:409,
  PREVIO_RECORDING_REQUIRED:400,ALREADY_FINALIZED:409,CONFIRMATION_FACTS_MISSING:422,CONFIRMATION_PRICE_MISSING:422,CONFIRMATION_CABIN_UNKNOWN:422,
- DEPOSIT_POLICY_UNVERIFIED:422,DEPOSIT_NOT_CONFIRMED:400,NOT_FINALIZED:409,INVALID_DATE:400,UNIT_TAKEN:409,UNIT_NOT_IN_TYPE:422});
+ DEPOSIT_POLICY_UNVERIFIED:422,DEPOSIT_NOT_CONFIRMED:400,NOT_FINALIZED:409,INVALID_DATE:400,UNIT_TAKEN:409,UNIT_TAKEN_IN_PREVIO:409,UNIT_NOT_IN_TYPE:422});
 const TEST_MAILBOX_FIELDS=Object.freeze({
  'test-mailbox-ingest':['action,messageId,tenantId'],
  'test-mailbox-followup':['action,messageId,tenantId'],
@@ -279,7 +280,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
       if(record.revision!==input.expectedRevision)return cookieResponse(409,{error:'CASE_CONFLICT'});
       let saved,deposit=null;
       if(input.action==='test-mailbox-confirm')({saved,deposit}=await confirmTestMailboxBooking({record,previoReference:input.previoReference,previoRecorded:input.previoRecorded,unit:input.unit,
-       attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,transport:cookieSession.transport}));
+       attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,transport:cookieSession.transport,unitCheckFn:live?null:previoUnitChecker(env,fetchImpl)}));
       else saved=await markTestMailboxDepositReceived({record,receivedOn:input.receivedOn,depositConfirmed:input.depositConfirmed,transport:cookieSession.transport});
       if(!saved)return cookieResponse(409,{error:'CASE_CONFLICT'});
       return cookieResponse(200,{result:{caseId:saved.case_id,revision:Number(saved.revision),approval:saved.data?.state?.approval,bookingStatus:saved.data?.booking?.status,

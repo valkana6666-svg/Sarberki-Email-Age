@@ -92,7 +92,15 @@ test('V1 completion: Previo attestation -> confirmation with deposit -> finalize
   const noPrecheck=async(path,o={})=>path.startsWith('/rest/v1/sc_cases')?[]:transportFor('writer')(path,o);
   await assert.rejects(confirmTestMailboxBooking({record:rec2,previoReference:'TEST-2',previoRecorded:true,unit:'11',attestationKey:KEY,transport:noPrecheck}),/DB/);
   await assert.rejects(confirmTestMailboxBooking({record:rec2,previoReference:'TEST-2',previoRecorded:true,unit:'7/A',attestationKey:KEY,transport:transportFor('writer')}),/UNIT_NOT_IN_TYPE/);
-  const ok2=await confirmTestMailboxBooking({record:rec2,previoReference:'TEST-2',previoRecorded:true,unit:'12',attestationKey:KEY,transport:transportFor('writer')});
+  // V2 step 4: Previo itself says another reservation holds the unit -> refused before any write.
+  await assert.rejects(confirmTestMailboxBooking({record:rec2,previoReference:'TEST-2',previoRecorded:true,unit:'12',attestationKey:KEY,transport:transportFor('writer'),
+   unitCheckFn:async()=>({status:'taken',referenceFound:false,conflicts:[{from:'2027-06-12',to:'2027-06-13',statusId:2}]})}),/UNIT_TAKEN_IN_PREVIO/);
+  const seen=[];
+  const ok2=await confirmTestMailboxBooking({record:rec2,previoReference:'TEST-2',previoRecorded:true,unit:'12',attestationKey:KEY,transport:transportFor('writer'),
+   unitCheckFn:async a=>{seen.push(a);return {status:'free',referenceFound:true,conflicts:[]};}});
+  assert.deepEqual(seen,[{unit:'12',arrival:'2027-06-12',departure:'2027-06-14',previoReference:'TEST-2'}]);
+  assert.match(ok2.saved.data.drafts.at(-1).operatorReviewText,/TEST-2 foglalás megtalálható a\(z\) 12 egységen/);
+  assert.doesNotMatch(ok2.saved.data.drafts.at(-1).text,/Previo/);
   assert.equal(ok2.saved.data.booking.unit,'12');
   assert.doesNotMatch(ok2.saved.data.drafts.at(-1).text,/\b12\b.*egység|Egység: 12/,'unit number never in the guest letter');
   assert.match(ok2.saved.data.drafts.at(-1).operatorReviewText,/Egység: 12/);

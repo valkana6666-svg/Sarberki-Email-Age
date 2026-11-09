@@ -9,6 +9,7 @@ import {quoteInputFromCase} from './server-test-mailbox-price.mjs';
 import {CABIN_NAMES} from './price-insert-sentence.mjs';
 import {buildBookingConfirmation} from './booking-confirmation-draft.mjs';
 import {unitsOfType,conflictsFor} from './unit-inventory.mjs';
+import {previoUnitLine} from './server-previo-unit-check.mjs';
 
 export const CONFIRM_SCOPE='test-mailbox-confirm-v1';
 const fail=code=>{const error=Error(code);error.code=code;throw error;};
@@ -41,7 +42,7 @@ async function unitTaken({transport,record,unit,arrival,departure}){
  return conflictsFor(bookings,{unit,arrival,departure}).length>0;
 }
 export async function confirmTestMailboxBooking({record,previoReference,previoRecorded,unit,attestationKey,transport,
- quoteFn=fetchPublicPriceReference,clock=()=>new Date().toISOString()}={}){
+ quoteFn=fetchPublicPriceReference,unitCheckFn=null,clock=()=>new Date().toISOString()}={}){
  if(previoRecorded!==true)fail('PREVIO_RECORDING_REQUIRED');
  if(typeof transport!=='function')fail('SETUP_REQUIRED');
  if(['finalized','deposit_received'].includes(record?.data?.booking?.status))fail('ALREADY_FINALIZED');
@@ -51,6 +52,10 @@ export async function confirmTestMailboxBooking({record,previoReference,previoRe
  let quote;
  try{quote=quoteFn(quoteInputFromCase(values,cabin));}catch(error){if(error?.code==='PRICE_FACTS_MISSING')fail('CONFIRMATION_FACTS_MISSING');fail('CONFIRMATION_PRICE_MISSING');}
  if(await unitTaken({transport,record,unit,arrival:values.arrival,departure:values.departure}))fail('UNIT_TAKEN');
+ // V2 step 4: the same unit in Previo itself (read-only). Another reservation there -> refuse; unreadable -> note only.
+ let previoUnit=null;
+ if(typeof unitCheckFn==='function'){try{previoUnit=await unitCheckFn({unit,arrival:values.arrival,departure:values.departure,previoReference});}catch{previoUnit={status:'unknown'};}
+  if(previoUnit?.status==='taken')fail('UNIT_TAKEN_IN_PREVIO');}
  const language=/^(hu|de|en|si)$/.test(values.language||'')?values.language:'hu';
  const recordedAt=clock();
  const built=buildBookingConfirmation({values,quote,previo:{reference:previoReference,recordedAt},language});
@@ -58,6 +63,7 @@ export async function confirmTestMailboxBooking({record,previoReference,previoRe
  const booking={previoReference:built.previo.reference,previoRecordedAt:recordedAt,depositPct:built.deposit.pct,depositAmount:built.deposit.amount,depositDeadlineUtc:built.deposit.receiptDeadlineUtc,unit};
  // Internal unit number goes to the operator text only, never to the guest (AGENTS: no internal house numbers).
  draft.operatorReviewText+='\nEgység: '+unit+' (csak kezelői adat, a vendéglevélben nem szerepel).';
+ if(previoUnit)draft.operatorReviewText+='\n'+previoUnitLine(previoUnit,unit,previoReference);
  const proof=attestConfirmation({key:attestationKey,tenantId:record.tenantId,caseId:record.caseId,expectedRevision:record.revision,draft,booking,checkedAt:clock()});
  const saved=await transport('/rest/v1/rpc/sc_tm_confirm_booking',{method:'POST',body:{p_tenant:record.tenantId,p_case:record.caseId,p_expected:record.revision,p_booking:booking,p_draft:draft,p_proof:proof}});
  return {saved,deposit:built.deposit};
