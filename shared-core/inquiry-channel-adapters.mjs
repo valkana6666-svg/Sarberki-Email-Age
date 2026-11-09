@@ -55,9 +55,12 @@ function renderEmailDecision(decision,original,language){
  const withQuestions=placeAdditions(draft,additions,language);
  // A verified Previo answer (Level 1) takes the place of "we will confirm availability separately" in the
  // accommodation section, so the letter never says both; otherwise the status goes before the closing as before.
+ // Without a chosen cabin type the "in this cabin type" sentence would make no sense: the letter keeps asking
+ // for the type (short reply), exactly as before Level 1.
  const verified=['AVAILABLE','UNAVAILABLE'].includes(decision.capacity?.status);
- const full=!parts.status||draft.includes(parts.status)?withQuestions
-  :verified&&replacePlaceholder(withQuestions,parts.status,language)||placeStatus(withQuestions,parts.status,language);
+ const status=verified&&!decision.capacity?.input?.cabin?null:parts.status;
+ const full=!status||draft.includes(status)?withQuestions
+  :verified&&replacePlaceholder(withQuestions,status,language)||placeStatus(withQuestions,status,language);
  return shortMissingDetailsReply(full,language,decision)||shortDatedReply(full,language,decision,original)||full;
 }
 // Owner decision 2026-11-04: when the dates are still missing and the letter holds nothing but the
@@ -140,11 +143,15 @@ const MISSING_TITLE={hu:'Az ajánlathoz még szükségünk van',de:'Noch benöti
 const STATUS_TITLE={hu:'Foglalás állapota',de:'Reservierungsstatus',en:'Booking status',si:'Status rezervacije'};
 const CLOSING={hu:'Üdvözlettel:',de:'Mit freundlichen Grüßen',en:'Kind regards,',si:'Lep pozdrav'};
 // A status sentence is its own paragraph directly before the closing, never after the signature.
+const CABIN_LINE=/^(?:A kért háztípus: |Gewünschter Haustyp: |Requested cabin type: |Želeni tip hiške: )/;
 function replacePlaceholder(draft,status,language){
  const lines=draft.split('\n'),ph=PLACEHOLDER[PLACEHOLDER[language]?language:'hu'];
  const at=lines.findIndex(line=>line.trim()===ph[0]||line.trim()===ph[1]);
- if(at<0)return null;
- lines[at]=status;return lines.join('\n');
+ if(at>=0){lines[at]=status;return lines.join('\n');}
+ // No placeholder: directly after the requested cabin type line, still inside the accommodation section.
+ const cabinAt=lines.findIndex(line=>CABIN_LINE.test(line.trim()));
+ if(cabinAt<0)return null;
+ lines.splice(cabinAt+1,0,status);return lines.join('\n');
 }
 function placeStatus(draft,status,language){
  const lines=draft.split('\n'),at=lines.indexOf(CLOSING[MISSING_TITLE[language]?language:'hu']);

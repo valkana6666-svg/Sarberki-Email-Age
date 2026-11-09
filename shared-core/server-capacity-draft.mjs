@@ -16,11 +16,16 @@ export function previoAvailabilitySource(reader){
  };
 }
 
-export async function emailDraftWithCapacity(options,availabilitySource=null){
+// `clock` is read when the Previo answer is validated, not when the draft started: the read finishes after the
+// start, and an answer "from the future" was rejected as invalid evidence (owner iPhone test 2026-11-09).
+export async function emailDraftWithCapacity(options,availabilitySource=null,{clock=Date.now}={}){
  if(typeof availabilitySource!=='function')return buildEmailInquiryDraft(options);
  const decision=evaluateCentralInquiry(options);
  if(!decision.readyForCapacityCheck)return buildEmailInquiryDraft(options);
+ // No cabin type chosen: the letter asks for the type first, so no Previo call (AGENTS.md: only the needed reads).
+ if(!decision.capacity?.input?.cabin)return buildEmailInquiryDraft(options);
  let capacity=null;
- try{capacity=await buildAvailabilityOptions(decision.capacity.input,availabilitySource,{tenantId:options.tenantId,now:()=>+new Date(options.now)});}catch{}
- return buildEmailInquiryDraft(capacity?{...options,capacity}:options);
+ try{capacity=await buildAvailabilityOptions(decision.capacity.input,availabilitySource,{tenantId:options.tenantId,now:()=>Math.max(+new Date(options.now),Number(clock()))});}catch{}
+ // The decision re-checks the evidence's freshness against `now`: use the moment after the read.
+ return buildEmailInquiryDraft(capacity?{...options,now:new Date(Math.max(+new Date(options.now),Number(clock()))),capacity}:options);
 }

@@ -46,7 +46,7 @@ export async function appendTestMailboxFollowup({token,messageId,transport,attes
  if(!merged||result?.resolution?.caseId!==caseId||merged.messages.length!==row.data.messages.length+1)fail('INVALID_DRAFT');
  const values=Object.fromEntries(Object.entries(merged.state.values||{}).filter(([k,v])=>VALUE_KEYS.includes(k)&&v!==null&&v!==undefined&&v!=='').map(([k,v])=>[k,String(v)]));
  const data={...row.data,messages:[...row.data.messages,envelope],state:{...row.data.state,values}};
- const plan=await emailDraftWithCapacity(serverInquiryOptions({tenantId:TENANT,caseId,data},new Date(clock())),availabilitySource);
+ const plan=await emailDraftWithCapacity(serverInquiryOptions({tenantId:TENANT,caseId,data},new Date(clock())),availabilitySource,{clock:()=>Date.parse(clock())});
  if(typeof plan.text!=='string'||!plan.text.trim())fail('INVALID_DRAFT');
  const draft={text:plan.text,operatorReviewText:String(plan.operatorReviewText||'')};
  const proof=attestFollowup({key:attestationKey,tenantId:TENANT,caseId,expectedRevision:revision,message:envelope,draftText:draft.text,checkedAt:clock()});

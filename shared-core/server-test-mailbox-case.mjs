@@ -43,7 +43,7 @@ export async function ingestTestMailboxMessage({token,messageId,transport,attest
  data.sender=envelope.sender;
  data.sourceReceipt=structuredClone(source);
  const at=clock();
- const plan=await emailDraftWithCapacity(serverInquiryOptions({tenantId:TENANT,caseId,data},new Date(at)),availabilitySource);
+ const plan=await emailDraftWithCapacity(serverInquiryOptions({tenantId:TENANT,caseId,data},new Date(at)),availabilitySource,{clock:()=>Date.parse(clock())});
  if(typeof plan.text!=='string'||!plan.text.trim())fail('INVALID_DRAFT');
  data.drafts=[{text:plan.text,operatorReviewText:plan.operatorReviewText,at,revision:data.state.revision,basedOnMessageCount:1,reviewStatus:'manual_review_required'}];
  data.state.approval='pending';

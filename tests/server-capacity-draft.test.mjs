@@ -32,3 +32,12 @@ test('no switch, or a failed read -> exactly the previous behaviour (never "sold
  const failed=await draftWith(async()=>{throw Error('PREVIO_TIMEOUT');});
  assert.equal(failed,off);
 });
+
+test('real timing: the Previo answer arrives after the draft started (clock moves) -> still accepted',async()=>{
+ let t=Date.parse('2026-11-09T09:00:00.000Z');const clock=()=>{t+=400;return new Date(t).toISOString();};
+ let sent;
+ await ingestTestMailboxMessage({token:'ya29.SYNTHETIC_ONLY_0123456789abcdef',messageId:id,attestationKey:'ab'.repeat(32),fetchImpl,clock,
+  transport:async(_,{body})=>{sent=body;return {revision:1};},
+  availabilitySource:previoAvailabilitySource(async({cabin,arrival,departure})=>({hotelId:'73521',arrival,departure,checkedAt:clock(),freeByCabin:{[cabin]:2}}))});
+ assert.match(sent.p_data.drafts[0].text,/A kért időszakra jelenleg van szabad helyünk ebben a háztípusban\./);
+});

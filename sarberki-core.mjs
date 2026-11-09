@@ -246,7 +246,7 @@ export function adultCountFromText(text=''){
 export function childCountFromText(text=''){
   text=activeMessageText(text);
   if(ambiguousPartyFieldsFromText(text).includes('children'))return null;
-  if(/\b(?:nincs(?:enek)?\s+(?:gyerek|gyermek)|(?:gyermek|gyerek)\s+(?:nélkül|nelkul)|(?:gyermek|gyerek)(?:ek)?\s+(?:nincs(?:enek)?|nem\s+(?:jön|jon|jönnek|jonnek|lesz|lesznek))|no\s+(?:children|kids)|without\s+(?:children|kids)|keine\s+kinder|ohne\s+kinder|brez\s+otrok|ni\s+otrok)\b/iu.test(text))return 0;
+  if(/\b(?:nincs(?:enek)?\s+(?:gyerek|gyermek)|(?:gyermek|gyerek)(?:ek)?\s+(?:nélkül|nelkul)|(?:gyermek|gyerek)(?:ek)?\s+(?:nincs(?:enek)?|nem\s+(?:jön|jon|jönnek|jonnek|lesz|lesznek))|no\s+(?:children|kids)|without\s+(?:children|kids)|keine\s+kinder|ohne\s+kinder|brez\s+otrok|ni\s+otrok)\b/iu.test(text))return 0;
   const m=text.match(/\b(\d{1,2})\s*(?:gyerek\w*|gyermek\w*|children|child|kids?|kinder|kind|(?:otrok|otroc)\w*)\b/iu);
   if(m) return Number(m[1]);
   const huWords={egy:1,két:2,ket:2,kettő:2,ketto:2,három:3,harom:3,négy:4,negy:4,öt:5,ot:5,hat:6};
