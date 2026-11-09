@@ -131,3 +131,4 @@ Authorized SQL: deployment/test-mailbox/booking-unit.sql (blob 48ebfc7aafcc0f754
 Fresh encrypted Drive export, exact-ID readback and isolated restore required before replacement of sc_tm_confirm_booking. No Netlify release, Previo operation or email sending.
 Provider: drive. Marker: [backup-v2-run].
 Daily request 2026-11-08T05:51Z: Claude scheduled daily Drive backup.
+Daily request 2026-11-09T05:48Z: Claude scheduled daily Drive backup.
