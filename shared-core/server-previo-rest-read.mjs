@@ -46,7 +46,9 @@ export function previoAvailabilityRequest({hotelId,ratePlanId,roomKindIds,arriva
  if(!intId(ratePlanId))fail('RATE_PLAN_UNVERIFIED');
  if(!Array.isArray(roomKindIds)||!roomKindIds.length||roomKindIds.length>23||!roomKindIds.every(intId)||new Set(roomKindIds.map(String)).size!==roomKindIds.length)fail('MAPPING_UNVERIFIED');
  const nights=stayNights(arrival,departure);
- const query=new URLSearchParams([['filterFrom',nights[0]],['filterTo',nights.at(-1)],...roomKindIds.map(id=>['roomKindIds[]',String(id)]),['ratePlanId',String(ratePlanId)]]);
+ // Previo refuses filterFrom===filterTo (HTTP 400 "Invalid date range", 73521, 2026-11-09): a one-night stay asks
+ // up to the departure day; only the stay nights are evaluated.
+ const query=new URLSearchParams([['filterFrom',nights[0]],['filterTo',nights.length===1?departure:nights.at(-1)],...roomKindIds.map(id=>['roomKindIds[]',String(id)]),['ratePlanId',String(ratePlanId)]]);
  return Object.freeze({url:PREVIO_API_ORIGIN+'/rest/calendar/availability?'+query,nights:Object.freeze(nights),roomKindIds:Object.freeze(roomKindIds.map(String)),ratePlanId:String(ratePlanId)});
 }
 

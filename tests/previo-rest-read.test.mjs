@@ -66,3 +66,11 @@ test('transport: 401/403, 429, 5xx, network error and timeout map to fixed codes
  const hang=async(url,options)=>new Promise((_,reject)=>options.signal.addEventListener('abort',()=>reject(Error('aborted'))));
  await assert.rejects(readPrevioFreeCapacity({...base,cabins:['deluxe'],fetchImpl:hang,timeoutMs:20}),/PREVIO_TIMEOUT/);
 });
+
+test('one-night stay: filterTo is the departure day (Previo refuses from===to); only the stay night counts',async()=>{
+ const p=previo(body(['2027-06-11','2027-06-12']));
+ const r=await readPrevioFreeCapacity({...base,cabins:['deluxe'],arrival:'2027-06-11',departure:'2027-06-12',fetchImpl:p.fetchImpl});
+ const u=new URL(p.calls[0].url);
+ assert.equal(u.searchParams.get('filterFrom'),'2027-06-11');assert.equal(u.searchParams.get('filterTo'),'2027-06-12');
+ assert.equal(r.nights,1);assert.equal(r.complete,true);
+});
