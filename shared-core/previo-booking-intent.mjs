@@ -20,7 +20,8 @@ export const PREVIO_TEST_73521=Object.freeze({
 });
 
 // guestCategories: {adult, child:[{id, minAge, maxAge}]} (default: the property's own); mealTypeId: null when the
-// property has no meal plans (then it is left out). Children 9+ are priced as adults (owner 2026-11-09).
+// property has no meal plans (then it is left out). Children 9+ are priced as adults (owner 2026-11-09) – in Previo that
+// is the child category's own behaviour above the included occupancy.
 // Suggester check 2026-11-09 (73521, owner-approved read): Deluxe 2027-06-15→17, 2 adults = 126 000 + IFA 2 200.
 export function previoPriceRequest({values,cabin,unit=null,property=PREVIO_TEST_73521,guestCategories=property.guestCategories,mealTypeId=property.mealTypeId??null}){
  if(!day(values?.arrival)||!day(values?.departure)||values.departure<=values.arrival)fail('DATES_REQUIRED');
@@ -31,7 +32,9 @@ export function previoPriceRequest({values,cabin,unit=null,property=PREVIO_TEST_
  if(Number(values.children||0)!==ages.length||ages.some(a=>!Number.isInteger(a)||a<0||a>17))fail('CHILD_AGES_REQUIRED');
  if(!Number.isSafeInteger(guestCategories?.adult)||(mealTypeId!==null&&!Number.isSafeInteger(mealTypeId)))fail('GUEST_CATEGORY_UNVERIFIED');
  const childCategory=age=>{const c=(guestCategories.child||[]).find(c=>age>=c.minAge&&age<=c.maxAge);if(!c)fail('GUEST_CATEGORY_UNVERIFIED');return c.id;};
- const guests=[...Array(adults+ages.filter(a=>a>=9).length).fill(guestCategories.adult),...ages.filter(a=>a<9).map(childCategory)]
+ // Every child 0–17 goes in a child category: Previo prices a child above the included occupancy like an adult and
+ // exempts it from IFA (73521 suggester, 2026-11-09) – sending a 9–17-year-old as an adult would add IFA.
+ const guests=[...Array(adults).fill(guestCategories.adult),...ages.map(childCategory)]
   .map(guestCategoryId=>mealTypeId===null?{guestCategoryId}:{guestCategoryId,mealTypeId});
  const room={from:values.arrival,to:values.departure,roomKindId,ratePlanId:property.ratePlanId,guests};
  return Object.freeze({hotelId:property.hotelId,body:Object.freeze({rooms:[room]}),

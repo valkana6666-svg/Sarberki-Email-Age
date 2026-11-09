@@ -17,8 +17,8 @@ test('XML: 73521, room kind + chosen unit, option status, e-mail source, rate pl
  for(const part of ['<hotId>73521</hotId>','<numGuest>4</numGuest>','<obkId>1012899</obkId>','<objId>2392199</objId>',`<cosId>${STATUS.option}</cosId>`,'<cmsId>1</cmsId>','<prlId>385033</prlId>',
   '<optionExpiration>2026-11-16 10:00:00</optionExpiration>','<from>2027-06-15 14:00:00</from><to>2027-06-17 10:00:00</to>','<name>Teszt Vendég &lt;A&amp;B&gt;</name>','<total>128200</total><curId>9</curId>'])
   assert.ok(r.xml.includes(part),part);
- assert.equal((r.xml.match(/<guaId>472221<\/guaId>/g)||[]).length,3,'2 adults + child 12 as adult');
- assert.equal((r.xml.match(/<guaId>472223<\/guaId>/g)||[]).length,1,'child 4');
+ assert.equal((r.xml.match(/<guaId>472221<\/guaId>/g)||[]).length,2,'2 adults');
+ assert.equal((r.xml.match(/<guaId>472223<\/guaId>/g)||[]).length,2,'children 4 and 12 (IFA-exempt child category)');
  assert.doesNotMatch(r.xml,/<email>|<phone>|<firstName>|<lastName>/,'no guest contact data');
 });
 

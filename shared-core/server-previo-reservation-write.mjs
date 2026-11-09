@@ -27,14 +27,14 @@ export function voucherFor({tenantId,caseId}){
  return 'SC-'+createHash('sha256').update(tenantId+'\n'+caseId,'utf8').digest('hex').slice(0,16).toUpperCase();
 }
 
-// Guests by category only: adults and children 9+ as "Felnőtt", younger children as "Gyerek" (owner 2026-11-09).
+// Guests by category only: adults as "Felnőtt", every child 0–17 in its age category (IFA-exempt in Previo).
 function guestCategories(values,property){
  const adults=Number(values.adults);if(!Number.isInteger(adults)||adults<1)fail('ADULTS_REQUIRED');
  const ages=String(values.child_ages||'').split(',').filter(Boolean).map(Number);
  if(Number(values.children||0)!==ages.length||ages.some(a=>!Number.isInteger(a)||a<0||a>17))fail('CHILD_AGES_REQUIRED');
  const cats=property.guestCategories;if(!int(cats?.adult))fail('GUEST_CATEGORY_UNVERIFIED');
  const child=age=>{const c=(cats.child||[]).find(c=>age>=c.minAge&&age<=c.maxAge);if(!c||!int(c.id))fail('GUEST_CATEGORY_UNVERIFIED');return c.id;};
- return [...Array(adults+ages.filter(a=>a>=9).length).fill(cats.adult),...ages.filter(a=>a<9).map(child)];
+ return [...Array(adults).fill(cats.adult),...ages.map(child)];
 }
 
 // Pure: the XML body for creating ONE room reservation in status "option" (V1 finalized, deposit pending).
