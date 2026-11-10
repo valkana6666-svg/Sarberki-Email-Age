@@ -18,7 +18,8 @@ test('XML: 73521, room kind + chosen unit, option status, e-mail source, rate pl
   '<optionExpiration>2026-11-16 10:00:00</optionExpiration>','<from>2027-06-15 14:00:00</from><to>2027-06-17 10:00:00</to>','<name>Teszt Vendég &lt;A&amp;B&gt;</name>','<total>128200</total><curId>9</curId>'])
   assert.ok(r.xml.includes(part),part);
  assert.equal((r.xml.match(/<guaId>472221<\/guaId>/g)||[]).length,2,'2 adults');
- assert.equal((r.xml.match(/<guaId>472223<\/guaId>/g)||[]).length,2,'children 4 and 12 (IFA-exempt child category)');
+ assert.equal((r.xml.match(/<guaId>472223<\/guaId>/g)||[]).length,1,'12-year-old retains the IFA-exempt 9–17 category');
+ assert.equal((r.xml.match(/<guaId>976629<\/guaId>/g)||[]).length,1,'4-year-old uses the verified 3–8 category');
  assert.doesNotMatch(r.xml,/<email>|<phone>|<firstName>|<lastName>/,'no guest contact data');
 });
 
