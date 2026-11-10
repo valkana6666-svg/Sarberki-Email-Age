@@ -70,3 +70,63 @@ jobs:
           node --check /tmp/previo-children-secret-adapter.mjs
           node --import /tmp/previo-children-secret-adapter.mjs scripts/previo-price-compare.mjs --children
 # Owner-approved post-toggle comparison: #9 6777847014; exactly five read-only cases.
+
+  cancelled-voucher-readback:
+    if: contains(github.event.head_commit.message, '[previo-voucher-readback-20261110]') && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Prove 73521 TEST identity by read only
+        env:
+          PREVIO_API_KEY: ${{ secrets.PREVIO_TEST_API_KEY }}
+        shell: python
+        run: |
+          import os, re, urllib.request, xml.etree.ElementTree as ET
+          assert os.environ['GITHUB_REF']=='refs/heads/gmail-test-subject-allowlist'
+          key=os.environ['PREVIO_API_KEY']
+          assert re.fullmatch(r'[A-Za-z0-9._~+/=-]{16,512}',key)
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,*args): raise RuntimeError('REDIRECT_REFUSED')
+          req=urllib.request.Request('https://api.previo.app/x1/hotel/get',data=b'<request><hotId>73521</hotId><lanId>1</lanId></request>',headers={'Authorization':'ApiKey '+key,'Content-Type':'application/xml'})
+          with urllib.request.build_opener(NoRedirect).open(req,timeout=20) as response: root=ET.fromstring(response.read())
+          hotel=root if root.tag=='hotel' else root.find('.//hotel')
+          assert hotel is not None and hotel.findtext('hotId')=='73521' and re.search(r'API\s*TES[ZT]',hotel.findtext('name',''),re.I)
+          proof='PASS identity: 73521 '+hotel.findtext('name')
+          print(proof)
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as out: out.write(proof+'\n')
+      - name: Read existing cancelled voucher using the integrated search builder
+        env:
+          PREVIO_API_KEY: ${{ secrets.PREVIO_TEST_API_KEY }}
+        shell: python
+        run: |
+          import os, subprocess, urllib.request, xml.etree.ElementTree as ET, json
+          assert os.environ['GITHUB_REF']=='refs/heads/gmail-test-subject-allowlist'
+          voucher='SC-734A105DF9DAF0FD'
+          code="""import {buildVoucherSearchXml} from './shared-core/server-previo-reservation-write.mjs';
+          process.stdout.write(buildVoucherSearchXml({hotelId:'73521',voucher:'SC-734A105DF9DAF0FD',arrival:'2027-09-14',departure:'2027-09-16'}));"""
+          xml=subprocess.check_output(['node','--input-type=module','-e',code],text=True)
+          query=ET.fromstring(xml)
+          assert query.findtext('hotId')=='73521' and query.findtext('fulltext')==voucher
+          assert [int(x.text) for x in query.findall('statuses/cosId')]==list(range(1,9))
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,*args): raise RuntimeError('REDIRECT_REFUSED')
+          req=urllib.request.Request('https://api.previo.app/x1/hotel/searchReservations',data=xml.encode(),headers={'Authorization':'ApiKey '+os.environ['PREVIO_API_KEY'],'Content-Type':'application/xml'})
+          with urllib.request.build_opener(NoRedirect).open(req,timeout=20) as response:
+              assert response.status==200
+              root=ET.fromstring(response.read())
+          assert root.find('.//error') is None
+          matches=[x for x in root.iter('reservation') if x.findtext('voucher')==voucher]
+          assert len(matches)==1,'EXPECTED_EXACTLY_ONE_VOUCHER'
+          record=matches[0]
+          assert record.findtext('resId')=='118080399' and record.findtext('comId')=='159225977'
+          status=record.findtext('statuses/cosId') or record.findtext('status/statusId') or record.findtext('statusId')
+          assert status=='7','EXPECTED_CANCELLED_STATUS'
+          proof={'result':'PASS','hotelId':73521,'voucher':voucher,'resId':118080399,'comId':159225977,'status':7,'searchBuilder':'buildVoucherSearchXml','searchRequests':1,'writeRequests':0}
+          line=json.dumps(proof); print(line)
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as out: out.write(line+'\n')
