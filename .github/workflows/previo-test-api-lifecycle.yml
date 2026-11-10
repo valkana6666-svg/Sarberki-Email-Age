@@ -130,3 +130,24 @@ jobs:
           proof={'result':'PASS','hotelId':73521,'voucher':voucher,'resId':118080399,'comId':159225977,'status':7,'searchBuilder':'buildVoucherSearchXml','searchRequests':1,'writeRequests':0}
           line=json.dumps(proof); print(line)
           with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as out: out.write(line+'\n')
+
+  lifecycle-r2:
+    if: contains(github.event.head_commit.message, '[previo-lifecycle-r2-20261110]') && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: previo-73521-owner-lifecycle
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Once-only owner-approved lifecycle R2 with exact readbacks and cancellation
+        env:
+          PREVIO_API_KEY: ${{ secrets.PREVIO_TEST_API_KEY }}
+        run: |
+          node --check scripts/previo-lifecycle-r2.mjs
+          node scripts/previo-lifecycle-r2.mjs
