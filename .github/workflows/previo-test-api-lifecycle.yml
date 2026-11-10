@@ -1,121 +1,37 @@
-name: Previo 73521 one-time owner-approved API lifecycle
+name: Previo 73521 one-time cancellation readback
 on:
   push:
     branches: [gmail-test-subject-allowlist]
     paths: [.github/workflows/previo-test-api-lifecycle.yml]
 permissions:
   contents: read
-concurrency:
-  group: previo-73521-owner-lifecycle
-  cancel-in-progress: false
 jobs:
-  lifecycle:
+  verify:
     if: contains(github.event.head_commit.message, '[previo-test-20261110]') && github.run_attempt == 1
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Single synthetic booking; fail closed; never production
+      - name: Read cancelled synthetic record only; no write path
         env:
           PREVIO_API_KEY: ${{ secrets.PREVIO_TEST_API_KEY }}
         shell: python
         run: |
-          import os, re, json, subprocess, hashlib, urllib.request, urllib.error
-          import xml.etree.ElementTree as ET
-          from datetime import datetime, timezone
-          def need(ok, code):
-              if not ok: raise RuntimeError(code)
-          need(os.environ.get('GITHUB_REF') == 'refs/heads/gmail-test-subject-allowlist', 'BRANCH_REFUSED')
-          need(datetime.now(timezone.utc) < datetime(2026,11,11,tzinfo=timezone.utc), 'ONE_TIME_PERMISSION_EXPIRED')
-          permission = 'PERM-20261110-API-LIFECYCLE'
-          need(permission in open('docs/V1-ALLAPOT.md').read(), 'PERMISSION_NOT_RECORDED')
-          key = os.environ.get('PREVIO_API_KEY','')
-          need(bool(re.fullmatch(r'[A-Za-z0-9._~+/=-]{16,512}',key)), 'SECRET_MISSING_OR_INVALID_FORMAT')
-          def proof(step, **fields):
-              line = json.dumps(dict(time=datetime.now(timezone.utc).isoformat(),step=step,**fields),ensure_ascii=False)
-              print(line,flush=True)
-              with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as out: out.write('\n'+line+'\n')
-          def node(source):
-              p = subprocess.run(['node','--input-type=module','-e',source],capture_output=True,text=True)
-              need(p.returncode == 0,'EXISTING_MODULE_FAILED')
-              return json.loads(p.stdout)
-          request = node("import {buildReservationXml} from './shared-core/server-previo-reservation-write.mjs'; console.log(JSON.stringify(buildReservationXml({tenantId:'sarberki-test',caseId:'work-api-20261110',values:{arrival:'2027-09-14',departure:'2027-09-16',adults:2,children:0},cabin:'deluxe',unit:'11',contactName:'TESZT WORK API 20261110',totalHuf:128200,optionExpiresUtc:'2026-11-12T12:00:00Z'})));")
-          voucher = request['voucher']
-          need(request['hotelId']=='73521' and '<hotId>73521</hotId>' in request['xml'],'SANDBOX_ONLY')
-          def call(method, body):
-              need(method in ('get','searchReservations','reservation'),'METHOD_REFUSED')
-              need('<hotId>73521</hotId>' in body,'SANDBOX_ONLY')
-              req = urllib.request.Request('https://api.previo.app/x1/hotel/'+method,data=body.encode(),headers={'Authorization':'ApiKey '+key,'Content-Type':'application/xml','Accept':'application/xml'})
-              class NoRedirect(urllib.request.HTTPRedirectHandler):
-                  def redirect_request(self,*args): raise RuntimeError('REDIRECT_REFUSED')
-              try:
-                  with urllib.request.build_opener(NoRedirect).open(req,timeout=20) as r: data=r.read()
-              except urllib.error.HTTPError as e:
-                  proof(method,result='FAIL',http=e.code); raise RuntimeError('HTTP_'+str(e.code)) from None
-              root=ET.fromstring(data)
-              error=root if root.tag=='error' else root.find('.//error')
-              if error is not None:
-                  proof(method,result='FAIL',apiCode=error.findtext('code'),responseSHA256=hashlib.sha256(data).hexdigest())
-                  raise RuntimeError('PREVIO_API_REJECTED')
-              proof(method,result='HTTP_XML_OK',responseSHA256=hashlib.sha256(data).hexdigest())
-              return root
-          hotel=call('get','<request><hotId>73521</hotId><lanId>1</lanId></request>')
-          hotel=hotel if hotel.tag=='hotel' else hotel.find('.//hotel')
-          need(hotel is not None and hotel.findtext('hotId')=='73521' and re.search(r'API\s*TES[ZT]',hotel.findtext('name',''),re.I),'TEST_PROPERTY_IDENTITY_NOT_PROVEN')
-          proof('identity',result='PASS',hotelId=73521,name=hotel.findtext('name'))
-          search='<request><hotId>73521</hotId><term><from>2027-09-14</from><to>2027-09-16</to></term><termType>overlap</termType><roomsOnly>1</roomsOnly></request>'
-          def records():
-              r=call('searchReservations',search)
-              need(r.tag=='reservations' or r.find('.//reservations') is not None,'SEARCH_UNREADABLE')
-              return r.findall('.//reservation')
-          existing=records()
-          need(not any(r.findtext('voucher')==voucher for r in existing),'ALREADY_EXECUTED_NO_RECREATE')
-          need(not any(r.findtext('.//object/objId')=='2392197' and r.findtext('.//statusId') not in ('7','8') for r in existing),'TEST_UNIT_TAKEN')
-          proof('preflight',result='PASS',voucher=voucher,unit='11')
-          created=None
-          owned=False
-          cancelled=False
-          def readback(expected=None):
-              own=[r for r in records() if r.findtext('voucher')==voucher]
-              need(len(own)==1,'OWN_RESERVATION_NOT_UNIQUE')
-              r=own[0]
-              need(r.findtext('resId')==str(created) and r.findtext('.//object/objId')=='2392197','OWNERSHIP_MISMATCH')
-              need(r.findtext('.//term/from','').startswith('2027-09-14') and r.findtext('.//term/to','').startswith('2027-09-16'),'DATE_MISMATCH')
-              status=r.findtext('.//statusId')
-              proof('readback',resId=created,voucher=voucher,statusId=status)
-              if expected is not None: need(status==str(expected),'STATUS_MISMATCH')
-              return status
-          def status_change(status):
-              need(owned and isinstance(created,int) and created>0,'OWNERSHIP_REQUIRED')
-              payload=node("import {buildStatusXml} from './shared-core/server-previo-reservation-write.mjs'; console.log(JSON.stringify(buildStatusXml({resId:"+str(created)+",status:'"+status+"'})));")
-              call('reservation',payload['xml'])
-          try:
-              result=node("import {buildReservationXml,writePrevioReservation} from './shared-core/server-previo-reservation-write.mjs'; const request="+json.dumps(request)+"; try { console.log(JSON.stringify(await writePrevioReservation({env:{...process.env,PREVIO_WRITE_ENABLED:'sandbox-73521-only'},permissionId:'PERM-20261110-API-LIFECYCLE',request}))); } catch(e) {console.log(JSON.stringify({ok:false,code:e.code||'PREVIO_UNAVAILABLE'}));}")
-              proof('create',**result)
-              need(result.get('ok') and result.get('created'),'CREATE_FAILED_OR_ALREADY_EXISTS')
-              created=result['resId']
-              readback(1)
-              owned=True
-              proof('create_readback',result='PASS',resId=created)
-              status_change('confirmed')
-              readback(2)
-              proof('modify_readback',result='PASS',resId=created)
-              status_change('cancelled')
-              readback(7)
-              cancelled=True
-              proof('cancel_readback',result='PASS',resId=created)
-              proof('LIFECYCLE',result='PASS',hotelId=73521,resId=created,voucher=voucher,finalStatus=7)
-          finally:
-              if owned and not cancelled:
-                  proof('cleanup',result='START',resId=created)
-                  readback()
-                  status_change('cancelled')
-                  readback(7)
-                  proof('cleanup',result='PASS',resId=created,finalStatus=7)
-              elif created and not owned:
-                  proof('STOP_REQUIRES_READONLY_RECONCILIATION',resId=created,voucher=voucher)
+          import os, json, urllib.request, xml.etree.ElementTree as ET
+          assert os.environ['GITHUB_REF']=='refs/heads/gmail-test-subject-allowlist'
+          key=os.environ['PREVIO_API_KEY']
+          assert len(key)>=16
+          body='<request><hotId>73521</hotId><term><from>2027-09-14</from><to>2027-09-16</to></term><termType>overlap</termType><roomsOnly>1</roomsOnly><cosId>7</cosId><fulltext>SC-734A105DF9DAF0FD</fulltext></request>'
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,*args): raise RuntimeError('REDIRECT_REFUSED')
+          req=urllib.request.Request('https://api.previo.app/x1/hotel/searchReservations',data=body.encode(),headers={'Authorization':'ApiKey '+key,'Content-Type':'application/xml'})
+          with urllib.request.build_opener(NoRedirect).open(req,timeout=20) as response:
+              root=ET.fromstring(response.read())
+          assert root.tag!='error' and root.find('.//error') is None, 'API_ERROR'
+          own=[r for r in root.findall('.//reservation') if r.findtext('resId')=='118080399' and r.findtext('voucher')=='SC-734A105DF9DAF0FD']
+          assert len(own)==1, 'CANCELLED_RECORD_NOT_FOUND'
+          r=own[0]
+          assert r.findtext('.//statusId')=='7', 'NOT_CANCELLED'
+          assert r.findtext('.//object/objId')=='2392197', 'UNIT_MISMATCH'
+          proof=json.dumps(dict(result='PASS',operation='READ_ONLY_CANCELLED_READBACK',hotelId=73521,resId=118080399,comId=159225977,voucher='SC-734A105DF9DAF0FD',statusId=7,unit='11',fromDate=r.findtext('.//term/from'),toDate=r.findtext('.//term/to')))
+          print(proof)
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as out: out.write(proof+'\n')
