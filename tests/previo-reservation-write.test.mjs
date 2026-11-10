@@ -85,3 +85,34 @@ test('Previo refusal and auth errors surface as codes',async()=>{
  await assert.rejects(writePrevioReservation({env:ENV,permissionId:PERM,request:req,fetchImpl:f('<error><code>1001</code><message>full</message></error>')}),/UNIT_TAKEN/);
  await assert.rejects(writePrevioReservation({env:ENV,permissionId:PERM,request:req,fetchImpl:async()=>new Response('',{status:403})}),/PREVIO_AUTH_REFUSED/);
 });
+
+test('idempotency includes cancelled and no-show vouchers; retry never creates a reservation',async()=>{
+ const req=buildReservationXml(base);
+ for(const statusId of [1,2,3,4,5,6,7,8]){
+  const calls=[];
+  const fetchImpl=async(url,options)=>{
+   calls.push(url);
+   if(!url.endsWith('/searchReservations'))throw Error('UNEXPECTED_CREATE');
+   // Model Previo filtering: inactive records are absent from the default search.
+   const selected=options.body.match(/<statuses>(.*?)<\/statuses>/)?.[1]||'';
+   const visible=selected.includes(`<cosId>${statusId}</cosId>`);
+   return new Response(visible?ok(777,req.voucher).replace('<statusId>1</statusId>',`<statusId>${statusId}</statusId>`):'<reservations></reservations>');
+  };
+  const result=await writePrevioReservation({env:ENV,permissionId:PERM,request:req,fetchImpl});
+  assert.equal(result.created,false);assert.equal(result.resId,777);assert.equal(result.statusId,statusId);
+  assert.deepEqual(calls,['https://api.previo.app/x1/hotel/searchReservations']);
+ }
+});
+
+test('an unrelated cancelled voucher does not suppress a new case',async()=>{
+ const req=buildReservationXml(base),calls=[];
+ const fetchImpl=async(url)=>{
+  calls.push(url);
+  return new Response(url.endsWith('/searchReservations')
+   ?ok(777,voucherFor({...base,caseId:'other-case'})).replace('<statusId>1</statusId>','<statusId>7</statusId>')
+   :ok(950,req.voucher));
+ };
+ const result=await writePrevioReservation({env:ENV,permissionId:PERM,request:req,fetchImpl});
+ assert.equal(result.created,true);assert.equal(result.resId,950);
+ assert.deepEqual(calls,['https://api.previo.app/x1/hotel/searchReservations','https://api.previo.app/x1/hotel/reservation']);
+});

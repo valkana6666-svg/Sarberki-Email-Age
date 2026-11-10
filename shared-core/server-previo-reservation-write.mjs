@@ -72,10 +72,13 @@ export function buildStatusXml({resId,status,property=PREVIO_TEST_73521}){
 }
 
 // Hotel.searchReservations needs a term; fulltext also matches the voucher number (Previo XML docs).
+// Default search omits cancelled records (73521 readback, 2026-11-10). Include all eight
+// reservation statuses: a cancelled/no-show voucher still belongs to the same case.
 export function buildVoucherSearchXml({hotelId,voucher,arrival,departure}){
  if(String(hotelId)!=='73521')fail('SANDBOX_ONLY');
  if(!/^SC-[0-9A-F]{16}$/.test(voucher||'')||!day(arrival)||!day(departure))fail('SEARCH_INVALID');
- return `<?xml version="1.0"?><request><hotId>${hotelId}</hotId><term><from>${arrival}</from><to>${departure}</to></term><fulltext>${voucher}</fulltext><limit><offset>0</offset><limit>10</limit></limit></request>`;
+ const statuses=[1,2,3,4,5,6,7,8].map(id=>`<cosId>${id}</cosId>`).join('');
+ return `<?xml version="1.0"?><request><hotId>${hotelId}</hotId><term><from>${arrival}</from><to>${departure}</to></term><fulltext>${voucher}</fulltext><statuses>${statuses}</statuses><limit><offset>0</offset><limit>10</limit></limit></request>`;
 }
 // Every reservation block with exactly our voucher (fulltext may also match names etc.).
 export function reservationsWithVoucher(text,voucher){
