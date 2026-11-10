@@ -1,4 +1,4 @@
-name: Previo 73521 one-time cancellation readback
+name: Previo 73521 read-only child price comparison
 on:
   push:
     branches: [gmail-test-subject-allowlist]
@@ -6,32 +6,66 @@ on:
 permissions:
   contents: read
 jobs:
-  verify:
-    if: contains(github.event.head_commit.message, '[previo-test-20261110]') && github.run_attempt == 1
+  children:
+    if: contains(github.event.head_commit.message, '[previo-children-20261110]') && github.run_attempt == 1
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 4
     steps:
-      - name: Read cancelled synthetic record only; no write path
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Prove 73521 TEST identity by read only
         env:
           PREVIO_API_KEY: ${{ secrets.PREVIO_TEST_API_KEY }}
         shell: python
         run: |
-          import os, json, urllib.request, xml.etree.ElementTree as ET
+          import os, re, urllib.request, xml.etree.ElementTree as ET
           assert os.environ['GITHUB_REF']=='refs/heads/gmail-test-subject-allowlist'
           key=os.environ['PREVIO_API_KEY']
-          assert len(key)>=16
-          body='<request><hotId>73521</hotId><term><from>2027-09-14</from><to>2027-09-16</to></term><termType>overlap</termType><roomsOnly>1</roomsOnly><statuses><cosId>7</cosId></statuses><resId>118080399</resId><fulltext>SC-734A105DF9DAF0FD</fulltext><limit><offset>0</offset><limit>10</limit></limit></request>'
+          assert re.fullmatch(r'[A-Za-z0-9._~+/=-]{16,512}',key)
           class NoRedirect(urllib.request.HTTPRedirectHandler):
               def redirect_request(self,*args): raise RuntimeError('REDIRECT_REFUSED')
-          req=urllib.request.Request('https://api.previo.app/x1/hotel/searchReservations',data=body.encode(),headers={'Authorization':'ApiKey '+key,'Content-Type':'application/xml'})
-          with urllib.request.build_opener(NoRedirect).open(req,timeout=20) as response:
-              root=ET.fromstring(response.read())
-          assert root.tag!='error' and root.find('.//error') is None, 'API_ERROR'
-          own=[r for r in root.findall('.//reservation') if r.findtext('resId')=='118080399' and r.findtext('voucher')=='SC-734A105DF9DAF0FD']
-          assert len(own)==1, 'CANCELLED_RECORD_NOT_FOUND'
-          r=own[0]
-          assert r.findtext('.//statusId')=='7', 'NOT_CANCELLED'
-          assert r.findtext('.//object/objId')=='2392197', 'UNIT_MISMATCH'
-          proof=json.dumps(dict(result='PASS',operation='READ_ONLY_CANCELLED_READBACK',hotelId=73521,resId=118080399,comId=159225977,voucher='SC-734A105DF9DAF0FD',statusId=7,unit='11',fromDate=r.findtext('.//term/from'),toDate=r.findtext('.//term/to')))
+          req=urllib.request.Request('https://api.previo.app/x1/hotel/get',data=b'<request><hotId>73521</hotId><lanId>1</lanId></request>',headers={'Authorization':'ApiKey '+key,'Content-Type':'application/xml'})
+          with urllib.request.build_opener(NoRedirect).open(req,timeout=20) as response: root=ET.fromstring(response.read())
+          hotel=root if root.tag=='hotel' else root.find('.//hotel')
+          assert hotel is not None and hotel.findtext('hotId')=='73521' and re.search(r'API\s*TES[ZT]',hotel.findtext('name',''),re.I)
+          proof='PASS identity: 73521 '+hotel.findtext('name')
           print(proof)
           with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as out: out.write(proof+'\n')
+      - name: Existing script --children with guarded secret adapter; suggester only
+        env:
+          PREVIO_API_KEY: ${{ secrets.PREVIO_TEST_API_KEY }}
+        run: |
+          cat > /tmp/previo-children-secret-adapter.mjs <<'JS'
+          import {appendFileSync} from 'node:fs';
+          // The query suffix avoids the script's CLI entrypoint while reading its case constants.
+          const {CHILD_CASES}=await import('file://'+process.cwd()+'/scripts/previo-price-compare.mjs?cases-only');
+          const {previoPriceRequest,PREVIO_TEST_73521}=await import('file://'+process.cwd()+'/shared-core/previo-booking-intent.mjs');
+          const {fetchPublicPriceReference}=await import('file://'+process.cwd()+'/price-source/public-price-fallback.mjs');
+          const nativeFetch=globalThis.fetch;
+          const key=process.env.PREVIO_API_KEY;
+          if(!/^[A-Za-z0-9._~+/=-]{16,512}$/.test(key||''))throw Error('SECRET_MISSING');
+          if(process.env.GITHUB_REF!=='refs/heads/gmail-test-subject-allowlist')throw Error('BRANCH_REFUSED');
+          let count=0;
+          globalThis.fetch=async(url,options={})=>{
+            const test=CHILD_CASES[count++];
+            if(!test||url!=='https://api.previo.app/rest/reservations/accounts/suggester'||options.method!=='POST')throw Error('READ_ONLY_ROUTE_REFUSED');
+            const [cabin,arrival,departure,adults,label,ages]=test;
+            const req=previoPriceRequest({values:{arrival,departure,adults,children:ages.length,child_ages:ages.join(',')},cabin});
+            const headers=new Headers(options.headers);
+            if(headers.get('X-Previo-Hotel-Id')!=='73521'||JSON.stringify(req.body)!==options.body)throw Error('TEST_CASE_REFUSED');
+            headers.set('Authorization','ApiKey '+key);
+            const response=await nativeFetch(url,{...options,headers,redirect:'error',signal:AbortSignal.timeout(20000)});
+            const j=response.ok?await response.clone().json():{};
+            const ours=fetchPublicPriceReference({arrival,departure,cabin,adults,children:ages});
+            const proof={case:label,hotelId:73521,cabin,arrival,departure,adults,childAges:ages,guestCategoryIds:req.body.rooms[0].guests.map(g=>g.guestCategoryId),http:response.status,previoTotal:j.totalPrice??null,systemTotal:ours.total,difference:typeof j.totalPrice==='number'?j.totalPrice-ours.total:null,result:response.ok&&j.totalPrice===ours.total?'PASS':'FAIL'};
+            const line=JSON.stringify(proof);console.log(line);appendFileSync(process.env.GITHUB_STEP_SUMMARY,'\n'+line+'\n');
+            return response;
+          };
+          process.on('exit',()=>{if(count!==5){console.error('EXPECTED_EXACTLY_FIVE_READS');process.exitCode=1;}});
+          JS
+          node --check /tmp/previo-children-secret-adapter.mjs
+          node --import /tmp/previo-children-secret-adapter.mjs scripts/previo-price-compare.mjs --children
