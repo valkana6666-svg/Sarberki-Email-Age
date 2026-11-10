@@ -20,7 +20,7 @@ jobs:
           assert os.environ['GITHUB_REF']=='refs/heads/gmail-test-subject-allowlist'
           key=os.environ['PREVIO_API_KEY']
           assert len(key)>=16
-          body='<request><hotId>73521</hotId><term><from>2027-09-14</from><to>2027-09-16</to></term><termType>overlap</termType><roomsOnly>1</roomsOnly><cosId>7</cosId><fulltext>SC-734A105DF9DAF0FD</fulltext></request>'
+          body='<request><hotId>73521</hotId><term><from>2027-09-14</from><to>2027-09-16</to></term><termType>overlap</termType><roomsOnly>1</roomsOnly><statuses><cosId>7</cosId></statuses><resId>118080399</resId><fulltext>SC-734A105DF9DAF0FD</fulltext><limit><offset>0</offset><limit>10</limit></limit></request>'
           class NoRedirect(urllib.request.HTTPRedirectHandler):
               def redirect_request(self,*args): raise RuntimeError('REDIRECT_REFUSED')
           req=urllib.request.Request('https://api.previo.app/x1/hotel/searchReservations',data=body.encode(),headers={'Authorization':'ApiKey '+key,'Content-Type':'application/xml'})
