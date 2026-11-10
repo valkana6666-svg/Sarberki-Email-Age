@@ -69,3 +69,4 @@ jobs:
           JS
           node --check /tmp/previo-children-secret-adapter.mjs
           node --import /tmp/previo-children-secret-adapter.mjs scripts/previo-price-compare.mjs --children
+# Owner-approved post-toggle comparison: #9 6777847014; exactly five read-only cases.
