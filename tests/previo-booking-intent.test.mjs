@@ -23,8 +23,15 @@ test('unknown or missing facts refuse instead of guessing',()=>{
  assert.throws(()=>previoPriceRequest({values:{...v,children:'1',child_ages:'4'},cabin:'deluxe',guestCategories:{adult:1,child:[]},mealTypeId:1}),/GUEST_CATEGORY_UNVERIFIED/);
 });
 
-test('73521 defaults: own guest categories (Felnőtt 472221, Gyerek 472223), no meal plan -> the body the suggester accepted',()=>{
- const r=previoPriceRequest({values:{arrival:'2027-06-15',departure:'2027-06-17',adults:'2',children:'2',child_ages:'4,12'},cabin:'deluxe'});
- assert.deepEqual(r.body.rooms[0].guests,[{guestCategoryId:472221},{guestCategoryId:472221},{guestCategoryId:472223},{guestCategoryId:472223}]);
+test('73521 defaults: verified age boundaries select child categories without adult tourist tax',()=>{
+ const r=previoPriceRequest({values:{arrival:'2027-06-15',departure:'2027-06-17',adults:'2',children:'7',child_ages:'0,1,2,3,8,9,17'},cabin:'deluxe'});
+ assert.deepEqual(r.body.rooms[0].guests,[472221,472221,976631,976631,976631,976629,976629,472223,472223].map(guestCategoryId=>({guestCategoryId})));
  assert.throws(()=>previoPriceRequest({values:{arrival:'2027-06-15',departure:'2027-06-17',adults:'2',children:'0'},cabin:'deluxe',mealTypeId:'x'}),/GUEST_CATEGORY_UNVERIFIED/);
+});
+
+test('73521 age mapping refuses invalid ages and missing category ranges',()=>{
+ const values={arrival:'2027-06-15',departure:'2027-06-17',adults:'2',children:'1'};
+ for(const age of ['-1','18','2.5','unknown'])
+  assert.throws(()=>previoPriceRequest({values:{...values,child_ages:age},cabin:'deluxe'}),/CHILD_AGES_REQUIRED/);
+ assert.throws(()=>previoPriceRequest({values:{...values,child_ages:'3'},cabin:'deluxe',guestCategories:{adult:472221,child:[{id:472223,minAge:9,maxAge:17}]}}),/GUEST_CATEGORY_UNVERIFIED/);
 });
