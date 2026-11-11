@@ -162,3 +162,14 @@ test('chat + Previo TEST read (operator only): requested type only; free/full se
  const out=c2.withCapacity(withFallback,{turn:c2.turn});
  assert.ok(out===null||!/van szabad helyünk ebben a háztípusban/.test(out.text));
 });
+test('chat + Previo: a request without a decided unit count is rebuilt without units (DE live finding 2026-11-11)',async()=>{
+ const {buildAvailabilityOptions}=await import('../netlify/functions/availability-options.mjs');
+ const chat=createChatInquirySession({clock:()=>new Date()});
+ chat.reply('Guten Tag, wir möchten vom 24. bis 26. Juni 2027 kommen, 2 Erwachsene, keine Kinder.');const r=chat.reply('Deluxe-Haus bitte.');
+ assert.equal('units' in r.capacityInput,false);
+ const src=async({arrival,departure,cabin})=>({arrival,departure,cabin,availability:'available',availableUnits:4,checkedAt:new Date().toISOString(),source:'previo-rest-73521'});
+ const cap=await buildAvailabilityOptions({...r.capacityInput,fallback:false},src,{tenantId:'sarberki',now:()=>Date.now()});
+ assert.match(chat.withCapacity(cap,{turn:chat.turn}).text,/freie Plätze in diesem Haustyp/);
+ const wrong=await buildAvailabilityOptions({...r.capacityInput,units:1,fallback:false},src,{tenantId:'sarberki',now:()=>Date.now()});
+ assert.equal(chat.withCapacity(wrong,{turn:chat.turn}),null,'a different input is never accepted');
+});

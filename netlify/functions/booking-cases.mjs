@@ -193,19 +193,20 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    // free-unit read for a complete, already decided capacity input. Read only; same owner switch as Level 1; never on
    // the live profile; the public chatbot stays without Previo (availability-options.mjs rule).
    if(input.action==='chat-availability'){
-    const keys='action,adults,arrival,cabin,departure,guests,tenantId,units';
-    if(event.httpMethod!=='GET'||!cookieMode||live||input.tenantId!==TENANT||Object.keys(input).sort().join(',')!==keys)return cookieResponse(403,{error:'FORBIDDEN'});
+    const keyset=Object.keys(input).sort().join(',');
+    if(event.httpMethod!=='GET'||!cookieMode||live||input.tenantId!==TENANT||!['action,adults,arrival,cabin,departure,guests,tenantId,units','action,adults,arrival,cabin,departure,guests,tenantId'].includes(keyset))return cookieResponse(403,{error:'FORBIDDEN'});
+    const hasUnits=input.units!==undefined;
     const reader=previoCapacityReader(env,fetchImpl);
     if(!reader)return cookieResponse(503,{error:'PREVIO_READ_DISABLED'});
     const n=k=>Number(input[k]);
     const day=v=>/^\d{4}-\d{2}-\d{2}$/.test(v||'');
     if(!day(input.arrival)||!day(input.departure)||input.departure<=input.arrival||!['vip','family','deluxe','small','splitA','splitB','splitC'].includes(input.cabin)
-     ||![n('guests'),n('adults'),n('units')].every(Number.isInteger)||n('guests')<1||n('guests')>40||n('adults')<1||n('adults')>n('guests')||n('units')<1||n('units')>6)
+     ||![n('guests'),n('adults')].every(Number.isInteger)||n('guests')<1||n('guests')>40||n('adults')<1||n('adults')>n('guests')||(hasUnits&&(!Number.isInteger(n('units'))||n('units')<1||n('units')>6)))
      return cookieResponse(400,{error:'INVALID_INPUT'});
     cookieSession=await createOperatorCookieSession({env,fetchImpl}).protectedRead(event);
     rotatedCookie=cookieSession.setCookie;
     try{
-     const capacity=await buildAvailabilityOptions({arrival:input.arrival,departure:input.departure,guests:n('guests'),adults:n('adults'),cabin:input.cabin,units:n('units'),fallback:false},
+     const capacity=await buildAvailabilityOptions({arrival:input.arrival,departure:input.departure,guests:n('guests'),adults:n('adults'),cabin:input.cabin,...(hasUnits?{units:n('units')}:{}),fallback:false},
       previoAvailabilitySource(reader),{tenantId:'sarberki',now:()=>Date.now()});
      return cookieResponse(200,{result:{capacity}});
     }catch{return cookieResponse(502,{error:'PREVIO_UNAVAILABLE'});}

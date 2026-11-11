@@ -7,7 +7,8 @@ export function createChatCapacityProvider({request=fetch,tenantId='sarberki-tes
   let meta;try{meta=await session.restore();}catch{return null;}
   if(!meta?.csrfToken||!input)return null;
   const q=new URLSearchParams({action:'chat-availability',tenantId,arrival:input.arrival,departure:input.departure,
-   guests:String(input.guests),adults:String(input.adults??input.guests),cabin:input.cabin,units:String(input.units??1)});
+   guests:String(input.guests),adults:String(input.adults??input.guests),cabin:input.cabin,...(input.units!=null?{units:String(input.units)}:{})});
+  // The server must rebuild exactly the decided input (the evidence fingerprint covers units), so units only when decided.
   try{
    const r=await request('/.netlify/functions/booking-cases?'+q,{method:'GET',credentials:'same-origin',cache:'no-store',redirect:'error',
     headers:{'X-Sarberki-Operator':'1','X-CSRF-Token':meta.csrfToken}});
