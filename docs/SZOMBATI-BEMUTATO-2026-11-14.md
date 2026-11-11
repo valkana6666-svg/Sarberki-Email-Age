@@ -6,7 +6,7 @@ Feladat: #9 6796044652 (ChatGPT, tulajdonosi cél). Csak TEST: oldal `leafy-chim
 | Bemutatandó út | Állapot | Bizonyíték / hiány |
 |---|---|---|
 | Chatbot HU/DE/EN/SI, többfordulós foglalási beszélgetés | **JAVÍTVA, kiadásra vár** | élő próba 11-11: dátum + létszám esetén eddig „nem tudom megválaszolni” volt; javítás `1070d37` (4 nyelv, regressziós teszt) |
-| Chatbot: szabad hely és ár a Previóból | **NINCS (szándékosan)** | a szerveres chat ki van kapcsolva; a chatbot ajánlatkérést rögzít, a foglalást a kezelő véglegesíti (V2). Bemutatón így mutatjuk |
+| Chatbot: szabad hely a Previóból | **PASS élőben** (bejelentkezett kezelőnél; nyilvánosan nem) | teli → „nincs elegendő”, szabad → „van szabad helyünk” (HU/DE); ár a chatben NINCS (jóváhagyott ajánlat kell); foglalás a kezelőn át (V2) |
 | Chatbot: háziállat-kérdés | **JAVÍTVA** (`3aaa1f9`, 4 nyelv), kiadásra vár | |
 | V1: levél → Previo szabad hely → tervezet → ár → jóváhagyás → küldés | **PASS** (iPhone 11-09, 11-11) | |
 | V2 egy egység: véglegesítés → Previo-opció → levél SC-számmal → küldés → lemondás | **PASS** (11-11) | #9 6795428713 |
@@ -33,7 +33,7 @@ Előkészítés péntek este (tulajdonos, 5 perc): három tesztlevél a sarberki
 
 | # | Lépés | Várható eredmény | Ha nem megy |
 |---|---|---|---|
-| 1 | Chatbot (`/sarberki-chatbot-project/`): „Szia! 2027. július 5-től 8-ig jönnénk 2 felnőtt és 2 gyerek (5 és 9 évesek).”, majd „A Családi faház érdekelne.” | dátum, létszám felismerve, háztípus-ajánlat, hiányzó adat kérése; DE/EN/SI ugyanígy | „Új tesztbeszélgetés” |
+| 1 | Chatbot (`/sarberki-chatbot-project/`, előtte a lap alján kezelőként belépni): „Szia! 2027. július 5-től 8-ig jönnénk 2 felnőtt és 2 gyerek (5 és 9 évesek).”, majd „A Családi faház érdekelne.” | dátum, létszám felismerve, háztípus-ajánlat, hiányzó adat kérése; DE/EN/SI ugyanígy | „Új tesztbeszélgetés” |
 | 2 | Napi kezelő → E-mailek beolvasása → L1 → Mentés | tervezetben: „van szabad helyünk” (Previo) | Foglalások frissítése |
 | 3 | Ár (Deluxe előre kiválasztva) → beillesztés | 126 000 + IFA; kezelői sor: „Previo-ár … egyezik” | |
 | 4 | Véglegesítés, egység + „V2 teszt” | „Previo-tesztben opcióként rögzítve”; a Previo-naptárban sárga foglalás | Previo-naptár frissítése |
