@@ -127,3 +127,28 @@ test('contact person XML validation',async()=>{
  assert.throws(()=>contactPersonXml('X',{email:'nem-email'}),/CONTACT_EMAIL_INVALID/);
  assert.throws(()=>contactPersonXml('X',{phone:'<script>'}),/CONTACT_PHONE_INVALID/);
 });
+
+test('multi-unit: two Családi houses -> one Previo reservation with two commissions, guests split per unit; units attested',async()=>{
+ const rec={tenantId:'sarberki-test',caseId:'tm-1a2b3c4d5e6f7a8c',revision:3,data:{sender:'x <sarberkito@gmail.com>',state:{values:{arrival:'2027-06-20',departure:'2027-06-22',adults:'8',children:'0',unit:'Családi',units_requested:'2',language:'hu',name:'Teszt Csoport'}},drafts:[],messages:[]}};
+ const p=previo(),d=db();
+ await confirmTestMailboxBooking({record:rec,previoAuto:true,previoWriter:previoBookingWriter(ENV,p.fetchImpl,{pauseMs:0}),unit:'2',units:['2','3'],attestationKey:KEY,transport:d.transport});
+ const xml=p.calls.find(c=>c.path.endsWith('/reservation')).body;
+ assert.equal((xml.match(/<commission>/g)||[]).length,2);
+ assert.match(xml,/<objId>2392187<\/objId>[\s\S]*<objId>2392189<\/objId>/);
+ assert.equal((xml.match(/<numGuest>4<\/numGuest>/g)||[]).length,2);
+ assert.match(xml,/<total>228800<\/total>/);
+ const b=d.rpc[0].body.p_booking;assert.deepEqual(b.units,['2','3']);assert.equal(b.unit,'2');
+ assert.match(d.rpc[0].body.p_draft.operatorReviewText,/Egységek: 2, 3/);
+});
+test('multi-unit refusals: wrong count, duplicates, other type; A+B pair of the split apartments allowed',async()=>{
+ const base={tenantId:'sarberki-test',caseId:'tm-1a2b3c4d5e6f7a8d',revision:3,data:{state:{values:{arrival:'2027-06-20',departure:'2027-06-22',adults:'8',children:'0',unit:'Családi',units_requested:'2',language:'hu'}},drafts:[],messages:[]}};
+ const run=(rec,unit,units)=>confirmTestMailboxBooking({record:rec,previoRecorded:true,previoReference:'P-1',unit,units,attestationKey:KEY,transport:db().transport});
+ await assert.rejects(run(base,'2',null),/UNITS_COUNT_MISMATCH/);
+ await assert.rejects(run(base,'2',['2','2']),/UNITS_INVALID/);
+ await assert.rejects(run(base,'2',['2','11']),/UNIT_NOT_IN_TYPE/);
+ const ab={...base,data:{...base.data,state:{values:{...base.data.state.values,adults:'4',unit:'2 fős apartman'}}}};
+ const {CABIN_NAMES}=await import('../shared-core/price-insert-sentence.mjs');
+ ab.data.state.values.unit=CABIN_NAMES.splitA.hu;
+ const d=db();await confirmTestMailboxBooking({record:ab,previoRecorded:true,previoReference:'P-2',unit:'7/A',units:['7/A','7/B'],attestationKey:KEY,transport:d.transport});
+ assert.deepEqual(d.rpc[0].body.p_booking.units,['7/A','7/B']);
+});

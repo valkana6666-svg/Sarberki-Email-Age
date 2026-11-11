@@ -30,8 +30,8 @@ export function previoBookingWriter(env,fetchImpl=globalThis.fetch,{pauseMs=5000
  return Object.freeze({permissionId,sendContact,
   // Creates (or finds, if this case already has one) the option on the unit. A slow answer is re-read by voucher,
   // never re-sent: an unconfirmed outcome stops with PREVIO_WRITE_UNCERTAIN for a manual Previo check.
-  async createOption({tenantId,caseId,values,cabin,unit,contactName,contact=null,totalHuf,optionExpiresUtc}){
-   const request=buildReservationXml({tenantId,caseId,values,cabin,unit,contactName,contact:sendContact?contact:null,totalHuf,optionExpiresUtc});
+  async createOption({tenantId,caseId,values,cabin,unit,units=null,parties=null,contactName,contact=null,totalHuf,optionExpiresUtc}){
+   const request=buildReservationXml({tenantId,caseId,values,cabin,unit,units,parties,contactName,contact:sendContact?contact:null,totalHuf,optionExpiresUtc});
    try{
     const r=await writePrevioReservation({env:writeEnv,permissionId,request,fetchImpl});
     // An existing record for this case is reused only while it is active (option/confirmed); a cancelled one stops.

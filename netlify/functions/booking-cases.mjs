@@ -52,7 +52,7 @@ const TEST_MAILBOX_ERRORS=Object.freeze({GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACC
  PREVIO_RECORDING_REQUIRED:400,ALREADY_FINALIZED:409,CONFIRMATION_FACTS_MISSING:422,CONFIRMATION_PRICE_MISSING:422,CONFIRMATION_CABIN_UNKNOWN:422,
  DEPOSIT_POLICY_UNVERIFIED:422,DEPOSIT_NOT_CONFIRMED:400,NOT_FINALIZED:409,INVALID_DATE:400,UNIT_TAKEN:409,UNIT_TAKEN_IN_PREVIO:409,UNIT_NOT_IN_TYPE:422,
  PREVIO_WRITE_DISABLED:409,PREVIO_WRITE_UNCERTAIN:502,PREVIO_BOOKING_NOT_ACTIVE:409,PREVIO_ORPHAN_OPTION:502,PREVIO_AUTH_REFUSED:502,PREVIO_REJECTED:502,PREVIO_SEARCH_FAILED:502,PREVIO_TIMEOUT:504,PREVIO_UNAVAILABLE:502,
- CANCEL_NOT_CONFIRMED:400,INVALID_REASON:400,NOT_ACTIVE_BOOKING:409});
+ CANCEL_NOT_CONFIRMED:400,INVALID_REASON:400,NOT_ACTIVE_BOOKING:409,UNITS_INVALID:422,UNITS_COUNT_MISMATCH:422,PARTIES_REQUIRED:422});
 const TEST_MAILBOX_FIELDS=Object.freeze({
  'test-mailbox-ingest':['action,messageId,tenantId'],
  'test-mailbox-followup':['action,messageId,tenantId'],
@@ -62,7 +62,8 @@ const TEST_MAILBOX_FIELDS=Object.freeze({
  'test-mailbox-send':['action,caseId,expectedRevision,tenantId'],
  'test-mailbox-price':['action,availabilityConfirmed,cabin,caseId,expectedRevision,tenantId'],
  'test-mailbox-unavailable':['action,caseId,expectedRevision,tenantId,unavailableConfirmed'],
- 'test-mailbox-confirm':['action,caseId,expectedRevision,previoRecorded,previoReference,tenantId,unit','action,caseId,expectedRevision,previoAuto,tenantId,unit'],
+ 'test-mailbox-confirm':['action,caseId,expectedRevision,previoRecorded,previoReference,tenantId,unit','action,caseId,expectedRevision,previoAuto,tenantId,unit',
+  'action,caseId,expectedRevision,previoRecorded,previoReference,tenantId,unit,units','action,caseId,expectedRevision,previoAuto,tenantId,unit,units'],
  'test-mailbox-deposit':['action,caseId,depositConfirmed,expectedRevision,receivedOn,tenantId'],
  'test-mailbox-cancel':['action,cancelConfirmed,caseId,expectedRevision,reason,tenantId']
 });
@@ -72,6 +73,7 @@ function validTestMailboxInput(input){
  if(typeof input.caseId!=='string'||!/^tm-[a-f0-9]{12,32}$/.test(input.caseId)||!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<1)return false;
  if(input.action==='test-mailbox-send')return true;
  if(input.action==='test-mailbox-unavailable')return input.unavailableConfirmed===true;
+ if(input.action==='test-mailbox-confirm'&&input.units!==undefined&&!(Array.isArray(input.units)&&input.units.length>=2&&input.units.length<=6&&input.units.every(u=>typeof u==='string'&&/^(?:[1-9]|1[0-5]|(?:7|8|9|10)\/[ABC])$/.test(u))&&input.units[0]===input.unit))return false;
  if(input.action==='test-mailbox-confirm'&&input.previoAuto!==undefined)return input.previoAuto===true&&typeof input.unit==='string'&&/^(?:[1-9]|1[0-5]|(?:7|8|9|10)\/[ABC])$/.test(input.unit);
  if(input.action==='test-mailbox-confirm')return input.previoRecorded===true&&typeof input.previoReference==='string'&&/^[A-Za-z0-9\/_.-]{1,40}$/.test(input.previoReference)&&typeof input.unit==='string'&&/^(?:[1-9]|1[0-5]|(?:7|8|9|10)\/[ABC])$/.test(input.unit);
  if(input.action==='test-mailbox-cancel')return input.cancelConfirmed===true&&typeof input.reason==='string'&&input.reason.trim().length>0&&input.reason.length<=300&&!/[\r\n]/.test(input.reason);
@@ -102,7 +104,8 @@ function testMailboxView(record,authority,tenant='sarberki-test',previoRead=fals
   canEditDraft:permissions.includes('write')&&['pending','returned_for_edit','rejected'].includes(state),
   canDecide:permissions.includes('approve')&&state==='pending'&&(latest.createdBy!==authority?.subject||latest.machineDraft===true),
   // V1 booking completion: finalized only after the operator's Previo attestation; deposit received is separate.
-  booking:data.booking?{status:data.booking.status,unit:data.booking.unit??null,previoReference:data.booking.previo?.reference??null,deposit:data.booking.deposit??null,depositReceivedOn:data.booking.depositReceived?.on??null}:null,
+  unitsRequested:Number(data.state?.values?.units_requested||1),
+  booking:data.booking?{status:data.booking.status,unit:data.booking.unit??null,units:Array.isArray(data.booking.units)?data.booking.units:null,previoReference:data.booking.previo?.reference??null,deposit:data.booking.deposit??null,depositReceivedOn:data.booking.depositReceived?.on??null}:null,
   // Hint only (V1): the guest's reply reads as an explicit booking acceptance; nothing is booked here.
   bookingIntent:bookingIntentHint(data.messages,data.booking?.status),
   canFinalize:permissions.includes('write')&&!['finalized','deposit_received'].includes(data.booking?.status),
@@ -292,7 +295,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
       let saved,deposit=null;
       const previoWriter=live?null:previoBookingWriter(env,fetchImpl);
       if(input.action==='test-mailbox-confirm')({saved,deposit}=await confirmTestMailboxBooking({record,previoReference:input.previoReference,previoRecorded:input.previoRecorded,
-       previoAuto:input.previoAuto===true,previoWriter,unit:input.unit,
+       previoAuto:input.previoAuto===true,previoWriter,unit:input.unit,units:input.units??null,
        attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,transport:cookieSession.transport,unitCheckFn:live?null:previoUnitChecker(env,fetchImpl)}));
       else if(input.action==='test-mailbox-cancel')saved=await cancelTestMailboxBooking({record,reason:input.reason,cancelConfirmed:input.cancelConfirmed,transport:cookieSession.transport,previoWriter});
       else saved=await markTestMailboxDepositReceived({record,receivedOn:input.receivedOn,depositConfirmed:input.depositConfirmed,transport:cookieSession.transport,previoWriter});

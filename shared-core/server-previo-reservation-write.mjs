@@ -47,21 +47,27 @@ export function contactPersonXml(name,contact){
  if(phone!==null&&!/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(phone))fail('CONTACT_PHONE_INVALID');
  return `<contactPerson><name>${xmlText(name)}</name>${email?`<email>${xmlText(email)}</email>`:''}${phone?`<phone>${xmlText(phone)}</phone>`:''}</contactPerson>`;
 }
-export function buildReservationXml({tenantId,caseId,values,cabin,unit,contactName,contact=null,totalHuf,optionExpiresUtc,property=PREVIO_TEST_73521}){
+// Multi-unit (owner 2026-11-11): units (2..6, first = unit) and parties [{adults,children:[ages]}] per unit -> one
+// reservation with one commission per unit (Previo XML "New group reservation").
+export function buildReservationXml({tenantId,caseId,values,cabin,unit,units=null,parties=null,contactName,contact=null,totalHuf,optionExpiresUtc,property=PREVIO_TEST_73521}){
  if(String(property?.hotelId)!=='73521')fail('SANDBOX_ONLY');
  if(!day(values?.arrival)||!day(values?.departure)||values.departure<=values.arrival)fail('DATES_REQUIRED');
  const obkId=property.roomKinds?.[cabin];if(!int(obkId))fail('ROOM_KIND_UNKNOWN');
- const objId=property.rooms?.[unit];if(!int(objId))fail('UNIT_UNKNOWN');
+ const list=Array.isArray(units)&&units.length>1?units:[unit];
+ if(list[0]!==unit||new Set(list).size!==list.length||list.length>6||list.some(u=>!int(property.rooms?.[u])))fail('UNIT_UNKNOWN');
+ if(list.length>1&&(!Array.isArray(parties)||parties.length!==list.length))fail('PARTIES_REQUIRED');
  if(!Number.isSafeInteger(totalHuf)||totalHuf<=0)fail('PRICE_REQUIRED');
  const name=String(contactName||'').trim();if(!name||name.length>80||/[\r\n]/.test(name))fail('CONTACT_NAME_REQUIRED');
  if(typeof optionExpiresUtc!=='string'||Number.isNaN(Date.parse(optionExpiresUtc)))fail('OPTION_EXPIRY_REQUIRED');
- const guests=guestCategories(values,property);
+ const partyValues=list.length>1?parties.map(p=>({adults:String(p.adults),children:String((p.children||[]).length),child_ages:(p.children||[]).join(',')})):[values];
+ const guestsPerUnit=partyValues.map(v=>guestCategories(v,property));
  const voucher=voucherFor({tenantId,caseId});
  const expiry=new Date(optionExpiresUtc).toISOString().slice(0,19).replace('T',' ');
- const xml=['<?xml version="1.0"?>','<request>',`<hotId>${property.hotelId}</hotId>`,'<newReservation>','<commissions><commission>',
-  `<guests><numGuest>${guests.length}</numGuest>`,...guests.map(g=>`<guest><guaId>${g}</guaId></guest>`),'</guests>',
-  `<obkId>${obkId}</obkId><objId>${objId}</objId><cosId>${STATUS.option}</cosId><cmsId>${SOURCE_EMAIL}</cmsId><prlId>${property.ratePlanId}</prlId>`,
-  '</commission></commissions>',
+ const xml=['<?xml version="1.0"?>','<request>',`<hotId>${property.hotelId}</hotId>`,'<newReservation>','<commissions>',
+  ...list.map((u,i)=>['<commission>',`<guests><numGuest>${guestsPerUnit[i].length}</numGuest>`,...guestsPerUnit[i].map(g=>`<guest><guaId>${g}</guaId></guest>`),'</guests>',
+   `<obkId>${obkId}</obkId><objId>${property.rooms[u]}</objId><cosId>${STATUS.option}</cosId><cmsId>${SOURCE_EMAIL}</cmsId><prlId>${property.ratePlanId}</prlId>`,
+   '</commission>'].join('')),
+  '</commissions>',
   `<optionExpiration>${expiry}</optionExpiration>`,
   `<term><from>${values.arrival} 14:00:00</from><to>${values.departure} 10:00:00</to></term>`,
   `<voucher>${voucher}</voucher>`,

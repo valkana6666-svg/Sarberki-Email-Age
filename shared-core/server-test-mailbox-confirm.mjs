@@ -28,7 +28,9 @@ export function cabinKeyFromUnit(unit){
 export function attestConfirmation({key,tenantId,caseId,expectedRevision,draft,booking,checkedAt}){
  if(typeof key!=='string'||!/^[a-f0-9]{64}$/.test(key))fail('SETUP_REQUIRED');
  const fields=[CONFIRM_SCOPE,tenantId,caseId,String(expectedRevision),sha(draft.text),sha(draft.operatorReviewText),booking.previoReference,
-  booking.previoRecordedAt,String(booking.depositPct),String(booking.depositAmount),booking.depositDeadlineUtc,booking.unit,checkedAt];
+  booking.previoRecordedAt,String(booking.depositPct),String(booking.depositAmount),booking.depositDeadlineUtc,
+  // Multi-unit (booking-multiunit.sql): the comma-joined list stands in for the single unit.
+  Array.isArray(booking.units)?booking.units.join(','):booking.unit,checkedAt];
  if(fields.some(v=>typeof v!=='string'||!v||/[\r\n]/.test(v)))fail('INVALID_EVIDENCE');
  return {scope:CONFIRM_SCOPE,checkedAt,attestation:createHmac('sha256',Buffer.from(key,'hex')).update(fields.join('\n')).digest('hex')};
 }
@@ -37,15 +39,21 @@ export function attestConfirmation({key,tenantId,caseId,expectedRevision,draft,b
 // free in our own finalized bookings (pre-check here for a clear message; the database re-checks under a lock).
 async function unitTaken({transport,record,unit,arrival,departure}){
  let rows=[];
- try{rows=await transport('/rest/v1/sc_cases?select=case_id,data&tenant_id=eq.'+encodeURIComponent(record.tenantId)+'&data->booking->>unit=eq.'+encodeURIComponent(unit));}catch{return false;}
- const bookings=(Array.isArray(rows)?rows:[]).filter(r=>r.case_id!==record.caseId&&r.data?.booking?.unit===unit&&['finalized','deposit_received'].includes(r.data?.booking?.status))
+ try{rows=await transport('/rest/v1/sc_cases?select=case_id,data&tenant_id=eq.'+encodeURIComponent(record.tenantId)+'&data->booking->>status=in.(finalized,deposit_received)');}catch{return false;}
+ const bookings=(Array.isArray(rows)?rows:[]).filter(r=>r.case_id!==record.caseId&&['finalized','deposit_received'].includes(r.data?.booking?.status)
+   &&(r.data?.booking?.unit===unit||(Array.isArray(r.data?.booking?.units)&&r.data.booking.units.includes(unit))))
   .map(r=>({key:r.case_id,unit,arrival:r.data?.state?.values?.arrival,departure:r.data?.state?.values?.departure,source:'synthetic',status:'confirmed'}))
   .filter(b=>/^\d{4}-\d{2}-\d{2}$/.test(b.arrival||'')&&/^\d{4}-\d{2}-\d{2}$/.test(b.departure||'')&&b.departure>b.arrival);
  return conflictsFor(bookings,{unit,arrival,departure}).length>0;
 }
-// V2 (owner 2026-11-11): previoAuto=true lets the server create the Previo TEST option itself (previoWriter from
-// server-previo-booking-sync.mjs) instead of the operator's manual Previo step; the reference becomes "V2-<resId>".
-export async function confirmTestMailboxBooking({record,previoReference,previoRecorded,previoAuto=false,previoWriter=null,unit,attestationKey,transport,
+// Units that may share one booking with the case's type: the type's own units; the 2-person A and B apartments
+// are one priced pool (business-config), so an A+B pair (e.g. 7/A + 7/B) is allowed for either of them.
+export function unitsForCabin(cabin){
+ const keys=cabin==='splitA'||cabin==='splitB'?['splitA','splitB']:[cabin];
+ return keys.flatMap(k=>unitsOfType(k).map(u=>u.id));
+}
+
+export async function confirmTestMailboxBooking({record,previoReference,previoRecorded,previoAuto=false,previoWriter=null,unit,units=null,attestationKey,transport,
  quoteFn=fetchPublicPriceReference,unitCheckFn=null,clock=()=>new Date().toISOString()}={}){
  if(previoAuto===true){if(!previoWriter)fail('PREVIO_WRITE_DISABLED');}
  else if(previoRecorded!==true)fail('PREVIO_RECORDING_REQUIRED');
@@ -53,14 +61,23 @@ export async function confirmTestMailboxBooking({record,previoReference,previoRe
  if(['finalized','deposit_received'].includes(record?.data?.booking?.status))fail('ALREADY_FINALIZED');
  const values=record?.data?.state?.values||{};
  const cabin=cabinKeyFromUnit(values.unit);
- if(!unitsOfType(cabin).some(u=>u.id===unit))fail('UNIT_NOT_IN_TYPE');
+ // Multi-unit (owner 2026-11-11): exactly the requested number of distinct units, first = unit.
+ const requested=Number(values.units_requested||1);
+ const list=Array.isArray(units)&&units.length>1?units:[unit];
+ if(list.length>1&&(list[0]!==unit||new Set(list).size!==list.length||list.length>6))fail('UNITS_INVALID');
+ if(list.length!==(Number.isInteger(requested)&&requested>0?requested:1))fail('UNITS_COUNT_MISMATCH');
+ const allowed=unitsForCabin(cabin);
+ if(list.some(u=>!allowed.includes(u)))fail('UNIT_NOT_IN_TYPE');
  let quote;
- try{quote=quoteFn(quoteInputFromCase(values,cabin));}catch(error){if(error?.code==='PRICE_FACTS_MISSING')fail('CONFIRMATION_FACTS_MISSING');fail('CONFIRMATION_PRICE_MISSING');}
- if(await unitTaken({transport,record,unit,arrival:values.arrival,departure:values.departure}))fail('UNIT_TAKEN');
- // V2 step 4: the same unit in Previo itself (read-only). Another reservation there -> refuse; unreadable -> note only.
+ try{quote=quoteFn({...quoteInputFromCase(values,cabin),...(list.length>1?{units:list.length}:{})});}catch(error){if(error?.code==='PRICE_FACTS_MISSING')fail('CONFIRMATION_FACTS_MISSING');fail('CONFIRMATION_PRICE_MISSING');}
+ for(const u of list)if(await unitTaken({transport,record,unit:u,arrival:values.arrival,departure:values.departure}))fail('UNIT_TAKEN');
+ // V2 step 4: the same unit(s) in Previo itself (read-only). Another reservation there -> refuse; unreadable -> note only.
  let previoUnit=null;
- if(typeof unitCheckFn==='function'){try{previoUnit=await unitCheckFn({unit,arrival:values.arrival,departure:values.departure,previoReference});}catch{previoUnit={status:'unknown'};}
-  if(previoUnit?.status==='taken')fail('UNIT_TAKEN_IN_PREVIO');}
+ if(typeof unitCheckFn==='function'){
+  for(const u of list){let r;try{r=await unitCheckFn({unit:u,arrival:values.arrival,departure:values.departure,previoReference});}catch{r={status:'unknown'};}
+   if(r?.status==='taken')fail('UNIT_TAKEN_IN_PREVIO');
+   if(!previoUnit||r?.status!=='free')previoUnit=r;}
+ }
  const language=/^(hu|de|en|si)$/.test(values.language||'')?values.language:'hu';
  let previoCreated=null,sentContact=null;
  if(previoAuto===true){
@@ -70,6 +87,7 @@ export async function confirmTestMailboxBooking({record,previoReference,previoRe
   const email=senderAddress(record.data?.sender);
   const contact=sentContact=email===TEST_GUEST_SENDER?{email,phone:/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(String(values.phone||'').trim())?String(values.phone).trim():null}:null;
   previoCreated=await previoWriter.createOption({tenantId:record.tenantId,caseId:record.caseId,values,cabin,unit,
+   ...(list.length>1?{units:list,parties:quote.unitBreakdown.map(b=>({adults:b.adults,children:b.children}))}:{}),
    contactName:String(values.name||'').trim()||'Vendég '+record.caseId,contact,totalHuf:quote.total,optionExpiresUtc:deadline});
   previoReference='V2-'+previoCreated.resId;
  }
@@ -77,11 +95,12 @@ export async function confirmTestMailboxBooking({record,previoReference,previoRe
  const built=buildBookingConfirmation({values,quote,previo:{reference:previoReference,recordedAt},language});
  const draft={text:built.text,operatorReviewText:built.operatorReviewText};
  const booking={previoReference:built.previo.reference,previoRecordedAt:recordedAt,depositPct:built.deposit.pct,depositAmount:built.deposit.amount,depositDeadlineUtc:built.deposit.receiptDeadlineUtc,unit};
+ if(list.length>1)booking.units=list;
  // Internal unit number goes to the operator text only, never to the guest (AGENTS: no internal house numbers).
- draft.operatorReviewText+='\nEgység: '+unit+' (csak kezelői adat, a vendéglevélben nem szerepel).';
+ draft.operatorReviewText+='\n'+(list.length>1?'Egységek: '+list.join(', '):'Egység: '+unit)+' (csak kezelői adat, a vendéglevélben nem szerepel).';
  if(previoUnit&&!previoCreated)draft.operatorReviewText+='\n'+previoUnitLine(previoUnit,unit,previoReference);
  if(previoUnit&&previoCreated)draft.operatorReviewText+='\nPrevio (csak olvasó, létrehozás előtt): a(z) '+unit+' egységen nem volt más foglalás erre az időszakra.';
- if(previoCreated)draft.operatorReviewText+=`\nPrevio (V2, automatikus): opció létrehozva a Previo-tesztben – azonosító ${previoCreated.resId}, egység ${unit}, lejár a foglalói határidővel${previoWriter.sendContact&&sentContact?'; kapcsolattartó: név, e-mail'+(sentContact.phone?', telefon':''):'; kapcsolattartó: csak név'}. A foglaló beérkezésekor a rendszer megerősíti.`;
+ if(previoCreated)draft.operatorReviewText+=`\nPrevio (V2, automatikus): opció létrehozva a Previo-tesztben – azonosító ${previoCreated.resId}, ${list.length>1?'egységek '+list.join(', '):'egység '+unit}, lejár a foglalói határidővel${previoWriter.sendContact&&sentContact?'; kapcsolattartó: név, e-mail'+(sentContact.phone?', telefon':''):'; kapcsolattartó: csak név'}. A foglaló beérkezésekor a rendszer megerősíti.`;
  const proof=attestConfirmation({key:attestationKey,tenantId:record.tenantId,caseId:record.caseId,expectedRevision:record.revision,draft,booking,checkedAt:clock()});
  let saved;
  try{saved=await transport('/rest/v1/rpc/sc_tm_confirm_booking',{method:'POST',body:{p_tenant:record.tenantId,p_case:record.caseId,p_expected:record.revision,p_booking:booking,p_draft:draft,p_proof:proof}});}

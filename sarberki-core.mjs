@@ -511,7 +511,7 @@ export function requestedUnitsFromText(text=''){
   const values={egy:1,'1':1,két:2,kettő:2,'2':2,három:3,'3':3,négy:4,'4':4,öt:5,'5':5,hat:6,'6':6,one:1,two:2,three:3,four:4,five:5,six:6,ein:1,eine:1,zwei:2,drei:3,vier:4,'fünf':5,funf:5,sechs:6,en:1,ena:1,eno:1,dva:2,dve:2,tri:3,'štiri':4,stiri:4,pet:5,'šest':6,sest:6};
   const sized=text.match(/\b(egy|1|két|kettő|2|három|3|négy|4|one|two|three|four|ein|eine|zwei|drei|vier|en|ena|dva|dve|tri|štiri|stiri)\s*(?:db|darab)\s*(?:2|két|kettő)\s*[- ]?fős\s+(?:osztott\s+)?apartman\w*/iu);
   if(sized) return {count:values[sized[1].toLocaleLowerCase()]||0,open:false,evidence:sized[0]};
-  const m=text.match(/\b(egy|1|két|kettő|2|három|3|négy|4|öt|5|hat|6|one|two|three|four|five|six|ein|eine|zwei|drei|vier|fünf|funf|sechs|en|ena|eno|dva|dve|tri|štiri|stiri|pet|šest|sest)\s+(?:külön\s*)?(?:db\s*)?(?:vip|családi|deluxe|osztott|family|familien|družinsk\w*)?(?:\s*[-–]?\s*)(?:házat?|faházat?|apartmant?|egységet?|cabins?|houses?|units?|cottages?|häuser|hauser|einheiten|hišk\w*|hisk\w*|koč\w*|enot\w*)\b/iu);
+  const m=text.match(/\b(egy|1|két|kettő|2|három|3|négy|4|öt|5|hat|6|one|two|three|four|five|six|ein|eine|zwei|drei|vier|fünf|funf|sechs|en|ena|eno|dva|dve|tri|štiri|stiri|pet|šest|sest)\s+(?:külön\s*)?(?:db\s*)?(?:vip|családi|deluxe|osztott|family|familien|družinsk\w*)?(?:\s*[-–]?\s*)(?:ház(?:at|ba|ban|ra|hoz)?|faház(?:at|ba|ban|ra|hoz)?|apartman(?:t|ba|ban|ra)?|egység(?:et|be)?|cabins?|houses?|units?|cottages?|häuser|hauser|einheiten|hišk\w*|hisk\w*|koč\w*|enot\w*)(?!\p{L})/iu);
   if(!m){
     // A single, specifically named cabin in singular form means one unit.
     // This must not turn a generic enquiry, a plural request or split-unit

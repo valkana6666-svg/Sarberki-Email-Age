@@ -17,6 +17,7 @@ const b64=t=>Buffer.from(t,'utf8').toString('base64url');
 const THREAD='38f2a0b1c2d3e4a0';
 const mails={
  [THREAD]:{from:'Kis Anna <sarberkito@gmail.com>',subject:'Foglalás',text:'Jó napot! 2027. június 10-től 13-ig jönnénk 2 felnőtt, gyerek nélkül, a Deluxe faházba. Telefon: +36 30 000 0000. Üdv: Kis Anna',msgid:'<first@example.test>'},
+ '38f2a0b1c2d3e6c2':{from:'Teszt Csoport <sarberkito@gmail.com>',subject:'Két ház',text:'Jó napot! 2027. június 10-től 13-ig jönnénk 8 felnőtt, gyerek nélkül, 2 Deluxe faházba. Üdv: Teszt Csoport',msgid:'<multi@example.test>',thread:'38f2a0b1c2d3e6c2'},
  '38f2a0b1c2d3e5b1':{from:'Teszt Elek <sarberkito@gmail.com>',subject:'Másik foglalás',text:'Jó napot! 2027. június 12-től 14-ig jönnénk 2 felnőtt, gyerek nélkül, a Deluxe faházba. Üdv: Teszt Elek',msgid:'<second@example.test>',thread:'38f2a0b1c2d3e5b1'}
 };
 const gmailFetch=async url=>{
@@ -51,13 +52,14 @@ test('V1 completion: Previo attestation -> confirmation with deposit -> finalize
   await db.exec("insert into sc_tenants values('sarberki-test','Fictional',true),('demo-test','Fictional other',true)");
   for(const f of ['deployment/cloud-approval/install.sql','deployment/cloud-approval/separate-approver-permission.sql','deployment/exact-receipt/install.sql'])await db.exec(await read(f));
   await db.query('insert into sc_isolated_approval_key(key_hex) values($1)',[KEY]);
-  for(const f of ['deployment/test-mailbox/install.sql','deployment/test-mailbox/booking-status.sql','deployment/test-mailbox/booking-unit.sql','deployment/test-mailbox/booking-cancel.sql'])await db.exec(await read(f));
+  for(const f of ['deployment/test-mailbox/install.sql','deployment/test-mailbox/booking-status.sql','deployment/test-mailbox/booking-unit.sql','deployment/test-mailbox/booking-cancel.sql','deployment/test-mailbox/booking-multiunit.sql'])await db.exec(await read(f));
   await db.exec('update sc_test_mailbox_config set enabled=true');
   for(const [role,id] of Object.entries(ids)){await db.query('insert into auth.users values($1)',[id]);await db.query('insert into auth.sessions values($1,$2,null)',[sessions[role],id]);}
   await db.query('insert into sc_memberships values($1,$2,true,true,false),($1,$3,true,false,true)',[TENANT,ids.writer,ids.approver]);
   assert.equal((await db.exec(await read('deployment/test-mailbox/booking-status.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
   assert.equal((await db.exec(await read('deployment/test-mailbox/booking-unit.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
   assert.equal((await db.exec(await read('deployment/test-mailbox/booking-cancel.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
+  assert.equal((await db.exec(await read('deployment/test-mailbox/booking-multiunit.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
   const common={token:'t'.repeat(40),transport:transportFor('writer'),attestationKey:KEY,fetchImpl:gmailFetch};
   const {caseId}=await ingestTestMailboxMessage({...common,messageId:THREAD});
   const load=async()=>{const r=(await db.query('select * from sc_cases where case_id=$1',[caseId])).rows[0];return {tenantId:r.tenant_id,caseId:r.case_id,revision:Number(r.revision),data:r.data};};
@@ -124,6 +126,21 @@ test('V1 completion: Previo attestation -> confirmation with deposit -> finalize
   await assert.rejects(cancelTestMailboxBooking({record,reason:'újra',cancelConfirmed:true,transport:transportFor('writer')}),/NOT_ACTIVE_BOOKING/);
   await assert.rejects(transportFor('writer')('/rest/v1/rpc/sc_tm_cancel_booking',{method:'POST',body:{p_tenant:TENANT,p_case:caseId,p_expected:record.revision,p_reason:'újra'}}),/DB/);
   assert.deepEqual((await db.query('select kind from sc_audit where case_id=$1 order by revision',[caseId])).rows.map(r=>r.kind),['tm_create','tm_booking_finalized','tm_deposit_received','tm_booking_cancelled']);
+  // Multi-unit (booking-multiunit.sql, owner 2026-11-11): 2 Deluxe houses 06-10→13 for 8 adults.
+  const multi=await ingestTestMailboxMessage({...common,messageId:'38f2a0b1c2d3e6c2'});
+  const rm=(await db.query('select * from sc_cases where case_id=$1',[multi.caseId])).rows[0];
+  const recM={tenantId:rm.tenant_id,caseId:rm.case_id,revision:Number(rm.revision),data:rm.data};
+  assert.equal(recM.data.state.values.units_requested,'2');
+  // Unit 12 is held by the second case (06-12→14): refused by the server pre-check and by the database under lock.
+  await assert.rejects(confirmTestMailboxBooking({record:recM,previoRecorded:true,previoReference:'TEST-M',unit:'12',units:['12','13'],attestationKey:KEY,transport:transportFor('writer')}),/UNIT_TAKEN/);
+  const noPre=async(path,o={})=>path.startsWith('/rest/v1/sc_cases')?[]:transportFor('writer')(path,o);
+  await assert.rejects(confirmTestMailboxBooking({record:recM,previoRecorded:true,previoReference:'TEST-M',unit:'13',units:['13','12'],attestationKey:KEY,transport:noPre}),/DB/);
+  const okM=await confirmTestMailboxBooking({record:recM,previoRecorded:true,previoReference:'TEST-M',unit:'13',units:['13','14'],attestationKey:KEY,transport:transportFor('writer')});
+  assert.deepEqual(okM.saved.data.booking.units,['13','14']);assert.equal(okM.saved.data.booking.unit,'13');
+  // A later single booking on 14 for overlapping dates is refused by the database (units array is checked).
+  const again=(await db.query('select * from sc_cases where case_id=$1',[second.caseId])).rows[0];
+  void again;
+  const blocked=await db.query("select count(*)::int n from sc_cases o where o.data->'booking'->'units' ? '14'");assert.equal(blocked.rows[0].n,1);
   // anon has no execute.
   assert.equal((await db.query("select has_function_privilege('anon','public.sc_tm_confirm_booking(text,text,bigint,jsonb,jsonb,jsonb)','execute') a")).rows[0].a,false);
  }finally{await db.close();}
