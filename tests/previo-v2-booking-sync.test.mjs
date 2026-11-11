@@ -169,3 +169,51 @@ test('booking number: shown in all four languages, refused if malformed; manual 
  assert.throws(()=>buildBookingConfirmation({values,quote,previo,language:'hu',bookingNumber:'20260003'}),/BOOKING_NUMBER_INVALID/);
  assert.doesNotMatch(buildBookingConfirmation({values,quote,previo,language:'hu'}).text,/Foglalási szám/);
 });
+
+// ---- V2 modification (owner 2026-11-11) ----
+import {modifyTestMailboxBooking} from '../shared-core/server-test-mailbox-confirm.mjs';
+import {voucherFor,buildModifyXml} from '../shared-core/server-previo-reservation-write.mjs';
+function previoModify({failModify=false,readbackWrong=false}={}){
+ const calls=[];let state={from:'2027-06-15',to:'2027-06-17',objId:2392199};
+ const block=v=>`<reservations><reservation><comId>777</comId><resId>5001</resId><voucher>${v}</voucher><term><from>${state.from} 14:00:00</from><to>${state.to} 10:00:00</to></term><status><statusId>1</statusId></status><object><objId>${state.objId}</objId></object></reservation></reservations>`;
+ const fetchImpl=async(url,o)=>{const path=new URL(url).pathname,body=String(o.body);calls.push({path,body});
+  if(path.endsWith('/searchReservations'))return new Response(block(body.match(/<fulltext>([^<]+)/)[1]));
+  if(failModify)return new Response('<error><code>1007</code><message>x</message></error>');
+  const from=body.match(/<from>(\d{4}-\d{2}-\d{2})/)?.[1];const to=body.match(/<to>(\d{4}-\d{2}-\d{2})/)?.[1];const obj=body.match(/<objId>(\d+)/)?.[1];
+  if(!readbackWrong)state={from,to,objId:Number(obj)};
+  return new Response('<reservations><reservation><resId>5001</resId><voucher>x</voucher></reservation></reservations>');};
+ return {calls,fetchImpl,get state(){return state;}};
+}
+const v2rec=(status='finalized')=>({tenantId:'sarberki-test',caseId:'tm-1a2b3c4d5e6f7a9a',revision:5,data:{state:{values:{arrival:'2027-06-15',departure:'2027-06-17',adults:'2',children:'0',unit:'Deluxe',language:'hu'}},
+ booking:{status,unit:'12',previo:{reference:'V2-5001',recordedAt:new Date().toISOString()},deposit:{pct:50,amount:63000}},drafts:[],messages:[]}});
+test('modify XML: resId, the room by comId + new objId, new term and price; 73521 only',()=>{
+ const x=buildModifyXml({resId:5001,comId:777,cabin:'deluxe',unit:'13',values:{arrival:'2027-06-20',departure:'2027-06-23'},totalHuf:191300}).xml;
+ for(const part of ['<resId>5001</resId>','<comId>777</comId><obkId>1012899</obkId><objId>2392201</objId>','<from>2027-06-20 14:00:00</from><to>2027-06-23 10:00:00</to>','<total>191300</total>'])assert.ok(x.includes(part),part);
+ assert.throws(()=>buildModifyXml({resId:5001,comId:777,cabin:'deluxe',unit:'13',values:{arrival:'2027-06-20',departure:'2027-06-23'},totalHuf:1,property:{hotelId:'753011'}}),/SANDBOX_ONLY/);
+});
+test('modify: Previo changed and read back, our state saved with a new letter ("módosítottuk"), number unchanged',async()=>{
+ const p=previoModify(),d=db();
+ const r=await modifyTestMailboxBooking({record:v2rec(),arrival:'2027-06-20',departure:'2027-06-23',unit:'13',modifyConfirmed:true,attestationKey:KEY,transport:d.transport,previoWriter:previoBookingWriter(ENV,p.fetchImpl)});
+ assert.deepEqual(p.state,{from:'2027-06-20',to:'2027-06-23',objId:2392201});
+ const body=d.rpc[0].body;assert.equal(d.rpc[0].path,'/rest/v1/rpc/sc_tm_modify_booking');
+ assert.deepEqual({...body.p_change},{arrival:'2027-06-20',departure:'2027-06-23',unit:'13',depositAmount:r.deposit.amount});
+ assert.match(body.p_draft.text,/módosítottuk/);assert.match(body.p_draft.text,/2027\.06\.20\. – 2027\.06\.23\./);
+ assert.ok(body.p_draft.text.includes('Foglalási szám: '+voucherFor({tenantId:'sarberki-test',caseId:'tm-1a2b3c4d5e6f7a9a'})));
+ assert.doesNotMatch(body.p_draft.text,/5001|[Ee]gység|V2-/,'no unit number or resId for the guest');
+ assert.equal(body.p_proof.scope,'test-mailbox-modify-v1');
+});
+test('modify refusals and safety: no change, manual booking, multi-unit, Previo error, unverified readback, save failure reverts',async()=>{
+ const w=f=>previoBookingWriter(ENV,f);
+ await assert.rejects(modifyTestMailboxBooking({record:v2rec(),arrival:'2027-06-15',departure:'2027-06-17',unit:'12',modifyConfirmed:true,attestationKey:KEY,transport:db().transport,previoWriter:w(previoModify().fetchImpl)}),/NOTHING_CHANGED/);
+ const manual=v2rec();manual.data.booking.previo.reference='P-1';
+ await assert.rejects(modifyTestMailboxBooking({record:manual,arrival:'2027-06-20',departure:'2027-06-23',unit:'12',modifyConfirmed:true,attestationKey:KEY,transport:db().transport,previoWriter:w(previoModify().fetchImpl)}),/PREVIO_MANUAL_BOOKING/);
+ const multi=v2rec();multi.data.booking.units=['12','13'];
+ await assert.rejects(modifyTestMailboxBooking({record:multi,arrival:'2027-06-20',departure:'2027-06-23',unit:'12',modifyConfirmed:true,attestationKey:KEY,transport:db().transport,previoWriter:w(previoModify().fetchImpl)}),/MULTI_UNIT_MODIFY_UNSUPPORTED/);
+ const d1=db();await assert.rejects(modifyTestMailboxBooking({record:v2rec(),arrival:'2027-06-20',departure:'2027-06-23',unit:'13',modifyConfirmed:true,attestationKey:KEY,transport:d1.transport,previoWriter:w(previoModify({failModify:true}).fetchImpl)}),/PREVIO_REJECTED/);
+ assert.equal(d1.rpc.length,0,'nothing saved when Previo refuses');
+ const d2=db();await assert.rejects(modifyTestMailboxBooking({record:v2rec(),arrival:'2027-06-20',departure:'2027-06-23',unit:'13',modifyConfirmed:true,attestationKey:KEY,transport:d2.transport,previoWriter:w(previoModify({readbackWrong:true}).fetchImpl)}),/PREVIO_MODIFY_UNVERIFIED/);
+ assert.equal(d2.rpc.length,0);
+ const p3=previoModify(),d3=db({saveResult:'throw'});
+ await assert.rejects(modifyTestMailboxBooking({record:v2rec(),arrival:'2027-06-20',departure:'2027-06-23',unit:'13',modifyConfirmed:true,attestationKey:KEY,transport:d3.transport,previoWriter:w(p3.fetchImpl)}),/DB/);
+ assert.deepEqual(p3.state,{from:'2027-06-15',to:'2027-06-17',objId:2392199},'Previo set back to the previous dates/unit');
+});

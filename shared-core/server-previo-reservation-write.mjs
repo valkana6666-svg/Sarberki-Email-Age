@@ -77,6 +77,22 @@ export function buildReservationXml({tenantId,caseId,values,cabin,unit,units=nul
  return Object.freeze({url:PREVIO_XML_ORIGIN+'/x1/hotel/reservation',hotelId:property.hotelId,voucher,arrival:values.arrival,departure:values.departure,xml});
 }
 
+// Modification (owner 2026-11-11): new dates and/or a new unit of the same room kind for a single-room reservation.
+// Previo XML "Modify" (resId + term + price; the room by its commission comId + objId).
+export function buildModifyXml({resId,comId,cabin,unit,values,totalHuf,property=PREVIO_TEST_73521}){
+ if(String(property?.hotelId)!=='73521')fail('SANDBOX_ONLY');
+ if(!int(resId)||!int(comId))fail('RESERVATION_ID_REQUIRED');
+ if(!day(values?.arrival)||!day(values?.departure)||values.departure<=values.arrival)fail('DATES_REQUIRED');
+ const obkId=property.roomKinds?.[cabin];if(!int(obkId))fail('ROOM_KIND_UNKNOWN');
+ const objId=property.rooms?.[unit];if(!int(objId))fail('UNIT_UNKNOWN');
+ if(!Number.isSafeInteger(totalHuf)||totalHuf<=0)fail('PRICE_REQUIRED');
+ return Object.freeze({url:PREVIO_XML_ORIGIN+'/x1/hotel/reservation',hotelId:property.hotelId,
+  xml:['<?xml version="1.0"?>','<request>',`<hotId>${property.hotelId}</hotId>`,'<newReservation>',`<resId>${resId}</resId>`,
+   `<commissions><commission><comId>${comId}</comId><obkId>${obkId}</obkId><objId>${objId}</objId></commission></commissions>`,
+   `<term><from>${values.arrival} 14:00:00</from><to>${values.departure} 10:00:00</to></term>`,
+   `<price><total>${totalHuf}</total><curId>${HUF_CURRENCY_ID}</curId></price>`,'</newReservation>','</request>'].join('')});
+}
+
 // Status change on an existing reservation: deposit arrived -> confirmed; cancellation -> storno.
 export function buildStatusXml({resId,status,property=PREVIO_TEST_73521}){
  if(String(property?.hotelId)!=='73521')fail('SANDBOX_ONLY');

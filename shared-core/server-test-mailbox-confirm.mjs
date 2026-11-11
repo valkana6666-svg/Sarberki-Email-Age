@@ -11,6 +11,7 @@ import {buildBookingConfirmation} from './booking-confirmation-draft.mjs';
 import {unitsOfType,conflictsFor} from './unit-inventory.mjs';
 import {previoUnitLine} from './server-previo-unit-check.mjs';
 import {V2_REFERENCE} from './server-previo-booking-sync.mjs';
+import {voucherFor} from './server-previo-reservation-write.mjs';
 import {senderAddress,TEST_GUEST_SENDER} from '../gmail-policy.mjs';
 
 export const CONFIRM_SCOPE='test-mailbox-confirm-v1';
@@ -145,4 +146,55 @@ export async function cancelTestMailboxBooking({record,reason,cancelConfirmed,tr
  if(v2&&saved){try{await previoWriter.setStatus({resId:Number(v2[1]),status:'cancelled'});previo='cancelled';}catch{previo='cancel_failed';}}
  else if(saved)previo='manual';
  return saved?Object.assign(saved,{previoSync:previo}):saved;
+}
+
+// V2 modification (owner 2026-11-11): new dates and/or another unit of the same type for an active single-unit V2
+// booking. Order: checks (ours + Previo, own booking excluded) -> Previo change with readback -> our state under the
+// database lock -> a new confirmation letter that must be approved again. If our save fails after the Previo change,
+// the Previo booking is set back to the previous dates/unit (best effort, reported).
+export const MODIFY_SCOPE='test-mailbox-modify-v1';
+export function attestModification({key,tenantId,caseId,expectedRevision,draft,change,checkedAt}){
+ if(typeof key!=='string'||!/^[a-f0-9]{64}$/.test(key))fail('SETUP_REQUIRED');
+ const fields=[MODIFY_SCOPE,tenantId,caseId,String(expectedRevision),sha(draft.text),sha(draft.operatorReviewText),change.arrival,change.departure,change.unit,String(change.depositAmount),checkedAt];
+ if(fields.some(v=>typeof v!=='string'||!v||/[\r\n]/.test(v)))fail('INVALID_EVIDENCE');
+ return {scope:MODIFY_SCOPE,checkedAt,attestation:createHmac('sha256',Buffer.from(key,'hex')).update(fields.join('\n')).digest('hex')};
+}
+export async function modifyTestMailboxBooking({record,arrival,departure,unit,modifyConfirmed,attestationKey,transport,previoWriter=null,unitCheckFn=null,
+ quoteFn=fetchPublicPriceReference,clock=()=>new Date().toISOString()}={}){
+ if(modifyConfirmed!==true)fail('MODIFY_NOT_CONFIRMED');
+ if(typeof transport!=='function')fail('SETUP_REQUIRED');
+ const b=record?.data?.booking;
+ if(!['finalized','deposit_received'].includes(b?.status))fail('NOT_ACTIVE_BOOKING');
+ if(Array.isArray(b.units))fail('MULTI_UNIT_MODIFY_UNSUPPORTED');
+ const v2=String(b.previo?.reference||'').match(V2_REFERENCE);
+ if(!v2)fail('PREVIO_MANUAL_BOOKING');
+ if(!previoWriter)fail('PREVIO_WRITE_DISABLED');
+ const old=record.data.state?.values||{};
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(arrival||'')||!/^\d{4}-\d{2}-\d{2}$/.test(departure||'')||departure<=arrival)fail('INVALID_DATE');
+ if(arrival===old.arrival&&departure===old.departure&&unit===b.unit)fail('NOTHING_CHANGED');
+ const cabin=cabinKeyFromUnit(old.unit);
+ if(!unitsForCabin(cabin).includes(unit))fail('UNIT_NOT_IN_TYPE');
+ const values={...old,arrival,departure};
+ let quote;
+ try{quote=quoteFn(quoteInputFromCase(values,cabin));}catch(error){if(error?.code==='PRICE_FACTS_MISSING')fail('CONFIRMATION_FACTS_MISSING');fail('CONFIRMATION_PRICE_MISSING');}
+ if(await unitTaken({transport,record,unit,arrival,departure}))fail('UNIT_TAKEN');
+ const voucher=voucherFor({tenantId:record.tenantId,caseId:record.caseId});
+ if(typeof unitCheckFn==='function'){let r;try{r=await unitCheckFn({unit,arrival,departure,previoReference:voucher});}catch{r={status:'unknown'};}
+  if(r?.status==='taken')fail('UNIT_TAKEN_IN_PREVIO');}
+ const language=/^(hu|de|en|si)$/.test(values.language||'')?values.language:'hu';
+ const built=buildBookingConfirmation({values,quote,previo:{reference:b.previo.reference,recordedAt:b.previo.recordedAt},language,bookingNumber:voucher,modified:true});
+ const resId=Number(v2[1]);
+ const changedInPrevio=await previoWriter.modifyBooking({tenantId:record.tenantId,caseId:record.caseId,resId,oldValues:old,values,cabin,unit,totalHuf:quote.total});
+ const draft={text:built.text,operatorReviewText:built.operatorReviewText+
+  `\nMódosítás: ${old.arrival}→${old.departure}, egység ${b.unit} ⇒ ${arrival}→${departure}, egység ${unit} (csak kezelői adat). Previo-foglalás ${resId} módosítva és visszaolvasva.`+
+  (b.status==='deposit_received'?'\nA foglaló már beérkezett: az esetleges különbözetet kézzel egyeztesd a vendéggel.':'')};
+ const change={arrival,departure,unit,depositAmount:built.deposit.amount};
+ const proof=attestModification({key:attestationKey,tenantId:record.tenantId,caseId:record.caseId,expectedRevision:record.revision,draft,change,checkedAt:clock()});
+ let saved;
+ const revert=async()=>{try{await previoWriter.modifyBooking({tenantId:record.tenantId,caseId:record.caseId,resId,oldValues:values,values:old,cabin,unit:b.unit,
+   totalHuf:quoteFn(quoteInputFromCase(old,cabin)).total});return true;}catch{return false;}};
+ try{saved=await transport('/rest/v1/rpc/sc_tm_modify_booking',{method:'POST',body:{p_tenant:record.tenantId,p_case:record.caseId,p_expected:record.revision,p_change:change,p_draft:draft,p_proof:proof}});}
+ catch(error){if(!(await revert())){const e=Error('PREVIO_MODIFY_NOT_REVERTED');e.code='PREVIO_MODIFY_NOT_REVERTED';throw e;}throw error;}
+ if(!saved&&!(await revert()))fail('PREVIO_MODIFY_NOT_REVERTED');
+ return {saved,deposit:built.deposit,previo:changedInPrevio};
 }

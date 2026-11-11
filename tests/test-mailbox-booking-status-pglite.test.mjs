@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 import {ingestTestMailboxMessage} from '../shared-core/server-test-mailbox-case.mjs';
-import {confirmTestMailboxBooking,markTestMailboxDepositReceived,cancelTestMailboxBooking} from '../shared-core/server-test-mailbox-confirm.mjs';
+import {confirmTestMailboxBooking,markTestMailboxDepositReceived,cancelTestMailboxBooking,attestModification} from '../shared-core/server-test-mailbox-confirm.mjs';
 
 // V1 booking completion (owner/ChatGPT 2026-11-06): operator attests the manual Previo recording -> server-built
 // confirmation with deposit -> 'finalized'; deposit received is a separate step. Real PostgreSQL (PGlite), fictional data.
@@ -39,7 +39,7 @@ test('V1 completion: Previo attestation -> confirmation with deposit -> finalize
     return (await db.query("select * from sc_cases where tenant_id=$1 and ($2::text is null or data->'sourceReceipt'->>'thread_id'=$2)",[url.searchParams.get('tenant_id').slice(3),thread??null])).rows;
    }
    const fn=url.pathname.split('/').at(-1);
-   const args={sc_tm_create:['p_tenant','p_case','p_data','p_proof'],sc_tm_followup:['p_tenant','p_case','p_expected','p_message','p_values','p_draft','p_proof'],sc_tm_decide:['p_tenant','p_case','p_expected','p_draft_hash','p_decision','p_reason'],sc_tm_confirm_booking:['p_tenant','p_case','p_expected','p_booking','p_draft','p_proof'],sc_tm_deposit_received:['p_tenant','p_case','p_expected','p_received_on'],sc_tm_cancel_booking:['p_tenant','p_case','p_expected','p_reason']}[fn];
+   const args={sc_tm_create:['p_tenant','p_case','p_data','p_proof'],sc_tm_followup:['p_tenant','p_case','p_expected','p_message','p_values','p_draft','p_proof'],sc_tm_decide:['p_tenant','p_case','p_expected','p_draft_hash','p_decision','p_reason'],sc_tm_confirm_booking:['p_tenant','p_case','p_expected','p_booking','p_draft','p_proof'],sc_tm_deposit_received:['p_tenant','p_case','p_expected','p_received_on'],sc_tm_cancel_booking:['p_tenant','p_case','p_expected','p_reason'],sc_tm_modify_booking:['p_tenant','p_case','p_expected','p_change','p_draft','p_proof']}[fn];
    const vals=args.map(k=>typeof body[k]==='object'&&body[k]!==null?JSON.stringify(body[k]):body[k]??null);
    return (await db.query(`select ${fn}(${vals.map((_,i)=>'$'+(i+1)).join(',')}) r`,vals)).rows[0].r;
   }catch(error){throw Object.assign(Error(error.code==='42501'?'FORBIDDEN':'DB'),{code:error.code==='42501'?'FORBIDDEN':'DB',detail:error.message});}
@@ -52,7 +52,7 @@ test('V1 completion: Previo attestation -> confirmation with deposit -> finalize
   await db.exec("insert into sc_tenants values('sarberki-test','Fictional',true),('demo-test','Fictional other',true)");
   for(const f of ['deployment/cloud-approval/install.sql','deployment/cloud-approval/separate-approver-permission.sql','deployment/exact-receipt/install.sql'])await db.exec(await read(f));
   await db.query('insert into sc_isolated_approval_key(key_hex) values($1)',[KEY]);
-  for(const f of ['deployment/test-mailbox/install.sql','deployment/test-mailbox/booking-status.sql','deployment/test-mailbox/booking-unit.sql','deployment/test-mailbox/booking-cancel.sql','deployment/test-mailbox/booking-multiunit.sql'])await db.exec(await read(f));
+  for(const f of ['deployment/test-mailbox/install.sql','deployment/test-mailbox/booking-status.sql','deployment/test-mailbox/booking-unit.sql','deployment/test-mailbox/booking-cancel.sql','deployment/test-mailbox/booking-multiunit.sql','deployment/test-mailbox/booking-modify.sql'])await db.exec(await read(f));
   await db.exec('update sc_test_mailbox_config set enabled=true');
   for(const [role,id] of Object.entries(ids)){await db.query('insert into auth.users values($1)',[id]);await db.query('insert into auth.sessions values($1,$2,null)',[sessions[role],id]);}
   await db.query('insert into sc_memberships values($1,$2,true,true,false),($1,$3,true,false,true)',[TENANT,ids.writer,ids.approver]);
@@ -60,6 +60,7 @@ test('V1 completion: Previo attestation -> confirmation with deposit -> finalize
   assert.equal((await db.exec(await read('deployment/test-mailbox/booking-unit.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
   assert.equal((await db.exec(await read('deployment/test-mailbox/booking-cancel.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
   assert.equal((await db.exec(await read('deployment/test-mailbox/booking-multiunit.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
+  assert.equal((await db.exec(await read('deployment/test-mailbox/booking-modify.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
   const common={token:'t'.repeat(40),transport:transportFor('writer'),attestationKey:KEY,fetchImpl:gmailFetch};
   const {caseId}=await ingestTestMailboxMessage({...common,messageId:THREAD});
   const load=async()=>{const r=(await db.query('select * from sc_cases where case_id=$1',[caseId])).rows[0];return {tenantId:r.tenant_id,caseId:r.case_id,revision:Number(r.revision),data:r.data};};
@@ -141,6 +142,18 @@ test('V1 completion: Previo attestation -> confirmation with deposit -> finalize
   const again=(await db.query('select * from sc_cases where case_id=$1',[second.caseId])).rows[0];
   void again;
   const blocked=await db.query("select count(*)::int n from sc_cases o where o.data->'booking'->'units' ? '14'");assert.equal(blocked.rows[0].n,1);
+  // Modification (booking-modify.sql, owner 2026-11-11): the second case (unit 12, 06-12→14) moves.
+  const r2now=(await db.query('select * from sc_cases where case_id=$1',[second.caseId])).rows[0];
+  const modify=async(change,attKey=KEY)=>{const draft={text:'Módosított visszaigazolás (teszt).',operatorReviewText:'Kezelői: módosítás.'};
+   const proof=attestModification({key:attKey,tenantId:TENANT,caseId:second.caseId,expectedRevision:Number(r2now.revision),draft,change,checkedAt:new Date().toISOString()});
+   return transportFor('writer')('/rest/v1/rpc/sc_tm_modify_booking',{method:'POST',body:{p_tenant:TENANT,p_case:second.caseId,p_expected:Number(r2now.revision),p_change:change,p_draft:draft,p_proof:proof}});};
+  // Unit 13 is in the multi-unit booking until 06-13: refused under the lock.
+  await assert.rejects(modify({arrival:'2027-06-12',departure:'2027-06-14',unit:'13',depositAmount:63000}),/DB/);
+  await assert.rejects(modify({arrival:'2027-06-20',departure:'2027-06-22',unit:'12',depositAmount:63000},'f0'.repeat(32)),/FORBIDDEN/,'forged proof');
+  const moved=await modify({arrival:'2027-06-20',departure:'2027-06-22',unit:'12',depositAmount:63000});
+  assert.equal(moved.data.state.values.arrival,'2027-06-20');assert.equal(moved.data.booking.unit,'12');assert.equal(moved.data.state.approval,'pending');
+  assert.equal(moved.data.booking.modifications[0].from.arrival,'2027-06-12');assert.equal(moved.data.drafts.at(-1).modification,true);
+  assert.equal((await db.query("select count(*)::int n from sc_audit where case_id=$1 and kind='tm_booking_modified'",[second.caseId])).rows[0].n,1);
   // anon has no execute.
   assert.equal((await db.query("select has_function_privilege('anon','public.sc_tm_confirm_booking(text,text,bigint,jsonb,jsonb,jsonb)','execute') a")).rows[0].a,false);
  }finally{await db.close();}

@@ -3,7 +3,7 @@
 // proven pieces (server-previo-reservation-write.mjs: create/confirm/cancel PASS on 73521, 2026-11-10/11).
 // Locks: API TEST 73521 only; switch PREVIO_WRITE_ENABLED=sandbox-73521-only (default off); a recorded owner
 // permission id in PREVIO_WRITE_PERMISSION_ID; idempotent voucher per case. No guest e-mail/phone is sent.
-import {buildReservationXml,buildStatusXml,buildVoucherSearchXml,reservationsWithVoucher,parseReservationResponse,
+import {buildReservationXml,buildStatusXml,buildModifyXml,buildVoucherSearchXml,reservationsWithVoucher,parseReservationResponse,voucherFor,
  writePrevioReservation,WRITE_SWITCH_VALUE,PREVIO_XML_ORIGIN} from './server-previo-reservation-write.mjs';
 
 const fail=code=>{const e=Error(code);e.code=code;throw e;};
@@ -44,6 +44,25 @@ export function previoBookingWriter(env,fetchImpl=globalThis.fetch,{pauseMs=5000
     if(found.length===1&&found[0].ok)return {resId:found[0].resId,voucher:request.voucher,created:true};
     fail('PREVIO_WRITE_UNCERTAIN');
    }
+  },
+  // Modification: find the reservation by its voucher (old dates), require exactly one room, send the change, then
+  // read it back at the new dates. A changed outcome that cannot be read back -> PREVIO_MODIFY_UNVERIFIED.
+  async modifyBooking({tenantId,caseId,resId,oldValues,values,cabin,unit,totalHuf}){
+   const voucher=voucherFor({tenantId,caseId});
+   const rows=async v=>{const text=await post('/x1/hotel/searchReservations',buildVoucherSearchXml({hotelId:'73521',voucher,arrival:v.arrival,departure:v.departure}));
+    if(/<error>/.test(text))fail('PREVIO_SEARCH_FAILED');
+    return [...text.matchAll(/<reservation>([\s\S]*?)<\/reservation>/g)].map(m=>m[1]).filter(b=>b.includes(`<voucher>${voucher}</voucher>`)&&b.includes(`<resId>${resId}</resId>`))
+     .map(b=>({comId:Number(b.match(/<comId>(\d+)<\/comId>/)?.[1]),statusId:Number(b.match(/<statusId>(\d+)<\/statusId>/)?.[1]),objId:Number(b.match(/<object>\s*<objId>(\d+)/)?.[1]),
+      from:b.match(/<term>\s*<from>(\d{4}-\d{2}-\d{2})/)?.[1],to:b.match(/<term>[\s\S]*?<to>(\d{4}-\d{2}-\d{2})/)?.[1]}));};
+   const before=await rows(oldValues);
+   if(before.length!==1||![1,2].includes(before[0].statusId))fail('PREVIO_BOOKING_NOT_ACTIVE');
+   const req=buildModifyXml({resId,comId:before[0].comId,cabin,unit,values,totalHuf});
+   const result=parseReservationResponse(await post('/x1/hotel/reservation',req.xml));
+   if(!result.ok)fail(result.code);
+   const after=await rows(values);
+   const expectedObj=buildModifyXml({resId,comId:before[0].comId,cabin,unit,values,totalHuf}).xml.match(/<objId>(\d+)/)[1];
+   if(after.length!==1||after[0].from!==values.arrival||after[0].to!==values.departure||String(after[0].objId)!==expectedObj)fail('PREVIO_MODIFY_UNVERIFIED');
+   return {resId,comId:before[0].comId,previous:before[0],current:after[0]};
   },
   async setStatus({resId,status}){
    const result=parseReservationResponse(await post('/x1/hotel/reservation',buildStatusXml({resId,status}).xml));
