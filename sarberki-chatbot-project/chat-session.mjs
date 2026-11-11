@@ -23,7 +23,7 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
    // A stay request usually starts with dates and the party, not with "is there a free place?" (owner demo check
    // 2026-11-11): stay dates together with a party size also open the booking conversation; FAQ questions do not.
    if(faq.intent==='availability')bookingContext=true;
-   else if(!bookingContext&&!['hotTub','fishing','deposit'].includes(faq.intent)){
+   else if(!bookingContext&&!['hotTub','fishing','deposit','pet'].includes(faq.intent)){
     const probe=normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now:clock()}).normalized;
     // Dates AND a party size: a date alone ("szeretnénk foglalni") stays the booking FAQ answer, as before.
     if((probe.dates||hasPotentialStayDate(message))&&(Number.isInteger(probe.adults)||Number.isInteger(probe.guests)))bookingContext=true;
@@ -40,7 +40,7 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
    if(bareNumber&&facts.dates&&Number.isInteger(facts.adults)&&Number.isInteger(facts.children)&&!childAgesPending&&!facts.units_open_request)
     uncertainParty.push('adults','children','guests');
    const hasBookingUpdate=bookingUpdate&&(unparsedStayDate||uncertainParty.length>0||['dates','adults','children','guests','units_requested'].some(key=>bookingUpdate[key]!=null)||(bookingUpdate.cabin&&!bookingUpdate.cabin.startsWith('?')));
-   if(['welcome','hotTub','deposit','fishing','booking','cabins','checkin'].includes(faq.intent)&&!hasBookingUpdate){
+   if(['welcome','hotTub','deposit','fishing','pet','booking','cabins','checkin'].includes(faq.intent)&&!hasBookingUpdate){
     // A standalone number after an informational answer has no clear referent.
     lastDecision=null;
     return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};

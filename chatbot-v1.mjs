@@ -24,7 +24,11 @@ const WORDS={
   si:{checkin:`Prijava od ${dot(o.checkinFrom)}, odjava do ${dot(o.checkoutBy)}.`,
    deposit:`Predplačilo je odvisno od števila gostov, rok plačila pa od časa do prihoda. Rok plačila je ${days} dni pri več kot ${lead} dneh do prihoda in ${hours} ur pri največ ${lead} dneh; točen rok potrdimo posebej.`}
  };
- for(const lang of Object.keys(WORDS))Object.assign(WORDS[lang],facts[lang],{hotTub:hotTubSentence(lang),fishing:FISHING_GENERAL_TEXT[lang]});
+  // Pets (owner demo check 2026-11-11): the same approved rule and fee as the e-mail reply (business-config).
+ const r=o,fee=Number(r.petFeeHufPerPetPerDay),feeText=r.petFeeVerified&&Number.isFinite(fee)?String(fee).replace(/\B(?=(\d{3})+(?!\d))/g,' '):null;
+ const pet=r.petAllowedForFee?(feeText?{hu:`Háziállat hozható, díja ${feeText} Ft/nap/állat.`,de:`Haustiere sind erlaubt; die Gebühr beträgt ${feeText} Ft pro Tag und Tier.`,
+  en:`Pets are allowed; the fee is ${feeText} Ft per pet per day.`,si:`Hišni ljubljenčki so dovoljeni; pristojbina znaša ${feeText} Ft na žival na dan.`}:null):null;
+ for(const lang of Object.keys(WORDS))Object.assign(WORDS[lang],facts[lang],{hotTub:hotTubSentence(lang),...(pet?{pet:pet[lang]}:{}),fishing:FISHING_GENERAL_TEXT[lang]});
 }
 // Presentation of an already selected intent; no second classification.
 export function renderChatbotIntent(intent,language='hu'){
@@ -46,6 +50,7 @@ export function chatbotReply({message='',language='hu'}={}){
  else if(asksAvailability||(mentionsStay&&(hasStayDates||asksBooking)))intent='availability';
  else if(mentionsHotTub)intent='hotTub';
  else if(/előleg|eloleg|deposit|anzahlung|akontacij/u.test(text))intent='deposit';
+ else if(WORDS[lang]?.pet&&/(?:kutya|kutyá|macska|háziállat|haziallat|állat\b|\bdog|\bcat\b|\bpets?\b|hund|katze|haustier|pes\b|psa\b|mačk|hišn\w* ljubljen)/u.test(text))intent='pet';
  else if(/horgász|horgasz|angeln|fishing|ribolov|ribišk/u.test(text))intent='fishing';
  else if(asksBooking)intent='booking';
  else if(mentionsStay||/háztyp|szállástípus/u.test(text))intent='cabins';

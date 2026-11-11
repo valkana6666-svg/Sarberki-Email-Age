@@ -131,3 +131,12 @@ test('demo check 2026-11-11: dates + party in the first message open the booking
  // FAQ-only questions keep the FAQ answer.
  const faq=createChatInquirySession({clock}).reply('Van dézsa?');assert.equal(faq.decision,null);
 });
+
+test('demo check 2026-11-11: pet question answered with the approved fee in four languages, also inside a booking conversation',()=>{
+ const clock=()=>new Date('2026-11-11T12:00:00Z');
+ const cases=[['Lehet kutyát hozni?',/Háziállat hozható, díja 2 000 Ft\/nap\/állat/],['Darf ich meinen Hund mitbringen?',/Haustiere sind erlaubt/],
+  ['Can we bring our dog?',/Pets are allowed; the fee is 2 000 Ft/],['Lahko pripeljemo psa?',/Hišni ljubljenčki so dovoljeni/]];
+ for(const [m,re] of cases)assert.match(createChatInquirySession({clock}).reply(m).text,re,m);
+ const chat=createChatInquirySession({clock});chat.reply('Szia! 2027. július 5-től 8-ig jönnénk 2 felnőtt, gyerek nincs.');
+ assert.match(chat.reply('És kutyát hozhatunk?').text,/Háziállat hozható/);
+});

@@ -537,9 +537,9 @@ export function languageFromText(text='',{conservative=false}={}){
   const deDiacritics=/[äß]/iu.test(text)||huScore===0&&/[öü]/iu.test(text)?2:0;
   const scores={
     hu:huScore,
-    de:(text.match(/\b(?:hallo|guten tag|möchte|möchten|würde|würden|hätte|hätten|anfrage|unterkunft|buchung|gäste|personen|erwachsene|kinder|verfügbar|übernacht|preis|nächte|telefon|freundlichen grüßen|für|wäre|eigenem|möglich)\w*/giu)||[]).length
+    de:(text.match(/\b(?:hallo|guten tag|möchte|möchten|würde|würden|hätte|hätten|anfrage|unterkunft|buchung|gäste|personen|erwachsene|kinder|verfügbar|übernacht|preis|nächte|telefon|freundlichen grüßen|für|wäre|eigenem|möglich|darf|dürfen|hund|haustier|mitbringen|gibt es)\w*/giu)||[]).length
        + deDiacritics,
-    en:(text.match(/\b(?:would|booking|reservation|accommodation|guests|adults|children|available|availability|cabin|stay|nights?|price|please|phone|total price|thank you|aged)\w*/giu)||[]).length,
+    en:(text.match(/\b(?:would|booking|reservation|accommodation|guests|adults|children|available|availability|cabin|stay|nights?|price|please|phone|total price|thank you|aged|bring|dogs?|pets?|is there|do you)\w*/giu)||[]).length,
     si:(text.match(/\b(?:pozdravljeni|pozdrav|slovenščin|nadaljev|družinsk|hišk|masažn|nastanitev|rezervacij|oseb|odrasl|otrok|prosto|koča|ribolov|želimo|želeli|prosimo|sporočite|lahko|bivali|prihod|odhod|cena|noči|telefon|lastnim|pomolom|hvala|lep pozdrav)\w*/giu)||[]).length
        + ((text.match(/[čšž]/giu)||[]).length ? 2 : 0)
   };
