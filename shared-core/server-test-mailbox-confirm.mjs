@@ -92,7 +92,7 @@ export async function confirmTestMailboxBooking({record,previoReference,previoRe
   previoReference='V2-'+previoCreated.resId;
  }
  const recordedAt=clock();
- const built=buildBookingConfirmation({values,quote,previo:{reference:previoReference,recordedAt},language});
+ const built=buildBookingConfirmation({values,quote,previo:{reference:previoReference,recordedAt},language,bookingNumber:previoCreated?.voucher??null});
  const draft={text:built.text,operatorReviewText:built.operatorReviewText};
  const booking={previoReference:built.previo.reference,previoRecordedAt:recordedAt,depositPct:built.deposit.pct,depositAmount:built.deposit.amount,depositDeadlineUtc:built.deposit.receiptDeadlineUtc,unit};
  if(list.length>1)booking.units=list;

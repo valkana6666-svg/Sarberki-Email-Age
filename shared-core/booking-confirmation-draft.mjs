@@ -20,7 +20,9 @@ export function localDeadline(isoUtc,timeZone=BUSINESS.timezone){
 const dot=d=>d.replaceAll('-','.')+'.';
 
 // Pure: facts + server-computed quote + operator-attested Previo recording -> confirmation text and deposit.
-export function buildBookingConfirmation({values,quote,previo,language,rules=BUSINESS.bookingRules,paymentInstructions=BUSINESS.paymentInstructions}={}){
+// bookingNumber (optional, V2 owner/ChatGPT 2026-11-11): the Previo voucher number of this very reservation (the
+// SC-… value Previo stores and prints on its own voucher). Shown to the guest; the internal resId never is.
+export function buildBookingConfirmation({values,quote,previo,language,bookingNumber=null,rules=BUSINESS.bookingRules,paymentInstructions=BUSINESS.paymentInstructions}={}){
  const lang=LANGS.includes(language)?language:'hu';
  const adults=Number(values?.adults),children=Number(values?.children||0),guests=adults+children;
  if(!/^\d{4}-\d{2}-\d{2}$/.test(values?.arrival||'')||!/^\d{4}-\d{2}-\d{2}$/.test(values?.departure||'')||!Number.isInteger(adults)||adults<1||!Number.isInteger(children)||children<0)fail('CONFIRMATION_FACTS_MISSING');
@@ -32,6 +34,8 @@ export function buildBookingConfirmation({values,quote,previo,language,rules=BUS
  const amount=Math.round(quote.accommodation*policy.depositPct/100);
  const due=localDeadline(policy.receiptDeadlineUtc);
  const cabin=CABIN_NAMES[quote.cabin]?.[lang]||String(values.unit||quote.cabin||'');
+ if(bookingNumber!==null&&!/^SC-[0-9A-F]{16}$/.test(String(bookingNumber)))fail('BOOKING_NUMBER_INVALID');
+ const num=bookingNumber?{hu:`\nFoglalási szám: ${bookingNumber}`,de:`\nBuchungsnummer: ${bookingNumber}`,en:`\nBooking number: ${bookingNumber}`,si:`\nŠtevilka rezervacije: ${bookingNumber}`}:{hu:'',de:'',en:'',si:''};
  const name=typeof values?.name==='string'&&values.name.trim()?values.name.trim():null;
  const cancelDays=Number(rules.cancellationDaysUnder15Guests);
  const cancel=Number.isFinite(cancelDays)&&cancelDays>0&&cancelDays===Number(rules.cancellationDaysFrom15Guests)?cancelDays:null;
@@ -40,28 +44,28 @@ export function buildBookingConfirmation({values,quote,previo,language,rules=BUS
   en:`${guests} guests (${adults} adults${children?`, ${children} children`:''})`,si:`${guests} oseb (${adults} odraslih${children?`, ${children} otrok`:''})`}[lang];
  const T={
   hu:[`${name?`Kedves ${name}!`:'Kedves Vendégünk!'}`,'Köszönjük foglalását, rendszerünkben rögzítettük.',
-   `Foglalás\n${dot(values.arrival)} – ${dot(values.departure)}, ${cabin}, ${party}.`,
+   `Foglalás\n${dot(values.arrival)} – ${dot(values.departure)}, ${cabin}, ${party}.${num.hu}`,
    `Ár\nSzállásdíj: ${huf(quote.accommodation)} Ft, idegenforgalmi adó: ${huf(quote.tourismTax)} Ft, összesen: ${huf(quote.total)} Ft.`,
    `Foglaló\nA foglaló a szállásdíj ${policy.depositPct}%-a: ${huf(amount)} Ft. Kérjük, hogy ${due.date} ${due.time}-ig (magyarországi idő) érkezzen meg. A foglalás a foglaló beérkezése után válik véglegessé.${pay?'\n'+pay:'\nA fizetés módjáról külön tájékoztatjuk.'}`,
    ...(cancel?[`Lemondás\nAz érkezés előtt legalább ${cancel} nappal történő lemondásnál a foglaló nem vész el.`]:[]),'Üdvözlettel:\n'+BUSINESS.brandName],
   de:[`${name?`Liebe/r ${name},`:'Liebe Gäste,'}`,'vielen Dank für Ihre Buchung, wir haben sie in unserem System erfasst.',
-   `Buchung\n${dot(values.arrival)} – ${dot(values.departure)}, ${cabin}, ${party}.`,
+   `Buchung\n${dot(values.arrival)} – ${dot(values.departure)}, ${cabin}, ${party}.${num.de}`,
    `Preis\nÜbernachtung: ${huf(quote.accommodation)} HUF, Kurtaxe: ${huf(quote.tourismTax)} HUF, gesamt: ${huf(quote.total)} HUF.`,
    `Anzahlung\nDie Anzahlung beträgt ${policy.depositPct}% des Übernachtungspreises: ${huf(amount)} HUF. Bitte sorgen Sie dafür, dass sie bis ${due.date} ${due.time} Uhr (ungarische Zeit) eingeht. Die Buchung wird mit Eingang der Anzahlung verbindlich.${pay?'\n'+pay:'\nÜber die Zahlungsweise informieren wir Sie gesondert.'}`,
    ...(cancel?[`Stornierung\nBei einer Stornierung mindestens ${cancel} Tage vor der Anreise verfällt die Anzahlung nicht.`]:[]),'Mit freundlichen Grüßen\n'+BUSINESS.brandName],
   en:[`${name?`Dear ${name},`:'Dear Guest,'}`,'thank you for your booking; we have recorded it in our system.',
-   `Booking\n${dot(values.arrival)} – ${dot(values.departure)}, ${cabin}, ${party}.`,
+   `Booking\n${dot(values.arrival)} – ${dot(values.departure)}, ${cabin}, ${party}.${num.en}`,
    `Price\nAccommodation: ${huf(quote.accommodation)} HUF, tourist tax: ${huf(quote.tourismTax)} HUF, total: ${huf(quote.total)} HUF.`,
    `Deposit\nThe deposit is ${policy.depositPct}% of the accommodation price: ${huf(amount)} HUF. Please make sure it arrives by ${due.date} ${due.time} (Hungarian time). The booking becomes final once the deposit has been received.${pay?'\n'+pay:'\nWe will send the payment details separately.'}`,
    ...(cancel?[`Cancellation\nIf you cancel at least ${cancel} days before arrival, the deposit is not forfeited.`]:[]),'Kind regards,\n'+BUSINESS.brandName],
   si:[`${name?`Spoštovani ${name},`:'Spoštovani gost,'}`,'hvala za vašo rezervacijo; zabeležili smo jo v našem sistemu.',
-   `Rezervacija\n${dot(values.arrival)} – ${dot(values.departure)}, ${cabin}, ${party}.`,
+   `Rezervacija\n${dot(values.arrival)} – ${dot(values.departure)}, ${cabin}, ${party}.${num.si}`,
    `Cena\nNastanitev: ${huf(quote.accommodation)} HUF, turistična taksa: ${huf(quote.tourismTax)} HUF, skupaj: ${huf(quote.total)} HUF.`,
    `Predplačilo\nPredplačilo znaša ${policy.depositPct}% cene nastanitve: ${huf(amount)} HUF. Prosimo, da prispe do ${due.date} ${due.time} (madžarski čas). Rezervacija postane dokončna po prejemu predplačila.${pay?'\n'+pay:'\nO načinu plačila vas obvestimo posebej.'}`,
    ...(cancel?[`Odpoved\nPri odpovedi najmanj ${cancel} dni pred prihodom predplačilo ne zapade.`]:[]),'Lep pozdrav,\n'+BUSINESS.brandName]};
  const text=T[lang].join('\n\n');
  const operatorReviewText=(lang==='hu'?'':T.hu.join('\n\n')+'\n\n')+'Kezelői (a vendég nem látja):\n'+
-  `Previo-hivatkozás: ${reference}; rögzítve: ${previo.recordedAt}.\n`+
+  `Previo-hivatkozás: ${reference}; rögzítve: ${previo.recordedAt}.\n`+(bookingNumber?`Previo-voucherszám (a vendég látja, a Previo saját voucherén is ez áll): ${bookingNumber}.\n`:'')+
   `Foglaló: ${policy.depositPct}% × ${huf(quote.accommodation)} Ft = ${huf(amount)} Ft; határidő: ${policy.paymentWindowHours} óra a rögzítéstől (${policy.daysUntilArrival} nap az érkezésig) → ${due.date} ${due.time}.\n`+
   (pay?'':'Teendő: a bankszámlaszámot és a fizetés módját külön üzenetben küldd el a vendégnek (tulajdonosi döntés 2026-11-06: a V1 levél nem tartalmazza).\n')+
   'A Previo-rögzítés nem fizetés: a „Foglaló beérkezett” külön lépés.';

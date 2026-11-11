@@ -45,6 +45,8 @@ test('V2 finalize: search, create the option on the chosen unit, save "V2-<resId
  assert.equal(saved.p_booking.previoReference,'V2-5001');assert.match(saved.p_booking.previoReference,V2_REFERENCE);
  assert.match(saved.p_draft.operatorReviewText,/Previo \(V2, automatikus\): opció létrehozva .* azonosító 5001, egység 12/);
  assert.doesNotMatch(saved.p_draft.text,/5001|V2-|Previo/,'nothing internal in the guest letter');
+ assert.match(saved.p_draft.text,/Foglalási szám: SC-[0-9A-F]{16}/,'the Previo voucher number is shown to the guest');
+ assert.equal(saved.p_draft.text.match(/SC-[0-9A-F]{16}/)[0],xml.match(/<voucher>([^<]+)/)[1],'same number as sent to Previo');
  assert.equal(r.previo.resId,5001);
 });
 
@@ -151,4 +153,19 @@ test('multi-unit refusals: wrong count, duplicates, other type; A+B pair of the 
  ab.data.state.values.unit=CABIN_NAMES.splitA.hu;
  const d=db();await confirmTestMailboxBooking({record:ab,previoRecorded:true,previoReference:'P-2',unit:'7/A',units:['7/A','7/B'],attestationKey:KEY,transport:d.transport});
  assert.deepEqual(d.rpc[0].body.p_booking.units,['7/A','7/B']);
+});
+
+test('booking number: shown in all four languages, refused if malformed; manual V1 path shows none',async()=>{
+ const {buildBookingConfirmation}=await import('../shared-core/booking-confirmation-draft.mjs');
+ const {fetchPublicPriceReference}=await import('../price-source/public-price-fallback.mjs');
+ const values={arrival:'2027-06-15',departure:'2027-06-17',adults:'2',children:'0',unit:'Deluxe'};
+ const quote=fetchPublicPriceReference({arrival:'2027-06-15',departure:'2027-06-17',cabin:'deluxe',adults:2,children:[]});
+ const previo={reference:'V2-5001',recordedAt:new Date().toISOString()};
+ const labels={hu:'Foglalási szám',de:'Buchungsnummer',en:'Booking number',si:'Številka rezervacije'};
+ for(const [language,label] of Object.entries(labels)){
+  const r=buildBookingConfirmation({values,quote,previo,language,bookingNumber:'SC-0123456789ABCDEF'});
+  assert.match(r.text,new RegExp(label+': SC-0123456789ABCDEF'));assert.doesNotMatch(r.text,/V2-5001/);
+ }
+ assert.throws(()=>buildBookingConfirmation({values,quote,previo,language:'hu',bookingNumber:'20260003'}),/BOOKING_NUMBER_INVALID/);
+ assert.doesNotMatch(buildBookingConfirmation({values,quote,previo,language:'hu'}).text,/Foglalási szám/);
 });
