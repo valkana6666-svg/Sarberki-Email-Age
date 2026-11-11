@@ -13,7 +13,7 @@ Feladat: #9 6796044652 (ChatGPT, tulajdonosi cél). Csak TEST: oldal `leafy-chim
 | V2 foglaló beérkezett → Previo megerősítve (zöld) | **PASS** (11-11, felületről) | |
 | V2 több egység (2 ház) a kezelőfelületről | **NEM IGAZOLT** | API-n PASS (2 commission); felületen tesztlevél kell („2 Családi faházba …”) |
 | V2 vendégadatok (e-mail, telefon) a Previóban | **PASS** (API, 11-11) | |
-| V2 foglalás módosítása (dátum/egység) | Previo-oldal **PASS** (11-11, élő); felület NEM IGAZOLT | DB-telepítés kell (`booking-modify.sql`, GitHub `test-db-install`) |
+| V2 foglalás módosítása (dátum/egység) | Previo-oldal **PASS** (11-11, élő); DB-telepítés **PASS** (11-11 22:35Z, run 43112863172); felület NEM IGAZOLT | főpróba a felületről |
 | Gyerekárak | **PASS** 12/13 (Deluxe 5 + Családi, VIP, C, főszezon, 1 éj, alaplétszámon belül) | **15-ös ház pótágy: a Previo-tesztben nincs 3 fős ár → a bemutatón NE mutassuk** |
 | Szezon, 1 éj +20 %, IFA, C 5. fő | **PASS** (8/8, 11-09) | |
 | Dupla foglalás / dupla küldés védelem | **PASS** (DB-zár, idempotens voucher, küldési napló; tesztek) | |
@@ -21,7 +21,7 @@ Feladat: #9 6796044652 (ChatGPT, tulajdonosi cél). Csak TEST: oldal `leafy-chim
 
 ## 2. Szükséges döntések / engedélyek (tulajdonos)
 1. **TEST-kiadás** (összevonva: chatbot-javítás, állapotszöveg, módosítás-kód) – a Netlify-keret miatt egyben.
-2. **DB-telepítés** `booking-modify.sql` – Work-kerettel, vagy a GitHub-alapú telepítés beállításával (10 perc, `TULAJDONOSI-TEENDOK.md` 1. pont).
+2. ~~DB-telepítés `booking-modify.sql`~~ – KÉSZ (11-11, GitHub `test-db-install`, tulajdonosi jóváhagyással).
 3. **Previo TEST-írás a próbákhoz:** egy határidős engedély (11-14 23:59-ig) a bemutató főpróbáira, minden próba lemondással zárul.
 4. **Tesztlevelek** a sarberkito@gmail.com-ról (a felület csak onnan ment) – lásd 3. pont, péntek estig.
 
