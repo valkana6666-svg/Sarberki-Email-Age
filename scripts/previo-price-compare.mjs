@@ -13,7 +13,12 @@ export const CASES=Object.freeze([
 export const CHILD_CASES=Object.freeze([
  ['deluxe','2027-06-15','2027-06-17',2,'alaplétszámon belül',[4,1]],['deluxe','2027-06-15','2027-06-17',4,'gyerek 5',[5]],
  ['deluxe','2027-06-15','2027-06-17',4,'gyerek 1',[1]],['deluxe','2027-06-15','2027-06-17',4,'gyerek 12',[12]],
- ['deluxe','2027-06-15','2027-06-17',4,'gyerek 5 és 1',[5,1]]]);
+ ['deluxe','2027-06-15','2027-06-17',4,'gyerek 5 és 1',[5,1]],
+ ['family','2027-06-15','2027-06-17',4,'Családi + gyerek 5',[5]],['family','2027-06-15','2027-06-17',4,'Családi + baba',[1]],
+ ['vip','2027-06-15','2027-06-17',4,'VIP + gyerek 6',[6]],['splitC','2027-06-15','2027-06-17',4,'C + gyerek 7',[7]],
+ ['deluxe','2027-07-10','2027-07-12',4,'főszezon + gyerek',[5]],['deluxe','2027-06-15','2027-06-16',4,'1 éj + gyerek',[5]],
+ ['family','2027-06-15','2027-06-17',2,'Családi, 2 gyerek alaplétszámon belül',[4,12]],
+ ['small','2027-06-15','2027-06-17',2,'15-ös pótágy gyerek (Previo-ár hiányzik 11-11)',[5]]]);
 if(import.meta.url===`file://${process.argv[1]}`){
  let fail=0;
  const list=process.argv.includes('--children')?CHILD_CASES:CASES;
