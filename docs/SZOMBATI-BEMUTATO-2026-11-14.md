@@ -13,7 +13,7 @@ Feladat: #9 6796044652 (ChatGPT, tulajdonosi cél). Csak TEST: oldal `leafy-chim
 | V2 foglaló beérkezett → Previo megerősítve (zöld) | **PASS** (11-11, felületről) | |
 | V2 több egység (2 ház) a kezelőfelületről | **NEM IGAZOLT** | API-n PASS (2 commission); felületen tesztlevél kell („2 Családi faházba …”) |
 | V2 vendégadatok (e-mail, telefon) a Previóban | **PASS** (API, 11-11) | |
-| V2 foglalás módosítása (dátum/egység) | Previo-oldal **PASS** (11-11, élő); DB-telepítés **PASS** (11-11 22:35Z, run 43112863172); felület NEM IGAZOLT | főpróba a felületről |
+| V2 foglalás módosítása (dátum/egység) | Previo-oldal **PASS** (11-11, élő); DB-telepítés **PASS** (run 43112863172); felület **PASS** (11-11 22:40Z, V2-118123675, lemondva) | |
 | Gyerekárak | **PASS** 12/13 (Deluxe 5 + Családi, VIP, C, főszezon, 1 éj, alaplétszámon belül) | **15-ös ház pótágy: a Previo-tesztben nincs 3 fős ár → a bemutatón NE mutassuk** |
 | Szezon, 1 éj +20 %, IFA, C 5. fő | **PASS** (8/8, 11-09) | |
 | Dupla foglalás / dupla küldés védelem | **PASS** (DB-zár, idempotens voucher, küldési napló; tesztek) | |
@@ -40,7 +40,7 @@ Előkészítés péntek este (tulajdonos, 5 perc): három tesztlevél a sarberki
 | 5 | Visszaigazoló levél: jóváhagyás → Válasz küldése | sarberkito-ban levél „Foglalási szám: SC-…” sorral | |
 | 6 | Foglaló beérkezett | Previóban zöld | |
 | 7 | L2 → mentés → ár (2 egység) → véglegesítés 2 házzal + V2 | Previóban 1 foglalás 2 házzal | |
-| 8 | (ha telepítve) Módosítás: L1 új dátum | Previóban módosul, új levél „módosítottuk” | kihagyható |
+| 8 | Módosítás: L1 új dátum/egység | Previóban módosul, új levél „módosítottuk” (ugyanaz az SC-szám) | kihagyható |
 | 9 | Lemondás (L1, L2) | Previóban lemondva | |
 | 10 | L3 (német, gyerek) → tervezet németül, ár gyerekkel | német levél, gyerekár | |
 Lezárás: minden tesztfoglalás lemondva; semmi nem megy valódi címre.
