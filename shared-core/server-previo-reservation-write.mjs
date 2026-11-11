@@ -99,7 +99,9 @@ export function parseReservationResponse(text){
 }
 
 // The only network path. Every lock is checked before any request; the search runs first (idempotency).
-export async function writePrevioReservation({env={},permissionId,request,fetchImpl=globalThis.fetch,timeoutMs=15000}={}){
+// Default 60 s: a 73521 create answered after more than 20 s on 2026-11-11 (sandbox trial; the reservation existed).
+// A timeout is never a failure to create: the caller re-reads by voucher (idempotent) before any retry.
+export async function writePrevioReservation({env={},permissionId,request,fetchImpl=globalThis.fetch,timeoutMs=60000}={}){
  if(env.PREVIO_WRITE_ENABLED!==WRITE_SWITCH_VALUE)fail('WRITE_DISABLED');
  if(typeof permissionId!=='string'||!/^PERM-\d{8}-[A-Z0-9-]{2,40}$/.test(permissionId))fail('OWNER_PERMISSION_REQUIRED');
  if(!request||String(request.hotelId)!=='73521'||request.url!==PREVIO_XML_ORIGIN+'/x1/hotel/reservation')fail('SANDBOX_ONLY');
