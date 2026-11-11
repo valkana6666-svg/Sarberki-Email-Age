@@ -145,6 +145,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # Rerun 2026-11-11 (owner: "Futtasd az R2-t"), same PERM-20261110-API-LIFECYCLE-R2; Claude read-only preflight PASS.
       - name: Once-only owner-approved lifecycle R2 with exact readbacks and cancellation
         env:
           PREVIO_API_KEY: ${{ secrets.PREVIO_TEST_API_KEY }}
