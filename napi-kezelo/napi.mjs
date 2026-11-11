@@ -213,7 +213,7 @@ el('logout').addEventListener('click',async()=>{
  catch{if(turn===epoch&&!authenticated)el('session-status').textContent='A kijelentkezés nem ellenőrizhető. Próbálja újra.';}
 });
 const tmStatus=Object.freeze({pending:'Jóváhagyásra vár.',returned_for_edit:'Visszaküldve javításra. Writer új tervezetet menthet.',
- rejected:'Elutasítva; a foglalás nyitva marad, Writer új tervezettel újranyithatja.',approved_internal:'Belső jóváhagyás mentve (test-mailbox-v1). Nincs levélküldés vagy Previo-foglalás.'});
+ rejected:'Elutasítva; a foglalás nyitva marad, Writer új tervezettel újranyithatja.',approved_internal:'Belső jóváhagyás mentve (test-mailbox-v1). A levél a „Válasz küldése” gombbal küldhető (csak a tesztcímre); Previo-foglalást csak a véglegesítés hoz létre.'});
 const tmDecisionLabel=Object.freeze({approve:'jóváhagyva',return:'visszaküldve javításra',reject:'elutasítva'});
 // Display known adult/child counts when extraction did not supply a separate total.
 // This is a read-only label: never infer an unknown child count or change stored facts.
@@ -459,7 +459,7 @@ async function tmMutate(kind){
   if(result?.caseId!==base.caseId||result.revision!==base.revision+1||result.approval!==expected)throw Error('INVALID_DATA');
   rows=[];listLoaded=false;updateCounts();el('case-list').replaceChildren();
   await openTestMailboxCase(base.caseId,turn,kind==='redraft'?'Új tervezet mentve és visszaolvasva. Független jóváhagyásra vár.':
-   kind==='approve'?'Belső jóváhagyás mentve és visszaolvasva (test-mailbox-v1). Nincs levélküldés vagy Previo-foglalás.':
+   kind==='approve'?'Belső jóváhagyás mentve és visszaolvasva (test-mailbox-v1). A levél a „Válasz küldése” gombbal küldhető (csak a tesztcímre); Previo-foglalást csak a véglegesítés hoz létre.':
    kind==='return'?'Visszaküldés mentve és visszaolvasva. Writer új tervezetet menthet.':'Elutasítás mentve és visszaolvasva. A foglalás nyitva marad.');
  }catch(error){if(current(turn)){
   if(error.message==='AUTH_REQUIRED')failed(error);

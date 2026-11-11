@@ -503,7 +503,7 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   e['approve-confirm'].checked=true;await e['approve-confirm'].dispatch('change');assert.equal(e['approve-draft'].disabled,false);
   await e['approve-draft'].dispatch('click');await settle();
   assert.deepEqual(posts.at(-1),{tenantId:'sarberki-test',caseId,action:'test-mailbox-decide',decision:'approve',expectedRevision:7,reviewedDraftHash:hash('Kitalált negyedik tervezet.')});
-  assert.match(e['detail-status'].textContent,/Belső jóváhagyás mentve.*Nincs levélküldés vagy Previo-foglalás/);
+  assert.match(e['detail-status'].textContent,/Belső jóváhagyás mentve.*Válasz küldése.*csak a tesztcímre.*csak a véglegesítés hoz létre/);
   assert.equal(e['approve-confirm'].disabled,true);assert.equal(e['draft-editor'].disabled,true);
   // Approved text can be copied for a MANUAL Gmail reply; nothing is sent and no request is made.
   assert.equal(e['copy-approved'].hidden,false);
