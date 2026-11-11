@@ -50,9 +50,10 @@ jobs:
               echo "select set_config('sarberki.${p}_install_project_ref','mojnqizbcaczstguikpv',false);"
               echo "select set_config('sarberki.${p}_backup_sha256','${BACKUP_SHA}',false);"
             done
-            echo "\\i ${SQL_FILE}"
+            printf '%s\n' "\\i ${SQL_FILE}"
             verify="${SQL_FILE%.sql}.verify.sql"
-            if [ -f "$verify" ]; then echo "\\echo VERIFY"; echo "\\i ${verify}"; fi
+            # printf, not echo: the container shell (dash) turns "\\e" into ESC (run 43112363772).
+            if [ -f "$verify" ]; then printf '%s\n' '\echo VERIFY' "\\i ${verify}"; fi
           } > /tmp/install.psql
           psql "$SARBERKI_TEST_DB_INSTALL_URL" -X -q -v ON_ERROR_STOP=1 -f /tmp/install.psql
       - name: Summary
