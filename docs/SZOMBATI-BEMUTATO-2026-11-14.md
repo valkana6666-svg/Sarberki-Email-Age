@@ -47,3 +47,23 @@ Lezárás: minden tesztfoglalás lemondva; semmi nem megy valódi címre.
 
 ## 4. Szombat reggeli gyorsellenőrzés (Claude, csak olvasás, ~1 perc)
 `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt node scripts/demo-preflight.mjs` (verzió, Previo-azonosság, szabad helyek, ár, chatbot) + `CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/live-test-readonly-smoke.mjs` (böngészős írásmentes próba). Első futás 11-11: **PASS**.
+
+## 5. 15 leveles buktató-próba (Claude, 2026-11-11 éjjel; kitalált levelek, valódi beolvasási út, Previo 73521 csak olvasás)
+| # | Buktató | Eredmény |
+|---|---|---|
+| 01 | 1 éjszaka Deluxe | PASS (szabad hely; ár a kezelői lépésben, +20 %) |
+| 02 | 6 fő egy Osztott C-be (max 5) | NYITOTT: „Osztott” általánosan, nincs Previo-olvasás; vendégszövegben „A kapacitás ellenőrzése még nem igazolt.” – kezelő dönt, NE mutassuk |
+| 03 | C 5 fő | RÉSZBEN: szabad hely PASS, a pótágy-feltétel mondata hiányzik – NYITOTT |
+| 04 | dátum nélkül | PASS (rövid adatkérő levél) |
+| 05 | teli Deluxe | PASS („nincs elegendő szabad helyünk”) |
+| 06 | fordított dátum | PASS (dátumot kér, nem találgat) |
+| 07 | múltbeli dátum (2025) | RÉSZBEN: „pontosítás szükséges”, de a 2025-ös dátumot visszaírja – NYITOTT |
+| 08 | DE VIP + „ein Baby (1 Jahr)” | **JAVÍTVA** (baba = gyerek, kor 1 → Previo: szabad) |
+| 09 | EN Családi, 3 gyerek (2, 7, 12) | PASS |
+| 10 | SI Deluxe | PASS |
+| 11 | „gyerek nincs, a kutyánkat is hoznánk” | **JAVÍTVA** (eddig a „nincs” a kutyára is vonatkozott; most díjjal válaszol) |
+| 12 | A+B egymás mellett | PASS („szomszédos elhelyezést külön ellenőrizzük”); a „kapacitás nem igazolt” mondat ld. 02 |
+| 13 | háztípus nélkül | PASS (háztípust kér, Previo-hívás nincs) |
+| 14 | „2027.08.01-08.04”, „4 fő, ebből 2 gyerek” | **JAVÍTVA** (eddig 08.01–08.08 és felnőttszámot kérdezett) |
+| 15 | 18 fős csoport | PASS (több ház, horgászszabályok, adatkérés) |
+Eredmény: 8 PASS, 4 javítva, 3 nyitott (Osztott C/pótágy, múltbeli dátum, belső „kapacitás” mondat) – a bemutatón ne ezekkel. Mellékesen talált: a „Foglaló beérkezett” mai dátummal 23–24 UTC között elutasít (DB `current_date` UTC vs. budapesti foglalási nap) – SQL-javítás, DB-telepítéssel, később.

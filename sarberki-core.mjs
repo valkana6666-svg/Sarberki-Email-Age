@@ -91,7 +91,7 @@ export function requestFlagsFromText(text=''){
   const tub=/(?:dézs\p{L}*|dezsa\p{L}*|hot[ -]?tub|whirlpool|badefass|badezuber|jacuzzi|(?:vroč\p{L}*|masaž\p{L}*)\s*kad)/iu;
   const negation=/(?<!\p{L})(?:nem|mégsem|megsem|nincs|nélkül|nelkul|not|no|without|kein\p{L}*|nicht|ohne|brez|ne)(?!\p{L})/iu;
   const requested=pattern=>{
-    const mentions=text.split(/[.!?\n]|\b(?:de|but|aber|ampak)\b/iu).filter(s=>pattern.test(s));
+    const mentions=text.split(/[.!?\n,;]|\b(?:de|but|aber|ampak)\b/iu).filter(s=>pattern.test(s)); // per clause: "gyerek nincs, a kutyát hoznánk" (sweep 2026-11-11)
     return mentions.length? !negation.test(mentions.at(-1)):false;
   };
   return {petRequested:requested(pet),hotTubRequested:requested(tub),parkingQuestion:/(?:parkol|parking|parkpl(?:atz|ätze)|parkiriš|parkiris)/iu.test(text)};
@@ -236,6 +236,9 @@ export function adultCountFromText(text=''){
   if(deCounts.length)return new Set(deCounts).size===1?deCounts[0]:null;
   const m=text.match(/\b(\d{1,2})\s*(?:felnőtt\w*|felnott\w*|adults?|erwachsene\w*|odrasl\w*)\b/iu);
   if(m) return Number(m[1]);
+  // "4 fő, ebből 2 gyerek" / "4 Personen, davon 2 Kinder" / "4 people, including 2 children": adults = total − children.
+  const ofWhich=text.match(/\b(\d{1,2})\s*(?:fő|fo|személy\w*|szemely\w*|personen|people|persons|guests|oseb\w*)\s*,?\s*(?:ebből|ebbol|közülük|kozuluk|davon|including|of\s+whom|od\s+tega)\s*(\d{1,2})\s*(?:gyerek\w*|gyermek\w*|kinder\w*|children|kids|otrok\w*)/iu);
+  if(ofWhich&&Number(ofWhich[1])>Number(ofWhich[2])) return Number(ofWhich[1])-Number(ofWhich[2]);
   const huWords={egy:1,két:2,ket:2,kettő:2,ketto:2,három:3,harom:3,négy:4,negy:4,öt:5,ot:5,hat:6,hét:7,het:7,nyolc:8};
   const hw=text.match(/\b(egy|két|ket|kettő|ketto|három|harom|négy|negy|öt|ot|hat|hét|het|nyolc)\s+(?:felnőtt|felnott)\w*\b/iu)?.[1]?.toLocaleLowerCase('hu-HU');
   if(hw) return huWords[hw];
@@ -243,8 +246,26 @@ export function adultCountFromText(text=''){
   const sw=text.match(/\b(en|ena|eno|dva|dve|trije|tri|štirje|stirje|štiri|stiri|pet|šest|sest|sedem|osem)\s+odrasl\w*\b/iu)?.[1]?.toLocaleLowerCase('sl-SI');
   return sw ? siWords[sw] : null;
 }
+// Babies (sweep 2026-11-11): "ein Baby (1 Jahr)", "egy kisbaba (8 hónapos)", "a baby" count as children; a stated
+// age (months -> 0) is kept, an unstated one stays unknown so the reply asks for it.
+const BABY_WORDS='(?:kis)?(?:baba|babá\\p{L}*|baby|babys|babies|säugling\\p{L}*|saugling\\p{L}*|infant\\p{L}*|dojenč\\p{L}*|dojenc\\p{L}*)';
+const BABY_AGE='\\s*\\(?\\s*(\\d{1,2})\\s*(év\\p{L}*|ev\\p{L}*|jahr\\p{L}*|years?(?:\\s+old)?|let\\p{L}*|hónap\\p{L}*|honap\\p{L}*|monat\\p{L}*|months?(?:\\s+old)?|mesec\\p{L}*)\\s*\\)?';
+function babiesFromText(text){
+ const words={egy:1,ein:1,eine:1,einem:1,einen:1,a:1,an:1,one:1,en:1,enega:1,eno:1,'1':1,két:2,ket:2,zwei:2,two:2,dva:2,dve:2,'2':2};
+ const m=[...text.matchAll(new RegExp('(?<!\\p{L})(?:(egy|két|ket|ein|eine|einem|einen|zwei|a|an|one|two|en|enega|eno|dva|dve|1|2)\\s+)?'+BABY_WORDS+'(?!\\p{L})(?:'+BABY_AGE+')?','giu'))];
+ if(!m.length)return null;
+ return {count:m.reduce((n,x)=>n+(words[(x[1]||'').toLocaleLowerCase()]||1),0),
+  ages:m.filter(x=>x[2]).map(x=>/^(?:hónap|honap|monat|month|mesec)/iu.test(x[3])?0:Number(x[2])),
+  strip:t=>t.replace(new RegExp('(?<!\\p{L})(?:(?:egy|két|ket|ein|eine|einem|einen|zwei|a|an|one|two|en|enega|eno|dva|dve|1|2)\\s+)?'+BABY_WORDS+'(?!\\p{L})(?:'+BABY_AGE+')?','giu'),' ')};
+}
 export function childCountFromText(text=''){
   text=activeMessageText(text);
+  const babies=babiesFromText(text);
+  if(!babies)return childCountWithoutBabies(text);
+  if(ambiguousPartyFieldsFromText(text).includes('children'))return null;
+  return (childCountWithoutBabies(babies.strip(text))??0)+babies.count;
+}
+function childCountWithoutBabies(text=''){
   if(ambiguousPartyFieldsFromText(text).includes('children'))return null;
   if(/\b(?:nincs(?:enek)?\s+(?:gyerek|gyermek)|(?:gyermek|gyerek)(?:ek)?\s+(?:nélkül|nelkul)|(?:gyermek|gyerek)(?:ek)?\s+(?:nincs(?:enek)?|nem\s+(?:jön|jon|jönnek|jonnek|lesz|lesznek))|no\s+(?:children|kids)|without\s+(?:children|kids)|keine\s+kinder|ohne\s+kinder|brez\s+otrok|ni\s+otrok)\b/iu.test(text))return 0;
   const m=text.match(/\b(\d{1,2})\s*(?:gyerek\w*|gyermek\w*|children|child|kids?|kinder|kind|(?:otrok|otroc)\w*)\b/iu);
@@ -288,7 +309,7 @@ function parseDateRange(text='', now=new Date(), timeZone='Europe/Budapest'){
       inferredYear:false
     };
   }
-  const iso=text.match(/\b(20\d{2})[-./](\d{1,2})[-./](\d{1,2})\s*(?:[-–]|to|bis|do|és(?=\s*20\d{2}[-./]\d{1,2}[-./]))\s*(?:(20\d{2})[-./](\d{1,2})[-./])?(\d{1,2})\b/iu);
+  const iso=text.match(/\b(20\d{2})[-./](\d{1,2})[-./](\d{1,2})\s*(?:[-–]|to|bis|do|és(?=\s*20\d{2}[-./]\d{1,2}[-./]))\s*(?:(?:(20\d{2})[-./])?(\d{1,2})[-./](?=\d))?(\d{1,2})\b/iu); // "2027.08.01-08.04" keeps the departure month (sweep 2026-11-11)
   if(iso) return {arrival:`${iso[1]}-${String(iso[2]).padStart(2,'0')}-${String(iso[3]).padStart(2,'0')}`,departure:`${iso[4]||iso[1]}-${String(iso[5]||iso[2]).padStart(2,'0')}-${String(iso[6]).padStart(2,'0')}`,inferredYear:false};
   const europeanNumeric=text.match(/\b(\d{1,2})[./-](\d{1,2})[./-](20\d{2})\s*(?:[-–]|to|bis|do)\s*(\d{1,2})[./-](\d{1,2})[./-](20\d{2})\b/iu);
   if(europeanNumeric){
@@ -482,6 +503,11 @@ export function phoneFromText(text=''){
 }
 export function childAgesFromText(text=''){
   text=activeMessageText(text);
+  const babies=babiesFromText(text);
+  if(!babies)return childAgesWithoutBabies(text);
+  return [...childAgesWithoutBabies(babies.strip(text)),...babies.ages];
+}
+function childAgesWithoutBabies(text=''){
   text=text.replace(/(?<!\p{L})(?:én|en|i am|ich bin|star sem)\s+\d{1,2}\s*(?:éves|eves|years? old|jahre alt|let)(?:\s+vagyok)?/giu,'');
   if(!/(?:gyerek|gyermek|child|children|kids?\b|kinder|kind\b|otrok|otroc)/iu.test(text))return [];
   const separate=[...text.matchAll(/\b(\d{1,2})\s*(?:éves|eves|years? old|jahre alt)\b/giu)];
@@ -588,7 +614,7 @@ export function replySummary(language='hu', {arrival=null,departure=null,guests=
       dog:'Kutyát is hoznának.'
     },
     de:{
-      people:()=>children?`${guests} Personen (${adults} Erwachsene und ${children} ${children===1?'Kind':'Kinder'}${ageList('de')?` im Alter von ${ageList('de')} Jahren`:''})`:`${guests} Personen`,
+      people:()=>children?`${guests} Personen (${adults} Erwachsene und ${children} ${children===1?'Kind':'Kinder'}${ageList('de')?` im Alter von ${ageList('de')} ${ageList('de')==='1'?'Jahr':'Jahren'}`:''})`:`${guests} Personen`,
       base:p=>`Sie möchten vom ${fmtNumeric(arrival)} bis ${fmtNumeric(departure)} mit ${p} bei uns übernachten.`,
       pier:'Wenn möglich, wünschen Sie ein Haus mit eigenem Steg.',
       hotTub:'Außerdem wünschen Sie ein Badefass / einen Whirlpool.',
