@@ -399,7 +399,10 @@ async function bookingAction(button,body,done){
   if(!current(turn))return;
   if(result?.caseId!==target.caseId||result.revision!==target.revision+1)throw Error('INVALID_DATA');
   rows=[];listLoaded=false;updateCounts();el('case-list').replaceChildren();
-  await openTestMailboxCase(target.caseId,turn,done(result));
+  const message=done(result);
+  await openTestMailboxCase(target.caseId,turn,message);
+  // The result stays next to the booking buttons too (it said "Mentés…" after a successful action).
+  if(current(turn))el('booking-result').textContent=message;
  }catch(error){
   if(!current(turn))return;
   if(error?.message==='AUTH_REQUIRED')failed(error);
