@@ -45,3 +45,14 @@ test('refuses without Previo recording, facts or price; four languages render',(
  for(const [lang,re] of [['de',/94 500 HUF/],['en',/94 500 HUF/],['si',/94 500 HUF/]])assert.match(buildBookingConfirmation({values,quote,previo,language:lang}).text,re);
  assert.deepEqual(localDeadline('2027-01-10T23:30:00Z'),{date:'2027.01.11.',time:'00:30'});
 });
+
+test('multi-unit booking: the guest letter states the number of houses (live L2 rehearsal 2026-11-11), no house numbers',()=>{
+ const v={arrival:'2027-07-20',departure:'2027-07-22',adults:'8',children:'0',name:'Nagy Péter',language:'hu'};
+ const q=fetchPublicPriceReference({arrival:v.arrival,departure:v.departure,cabin:'family',adults:8,children:[],units:2});
+ assert.equal(q.units,2);assert.equal(q.total,250800);
+ const hu=buildBookingConfirmation({values:v,quote:q,previo,language:'hu'}).text;
+ assert.match(hu,/2027\.07\.20\. – 2027\.07\.22\., 2 × Családi, 8 fő \(8 felnőtt\)/);
+ assert.doesNotMatch(hu,/\b[23], [23]\b|Egység/);
+ assert.match(buildBookingConfirmation({values:v,quote:q,previo,language:'de'}).text,/, 2 × \S+, 8 Personen/);
+ assert.match(buildBookingConfirmation({values,quote,previo,language:'hu'}).text,/, Deluxe, 2 fő/); // single unit unchanged
+});

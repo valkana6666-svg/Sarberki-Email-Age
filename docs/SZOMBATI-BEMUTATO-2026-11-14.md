@@ -11,7 +11,7 @@ Feladat: #9 6796044652 (ChatGPT, tulajdonosi cél). Csak TEST: oldal `leafy-chim
 | V1: levél → Previo szabad hely → tervezet → ár → jóváhagyás → küldés | **PASS** (iPhone 11-09, 11-11) | |
 | V2 egy egység: véglegesítés → Previo-opció → levél SC-számmal → küldés → lemondás | **PASS** (11-11) | #9 6795428713 |
 | V2 foglaló beérkezett → Previo megerősítve (zöld) | **PASS** (11-11, felületről) | |
-| V2 több egység (2 ház) a kezelőfelületről | **NEM IGAZOLT** | API-n PASS (2 commission); felületen tesztlevél kell („2 Családi faházba …”) |
+| V2 több egység (2 ház) a kezelőfelületről | **PASS** (11-11 22:53Z, L2, V2-118123799, lemondva) | levélben „2 × Családi” – javítás kiadva |
 | V2 vendégadatok (e-mail, telefon) a Previóban | **PASS** (API, 11-11) | |
 | V2 foglalás módosítása (dátum/egység) | Previo-oldal **PASS** (11-11, élő); DB-telepítés **PASS** (run 43112863172); felület **PASS** (11-11 22:40Z, V2-118123675, lemondva) | |
 | Gyerekárak | **PASS** 12/13 (Deluxe 5 + Családi, VIP, C, főszezon, 1 éj, alaplétszámon belül) | **15-ös ház pótágy: a Previo-tesztben nincs 3 fős ár → a bemutatón NE mutassuk** |

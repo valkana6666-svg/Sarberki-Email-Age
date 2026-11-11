@@ -33,7 +33,9 @@ export function buildBookingConfirmation({values,quote,previo,language,bookingNu
  if(policy.status!=='calculated')fail('DEPOSIT_POLICY_UNVERIFIED');
  const amount=Math.round(quote.accommodation*policy.depositPct/100);
  const due=localDeadline(policy.receiptDeadlineUtc);
- const cabin=CABIN_NAMES[quote.cabin]?.[lang]||String(values.unit||quote.cabin||'');
+ const cabinName=CABIN_NAMES[quote.cabin]?.[lang]||String(values.unit||quote.cabin||'');
+ // Multi-unit booking (V2, owner 2026-11-11): the guest sees how many houses, e.g. "2 × Családi"; never the house numbers.
+ const cabin=Number.isInteger(quote.units)&&quote.units>1?`${quote.units} × ${cabinName}`:cabinName;
  if(bookingNumber!==null&&!/^SC-[0-9A-F]{16}$/.test(String(bookingNumber)))fail('BOOKING_NUMBER_INVALID');
  const num=bookingNumber?{hu:`\nFoglalási szám: ${bookingNumber}`,de:`\nBuchungsnummer: ${bookingNumber}`,en:`\nBooking number: ${bookingNumber}`,si:`\nŠtevilka rezervacije: ${bookingNumber}`}:{hu:'',de:'',en:'',si:''};
  const name=typeof values?.name==='string'&&values.name.trim()?values.name.trim():null;
