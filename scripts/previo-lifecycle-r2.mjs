@@ -1,5 +1,6 @@
 // Once-only owner-approved 73521 lifecycle R2. No imports cause network activity.
 import {appendFileSync} from 'node:fs';
+import {isReservationListResponse} from './previo-lifecycle-search-response.mjs';
 import {buildReservationXml,buildStatusXml,buildVoucherSearchXml,writePrevioReservation} from '../shared-core/server-previo-reservation-write.mjs';
 import {checkPrevioUnit} from '../shared-core/server-previo-unit-check.mjs';
 import {readPrevioPrice} from '../shared-core/server-previo-price-check.mjs';
@@ -47,7 +48,7 @@ async function xmlCall(path,xml){
 const tag=(text,name)=>text.match(new RegExp('<'+name+'>([^<]*)</'+name+'>'))?.[1]??null;
 async function findOwn(){
  const text=await xmlCall('/x1/hotel/searchReservations',buildVoucherSearchXml(request));
- ensure(/<reservations(?:\s|>)/.test(text),'SEARCH_UNVERIFIED');
+ ensure(isReservationListResponse(text),'SEARCH_UNVERIFIED');
  return [...text.matchAll(/<reservation>([\s\S]*?)<\/reservation>/g)].map(m=>m[1]).filter(b=>tag(b,'voucher')===VOUCHER).map(b=>{
   const status=tag(b.match(/<statuses>([\s\S]*?)<\/statuses>/)?.[1]||'','cosId')||tag(b,'statusId');
   return {resId:Number(tag(b,'resId')),comId:Number(tag(b,'comId')),status:Number(status),voucher:VOUCHER};
