@@ -105,3 +105,21 @@ export async function markTestMailboxDepositReceived({record,receivedOn,depositC
  if(v2&&saved){try{await previoWriter.setStatus({resId:Number(v2[1]),status:'confirmed'});previo='confirmed';}catch{previo='confirm_failed';}}
  return previo?Object.assign(saved,{previoSync:previo}):saved;
 }
+
+// V2 (owner 2026-11-11): cancellation from the operator view. Our state first (database, under CAS); then, for a V2
+// booking, the Previo TEST record is cancelled (7). A manual V1 reference is only marked here: the operator cancels in
+// Previo by hand. No guest letter is generated or sent.
+export async function cancelTestMailboxBooking({record,reason,cancelConfirmed,transport,previoWriter=null}={}){
+ if(cancelConfirmed!==true)fail('CANCEL_NOT_CONFIRMED');
+ if(typeof transport!=='function')fail('SETUP_REQUIRED');
+ const text=String(reason||'').trim();
+ if(!text||text.length>300||/[\r\n]/.test(text))fail('INVALID_REASON');
+ if(!['finalized','deposit_received'].includes(record?.data?.booking?.status))fail('NOT_ACTIVE_BOOKING');
+ const v2=String(record.data.booking.previo?.reference||'').match(V2_REFERENCE);
+ if(v2&&!previoWriter)fail('PREVIO_WRITE_DISABLED');
+ const saved=await transport('/rest/v1/rpc/sc_tm_cancel_booking',{method:'POST',body:{p_tenant:record.tenantId,p_case:record.caseId,p_expected:record.revision,p_reason:text}});
+ let previo=null;
+ if(v2&&saved){try{await previoWriter.setStatus({resId:Number(v2[1]),status:'cancelled'});previo='cancelled';}catch{previo='cancel_failed';}}
+ else if(saved)previo='manual';
+ return saved?Object.assign(saved,{previoSync:previo}):saved;
+}

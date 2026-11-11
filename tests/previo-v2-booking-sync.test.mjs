@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {previoBookingWriter,V2_REFERENCE} from '../shared-core/server-previo-booking-sync.mjs';
-import {confirmTestMailboxBooking,markTestMailboxDepositReceived} from '../shared-core/server-test-mailbox-confirm.mjs';
+import {confirmTestMailboxBooking,markTestMailboxDepositReceived,cancelTestMailboxBooking} from '../shared-core/server-test-mailbox-confirm.mjs';
 
 // Synthetic only: fictional key, case and Previo answers; fetch is injected, nothing leaves the process.
 const ENV={PREVIO_WRITE_ENABLED:'sandbox-73521-only',PREVIO_HOTEL_ID:'73521',PREVIO_WRITE_PERMISSION_ID:'PERM-20261111-V2-UI',PREVIO_API_KEY:'synthetic-previo-key-0123456789'};
@@ -91,4 +91,18 @@ test('deposit received on a V2 booking -> Previo confirmed (2); a manual V1 refe
  const r2=await markTestMailboxDepositReceived({record:rec('P-1'),receivedOn:'2026-11-11',depositConfirmed:true,transport,previoWriter:previoBookingWriter(ENV,p2.fetchImpl)});
  assert.equal(r2.previoSync,undefined);assert.equal(p2.calls.length,0);
  await assert.rejects(markTestMailboxDepositReceived({record:rec('V2-5001'),receivedOn:'2026-11-11',depositConfirmed:true,transport}),/PREVIO_WRITE_DISABLED/);
+});
+
+test('cancel a V2 booking -> our state first, then Previo storno (7); manual reference -> no Previo call; inactive refused',async()=>{
+ const rec=(r,status='deposit_received')=>({tenantId:'sarberki-test',caseId:'tm-1a2b3c4d5e6f7a8b',revision:5,data:{booking:{status,previo:{reference:r}}}});
+ const calls=[];const transport=async(path,o)=>{calls.push(path);return {case_id:o.body.p_case,revision:6};};
+ const p=previo();
+ const r=await cancelTestMailboxBooking({record:rec('V2-5001'),reason:'Vendég lemondta',cancelConfirmed:true,transport,previoWriter:previoBookingWriter(ENV,p.fetchImpl)});
+ assert.equal(r.previoSync,'cancelled');assert.deepEqual(calls,['/rest/v1/rpc/sc_tm_cancel_booking']);assert.match(p.calls[0].body,/<resId>5001<\/resId><gCosId>7<\/gCosId>/);
+ const p2=previo();
+ assert.equal((await cancelTestMailboxBooking({record:rec('P-1','finalized'),reason:'x',cancelConfirmed:true,transport,previoWriter:previoBookingWriter(ENV,p2.fetchImpl)})).previoSync,'manual');
+ assert.equal(p2.calls.length,0);
+ await assert.rejects(cancelTestMailboxBooking({record:rec('V2-5001','cancelled'),reason:'x',cancelConfirmed:true,transport}),/NOT_ACTIVE_BOOKING/);
+ await assert.rejects(cancelTestMailboxBooking({record:rec('V2-5001'),reason:'x',cancelConfirmed:true,transport}),/PREVIO_WRITE_DISABLED/);
+ await assert.rejects(cancelTestMailboxBooking({record:rec('V2-5001'),reason:'x',cancelConfirmed:false,transport}),/CANCEL_NOT_CONFIRMED/);
 });
