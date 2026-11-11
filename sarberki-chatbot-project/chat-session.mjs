@@ -20,7 +20,14 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
    if(nextLanguage!==undefined){languageMode=mode(nextLanguage);if(languageMode!=='auto')language=languageMode;}
    if(languageMode==='auto'){const detected=languageFromText(message,{conservative:turns>1});if(detected!=='unknown')language=detected;}
    const now=clock(),faq=chatbotReply({message,language});
+   // A stay request usually starts with dates and the party, not with "is there a free place?" (owner demo check
+   // 2026-11-11): stay dates together with a party size also open the booking conversation; FAQ questions do not.
    if(faq.intent==='availability')bookingContext=true;
+   else if(!bookingContext&&!['hotTub','fishing','deposit'].includes(faq.intent)){
+    const probe=normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now:clock()}).normalized;
+    // Dates AND a party size: a date alone ("szeretnénk foglalni") stays the booking FAQ answer, as before.
+    if((probe.dates||hasPotentialStayDate(message))&&(Number.isInteger(probe.adults)||Number.isInteger(probe.guests)))bookingContext=true;
+   }
    if(!bookingContext)return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};
    // Informational detours do not replace the active stay or its missing facts.
    const bookingUpdate=['booking','cabins','checkin'].includes(faq.intent)?normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized:null;

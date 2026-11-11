@@ -119,3 +119,15 @@ test('standalone booking FAQ and date message do not create an active inquiry',(
   assert.deepEqual(chat.snapshot(),{});
  }
 });
+
+test('demo check 2026-11-11: dates + party in the first message open the booking conversation in all four languages',()=>{
+ const clock=()=>new Date('2026-11-11T12:00:00Z');
+ const cases=[['Szia! 2027. július 5-től 8-ig jönnénk 2 felnőtt és 2 gyerek (5 és 9 évesek).',/2027\.07\.05\. és 2027\.07\.08\. között 4 fő/],
+  ['Guten Tag, wir möchten vom 15. bis 17. Juni 2027 kommen, 2 Erwachsene, keine Kinder.',/vom 15\.06\.2027 bis 17\.06\.2027 mit 2 Personen/],
+  ['Hello, we are 3 adults, no children, 25 to 28 August 2027.',/from 25 August 2027 to 28 August 2027 with 3 guests/],
+  ['Pozdravljeni, prišli bi od 20. do 22. junija 2027, 4 odrasli, brez otrok.',/od 20\.06\.2027 do 22\.06\.2027, skupaj 4 osebe/]];
+ for(const [message,expected] of cases){const chat=createChatInquirySession({clock});const r=chat.reply(message);
+  assert.notEqual(r.decision,null,message);assert.match(r.text,expected);}
+ // FAQ-only questions keep the FAQ answer.
+ const faq=createChatInquirySession({clock}).reply('Van dézsa?');assert.equal(faq.decision,null);
+});
