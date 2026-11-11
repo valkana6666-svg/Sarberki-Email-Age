@@ -140,3 +140,25 @@ test('demo check 2026-11-11: pet question answered with the approved fee in four
  const chat=createChatInquirySession({clock});chat.reply('Szia! 2027. július 5-től 8-ig jönnénk 2 felnőtt, gyerek nincs.');
  assert.match(chat.reply('És kutyát hozhatunk?').text,/Háziállat hozható/);
 });
+
+test('chat + Previo TEST read (operator only): requested type only; free/full sentence; stale turn ignored',async()=>{
+ const {buildAvailabilityOptions}=await import('../netlify/functions/availability-options.mjs');
+ const mk=availability=>async({arrival,departure,cabin})=>({arrival,departure,cabin,availability,availableUnits:availability==='available'?3:0,checkedAt:new Date().toISOString(),source:'previo-rest-73521'});
+ const run=async(free,otherFree=true)=>{
+  const chat=createChatInquirySession({clock:()=>new Date()});chat.reply('Szia! 2027. június 10-től 13-ig jönnénk 2 felnőtt, gyerek nincs.');
+  const r=chat.reply('Deluxe faházat kérnénk.');assert.deepEqual(Object.keys(r.capacityInput).sort(),['adults','arrival','cabin','departure','guests','units']);
+  const src=async q=>q.cabin==='deluxe'?mk(free)(q):mk(otherFree?'available':'unavailable')(q);
+  const cap=await buildAvailabilityOptions({...r.capacityInput,fallback:false},src,{tenantId:'sarberki',now:()=>Date.now()});
+  return {chat,cap,turn:chat.turn};
+ };
+ let {chat,cap,turn}=await run('unavailable');
+ assert.match(chat.withCapacity(cap,{turn}).text,/sajnos nincs elegendő szabad helyünk ebben a háztípusban/);
+ ({chat,cap,turn}=await run('available'));
+ assert.match(chat.withCapacity(cap,{turn}).text,/jelenleg van szabad helyünk ebben a háztípusban/);
+ chat.reply('Van dézsa?');assert.equal(chat.withCapacity(cap,{turn}),null,'a later message makes the read stale');
+ // A capacity built WITH fallback (other types free) must not turn "Deluxe full" into "free".
+ const c2=createChatInquirySession({clock:()=>new Date()});c2.reply('Szia! 2027. június 10-től 13-ig jönnénk 2 felnőtt, gyerek nincs.');const r2=c2.reply('Deluxe faházat kérnénk.');
+ const withFallback=await buildAvailabilityOptions(r2.capacityInput,async q=>q.cabin==='deluxe'?mk('unavailable')(q):mk('available')(q),{tenantId:'sarberki',now:()=>Date.now()});
+ const out=c2.withCapacity(withFallback,{turn:c2.turn});
+ assert.ok(out===null||!/van szabad helyünk ebben a háztípusban/.test(out.text));
+});

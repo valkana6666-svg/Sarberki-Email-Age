@@ -22,6 +22,7 @@ import {previoBookingWriter} from '../../shared-core/server-previo-booking-sync.
 import {confirmTestMailboxBooking,markTestMailboxDepositReceived,cancelTestMailboxBooking,modifyTestMailboxBooking} from '../../shared-core/server-test-mailbox-confirm.mjs';
 import {bookingIntentHint} from '../../shared-core/booking-intent.mjs';
 import {previoAvailabilitySource} from '../../shared-core/server-capacity-draft.mjs';
+import {buildAvailabilityOptions} from './availability-options.mjs';
 import {markTestMailboxUnavailable} from '../../shared-core/server-test-mailbox-unavailable.mjs';
 import {fetchMnbEurRate} from './price-quote.mjs';
 import {serverDeployment} from '../../shared-core/server-deployment.mjs';
@@ -188,6 +189,27 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    // approver independent of the draft author). The Gmail token travels in its own header, is used once and
    // is never stored or echoed. Fixed public error codes only.
    // Hungarian translation of a stored foreign-language test-mailbox message, shown under the message.
+   // Chatbot availability (owner demo 2026-11-11, "1. pont"): an AUTHENTICATED operator's chat asks the Previo TEST
+   // free-unit read for a complete, already decided capacity input. Read only; same owner switch as Level 1; never on
+   // the live profile; the public chatbot stays without Previo (availability-options.mjs rule).
+   if(input.action==='chat-availability'){
+    const keys='action,adults,arrival,cabin,departure,guests,tenantId,units';
+    if(event.httpMethod!=='GET'||!cookieMode||live||input.tenantId!==TENANT||Object.keys(input).sort().join(',')!==keys)return cookieResponse(403,{error:'FORBIDDEN'});
+    const reader=previoCapacityReader(env,fetchImpl);
+    if(!reader)return cookieResponse(503,{error:'PREVIO_READ_DISABLED'});
+    const n=k=>Number(input[k]);
+    const day=v=>/^\d{4}-\d{2}-\d{2}$/.test(v||'');
+    if(!day(input.arrival)||!day(input.departure)||input.departure<=input.arrival||!['vip','family','deluxe','small','splitA','splitB','splitC'].includes(input.cabin)
+     ||![n('guests'),n('adults'),n('units')].every(Number.isInteger)||n('guests')<1||n('guests')>40||n('adults')<1||n('adults')>n('guests')||n('units')<1||n('units')>6)
+     return cookieResponse(400,{error:'INVALID_INPUT'});
+    cookieSession=await createOperatorCookieSession({env,fetchImpl}).protectedRead(event);
+    rotatedCookie=cookieSession.setCookie;
+    try{
+     const capacity=await buildAvailabilityOptions({arrival:input.arrival,departure:input.departure,guests:n('guests'),adults:n('adults'),cabin:input.cabin,units:n('units'),fallback:false},
+      previoAvailabilitySource(reader),{tenantId:'sarberki',now:()=>Date.now()});
+     return cookieResponse(200,{result:{capacity}});
+    }catch{return cookieResponse(502,{error:'PREVIO_UNAVAILABLE'});}
+   }
    if(input.action==='test-mailbox-translate'){
     if(event.httpMethod!=='GET'||!cookieMode||!mailboxOn||input.tenantId!==TENANT||Object.keys(input).sort().join(',')!=='action,caseId,tenantId')
      return cookieResponse(403,{error:'FORBIDDEN'});

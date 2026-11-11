@@ -9,12 +9,12 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
  const mode=value=>value==='sl'?'si':['auto','hu','de','en','si'].includes(value)?value:'auto';
  let languageMode=mode(language);
  language=languageMode==='auto'?'hu':languageMode;
- let facts={},bookingContext=false,turns=0,lastDecision=null;
+ let facts={},bookingContext=false,turns=0,lastDecision=null,lastTurn=null;
  return Object.freeze({
   get language(){return language;},
   get languageMode(){return languageMode;},
   setLanguage(value){languageMode=mode(value);if(languageMode!=='auto')language=languageMode;},
-  reset(){facts={};bookingContext=false;turns=0;lastDecision=null;language=languageMode==='auto'?'hu':languageMode;},
+  reset(){facts={};bookingContext=false;turns=0;lastDecision=null;lastTurn=null;language=languageMode==='auto'?'hu':languageMode;},
   reply(message,{language:nextLanguage}={}){
    if(typeof message!=='string'||message.length>1000||++turns>100)throw Error('CHAT_INPUT_LIMIT');
    if(nextLanguage!==undefined){languageMode=mode(nextLanguage);if(languageMode!=='auto')language=languageMode;}
@@ -84,9 +84,22 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
    next.language=language;next.originalText=message;
    facts=next;
    const result=buildChatInquiryReply({message,language,now,facts});
-   lastDecision=result.decision;
-   return {...result,response:{...faq,reply:result.text},extracted:structuredClone(result.decision.facts)};
+   lastDecision=result.decision;lastTurn={message,language,now,facts:structuredClone(facts),turn:turns};
+   // A complete request for one named cabin type may be checked against Previo (authenticated operator only).
+   const capacityInput=result.decision.readyForCapacityCheck&&result.decision.capacity?.input?.cabin?structuredClone(result.decision.capacity.input):null;
+   return {...result,response:{...faq,reply:result.text},extracted:structuredClone(result.decision.facts),capacityInput};
   },
+  // The same reply re-rendered with a verified Previo read (existing central decision path, as in the e-mail draft).
+  // Only for the latest turn; a later message makes an older answer stale.
+  withCapacity(capacity,{turn}={}){
+   if(!lastTurn||turn!==lastTurn.turn||turns!==lastTurn.turn||!capacity||typeof capacity!=='object')return null;
+   const checked=Date.parse(capacity.available_options?.[0]?.checkedAt||capacity.unavailable_options?.[0]?.checkedAt||'')||0;
+   const now=new Date(Math.max(+new Date(lastTurn.now),Date.now(),checked));
+   // Only the requested type counts (as in the e-mail draft): another free type must never read as "this type is free".
+   const result=buildChatInquiryReply({message:lastTurn.message,language:lastTurn.language,now,facts:lastTurn.facts,capacity,fallback:false});
+   return ['AVAILABLE','UNAVAILABLE'].includes(result.decision.capacity?.status)?result:null;
+  },
+  get turn(){return turns;},
   snapshot(){return structuredClone(facts);}
  });
 }

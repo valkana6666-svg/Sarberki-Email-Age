@@ -3,7 +3,7 @@ import {renderChatbotIntent} from '../chatbot-v1.mjs';
 
 // The audience is chosen by the host, never by a guest-controlled URL parameter.
 // Guest rendering never inserts operator review text or server controls.
-export function mountChatView(root,{audience='guest',language='auto',clock}={}){
+export function mountChatView(root,{audience='guest',language='auto',clock,capacityProvider=null}={}){
  const operator=audience==='operator',session=createChatInquirySession({language,clock});
  const log=root.querySelector('[data-chat-log]'),input=root.querySelector('[data-chat-input]');
  const form=root.querySelector('[data-chat-form]'),reset=root.querySelector('[data-chat-reset]');
@@ -36,6 +36,15 @@ export function mountChatView(root,{audience='guest',language='auto',clock}={}){
    append('Vendég / Guest',question,session.language);
    append('Sárberki',result.text,session.language,result.operatorReviewText);
    messages++;updateStatus();input.value='';
+   // Operator test only: a verified Previo TEST read replaces the last answer in place (never the guest widget).
+   if(operator&&capacityProvider&&result.capacityInput){
+    const turn=session.turn,entry=log.lastElementChild;
+    capacityProvider(result.capacityInput).then(capacity=>{
+     const updated=capacity&&session.withCapacity(capacity,{turn});
+     if(!updated||session.turn!==turn||log.lastElementChild!==entry)return;
+     entry.remove();append('Sárberki',updated.text+'\n\n[Previo-teszt: szabad hely ellenőrizve]',session.language,updated.operatorReviewText);
+    }).catch(()=>{});
+   }
   }catch{input.setCustomValidity('Új beszélgetés szükséges / Please start a new chat.');input.reportValidity();}
  }
  function newChat(){session.reset();messages=0;input.value='';input.setCustomValidity('');greeting();}

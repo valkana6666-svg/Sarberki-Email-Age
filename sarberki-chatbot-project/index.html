@@ -69,7 +69,8 @@ summary{cursor:pointer;color:var(--orange2);font-weight:650}
 </main>
 <script type="module">
 import {mountChatView} from './chat-view.mjs';
-mountChatView(document.querySelector('main'),{audience:'operator'});
+import {createChatCapacityProvider} from './chat-capacity-client.mjs';
+mountChatView(document.querySelector('main'),{audience:'operator',capacityProvider:createChatCapacityProvider()});
 </script>
 <script type="module" src="./operator-session.mjs"></script>
 <script type="module" src="./version-status.mjs"></script>
