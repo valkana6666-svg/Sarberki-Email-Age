@@ -134,3 +134,4 @@ Daily request 2026-11-08T05:51Z: Claude scheduled daily Drive backup.
 Daily request 2026-11-09T05:48Z: Claude scheduled daily Drive backup.
 Daily request 2026-11-11T06:36:34Z: Claude scheduled daily Drive backup.
 Pre-install request 2026-11-11T07:29:50Z: Claude, owner-approved TEST booking-cancel install.
+Pre-install request 2026-11-11T08:55:48Z: Claude, owner-approved TEST booking-multiunit install.
