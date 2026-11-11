@@ -7,14 +7,14 @@ Feladat: #9 6796044652 (ChatGPT, tulajdonosi cél). Csak TEST: oldal `leafy-chim
 |---|---|---|
 | Chatbot HU/DE/EN/SI, többfordulós foglalási beszélgetés | **JAVÍTVA, kiadásra vár** | élő próba 11-11: dátum + létszám esetén eddig „nem tudom megválaszolni” volt; javítás `1070d37` (4 nyelv, regressziós teszt) |
 | Chatbot: szabad hely és ár a Previóból | **NINCS (szándékosan)** | a szerveres chat ki van kapcsolva; a chatbot ajánlatkérést rögzít, a foglalást a kezelő véglegesíti (V2). Bemutatón így mutatjuk |
-| Chatbot: háziállat-kérdés | HIÁNY (kicsi) | „Lehet kutyát hozni?” → általános válasz; az e-mailes motor tudja |
+| Chatbot: háziállat-kérdés | **JAVÍTVA** (`3aaa1f9`, 4 nyelv), kiadásra vár | |
 | V1: levél → Previo szabad hely → tervezet → ár → jóváhagyás → küldés | **PASS** (iPhone 11-09, 11-11) | |
 | V2 egy egység: véglegesítés → Previo-opció → levél SC-számmal → küldés → lemondás | **PASS** (11-11) | #9 6795428713 |
 | V2 foglaló beérkezett → Previo megerősítve (zöld) | **PASS** (11-11, felületről) | |
 | V2 több egység (2 ház) a kezelőfelületről | **NEM IGAZOLT** | API-n PASS (2 commission); felületen tesztlevél kell („2 Családi faházba …”) |
 | V2 vendégadatok (e-mail, telefon) a Previóban | **PASS** (API, 11-11) | |
-| V2 foglalás módosítása (dátum/egység) | **KÓD KÉSZ, NEM IGAZOLT** | DB-telepítés kell (`booking-modify.sql`); élő Previo-módosítás engedély kell |
-| Gyerekárak (5 eset, Deluxe) | **PASS** (Work 11-10) | más háztípus, 15-ös pótágy, főszezon+gyerek NEM IGAZOLT |
+| V2 foglalás módosítása (dátum/egység) | Previo-oldal **PASS** (11-11, élő); felület NEM IGAZOLT | DB-telepítés kell (`booking-modify.sql`, GitHub `test-db-install`) |
+| Gyerekárak | **PASS** 12/13 (Deluxe 5 + Családi, VIP, C, főszezon, 1 éj, alaplétszámon belül) | **15-ös ház pótágy: a Previo-tesztben nincs 3 fős ár → a bemutatón NE mutassuk** |
 | Szezon, 1 éj +20 %, IFA, C 5. fő | **PASS** (8/8, 11-09) | |
 | Dupla foglalás / dupla küldés védelem | **PASS** (DB-zár, idempotens voucher, küldési napló; tesztek) | |
 | Hiba/megszakítás (Previo lassú, mentési hiba) | **PASS** (szintetikus); élőben 1 lassú létrehozás helyesen kezelve (11-11) | |
@@ -44,3 +44,6 @@ Előkészítés péntek este (tulajdonos, 5 perc): három tesztlevél a sarberki
 | 9 | Lemondás (L1, L2) | Previóban lemondva | |
 | 10 | L3 (német, gyerek) → tervezet németül, ár gyerekkel | német levél, gyerekár | |
 Lezárás: minden tesztfoglalás lemondva; semmi nem megy valódi címre.
+
+## 4. Szombat reggeli gyorsellenőrzés (Claude, csak olvasás, ~1 perc)
+`NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt node scripts/demo-preflight.mjs` (verzió, Previo-azonosság, szabad helyek, ár, chatbot) + `CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/live-test-readonly-smoke.mjs` (böngészős írásmentes próba). Első futás 11-11: **PASS**.
