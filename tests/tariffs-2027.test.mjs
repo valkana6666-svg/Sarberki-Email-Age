@@ -18,7 +18,8 @@ test('2027 signed final PDF replaces obsolete 2027 figures without changing 4/2 
   assert.equal(Object.isFrozen(SARBERKI_TARIFF_2027.rates[cabin]),true);
  }
 });
-test('all 2026 legacy accommodation prices and configuration are unchanged',()=>{
+test('all 2026 legacy accommodation prices and configuration are unchanged',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-01T00:00:00Z')});
  const before=JSON.stringify(BUSINESS);
  for(const [cabin,[nightlyHuf,includedGuests]] of Object.entries(old)){
   assert.deepEqual(sarberkiTariffForNight('2026-12-31',cabin),{nightlyHuf,includedGuests});
