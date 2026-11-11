@@ -157,9 +157,9 @@ function clearDetail(){
  el('price-panel').hidden=true;el('price-result').textContent='';el('price-insert').disabled=true;el('price-available').checked=false;el('price-available').disabled=true;priceCase=null;priceQuote=null;
  el('unavailable-confirm').checked=false;el('unavailable-confirm').disabled=true;el('unavailable-insert').disabled=true;el('unavailable-result').textContent='';
  el('booking-panel').hidden=true;bookingCase=null;el('booking-state').textContent='';el('booking-result').textContent='';
- for(const id of ['booking-unit','previo-ref','previo-recorded','booking-finalize','deposit-date','deposit-confirm','deposit-mark'])el(id).disabled=true;
+ for(const id of ['booking-unit','previo-ref','previo-recorded','previo-auto','booking-finalize','deposit-date','deposit-confirm','deposit-mark'])el(id).disabled=true;
  el('booking-unit').replaceChildren();
- el('previo-ref').value='';el('previo-recorded').checked=false;el('deposit-confirm').checked=false;el('deposit-date').value='';
+ el('previo-ref').value='';el('previo-recorded').checked=false;el('previo-auto').checked=false;el('deposit-confirm').checked=false;el('deposit-date').value='';
  el('detail-link').href='../cloud-approval.html';
 }
 function clearData(message='A listához jelentkezzen be.'){
@@ -373,18 +373,22 @@ function showBooking(caseId,record){
  const blank=document.createElement('option');blank.value='';blank.textContent=cabinKey?'– válassz –':'Előbb add meg a háztípust';
  el('booking-unit').replaceChildren(blank,...options);el('booking-unit').disabled=!fin||!cabinKey;
  for(const id of ['previo-ref','previo-recorded'])el(id).disabled=!fin;
+ // V2: offered only when the server says it can write the Previo TEST booking itself.
+ el('previo-auto-wrap').hidden=record.previoWrite!==true;el('previo-auto').disabled=!fin||record.previoWrite!==true;el('previo-auto').checked=false;
  for(const id of ['deposit-date','deposit-confirm'])el(id).disabled=!dpt;
  if(dpt)el('deposit-date').value=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Budapest'});
 }
 const bookingErrors={PREVIO_RECORDING_REQUIRED:'Add meg a Previo-hivatkozást, és pipáld be a rögzítést.',ALREADY_FINALIZED:'Ez a foglalás már véglegesítve van.',
  CONFIRMATION_FACTS_MISSING:'Hiányzik a pontos dátum, a felnőttszám vagy egy gyermek életkora.',CONFIRMATION_CABIN_UNKNOWN:'A háztípus nincs egyértelműen megadva.',
  CONFIRMATION_PRICE_MISSING:'Az árlista ehhez nem ad igazolt árat; kézi ellenőrzés szükséges.',DEPOSIT_POLICY_UNVERIFIED:'A foglaló határideje nem számítható (pl. múltbeli érkezés).',
- NOT_FINALIZED:'Előbb véglegesíteni kell a foglalást.',UNIT_TAKEN:'Ez az egység erre az időszakra már foglalt (egy másik véglegesített foglalás miatt). Válassz másik egységet.',UNIT_NOT_IN_TYPE:'Ez az egység nem a foglalás háztípusához tartozik.',UNIT_TAKEN_IN_PREVIO:'A Previo szerint ez az egység erre az időszakra egy másik foglalás miatt foglalt. Válassz másik egységet.',INVALID_DATE:'Érvénytelen dátum.',CASE_CONFLICT:'A foglalás közben megváltozott; nyisd meg újra.',
+ NOT_FINALIZED:'Előbb véglegesíteni kell a foglalást.',UNIT_TAKEN:'Ez az egység erre az időszakra már foglalt (egy másik véglegesített foglalás miatt). Válassz másik egységet.',UNIT_NOT_IN_TYPE:'Ez az egység nem a foglalás háztípusához tartozik.',PREVIO_WRITE_DISABLED:'A Previo-írás (V2) nincs bekapcsolva.',PREVIO_WRITE_UNCERTAIN:'A Previo nem igazolta a létrehozást – nézd meg a Previóban, mielőtt újra próbálod.',PREVIO_BOOKING_NOT_ACTIVE:'Ehhez az ügyhöz a Previóban már van egy lemondott foglalás – kézi ellenőrzés kell.',PREVIO_ORPHAN_OPTION:'A Previóban létrejött az opció, de nálunk nem mentődött, és a lemondás sem igazolt – nézd meg a Previóban!',PREVIO_AUTH_REFUSED:'A Previo elutasította a kulcsot.',PREVIO_REJECTED:'A Previo elutasította a foglalást.',PREVIO_TIMEOUT:'A Previo nem válaszolt időben.',PREVIO_UNAVAILABLE:'A Previo nem érhető el.',UNIT_TAKEN_IN_PREVIO:'A Previo szerint ez az egység erre az időszakra egy másik foglalás miatt foglalt. Válassz másik egységet.',INVALID_DATE:'Érvénytelen dátum.',CASE_CONFLICT:'A foglalás közben megváltozott; nyisd meg újra.',
  FORBIDDEN:'Ehhez nincs írási jog.',STORAGE_FAILURE:'Az adatbázis-funkció nem érhető el (valószínűleg még nincs telepítve). Szólj Claude-nak.',
  TEST_MAILBOX_REJECTED:'Az adatbázis elutasította (lehet, hogy a frissítés még nincs telepítve).',NOT_FOUND:'A foglalás nem található; töltsd be újra a listát.'};
-const bookingInputs=()=>{el('booking-finalize').disabled=!(bookingCase&&!el('previo-ref').disabled&&el('booking-unit').value&&/^[A-Za-z0-9\/_.-]{1,40}$/.test(el('previo-ref').value.trim())&&el('previo-recorded').checked);
+const bookingInputs=()=>{const auto=el('previo-auto').checked&&!el('previo-auto').disabled;
+ for(const id of ['previo-ref','previo-recorded'])if(bookingCase&&!el('previo-auto').disabled)el(id).disabled=auto;
+ el('booking-finalize').disabled=!(bookingCase&&el('booking-unit').value&&(auto||!el('previo-ref').disabled&&/^[A-Za-z0-9\/_.-]{1,40}$/.test(el('previo-ref').value.trim())&&el('previo-recorded').checked));
  el('deposit-mark').disabled=!(bookingCase&&!el('deposit-confirm').disabled&&el('deposit-confirm').checked&&/^\d{4}-\d{2}-\d{2}$/.test(el('deposit-date').value));};
-for(const id of ['booking-unit','previo-ref','previo-recorded','deposit-date','deposit-confirm'])el(id).addEventListener('input',bookingInputs),el(id).addEventListener('change',bookingInputs);
+for(const id of ['booking-unit','previo-ref','previo-recorded','previo-auto','deposit-date','deposit-confirm'])el(id).addEventListener('input',bookingInputs),el(id).addEventListener('change',bookingInputs);
 async function bookingAction(button,body,done){
  const target=bookingCase;if(!authenticated||!target||actionBusy)return;
  const turn=epoch;actionBusy=true;el(button).disabled=true;el('booking-result').textContent='Mentés…';
@@ -400,10 +404,12 @@ async function bookingAction(button,body,done){
   else{el('booking-result').textContent='Nem sikerült: '+(bookingErrors[error?.message]||'a mentés nem igazolt; nincs automatikus ismétlés.');el(button).disabled=false;}
  }finally{actionBusy=false;}
 }
-el('booking-finalize').addEventListener('click',()=>bookingAction('booking-finalize',{action:'test-mailbox-confirm',unit:el('booking-unit').value,previoReference:el('previo-ref').value.trim(),previoRecorded:el('previo-recorded').checked},
- r=>'Véglegesítve. Visszaigazoló levél elkészült'+(r.deposit?' (foglaló: '+huf(r.deposit.amount)+' Ft)':'')+'; jóváhagyásra vár, utána küldhető.'));
+el('booking-finalize').addEventListener('click',()=>{const auto=el('previo-auto').checked&&!el('previo-auto').disabled;
+ bookingAction('booking-finalize',auto?{action:'test-mailbox-confirm',unit:el('booking-unit').value,previoAuto:true}
+  :{action:'test-mailbox-confirm',unit:el('booking-unit').value,previoReference:el('previo-ref').value.trim(),previoRecorded:el('previo-recorded').checked},
+ r=>'Véglegesítve'+(auto?', a Previo-tesztben opcióként rögzítve':'')+'. Visszaigazoló levél elkészült'+(r.deposit?' (foglaló: '+huf(r.deposit.amount)+' Ft)':'')+'; jóváhagyásra vár, utána küldhető.');});
 el('deposit-mark').addEventListener('click',()=>bookingAction('deposit-mark',{action:'test-mailbox-deposit',receivedOn:el('deposit-date').value,depositConfirmed:el('deposit-confirm').checked},
- ()=>'Foglaló beérkezése rögzítve.'));
+ r=>'Foglaló beérkezése rögzítve.'+(r.previoSync==='confirmed'?' A Previo-tesztben megerősítve (zöld).':r.previoSync==='confirm_failed'?' FIGYELEM: a Previo-megerősítés nem sikerült – nézd meg a Previóban.':'')));
 // Sends the stored, approved reply through the server (test pair only). The browser sends no text.
 const sendErrors={FORBIDDEN:'A küldés nincs bekapcsolva, vagy nincs jóváhagyói jog.',SEND_OUTCOME_UNKNOWN:'Egy korábbi küldés eredménye nem ismert. Nézze meg a Gmailben (Elküldött levelek); nem küldjük újra automatikusan.',STORAGE_FAILURE:'A küldési napló nem érhető el, ezért nem küldtük el.',NOT_APPROVED:'Csak jóváhagyott válasz küldhető.',
  RECIPIENT_NOT_ALLOWED:'Ez a címzett nem engedélyezett (csak a tesztfeladó).',CASE_CONFLICT:'A foglalás közben megváltozott; nyissa meg újra.',

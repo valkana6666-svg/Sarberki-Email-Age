@@ -14,6 +14,8 @@ export const ALLOWED=Object.freeze({
  PREVIO_HOTEL_ID:v=>v==='73521',
  PREVIO_RATE_PLAN_ID:v=>/^\d{1,9}$/.test(v),
  PREVIO_ROOM_KIND_MAP:v=>{try{const m=JSON.parse(v);return m&&typeof m==='object'&&!Array.isArray(m);}catch{return false;}},
+ PREVIO_WRITE_ENABLED:v=>v==='sandbox-73521-only'||v==='',
+ PREVIO_WRITE_PERMISSION_ID:v=>/^PERM-\d{8}-[A-Z0-9-]{2,40}$/.test(v)||v==='',
  CASE_TEST_MAILBOX_SEND_LEDGER:v=>v==='required'||v===''
 });
 const fail=code=>{const e=Error(code);e.code=code;throw e;};

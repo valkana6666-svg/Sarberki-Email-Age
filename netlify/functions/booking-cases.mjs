@@ -18,6 +18,7 @@ import {sendApprovedTestMailboxReply} from '../../shared-core/server-test-mailbo
 import {priceTestMailboxCase} from '../../shared-core/server-test-mailbox-price.mjs';
 import {previoPriceChecker} from '../../shared-core/server-previo-price-check.mjs';
 import {previoUnitChecker} from '../../shared-core/server-previo-unit-check.mjs';
+import {previoBookingWriter} from '../../shared-core/server-previo-booking-sync.mjs';
 import {confirmTestMailboxBooking,markTestMailboxDepositReceived} from '../../shared-core/server-test-mailbox-confirm.mjs';
 import {bookingIntentHint} from '../../shared-core/booking-intent.mjs';
 import {previoAvailabilitySource} from '../../shared-core/server-capacity-draft.mjs';
@@ -49,7 +50,8 @@ const TEST_MAILBOX_ERRORS=Object.freeze({GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACC
  PRICE_FACTS_MISSING:422,PRICE_LINE_MISSING:422,PRICE_REFUSED:422,AVAILABILITY_NOT_CONFIRMED:400,TEST_MAILBOX_REJECTED:409,
  UNAVAILABILITY_NOT_CONFIRMED:400,DRAFT_SHAPE_UNKNOWN:422,ALREADY_UNAVAILABLE:409,PREVIO_NO_FREE_UNIT:409,
  PREVIO_RECORDING_REQUIRED:400,ALREADY_FINALIZED:409,CONFIRMATION_FACTS_MISSING:422,CONFIRMATION_PRICE_MISSING:422,CONFIRMATION_CABIN_UNKNOWN:422,
- DEPOSIT_POLICY_UNVERIFIED:422,DEPOSIT_NOT_CONFIRMED:400,NOT_FINALIZED:409,INVALID_DATE:400,UNIT_TAKEN:409,UNIT_TAKEN_IN_PREVIO:409,UNIT_NOT_IN_TYPE:422});
+ DEPOSIT_POLICY_UNVERIFIED:422,DEPOSIT_NOT_CONFIRMED:400,NOT_FINALIZED:409,INVALID_DATE:400,UNIT_TAKEN:409,UNIT_TAKEN_IN_PREVIO:409,UNIT_NOT_IN_TYPE:422,
+ PREVIO_WRITE_DISABLED:409,PREVIO_WRITE_UNCERTAIN:502,PREVIO_BOOKING_NOT_ACTIVE:409,PREVIO_ORPHAN_OPTION:502,PREVIO_AUTH_REFUSED:502,PREVIO_REJECTED:502,PREVIO_SEARCH_FAILED:502,PREVIO_TIMEOUT:504,PREVIO_UNAVAILABLE:502});
 const TEST_MAILBOX_FIELDS=Object.freeze({
  'test-mailbox-ingest':['action,messageId,tenantId'],
  'test-mailbox-followup':['action,messageId,tenantId'],
@@ -59,7 +61,7 @@ const TEST_MAILBOX_FIELDS=Object.freeze({
  'test-mailbox-send':['action,caseId,expectedRevision,tenantId'],
  'test-mailbox-price':['action,availabilityConfirmed,cabin,caseId,expectedRevision,tenantId'],
  'test-mailbox-unavailable':['action,caseId,expectedRevision,tenantId,unavailableConfirmed'],
- 'test-mailbox-confirm':['action,caseId,expectedRevision,previoRecorded,previoReference,tenantId,unit'],
+ 'test-mailbox-confirm':['action,caseId,expectedRevision,previoRecorded,previoReference,tenantId,unit','action,caseId,expectedRevision,previoAuto,tenantId,unit'],
  'test-mailbox-deposit':['action,caseId,depositConfirmed,expectedRevision,receivedOn,tenantId']
 });
 function validTestMailboxInput(input){
@@ -68,6 +70,7 @@ function validTestMailboxInput(input){
  if(typeof input.caseId!=='string'||!/^tm-[a-f0-9]{12,32}$/.test(input.caseId)||!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<1)return false;
  if(input.action==='test-mailbox-send')return true;
  if(input.action==='test-mailbox-unavailable')return input.unavailableConfirmed===true;
+ if(input.action==='test-mailbox-confirm'&&input.previoAuto!==undefined)return input.previoAuto===true&&typeof input.unit==='string'&&/^(?:[1-9]|1[0-5]|(?:7|8|9|10)\/[ABC])$/.test(input.unit);
  if(input.action==='test-mailbox-confirm')return input.previoRecorded===true&&typeof input.previoReference==='string'&&/^[A-Za-z0-9\/_.-]{1,40}$/.test(input.previoReference)&&typeof input.unit==='string'&&/^(?:[1-9]|1[0-5]|(?:7|8|9|10)\/[ABC])$/.test(input.unit);
  if(input.action==='test-mailbox-deposit')return input.depositConfirmed===true&&typeof input.receivedOn==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(input.receivedOn);
  if(input.action==='test-mailbox-price')return input.availabilityConfirmed===true&&['deluxe','family','vip','small','splitA','splitB','splitC'].includes(input.cabin);
@@ -81,13 +84,15 @@ function isTestMailboxCase(record,tenant='sarberki-test'){
   typeof record.data?.sender==='string'&&!/\.invalid$/i.test(record.data.sender)&&record.data.testMailbox?.scope==='test-mailbox-source-v1'&&
   Array.isArray(record.data.drafts)&&record.data.drafts.length>0&&Array.isArray(record.data.messages);
 }
-function testMailboxView(record,authority,tenant='sarberki-test',previoRead=false){
+function testMailboxView(record,authority,tenant='sarberki-test',previoRead=false,previoWrite=false){
  const data=record.data,state=data.state?.approval,latest=data.drafts.at(-1),permissions=authority?.tenants?.[tenant]||[];
  return {caseId:record.caseId,revision:record.revision,approval:state,
   messages:data.messages.map(m=>({text:m.text,received_at:m.received_at})),values:data.state?.values||{},
   draft:{text:latest.text,operatorReviewText:latest.operatorReviewText??null,createdAt:latest.createdAt??null,hash:createHash('sha256').update(String(latest.text),'utf8').digest('hex')},
   // Display hint: the owner switch for the read-only Previo checks (free units, price, unit) is on.
   previoRead:previoRead===true,
+  // V2 hint: the server can create/confirm the Previo TEST booking itself (switch + recorded permission).
+  previoWrite:previoWrite===true,
   decisions:(data.decisions||[]).map(d=>({decision:d.decision,at:d.at,reason:d.reason??null,reviewedRevision:d.reviewedRevision})),
   internalApproval:data.internalApproval?{scope:data.internalApproval.scope,at:data.internalApproval.at,capacityVerified:false,priceVerified:false,sendAllowed:false,bookingAllowed:false}:null,
   // Display hints only: the database re-checks permission, state, revision, hash and approver independence.
@@ -204,7 +209,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
     const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
     if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
-    return cookieResponse(200,{result:testMailboxView(record,cookieSession.authority,TENANT,!live&&env.PREVIO_READ_API_ENABLED==='sandbox-73521-only')});
+    return cookieResponse(200,{result:testMailboxView(record,cookieSession.authority,TENANT,!live&&env.PREVIO_READ_API_ENABLED==='sandbox-73521-only',!live&&previoBookingWriter(env,fetchImpl)!==null)});
    }
    if(TEST_MAILBOX_FIELDS[input.action]){
     const keys=Object.keys(input).sort().join(',');
@@ -281,12 +286,14 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
       if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
       if(record.revision!==input.expectedRevision)return cookieResponse(409,{error:'CASE_CONFLICT'});
       let saved,deposit=null;
-      if(input.action==='test-mailbox-confirm')({saved,deposit}=await confirmTestMailboxBooking({record,previoReference:input.previoReference,previoRecorded:input.previoRecorded,unit:input.unit,
+      const previoWriter=live?null:previoBookingWriter(env,fetchImpl);
+      if(input.action==='test-mailbox-confirm')({saved,deposit}=await confirmTestMailboxBooking({record,previoReference:input.previoReference,previoRecorded:input.previoRecorded,
+       previoAuto:input.previoAuto===true,previoWriter,unit:input.unit,
        attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,transport:cookieSession.transport,unitCheckFn:live?null:previoUnitChecker(env,fetchImpl)}));
-      else saved=await markTestMailboxDepositReceived({record,receivedOn:input.receivedOn,depositConfirmed:input.depositConfirmed,transport:cookieSession.transport});
+      else saved=await markTestMailboxDepositReceived({record,receivedOn:input.receivedOn,depositConfirmed:input.depositConfirmed,transport:cookieSession.transport,previoWriter});
       if(!saved)return cookieResponse(409,{error:'CASE_CONFLICT'});
       return cookieResponse(200,{result:{caseId:saved.case_id,revision:Number(saved.revision),approval:saved.data?.state?.approval,bookingStatus:saved.data?.booking?.status,
-       ...(deposit?{deposit:{pct:deposit.pct,amount:deposit.amount,receiptDeadlineUtc:deposit.receiptDeadlineUtc}}:{})}});
+       ...(deposit?{deposit:{pct:deposit.pct,amount:deposit.amount,receiptDeadlineUtc:deposit.receiptDeadlineUtc}}:{}),...(saved.previoSync?{previoSync:saved.previoSync}:{})}});
      }catch(error){
       if(error?.code==='FORBIDDEN')return cookieResponse(403,{error:'FORBIDDEN'});
       const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'TEST_MAILBOX_REJECTED';
