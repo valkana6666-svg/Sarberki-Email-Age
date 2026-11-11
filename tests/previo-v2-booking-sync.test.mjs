@@ -106,3 +106,24 @@ test('cancel a V2 booking -> our state first, then Previo storno (7); manual ref
  await assert.rejects(cancelTestMailboxBooking({record:rec('V2-5001'),reason:'x',cancelConfirmed:true,transport}),/PREVIO_WRITE_DISABLED/);
  await assert.rejects(cancelTestMailboxBooking({record:rec('V2-5001'),reason:'x',cancelConfirmed:false,transport}),/CANCEL_NOT_CONFIRMED/);
 });
+
+test('guest contact to Previo: only with its own switch and only from the test-pair sender; invalid values refuse',async()=>{
+ const rec=sender=>({...record(),data:{...record().data,sender,state:{values:{...record().data.state.values,phone:'+36 30 000 0000'}}}});
+ const run=async(env,sender)=>{const p=previo(),d=db();
+  await confirmTestMailboxBooking({record:rec(sender),previoAuto:true,previoWriter:previoBookingWriter(env,p.fetchImpl,{pauseMs:0}),unit:'12',attestationKey:KEY,transport:d.transport});
+  return {xml:p.calls.find(c=>c.path.endsWith('/reservation')).body,review:d.rpc[0].body.p_draft.operatorReviewText};};
+ const on={...ENV,PREVIO_SEND_GUEST_CONTACT:'test-pair-only'};
+ let r=await run(on,'László Kovács <sarberkito@gmail.com>');
+ assert.match(r.xml,/<contactPerson><name>Teszt Elek<\/name><email>sarberkito@gmail.com<\/email><phone>\+36 30 000 0000<\/phone><\/contactPerson>/);
+ assert.match(r.review,/kapcsolattartó: név, e-mail, telefon/);
+ r=await run(ENV,'László Kovács <sarberkito@gmail.com>');
+ assert.doesNotMatch(r.xml,/<email>|<phone>/,'switch off');assert.match(r.review,/kapcsolattartó: csak név/);
+ r=await run(on,'Valaki <valaki@example.com>');
+ assert.doesNotMatch(r.xml,/<email>|<phone>/,'not the test-pair sender');
+});
+test('contact person XML validation',async()=>{
+ const {contactPersonXml}=await import('../shared-core/server-previo-reservation-write.mjs');
+ assert.equal(contactPersonXml('A & B',null),'<contactPerson><name>A &amp; B</name></contactPerson>');
+ assert.throws(()=>contactPersonXml('X',{email:'nem-email'}),/CONTACT_EMAIL_INVALID/);
+ assert.throws(()=>contactPersonXml('X',{phone:'<script>'}),/CONTACT_PHONE_INVALID/);
+});

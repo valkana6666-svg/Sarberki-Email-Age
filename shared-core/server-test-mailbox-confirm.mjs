@@ -11,6 +11,7 @@ import {buildBookingConfirmation} from './booking-confirmation-draft.mjs';
 import {unitsOfType,conflictsFor} from './unit-inventory.mjs';
 import {previoUnitLine} from './server-previo-unit-check.mjs';
 import {V2_REFERENCE} from './server-previo-booking-sync.mjs';
+import {senderAddress,TEST_GUEST_SENDER} from '../gmail-policy.mjs';
 
 export const CONFIRM_SCOPE='test-mailbox-confirm-v1';
 const fail=code=>{const error=Error(code);error.code=code;throw error;};
@@ -61,12 +62,15 @@ export async function confirmTestMailboxBooking({record,previoReference,previoRe
  if(typeof unitCheckFn==='function'){try{previoUnit=await unitCheckFn({unit,arrival:values.arrival,departure:values.departure,previoReference});}catch{previoUnit={status:'unknown'};}
   if(previoUnit?.status==='taken')fail('UNIT_TAKEN_IN_PREVIO');}
  const language=/^(hu|de|en|si)$/.test(values.language||'')?values.language:'hu';
- let previoCreated=null;
+ let previoCreated=null,sentContact=null;
  if(previoAuto===true){
   // Option expiry = the deposit deadline of this very confirmation (pure; computed before the write).
   const deadline=buildBookingConfirmation({values,quote,previo:{reference:'V2-0',recordedAt:clock()},language}).deposit.receiptDeadlineUtc;
+  // Contact data only from the fictional test-pair sender (AGENTS: no real guest data on TEST); phone if extracted.
+  const email=senderAddress(record.data?.sender);
+  const contact=sentContact=email===TEST_GUEST_SENDER?{email,phone:/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(String(values.phone||'').trim())?String(values.phone).trim():null}:null;
   previoCreated=await previoWriter.createOption({tenantId:record.tenantId,caseId:record.caseId,values,cabin,unit,
-   contactName:String(values.name||'').trim()||'Vendég '+record.caseId,totalHuf:quote.total,optionExpiresUtc:deadline});
+   contactName:String(values.name||'').trim()||'Vendég '+record.caseId,contact,totalHuf:quote.total,optionExpiresUtc:deadline});
   previoReference='V2-'+previoCreated.resId;
  }
  const recordedAt=clock();
@@ -77,7 +81,7 @@ export async function confirmTestMailboxBooking({record,previoReference,previoRe
  draft.operatorReviewText+='\nEgység: '+unit+' (csak kezelői adat, a vendéglevélben nem szerepel).';
  if(previoUnit&&!previoCreated)draft.operatorReviewText+='\n'+previoUnitLine(previoUnit,unit,previoReference);
  if(previoUnit&&previoCreated)draft.operatorReviewText+='\nPrevio (csak olvasó, létrehozás előtt): a(z) '+unit+' egységen nem volt más foglalás erre az időszakra.';
- if(previoCreated)draft.operatorReviewText+=`\nPrevio (V2, automatikus): opció létrehozva a Previo-tesztben – azonosító ${previoCreated.resId}, egység ${unit}, lejár a foglalói határidővel. A foglaló beérkezésekor a rendszer megerősíti.`;
+ if(previoCreated)draft.operatorReviewText+=`\nPrevio (V2, automatikus): opció létrehozva a Previo-tesztben – azonosító ${previoCreated.resId}, egység ${unit}, lejár a foglalói határidővel${previoWriter.sendContact&&sentContact?'; kapcsolattartó: név, e-mail'+(sentContact.phone?', telefon':''):'; kapcsolattartó: csak név'}. A foglaló beérkezésekor a rendszer megerősíti.`;
  const proof=attestConfirmation({key:attestationKey,tenantId:record.tenantId,caseId:record.caseId,expectedRevision:record.revision,draft,booking,checkedAt:clock()});
  let saved;
  try{saved=await transport('/rest/v1/rpc/sc_tm_confirm_booking',{method:'POST',body:{p_tenant:record.tenantId,p_case:record.caseId,p_expected:record.revision,p_booking:booking,p_draft:draft,p_proof:proof}});}

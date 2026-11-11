@@ -17,6 +17,8 @@ export function previoBookingWriter(env,fetchImpl=globalThis.fetch,{pauseMs=5000
  if(typeof permissionId!=='string'||!/^PERM-\d{8}-[A-Z0-9-]{2,40}$/.test(permissionId))return null;
  if(typeof env.PREVIO_API_KEY!=='string'||env.PREVIO_API_KEY.length<16)return null;
  const writeEnv={PREVIO_WRITE_ENABLED:WRITE_SWITCH_VALUE,PREVIO_API_KEY:env.PREVIO_API_KEY};
+ // Guest contact (e-mail, phone) goes to Previo only with its own switch; TEST: fictional test-pair letters only.
+ const sendContact=env.PREVIO_SEND_GUEST_CONTACT==='test-pair-only';
  const post=async(path,xml)=>{
   const r=await fetchImpl(PREVIO_XML_ORIGIN+path,{method:'POST',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(60000),
    headers:{Authorization:'ApiKey '+env.PREVIO_API_KEY,'Content-Type':'application/xml',Accept:'application/xml'},body:xml});
@@ -25,11 +27,11 @@ export function previoBookingWriter(env,fetchImpl=globalThis.fetch,{pauseMs=5000
  };
  const findOwn=async request=>{const text=await post('/x1/hotel/searchReservations',buildVoucherSearchXml(request));
   if(/<error>/.test(text))fail('PREVIO_SEARCH_FAILED');return reservationsWithVoucher(text,request.voucher);};
- return Object.freeze({permissionId,
+ return Object.freeze({permissionId,sendContact,
   // Creates (or finds, if this case already has one) the option on the unit. A slow answer is re-read by voucher,
   // never re-sent: an unconfirmed outcome stops with PREVIO_WRITE_UNCERTAIN for a manual Previo check.
-  async createOption({tenantId,caseId,values,cabin,unit,contactName,totalHuf,optionExpiresUtc}){
-   const request=buildReservationXml({tenantId,caseId,values,cabin,unit,contactName,totalHuf,optionExpiresUtc});
+  async createOption({tenantId,caseId,values,cabin,unit,contactName,contact=null,totalHuf,optionExpiresUtc}){
+   const request=buildReservationXml({tenantId,caseId,values,cabin,unit,contactName,contact:sendContact?contact:null,totalHuf,optionExpiresUtc});
    try{
     const r=await writePrevioReservation({env:writeEnv,permissionId,request,fetchImpl});
     // An existing record for this case is reused only while it is active (option/confirmed); a cancelled one stops.

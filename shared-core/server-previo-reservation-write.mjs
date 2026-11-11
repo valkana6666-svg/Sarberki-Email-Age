@@ -38,7 +38,16 @@ function guestCategories(values,property){
 }
 
 // Pure: the XML body for creating ONE room reservation in status "option" (V1 finalized, deposit pending).
-export function buildReservationXml({tenantId,caseId,values,cabin,unit,contactName,totalHuf,optionExpiresUtc,property=PREVIO_TEST_73521}){
+// contact (optional, V2 owner 2026-11-11): {email, phone} of the contact person. The caller decides whether guest
+// contact data may leave our system (server-previo-booking-sync.mjs: test-pair sender only); invalid values refuse.
+export function contactPersonXml(name,contact){
+ const email=contact?.email==null?null:String(contact.email).trim().toLowerCase();
+ const phone=contact?.phone==null?null:String(contact.phone).trim();
+ if(email!==null&&!/^[^\s@<>"']{1,64}@[a-z0-9.-]{1,190}\.[a-z]{2,24}$/.test(email))fail('CONTACT_EMAIL_INVALID');
+ if(phone!==null&&!/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(phone))fail('CONTACT_PHONE_INVALID');
+ return `<contactPerson><name>${xmlText(name)}</name>${email?`<email>${xmlText(email)}</email>`:''}${phone?`<phone>${xmlText(phone)}</phone>`:''}</contactPerson>`;
+}
+export function buildReservationXml({tenantId,caseId,values,cabin,unit,contactName,contact=null,totalHuf,optionExpiresUtc,property=PREVIO_TEST_73521}){
  if(String(property?.hotelId)!=='73521')fail('SANDBOX_ONLY');
  if(!day(values?.arrival)||!day(values?.departure)||values.departure<=values.arrival)fail('DATES_REQUIRED');
  const obkId=property.roomKinds?.[cabin];if(!int(obkId))fail('ROOM_KIND_UNKNOWN');
@@ -56,7 +65,7 @@ export function buildReservationXml({tenantId,caseId,values,cabin,unit,contactNa
   `<optionExpiration>${expiry}</optionExpiration>`,
   `<term><from>${values.arrival} 14:00:00</from><to>${values.departure} 10:00:00</to></term>`,
   `<voucher>${voucher}</voucher>`,
-  `<contactPerson><name>${xmlText(name)}</name></contactPerson>`,
+  contactPersonXml(name,contact),
   `<price><total>${totalHuf}</total><curId>${HUF_CURRENCY_ID}</curId></price>`,
   '</newReservation>','</request>'].join('');
  return Object.freeze({url:PREVIO_XML_ORIGIN+'/x1/hotel/reservation',hotelId:property.hotelId,voucher,arrival:values.arrival,departure:values.departure,xml});
