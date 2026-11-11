@@ -151,3 +151,55 @@ jobs:
         run: |
           node --check scripts/previo-lifecycle-r2.mjs
           node scripts/previo-lifecycle-r2.mjs
+
+  voucher-response-diagnostic:
+    if: contains(github.event.head_commit.message, '[previo-voucher-diag-20261111]') && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Prove 73521 TEST identity by read only
+        env:
+          PREVIO_API_KEY: ${{ secrets.PREVIO_TEST_API_KEY }}
+        shell: python
+        run: |
+          import os, re, urllib.request, xml.etree.ElementTree as ET
+          assert os.environ['GITHUB_REF']=='refs/heads/gmail-test-subject-allowlist'
+          key=os.environ['PREVIO_API_KEY']
+          assert re.fullmatch(r'[A-Za-z0-9._~+/=-]{16,512}',key)
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,*args): raise RuntimeError('REDIRECT_REFUSED')
+          req=urllib.request.Request('https://api.previo.app/x1/hotel/get',data=b'<request><hotId>73521</hotId><lanId>1</lanId></request>',headers={'Authorization':'ApiKey '+key,'Content-Type':'application/xml'})
+          with urllib.request.build_opener(NoRedirect).open(req,timeout=20) as response: root=ET.fromstring(response.read())
+          hotel=root if root.tag=='hotel' else root.find('.//hotel')
+          assert hotel is not None and hotel.findtext('hotId')=='73521' and re.search(r'API\s*TES[ZT]',hotel.findtext('name',''),re.I)
+          proof='PASS identity: 73521 '+hotel.findtext('name')
+          print(proof)
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as out: out.write(proof+'\n')
+      - name: Inspect only TEST voucher response structure without logging XML
+        env:
+          PREVIO_API_KEY: ${{ secrets.PREVIO_TEST_API_KEY }}
+        shell: python
+        run: |
+          import subprocess, os, urllib.request, xml.etree.ElementTree as ET, json, hashlib
+          assert os.environ['GITHUB_REF']=='refs/heads/gmail-test-subject-allowlist'
+          code="""import {buildVoucherSearchXml} from './shared-core/server-previo-reservation-write.mjs';
+          process.stdout.write(buildVoucherSearchXml({hotelId:'73521',voucher:'SC-17CAFC194331890A',arrival:'2027-09-16',departure:'2027-09-18'}));"""
+          body=subprocess.check_output(['node','--input-type=module','-e',code],text=True).encode()
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,*args): raise RuntimeError('REDIRECT_REFUSED')
+          req=urllib.request.Request('https://api.previo.app/x1/hotel/searchReservations',data=body,headers={'Authorization':'ApiKey '+os.environ['PREVIO_API_KEY'],'Content-Type':'application/xml'})
+          with urllib.request.build_opener(NoRedirect).open(req,timeout=20) as response:
+              assert response.status==200
+              data=response.read()
+          root=ET.fromstring(data)
+          records=list(root.iter('reservation'))
+          assert root.tag=='reservations' and root.find('.//error') is None
+          proof={'result':'PASS','hotelId':73521,'voucher':'SC-17CAFC194331890A','http':200,'root':root.tag,'rootChildCount':len(root),'reservationCount':len(records),'exactVoucherCount':sum(x.findtext('voucher')=='SC-17CAFC194331890A' for x in records),'selfClosingEmpty':data.strip().endswith(b'<reservations/>'),'responseSha256':hashlib.sha256(data).hexdigest(),'writeRequests':0}
+          line=json.dumps(proof);print(line)
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as out: out.write(line+'\n')
