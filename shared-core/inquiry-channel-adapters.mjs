@@ -39,6 +39,20 @@ function upperFloorNote(decision,language){
  const cInPlay=input.cabin==='splitC'||p?.c>0||(input.cabin==='split'&&!(p?.ab>0)&&Number(f.guests)>=3);
  return cInPlay&&LAYOUT_QUESTION.test(String(f.originalText||f.split_request_text||''))?' '+(UPPER_FLOOR[language]||UPPER_FLOOR.hu):'';
 }
+const PAST_ARRIVAL={hu:'A megadott érkezési időpont már elmúlt. Kérjük, írja meg, melyik időpontra szeretne érkezni.',
+ de:'Das angegebene Anreisedatum liegt in der Vergangenheit. Bitte teilen Sie uns mit, wann Sie anreisen möchten.',
+ en:'The arrival date you gave is already in the past. Please let us know when you would like to arrive.',
+ si:'Navedeni datum prihoda je že minil. Prosimo, sporočite, kdaj želite priti.'};
+// Not a stay enquiry (sweep 2026-11-12, letter 30: an advertisement): no stay words, no stay facts, and selling
+// language. The guest text stays as it is; the operator sees a warning first and can reject the case.
+const STAY_WORDS=/(?:vendég|vendeg|voltunk|szállás|szallas|faház|fahaz|ház(?:at|ba)|apartman|foglal|érkez|erkez|éjszak|ejszak|horgász|horgasz|stay|accommodation|cabin|booking|book\b|night|unterkunft|haus|buchung|übernacht|nacht|nastanitev|hišk|rezervac|noč)/iu;
+const SELLING_WORDS=/(?:szolgáltatásunk\p{L}*|ajánljuk|ajánlatunk\p{L}*|seo\b|marketing\p{L}*|weboldal\p{L}*|hirdetés\p{L}*|cégvezető|cegvezeto|hírlevél\p{L}*|leiratkoz\p{L}*|unsubscribe|newsletter|our services|we offer|wir bieten|unsere dienstleistung\p{L}*|ponujamo|naša storitev|naše storitve)/iu;
+export function looksLikeNonInquiry(text='',decision=null){
+ const f=decision?.facts||{};
+ const facts=Boolean(f.dates?.arrival||Number.isInteger(f.guests)||Number.isInteger(f.adults)||(f.cabin&&!String(f.cabin).startsWith('?')));
+ return !facts&&!STAY_WORDS.test(String(text))&&SELLING_WORDS.test(String(text));
+}
+const NON_INQUIRY_NOTE='FIGYELEM: a levél nem szállásérdeklődésnek tűnik (reklám/ajánlat). Válasz helyett javasolt: Elutasítás.';
 // Either the open questions of the shared decision, or (when nothing is missing) one status line.
 function centralConversationParts(decision,language){
  const f=decision.facts,m=new Set(decision.missing),t=words[language]||words.hu;
@@ -46,6 +60,8 @@ function centralConversationParts(decision,language){
  if(m.has('dates_confirmation'))questions.push(t.date);
  if(m.has('units_requested'))questions.push(t.units);
  if(questions.length)return {questions,status:null};
+ // A past arrival is said plainly, with a request for the new dates (sweep 2026-11-12, letter 07).
+ if(decision.contradictions.some(c=>c.code==='past_arrival'))return {questions:[],status:(PAST_ARRIVAL[language]||PAST_ARRIVAL.hu)};
  if(decision.requiresHumanReview&&decision.contradictions.length)return {questions:[],status:t.review};
  // The requested type cannot hold the party (sweep 2026-11-12): say so and name the types that fit; never the
  // internal "not verified" line. Several houses only as a question (no multi-unit assumption).
@@ -215,7 +231,8 @@ function splitAlternativeNote(decision){
 }
 export function buildEmailInquiryDraft(options={}){
  const decision=evaluateCentralInquiry(options),original=options.message||decision.facts.originalText||'';
- return {decision,text:renderEmailDecision(decision,original,decision.facts.language),operatorReviewText:renderEmailDecision(decision,original,'hu')+splitAlternativeNote(decision),operatorReviewLanguage:'hu',channel:'email',requiresApproval:true};
+ const review=renderEmailDecision(decision,original,'hu')+splitAlternativeNote(decision);
+ return {decision,text:renderEmailDecision(decision,original,decision.facts.language),operatorReviewText:looksLikeNonInquiry(original,decision)?NON_INQUIRY_NOTE+'\n\n'+review:review,operatorReviewLanguage:'hu',channel:'email',requiresApproval:true,...(looksLikeNonInquiry(original,decision)?{nonInquiry:true}:{})};
 }
 
 // Owner decision 2026-11-04 ("röviden, tömören"): with known dates, a standard enquiry becomes one

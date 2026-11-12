@@ -68,3 +68,14 @@ test('sweep 3: party too large for the requested type -> "nem fér el" + fitting
  assert.match(renderCentralConversation(five),/ötödik fő pótágyon alszik/);
  assert.doesNotMatch(renderCentralConversation(d('Deluxe faházat 2027. június 14-től 16-ig, 2 felnőtt, gyerek nincs.')),/nem fér el|pótágy/);
 });
+
+test('sweep 4: past arrival said plainly; an advertisement is flagged for the operator, guest questions are not',async()=>{
+ const {buildEmailInquiryDraft,looksLikeNonInquiry}=await import('../shared-core/inquiry-channel-adapters.mjs');
+ const now=new Date('2026-11-12T09:00:00Z');
+ const past=buildEmailInquiryDraft({message:'Jó napot! Deluxe faházat szeretnénk 2025. június 10-től 12-ig, 2 felnőtt, gyerek nincs.',now});
+ assert.match(past.text,/A megadott érkezési időpont már elmúlt\. Kérjük, írja meg, melyik időpontra szeretne érkezni\./);
+ assert.doesNotMatch(past.text,/pontosítása vagy emberi ellenőrzése/);
+ const ad=buildEmailInquiryDraft({message:'Tisztelt Cégvezető! Weboldal-fejlesztési és SEO szolgáltatásunkat ajánljuk, első hónapban 50% kedvezménnyel.',now});
+ assert.equal(ad.nonInquiry,true);assert.match(ad.operatorReviewText,/^FIGYELEM: a levél nem szállásérdeklődésnek tűnik/);
+ for(const t of ['Van kedvezmény törzsvendégeknek? Tavaly is voltunk.','Gibt es Rabatt für Stammgäste?','Mennyibe kerül a horgászjegy?','Jó napot! Jövő nyáron jönnénk a családdal.'])assert.equal(looksLikeNonInquiry(t),false,t);
+});
