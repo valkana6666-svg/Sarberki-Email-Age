@@ -29,6 +29,8 @@ Feladat: #9 6796044652 (ChatGPT, tulajdonosi cél). Csak TEST: oldal `leafy-chim
 Előkészítés péntek este (tulajdonos, 5 perc): három tesztlevél a sarberkito@gmail.com-ról a sarberkiprojecttest@gmail.com-ra, tárgy: „Érdeklődés a szállásról”.
 - **L1** (egy ház): „Jó napot! Deluxe faházat szeretnénk 2027. június 24-től 26-ig, 2 felnőtt, gyerek nincs. Telefon: +36 30 000 0000. Üdv: Kovács Anna”
 - **L2** (két ház): „Jó napot! 2027. július 20-tól 22-ig jönnénk 8 felnőtt, gyerek nincs, 2 Családi faházba. Telefon: +36 30 000 0000. Üdv: Nagy Péter”
+  **FIGYELEM (11-12):** a 11-11-i L2-ügy főpróbán végigment és lemondva → a Previóban ehhez az ügyhöz lemondott foglalás van, újra nem véglegesíthető (dupla foglalás elleni védelem, PREVIO_BOOKING_NOT_ACTIVE). **Péntek estig új L2 kell** ugyanezzel a szöveggel, más névvel (pl. „Üdv: Szabó Gábor”).
+- **L4** (opcionális, Osztott egymás mellett): „Jó napot! 2027. május 21-től 23-ig jönnénk 4 felnőtt, gyerek nincs, két Osztott házat kérnénk (A és B) egymás mellett. Van hozzá terasz? Üdv: Teszt Osztott” → a tervezetben „ugyanabban az osztott faházban … közös terasz”; véglegesítéskor a javasolt egységek előre kijelölve.
 - **L3** (német, gyerekkel): „Guten Tag, Familienhaus vom 10. bis 13. August 2027, 2 Erwachsene und 2 Kinder (4 und 10 Jahre). Telefon +43 660 0000000. Grüße, Anna Müller”
 
 | # | Lépés | Várható eredmény | Ha nem megy |
@@ -43,10 +45,12 @@ Előkészítés péntek este (tulajdonos, 5 perc): három tesztlevél a sarberki
 | 8 | Módosítás: L1 új dátum/egység | Previóban módosul, új levél „módosítottuk” (ugyanaz az SC-szám) | kihagyható |
 | 9 | Lemondás (L1, L2) | Previóban lemondva | |
 | 10 | L3 (német, gyerek) → tervezet németül, ár gyerekkel | német levél, gyerekár | |
+| 11 (opcionális) | L4 → Osztott A+B azonos házban → véglegesítés 2 egységgel (előre kijelölve) → lemondás | Previóban 1 foglalás 7/A+7/B (vagy a javasolt pár) | kihagyható |
+| 12 (opcionális) | Chatbot többfordulós: „Nyáron jönnénk a családdal” → „Július 12–15., 2027, 2 felnőtt, 2 gyerek” → „4 és 9 évesek, Családi” | ismert adatot nem kérdez újra; végén Previo-ellenőrzés | |
 Lezárás: minden tesztfoglalás lemondva; semmi nem megy valódi címre.
 
 ## 4. Szombat reggeli gyorsellenőrzés (Claude, csak olvasás, ~1 perc)
-`NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt node scripts/demo-preflight.mjs` (verzió, Previo-azonosság, szabad helyek, ár, chatbot) + `CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/live-test-readonly-smoke.mjs` (böngészős írásmentes próba). Első futás 11-11: **PASS**.
+`NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt node scripts/demo-preflight.mjs` (verzió, Previo-azonosság, szabad helyek, ár, chatbot) + `CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/live-test-readonly-smoke.mjs` (böngészős írásmentes próba). Első futás 11-11: **PASS**. Főpróba írás nélkül 11-12 (`3b87786`): preflight PASS, böngészőpróba 51/51, L1 és L3 ügy véglegesíthető állapotban.
 
 ## 5. 15 leveles buktató-próba (Claude, 2026-11-11 éjjel; kitalált levelek, valódi beolvasási út, Previo 73521 csak olvasás)
 | # | Buktató | Eredmény |
