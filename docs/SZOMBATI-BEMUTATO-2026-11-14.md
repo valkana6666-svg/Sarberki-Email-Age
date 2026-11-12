@@ -86,4 +86,13 @@ Eredmény: 8 PASS, 4 javítva, 3 nyitott (Osztott C/pótágy, múltbeli dátum, 
 | 28 | hosszú, sok kérdés | PASS (horgászat, dézsa); a parkoló- és etetőanyag-kérdést nem válaszolja – kezelő |
 | 29 | SI család gyerekekkel | PASS |
 | 30 | kéretlen reklámlevél | NYITOTT: szállásérdeklődésként adatokat kér – a kezelő elutasítja |
-Összesen (30 levél): 18 PASS, 10 javítva, 2 nyitott (07 múltbeli dátum, 30 reklámlevél) + parkoló-válasz; a 12-es (A+B) levélben a „kapacitás nem igazolt” mondat még megjelenik. `npm test` 2733/2733.
+Összesen (30 levél): 18 PASS, 10 javítva, 2 nyitott (07 múltbeli dátum, 30 reklámlevél) + parkoló-válasz; a 12-es (A+B egymás mellett) **JAVÍTVA (11-12)**: egységszintű Previo-olvasás, ld. 7. pont. `npm test` 2733/2733.
+
+## 7. Osztott házak egységszinten (tulajdonos 2026-11-12: 7-8-9-10 sorban, egymás mellett)
+Egy csak olvasó Previo-hívás (`searchReservations`, 73521) → a 12 osztott egység (7/A … 10/C) egyenként szabad/foglalt.
+| Vendég kérése | Ellenőrzés | Élő próba (2027-05-21→23) |
+|---|---|---|
+| „két Osztott (A és B) egymás mellett”, „egy osztott faház A és B apartmanja”, DE „A und B im selben Haus” | azonos ház A+B | PASS – „ugyanabban az osztott faházban”; kezelőnek az egységek |
+| „két 2 fős … egymás mellett”, „két Osztott C egymás mellett” | azonos ház, vagy hézag nélkül szomszédos házak (7–9 nem szomszéd) | PASS |
+| „két 2 fős osztott apartman” (közelség nélkül) | típusszintű készlet (mint eddig) | PASS |
+Nincs szabad azonos/szomszédos elhelyezés → „nincs egymás melletti… külön faházakban tudunk ajánlani” (szintetikus teszt; élőben foglalás nélkül nem idézhető elő). Vendégszövegben házszám nincs. `npm test` 2741/2741.

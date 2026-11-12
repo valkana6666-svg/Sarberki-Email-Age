@@ -22,7 +22,7 @@ function hasFourPersonPhrase(text=''){
 }
 function countBeforeSizedUnit(text='',size=2){
   const sizeToken=size===2?'(?:2|két|ket|kettő|ketto)':'(?:4|négy|negy)';
-  const pattern=new RegExp('\\b(egy|1|két|ket|kettő|ketto|2|három|harom|3|négy|negy|4)\\s*(?:db|darab)\\s*'+sizeToken+'\\s*[- ]?fős\\s+(?:osztott\\s+)?apartman\\w*','iu');
+  const pattern=new RegExp('\\b(egy|1|két|ket|kettő|ketto|2|három|harom|3|négy|negy|4)\\s*(?:(?:db|darab)\\s*)?'+sizeToken+'\\s*[- ]?fős\\s+(?:osztott\\s+)?(?:apartman|ház|faház)\\w*','iu'); // "két 2 fős osztott apartmant" (owner 2026-11-12)
   const match=String(text).match(pattern);
   if(match)return countValue(match[1]);
   const foreign=new RegExp('\\b(one|two|three|four|ein|eine|zwei|drei|vier|en|ena|dva|dve|tri|štiri|stiri|[1-8])\\s+(?:' + size + ')[ -]?(?:person(?:en)?|oseb\\p{L}*)\\s+(?:(?:split|geteilte[rs]?|deljen[ai]?)\\s+)?(?:apartments?|apartma\\p{L}*)','iu');
@@ -50,17 +50,22 @@ export function splitRequestFromText(text=''){
     };
   }
 
-  const explicitPair=/\bA\s*\+\s*B\b/iu.test(source);
+  // "A és B" / "A+B" = two 2-person units; the SAME house only with an adjacency/same-house phrase (AGENTS, owner 2026-11-12).
+  const explicitPair=/\bA\s*\+\s*B\b/iu.test(source)||/(?<!\p{L})A\s*(?:és|es|and|und|in|&)\s*B(?!\p{L})/u.test(source);
   const explicitC=/\bosztott\s+(?:faház\s+)?C\b/iu.test(source);
+  const cCount=countValue(source.match(/\b(egy|két|ket|kettő|ketto|három|harom|négy|negy|one|two|three|four|ein|eine|zwei|drei|vier|en|ena|dva|dve|tri|[1-4])\s+osztott\s+(?:faház\s+)?C\b/iu)?.[1]);
   const explicitMixed=/\b[AB]\s*\+\s*C\b/iu.test(source);
   const two=hasTwoPersonPhrase(source)||explicitPair||explicitMixed;
   const four=hasFourPersonPhrase(source)||explicitC||explicitMixed;
   const requestedAB=two?(explicitPair?2:(countBeforeSizedUnit(source,2)||1)):0;
-  const requestedC=four?(countBeforeSizedUnit(source,4)||1):0;
+  const requestedC=four?(countBeforeSizedUnit(source,4)||cCount||1):0;
   const kind=two&&four?'mixed':two?'two_person':four?'four_person':'unspecified';
   const unitCount=requestedAB+requestedC;
+  // Same house: an explicit A+B pair or a same-house phrase; "egymás mellett" alone = neighbouring houses (7-8-9-10).
+  const oneHouse=explicitPair&&/(?<!\p{L})(?:egy|one|ein(?:em)?|eno)\s+(?:osztott|split|geteilte\p{L}*|deljen\p{L}*)\s+(?:fa)?(?:ház|house|cabin|haus|hiš)\p{L}*/iu.test(source); // "egy osztott faház A és B apartmanja"
+  const sameHouse=oneHouse||(explicitPair&&requiresAdjacent)||/(?:azonos\s+(?:faház|ház)|ugyan(?:azon|abban)\s+(?:a\s+)?(?:faház|ház)|közös\s+(?:faház|ház)|teljes\s+osztott\s+faház|same\s+(?:house|cabin)|selben\s+haus|ista\s+hiš)/iu.test(source);
   return {
-    requiresAdjacent,isSplit:true,kind,requestedAB,requestedC,unitCount,exactUnitIds:[],
+    requiresAdjacent:requiresAdjacent||sameHouse,sameHouse,isSplit:true,kind,requestedAB,requestedC,unitCount,exactUnitIds:[],
     sameHousePreferred:unitCount>1,crossHouseFallbackRequiresApproval:requiresAdjacent
   };
 }

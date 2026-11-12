@@ -28,7 +28,7 @@ export function capacityInput(values={},text=''){
   ...(positive(values.adults)?{adults:Number(values.adults)}:{}),
   ...(cabin?{cabin}:{}),
   ...(positive(values.units_requested)?{units:Number(values.units_requested)}:{}),
-  ...(split.isSplit?{placement:{ab:split.requestedAB,c:split.requestedC,adjacent:split.requiresAdjacent===true,exactIds:split.exactUnitIds||[]}}:{})};
+  ...(split.isSplit?{placement:{ab:split.requestedAB,c:split.requestedC,adjacent:split.requiresAdjacent===true,...(split.sameHouse===true?{sameHouse:true}:{}),exactIds:split.exactUnitIds||[]}}:{})};
 }
 export function capacityKey(input={}){
  return JSON.stringify([input.arrival,input.departure,input.guests,input.adults??null,input.cabin??null,input.units??null,input.placement??null,input.fallback??true]);

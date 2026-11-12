@@ -166,7 +166,9 @@ export function evaluateCentralInquiry({message='',language='hu',now=new Date(),
    (p.requiresAdjacent!==undefined&&typeof p.requiresAdjacent!=='boolean')){
    contradictions.push({code:'invalid_split_request',message:'Az osztott elhelyezési igény pontosítandó.'});
   }else{
-   input.placement={ab:p.requestedAB,c:p.requestedC,adjacent:p.requiresAdjacent===true,exactIds:[...p.exactUnitIds]};
+   input.placement={ab:p.requestedAB,c:p.requestedC,adjacent:p.requiresAdjacent===true,...(p.sameHouse===true?{sameHouse:true}:{}),exactIds:[...p.exactUnitIds]};
+   // "egy osztott faház A és B apartmanja": one house, two units (owner 2026-11-12) - not a units mismatch.
+   if(p.sameHouse===true&&input.units===1&&p.requestedAB+p.requestedC>1)input.units=p.requestedAB+p.requestedC;
    if(input.units&&p.requestedAB+p.requestedC>0&&input.units!==p.requestedAB+p.requestedC)
     contradictions.push({code:'split_units_mismatch',message:'Az apartmanszám és az elhelyezési igény nem egyezik.'});
   }
