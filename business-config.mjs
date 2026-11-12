@@ -56,6 +56,15 @@ export const BUSINESS = Object.freeze({
     houseNumbers: Object.freeze([1,2,3,4,5,6,11,12,13,14,15]),
     source: "Tulajdonosi döntés, 2026-10-05; érvényesség megerősítve 2026-11-05"
   }),
+  // Owner 2026-11-12: split houses 7-8-9-10 stand in a row (neighbours = consecutive numbers). A and B are on the
+  // ground floor and share one ground-floor terrace; C is upstairs, reached by a spiral staircase, with its own terrace.
+  // Facts only - not yet used in guest letters (needs owner-approved wording).
+  splitHouseLayout: Object.freeze({
+    order: Object.freeze([7,8,9,10]),
+    groundFloor: Object.freeze({segments:Object.freeze(['A','B']),terrace:'shared'}),
+    upperFloor: Object.freeze({segments:Object.freeze(['C']),access:'spiral_staircase',terrace:'own'}),
+    source: 'Tulajdonos, 2026-11-12'
+  }),
   splitPhysicalUnits: Object.freeze([
     Object.freeze({id:'7A',physicalHouse:7,segment:'A',level:'ground',nominalGuests:2,previoPool:'splitAB',hotTub:false,individualPrevioMappingVerified:false}),
     Object.freeze({id:'7B',physicalHouse:7,segment:'B',level:'ground',nominalGuests:2,previoPool:'splitAB',hotTub:false,individualPrevioMappingVerified:false}),
