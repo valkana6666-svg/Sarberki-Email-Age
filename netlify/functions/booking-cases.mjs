@@ -88,16 +88,19 @@ function validTestMailboxInput(input){
  return typeof input.reviewedDraftHash==='string'&&/^[a-f0-9]{64}$/.test(input.reviewedDraftHash)&&['approve','return','reject'].includes(input.decision)&&
   (input.reason===undefined||typeof input.reason==='string'&&input.reason.length<=500&&!/[\r\n]/.test(input.reason));
 }
-// Only sc_tm_create produces this shape: synthetic writers are limited to .invalid senders.
+// Only sc_tm_create (Gmail) and sc_intake_create (phone/chat, V3-1) produce this shape; the scope is set by the database
+// functions alone (clients cannot send testMailbox). Synthetic writers are limited to .invalid senders.
 function isTestMailboxCase(record,tenant='sarberki-test'){
  return record?.tenantId===tenant&&typeof record.caseId==='string'&&/^tm-[a-f0-9]{12,32}$/.test(record.caseId)&&
-  typeof record.data?.sender==='string'&&!/\.invalid$/i.test(record.data.sender)&&record.data.testMailbox?.scope==='test-mailbox-source-v1'&&
+  typeof record.data?.sender==='string'&&!/\.invalid$/i.test(record.data.sender)&&['test-mailbox-source-v1','intake-source-v1'].includes(record.data.testMailbox?.scope)&&
   Array.isArray(record.data.drafts)&&record.data.drafts.length>0&&Array.isArray(record.data.messages);
 }
 function testMailboxView(record,authority,tenant='sarberki-test',previoRead=false,previoWrite=false){
  const data=record.data,state=data.state?.approval,latest=data.drafts.at(-1),permissions=authority?.tenants?.[tenant]||[];
  return {caseId:record.caseId,revision:record.revision,approval:state,
   messages:data.messages.map(m=>({text:m.text,received_at:m.received_at})),values:data.state?.values||{},
+  // V3-1: where the request came from; phone/chat cases have no Gmail thread to reply to.
+  channel:['phone','chat'].includes(data.sourceReceipt?.provider)?data.sourceReceipt.provider:'gmail',
   draft:{text:latest.text,operatorReviewText:latest.operatorReviewText??null,createdAt:latest.createdAt??null,hash:createHash('sha256').update(String(latest.text),'utf8').digest('hex')},
   // Display hint: the owner switch for the read-only Previo checks (free units, price, unit) is on.
   previoRead:previoRead===true,
@@ -264,6 +267,8 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
       const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
       const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
       if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
+      // Phone/chat requests (V3-1) have no Gmail thread: the operator answers by phone or a new e-mail.
+      if(record.data.sourceReceipt?.provider!=='gmail')return cookieResponse(409,{error:'NOT_EMAIL_CASE'});
       if(record.revision!==input.expectedRevision)return cookieResponse(409,{error:'CASE_CONFLICT'});
       // Owner switch: with the DB send ledger installed (deployment/test-mailbox/send-ledger.sql) every send is
       // claimed atomically under the approver's own session; if the ledger is required but missing, nothing is sent.

@@ -256,7 +256,9 @@ async function openTestMailboxCase(caseId,turn,status){
  el('detail-messages').replaceChildren(messages);void showTranslation(caseId,turn);
  el('detail-facts').textContent='Érkezés: '+(values.arrival||'Nincs megadva')+'\nTávozás: '+(values.departure||'Nincs megadva')+
   '\nLétszám: '+guestSummary(values)+'\nHáztípus: '+(values.unit||'Nincs megadva');
- el('detail-status').textContent=status||tmStatus[record.approval];
+ // V3-1: phone/chat requests are answered by phone (or a new e-mail), never as a Gmail reply.
+ const source=record.channel==='phone'?'Forrás: telefon (AI-recepciós) – válasz visszahívással; a „Válasz küldése” itt nem érhető el.\n':record.channel==='chat'?'Forrás: chat – válasz visszahívással vagy e-mailben; a „Válasz küldése” itt nem érhető el.\n':'';
+ el('detail-status').textContent=source+(status||tmStatus[record.approval]);
  el('detail-draft').textContent=record.draft.text;
  el('detail-summary').textContent=reviewSummary(record.draft.text,record.draft.operatorReviewText);
  el('detail-capacity').textContent=record.previoRead===true
@@ -271,7 +273,7 @@ async function openTestMailboxCase(caseId,turn,status){
  const caseCabin=CABIN_NAMES[values.unit]?values.unit:Object.entries(CABIN_NAMES).find(([,n])=>n.hu.toLowerCase()===String(values.unit||'').trim().toLowerCase())?.[0];
  if(caseCabin)el('price-cabin').value=caseCabin;
  showBooking(caseId,record);
- if(record.approval==='approved_internal'){approvedText=record.draft.text;el('copy-approved').hidden=false;approvedCase={caseId,revision:record.revision};el('send-approved').hidden=false;}
+ if(record.approval==='approved_internal'){approvedText=record.draft.text;el('copy-approved').hidden=false;approvedCase={caseId,revision:record.revision};el('send-approved').hidden=record.channel==='phone'||record.channel==='chat';}
  if(record.canEditDraft===true){el('draft-editor').value=record.draft.text;el('draft-editor').disabled=false;}
  if(record.canDecide===true&&record.approval==='pending'){
   tmCase.canDecide=true;el('approve-confirm').disabled=false;
@@ -448,7 +450,7 @@ el('booking-cancel').addEventListener('click',()=>bookingAction('booking-cancel'
 // Sends the stored, approved reply through the server (test pair only). The browser sends no text.
 const sendErrors={FORBIDDEN:'A küldés nincs bekapcsolva, vagy nincs jóváhagyói jog.',SEND_OUTCOME_UNKNOWN:'Egy korábbi küldés eredménye nem ismert. Nézze meg a Gmailben (Elküldött levelek); nem küldjük újra automatikusan.',STORAGE_FAILURE:'A küldési napló nem érhető el, ezért nem küldtük el.',NOT_APPROVED:'Csak jóváhagyott válasz küldhető.',
  RECIPIENT_NOT_ALLOWED:'Ez a címzett nem engedélyezett (csak a tesztfeladó).',CASE_CONFLICT:'A foglalás közben megváltozott; nyissa meg újra.',
- GMAIL_AUTH_REQUIRED:'A Google-küldési engedély szükséges.',WRONG_GMAIL_ACCOUNT:'A sarberkiprojecttest@gmail.com fiókot válassza.',
+ GMAIL_AUTH_REQUIRED:'A Google-küldési engedély szükséges.',NOT_EMAIL_CASE:'Telefonos vagy chates igény: válaszolj visszahívással; Gmail-válasz nem küldhető.',WRONG_GMAIL_ACCOUNT:'A sarberkiprojecttest@gmail.com fiókot válassza.',
  LOADING:'A Google-belépés betöltődik; nyomja meg újra.',CONSENT:'A Google-engedély nem érkezett meg.',CHANGED:'A belépés közben megváltozott; nyomja meg újra.'};
 el('send-approved').addEventListener('click',()=>{
  const target=approvedCase,button=el('send-approved');if(!authenticated||!target||button.disabled)return;

@@ -77,6 +77,11 @@ function centralConversationParts(decision,language){
 }
 // Operator-facing status (review panels): the internal "not verified" wording, never a guest sentence.
 const forOperator=(text,language='hu')=>String(text).split(CAPACITY_PENDING_LINE[language]||CAPACITY_PENDING_LINE.hu).join(LEGACY_CAPACITY_PENDING_LINE[language]||LEGACY_CAPACITY_PENDING_LINE.hu);
+// Guest-facing status or questions (voice agent / intake): the guest wording, never the operator line.
+export function guestConversation(decision,language=decision.facts.language){
+ const {questions,status}=centralConversationParts(decision,language);
+ return questions.length?questions.join('\n'):status;
+}
 export function renderCentralConversation(decision,{language=decision.facts.language}={}){
  const {questions,status}=centralConversationParts(decision,language);
  return questions.length?questions.join('\n'):forOperator(status,language);
