@@ -110,6 +110,12 @@ jobs:
             cd /tmp/vault-build
             make && make install
           '
+          # apt may upgrade the PostgreSQL minor version inside the running service (17.11 -> 17.12 on 2026-11-12,
+          # run 43280602824: "plpgsql.so: undefined symbol"). Restart the disposable service so the server process
+          # runs the same binaries as its libraries; same major version, the empty data directory stays valid.
+          docker restart "$ISOLATED_SERVICE_ID" >/dev/null
+          for i in $(seq 1 30); do docker exec "$ISOLATED_SERVICE_ID" pg_isready -q -U restore_admin && break; sleep 2; done
+          docker exec "$ISOLATED_SERVICE_ID" pg_isready -U restore_admin
       - name: Restore without source credentials
         env:
           PGHOST: postgres
@@ -272,6 +278,12 @@ jobs:
             cd /tmp/vault-build
             make && make install
           '
+          # apt may upgrade the PostgreSQL minor version inside the running service (17.11 -> 17.12 on 2026-11-12,
+          # run 43280602824: "plpgsql.so: undefined symbol"). Restart the disposable service so the server process
+          # runs the same binaries as its libraries; same major version, the empty data directory stays valid.
+          docker restart "$ISOLATED_SERVICE_ID" >/dev/null
+          for i in $(seq 1 30); do docker exec "$ISOLATED_SERVICE_ID" pg_isready -q -U restore_admin && break; sleep 2; done
+          docker exec "$ISOLATED_SERVICE_ID" pg_isready -U restore_admin
       - name: Full isolated SQL restore of the actual Drive download
         env:
           PGHOST: postgres
