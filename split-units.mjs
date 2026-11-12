@@ -32,8 +32,8 @@ function countBeforeSizedUnit(text='',size=2){
 export function splitRequestFromText(text=''){
   const source=String(text||'');
   const ids=exactIds(source);
-  let requiresAdjacent=/(?:egymás\s*mellett|egymás\s*melletti|szomszéd|azonos\s+(?:faház|ház)|ugyan(?:azon|abban)\s+(?:a\s+)?(?:faház|ház)|közös\s+(?:faház|ház)|teljes\s+osztott\s+faház|next to|adjacent|same\s+(?:house|cabin)|nebeneinander|benachbart|selben\s+haus|ista\s+hiš|sosednj)/iu.test(source);
-  if(/(?:nem\s+(?:szükséges|kell|kérjük)|not\s+(?:required|necessary)|do not need|nicht\s+(?:erforderlich|nötig)|ni\s+potrebno)[^.!?]{0,65}(?:egymás\s*mellett|szomszéd|adjacent|next to|nebeneinander|sosed)/iu.test(source))requiresAdjacent=false;
+  let requiresAdjacent=/(?:egymás\s*mellett|egymás\s*melletti|szomszéd|azonos\s+(?:faház|ház)|ugyan(?:azon|abban)\s+(?:a\s+)?(?:faház|ház)|közös\s+(?:faház|ház)|teljes\s+osztott\s+faház|next to|adjacent|same\s+(?:house|cabin)|nebeneinander|benachbart|selben\s+haus|ista\s+hiš|sosednj|drug\s+ob\s+drug\p{L}*|poleg\s+drug\p{L}*|side\s+by\s+side|next\s+to\s+each\s+other|neighbou?ring)/iu.test(source); // SI "drug ob drugem" (2026-11-12)
+  if(/(?:nem\s+(?:szükséges|kell|kérjük|baj|fontos)|not\s+(?:required|necessary|important)|do not need|doesn't matter|nicht\s+(?:erforderlich|nötig|wichtig)|ni\s+(?:potrebno|pomembno))[^.!?]{0,65}(?:egymás\s*mellett|szomszéd|külön\s+ház|adjacent|next to|separate|nebeneinander|getrennt|sosed|drug\s+ob)/iu.test(source))requiresAdjacent=false;
   const explicitSplit=ids.length>0||/\b(?:osztott|split|geteilte[rs]?|deljen[ai]?)\b/iu.test(source);
   if(!explicitSplit)return {
     isSplit:false,kind:'not_split',requestedAB:0,requestedC:0,unitCount:0,exactUnitIds:[],
@@ -57,13 +57,15 @@ export function splitRequestFromText(text=''){
   const explicitMixed=/\b[AB]\s*\+\s*C\b/iu.test(source);
   const two=hasTwoPersonPhrase(source)||explicitPair||explicitMixed;
   const four=hasFourPersonPhrase(source)||explicitC||explicitMixed;
-  const requestedAB=two?(explicitPair?2:(countBeforeSizedUnit(source,2)||1)):0;
-  const requestedC=four?(countBeforeSizedUnit(source,4)||cCount||1):0;
-  const kind=two&&four?'mixed':two?'two_person':four?'four_person':'unspecified';
+  // A whole split house = A + B + C in one house (2+2+5), e.g. "teljes osztott faház (A, B és C)" (2026-11-12).
+  const wholeHouse=/(?:teljes|egész|egesz)\s+osztott\s+faház\p{L}*|whole\s+split\s+(?:house|cabin)|ganze\p{L}*\s+geteilte\p{L}*\s+haus|(?<!\p{L})A\s*,\s*B\s*(?:és|es|and|und|in|,|\+)\s*C(?!\p{L})/iu.test(source);
+  const requestedAB=wholeHouse?2:two?(explicitPair?2:(countBeforeSizedUnit(source,2)||1)):0;
+  const requestedC=wholeHouse?1:four?(countBeforeSizedUnit(source,4)||cCount||1):0;
+  const kind=wholeHouse||two&&four?'mixed':two?'two_person':four?'four_person':'unspecified';
   const unitCount=requestedAB+requestedC;
   // Same house: an explicit A+B pair or a same-house phrase; "egymás mellett" alone = neighbouring houses (7-8-9-10).
   const oneHouse=explicitPair&&/(?<!\p{L})(?:egy|one|ein(?:em)?|eno)\s+(?:osztott|split|geteilte\p{L}*|deljen\p{L}*)\s+(?:fa)?(?:ház|house|cabin|haus|hiš)\p{L}*/iu.test(source); // "egy osztott faház A és B apartmanja"
-  const sameHouse=oneHouse||(explicitPair&&requiresAdjacent)||/(?:azonos\s+(?:faház|ház)|ugyan(?:azon|abban)\s+(?:a\s+)?(?:faház|ház)|közös\s+(?:faház|ház)|teljes\s+osztott\s+faház|same\s+(?:house|cabin)|selben\s+haus|ista\s+hiš)/iu.test(source);
+  const sameHouse=wholeHouse||oneHouse||(explicitPair&&requiresAdjacent)||/(?:azonos\s+(?:faház|ház)|ugyan(?:azon|abban)\s+(?:a\s+)?(?:faház|ház)|közös\s+(?:faház|ház)|teljes\s+osztott\s+faház|same\s+(?:house|cabin)|selben\s+haus|ista\s+hiš)/iu.test(source);
   return {
     requiresAdjacent:requiresAdjacent||sameHouse,sameHouse,isSplit:true,kind,requestedAB,requestedC,unitCount,exactUnitIds:[],
     sameHousePreferred:unitCount>1,crossHouseFallbackRequiresApproval:requiresAdjacent

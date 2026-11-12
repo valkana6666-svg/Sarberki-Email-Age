@@ -783,7 +783,9 @@ function operationalTopicLines(language='hu',original='',rules=null,caseContext=
     en:'Every cabin has its own pier; in the split apartments the upstairs unit C has its own pier, and units A and B share one pier.',
     si:'Vsaka hiška ima svoj pomol; pri deljenih apartmajih ima zgornja enota C svoj pomol, enoti A in B pa si delita en pomol.'
   }[lang]);
-  if(/(?:egymas\s+mell\w*|szomszedos\w*|kozel\w*\s+(?:egymashoz|legy\w*)|nebeneinander|benachbart|next\s+to\s+each\s+other|adjacent|neighbou?ring|side\s+by\s+side|drug\s+ob\s+drugem|poleg\s+drug\w*|sosednj\w*)/u.test(foldText(original)))lines.push({
+  if(/(?:egymas\s+mell\w*|szomszedos\w*|kozel\w*\s+(?:egymashoz|legy\w*)|nebeneinander|benachbart|next\s+to\s+each\s+other|adjacent|neighbou?ring|side\s+by\s+side|drug\s+ob\s+drugem|poleg\s+drug\w*|sosednj\w*)/u.test(foldText(original))
+    // not when the guest says it is NOT needed (sweep 2026-11-12: "nem szükséges, hogy egymás mellett legyenek")
+    &&!/(?:nem\s+(?:szukseges|kell|kerjuk|baj|fontos)|not\s+(?:required|necessary|important)|do not need|doesn.t matter|nicht\s+(?:erforderlich|notig|noetig|wichtig)|ni\s+(?:potrebno|pomembno))[^.!?]{0,65}(?:egymas\s*mell|szomszed|kulon\s+haz|adjacent|next to|separate|nebeneinander|getrennt|sosed|drug\s+ob)/u.test(foldText(original)))lines.push({
     hu:'A szomszédos elhelyezést külön ellenőrizzük.',
     de:'Eine Unterbringung nebeneinander prüfen wir gesondert.',
     en:'We will check separately whether adjacent cabins are possible.',

@@ -25,7 +25,14 @@ const EXTRA_BED={hu:'Öt fő esetén az ötödik fő pótágyon alszik.',de:'Bei
 // asks about the layout (terrace, floor, stairs, arrangement) and C is in play - never volunteered.
 const UPPER_FLOOR={hu:'A C apartman az emeleten van, csigalépcsőn közelíthető meg, saját terasszal.',de:'Das Apartment C liegt im Obergeschoss, ist über eine Wendeltreppe erreichbar und hat eine eigene Terrasse.',
  en:'Apartment C is upstairs, reached by a spiral staircase, and has its own terrace.',si:'Apartma C je v nadstropju, dostopen po zavitih stopnicah, in ima svojo teraso.'};
-export const LAYOUT_QUESTION=/(?<!\p{L})(?:teras\p{L}*|terrace\p{L}*|terrass\p{L}*|emelet\p{L}*|földszint\p{L}*|foldszint\p{L}*|lépcső\p{L}*|lepcso\p{L}*|elosztás\p{L}*|elrendezés\p{L}*|elrendezes\p{L}*|floors?|upstairs|downstairs|ground[- ]floor|stairs?|staircase|layout|arrangement|treppe\p{L}*|etage|stockwerk|obergeschoss|erdgeschoss|aufteilung|stopnic\p{L}*|nadstrop\p{L}*|pritličj\p{L}*|razporeditev)(?!\p{L})/iu;
+const LAYOUT_WORDS=/(?<!\p{L})(?:teras\p{L}*|terrace\p{L}*|terrass\p{L}*|emelet\p{L}*|földszint\p{L}*|foldszint\p{L}*|lépcső\p{L}*|lepcso\p{L}*|elosztás\p{L}*|elrendezés\p{L}*|elrendezes\p{L}*|floors?|upstairs|downstairs|ground[- ]floor|stairs?|staircase|layout|arrangement|treppe\p{L}*|etage|stockwerk|obergeschoss|erdgeschoss|aufteilung|stopnic\p{L}*|nadstrop\p{L}*|pritličj\p{L}*|razporeditev)(?!\p{L})/iu;
+// Asked = a sentence with a layout word that is a question ('?' or a question word). A mere mention
+// ("esténként a teraszon grillezünk") is not a question (owner 2026-11-12: only when asked).
+const QUESTION_WORD=/(?<!\p{L})(?:van-e|vane|milyen|hol|hogyan|hogy\s+van|hányadik|hanyadik|is\s+there|are\s+there|is\s+it|are\s+they|does|do\s+they|gibt\s+es|wie|wo|ali|kje|kakšn\p{L}*)(?!\p{L})/iu;
+export function layoutQuestionAsked(text=''){
+ return String(text).split(/(?<=[.!?\n])/u).some(s=>LAYOUT_WORDS.test(s)&&(/\?\s*$/u.test(s)||QUESTION_WORD.test(s)));
+}
+export const LAYOUT_QUESTION={test:layoutQuestionAsked};
 function upperFloorNote(decision,language){
  const input=decision.capacity.input,f=decision.facts,p=input?.placement;
  if(!input?.cabin?.startsWith?.('split'))return '';

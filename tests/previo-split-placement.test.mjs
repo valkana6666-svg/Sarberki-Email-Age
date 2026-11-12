@@ -93,3 +93,20 @@ test('two split units without a proximity request: operator gets a neighbouring 
  const one=buildEmailInquiryDraft({message:'Jó napot! 2027. május 21-től 23-ig jönnénk 2 felnőtt, gyerek nincs, egy 2 fős osztott apartmant kérnénk.',language:'hu',now:new Date('2026-11-12T00:00:00Z'),tenantId:'sarberki'});
  let called=false;assert.equal(await withSplitPlacement(one,one.decision,async()=>{called=true;}),one);assert.equal(called,false,'one unit: no extra read');
 });
+
+test('split pitfall sweep (2026-11-12): negated proximity, SI "drug ob drugem", whole split house, mention vs question',async()=>{
+ const neg=splitRequestFromText('két 2 fős osztott apartmant, nem szükséges, hogy egymás mellett legyenek');
+ assert.equal(neg.requiresAdjacent,false);assert.equal(neg.requestedAB,2);
+ assert.equal(splitRequestFromText('Osztott A és B, nem baj, ha külön házban vannak').requiresAdjacent,false);
+ assert.equal(splitRequestFromText('dva 2-osebna deljena apartmaja drug ob drugem').requiresAdjacent,true);
+ const whole=splitRequestFromText('egy teljes osztott faházat kérnénk (A, B és C)');
+ assert.deepEqual([whole.requestedAB,whole.requestedC,whole.sameHouse],[2,1,true]);
+ const {evaluateCentralInquiry}=await import('../shared-core/central-inquiry-decision.mjs');
+ const d=evaluateCentralInquiry({message:'Jó napot! 2027. május 21-től 23-ig jönnénk 8 felnőtt, gyerek nincs, egy teljes osztott faházat kérnénk (A, B és C).',language:'hu',now:new Date('2026-11-12T00:00:00Z')});
+ assert.notEqual(d.capacity.incompatible,true,'a whole split house holds 9');
+ const {layoutQuestionAsked}=await import('../shared-core/inquiry-channel-adapters.mjs');
+ assert.equal(layoutQuestionAsked('esténként a teraszon grillezünk majd.'),false);
+ for(const q of ['Van hozzá terasz?','Gibt es eine Terrasse?','Are they on the ground floor?','A nagymama nehezen lépcsőzik, ez gond lehet?'])assert.equal(layoutQuestionAsked(q),true,q);
+ const draft=buildEmailInquiryDraft({message:'Jó napot! 2027. május 21-től 23-ig jönnénk 4 felnőtt, gyerek nincs, két 2 fős osztott apartmant kérnénk, nem szükséges, hogy egymás mellett legyenek.',language:'hu',now:new Date('2026-11-12T00:00:00Z'),tenantId:'sarberki'});
+ assert.doesNotMatch(draft.text,/szomszédos elhelyezést külön ellenőrizzük/);
+});
