@@ -1,6 +1,6 @@
 import {evaluateCentralInquiry} from './central-inquiry-decision.mjs';
 import {buildCentralReply} from '../central-reply.mjs';
-import {replyQuestions,stayCancellationFromText,replySummary,hotTubSentence,requestFlagsFromText,pierPreferenceFromText} from '../sarberki-core.mjs';
+import {capacityOptionText,replyQuestions,stayCancellationFromText,replySummary,hotTubSentence,requestFlagsFromText,pierPreferenceFromText} from '../sarberki-core.mjs';
 import {fishingQuestion} from '../fishing-rules.mjs';
 import {SARBERKI_TENANT} from '../tenant-config.mjs';
 const words={
@@ -13,6 +13,14 @@ const words={
 export const CAPACITY_PENDING_LINE=Object.freeze(Object.fromEntries(Object.entries(words).map(([k,v])=>[k,v.pending])));
 // Previo-verified "free" status line (level 1): the price sentence goes right after it.
 export const CAPACITY_AVAILABLE_LINE=Object.freeze(Object.fromEntries(Object.entries(words).map(([k,v])=>[k,v.available])));
+const TOO_MANY={
+ hu:(g,o)=>`A kért háztípusba ${g} fő nem fér el. `+(o?`Ennyi főnek ezek a házak felelnek meg: ${o.replace(/, ([^,]+)$/,' vagy $1')}. Kérjük, jelezze, melyik érdekelné.`:`${g} fő több ház együttes foglalásával helyezhető el; kérjük, jelezze, ha ez megfelel.`),
+ de:(g,o)=>`Im gewünschten Haustyp finden ${g} Personen keinen Platz. `+(o?`Für diese Personenzahl eignen sich: ${o.replace(/, ([^,]+)$/,' oder $1')}. Bitte teilen Sie uns mit, was Sie interessiert.`:`${g} Personen können wir in mehreren Häusern zusammen unterbringen; bitte teilen Sie uns mit, ob das passt.`),
+ en:(g,o)=>`The requested cabin type cannot accommodate ${g} guests. `+(o?`For this party size these cabins are suitable: ${o.replace(/, ([^,]+)$/,' or $1')}. Please let us know which one you prefer.`:`We can accommodate ${g} guests in several cabins booked together; please let us know if this suits you.`),
+ si:(g,o)=>`V želeni tip hiške ${g} oseb ne more bivati. `+(o?`Za to število gostov so primerne: ${o.replace(/, ([^,]+)$/,' ali $1')}. Prosimo, sporočite, kaj vas zanima.`:`${g} oseb lahko namestimo v več hiškah skupaj; prosimo, sporočite, ali vam to ustreza.`)
+};
+const EXTRA_BED={hu:'Öt fő esetén az ötödik fő pótágyon alszik.',de:'Bei fünf Personen schläft die fünfte Person auf einem Zusatzbett.',
+ en:'With five guests, the fifth guest sleeps on an extra bed.',si:'Pri petih osebah peta oseba spi na dodatnem ležišču.'};
 // Either the open questions of the shared decision, or (when nothing is missing) one status line.
 function centralConversationParts(decision,language){
  const f=decision.facts,m=new Set(decision.missing),t=words[language]||words.hu;
@@ -21,8 +29,14 @@ function centralConversationParts(decision,language){
  if(m.has('units_requested'))questions.push(t.units);
  if(questions.length)return {questions,status:null};
  if(decision.requiresHumanReview&&decision.contradictions.length)return {questions:[],status:t.review};
+ // The requested type cannot hold the party (sweep 2026-11-12): say so and name the types that fit; never the
+ // internal "not verified" line. Several houses only as a question (no multi-unit assumption).
+ if(decision.capacity.incompatible){const g=Number(f.guests),o=capacityOptionText(g,language);
+  return {questions:[],status:(TOO_MANY[language]||TOO_MANY.hu)(g,o)};}
  const status=decision.capacity.status==='AVAILABLE'?t.available:decision.capacity.status==='UNAVAILABLE'?t.unavailable:t.pending;
- return {questions:[],status:status+(decision.pricing.verified?' '+t.price:'')};
+ // Five guests in a split house: the fifth sleeps on an extra bed (AGENTS); no surcharge is stated.
+ const split=decision.capacity.input?.cabin?.startsWith?.('split')&&Number(f.guests)===5?' '+(EXTRA_BED[language]||EXTRA_BED.hu):'';
+ return {questions:[],status:status+split+(decision.pricing.verified?' '+t.price:'')};
 }
 export function renderCentralConversation(decision,{language=decision.facts.language}={}){
  const {questions,status}=centralConversationParts(decision,language);
@@ -57,7 +71,7 @@ function renderEmailDecision(decision,original,language){
  // accommodation section, so the letter never says both; otherwise the status goes before the closing as before.
  // Without a chosen cabin type the "in this cabin type" sentence would make no sense: the letter keeps asking
  // for the type (short reply), exactly as before Level 1.
- const verified=['AVAILABLE','UNAVAILABLE'].includes(decision.capacity?.status);
+ const verified=['AVAILABLE','UNAVAILABLE'].includes(decision.capacity?.status)||decision.capacity?.incompatible===true; // "nem fér el" goes in the stay section too
  const status=verified&&!decision.capacity?.input?.cabin?null:parts.status;
  const full=!status||draft.includes(status)?withQuestions
   :verified&&replacePlaceholder(withQuestions,status,language)||placeStatus(withQuestions,status,language);

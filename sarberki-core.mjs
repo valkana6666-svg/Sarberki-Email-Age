@@ -926,7 +926,7 @@ function cabinDisplayName(cabin,language='hu'){
 
 // Whole houses only. A split (A+C, B+C, A+B+C) or several houses is never offered up front for a
 // single-house request: alternatives need verified unavailability first (AGENTS.md). 9+ guests: null.
-function capacityOptionText(guests,language='hu'){
+export function capacityOptionText(guests,language='hu'){
   const lang=['hu','de','en','si'].includes(language)?language:'hu';
   const g=Number(guests);
   const family=cabinDisplayName('Családi',lang);

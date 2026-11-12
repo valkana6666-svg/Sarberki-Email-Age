@@ -52,8 +52,8 @@ Lezárás: minden tesztfoglalás lemondva; semmi nem megy valódi címre.
 | # | Buktató | Eredmény |
 |---|---|---|
 | 01 | 1 éjszaka Deluxe | PASS (szabad hely; ár a kezelői lépésben, +20 %) |
-| 02 | 6 fő egy Osztott C-be (max 5) | NYITOTT: „Osztott” általánosan, nincs Previo-olvasás; vendégszövegben „A kapacitás ellenőrzése még nem igazolt.” – kezelő dönt, NE mutassuk |
-| 03 | C 5 fő | RÉSZBEN: szabad hely PASS, a pótágy-feltétel mondata hiányzik – NYITOTT |
+| 02 | 6 fő egy Osztott C-be (max 5) | **JAVÍTVA (11-12):** „A kért háztípusba 6 fő nem fér el. Ennyi főnek … Deluxe, Családi vagy VIP.” |
+| 03 | C 5 fő | **JAVÍTVA (11-12):** szabad hely + „Öt fő esetén az ötödik fő pótágyon alszik.” (felár nélkül) |
 | 04 | dátum nélkül | PASS (rövid adatkérő levél) |
 | 05 | teli Deluxe | PASS („nincs elegendő szabad helyünk”) |
 | 06 | fordított dátum | PASS (dátumot kér, nem találgat) |
@@ -81,9 +81,9 @@ Eredmény: 8 PASS, 4 javítva, 3 nyitott (Osztott C/pótágy, múltbeli dátum, 
 | 23 | csak árkérdés | PASS (adatokat kér) |
 | 24 | lemondás SC-számmal | PASS (lemondási visszajelzés, kezelőnek) |
 | 25 | 15 éves gyerek | PASS (szabad hely; árkategória a kezelői lépésben) |
-| 26 | Különálló 2 fős 3 főnek | NYITOTT: nem mondja, hogy nem fér el; „kapacitás nem igazolt” mondat (mint 02) |
+| 26 | Különálló 2 fős 3 főnek | **JAVÍTVA (11-12):** „3 fő nem fér el” + megfelelő típusok |
 | 27 | EN „a toddler aged 2” | **JAVÍTVA** (eddig 4 fő, most 5, kor 2) |
 | 28 | hosszú, sok kérdés | PASS (horgászat, dézsa); a parkoló- és etetőanyag-kérdést nem válaszolja – kezelő |
 | 29 | SI család gyerekekkel | PASS |
 | 30 | kéretlen reklámlevél | NYITOTT: szállásérdeklődésként adatokat kér – a kezelő elutasítja |
-Összesen (30 levél): 18 PASS, 7 javítva, 5 nyitott (02, 03, 07, 26, 30) + parkoló-válasz. `npm test` 2733/2733.
+Összesen (30 levél): 18 PASS, 10 javítva, 2 nyitott (07 múltbeli dátum, 30 reklámlevél) + parkoló-válasz; a 12-es (A+B) levélben a „kapacitás nem igazolt” mondat még megjelenik. `npm test` 2733/2733.

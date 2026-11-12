@@ -50,3 +50,21 @@ test('sweep 2: "a toddler aged 2" is a child aged 2',()=>{
  const t='We are two couples (4 adults) plus a toddler aged 2, looking for a family cabin';
  assert.equal(childCountFromText(t),1);assert.deepEqual(childAgesFromText(t),[2]);assert.equal(adultCountFromText(t),4);
 });
+
+test('sweep 3: party too large for the requested type -> "nem fér el" + fitting types, never the internal pending line',async()=>{
+ const {evaluateCentralInquiry}=await import('../shared-core/central-inquiry-decision.mjs');
+ const {renderCentralConversation}=await import('../shared-core/inquiry-channel-adapters.mjs');
+ const now=new Date('2026-11-12T00:00:00Z');
+ const d=t=>evaluateCentralInquiry({message:t,language:'hu',now});
+ const six=d('6 felnőtt lennénk, egy Osztott C házat szeretnénk 2027. június 18-tól 20-ig. Gyerek nincs.');
+ assert.equal(six.capacity.incompatible,true);
+ assert.match(renderCentralConversation(six),/^A kért háztípusba 6 fő nem fér el\. Ennyi főnek ezek a házak felelnek meg: Deluxe, Családi vagy VIP\./);
+ const small=d('A különálló 2 fős faházat szeretnénk 2027. június 14-től 16-ig, 3 felnőtt, gyerek nincs.');
+ assert.doesNotMatch(renderCentralConversation(small),/kapacitás ellenőrzése még nem igazolt/);
+ assert.match(renderCentralConversation(small),/3 fő nem fér el/);
+ assert.match(renderCentralConversation(d('Deluxe faházat 2027. június 14-től 16-ig, 9 felnőtt, gyerek nincs.')),/9 fő több ház együttes foglalásával helyezhető el/);
+ const five=d('Osztott C házba jönnénk 5 felnőttel 2027. szeptember 3-tól 5-ig, gyerek nincs.');
+ assert.notEqual(five.capacity.incompatible,true,'5 fits a split C house');
+ assert.match(renderCentralConversation(five),/ötödik fő pótágyon alszik/);
+ assert.doesNotMatch(renderCentralConversation(d('Deluxe faházat 2027. június 14-től 16-ig, 2 felnőtt, gyerek nincs.')),/nem fér el|pótágy/);
+});

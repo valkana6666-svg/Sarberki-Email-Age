@@ -177,6 +177,10 @@ export function evaluateCentralInquiry({message='',language='hu',now=new Date(),
  const decidedCapacity=decideCapacity(capacity,input,ready,timestamp,tenantId);
  if(ready&&!input.cabin?.startsWith('split')&&wholeCabinCandidates(input).rejected.some(r=>r.key===input.cabin))
   decidedCapacity.incompatible=true;
+ // One split house holds at most 5 (C with an extra bed); more guests need several houses, which is never
+ // assumed without an explicit multi-unit request (sweep 2026-11-12: "6 fő egy Osztott C házba").
+ if(ready&&input.cabin?.startsWith('split')&&!(Number(input.units)>1)&&(!input.placement||input.placement.ab+input.placement.c<=1)&&Number(n.guests)>5)
+  decidedCapacity.incompatible=true;
  return freeze({facts:n,missing:uniqueMissing,contradictions:uniqueContradictions,
   requiresHumanReview:uniqueContradictions.length>0||uniqueMissing.includes('dates_confirmation'),
   readyForCapacityCheck:ready,capacity:decidedCapacity,pricing:decidePrice(priceComponents,decidedCapacity,timestamp,n,tenantId),
