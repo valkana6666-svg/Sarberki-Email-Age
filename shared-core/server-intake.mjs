@@ -94,6 +94,9 @@ export async function createIntakeRequest({channel,externalId,facts,summary,tran
  const at=clock(),caseId='tm-'+sha(channel+':'+externalId).slice(0,24);
  // The operator reads what was said (summary) and the structured facts; no recording is stored (owner 2026-11-12).
  const label={phone:'Telefonos foglalási igény (AI-recepciós)',chat:'Chates foglalási igény'}[channel];
+ // A reply-quote header ("… ezt írta:", "… wrote:") would make the engine drop everything after it as an old quoted
+ // letter (found 2026-11-12): neutralise such markers in the agent/chat summary.
+ summary=summary.replace(/(ezt írta|írta|wrote|schrieb|je napisal|je napisala)\s*:/giu,'$1 –');
  const text=`${label}\n\n${summary.trim()}${v.phone?'\nTelefon: '+v.phone:''}${v.name?'\nNév: '+v.name:''}`;
  const envelope={mailbox_id:'intake:'+channel,message_id:externalId,thread_id:externalId,rfc_message_id:'<'+externalId+'@intake>',
   sender:'intake:'+channel,received_at:at,text};

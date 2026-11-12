@@ -58,3 +58,11 @@ test('V3-4 operator note: off by default; when on, one Pushover call without per
  assert.doesNotMatch(JSON.stringify(calls[0].body),/\+36|@|Teszt|2027/);
  assert.equal(await notifyOperator({INTAKE_NOTIFY:'pushover',PUSHOVER_API_TOKEN:'t',PUSHOVER_USER_KEY:'u'},async()=>{throw Error('down');},'chat'),false,'best effort');
 });
+
+test('a quote-like phrase in the summary does not empty the request (2026-11-12)',async()=>{
+ const {createIntakeRequest}=await import('../shared-core/server-intake.mjs');
+ let sent;const transport=async(_,{body})=>{sent=body;return {revision:1};};
+ await createIntakeRequest({channel:'phone',externalId:'call_test_quote01',facts:{arrival:'2027-07-12',departure:'2027-07-15',adults:2,children:0,cabin:'deluxe',language:'hu'},
+  summary:'A vendég ezt írta: Deluxe faházat kér július 12–15. On Monday the guest wrote: two adults.',transport,attestationKey:'e5'.repeat(32),tenantId:'sarberki-test'});
+ assert.match(sent.p_data.messages[0].text,/Deluxe faházat kér/);assert.match(sent.p_data.messages[0].text,/two adults/);
+});
