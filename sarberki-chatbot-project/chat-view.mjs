@@ -1,15 +1,39 @@
 import {createChatInquirySession} from './chat-session.mjs';
 import {renderChatbotIntent} from '../chatbot-v1.mjs';
+import {REQUEST_TEXT,requestFacts} from './chat-request-client.mjs';
 
 // The audience is chosen by the host, never by a guest-controlled URL parameter.
 // Guest rendering never inserts operator review text or server controls.
-export function mountChatView(root,{audience='guest',language='auto',clock,capacityProvider=null}={}){
+export function mountChatView(root,{audience='guest',language='auto',clock,capacityProvider=null,requestSender=null}={}){
  const operator=audience==='operator',session=createChatInquirySession({language,clock});
  const log=root.querySelector('[data-chat-log]'),input=root.querySelector('[data-chat-input]');
  const form=root.querySelector('[data-chat-form]'),reset=root.querySelector('[data-chat-reset]');
  const select=operator?root.querySelector('[data-chat-language]'):null;
  const status=root.querySelector('[data-chat-status]');
- let messages=0;
+ let messages=0,said=[];
+ // V3-3: once the stay facts are known, the guest may send them to reception (only with a requestSender).
+ const box=requestSender?document.createElement('div'):null;
+ function renderRequest(){
+  if(!box)return;
+  const facts=requestFacts(session.snapshot()),t=REQUEST_TEXT[session.language]||REQUEST_TEXT.hu;
+  box.hidden=!facts;if(!facts){box.replaceChildren();return;}
+  if(box.dataset.sent==='1')return;
+  const title=document.createElement('strong');title.textContent=t.title;
+  const label=document.createElement('label');label.textContent=t.phone;const phone=document.createElement('input');phone.type='tel';phone.maxLength=24;phone.autocomplete='tel';label.append(phone);
+  const consent=document.createElement('label');const check=document.createElement('input');check.type='checkbox';consent.append(check,document.createTextNode(' '+t.consent));
+  const send=document.createElement('button');send.type='button';send.textContent=t.send;send.disabled=true;
+  const note=document.createElement('p');note.textContent=t.note;const result=document.createElement('p');result.setAttribute('role','status');
+  const valid=()=>check.checked&&/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(phone.value.trim());
+  for(const x of [phone,check])x.addEventListener('input',()=>{send.disabled=!valid();});check.addEventListener('change',()=>{send.disabled=!valid();});
+  send.addEventListener('click',async()=>{
+   if(!valid())return;send.disabled=true;
+   const ok=await requestSender({facts:requestFacts(session.snapshot()),phone:phone.value.trim(),language:session.language,transcript:said.slice(-12)});
+   if(ok){box.dataset.sent='1';box.replaceChildren(Object.assign(document.createElement('p'),{textContent:t.sent}));}
+   else{result.textContent=t.fail;send.disabled=false;}
+  });
+  box.replaceChildren(title,label,consent,send,note,result);
+ }
+ if(box){box.className='chat-request';box.hidden=true;log.after(box);}
  function append(who,text,lang,review=''){
   const item=document.createElement('div');item.className='entry';item.lang=lang==='si'?'sl':lang;
   const name=document.createElement('div');name.className='sender';name.textContent=who;
@@ -34,8 +58,10 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
    // Replace only the untouched greeting; history is never translated or erased.
    if(messages===0)greeting();
    append('Vendég / Guest',question,session.language);
+   said.push(question);
    append('Sárberki',result.text,session.language,result.operatorReviewText);
    messages++;updateStatus();input.value='';
+   renderRequest();
    // Operator test only: a verified Previo TEST read replaces the last answer in place (never the guest widget).
    if(operator&&capacityProvider&&result.capacityInput){
     const turn=session.turn,entry=log.lastElementChild;
@@ -47,11 +73,11 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
    }
   }catch{input.setCustomValidity('Új beszélgetés szükséges / Please start a new chat.');input.reportValidity();}
  }
- function newChat(){session.reset();messages=0;input.value='';input.setCustomValidity('');greeting();}
+ function newChat(){session.reset();messages=0;said=[];if(box){delete box.dataset.sent;renderRequest();}input.value='';input.setCustomValidity('');greeting();}
  function changeLanguage(){session.setLanguage(select.value);if(messages===0)greeting();else updateStatus();}
  form.addEventListener('submit',submit);reset.addEventListener('click',newChat);
  select?.addEventListener('change',changeLanguage);greeting();
- return {destroy(){form.removeEventListener('submit',submit);reset.removeEventListener('click',newChat);select?.removeEventListener('change',changeLanguage);session.reset();log.replaceChildren();}};
+ return {destroy(){box?.remove();form.removeEventListener('submit',submit);reset.removeEventListener('click',newChat);select?.removeEventListener('change',changeLanguage);session.reset();log.replaceChildren();}};
 }
 
 // Opt-in embedding preparation only. The production website does not load this.

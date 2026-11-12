@@ -79,6 +79,16 @@ begin
   raise exception 'invalid intake source' using errcode='22023';
  end if;
  box:='intake:'||(src->>'provider');
+ -- Public chat requests (V3-3): id = chat_<16 hex visitor fingerprint>_<16 hex random>; at most 3 per visitor and
+ -- 30 in total per hour (abuse limit; the IP itself is never stored, only a keyed one-way fingerprint).
+ if src->>'provider'='chat' then
+  if src->>'external_id'!~'^chat_[a-f0-9]{16}_[a-f0-9]{16}$' then raise exception 'invalid chat intake id' using errcode='22023'; end if;
+  if (select count(*) from public.sc_test_mailbox_cases where tenant_id=p_tenant and mailbox_id=box
+      and message_id like substr(src->>'external_id',1,22)||'%' and created_at>now()-interval '1 hour')>=3
+  or (select count(*) from public.sc_test_mailbox_cases where tenant_id=p_tenant and mailbox_id=box and created_at>now()-interval '1 hour')>=30 then
+   raise exception 'chat intake limit' using errcode='54000';
+  end if;
+ end if;
  body_hash:=encode(sha256(convert_to(msg->>'text','UTF8')),'hex');
  begin
   fields:=array['intake-source-v1',p_tenant,src->>'provider',src->>'external_id',src->>'received_at',body_hash,p_proof->>'checkedAt'];

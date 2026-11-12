@@ -68,8 +68,12 @@ test('intake: one pending case per call, only the intake account can create it, 
   const {saved}=await confirmTestMailboxBooking({record,previoReference:'TEST-73521-9',previoRecorded:true,unit:'11',attestationKey:KEY,transport:transportFor('writer')});
   assert.equal(saved.revision,2);
   // A chat request with its own id is a separate case.
-  const chat=await createIntakeRequest({...base,channel:'chat',externalId:'chat_test_000001',transport:transportFor('intake')});
-  assert.notEqual(chat.caseId,caseId);
+  // Chat (V3-3): strict id format; at most 3 per visitor fingerprint per hour (the 4th is refused by the database).
+  await assert.rejects(createIntakeRequest({...base,channel:'chat',externalId:'chat_test_000001',transport:transportFor('intake')}),/STORAGE_FAILURE/);
+  const visitor='0123456789abcdef';
+  for(let i=1;i<=3;i++)assert.match((await createIntakeRequest({...base,channel:'chat',externalId:`chat_${visitor}_${String(i).padStart(16,'0')}`,transport:transportFor('intake')})).caseId,/^tm-/);
+  await assert.rejects(createIntakeRequest({...base,channel:'chat',externalId:`chat_${visitor}_${'4'.padStart(16,'0')}`,transport:transportFor('intake')}),/STORAGE_FAILURE/,'4th request in an hour');
+  assert.match((await createIntakeRequest({...base,channel:'chat',externalId:`chat_fedcba9876543210_${'1'.padStart(16,'0')}`,transport:transportFor('intake')})).caseId,/^tm-/,'another visitor is not affected');
  }finally{await db.close();}
 });
 

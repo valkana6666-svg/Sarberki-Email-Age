@@ -9,6 +9,7 @@ Tulajdonosi jóváhagyás: V3-terv, 2026-11-12 (#9 6822281802, `V1-ALLAPOT.md` V
 | Szerver | `shared-core/server-intake.mjs` | `check_availability`: központi döntés + csak olvasó Previo → állapot és vendégmondat (ár nélkül); `create_booking_request`: a meglévő ügymotor és tervezet → függő ügy |
 | Végpont | `netlify/functions/intake.mjs` | alapból KI (`INTAKE_ENABLED=test-only` kell); csak HMAC-aláírt kérés (5 perces ablak); fix hibakódok |
 | Értesítés (V3-4) | `netlify/functions/intake.mjs` `notifyOperator` | új telefonos/chates igénynél egy Pushover-üzenet személyes adat nélkül; alapból KI (`INTAKE_NOTIFY=pushover` + külön tulajdonosi engedély, AGENTS) |
+| Chatből igény (V3-3) | `netlify/functions/chat-intake.mjs`, `sarberki-chatbot-project/chat-request-client.mjs`, `chat-view.mjs` | ha a chatből megvan a dátum, felnőttszám és háztípus: „Foglalási igény küldése a recepciónak” (4 nyelv); kötelező telefonszám + hozzájárulás; gépenként 3, összesen 30 igény/óra (az adatbázis ellenőrzi); az IP nem tárolódik (csak kulcsolt lenyomat); Previo-olvasás nincs; alapból KI (`INTAKE_CHAT_ENABLED=test-only` is kell) |
 | Napi kezelő | `napi-kezelo/napi.mjs`, `booking-cases.mjs` | a telefonos/chates ügy a meglévő listában; „Forrás: telefon” felirat; „Válasz küldése” nincs (visszahívás); minden más lépés (ár, véglegesítés, V2, lemondás) változatlanul működik |
 
 Bizonyíték: `tests/intake-pglite.test.mjs` (valódi PostgreSQL: egy ügy/hívás, dupla tiltva, csak az intake fiók hozhat létre, hamis aláírás tiltva, az intake fiók nem olvas, a kezelő véglegesítheti), `tests/intake-endpoint.test.mjs` (KI alapból, aláírás, ismétlés tiltva, fix kódok). Élő Previo-olvasással (73521) a `check_availability` helyes: szabad / nincs / nem fér el.
@@ -16,7 +17,7 @@ Bizonyíték: `tests/intake-pglite.test.mjs` (valódi PostgreSQL: egy ügy/hív�
 ## Bekapcsolás TEST-en (később, tulajdonosi engedéllyel)
 1. DB-telepítés: `[test-db-install deployment/intake/install.sql]` + jóváhagyás a GitHub-alkalmazásban.
 2. Supabase (TEST): új Auth-felhasználó (pl. intake fiók), majd egy sor az `sc_intake_actors` táblába (tenant `sarberki-test`). Tagságot (olvasás/írás) NEM kap.
-3. Netlify (TEST) változók: `INTAKE_ENABLED=test-only`, `INTAKE_HMAC_KEY` (64 hex), `INTAKE_ACCOUNT_EMAIL`, `INTAKE_ACCOUNT_PASSWORD` – titkok, csak a Netlifyben.
+3. Netlify (TEST) változók: `INTAKE_ENABLED=test-only`, (chathez még `INTAKE_CHAT_ENABLED=test-only`), `INTAKE_HMAC_KEY` (64 hex), `INTAKE_ACCOUNT_EMAIL`, `INTAKE_ACCOUNT_PASSWORD` – titkok, csak a Netlifyben.
 4. TEST-kiadás → szintetikus aláírt hívásokkal élő próba → utána a hangügynök (Retell) beállítása ugyanezzel a kulccsal.
 
 ## Még hátra (V3-2/3/4)
