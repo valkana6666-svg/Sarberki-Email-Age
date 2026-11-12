@@ -89,7 +89,7 @@ const COPY_LABEL='Jóváhagyott szöveg másolása',SEND_LABEL='Válasz küldés
 let approvedCase=null;
 // Price from the existing public price-list calculator (/api/price-reference, TEST site only): the
 // operator picks the cabin after checking availability; the result can be inserted into the editor.
-let priceCase=null,priceQuote=null,bookingCase=null;
+let priceCase=null,priceQuote=null,bookingCase=null,oneClick=null;
 const isTestMailboxCaseId=id=>typeof id==='string'&&/^tm-[a-f0-9]{12,32}$/.test(id);
 const request=createEpochRequestQueue({getEpoch:()=>epoch,isAuthenticated:()=>authenticated,
  prepare:()=>session.restore(),execute:createCloudCaseRequest()});
@@ -160,6 +160,7 @@ function clearDetail(){
  for(const id of ['booking-unit','previo-ref','previo-recorded','previo-auto','booking-finalize','deposit-date','deposit-confirm','deposit-mark','cancel-reason','cancel-confirm','booking-cancel','modify-arrival','modify-departure','modify-unit','modify-confirm','booking-modify'])el(id).disabled=true;
  el('booking-unit').replaceChildren();
  el('previo-ref').value='';el('previo-recorded').checked=false;el('previo-auto').checked=false;el('cancel-confirm').checked=false;el('cancel-reason').value='';el('deposit-confirm').checked=false;el('deposit-date').value='';
+ oneClickReset();el('oneclick-wrap').hidden=true;
  el('detail-link').href='../cloud-approval.html';
 }
 function clearData(message='A listához jelentkezzen be.'){
@@ -391,6 +392,8 @@ function showBooking(caseId,record){
  for(const id of ['previo-ref','previo-recorded'])el(id).disabled=!fin;
  // V2: offered only when the server says it can write the Previo TEST booking itself.
  el('previo-auto-wrap').hidden=record.previoWrite!==true;el('previo-auto').disabled=!fin||record.previoWrite!==true;el('previo-auto').checked=false;
+ // One-click V2: only for an account with write AND approve, V2 writer on, not finalized (server hint; re-checked).
+ oneClickReset();el('oneclick-wrap').hidden=record.canOneClick!==true;
  for(const id of ['deposit-date','deposit-confirm'])el(id).disabled=!dpt;
  for(const id of ['cancel-reason','cancel-confirm'])el(id).disabled=record.canCancelBooking!==true;el('cancel-confirm').checked=false;el('cancel-reason').value='';
  // V2 modification: same type's units, current values preselected.
@@ -402,16 +405,20 @@ function showBooking(caseId,record){
  el('modify-unit').replaceChildren(...modifyKeys.flatMap(k=>unitsOfType(k)).map(u=>{const o=document.createElement('option');o.value=u.id;o.textContent=u.id;return o;}));
  if(b?.unit)el('modify-unit').value=b.unit;
  if(dpt)el('deposit-date').value=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Budapest'});
+ el('oneclick-preview').disabled=!(record.canOneClick===true&&selectedUnits().length===bookingUnitsNeeded);
 }
 const bookingErrors={PREVIO_RECORDING_REQUIRED:'Add meg a Previo-hivatkozást, és pipáld be a rögzítést.',ALREADY_FINALIZED:'Ez a foglalás már véglegesítve van.',
  CONFIRMATION_FACTS_MISSING:'Hiányzik a pontos dátum, a felnőttszám vagy egy gyermek életkora.',CONFIRMATION_CABIN_UNKNOWN:'A háztípus nincs egyértelműen megadva.',
  CONFIRMATION_PRICE_MISSING:'Az árlista ehhez nem ad igazolt árat; kézi ellenőrzés szükséges.',DEPOSIT_POLICY_UNVERIFIED:'A foglaló határideje nem számítható (pl. múltbeli érkezés).',
  NOT_FINALIZED:'Előbb véglegesíteni kell a foglalást.',UNIT_TAKEN:'Ez az egység erre az időszakra már foglalt (egy másik véglegesített foglalás miatt). Válassz másik egységet.',UNITS_MIXED_SPLIT:'Osztott A/B és C egység vegyesen: az ár kézi számítást igényel (külön foglalások vagy kézi ár).',UNIT_NOT_IN_TYPE:'Ez az egység nem a foglalás háztípusához tartozik.',UNITS_COUNT_MISMATCH:'Pontosan annyi egységet válassz, ahányat a vendég kért.',UNITS_INVALID:'Az egységválasztás érvénytelen (ismétlődés?).',PREVIO_WRITE_DISABLED:'A Previo-írás (V2) nincs bekapcsolva.',NOT_ACTIVE_BOOKING:'Csak véglegesített foglalás mondható le vagy módosítható.',NOTHING_CHANGED:'Nincs változás a dátumban vagy az egységben.',PREVIO_MANUAL_BOOKING:'Kézzel rögzített Previo-foglalás: a Previóban módosítsd.',MULTI_UNIT_MODIFY_UNSUPPORTED:'Több egységes foglalás módosítása még nem támogatott.',PREVIO_MODIFY_UNVERIFIED:'A Previo-módosítás nem igazolható – nézd meg a Previóban.',PREVIO_MODIFY_NOT_REVERTED:'FIGYELEM: a Previóban módosult, nálunk nem mentődött, és a visszaállítás sem sikerült – nézd meg a Previóban!',INVALID_REASON:'Adj meg rövid lemondási okot (egy sor).',CANCEL_NOT_CONFIRMED:'Pipáld be a lemondás megerősítését.',PREVIO_WRITE_UNCERTAIN:'A Previo nem igazolta a létrehozást – nézd meg a Previóban, mielőtt újra próbálod.',PREVIO_BOOKING_NOT_ACTIVE:'Ehhez az ügyhöz a Previóban már van egy lemondott foglalás – kézi ellenőrzés kell.',PREVIO_ORPHAN_OPTION:'A Previóban létrejött az opció, de nálunk nem mentődött, és a lemondás sem igazolt – nézd meg a Previóban!',PREVIO_AUTH_REFUSED:'A Previo elutasította a kulcsot.',PREVIO_REJECTED:'A Previo elutasította a foglalást.',PREVIO_TIMEOUT:'A Previo nem válaszolt időben.',PREVIO_UNAVAILABLE:'A Previo nem érhető el.',UNIT_TAKEN_IN_PREVIO:'A Previo szerint ez az egység erre az időszakra egy másik foglalás miatt foglalt. Válassz másik egységet.',INVALID_DATE:'Érvénytelen dátum.',CASE_CONFLICT:'A foglalás közben megváltozott; nyisd meg újra.',
+ PREVIEW_CHANGED:'Az adatok az előnézet óta változtak – nem történt írás. Készíts új előnézetet.',PREVIO_UNIT_UNVERIFIED:'A Previo most nem igazolta, hogy az egység szabad – nem történt írás.',ONECLICK_ROLE_REQUIRED:'Ehhez a fióknak rögzítő és jóváhagyó jog is kell.',ONECLICK_NOT_CONFIRMED:'Pipáld be, hogy az előnézetet elolvastad.',
  FORBIDDEN:'Ehhez nincs írási jog.',STORAGE_FAILURE:'Az adatbázis-funkció nem érhető el (valószínűleg még nincs telepítve). Szólj Claude-nak.',
  TEST_MAILBOX_REJECTED:'Az adatbázis elutasította (lehet, hogy a frissítés még nincs telepítve).',NOT_FOUND:'A foglalás nem található; töltsd be újra a listát.'};
 let bookingUnitsNeeded=1;
 const selectedUnits=()=>bookingUnitsNeeded>1?[...el('booking-unit').selectedOptions].map(o=>o.value).filter(Boolean):[el('booking-unit').value].filter(Boolean);
-const bookingInputs=()=>{const auto=el('previo-auto').checked&&!el('previo-auto').disabled;
+const bookingInputs=event=>{const auto=el('previo-auto').checked&&!el('previo-auto').disabled;
+ if(event?.target?.id==='booking-unit')oneClickReset();
+ el('oneclick-preview').disabled=!(bookingCase&&!el('oneclick-wrap').hidden&&selectedUnits().length===bookingUnitsNeeded);
  for(const id of ['previo-ref','previo-recorded'])if(bookingCase&&!el('previo-auto').disabled)el(id).disabled=auto;
  el('booking-finalize').disabled=!(bookingCase&&selectedUnits().length===bookingUnitsNeeded&&(auto||!el('previo-ref').disabled&&/^[A-Za-z0-9\/_.-]{1,40}$/.test(el('previo-ref').value.trim())&&el('previo-recorded').checked));
  el('deposit-mark').disabled=!(bookingCase&&!el('deposit-confirm').disabled&&el('deposit-confirm').checked&&/^\d{4}-\d{2}-\d{2}$/.test(el('deposit-date').value));
@@ -424,7 +431,8 @@ async function bookingAction(button,body,done){
  try{
   const result=await request({tenantId:TENANT,caseId:target.caseId,expectedRevision:target.revision,...body});
   if(!current(turn))return;
-  if(result?.caseId!==target.caseId||result.revision!==target.revision+1)throw Error('INVALID_DATA');
+  const steps=body.action==='test-mailbox-oneclick'&&result?.approved===true?2:1;
+  if(result?.caseId!==target.caseId||result.revision!==target.revision+steps)throw Error('INVALID_DATA');
   rows=[];listLoaded=false;updateCounts();el('case-list').replaceChildren();
   const message=done(result);
   await openTestMailboxCase(target.caseId,turn,message);
@@ -441,6 +449,42 @@ el('booking-finalize').addEventListener('click',()=>{const auto=el('previo-auto'
  bookingAction('booking-finalize',auto?{action:'test-mailbox-confirm',...unitPart,previoAuto:true}
   :{action:'test-mailbox-confirm',...unitPart,previoReference:el('previo-ref').value.trim(),previoRecorded:el('previo-recorded').checked},
  r=>'Véglegesítve'+(auto?', a Previo-tesztben opcióként rögzítve':'')+'. Visszaigazoló levél elkészült'+(r.deposit?' (foglaló: '+huf(r.deposit.amount)+' Ft)':'')+'; jóváhagyásra vár, utána küldhető.');});
+// One-click V2 (PERM-20261112-ONECLICK): preview -> one checkbox -> one button. The hash binds the button to exactly
+// the preview the operator read; the server recomputes it and stops before any write if anything changed.
+const oneClickBlockers={PREVIO_WRITE_DISABLED:'a Previo-írás (V2) nincs bekapcsolva',ALREADY_APPROVED:'a levél már jóvá van hagyva',
+ PREVIO_UNIT_UNVERIFIED:'a Previo most nem igazolta, hogy az egység szabad',PREVIO_PRICE_MISMATCH:'a Previo-ár eltér az árlistától',
+ ONECLICK_ROLE_REQUIRED:'ehhez a fióknak rögzítő és jóváhagyó jog is kell'};
+const oneClickPrice={match:'egyezik a Previo-árral',mismatch:'ELTÉR a Previo-ártól',multi_unit:'több egység: Previo-ár nem összevetve',
+ not_comparable:'gyermekes eset: Previo-ár nem összevethető',unreadable:'Previo-ár most nem olvasható',not_checked:'Previo-ár nincs ellenőrizve'};
+function oneClickReset(){oneClick=null;el('oneclick-summary').textContent='';el('oneclick-confirm').checked=false;el('oneclick-confirm').disabled=true;el('oneclick-go').disabled=true;}
+el('oneclick-preview').addEventListener('click',async()=>{
+ const target=bookingCase,chosen=selectedUnits();if(!authenticated||!target||actionBusy||chosen.length!==bookingUnitsNeeded)return;
+ const turn=epoch;oneClickReset();el('oneclick-preview').disabled=true;el('oneclick-summary').textContent='Előnézet készül (Previo-olvasás)…';
+ try{
+  const p=await request({tenantId:TENANT,caseId:target.caseId,action:'test-mailbox-oneclick-preview',unit:chosen[0],...(chosen.length>1?{units:chosen.join(',')}:{})},'GET');
+  if(!current(turn)||bookingCase!==target)return;
+  if(p?.caseId!==target.caseId||p.revision!==target.revision||!/^[a-f0-9]{64}$/.test(p.previewHash||'')||typeof p.letterText!=='string')throw Error('INVALID_DATA');
+  const deadline=new Date(p.deposit?.receiptDeadlineUtc).toLocaleString('hu-HU',{timeZone:'Europe/Budapest'});
+  el('oneclick-summary').textContent=(p.ready?'✅ Minden ellenőrzés rendben.':'⛔ Nem indítható: '+p.blockers.map(b=>oneClickBlockers[b]||b).join('; ')+'.')+
+   '\nEgység'+(p.units.length>1?'ek: ':': ')+p.units.join(', ')+(p.blockers.includes('PREVIO_UNIT_UNVERIFIED')?'':' (Previo: szabad)')+
+   '\nÁr: '+huf(p.total)+' Ft – '+(oneClickPrice[p.price?.status]||'')+
+   '\nFoglaló: '+p.deposit.pct+'% = '+huf(p.deposit.amount)+' Ft, határidő kb. '+deadline+' (a véglegesítés pillanatától számít)'+
+   '\nFoglalási szám a levélben: '+p.voucher+'\n\n— A vendégnek szóló visszaigazoló levél —\n'+p.letterText;
+  if(p.ready){oneClick={caseId:target.caseId,revision:target.revision,previewHash:p.previewHash,units:chosen};el('oneclick-confirm').disabled=false;}
+ }catch(error){
+  if(!current(turn))return;
+  if(error?.message==='AUTH_REQUIRED')failed(error);
+  else el('oneclick-summary').textContent='Előnézet nem készült: '+(bookingErrors[error?.message]||'ismeretlen hiba; próbáld újra.');
+ }finally{if(current(turn))el('oneclick-preview').disabled=false;}
+});
+el('oneclick-confirm').addEventListener('change',()=>{el('oneclick-go').disabled=!(oneClick&&bookingCase?.caseId===oneClick.caseId&&bookingCase.revision===oneClick.revision&&el('oneclick-confirm').checked);});
+el('oneclick-go').addEventListener('click',()=>{
+ const o=oneClick;if(!o||!el('oneclick-confirm').checked||bookingCase?.caseId!==o.caseId||bookingCase.revision!==o.revision)return;
+ const unitPart=o.units.length>1?{unit:o.units[0],units:o.units}:{unit:o.units[0]};
+ el('oneclick-confirm').disabled=true;
+ bookingAction('oneclick-go',{action:'test-mailbox-oneclick',...unitPart,previewHash:o.previewHash,oneClickConfirmed:true},
+  r=>'Kész: a Previo-tesztben opció rögzítve, a visszaigazoló levél '+(r.approved?'elkészült és JÓVÁHAGYVA – a „Válasz küldése” gombbal küldhető.':'elkészült, de a jóváhagyás nem sikerült – hagyd jóvá a szokott gombbal.')+(r.deposit?' Foglaló: '+huf(r.deposit.amount)+' Ft.':''));
+});
 el('deposit-mark').addEventListener('click',()=>bookingAction('deposit-mark',{action:'test-mailbox-deposit',receivedOn:el('deposit-date').value,depositConfirmed:el('deposit-confirm').checked},
  r=>'Foglaló beérkezése rögzítve.'+(r.previoSync==='confirmed'?' A Previo-tesztben megerősítve (zöld).':r.previoSync==='confirm_failed'?' FIGYELEM: a Previo-megerősítés nem sikerült – nézd meg a Previóban.':'')));
 el('booking-modify').addEventListener('click',()=>bookingAction('booking-modify',{action:'test-mailbox-modify',arrival:el('modify-arrival').value,departure:el('modify-departure').value,unit:el('modify-unit').value,modifyConfirmed:el('modify-confirm').checked},

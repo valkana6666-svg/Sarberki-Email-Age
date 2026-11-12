@@ -64,10 +64,9 @@ export function unitsForCabin(cabin){
  return keys.flatMap(k=>unitsOfType(k).map(u=>u.id));
 }
 
-export async function confirmTestMailboxBooking({record,previoReference,previoRecorded,previoAuto=false,previoWriter=null,unit,units=null,attestationKey,transport,
- quoteFn=fetchPublicPriceReference,unitCheckFn=null,clock=()=>new Date().toISOString()}={}){
- if(previoAuto===true){if(!previoWriter)fail('PREVIO_WRITE_DISABLED');}
- else if(previoRecorded!==true)fail('PREVIO_RECORDING_REQUIRED');
+// Checks shared by the finalize action and the one-click preview (no write here): units, price, our and Previo's
+// unit conflicts. Returns the facts the confirmation is built from.
+async function prepareConfirmation({record,unit,units,transport,quoteFn,unitCheckFn,previoReference,requireFree=false}){
  if(typeof transport!=='function')fail('SETUP_REQUIRED');
  if(['finalized','deposit_received'].includes(record?.data?.booking?.status))fail('ALREADY_FINALIZED');
  const values=record?.data?.state?.values||{};
@@ -87,9 +86,31 @@ export async function confirmTestMailboxBooking({record,previoReference,previoRe
  if(typeof unitCheckFn==='function'){
   for(const u of list){let r;try{r=await unitCheckFn({unit:u,arrival:values.arrival,departure:values.departure,previoReference});}catch{r={status:'unknown'};}
    if(r?.status==='taken')fail('UNIT_TAKEN_IN_PREVIO');
+   // One-click: only a positive "free" answer lets the automatic chain write.
+   if(requireFree&&r?.status!=='free')fail('PREVIO_UNIT_UNVERIFIED');
    if(!previoUnit||r?.status!=='free')previoUnit=r;}
  }
  const language=/^(hu|de|en|si)$/.test(values.language||'')?values.language:'hu';
+ return {values,list,cabin,quote,previoUnit,language};
+}
+
+// One-click V2 (owner PERM-20261112-ONECLICK): what the operator saw in the preview. The deadline moves with the
+// booking moment and is not part of it; units, price, deposit, language, voucher and the case revision are.
+export function oneClickPreviewHash({record,list,cabin,quote,deposit,language}){
+ return sha(JSON.stringify(['oneclick-v1',record.tenantId,record.caseId,record.revision,list,cabin,quote.total,deposit.pct,deposit.amount,language,
+  voucherFor({tenantId:record.tenantId,caseId:record.caseId})]));
+}
+
+export async function confirmTestMailboxBooking({record,previoReference,previoRecorded,previoAuto=false,previoWriter=null,unit,units=null,attestationKey,transport,
+ quoteFn=fetchPublicPriceReference,unitCheckFn=null,clock=()=>new Date().toISOString(),expectedPreviewHash=null,requireFree=false}={}){
+ if(previoAuto===true){if(!previoWriter)fail('PREVIO_WRITE_DISABLED');}
+ else if(previoRecorded!==true)fail('PREVIO_RECORDING_REQUIRED');
+ const {values,list,cabin,quote,previoUnit,language}=await prepareConfirmation({record,unit,units,transport,quoteFn,unitCheckFn,previoReference,requireFree});
+ // One-click: the facts must still be exactly what the operator approved in the preview - checked BEFORE any write.
+ if(expectedPreviewHash!==null){
+  const deposit=buildBookingConfirmation({values,quote,previo:{reference:'V2-0',recordedAt:clock()},language}).deposit;
+  if(oneClickPreviewHash({record,list,cabin,quote,deposit,language})!==expectedPreviewHash)fail('PREVIEW_CHANGED');
+ }
  let previoCreated=null,sentContact=null;
  if(previoAuto===true){
   // Option expiry = the deposit deadline of this very confirmation (pure; computed before the write).
@@ -123,6 +144,53 @@ export async function confirmTestMailboxBooking({record,previoReference,previoRe
  // A conflict (nothing saved, no error) must not leave our new Previo option behind either.
  if(!saved&&previoCreated?.created===true){try{await previoWriter.setStatus({resId:previoCreated.resId,status:'cancelled'});}catch{fail('PREVIO_ORPHAN_OPTION');}}
  return {saved,deposit:built.deposit,previo:previoCreated};
+}
+
+// One-click V2, step 1 (owner PERM-20261112-ONECLICK, 2026-11-12): read-only preview of exactly what the one-click
+// action will do - units, price, deposit, the guest letter with its SC booking number, Previo unit/price checks. No
+// write. "ready" only when every check passed; otherwise the blockers say why and the button stays off.
+export async function previewTestMailboxBooking({record,unit,units=null,transport,quoteFn=fetchPublicPriceReference,unitCheckFn=null,priceCheckFn=null,
+ previoWriterOn=false,clock=()=>new Date().toISOString()}={}){
+ const {values,list,cabin,quote,previoUnit,language}=await prepareConfirmation({record,unit,units,transport,quoteFn,unitCheckFn,
+  previoReference:undefined});
+ const voucher=voucherFor({tenantId:record.tenantId,caseId:record.caseId});
+ const built=buildBookingConfirmation({values,quote,previo:{reference:'V2-0',recordedAt:clock()},language,bookingNumber:voucher});
+ const blockers=[];
+ if(previoWriterOn!==true)blockers.push('PREVIO_WRITE_DISABLED');
+ if(record.data?.state?.approval==='approved_internal')blockers.push('ALREADY_APPROVED');
+ if(typeof unitCheckFn!=='function'||previoUnit?.status!=='free')blockers.push('PREVIO_UNIT_UNVERIFIED');
+ let price={status:'not_checked'};
+ if(list.length>1)price={status:'multi_unit'};
+ else if(typeof priceCheckFn==='function'){let c=null;try{c=await priceCheckFn({values,cabin});}catch{}
+  price=c?.status==='read'?{status:c.total===quote.total?'match':'mismatch',previoTotal:c.total}:{status:c?.status==='not_comparable'?'not_comparable':'unreadable'};}
+ if(price.status==='mismatch')blockers.push('PREVIO_PRICE_MISMATCH');
+ const deposit=built.deposit;
+ return {ready:blockers.length===0,blockers,units:list,total:quote.total,price,
+  deposit:{pct:deposit.pct,amount:deposit.amount,receiptDeadlineUtc:deposit.receiptDeadlineUtc},
+  voucher,language,letterText:built.text,previewHash:oneClickPreviewHash({record,list,cabin,quote,deposit,language})};
+}
+
+// One-click V2, step 2: the existing finalize (Previo TEST option with read-back, idempotent voucher, compensating
+// cancel when our save fails) bound to the preview hash, then the existing approval of the confirmation letter it
+// produced (sc_tm_decide: machine draft, so its creator may approve; the DB re-checks the approve permission). The
+// operator's session must hold write AND approve. Nothing is sent. If the approval step fails after a successful
+// finalize, the case stays finalized with the letter pending approval (safe; the normal approve button still works).
+export async function oneClickTestMailboxBooking({record,unit,units=null,previewHash,oneClickConfirmed,previoWriter,attestationKey,transport,
+ quoteFn=fetchPublicPriceReference,unitCheckFn=null,clock=()=>new Date().toISOString()}={}){
+ if(oneClickConfirmed!==true)fail('ONECLICK_NOT_CONFIRMED');
+ if(typeof previewHash!=='string'||!/^[a-f0-9]{64}$/.test(previewHash))fail('PREVIEW_CHANGED');
+ if(typeof unitCheckFn!=='function')fail('PREVIO_UNIT_UNVERIFIED');
+ // Previo must say "free" for every unit right now (the plain finalize only refuses "taken").
+ const {saved,deposit,previo}=await confirmTestMailboxBooking({record,previoAuto:true,previoWriter,unit,units,attestationKey,transport,quoteFn,
+  unitCheckFn,clock,expectedPreviewHash:previewHash,requireFree:true});
+ if(!saved)return {saved:null,approved:false,deposit,previo};
+ const text=saved.data?.drafts?.at(-1)?.text;
+ let approvedRow=null;
+ if(typeof text==='string'&&saved.data?.state?.approval==='pending'){
+  try{approvedRow=await transport('/rest/v1/rpc/sc_tm_decide',{method:'POST',body:{p_tenant:record.tenantId,p_case:record.caseId,p_expected:Number(saved.revision),
+   p_draft_hash:sha(text),p_decision:'approve',p_reason:null}});}catch{approvedRow=null;}
+ }
+ return {saved:approvedRow||saved,approved:!!approvedRow,deposit,previo};
 }
 
 // Separate operator step: the deposit has arrived (date as the operator saw it on the bank statement).

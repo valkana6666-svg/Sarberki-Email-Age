@@ -313,6 +313,24 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
    await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:case3},{status:403});
    await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:'tm-aaaaaaaaaaaaaaaa'},{method:'GET',status:404});
   });
+  await t.test('one-click V2 (PERM-20261112-ONECLICK): role, input and switch refusals; read-only preview names its blockers',async()=>{
+   const case3='tm-18f2a0b1c2d3e4f7',rev=(await latest(case3)).revision,h='ab'.repeat(32);
+   const post=(role,input,status)=>call(role,enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-oneclick',caseId:case3,expectedRevision:rev,unit:'11',previewHash:h,oneClickConfirmed:true,...input},{status});
+   assert.equal((await post('approver',{},403)).json.error,'ONECLICK_ROLE_REQUIRED','approve without write');
+   await post('writer',{},403);
+   await post('both',{previewHash:'nope'},400);await post('both',{oneClickConfirmed:false},400);await post('both',{unit:'7/A',units:['7/B','7/A']},400);
+   assert.equal((await post('both',{},409)).json.error,'PREVIO_WRITE_DISABLED','V2 writer switch off: no write');
+   assert.equal((await latest(case3)).revision,rev,'nothing stored');
+   const view=(await call('both',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:case3},{method:'GET',status:200})).json.result;
+   assert.equal(view.canOneClick,false,'hidden while the V2 writer is off');
+   const pv=(await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-oneclick-preview',caseId:case3,unit:'11'},{method:'GET'}));
+   if(pv.status===200){assert.equal(pv.json.result.ready,false);for(const b of ['PREVIO_WRITE_DISABLED','PREVIO_UNIT_UNVERIFIED','ONECLICK_ROLE_REQUIRED'])assert.ok(pv.json.result.blockers.includes(b),b);
+    assert.match(pv.json.result.previewHash,/^[a-f0-9]{64}$/);}
+   else assert.ok([409,422].includes(pv.status),'a case that cannot be finalized gives a fixed code: '+pv.status);
+   await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-oneclick-preview',caseId:case3,unit:'11',units:'12'},{method:'GET',status:400});
+   await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-oneclick-preview',caseId:case3,unit:'11',extra:'x'},{method:'GET',status:403});
+   assert.equal((await latest(case3)).revision,rev,'the preview writes nothing');
+  });
   await t.test('record/list security: unique list ids, tenant/Bearer/CSRF refusals, look-alike rows hidden, revoked membership reads nothing',async()=>{
    const case3='tm-18f2a0b1c2d3e4f7',get=(role,input,options)=>call(role,enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:case3,...input},{method:'GET',...options});
    const ids=(await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'daily-list'},{method:'GET',status:200})).json.result.map(row=>row.caseId);
