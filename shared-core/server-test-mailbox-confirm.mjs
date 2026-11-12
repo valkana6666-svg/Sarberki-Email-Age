@@ -49,6 +49,16 @@ async function unitTaken({transport,record,unit,arrival,departure}){
 }
 // Units that may share one booking with the case's type: the type's own units; the 2-person A and B apartments
 // are one priced pool (business-config), so an A+B pair (e.g. 7/A + 7/B) is allowed for either of them.
+// A generic "Osztott" case (2026-11-12): the chosen units decide the price type - all A/B -> splitA, all C -> splitC;
+// a mixed A/B + C choice is priced by hand (refused here). Any other cabin name: null (the named type rules).
+export function splitCabinFromUnits(unitName,list){
+ if(String(unitName||'').trim().toLowerCase()!=='osztott')return null;
+ const ids=(list||[]).filter(Boolean);
+ if(!ids.length||ids.some(u=>!/^(?:7|8|9|10)\/[ABC]$/.test(u)))fail('UNIT_NOT_IN_TYPE');
+ const c=ids.filter(u=>u.endsWith('/C')).length;
+ if(c&&c!==ids.length)fail('UNITS_MIXED_SPLIT');
+ return c?'splitC':'splitA';
+}
 export function unitsForCabin(cabin){
  const keys=cabin==='splitA'||cabin==='splitB'?['splitA','splitB']:[cabin];
  return keys.flatMap(k=>unitsOfType(k).map(u=>u.id));
@@ -61,10 +71,10 @@ export async function confirmTestMailboxBooking({record,previoReference,previoRe
  if(typeof transport!=='function')fail('SETUP_REQUIRED');
  if(['finalized','deposit_received'].includes(record?.data?.booking?.status))fail('ALREADY_FINALIZED');
  const values=record?.data?.state?.values||{};
- const cabin=cabinKeyFromUnit(values.unit);
  // Multi-unit (owner 2026-11-11): exactly the requested number of distinct units, first = unit.
  const requested=Number(values.units_requested||1);
  const list=Array.isArray(units)&&units.length>1?units:[unit];
+ const cabin=splitCabinFromUnits(values.unit,list)??cabinKeyFromUnit(values.unit);
  if(list.length>1&&(list[0]!==unit||new Set(list).size!==list.length||list.length>6))fail('UNITS_INVALID');
  if(list.length!==(Number.isInteger(requested)&&requested>0?requested:1))fail('UNITS_COUNT_MISMATCH');
  const allowed=unitsForCabin(cabin);

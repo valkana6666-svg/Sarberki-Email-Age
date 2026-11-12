@@ -110,3 +110,18 @@ test('split pitfall sweep (2026-11-12): negated proximity, SI "drug ob drugem", 
  const draft=buildEmailInquiryDraft({message:'Jó napot! 2027. május 21-től 23-ig jönnénk 4 felnőtt, gyerek nincs, két 2 fős osztott apartmant kérnénk, nem szükséges, hogy egymás mellett legyenek.',language:'hu',now:new Date('2026-11-12T00:00:00Z'),tenantId:'sarberki'});
  assert.doesNotMatch(draft.text,/szomszédos elhelyezést külön ellenőrizzük/);
 });
+
+test('generic "Osztott" case: the chosen units decide the price type; mixed A/B + C refused; unit count from the split request',async()=>{
+ const {splitCabinFromUnits}=await import('../shared-core/server-test-mailbox-confirm.mjs');
+ assert.equal(splitCabinFromUnits('Osztott',['7/A','7/B']),'splitA');
+ assert.equal(splitCabinFromUnits('Osztott',['9/C','10/C']),'splitC');
+ assert.equal(splitCabinFromUnits('Osztott',['8/B']),'splitA');
+ assert.throws(()=>splitCabinFromUnits('Osztott',['7/A','7/C']),/UNITS_MIXED_SPLIT/);
+ assert.throws(()=>splitCabinFromUnits('Osztott',['11']),/UNIT_NOT_IN_TYPE/);
+ assert.equal(splitCabinFromUnits('Deluxe',['11']),null,'a named type keeps its own rule');
+ const {extractServerMessage}=await import('../shared-core/server-message-extraction.mjs');
+ const units=t=>extractServerMessage({text:t,received_at:'2026-11-12T09:00:00Z'}).units_requested;
+ assert.equal(units('két 2 fős osztott apartmant kérnénk egymás mellett, 2027. május 21-től 23-ig, 4 felnőtt'),'2');
+ assert.equal(units('egy osztott faház A és B apartmanját kérnénk 2027. május 21-től 23-ig, 4 felnőtt'),'2');
+ assert.equal(units('Osztott C házba jönnénk 5 felnőttel 2027. szeptember 3-tól 5-ig'),undefined);
+});

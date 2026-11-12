@@ -15,6 +15,9 @@ export function extractServerMessage(envelope,{previous=null}={}){
  if(n.child_ages.length)values.child_ages=n.child_ages.join(',');
  if(n.cabin&&!n.cabin.startsWith('?'))values.unit=n.cabin;
  if(n.units_requested>0&&!n.units_open_request)values.units_requested=String(n.units_requested);
+ // Split requests count their units: "két 2 fős osztott apartman" = 2, "egy osztott faház A és B" = 2 (2026-11-12).
+ const splitUnits=n.split_request?.isSplit?Number(n.split_request.requestedAB||0)+Number(n.split_request.requestedC||0):0;
+ if(splitUnits>=2&&!n.units_open_request)values.units_requested=String(splitUnits);
  if(n.language!=='unknown')values.language=n.language;
  // The guest's signature name (owner tests 2026-11-06): used for the greeting and the confirmation letter.
  const name=nameFromText(envelope.text);if(name&&name.length<=80)values.name=name;
