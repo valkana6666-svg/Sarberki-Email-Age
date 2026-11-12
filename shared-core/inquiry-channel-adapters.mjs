@@ -21,6 +21,19 @@ const TOO_MANY={
 };
 const EXTRA_BED={hu:'Öt fő esetén az ötödik fő pótágyon alszik.',de:'Bei fünf Personen schläft die fünfte Person auf einem Zusatzbett.',
  en:'With five guests, the fifth guest sleeps on an extra bed.',si:'Pri petih osebah peta oseba spi na dodatnem ležišču.'};
+// Owner 2026-11-12: C is upstairs, reached by a spiral staircase, with its own terrace. Said when C is in play
+// (named C, a C count, or a split request of 3+ guests without A/B) AND a small child (0-5), a baby or an older guest
+// comes, so nobody is surprised on arrival.
+const UPPER_FLOOR={hu:'A C apartman az emeleten van, csigalépcsőn közelíthető meg, saját terasszal.',de:'Das Apartment C liegt im Obergeschoss, ist über eine Wendeltreppe erreichbar und hat eine eigene Terrasse.',
+ en:'Apartment C is upstairs, reached by a spiral staircase, and has its own terrace.',si:'Apartma C je v nadstropju, dostopen po zavitih stopnicah, in ima svojo teraso.'};
+const OLDER_GUEST=/(?<!\p{L})(?:idős\p{L}*|idos\p{L}*|nagymam\p{L}*|nagypap\p{L}*|nagyszül\p{L}*|nyugdíjas\p{L}*|mozgáskorlátozott\p{L}*|kerekesszék\p{L}*|elderly|senior\p{L}*|grandparents?|grandma|grandpa|wheelchair|großeltern|grosseltern|oma|opa|rollstuhl|starejš\p{L}*|babic\p{L}*|dedek|invalidsk\p{L}*)(?!\p{L})/iu;
+function upperFloorNote(decision,language){
+ const input=decision.capacity.input,f=decision.facts,p=input?.placement;
+ if(!input?.cabin?.startsWith?.('split'))return '';
+ const cInPlay=input.cabin==='splitC'||p?.c>0||(input.cabin==='split'&&!(p?.ab>0)&&Number(f.guests)>=3);
+ const small=(f.child_ages||[]).some(a=>Number.isInteger(a)&&a<=5);
+ return cInPlay&&(small||OLDER_GUEST.test(String(f.originalText||'')))?' '+(UPPER_FLOOR[language]||UPPER_FLOOR.hu):'';
+}
 // Either the open questions of the shared decision, or (when nothing is missing) one status line.
 function centralConversationParts(decision,language){
  const f=decision.facts,m=new Set(decision.missing),t=words[language]||words.hu;
@@ -36,7 +49,7 @@ function centralConversationParts(decision,language){
  const status=decision.capacity.status==='AVAILABLE'?t.available:decision.capacity.status==='UNAVAILABLE'?t.unavailable:t.pending;
  // Five guests in a split house: the fifth sleeps on an extra bed (AGENTS); no surcharge is stated.
  const split=decision.capacity.input?.cabin?.startsWith?.('split')&&Number(f.guests)===5?' '+(EXTRA_BED[language]||EXTRA_BED.hu):'';
- return {questions:[],status:status+split+(decision.pricing.verified?' '+t.price:'')};
+ return {questions:[],status:status+split+upperFloorNote(decision,language)+(decision.pricing.verified?' '+t.price:'')};
 }
 export function renderCentralConversation(decision,{language=decision.facts.language}={}){
  const {questions,status}=centralConversationParts(decision,language);

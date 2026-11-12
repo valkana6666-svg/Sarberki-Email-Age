@@ -52,7 +52,7 @@ export function splitRequestFromText(text=''){
 
   // "A és B" / "A+B" = two 2-person units; the SAME house only with an adjacency/same-house phrase (AGENTS, owner 2026-11-12).
   const explicitPair=/\bA\s*\+\s*B\b/iu.test(source)||/(?<!\p{L})A\s*(?:és|es|and|und|in|&)\s*B(?!\p{L})/u.test(source);
-  const explicitC=/\bosztott\s+(?:faház\s+)?C\b/iu.test(source);
+  const explicitC=/\b(?:osztott|split|geteilte\p{L}*|deljen\p{L}*)\s+(?:faház\s+|apartman\s+|apartment\s+|cabin\s+|haus\s+|apartma\s+)?C\b/iu.test(source)||/\b(?:apartment|apartma)\s+C\b/u.test(source); // EN/DE/SI forms (2026-11-12)
   const cCount=countValue(source.match(/\b(egy|két|ket|kettő|ketto|három|harom|négy|negy|one|two|three|four|ein|eine|zwei|drei|vier|en|ena|dva|dve|tri|[1-4])\s+osztott\s+(?:faház\s+)?C\b/iu)?.[1]);
   const explicitMixed=/\b[AB]\s*\+\s*C\b/iu.test(source);
   const two=hasTwoPersonPhrase(source)||explicitPair||explicitMixed;

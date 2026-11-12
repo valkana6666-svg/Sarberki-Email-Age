@@ -62,16 +62,16 @@ export function previoSplitPlacementReader(env,fetchImpl){
 }
 
 const DETAIL={
- hu:{same:'A kért egységek ugyanabban az osztott faházban vannak.',next:'A kért egységek egymás melletti osztott faházakban vannak.',
+ hu:{terrace:'A két földszinti apartman közös terasszal rendelkezik.',same:'A kért egységek ugyanabban az osztott faházban vannak.',next:'A kért egységek egymás melletti osztott faházakban vannak.',
   noNear:'A kért időszakra sajnos nincs szabad, egymás melletti elhelyezésünk.',alt:'Külön faházakban lévő osztott egységeket tudunk ajánlani; kérjük, jelezze, ha ez megfelel.',
   none:'A kért időszakra sajnos nincs elegendő szabad osztott egységünk.'},
- de:{same:'Die gewünschten Einheiten liegen im selben geteilten Haus.',next:'Die gewünschten Einheiten liegen in nebeneinanderliegenden geteilten Häusern.',
+ de:{terrace:'Die beiden Apartments im Erdgeschoss teilen sich eine Terrasse.',same:'Die gewünschten Einheiten liegen im selben geteilten Haus.',next:'Die gewünschten Einheiten liegen in nebeneinanderliegenden geteilten Häusern.',
   noNear:'Für den gewünschten Zeitraum haben wir leider keine freie Unterbringung nebeneinander.',alt:'Wir können Einheiten in getrennten geteilten Häusern anbieten; bitte teilen Sie uns mit, ob das passt.',
   none:'Für den gewünschten Zeitraum haben wir leider nicht genügend freie geteilte Einheiten.'},
- en:{same:'The requested units are in the same split cabin.',next:'The requested units are in neighbouring split cabins.',
+ en:{terrace:'The two ground-floor apartments share a terrace.',same:'The requested units are in the same split cabin.',next:'The requested units are in neighbouring split cabins.',
   noNear:'Unfortunately we have no free side-by-side placement for the requested dates.',alt:'We can offer split units in separate cabins; please let us know if this suits you.',
   none:'Unfortunately we do not have enough free split units for the requested dates.'},
- si:{same:'Želene enote so v isti deljeni hiški.',next:'Želene enote so v sosednjih deljenih hiškah.',
+ si:{terrace:'Apartmaja v pritličju si delita teraso.',same:'Želene enote so v isti deljeni hiški.',next:'Želene enote so v sosednjih deljenih hiškah.',
   noNear:'Za želeni termin žal nimamo proste namestitve drug ob drugem.',alt:'Ponudimo lahko deljene enote v ločenih hiškah; prosimo, sporočite, ali vam to ustreza.',
   none:'Za želeni termin žal nimamo dovolj prostih deljenih enot.'}
 };
@@ -79,7 +79,9 @@ const DETAIL={
 // finds its anchor) + operator note with the unit ids (never in the guest text).
 export function splitPlacementSentence(plan,language='hu'){
  const lang=DETAIL[language]?language:'hu',t=DETAIL[lang];
- if(plan?.status==='available')return {guest:`${CAPACITY_AVAILABLE_LINE[lang]} ${plan.sameHouse?t.same:t.next}`,
+ // Owner 2026-11-12: A and B share one ground-floor terrace - said when the free pair is A+B in one house.
+ const abPair=plan?.sameHouse&&plan.units?.some(u=>u.endsWith('/A'))&&plan.units?.some(u=>u.endsWith('/B'));
+ if(plan?.status==='available')return {guest:`${CAPACITY_AVAILABLE_LINE[lang]} ${plan.sameHouse?t.same:t.next}${abPair?' '+t.terrace:''}`,
   operator:`Previo (csak olvasó, egységszint): szabad elhelyezés ${plan.units.join(' + ')}${plan.sameHouse?' (azonos ház)':' (szomszédos házak)'}.`};
  if(plan?.status==='unavailable')return plan.alternative
   ?{guest:`${t.noNear} ${t.alt}`,operator:`Previo (csak olvasó, egységszint): azonos/szomszédos ház nem szabad; külön házakban szabad: ${plan.alternative.units.join(' + ')}.`}

@@ -43,9 +43,10 @@ function placePrice(text,lang,sentence){
  const lines=text.split('\n'),at=lines.findIndex(l=>l.startsWith(pending));
  if(text.includes(generic)){
   if(at<0)return text.replace(generic,sentence);
-  lines.splice(at,1);return lines.join('\n').replace(/\n{3,}/g,'\n\n').replace(generic,sentence);
+  const rest=lines[at].slice(pending.length).trim(); // keep a note that follows the pending line (e.g. upper-floor C)
+  if(rest)lines[at]=rest;else lines.splice(at,1);return lines.join('\n').replace(/\n{3,}/g,'\n\n').replace(generic,sentence);
  }
- if(at>=0){lines[at]=sentence;return lines.join('\n');}
+ if(at>=0){lines[at]=lines[at].replace(pending,sentence);return lines.join('\n');}
  // Level 1: the Previo-verified free line stays; the price follows it (once).
  const free=CAPACITY_AVAILABLE_LINE[lang],fi=lines.findIndex(l=>l.startsWith(free));
  if(fi<0||text.includes(sentence.split(':')[0]+':'))return null;

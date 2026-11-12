@@ -66,3 +66,17 @@ test('parsing: A+B alone = two units anywhere; with "egymás mellett" or "egy os
  const two=splitRequestFromText('két 2 fős osztott apartmant kérnénk egymás mellett');assert.equal(two.requestedAB,2);assert.equal(two.sameHouse,false);assert.equal(two.requiresAdjacent,true);
  assert.equal(splitRequestFromText('két Osztott C apartmant kérnénk egymás mellett').requestedC,2);
 });
+
+test('layout sentences (owner 2026-11-12): shared terrace for a same-house A+B pair; C upstairs only with a small child or older guest',async()=>{
+ assert.match(splitPlacementSentence({status:'available',units:['8/A','8/B'],sameHouse:true},'hu').guest,/A két földszinti apartman közös terasszal rendelkezik\./);
+ assert.doesNotMatch(splitPlacementSentence({status:'available',units:['9/C','10/C'],sameHouse:false},'hu').guest,/terasz/);
+ const {evaluateCentralInquiry}=await import('../shared-core/central-inquiry-decision.mjs');
+ const {renderCentralConversation}=await import('../shared-core/inquiry-channel-adapters.mjs');
+ const r=(t,language='hu')=>renderCentralConversation(evaluateCentralInquiry({message:t,language,now:new Date('2026-11-12T00:00:00Z')}));
+ assert.match(r('Osztott C házba jönnénk 2027. szeptember 3-tól 5-ig, 2 felnőtt és 2 gyerek (2 és 7 évesek).'),/A C apartman az emeleten van, csigalépcsőn/);
+ assert.match(r('Osztott C házba jönnénk 2027. szeptember 3-tól 5-ig, 4 felnőtt, gyerek nincs, a nagymama is jön.'),/csigalépcsőn/);
+ assert.match(r('Hello, we would like split apartment C from 3 to 5 September 2027, 4 adults, no children; our grandma is coming too.','en'),/spiral staircase/);
+ assert.doesNotMatch(r('Osztott C házba jönnénk 2027. szeptember 3-tól 5-ig, 4 felnőtt, gyerek nincs.'),/csigalépcső/);
+ assert.doesNotMatch(r('Osztott C házba jönnénk 2027. szeptember 3-tól 5-ig, 2 felnőtt és 2 gyerek (8 és 12 évesek).'),/csigalépcső/);
+ assert.doesNotMatch(r('Deluxe házba jönnénk 2027. szeptember 3-tól 5-ig, 2 felnőtt és 1 gyerek (2 éves).'),/csigalépcső/);
+});
