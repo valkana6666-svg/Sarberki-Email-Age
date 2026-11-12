@@ -167,7 +167,7 @@ test('six-person inquiry answers accommodation, parking and fishing before askin
  assert.match(view.draft,/Családi/u);
  assert.match(view.draft,/VIP/u);
  assert.doesNotMatch(view.draft,/A\+C|B\+C/u,'no split before verified unavailability (owner 2026-11-03)');
- assert.match(view.draft,/Parkolási lehetőség biztosított a házaknál/u);
+ assert.match(view.draft,/Parkolási lehetőség biztosított; több autó esetén a rendelkezésre álló helyet külön ellenőrizzük\./u); // same wording as the daily manager (2026-11-12)
  assert.match(view.draft,/állami horgászjegy/u);
  assert.match(view.draft,/pontybölcső/u);
  assert.match(view.draft,/felnőtt/u);
