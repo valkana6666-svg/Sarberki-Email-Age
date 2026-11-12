@@ -195,7 +195,7 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
    assert.match(priced.text,/Tájékoztató ár \(Deluxe\): 128 200 Ft, amely 2 200 Ft idegenforgalmi adót tartalmaz\./);
    assert.match(priced.operatorReviewText,/Ár-részletezés \(kezelői, a vendég nem látja\):\nTÁJÉKOZTATÓ ÁR – Deluxe/);
    assert.equal(priced.machineDraft,true);
-   assert.doesNotMatch(priced.text,/kapacitás ellenőrzése még nem igazolt/);
+   assert.doesNotMatch(priced.text,/(?:kapacitás ellenőrzése még nem igazolt|Az elérhetőséget a kért időszakra a foglalás előtt ellenőrizzük)/);
    await price('both',{expectedRevision:2},{status:422},'generic sentence already replaced');
    await call('both',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-decide',caseId:case5,expectedRevision:2,reviewedDraftHash:await hashOf(case5),decision:'approve'},{status:200});
   });

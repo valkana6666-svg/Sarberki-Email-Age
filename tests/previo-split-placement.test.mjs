@@ -50,9 +50,9 @@ test('unit read: active reservations hold their unit, storno (7) frees it; non-7
 test('draft: pending line replaced in the stay section; unknown read leaves the draft unchanged',async()=>{
  const message='Jó napot! 2027. május 21-től 23-ig jönnénk 4 felnőtt, két Osztott házat kérnénk (A és B) egymás mellett. Gyerek nincs.';
  const draft=buildEmailInquiryDraft({message,language:'hu',now:new Date('2026-11-12T00:00:00Z'),tenantId:'sarberki'});
- assert.match(draft.text,/A kapacitás ellenőrzése még nem igazolt\./);
+ assert.match(draft.text,/Az elérhetőséget a kért időszakra a foglalás előtt ellenőrizzük\./);
  const out=await withSplitPlacement(draft,draft.decision,async()=>({status:'read',free:freeExcept('7/A')}));
- assert.doesNotMatch(out.text,/kapacitás ellenőrzése|szomszédos elhelyezést külön/);
+ assert.doesNotMatch(out.text,/Az elérhetőséget a kért időszakra a foglalás előtt ellenőrizzük|szomszédos elhelyezést külön/);
  assert.match(out.text,/A kért háztípus: Osztott\.\nA kért időszakra jelenleg van szabad helyünk.*ugyanabban az osztott faházban/);
  assert.match(out.operatorReviewText,/8\/A \+ 8\/B/);assert.doesNotMatch(out.text,/8\/A/);
  assert.equal(await withSplitPlacement(draft,draft.decision,async()=>({status:'unknown'})),draft);

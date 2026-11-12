@@ -4,12 +4,15 @@ import {capacityOptionText,replyQuestions,stayCancellationFromText,replySummary,
 import {fishingQuestion} from '../fishing-rules.mjs';
 import {SARBERKI_TENANT} from '../tenant-config.mjs';
 const words={
- hu:{pending:'A kapacitás ellenőrzése még nem igazolt.',available:'A kért időszakra jelenleg van szabad helyünk ebben a háztípusban. A foglalás a visszaigazolásunkkal válik érvényessé.',unavailable:'A kért időszakra sajnos nincs elegendő szabad helyünk ebben a háztípusban.',review:'A megadott adatok pontosítása vagy emberi ellenőrzése szükséges.',date:'Kérjük, erősítse meg az érkezés és távozás évét.',units:'Hány szállásegységet szeretnének?',price:'Az ellenőrzött ár belső jóváhagyásra vár; ez még nem végleges ajánlat.'},
- de:{pending:'Die Verfügbarkeit ist noch nicht verifiziert.',available:'Für den gewünschten Zeitraum haben wir derzeit freie Plätze in diesem Haustyp. Die Buchung wird mit unserer Bestätigung verbindlich.',unavailable:'Für den gewünschten Zeitraum haben wir in diesem Haustyp leider nicht genügend freie Plätze.',review:'Die Angaben müssen präzisiert oder manuell geprüft werden.',date:'Bitte bestätigen Sie das Jahr der An- und Abreise.',units:'Wie viele Unterkunftseinheiten wünschen Sie?',price:'Der geprüfte Preis benötigt eine interne Freigabe und ist noch kein endgültiges Angebot.'},
- en:{pending:'Availability has not yet been verified.',available:'We currently have availability in this cabin type for the requested dates. The booking becomes valid with our confirmation.',unavailable:'Unfortunately, we do not have enough availability in this cabin type for the requested dates.',review:'The details need clarification or human review.',date:'Please confirm the year of arrival and departure.',units:'How many accommodation units would you like?',price:'The verified price is awaiting internal approval and is not a final offer.'},
- si:{pending:'Razpoložljivost še ni preverjena.',available:'Za želeni termin imamo trenutno proste kapacitete v tem tipu hiške. Rezervacija postane veljavna z našo potrditvijo.',unavailable:'Za želeni termin žal nimamo dovolj prostih kapacitet v tem tipu hiške.',review:'Podatke je treba pojasniti ali ročno preveriti.',date:'Prosimo, potrdite leto prihoda in odhoda.',units:'Koliko nastanitvenih enot želite?',price:'Preverjena cena čaka na interno odobritev in še ni končna ponudba.'}
+ hu:{pending:'Az elérhetőséget a kért időszakra a foglalás előtt ellenőrizzük.',available:'A kért időszakra jelenleg van szabad helyünk ebben a háztípusban. A foglalás a visszaigazolásunkkal válik érvényessé.',unavailable:'A kért időszakra sajnos nincs elegendő szabad helyünk ebben a háztípusban.',review:'A megadott adatok pontosítása vagy emberi ellenőrzése szükséges.',date:'Kérjük, erősítse meg az érkezés és távozás évét.',units:'Hány szállásegységet szeretnének?',price:'Az ellenőrzött ár belső jóváhagyásra vár; ez még nem végleges ajánlat.'},
+ de:{pending:'Die Verfügbarkeit für den gewünschten Zeitraum prüfen wir vor der Buchung.',available:'Für den gewünschten Zeitraum haben wir derzeit freie Plätze in diesem Haustyp. Die Buchung wird mit unserer Bestätigung verbindlich.',unavailable:'Für den gewünschten Zeitraum haben wir in diesem Haustyp leider nicht genügend freie Plätze.',review:'Die Angaben müssen präzisiert oder manuell geprüft werden.',date:'Bitte bestätigen Sie das Jahr der An- und Abreise.',units:'Wie viele Unterkunftseinheiten wünschen Sie?',price:'Der geprüfte Preis benötigt eine interne Freigabe und ist noch kein endgültiges Angebot.'},
+ en:{pending:'We will check availability for the requested dates before booking.',available:'We currently have availability in this cabin type for the requested dates. The booking becomes valid with our confirmation.',unavailable:'Unfortunately, we do not have enough availability in this cabin type for the requested dates.',review:'The details need clarification or human review.',date:'Please confirm the year of arrival and departure.',units:'How many accommodation units would you like?',price:'The verified price is awaiting internal approval and is not a final offer.'},
+ si:{pending:'Razpoložljivost za želeni termin preverimo pred rezervacijo.',available:'Za želeni termin imamo trenutno proste kapacitete v tem tipu hiške. Rezervacija postane veljavna z našo potrditvijo.',unavailable:'Za želeni termin žal nimamo dovolj prostih kapacitet v tem tipu hiške.',review:'Podatke je treba pojasniti ali ročno preveriti.',date:'Prosimo, potrdite leto prihoda in odhoda.',units:'Koliko nastanitvenih enot želite?',price:'Preverjena cena čaka na interno odobritev in še ni končna ponudba.'}
 };
 // The status line written when every fact is known; the server price step puts the price in its place.
+// Until 2026-11-12 the pending line read like an internal note ("A kapacitás ellenőrzése még nem igazolt.") and the
+// public chatbot showed it to guests. Stored drafts may still hold the old wording: the price step accepts both.
+export const LEGACY_CAPACITY_PENDING_LINE=Object.freeze({hu:'A kapacitás ellenőrzése még nem igazolt.',de:'Die Verfügbarkeit ist noch nicht verifiziert.',en:'Availability has not yet been verified.',si:'Razpoložljivost še ni preverjena.'});
 export const CAPACITY_PENDING_LINE=Object.freeze(Object.fromEntries(Object.entries(words).map(([k,v])=>[k,v.pending])));
 // Previo-verified "free" status line (level 1): the price sentence goes right after it.
 export const CAPACITY_AVAILABLE_LINE=Object.freeze(Object.fromEntries(Object.entries(words).map(([k,v])=>[k,v.available])));
@@ -72,14 +75,16 @@ function centralConversationParts(decision,language){
  const split=decision.capacity.input?.cabin?.startsWith?.('split')&&Number(f.guests)===5?' '+(EXTRA_BED[language]||EXTRA_BED.hu):'';
  return {questions:[],status:status+split+upperFloorNote(decision,language)+(decision.pricing.verified?' '+t.price:'')};
 }
+// Operator-facing status (review panels): the internal "not verified" wording, never a guest sentence.
+const forOperator=(text,language='hu')=>String(text).split(CAPACITY_PENDING_LINE[language]||CAPACITY_PENDING_LINE.hu).join(LEGACY_CAPACITY_PENDING_LINE[language]||LEGACY_CAPACITY_PENDING_LINE.hu);
 export function renderCentralConversation(decision,{language=decision.facts.language}={}){
  const {questions,status}=centralConversationParts(decision,language);
- return questions.length?questions.join('\n'):status;
+ return questions.length?questions.join('\n'):forOperator(status,language);
 }
 export function buildChatInquiryReply(options={}){
  const decision=evaluateCentralInquiry(options);
  const original=options.message||decision.facts.originalText||'';
- return {decision,text:renderEmailDecision(decision,original,decision.facts.language),operatorReviewText:renderEmailDecision(decision,original,'hu'),operatorReviewLanguage:'hu',channel:'chat',requiresApproval:true};
+ return {decision,text:renderEmailDecision(decision,original,decision.facts.language),operatorReviewText:forOperator(renderEmailDecision(decision,original,'hu')),operatorReviewLanguage:'hu',channel:'chat',requiresApproval:true};
 }
 function renderEmailDecision(decision,original,language){
  const f=decision.facts;
@@ -231,7 +236,7 @@ function splitAlternativeNote(decision){
 }
 export function buildEmailInquiryDraft(options={}){
  const decision=evaluateCentralInquiry(options),original=options.message||decision.facts.originalText||'';
- const review=renderEmailDecision(decision,original,'hu')+splitAlternativeNote(decision);
+ const review=forOperator(renderEmailDecision(decision,original,'hu'))+splitAlternativeNote(decision);
  return {decision,text:renderEmailDecision(decision,original,decision.facts.language),operatorReviewText:looksLikeNonInquiry(original,decision)?NON_INQUIRY_NOTE+'\n\n'+review:review,operatorReviewLanguage:'hu',channel:'email',requiresApproval:true,...(looksLikeNonInquiry(original,decision)?{nonInquiry:true}:{})};
 }
 

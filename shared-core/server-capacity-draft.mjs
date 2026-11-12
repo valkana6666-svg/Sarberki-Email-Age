@@ -3,7 +3,7 @@
 // -> buildEmailInquiryDraft. A failed/unknown read leaves the draft exactly as without Previo (never "sold out").
 import {buildAvailabilityOptions} from '../netlify/functions/availability-options.mjs';
 import {evaluateCentralInquiry} from './central-inquiry-decision.mjs';
-import {buildEmailInquiryDraft,CAPACITY_PENDING_LINE,LAYOUT_QUESTION} from './inquiry-channel-adapters.mjs';
+import {buildEmailInquiryDraft,CAPACITY_PENDING_LINE,LEGACY_CAPACITY_PENDING_LINE,LAYOUT_QUESTION} from './inquiry-channel-adapters.mjs';
 import {planSplitPlacement,splitPlacementSentence} from './server-previo-split-placement.mjs';
 
 // Adapter: readPrevioFreeCapacity(...) -> the availability-options source contract.
@@ -42,8 +42,9 @@ const ADJACENT_LINE={hu:'A szomszédos elhelyezést külön ellenőrizzük.',de:
 const CABIN_LINE={hu:'A kért háztípus:',de:'Gewünschter Haustyp:',en:'Requested cabin type:',si:'Želeni tip hiške:'};
 const EXTRAS_TITLE={hu:'Kiegészítő információk',de:'Weitere Informationen',en:'Additional information',si:'Dodatne informacije'};
 function patchText(text,lang,sentence){
- const pending=CAPACITY_PENDING_LINE[lang];
- if(typeof text!=='string'||!text.includes(pending))return null;
+ // Guest text holds the current pending wording, the operator review the internal one (2026-11-12).
+ const pending=[CAPACITY_PENDING_LINE[lang],LEGACY_CAPACITY_PENDING_LINE[lang]].find(p=>typeof text==='string'&&text.includes(p));
+ if(!pending)return null;
  // The verified sentence belongs in the stay section, right after the cabin-type line (else where the pending line was).
  let lines=text.split('\n');const at=lines.findIndex(l=>l.startsWith(CABIN_LINE[lang]));
  if(at>=0){lines=lines.filter(l=>l.trim()!==pending);lines.splice(lines.findIndex(l=>l.startsWith(CABIN_LINE[lang]))+1,0,sentence);}

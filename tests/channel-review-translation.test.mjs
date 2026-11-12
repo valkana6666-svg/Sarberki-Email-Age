@@ -20,7 +20,9 @@ for(const [language,message]of Object.entries(messages))test('same frozen decisi
  assert.match(email.operatorReviewText,/kapacitás ellenőrzése még nem igazolt/);
  assert.equal(chat.decision.facts.language,language);assert.equal(Object.isFrozen(chat.decision),true);
  assert.equal(chat.decision.safety.bookingCreated,false);assert.equal(chat.decision.capacity.verified,false);
- if(language==='hu'){assert.equal(chat.text,chat.operatorReviewText);assert.equal(email.text,email.operatorReviewText);}
+ // Hungarian: identical except the pending line (guest: neutral sentence; operator: internal "not verified", 2026-11-12).
+ const op=t=>t.replace('Az elérhetőséget a kért időszakra a foglalás előtt ellenőrizzük.','A kapacitás ellenőrzése még nem igazolt.');
+ if(language==='hu'){assert.equal(op(chat.text),chat.operatorReviewText);assert.equal(op(email.text),email.operatorReviewText);}
  else assert.notEqual(chat.text,chat.operatorReviewText);
 });
 test('Hungarian review preserves the same missing-data decision across later turns',()=>{

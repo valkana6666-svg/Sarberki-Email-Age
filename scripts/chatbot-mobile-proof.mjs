@@ -168,7 +168,7 @@ try{
   const corrected=await page.locator('#conversation .entry').last().innerText();
   assert.match(corrected,/Requested cabin type: VIP/);
   assert.match(corrected,/13 November 2026 to 15 November 2026 with 2 guests/);
-  assert.match(corrected,/Availability has not yet been verified/);
+  assert.match(corrected,/We will check availability for the requested dates before booking/);
   report.checks.push({engine,test:'cabin-correction-retains-stay-without-availability-promise',result:'PASS'});
   await submit('We changed our dates to November 21 and November 23, 2026.');
   const uncertain=await page.locator('#conversation .entry').last().innerText();
@@ -186,7 +186,7 @@ try{
   await submit('7');
   const childAge=await page.locator('#conversation .entry').last().innerText();
   assert.match(childAge,/2 adults and 1 child, aged 7/i);
-  assert.match(childAge,/Availability has not yet been verified/i);
+  assert.match(childAge,/We will check availability for the requested dates before booking/i);
   assert.doesNotMatch(childAge,/please tell us the children.s ages/i);
   report.checks.push({engine,test:'one-outstanding-child-age-accepts-bare-number',result:'PASS'});
   await page.locator('#resetChat').click();assert.equal(await page.locator('#conversation .entry').count(),1);

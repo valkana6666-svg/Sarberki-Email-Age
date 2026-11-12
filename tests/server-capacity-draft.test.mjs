@@ -21,14 +21,14 @@ const reader=free=>async({cabin,arrival,departure})=>({hotelId:'73521',arrival,d
 test('Previo says free -> the guest draft says so in guest words; none of the internal capacity wording',async()=>{
  const t=await draftWith(reader(3));
  assert.match(t,/A kért időszakra jelenleg van szabad helyünk ebben a háztípusban\./);
- assert.doesNotMatch(t,/kapacitás ellenőrzése még nem igazolt|típusszintű|emberi jóváhagyás/);
+ assert.doesNotMatch(t,/kapacitás ellenőrzése még nem igazolt|Az elérhetőséget a kért időszakra a foglalás előtt ellenőrizzük|típusszintű|emberi jóváhagyás/);
 });
 test('Previo says 0 -> no free place sentence',async()=>{
  assert.match(await draftWith(reader(0)),/sajnos nincs elegendő szabad helyünk/);
 });
 test('no switch, or a failed read -> exactly the previous behaviour (never "sold out")',async()=>{
  const off=await draftWith(null);
- assert.match(off,/kapacitás ellenőrzése még nem igazolt/);
+ assert.match(off,/Az elérhetőséget a kért időszakra a foglalás előtt ellenőrizzük/);
  const failed=await draftWith(async()=>{throw Error('PREVIO_TIMEOUT');});
  assert.equal(failed,off);
 });

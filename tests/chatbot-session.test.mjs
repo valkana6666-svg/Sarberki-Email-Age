@@ -90,7 +90,7 @@ test('Hungarian booking date confirmation continues the active iPhone inquiry',(
  assert.deepEqual(result.decision.missing,[]);
  assert.equal(result.decision.capacity.status,'UNKNOWN');
  assert.equal(result.decision.pricing.verified,false);
- assert.match(result.text,/kapacitás ellenőrzése még nem igazolt/u);
+ assert.match(result.text,/Az elérhetőséget a kért időszakra a foglalás előtt ellenőrizzük/u);
  assert.equal(result.decision.safety.bookingCreated,false);
  assert.equal(result.decision.safety.emailSent,false);
 });

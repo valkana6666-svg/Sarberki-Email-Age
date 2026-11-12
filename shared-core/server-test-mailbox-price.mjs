@@ -9,7 +9,7 @@ import {fetchPublicPriceReference} from '../price-source/public-price-fallback.m
 import {PRICE_LINE,priceSentence,priceExplanation,pricedCabinNote} from './price-insert-sentence.mjs';
 import {replyQuestions} from '../sarberki-core.mjs';
 import {capacityDecision} from './server-previo-rest-read.mjs';
-import {CAPACITY_PENDING_LINE,CAPACITY_AVAILABLE_LINE} from './inquiry-channel-adapters.mjs';
+import {CAPACITY_PENDING_LINE,CAPACITY_AVAILABLE_LINE,LEGACY_CAPACITY_PENDING_LINE} from './inquiry-channel-adapters.mjs';
 
 // The engine's cabin-type questions (with/without the 2-person cabin) and the "choose an offered type" line.
 const OFFERED_TYPE_QUESTION=Object.freeze({hu:'Kérjük, válaszoljon erre az e-mailre, és írja meg, melyik felajánlott faháztípust választja.',
@@ -39,8 +39,10 @@ export function quoteInputFromCase(values,cabin){
 // After pricing the status line is gone in both cases, so a second pricing is refused (no double price).
 function placePrice(text,lang,sentence){
  if(typeof text!=='string')return null;
- const generic=PRICE_LINE[lang],pending=CAPACITY_PENDING_LINE[lang];
- const lines=text.split('\n'),at=lines.findIndex(l=>l.startsWith(pending));
+ const generic=PRICE_LINE[lang],lines=text.split('\n');
+ // The current or the pre-2026-11-12 wording of the pending line, whichever the stored draft holds.
+ const pending=[CAPACITY_PENDING_LINE[lang],LEGACY_CAPACITY_PENDING_LINE[lang]].find(p=>lines.some(l=>l.startsWith(p)))||CAPACITY_PENDING_LINE[lang];
+ const at=lines.findIndex(l=>l.startsWith(pending));
  if(text.includes(generic)){
   if(at<0)return text.replace(generic,sentence);
   const rest=lines[at].slice(pending.length).trim(); // keep a note that follows the pending line (e.g. upper-floor C)
