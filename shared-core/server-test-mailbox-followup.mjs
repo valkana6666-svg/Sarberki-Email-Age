@@ -41,7 +41,7 @@ export async function appendTestMailboxFollowup({token,messageId,transport,attes
  let saved;
  const current={...structuredClone(row.data),id:caseId,tenantId:TENANT,messages:row.data.messages.map(m=>scope(m))};
  const store=createBookingCaseStore({storage:{getItem:()=>JSON.stringify([current]),setItem:(_,value)=>{saved=JSON.parse(value);}},tenantId:TENANT,clock});
- const result=store.ingest(scope(envelope),extractServerMessage(envelope),{approvedCaseId:caseId});
+ const result=store.ingest(scope(envelope),extractServerMessage(envelope,{previous:row.data.state?.values}),{approvedCaseId:caseId});
  const merged=saved?.find(c=>c.id===caseId);
  if(!merged||result?.resolution?.caseId!==caseId||merged.messages.length!==row.data.messages.length+1)fail('INVALID_DRAFT');
  const values=Object.fromEntries(Object.entries(merged.state.values||{}).filter(([k,v])=>VALUE_KEYS.includes(k)&&v!==null&&v!==undefined&&v!=='').map(([k,v])=>[k,String(v)]));

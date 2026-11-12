@@ -9,12 +9,12 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
  const mode=value=>value==='sl'?'si':['auto','hu','de','en','si'].includes(value)?value:'auto';
  let languageMode=mode(language);
  language=languageMode==='auto'?'hu':languageMode;
- let facts={},bookingContext=false,turns=0,lastDecision=null,lastTurn=null;
+ let facts={},early={},bookingContext=false,turns=0,lastDecision=null,lastTurn=null;
  return Object.freeze({
   get language(){return language;},
   get languageMode(){return languageMode;},
   setLanguage(value){languageMode=mode(value);if(languageMode!=='auto')language=languageMode;},
-  reset(){facts={};bookingContext=false;turns=0;lastDecision=null;lastTurn=null;language=languageMode==='auto'?'hu':languageMode;},
+  reset(){facts={};early={};bookingContext=false;turns=0;lastDecision=null;lastTurn=null;language=languageMode==='auto'?'hu':languageMode;},
   reply(message,{language:nextLanguage}={}){
    if(typeof message!=='string'||message.length>1000||++turns>100)throw Error('CHAT_INPUT_LIMIT');
    if(nextLanguage!==undefined){languageMode=mode(nextLanguage);if(languageMode!=='auto')language=languageMode;}
@@ -28,9 +28,24 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
     // Dates AND a party size: a date alone ("szeretnénk foglalni") stays the booking FAQ answer, as before.
     if((probe.dates||hasPotentialStayDate(message))&&(Number.isInteger(probe.adults)||Number.isInteger(probe.guests)))bookingContext=true;
    }
-   if(!bookingContext)return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};
+   if(!bookingContext){
+    // An informational first turn may already name the cabin, dates or party ("zanima nas družinska hiška poleti"):
+    // keep them for the booking conversation that follows, so they are not asked again (sweep 2026-11-12).
+    // Held aside (not an active inquiry, the snapshot stays empty) until the booking conversation opens.
+    const seen=normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized;
+    if(seen.cabin&&!seen.cabin.startsWith('?'))early.cabin=seen.cabin;
+    if(seen.dates&&!seen.dates.inferred_year)early.dates=structuredClone(seen.dates);
+    for(const key of ['guests','adults','children'])if(Number.isInteger(seen[key]))early[key]=seen[key];
+    return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};
+   }
    // Informational detours do not replace the active stay or its missing facts.
-   const bookingUpdate=['booking','cabins','checkin'].includes(faq.intent)?normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized:null;
+   let bookingUpdate=['booking','cabins','checkin'].includes(faq.intent)?normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized:null;
+   // An informational question that also brings a phone number or full stay dates ("Telefonszámom … Lehet kutyát
+   // hozni?") updates the stay too; the central reply then answers the question as well (sweep 2026-11-12).
+   if(!bookingUpdate&&['hotTub','fishing','deposit','pet'].includes(faq.intent)){
+    const info=normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized;
+    if((typeof info.phone==='string'&&info.phone.trim())||(info.dates&&!info.dates.inferred_year))bookingUpdate=info;
+   }
    const unparsedStayDate=!bookingUpdate?.dates&&hasPotentialStayDate(message);
    const uncertainParty=ambiguousPartyFieldsFromText(message);
    // An isolated number has no reliable category once the prior party is
@@ -39,18 +54,20 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
    const childAgesPending=Number(facts.children)>Number(facts.child_ages?.length||0);
    if(bareNumber&&facts.dates&&Number.isInteger(facts.adults)&&Number.isInteger(facts.children)&&!childAgesPending&&!facts.units_open_request)
     uncertainParty.push('adults','children','guests');
-   const hasBookingUpdate=bookingUpdate&&(unparsedStayDate||uncertainParty.length>0||['dates','adults','children','guests','units_requested'].some(key=>bookingUpdate[key]!=null)||(bookingUpdate.cabin&&!bookingUpdate.cabin.startsWith('?')));
+   const hasBookingUpdate=bookingUpdate&&(unparsedStayDate||uncertainParty.length>0||['dates','adults','children','guests','units_requested','phone'].some(key=>bookingUpdate[key]!=null&&bookingUpdate[key]!=='')||(bookingUpdate.cabin&&!bookingUpdate.cabin.startsWith('?')));
    if(['welcome','hotTub','deposit','fishing','pet','booking','cabins','checkin'].includes(faq.intent)&&!hasBookingUpdate){
     // A standalone number after an informational answer has no clear referent.
     lastDecision=null;
     return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};
    }
    const n=bookingUpdate||normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized;
-   const next={...facts};
+   const next={...early,...facts};early={};
    // A newly supplied date that cannot form a validated range must not leave
    // the earlier stay silently active. Ask for the complete dates again.
    if(!n.dates&&hasPotentialStayDate(message))next.dates=null;
    for(const key of ['dates','phone','units_requested'])if(n[key]!==null&&n[key]!==undefined&&n[key]!=='')next[key]=structuredClone(n[key]);
+   // "inkább június 26-tól 28-ig" (no year) while the stay is already in that year: a date change, not an unknown year.
+   if(next.dates?.inferred_year&&n.dates&&/^\d{4}-/.test(facts.dates?.arrival||'')&&next.dates.arrival.slice(0,4)===facts.dates.arrival.slice(0,4))next.dates={...next.dates,inferred_year:false};
    const priorParty={},incomingParty={};
    for(const key of ['guests','adults','children']){
     if(facts[key]!==null&&facts[key]!==undefined)priorParty[key]=String(facts[key]);

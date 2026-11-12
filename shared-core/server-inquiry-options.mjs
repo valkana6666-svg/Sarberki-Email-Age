@@ -12,10 +12,16 @@ function inferredYearDates(data){
  const d=normalizeInquiryInput({sourceChannel:'gmail',rawText:text,now:new Date(received)}).normalized.dates;
  return d?.inferred_year&&d.arrival&&d.departure?{arrival:d.arrival,departure:d.departure,inferred_year:true}:null;
 }
+// The guest's newest message carries the questions to answer now (pets, parking, terrace…); the facts come from the
+// merged values. First message: the original as before (sweep 2026-11-12: follow-up questions were lost).
+function latestGuestText(data){
+ const msgs=Array.isArray(data?.messages)?data.messages:[];
+ return msgs.length>1&&typeof msgs.at(-1)?.text==='string'&&msgs.at(-1).text.trim()?msgs.at(-1).text:(data?.state?.original||'');
+}
 export function serverInquiryOptions(record,now=new Date()){
  const data=record.data,v=data.state.values;
  const count=value=>value===''||value===null||value===undefined?null:Number(value);
- return {tenantId:record.tenantId,now,fallback:false,language:String(v.language||'hu').toLowerCase().replace(/^sl$/,'si'),message:data.state.original||'',facts:{
+ return {tenantId:record.tenantId,now,fallback:false,language:String(v.language||'hu').toLowerCase().replace(/^sl$/,'si'),message:latestGuestText(data),facts:{
   dates:v.arrival&&v.departure?{arrival:v.arrival,departure:v.departure,inferred_year:false}:inferredYearDates(data),
   guests:count(v.guests),adults:count(v.adults),children:count(v.children),
   child_ages:String(v.child_ages||'').split(',').map(s=>s.trim()).filter(Boolean).map(Number),

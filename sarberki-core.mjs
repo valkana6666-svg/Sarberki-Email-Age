@@ -803,7 +803,8 @@ function operationalTopicLines(language='hu',original='',rules=null,caseContext=
     en:'Firewood is available for an additional charge; the exact fee still needs to be confirmed by the operator.',
     si:'Drva so na voljo z doplačilom; natančno ceno mora še potrditi upravljavec.'
   }[lang]);
-  if(!caseContext&&asks.parking&&rules.parking==='available_large_group_review') lines.push({
+  // Answered unless the case itself already holds a parking line (sweep 2026-11-12: email path never answered it).
+  if(!caseContext?.extraLines?.some(l=>/(?:parkol|parking|parkpl|parkir)/iu.test(String(l)))&&asks.parking&&rules.parking==='available_large_group_review') lines.push({
     hu:'Parkolási lehetőség biztosított; több autó esetén a rendelkezésre álló helyet külön ellenőrizzük.',
     de:'Parkmöglichkeiten sind vorhanden; bei mehreren Fahrzeugen prüfen wir die verfügbaren Stellplätze separat.',
     en:'Parking is available; for several vehicles we will confirm the available spaces separately.',
