@@ -52,7 +52,7 @@ test('V1 completion: Previo attestation -> confirmation with deposit -> finalize
   await db.exec("insert into sc_tenants values('sarberki-test','Fictional',true),('demo-test','Fictional other',true)");
   for(const f of ['deployment/cloud-approval/install.sql','deployment/cloud-approval/separate-approver-permission.sql','deployment/exact-receipt/install.sql'])await db.exec(await read(f));
   await db.query('insert into sc_isolated_approval_key(key_hex) values($1)',[KEY]);
-  for(const f of ['deployment/test-mailbox/install.sql','deployment/test-mailbox/booking-status.sql','deployment/test-mailbox/booking-unit.sql','deployment/test-mailbox/booking-cancel.sql','deployment/test-mailbox/booking-multiunit.sql','deployment/test-mailbox/booking-modify.sql'])await db.exec(await read(f));
+  for(const f of ['deployment/test-mailbox/install.sql','deployment/test-mailbox/booking-status.sql','deployment/test-mailbox/booking-unit.sql','deployment/test-mailbox/booking-cancel.sql','deployment/test-mailbox/booking-multiunit.sql','deployment/test-mailbox/booking-deposit-tz.sql','deployment/test-mailbox/booking-modify.sql'])await db.exec(await read(f));
   await db.exec('update sc_test_mailbox_config set enabled=true');
   for(const [role,id] of Object.entries(ids)){await db.query('insert into auth.users values($1)',[id]);await db.query('insert into auth.sessions values($1,$2,null)',[sessions[role],id]);}
   await db.query('insert into sc_memberships values($1,$2,true,true,false),($1,$3,true,false,true)',[TENANT,ids.writer,ids.approver]);
@@ -60,6 +60,7 @@ test('V1 completion: Previo attestation -> confirmation with deposit -> finalize
   assert.equal((await db.exec(await read('deployment/test-mailbox/booking-unit.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
   assert.equal((await db.exec(await read('deployment/test-mailbox/booking-cancel.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
   assert.equal((await db.exec(await read('deployment/test-mailbox/booking-multiunit.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
+  assert.equal((await db.exec(await read('deployment/test-mailbox/booking-deposit-tz.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
   assert.equal((await db.exec(await read('deployment/test-mailbox/booking-modify.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
   const common={token:'t'.repeat(40),transport:transportFor('writer'),attestationKey:KEY,fetchImpl:gmailFetch};
   const {caseId}=await ingestTestMailboxMessage({...common,messageId:THREAD});
@@ -110,7 +111,7 @@ test('V1 completion: Previo attestation -> confirmation with deposit -> finalize
   assert.match(ok2.saved.data.drafts.at(-1).operatorReviewText,/Egység: 12/);
   // Deposit received: future date refused; today accepted; separate state.
   await assert.rejects(transportFor('writer')('/rest/v1/rpc/sc_tm_deposit_received',{method:'POST',body:{p_tenant:TENANT,p_case:caseId,p_expected:record.revision,p_received_on:'2999-01-01'}}),/DB/);
-  const today=new Date().toISOString().slice(0,10);
+  const today=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Budapest'}); // Budapest day (booking-deposit-tz.sql)
   await markTestMailboxDepositReceived({record,receivedOn:today,depositConfirmed:true,transport:transportFor('writer')});
   record=await load();
   assert.equal(record.data.booking.status,'deposit_received');assert.equal(record.data.booking.depositReceived.on,today);
