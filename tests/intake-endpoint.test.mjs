@@ -46,3 +46,15 @@ test('create_booking_request: intake account login; failures give fixed codes wi
  const invalid=await createIntakeHandler({env,now:()=>NOW,fetchImpl:async()=>new Response(JSON.stringify({access_token:'j'}))})(req({action:'create_booking_request',channel:'fax',externalId:'x',facts,summary:'x'}));
  assert.equal(invalid.status,400);assert.deepEqual(await invalid.json(),{error:'INVALID_INPUT'});
 });
+
+test('V3-4 operator note: off by default; when on, one Pushover call without personal data',async()=>{
+ const {notifyOperator}=await import('../netlify/functions/intake.mjs');
+ let calls=[];const fetchImpl=async(url,o)=>{calls.push({url,body:JSON.parse(o.body)});return new Response('{}');};
+ assert.equal(await notifyOperator({PUSHOVER_API_TOKEN:'t',PUSHOVER_USER_KEY:'u'},fetchImpl,'phone'),false);assert.equal(calls.length,0);
+ assert.equal(await notifyOperator({INTAKE_NOTIFY:'pushover'},fetchImpl,'phone'),false,'no keys -> nothing');
+ assert.equal(await notifyOperator({INTAKE_NOTIFY:'pushover',PUSHOVER_API_TOKEN:'t',PUSHOVER_USER_KEY:'u'},fetchImpl,'phone'),true);
+ assert.equal(calls.length,1);assert.equal(calls[0].url,'https://api.pushover.net/1/messages.json');
+ assert.equal(calls[0].body.message,'Új telefonos foglalási igény érkezett a napi kezelőbe.');
+ assert.doesNotMatch(JSON.stringify(calls[0].body),/\+36|@|Teszt|2027/);
+ assert.equal(await notifyOperator({INTAKE_NOTIFY:'pushover',PUSHOVER_API_TOKEN:'t',PUSHOVER_USER_KEY:'u'},async()=>{throw Error('down');},'chat'),false,'best effort');
+});

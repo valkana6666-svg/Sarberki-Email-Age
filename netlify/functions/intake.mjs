@@ -15,6 +15,19 @@ import {previoCapacityReader} from './booking-cases.mjs';
 const TEST_PROJECT='https://mojnqizbcaczstguikpv.supabase.co',TENANT='sarberki-test';
 const json=(status,body)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json','cache-control':'no-store'}});
 
+// V3-4: one Pushover note to the operator for a new phone/chat request. OFF unless INTAKE_NOTIFY=pushover (AGENTS:
+// automatic Pushover only with the owner's explicit permission). No personal data in the note; best effort only.
+export async function notifyOperator(env,fetchImpl,channel){
+ if(env.INTAKE_NOTIFY!=='pushover')return false;
+ const token=env.PUSHOVER_API_TOKEN?.trim(),user=env.PUSHOVER_USER_KEY?.trim();
+ if(!token||!user)return false;
+ const message=channel==='phone'?'Új telefonos foglalási igény érkezett a napi kezelőbe.':'Új chates foglalási igény érkezett a napi kezelőbe.';
+ try{
+  const r=await fetchImpl('https://api.pushover.net/1/messages.json',{method:'POST',redirect:'error',signal:AbortSignal.timeout(5000),
+   headers:{'Content-Type':'application/json'},body:JSON.stringify({token,user,title:'Sárberki TEST',message,url:'https://leafy-chimera-2403e5.netlify.app/napi-kezelo/',url_title:'Napi kezelő'})});
+  return r.ok;
+ }catch{return false;}
+}
 export function createIntakeHandler({env=process.env,fetchImpl=fetch,now=()=>Date.now()}={}){
  return async request=>{
   if(env.INTAKE_ENABLED!=='test-only'||env.SUPABASE_URL!==TEST_PROJECT)return json(503,{error:'INTAKE_DISABLED'});
@@ -45,6 +58,7 @@ export function createIntakeHandler({env=process.env,fetchImpl=fetch,now=()=>Dat
     const transport=createSupabaseTransport({url:TEST_PROJECT+'/',publishableKey:env.SUPABASE_PUBLISHABLE_KEY,token,fetchImpl});
     const {caseId}=await createIntakeRequest({channel:input.channel,externalId:input.externalId,facts:input.facts,summary:input.summary,
      transport,attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,availabilitySource:source,tenantId:TENANT});
+    await notifyOperator(env,fetchImpl,input.channel);
     return json(200,{caseId,status:'pending_operator_approval'});
    }catch(error){
     const code=['INVALID_INPUT','FORBIDDEN','SETUP_REQUIRED'].includes(error?.code)?error.code:'STORAGE_FAILURE';
