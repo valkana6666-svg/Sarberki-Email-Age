@@ -182,7 +182,10 @@ export async function modifyTestMailboxBooking({record,arrival,departure,unit,mo
  const old=record.data.state?.values||{};
  if(!/^\d{4}-\d{2}-\d{2}$/.test(arrival||'')||!/^\d{4}-\d{2}-\d{2}$/.test(departure||'')||departure<=arrival)fail('INVALID_DATE');
  if(arrival===old.arrival&&departure===old.departure&&unit===b.unit)fail('NOTHING_CHANGED');
- const cabin=cabinKeyFromUnit(old.unit);
+ // Generic "Osztott" booking: the new unit must be the same split type as the booked one (A/B stays A/B, C stays C).
+ const splitOld=splitCabinFromUnits(old.unit,[b.unit]);
+ const cabin=splitOld??cabinKeyFromUnit(old.unit);
+ if(splitOld&&splitCabinFromUnits(old.unit,[unit])!==splitOld)fail('UNIT_NOT_IN_TYPE');
  if(!unitsForCabin(cabin).includes(unit))fail('UNIT_NOT_IN_TYPE');
  const values={...old,arrival,departure};
  let quote;

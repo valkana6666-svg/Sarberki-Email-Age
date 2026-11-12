@@ -395,7 +395,9 @@ function showBooking(caseId,record){
  const canModify=record.canModifyBooking===true;el('modify-wrap').hidden=!canModify;
  for(const id of ['modify-arrival','modify-departure','modify-unit','modify-confirm'])el(id).disabled=!canModify;
  el('modify-confirm').checked=false;el('modify-arrival').value=record.values?.arrival||'';el('modify-departure').value=record.values?.departure||'';
- el('modify-unit').replaceChildren(...poolKeys.flatMap(k=>unitsOfType(k)).map(u=>{const o=document.createElement('option');o.value=u.id;o.textContent=u.id;return o;}));
+ // Generic split booking: offer only the booked unit's split type (A/B or C).
+ const modifyKeys=genericSplit&&b?.unit?(/\/C$/.test(b.unit)?['splitC']:['splitA','splitB']):poolKeys;
+ el('modify-unit').replaceChildren(...modifyKeys.flatMap(k=>unitsOfType(k)).map(u=>{const o=document.createElement('option');o.value=u.id;o.textContent=u.id;return o;}));
  if(b?.unit)el('modify-unit').value=b.unit;
  if(dpt)el('deposit-date').value=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Budapest'});
 }

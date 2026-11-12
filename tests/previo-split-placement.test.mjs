@@ -125,3 +125,12 @@ test('generic "Osztott" case: the chosen units decide the price type; mixed A/B 
  assert.equal(units('egy osztott faház A és B apartmanját kérnénk 2027. május 21-től 23-ig, 4 felnőtt'),'2');
  assert.equal(units('Osztott C házba jönnénk 5 felnőttel 2027. szeptember 3-tól 5-ig'),undefined);
 });
+
+test('generic "Osztott" booking modification: same split type only, priced by that type',async()=>{
+ const {modifyTestMailboxBooking}=await import('../shared-core/server-test-mailbox-confirm.mjs');
+ const record=b=>({tenantId:'sarberki-test',caseId:'tm-1a1a32e7a1cd26c5',revision:3,data:{booking:{status:'finalized',unit:'7/A',previo:{reference:'V2-118000001',recordedAt:'2026-11-12T09:00:00Z'},...b},state:{values:{arrival:'2027-05-21',departure:'2027-05-23',adults:'2',children:'0',guests:'2',unit:'Osztott',language:'hu'}}}});
+ const writer={modifyBooking:async a=>{writer.cabin=a.cabin;return {previous:{},current:{}};}};
+ const base={arrival:'2027-05-22',departure:'2027-05-24',modifyConfirmed:true,attestationKey:'ab'.repeat(32),previoWriter:writer,transport:async()=>[]};
+ await assert.rejects(modifyTestMailboxBooking({...base,record:record(),unit:'8/C'}),/UNIT_NOT_IN_TYPE/);
+ try{await modifyTestMailboxBooking({...base,record:record(),unit:'8/B'});}catch(e){assert.doesNotMatch(String(e.code||e.message),/CONFIRMATION_CABIN_UNKNOWN|UNIT_NOT_IN_TYPE/);}
+});
