@@ -57,7 +57,7 @@ export function nameFromText(text=''){
   const signedName='('+word+'(?:[ \\t]+'+word+')?)';
   const patterns=[
     new RegExp('(?:^|\\n)\\s*(?:üdv(?:özlettel|özlet)?|tisztelettel|köszönettel|köszönöm|köszi)(?!\\p{L})\\s*\\.?\\s*[:,-]?\\s*'+signedName+'\\s*$','imu'),
-    new RegExp('(?:^|\\n)\\s*(?:mit\\s+freundlichen\\s+grüßen|viele\\s+grüße|freundliche\\s+grüße|liebe\\s+grüße|vielen\\s+dank|danke)(?!\\p{L})\\s*[,.:;-]?\\s*'+signedName+'\\s*$','imu'),
+    new RegExp('(?:^|\\n)\\s*(?:mit\\s+freundlichen\\s+grüßen|viele\\s+grüße|freundliche\\s+grüße|liebe\\s+grüße|grüße|gruesse|vielen\\s+dank|danke)(?!\\p{L})\\s*[,.:;-]?\\s*'+signedName+'\\s*$','imu'),
     new RegExp('(?:^|\\n)\\s*(?:best\\s+regards|kind\\s+regards|regards|thank\\s+you|many\\s+thanks|thanks)(?!\\p{L})\\s*[,.:;-]?\\s*'+signedName+'\\s*$','imu'),
     new RegExp('(?:^|\\n)\\s*(?:hvala\\s+in\\s+lep\\s+pozdrav|lep\\s+pozdrav|pozdrav|hvala)(?!\\p{L})\\s*[,.:;-]?\\s*'+signedName+'\\s*$','imu'),
     new RegExp('(?:^|\\n)\\s*'+fullName+'\\s*$','mu')

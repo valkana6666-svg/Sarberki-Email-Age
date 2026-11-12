@@ -38,3 +38,10 @@ test('chatbot: date change without a year, cabin from an informational first tur
  const second=b.reply('Od 2. do 5. avgusta 2027, 2 odrasla in 2 otroka.');
  assert.match(second.text,/Želeni tip hiške: Družinska hiška/);assert.doesNotMatch(second.text,/katero vrsto hiške/);
 });
+
+test('e-mail follow-up: the stored guest name still greets when the newest reply is unsigned',()=>{
+ const data={state:{original:'Jó napot! Deluxe faházat kérnénk 2027. június 24-től 26-ig, 2 felnőtt.\nÜdvözlettel:\nKovács Anna',values:{arrival:'2027-06-24',departure:'2027-06-26',adults:'2',children:'0',guests:'2',unit:'Deluxe',language:'hu',name:'Kovács Anna'}},
+  messages:[{text:'Jó napot! Deluxe faházat kérnénk 2027. június 24-től 26-ig, 2 felnőtt.\nÜdvözlettel:\nKovács Anna'},{text:'Gyerek nincs. Telefonszámom +36 30 000 0000.'}]};
+ const text=buildEmailInquiryDraft(serverInquiryOptions({tenantId:'sarberki',caseId:'tm-1',data},clock())).text;
+ assert.match(text,/^Kedves Anna!/);
+});

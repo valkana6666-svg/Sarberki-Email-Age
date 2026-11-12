@@ -89,7 +89,7 @@ function renderEmailDecision(decision,original,language){
  // Verified Sárberki fishing knowledge (tickets, rules) is part of the same letter in every channel.
  const fishing=fishingQuestion(original,language);
  const knowledge=fishing&&fishing.kind!=='review'?[{tenantId:SARBERKI_TENANT.id,caseId:'inquiry-draft',kind:'knowledge',lines:[fishing.answer],approved:true,source:fishing.source}]:[];
- const draft=buildCentralReply({caseId:'inquiry-draft',language,original,arrival:f.dates?.arrival,departure:f.dates?.departure,guests:f.guests,adults:f.adults,children:f.children,childAges:f.child_ages,phone:f.phone,cabin:f.cabin},{records:knowledge});
+ const draft=buildCentralReply({caseId:'inquiry-draft',language,original,...(typeof f.name==='string'&&f.name.trim()?{name:f.name.trim()}:{}),arrival:f.dates?.arrival,departure:f.dates?.departure,guests:f.guests,adults:f.adults,children:f.children,childAges:f.child_ages,phone:f.phone,cabin:f.cabin},{records:knowledge});
  // Existing email renderer remains the presentation layer. The shared decision
  // and its current safety status are returned alongside the pending draft.
  const parts=centralConversationParts(decision,language);

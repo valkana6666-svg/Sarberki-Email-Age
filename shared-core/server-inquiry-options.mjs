@@ -26,6 +26,8 @@ export function serverInquiryOptions(record,now=new Date()){
   guests:count(v.guests),adults:count(v.adults),children:count(v.children),
   child_ages:String(v.child_ages||'').split(',').map(s=>s.trim()).filter(Boolean).map(Number),
   cabin:v.unit||'',units_requested:count(v.units_requested),nights:v.nights||'',phone:v.phone||null,
+  // The stored guest name greets in follow-ups too (a later unsigned reply kept "Kedves Vendégünk", 2026-11-12).
+  ...(typeof v.name==='string'&&v.name.trim()?{name:v.name.trim()}:{}),
   split_request_text:v.split_request_text||v.request||data.state.original||''
  }};
 }
