@@ -21,18 +21,16 @@ const TOO_MANY={
 };
 const EXTRA_BED={hu:'Öt fő esetén az ötödik fő pótágyon alszik.',de:'Bei fünf Personen schläft die fünfte Person auf einem Zusatzbett.',
  en:'With five guests, the fifth guest sleeps on an extra bed.',si:'Pri petih osebah peta oseba spi na dodatnem ležišču.'};
-// Owner 2026-11-12: C is upstairs, reached by a spiral staircase, with its own terrace. Said when C is in play
-// (named C, a C count, or a split request of 3+ guests without A/B) AND a small child (0-5), a baby or an older guest
-// comes, so nobody is surprised on arrival.
+// Owner 2026-11-12: C is upstairs, reached by a spiral staircase, with its own terrace. Said ONLY when the guest
+// asks about the layout (terrace, floor, stairs, arrangement) and C is in play - never volunteered.
 const UPPER_FLOOR={hu:'A C apartman az emeleten van, csigalépcsőn közelíthető meg, saját terasszal.',de:'Das Apartment C liegt im Obergeschoss, ist über eine Wendeltreppe erreichbar und hat eine eigene Terrasse.',
  en:'Apartment C is upstairs, reached by a spiral staircase, and has its own terrace.',si:'Apartma C je v nadstropju, dostopen po zavitih stopnicah, in ima svojo teraso.'};
-const OLDER_GUEST=/(?<!\p{L})(?:idős\p{L}*|idos\p{L}*|nagymam\p{L}*|nagypap\p{L}*|nagyszül\p{L}*|nyugdíjas\p{L}*|mozgáskorlátozott\p{L}*|kerekesszék\p{L}*|elderly|senior\p{L}*|grandparents?|grandma|grandpa|wheelchair|großeltern|grosseltern|oma|opa|rollstuhl|starejš\p{L}*|babic\p{L}*|dedek|invalidsk\p{L}*)(?!\p{L})/iu;
+export const LAYOUT_QUESTION=/(?<!\p{L})(?:teras\p{L}*|terrace\p{L}*|terrass\p{L}*|emelet\p{L}*|földszint\p{L}*|foldszint\p{L}*|lépcső\p{L}*|lepcso\p{L}*|elosztás\p{L}*|elrendezés\p{L}*|elrendezes\p{L}*|floors?|upstairs|downstairs|ground[- ]floor|stairs?|staircase|layout|arrangement|treppe\p{L}*|etage|stockwerk|obergeschoss|erdgeschoss|aufteilung|stopnic\p{L}*|nadstrop\p{L}*|pritličj\p{L}*|razporeditev)(?!\p{L})/iu;
 function upperFloorNote(decision,language){
  const input=decision.capacity.input,f=decision.facts,p=input?.placement;
  if(!input?.cabin?.startsWith?.('split'))return '';
  const cInPlay=input.cabin==='splitC'||p?.c>0||(input.cabin==='split'&&!(p?.ab>0)&&Number(f.guests)>=3);
- const small=(f.child_ages||[]).some(a=>Number.isInteger(a)&&a<=5);
- return cInPlay&&(small||OLDER_GUEST.test(String(f.originalText||'')))?' '+(UPPER_FLOOR[language]||UPPER_FLOOR.hu):'';
+ return cInPlay&&LAYOUT_QUESTION.test(String(f.originalText||f.split_request_text||''))?' '+(UPPER_FLOOR[language]||UPPER_FLOOR.hu):'';
 }
 // Either the open questions of the shared decision, or (when nothing is missing) one status line.
 function centralConversationParts(decision,language){

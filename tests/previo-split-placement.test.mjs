@@ -67,16 +67,29 @@ test('parsing: A+B alone = two units anywhere; with "egymás mellett" or "egy os
  assert.equal(splitRequestFromText('két Osztott C apartmant kérnénk egymás mellett').requestedC,2);
 });
 
-test('layout sentences (owner 2026-11-12): shared terrace for a same-house A+B pair; C upstairs only with a small child or older guest',async()=>{
- assert.match(splitPlacementSentence({status:'available',units:['8/A','8/B'],sameHouse:true},'hu').guest,/A két földszinti apartman közös terasszal rendelkezik\./);
- assert.doesNotMatch(splitPlacementSentence({status:'available',units:['9/C','10/C'],sameHouse:false},'hu').guest,/terasz/);
+test('layout sentences only when the guest asks (owner 2026-11-12): terrace for a same-house A+B pair, staircase for C',async()=>{
+ const pair={status:'available',units:['8/A','8/B'],sameHouse:true};
+ assert.match(splitPlacementSentence(pair,'hu',{layoutAsked:true}).guest,/A két földszinti apartman közös terasszal rendelkezik\./);
+ assert.doesNotMatch(splitPlacementSentence(pair,'hu').guest,/terasz/,'not volunteered');
+ assert.doesNotMatch(splitPlacementSentence({status:'available',units:['9/C','10/C'],sameHouse:false},'hu',{layoutAsked:true}).guest,/terasz/);
  const {evaluateCentralInquiry}=await import('../shared-core/central-inquiry-decision.mjs');
  const {renderCentralConversation}=await import('../shared-core/inquiry-channel-adapters.mjs');
  const r=(t,language='hu')=>renderCentralConversation(evaluateCentralInquiry({message:t,language,now:new Date('2026-11-12T00:00:00Z')}));
- assert.match(r('Osztott C házba jönnénk 2027. szeptember 3-tól 5-ig, 2 felnőtt és 2 gyerek (2 és 7 évesek).'),/A C apartman az emeleten van, csigalépcsőn/);
- assert.match(r('Osztott C házba jönnénk 2027. szeptember 3-tól 5-ig, 4 felnőtt, gyerek nincs, a nagymama is jön.'),/csigalépcsőn/);
- assert.match(r('Hello, we would like split apartment C from 3 to 5 September 2027, 4 adults, no children; our grandma is coming too.','en'),/spiral staircase/);
- assert.doesNotMatch(r('Osztott C házba jönnénk 2027. szeptember 3-tól 5-ig, 4 felnőtt, gyerek nincs.'),/csigalépcső/);
- assert.doesNotMatch(r('Osztott C házba jönnénk 2027. szeptember 3-tól 5-ig, 2 felnőtt és 2 gyerek (8 és 12 évesek).'),/csigalépcső/);
- assert.doesNotMatch(r('Deluxe házba jönnénk 2027. szeptember 3-tól 5-ig, 2 felnőtt és 1 gyerek (2 éves).'),/csigalépcső/);
+ assert.match(r('Osztott C házba jönnénk 2027. szeptember 3-tól 5-ig, 4 felnőtt, gyerek nincs. Van terasza? Hányadik emeleten van?'),/A C apartman az emeleten van, csigalépcsőn/);
+ assert.match(r('Hello, we would like split apartment C from 3 to 5 September 2027, 4 adults, no children. Is it upstairs?','en'),/spiral staircase/);
+ assert.doesNotMatch(r('Osztott C házba jönnénk 2027. szeptember 3-tól 5-ig, 2 felnőtt és 2 gyerek (2 és 7 évesek).'),/csigalépcső/,'small children alone do not trigger it');
+ assert.doesNotMatch(r('Osztott C házba jönnénk 2027. szeptember 3-tól 5-ig, 4 felnőtt, gyerek nincs, a nagymama is jön.'),/csigalépcső/);
+ assert.doesNotMatch(r('Deluxe házba jönnénk 2027. szeptember 3-tól 5-ig, 2 felnőtt. Van terasza?'),/csigalépcső/);
+});
+
+test('two split units without a proximity request: operator gets a neighbouring suggestion, guest text unchanged',async()=>{
+ const message='Jó napot! 2027. május 21-től 23-ig jönnénk 4 felnőtt, gyerek nincs, két 2 fős osztott apartmant kérnénk.';
+ const draft=buildEmailInquiryDraft({message,language:'hu',now:new Date('2026-11-12T00:00:00Z'),tenantId:'sarberki'});
+ const out=await withSplitPlacement(draft,draft.decision,async()=>({status:'read',free:freeExcept('7/A')}));
+ assert.equal(out.text,draft.text);
+ assert.match(out.operatorReviewText,/javaslat egymás mellett: 8\/A \+ 8\/B \(azonos ház\)/);
+ const apart=await withSplitPlacement(draft,draft.decision,async()=>({status:'read',free:new Set(['7/A','9/B'])}));
+ assert.match(apart.operatorReviewText,/egymás mellett nincs szabad; külön házakban szabad: 7\/A \+ 9\/B/);
+ const one=buildEmailInquiryDraft({message:'Jó napot! 2027. május 21-től 23-ig jönnénk 2 felnőtt, gyerek nincs, egy 2 fős osztott apartmant kérnénk.',language:'hu',now:new Date('2026-11-12T00:00:00Z'),tenantId:'sarberki'});
+ let called=false;assert.equal(await withSplitPlacement(one,one.decision,async()=>{called=true;}),one);assert.equal(called,false,'one unit: no extra read');
 });

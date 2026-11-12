@@ -3,7 +3,7 @@
 // -> buildEmailInquiryDraft. A failed/unknown read leaves the draft exactly as without Previo (never "sold out").
 import {buildAvailabilityOptions} from '../netlify/functions/availability-options.mjs';
 import {evaluateCentralInquiry} from './central-inquiry-decision.mjs';
-import {buildEmailInquiryDraft,CAPACITY_PENDING_LINE} from './inquiry-channel-adapters.mjs';
+import {buildEmailInquiryDraft,CAPACITY_PENDING_LINE,LAYOUT_QUESTION} from './inquiry-channel-adapters.mjs';
 import {planSplitPlacement,splitPlacementSentence} from './server-previo-split-placement.mjs';
 
 // Adapter: readPrevioFreeCapacity(...) -> the availability-options source contract.
@@ -32,7 +32,7 @@ export async function emailDraftWithCapacity(options,availabilitySource=null,{cl
  try{capacity=await buildAvailabilityOptions(decision.capacity.input,availabilitySource,{tenantId:options.tenantId,now:()=>Math.max(+new Date(options.now),Number(clock()))});}catch{}
  // The decision re-checks the evidence's freshness against `now`: use the moment after the read.
  const draft=buildEmailInquiryDraft(capacity?{...options,now:new Date(Math.max(+new Date(options.now),Number(clock()))),capacity}:options);
- return withSplitPlacement(draft,decision,availabilitySource.splitPlacement);
+ return withSplitPlacement(draft,decision,availabilitySource.splitPlacement,options.message);
 }
 
 // Same house / neighbouring split houses: the pool read cannot prove it, so the draft still holds the pending line.
@@ -51,15 +51,28 @@ function patchText(text,lang,sentence){
  out=out.replace(new RegExp(EXTRAS_TITLE[lang]+'\\n(?=\\n|$)','u'),'');
  return out.replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n');
 }
-export async function withSplitPlacement(draft,decision,reader){
+export async function withSplitPlacement(draft,decision,reader,message=''){
  const input=decision?.capacity?.input,p=input?.placement;
- if(typeof reader!=='function'||!input?.cabin?.startsWith?.('split')||!p||!(p.sameHouse||p.adjacent)||p.exactIds?.length||decision.capacity.incompatible)return draft;
+ if(typeof reader!=='function'||!input?.cabin?.startsWith?.('split')||!p||p.exactIds?.length||decision.capacity.incompatible)return draft;
  const lang=draft?.decision?.facts?.language||'hu';
+ const asked=p.sameHouse||p.adjacent;
+ // Owner 2026-11-12: two or more split units in one booking -> aim for neighbouring units even when not asked.
+ // Nothing is promised to the guest then; the operator gets the suggestion for the finalize step.
+ if(!asked){
+  if(!(p.ab+p.c>=2))return draft;
+  let read;try{read=await reader({arrival:input.arrival,departure:input.departure});}catch{return draft;}
+  if(read?.status!=='read')return draft;
+  const near=planSplitPlacement(read.free,{ab:p.ab,c:p.c,mode:'adjacent'});
+  const note=near.status==='available'?`Previo (csak olvasó, egységszint) – javaslat egymás mellett: ${near.units.join(' + ')}${near.sameHouse?' (azonos ház)':' (szomszédos házak)'}. Véglegesítéskor ezeket válaszd, ha lehet.`
+   :near.alternative?`Previo (csak olvasó, egységszint): egymás mellett nincs szabad; külön házakban szabad: ${near.alternative.units.join(' + ')}.`:null;
+  return note?{...draft,operatorReviewText:String(draft.operatorReviewText||'')+'\n\n'+note,splitPlacement:near}:draft;
+ }
  if(!String(draft?.text||'').includes(CAPACITY_PENDING_LINE[lang]||CAPACITY_PENDING_LINE.hu))return draft;
  let read;try{read=await reader({arrival:input.arrival,departure:input.departure});}catch{return draft;}
  if(read?.status!=='read')return draft;
  const plan=planSplitPlacement(read.free,{ab:p.ab,c:p.c,mode:p.sameHouse?'same-house':'adjacent'});
- const guest=splitPlacementSentence(plan,lang),hu=splitPlacementSentence(plan,'hu');
+ const layoutAsked=LAYOUT_QUESTION.test(String(message||decision.facts?.originalText||decision.facts?.split_request_text||''));
+ const guest=splitPlacementSentence(plan,lang,{layoutAsked}),hu=splitPlacementSentence(plan,'hu',{layoutAsked});
  const text=guest&&patchText(draft.text,lang,guest.guest);
  if(!text)return draft;
  const review=patchText(draft.operatorReviewText,'hu',hu.guest)??draft.operatorReviewText;

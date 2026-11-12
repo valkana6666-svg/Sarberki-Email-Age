@@ -77,10 +77,11 @@ const DETAIL={
 };
 // Pure: placement -> guest sentence (starts with the standard "free" line when free, so the price step still
 // finds its anchor) + operator note with the unit ids (never in the guest text).
-export function splitPlacementSentence(plan,language='hu'){
+export function splitPlacementSentence(plan,language='hu',{layoutAsked=false}={}){
  const lang=DETAIL[language]?language:'hu',t=DETAIL[lang];
- // Owner 2026-11-12: A and B share one ground-floor terrace - said when the free pair is A+B in one house.
- const abPair=plan?.sameHouse&&plan.units?.some(u=>u.endsWith('/A'))&&plan.units?.some(u=>u.endsWith('/B'));
+ // Owner 2026-11-12: A and B share one ground-floor terrace - said only if asked and the free pair is A+B in one house.
+ // Only when the guest asked about the layout (owner 2026-11-12: never volunteered).
+ const abPair=layoutAsked&&plan?.sameHouse&&plan.units?.some(u=>u.endsWith('/A'))&&plan.units?.some(u=>u.endsWith('/B'));
  if(plan?.status==='available')return {guest:`${CAPACITY_AVAILABLE_LINE[lang]} ${plan.sameHouse?t.same:t.next}${abPair?' '+t.terrace:''}`,
   operator:`Previo (csak olvasó, egységszint): szabad elhelyezés ${plan.units.join(' + ')}${plan.sameHouse?' (azonos ház)':' (szomszédos házak)'}.`};
  if(plan?.status==='unavailable')return plan.alternative
