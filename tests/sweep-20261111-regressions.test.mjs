@@ -37,3 +37,16 @@ test('German summary: "im Alter von 1 Jahr" (singular)',()=>{
  const de=replySummary('de',{arrival:'2027-07-14',departure:'2027-07-17',guests:4,adults:3,children:1,childAges:[1]});
  assert.match(JSON.stringify(de),/im Alter von 1 Jahr[^e]/);
 });
+
+test('sweep 2: ambiguous US/EU slash date is not guessed; unambiguous ones parse; HU tól/ig with both years',()=>{
+ assert.equal(dateRangeFromText('the VIP apartment 07/10/2027 - 07/12/2027 for 2 adults'),null);
+ assert.deepEqual(dateRangeFromText('25/07/2027 - 28/07/2027'),{arrival:'2027-07-25',departure:'2027-07-28',inferredYear:false});
+ assert.deepEqual(dateRangeFromText('10.07.2027 - 12.07.2027'),{arrival:'2027-07-10',departure:'2027-07-12',inferredYear:false});
+ assert.deepEqual(dateRangeFromText('Szilveszterre jönnénk: 2027.12.30-tól 2028.01.02-ig'),{arrival:'2027-12-30',departure:'2028-01-02',inferredYear:false});
+ assert.deepEqual(dateRangeFromText('2026.10.09-től 10.13.ig'),{arrival:'2026-10-09',departure:'2026-10-13',inferredYear:false});
+});
+
+test('sweep 2: "a toddler aged 2" is a child aged 2',()=>{
+ const t='We are two couples (4 adults) plus a toddler aged 2, looking for a family cabin';
+ assert.equal(childCountFromText(t),1);assert.deepEqual(childAgesFromText(t),[2]);assert.equal(adultCountFromText(t),4);
+});

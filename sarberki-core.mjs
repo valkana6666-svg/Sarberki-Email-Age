@@ -248,14 +248,15 @@ export function adultCountFromText(text=''){
 }
 // Babies (sweep 2026-11-11): "ein Baby (1 Jahr)", "egy kisbaba (8 hónapos)", "a baby" count as children; a stated
 // age (months -> 0) is kept, an unstated one stays unknown so the reply asks for it.
-const BABY_WORDS='(?:kis)?(?:baba|babá\\p{L}*|baby|babys|babies|säugling\\p{L}*|saugling\\p{L}*|infant\\p{L}*|dojenč\\p{L}*|dojenc\\p{L}*)';
-const BABY_AGE='\\s*\\(?\\s*(\\d{1,2})\\s*(év\\p{L}*|ev\\p{L}*|jahr\\p{L}*|years?(?:\\s+old)?|let\\p{L}*|hónap\\p{L}*|honap\\p{L}*|monat\\p{L}*|months?(?:\\s+old)?|mesec\\p{L}*)\\s*\\)?';
+const BABY_WORDS='(?:kis)?(?:baba|babá\\p{L}*|baby|babys|babies|toddlers?|kleinkind\\p{L}*|säugling\\p{L}*|saugling\\p{L}*|infant\\p{L}*|dojenč\\p{L}*|dojenc\\p{L}*)';
+const BABY_UNIT='(?:év\\p{L}*|ev\\p{L}*|jahr\\p{L}*|years?(?:\\s+old)?|let\\p{L}*|hónap\\p{L}*|honap\\p{L}*|monat\\p{L}*|months?(?:\\s+old)?|mesec\\p{L}*)';
+const BABY_AGE='\\s*\\(?\\s*(?:(?:aged|im\\s+alter\\s+von)\\s+(\\d{1,2})(?:\\s*('+BABY_UNIT+'))?|(\\d{1,2})\\s*('+BABY_UNIT+'))\\s*\\)?';
 function babiesFromText(text){
  const words={egy:1,ein:1,eine:1,einem:1,einen:1,a:1,an:1,one:1,en:1,enega:1,eno:1,'1':1,két:2,ket:2,zwei:2,two:2,dva:2,dve:2,'2':2};
  const m=[...text.matchAll(new RegExp('(?<!\\p{L})(?:(egy|két|ket|ein|eine|einem|einen|zwei|a|an|one|two|en|enega|eno|dva|dve|1|2)\\s+)?'+BABY_WORDS+'(?!\\p{L})(?:'+BABY_AGE+')?','giu'))];
  if(!m.length)return null;
  return {count:m.reduce((n,x)=>n+(words[(x[1]||'').toLocaleLowerCase()]||1),0),
-  ages:m.filter(x=>x[2]).map(x=>/^(?:hónap|honap|monat|month|mesec)/iu.test(x[3])?0:Number(x[2])),
+  ages:m.filter(x=>x[2]||x[4]).map(x=>/^(?:hónap|honap|monat|month|mesec)/iu.test(x[3]||x[5]||'')?0:Number(x[2]||x[4])),
   strip:t=>t.replace(new RegExp('(?<!\\p{L})(?:(?:egy|két|ket|ein|eine|einem|einen|zwei|a|an|one|two|en|enega|eno|dva|dve|1|2)\\s+)?'+BABY_WORDS+'(?!\\p{L})(?:'+BABY_AGE+')?','giu'),' ')};
 }
 export function childCountFromText(text=''){
@@ -296,13 +297,13 @@ function parseDateRange(text='', now=new Date(), timeZone='Europe/Budapest'){
   }
   // Real-world Hungarian numeric form: "2026.10.09-től 10.13.ig".
   // The year is stated once, while month/day are repeated for departure.
-  const huNumericSuffix=text.match(/\b(20\d{2})[.\/-](\d{1,2})[.\/-](\d{1,2})\.?\s*-?\s*(?:től|tól|tol)\s+(\d{1,2})[.\/-](\d{1,2})\.?\s*-?\s*ig\b/iu);
+  const huNumericSuffix=text.match(/\b(20\d{2})[.\/-](\d{1,2})[.\/-](\d{1,2})\.?\s*-?\s*(?:től|tól|tol)\s+(?:(20\d{2})[.\/-])?(\d{1,2})[.\/-](\d{1,2})\.?\s*-?\s*ig\b/iu); // optional 2nd year: "2027.12.30-tól 2028.01.02-ig" (sweep 2)
   if(huNumericSuffix){
     const startYear=Number(huNumericSuffix[1]);
     const startMonth=Number(huNumericSuffix[2]), startDay=Number(huNumericSuffix[3]);
-    const endMonth=Number(huNumericSuffix[4]), endDay=Number(huNumericSuffix[5]);
+    const endMonth=Number(huNumericSuffix[5]), endDay=Number(huNumericSuffix[6]);
     if(startMonth<1||startMonth>12||endMonth<1||endMonth>12||startDay<1||startDay>31||endDay<1||endDay>31) return null;
-    const endYear=startYear+(endMonth<startMonth?1:0);
+    const endYear=huNumericSuffix[4]?Number(huNumericSuffix[4]):startYear+(endMonth<startMonth?1:0);
     return {
       arrival:`${startYear}-${String(startMonth).padStart(2,'0')}-${String(startDay).padStart(2,'0')}`,
       departure:`${endYear}-${String(endMonth).padStart(2,'0')}-${String(endDay).padStart(2,'0')}`,
@@ -313,6 +314,8 @@ function parseDateRange(text='', now=new Date(), timeZone='Europe/Budapest'){
   if(iso) return {arrival:`${iso[1]}-${String(iso[2]).padStart(2,'0')}-${String(iso[3]).padStart(2,'0')}`,departure:`${iso[4]||iso[1]}-${String(iso[5]||iso[2]).padStart(2,'0')}-${String(iso[6]).padStart(2,'0')}`,inferredYear:false};
   const europeanNumeric=text.match(/\b(\d{1,2})[./-](\d{1,2})[./-](20\d{2})\s*(?:[-–]|to|bis|do)\s*(\d{1,2})[./-](\d{1,2})[./-](20\d{2})\b/iu);
   if(europeanNumeric){
+    // "07/10/2027" is 7 Oct (EU) or 10 Jul (US): with '/' and both parts <= 12 the order is unknown -> ask (sweep 2).
+    if(/\//.test(europeanNumeric[0])&&((Number(europeanNumeric[1])<=12&&Number(europeanNumeric[2])<=12&&europeanNumeric[1]!==europeanNumeric[2])||(Number(europeanNumeric[4])<=12&&Number(europeanNumeric[5])<=12&&europeanNumeric[4]!==europeanNumeric[5])))return null;
     return {
       arrival:`${europeanNumeric[3]}-${String(europeanNumeric[2]).padStart(2,'0')}-${String(europeanNumeric[1]).padStart(2,'0')}`,
       departure:`${europeanNumeric[6]}-${String(europeanNumeric[5]).padStart(2,'0')}-${String(europeanNumeric[4]).padStart(2,'0')}`,

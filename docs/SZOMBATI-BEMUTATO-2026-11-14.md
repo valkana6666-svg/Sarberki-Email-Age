@@ -67,3 +67,23 @@ Lezárás: minden tesztfoglalás lemondva; semmi nem megy valódi címre.
 | 14 | „2027.08.01-08.04”, „4 fő, ebből 2 gyerek” | **JAVÍTVA** (eddig 08.01–08.08 és felnőttszámot kérdezett) |
 | 15 | 18 fős csoport | PASS (több ház, horgászszabályok, adatkérés) |
 Eredmény: 8 PASS, 4 javítva, 3 nyitott (Osztott C/pótágy, múltbeli dátum, belső „kapacitás” mondat) – a bemutatón ne ezekkel. Mellékesen talált: a „Foglaló beérkezett” mai dátummal 23–24 UTC között elutasít (DB `current_date` UTC vs. budapesti foglalási nap) – SQL-javítás, DB-telepítéssel, később.
+
+## 6. Második 15 leveles buktató-próba (Claude, 2026-11-12 éjjel; ugyanaz az út)
+| # | Buktató | Eredmény |
+|---|---|---|
+| 16 | ékezet nélkül („junius 3-tol 5-ig … deluxe”) | PASS |
+| 17 | két lehetséges időpont („10–12. vagy 17–19.”) | PASS (nem választ, dátumot kér) |
+| 18 | idézett régi levél más adatokkal | PASS (csak az új részt használja) |
+| 19 | „4-5 felnőtt” | PASS (rákérdez) |
+| 20 | EN „07/10/2027 - 07/12/2027” | **JAVÍTVA** (eddig okt. 7 – dec. 7.; kétértelmű perjeles dátumot most megkérdez) |
+| 21 | DE hónapváltás (06.30 → 07.02) | PASS |
+| 22 | „2027.12.30-tól 2028.01.02-ig” | **JAVÍTVA** (eddig nem ismerte fel) |
+| 23 | csak árkérdés | PASS (adatokat kér) |
+| 24 | lemondás SC-számmal | PASS (lemondási visszajelzés, kezelőnek) |
+| 25 | 15 éves gyerek | PASS (szabad hely; árkategória a kezelői lépésben) |
+| 26 | Különálló 2 fős 3 főnek | NYITOTT: nem mondja, hogy nem fér el; „kapacitás nem igazolt” mondat (mint 02) |
+| 27 | EN „a toddler aged 2” | **JAVÍTVA** (eddig 4 fő, most 5, kor 2) |
+| 28 | hosszú, sok kérdés | PASS (horgászat, dézsa); a parkoló- és etetőanyag-kérdést nem válaszolja – kezelő |
+| 29 | SI család gyerekekkel | PASS |
+| 30 | kéretlen reklámlevél | NYITOTT: szállásérdeklődésként adatokat kér – a kezelő elutasítja |
+Összesen (30 levél): 18 PASS, 7 javítva, 5 nyitott (02, 03, 07, 26, 30) + parkoló-válasz. `npm test` 2733/2733.
