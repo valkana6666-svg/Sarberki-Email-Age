@@ -56,3 +56,20 @@ test('multi-unit booking: the guest letter states the number of houses (live L2 
  assert.match(buildBookingConfirmation({values:v,quote:q,previo,language:'de'}).text,/, 2 × \S+, 8 Personen/);
  assert.match(buildBookingConfirmation({values,quote,previo,language:'hu'}).text,/, Deluxe, 2 fő/); // single unit unchanged
 });
+
+test('V2 voucher block (owner 2026-11-13): only with a Previo voucher number, all languages, no house number',()=>{
+ const values={arrival:'2027-06-24',departure:'2027-06-26',adults:'2',children:'0',name:'Teszt Vendég',unit:'13'};
+ const quote={status:'public_reference',accommodation:126000,tourismTax:2200,total:128200,cabin:'deluxe'};
+ const previo={reference:'V2-118174069',recordedAt:'2026-11-13T12:00:00Z'};
+ const labels={hu:/VOUCHER\n━+\nVoucherszám: SC-084EEBFC978222E2\n/,de:/Vouchernummer: SC-084EEBFC978222E2/,en:/Voucher number: SC-084EEBFC978222E2/,si:/VAVČER[\s\S]*Številka vavčerja: SC-084EEBFC978222E2/};
+ for(const [language,re] of Object.entries(labels)){
+  const {text}=buildBookingConfirmation({values,quote,previo,language,bookingNumber:'SC-084EEBFC978222E2'});
+  assert.match(text,re,language);assert.match(text,/14:00/,language);assert.match(text,/10:00/,language);assert.match(text,/128 200/,language);assert.match(text,/63 000/,language);
+  const block=text.slice(text.indexOf('━'));
+  assert.doesNotMatch(block,/(?<![\d.:])13(?![\d:.])|V2-118174069|118174069/,language);
+  const plain=buildBookingConfirmation({values,quote,previo,language}).text;
+  assert.doesNotMatch(plain,/━|VOUCHER|VAVČER/,language);
+ }
+ const hu=buildBookingConfirmation({values,quote,previo,language:'hu',bookingNumber:'SC-084EEBFC978222E2'}).text;
+ assert.match(hu,/Érkezés: 2027\.06\.24\. \(csütörtök\), bejelentkezés 14:00-tól/);assert.match(hu,/Éjszakák: 2/);
+});

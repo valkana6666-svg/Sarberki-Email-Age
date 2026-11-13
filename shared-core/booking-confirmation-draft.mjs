@@ -18,6 +18,36 @@ export function localDeadline(isoUtc,timeZone=BUSINESS.timezone){
  return {date:`${p.year}.${p.month}.${p.day}.`,time:`${p.hour}:${p.minute}`};
 }
 const dot=d=>d.replaceAll('-','.')+'.';
+const nightsBetween=(a,d)=>Math.round((Date.parse(d+'T00:00:00Z')-Date.parse(a+'T00:00:00Z'))/86400000);
+const WEEKDAYS={hu:['vasárnap','hétfő','kedd','szerda','csütörtök','péntek','szombat'],de:['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'],
+ en:['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],si:['nedelja','ponedeljek','torek','sreda','četrtek','petek','sobota']};
+const weekday=(d,lang)=>WEEKDAYS[lang][new Date(d+'T12:00:00Z').getUTCDay()];
+const site=url=>String(url||'').replace(/^https?:\/\//,'').replace(/\/.*$/,'');
+
+// Plain-text voucher block appended to the V2 confirmation letter. Pure; every value comes from the approved config
+// or from this booking's own server-checked facts.
+export function buildVoucherBlock({lang,bookingNumber,name,values,cabin,party,quote,amount,due,ops=BUSINESS.operationalRules,brand=BUSINESS.brandName,url=BUSINESS.bookingUrl}){
+ const n=nightsBetween(values.arrival,values.departure);
+ const L={
+  hu:{t:'VOUCHER',no:'Voucherszám',h:'Szálláshely',g:'Vendég',a:'Érkezés',d:'Távozás',inn:`bejelentkezés ${ops.checkinFrom}-tól`,out:`kijelentkezés ${ops.checkoutBy}-ig`,
+   n:'Éjszakák',c:'Szállás',p:'Vendégek',tot:'Összesen',totx:`szállásdíj ${huf(quote.accommodation)} Ft + idegenforgalmi adó ${huf(quote.tourismTax)} Ft`,cur:'Ft',
+   dep:'Foglaló',depx:`határidő: ${due.date} ${due.time} (magyarországi idő)`,s:'Állapot',sx:'rögzítve; a foglaló beérkezése után végleges',f:'Kérjük, érkezéskor mutassa be ezt a vouchert (nyomtatva vagy telefonon).'},
+  de:{t:'VOUCHER',no:'Vouchernummer',h:'Unterkunft',g:'Gast',a:'Anreise',d:'Abreise',inn:`Check-in ab ${ops.checkinFrom} Uhr`,out:`Check-out bis ${ops.checkoutBy} Uhr`,
+   n:'Nächte',c:'Unterkunftsart',p:'Gäste',tot:'Gesamt',totx:`Übernachtung ${huf(quote.accommodation)} HUF + Kurtaxe ${huf(quote.tourismTax)} HUF`,cur:'HUF',
+   dep:'Anzahlung',depx:`fällig bis ${due.date} ${due.time} (ungarische Zeit)`,s:'Status',sx:'erfasst; verbindlich nach Eingang der Anzahlung',f:'Bitte zeigen Sie diesen Voucher bei der Anreise vor (ausgedruckt oder auf dem Handy).'},
+  en:{t:'VOUCHER',no:'Voucher number',h:'Property',g:'Guest',a:'Arrival',d:'Departure',inn:`check-in from ${ops.checkinFrom}`,out:`check-out by ${ops.checkoutBy}`,
+   n:'Nights',c:'Accommodation',p:'Guests',tot:'Total',totx:`accommodation ${huf(quote.accommodation)} HUF + tourist tax ${huf(quote.tourismTax)} HUF`,cur:'HUF',
+   dep:'Deposit',depx:`due by ${due.date} ${due.time} (Hungarian time)`,s:'Status',sx:'recorded; final once the deposit has been received',f:'Please show this voucher on arrival (printed or on your phone).'},
+  si:{t:'VAVČER',no:'Številka vavčerja',h:'Nastanitev',g:'Gost',a:'Prihod',d:'Odhod',inn:`prijava od ${ops.checkinFrom}`,out:`odjava do ${ops.checkoutBy}`,
+   n:'Noči',c:'Namestitev',p:'Gostje',tot:'Skupaj',totx:`nastanitev ${huf(quote.accommodation)} HUF + turistična taksa ${huf(quote.tourismTax)} HUF`,cur:'HUF',
+   dep:'Predplačilo',depx:`rok: ${due.date} ${due.time} (madžarski čas)`,s:'Stanje',sx:'zabeleženo; dokončno po prejemu predplačila',f:'Prosimo, ob prihodu pokažite ta vavčer (natisnjen ali na telefonu).'}}[lang];
+ const line='━'.repeat(28);
+ return [line,L.t,line,
+  `${L.no}: ${bookingNumber}`,`${L.h}: ${brand}${site(url)?` (${site(url)})`:''}`,...(name?[`${L.g}: ${name}`]:[]),
+  `${L.a}: ${dot(values.arrival)} (${weekday(values.arrival,lang)}), ${L.inn}`,`${L.d}: ${dot(values.departure)} (${weekday(values.departure,lang)}), ${L.out}`,
+  `${L.n}: ${n}`,`${L.c}: ${cabin}`,`${L.p}: ${party}`,`${L.tot}: ${huf(quote.total)} ${L.cur} (${L.totx})`,`${L.dep}: ${huf(amount)} ${L.cur}, ${L.depx}`,
+  `${L.s}: ${L.sx}`,line,L.f].join('\n');
+}
 
 // Pure: facts + server-computed quote + operator-attested Previo recording -> confirmation text and deposit.
 // bookingNumber (optional, V2 owner/ChatGPT 2026-11-11): the Previo voucher number of this very reservation (the
@@ -65,7 +95,10 @@ export function buildBookingConfirmation({values,quote,previo,language,bookingNu
    `Cena\nNastanitev: ${huf(quote.accommodation)} HUF, turistična taksa: ${huf(quote.tourismTax)} HUF, skupaj: ${huf(quote.total)} HUF.`,
    `Predplačilo\nPredplačilo znaša ${policy.depositPct}% cene nastanitve: ${huf(amount)} HUF. Prosimo, da prispe do ${due.date} ${due.time} (madžarski čas). Rezervacija postane dokončna po prejemu predplačila.${pay?'\n'+pay:'\nO načinu plačila vas obvestimo posebej.'}`,
    ...(cancel?[`Odpoved\nPri odpovedi najmanj ${cancel} dni pred prihodom predplačilo ne zapade.`]:[]),'Lep pozdrav,\n'+BUSINESS.brandName]};
- const text=T[lang].join('\n\n');
+ // Voucher (owner 2026-11-13: "a voucher is küldjük ki", modelled on a hotel voucher). Only for a V2 booking with a
+ // Previo voucher number; only approved facts (config + this booking); no house number, no internal reference.
+ const voucher=bookingNumber?buildVoucherBlock({lang,bookingNumber,name,values,cabin,party,quote,amount,due}):null;
+ const text=T[lang].join('\n\n')+(voucher?'\n\n'+voucher:'');
  const operatorReviewText=(lang==='hu'?'':T.hu.join('\n\n')+'\n\n')+'Kezelői (a vendég nem látja):\n'+
   `Previo-hivatkozás: ${reference}; rögzítve: ${previo.recordedAt}.\n`+(bookingNumber?`Previo-voucherszám (a vendég látja, a Previo saját voucherén is ez áll): ${bookingNumber}.\n`:'')+
   `Foglaló: ${policy.depositPct}% × ${huf(quote.accommodation)} Ft = ${huf(amount)} Ft; határidő: ${policy.paymentWindowHours} óra a rögzítéstől (${policy.daysUntilArrival} nap az érkezésig) → ${due.date} ${due.time}.\n`+
