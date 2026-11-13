@@ -158,3 +158,24 @@ test('owner 2026-11-13: one-click also works AFTER the inquiry reply was approve
   assert.match(row.data.drafts.at(-1).text,/VOUCHER/);assert.equal(row.data.internalApproval.draftHash,sha(row.data.drafts.at(-1).text));
  }finally{await db.close();}
 });
+
+test('owner 2026-11-13: automatic unit choice skips units taken here or in Previo; never guesses',async()=>{
+ const {pickFreeUnits}=await import('../shared-core/server-test-mailbox-confirm.mjs');
+ const {db,transportFor,newCase}=await fixture();
+ try{
+  await db.exec(await read('deployment/test-mailbox/oneclick-approver-write.sql'));
+  const t=transportFor('operator');
+  // A finalized booking of ours on unit 11 for the same dates.
+  const a=await newCase('call_auto_taken_here');
+  await oneClickTestMailboxBooking({record:a,unit:'11',previewHash:(await previewTestMailboxBooking({record:a,unit:'11',transport:t,unitCheckFn:free,priceCheckFn:async()=>({status:'not_comparable'}),previoWriterOn:true})).previewHash,
+   oneClickConfirmed:true,previoWriter:fakeWriter(),attestationKey:KEY,transport:t,unitCheckFn:free});
+  const b=await newCase('call_auto_pick');
+  const asked=[];const previo=async({unit})=>{asked.push(unit);return {status:unit==='12'?'taken':'free'};};
+  assert.deepEqual(await pickFreeUnits({record:b,transport:t,unitCheckFn:previo}),['13']);
+  assert.deepEqual(asked,['12','13'],'11 is skipped without a Previo call (ours), 12 is taken in Previo');
+  await assert.rejects(pickFreeUnits({record:b,transport:t,unitCheckFn:async()=>({status:'unknown'})}),/NO_FREE_UNIT/);
+  await assert.rejects(pickFreeUnits({record:b,transport:t,unitCheckFn:null}),/AUTO_UNIT_UNAVAILABLE/);
+  const generic={...b,data:{...b.data,state:{...b.data.state,values:{...b.data.state.values,unit:'Osztott'}}}};
+  await assert.rejects(pickFreeUnits({record:generic,transport:t,unitCheckFn:previo}),/AUTO_UNIT_UNAVAILABLE/);
+ }finally{await db.close();}
+});

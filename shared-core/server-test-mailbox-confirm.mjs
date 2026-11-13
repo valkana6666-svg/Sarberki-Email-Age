@@ -94,6 +94,26 @@ async function prepareConfirmation({record,unit,units,transport,quoteFn,unitChec
  return {values,list,cabin,quote,previoUnit,language};
 }
 
+// One-click V2 automatic unit choice (owner 2026-11-13: "magától válasszon, de lehessen manuálisan módosítani").
+// Read only: the type's units in inventory order; a unit counts only if our own bookings leave it free AND Previo
+// answers "free" for the whole stay. Generic split requests (no A/B/C) are not guessed: the operator picks.
+export async function pickFreeUnits({record,transport,unitCheckFn}){
+ const values=record?.data?.state?.values||{};
+ const needed=Number(values.units_requested||1);
+ let cabin=null;try{cabin=cabinKeyFromUnit(values.unit);}catch{}
+ if(!cabin||typeof unitCheckFn!=='function'||typeof transport!=='function'||!Number.isInteger(needed)||needed<1||needed>6)fail('AUTO_UNIT_UNAVAILABLE');
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(values.arrival||'')||!/^\d{4}-\d{2}-\d{2}$/.test(values.departure||''))fail('CONFIRMATION_FACTS_MISSING');
+ const picked=[];
+ for(const u of unitsForCabin(cabin)){
+  if(picked.length===needed)break;
+  if(await unitTaken({transport,record,unit:u,arrival:values.arrival,departure:values.departure}))continue;
+  let r=null;try{r=await unitCheckFn({unit:u,arrival:values.arrival,departure:values.departure});}catch{}
+  if(r?.status==='free')picked.push(u);
+ }
+ if(picked.length!==needed)fail('NO_FREE_UNIT');
+ return picked;
+}
+
 // One-click V2 (owner PERM-20261112-ONECLICK): what the operator saw in the preview. The deadline moves with the
 // booking moment and is not part of it; units, price, deposit, language, voucher and the case revision are.
 export function oneClickPreviewHash({record,list,cabin,quote,deposit,language}){

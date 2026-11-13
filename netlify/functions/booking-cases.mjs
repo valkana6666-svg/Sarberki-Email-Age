@@ -20,7 +20,7 @@ import {previoPriceChecker} from '../../shared-core/server-previo-price-check.mj
 import {previoUnitChecker} from '../../shared-core/server-previo-unit-check.mjs';
 import {previoSplitPlacementReader} from '../../shared-core/server-previo-split-placement.mjs';
 import {previoBookingWriter} from '../../shared-core/server-previo-booking-sync.mjs';
-import {confirmTestMailboxBooking,previewTestMailboxBooking,oneClickTestMailboxBooking,markTestMailboxDepositReceived,cancelTestMailboxBooking,modifyTestMailboxBooking} from '../../shared-core/server-test-mailbox-confirm.mjs';
+import {confirmTestMailboxBooking,previewTestMailboxBooking,pickFreeUnits,oneClickTestMailboxBooking,markTestMailboxDepositReceived,cancelTestMailboxBooking,modifyTestMailboxBooking} from '../../shared-core/server-test-mailbox-confirm.mjs';
 import {bookingIntentHint} from '../../shared-core/booking-intent.mjs';
 import {previoAvailabilitySource} from '../../shared-core/server-capacity-draft.mjs';
 import {buildAvailabilityOptions} from './availability-options.mjs';
@@ -56,7 +56,7 @@ const TEST_MAILBOX_ERRORS=Object.freeze({GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACC
  PREVIO_WRITE_DISABLED:409,PREVIO_WRITE_UNCERTAIN:502,PREVIO_BOOKING_NOT_ACTIVE:409,PREVIO_ORPHAN_OPTION:502,PREVIO_AUTH_REFUSED:502,PREVIO_REJECTED:502,PREVIO_SEARCH_FAILED:502,PREVIO_TIMEOUT:504,PREVIO_UNAVAILABLE:502,
  CANCEL_NOT_CONFIRMED:400,INVALID_REASON:400,NOT_ACTIVE_BOOKING:409,UNITS_INVALID:422,UNITS_COUNT_MISMATCH:422,UNITS_MIXED_SPLIT:422,PARTIES_REQUIRED:422,
  MODIFY_NOT_CONFIRMED:400,MULTI_UNIT_MODIFY_UNSUPPORTED:422,PREVIO_MANUAL_BOOKING:422,NOTHING_CHANGED:400,PREVIO_MODIFY_UNVERIFIED:502,PREVIO_MODIFY_NOT_REVERTED:502,
- PREVIEW_CHANGED:409,PREVIO_UNIT_UNVERIFIED:409,ONECLICK_NOT_CONFIRMED:400,ONECLICK_ROLE_REQUIRED:403});
+ PREVIEW_CHANGED:409,PREVIO_UNIT_UNVERIFIED:409,ONECLICK_NOT_CONFIRMED:400,ONECLICK_ROLE_REQUIRED:403,NO_FREE_UNIT:409,AUTO_UNIT_UNAVAILABLE:409});
 const TEST_MAILBOX_FIELDS=Object.freeze({
  'test-mailbox-ingest':['action,messageId,tenantId'],
  'test-mailbox-followup':['action,messageId,tenantId'],
@@ -251,7 +251,9 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      return cookieResponse(403,{error:'FORBIDDEN'});
     const unitRe=/^(?:[1-9]|1[0-5]|(?:7|8|9|10)\/[ABC])$/;
     const units=input.units===undefined?null:String(input.units).split(',');
-    if(typeof input.caseId!=='string'||!/^tm-[a-f0-9]{12,32}$/.test(input.caseId)||typeof input.unit!=='string'||!unitRe.test(input.unit)
+    // unit=auto (owner 2026-11-13): the server picks free unit(s) read-only; the operator may still change them.
+    const auto=input.unit==='auto'&&input.units===undefined;
+    if(typeof input.caseId!=='string'||!/^tm-[a-f0-9]{12,32}$/.test(input.caseId)||typeof input.unit!=='string'||!auto&&!unitRe.test(input.unit)
      ||units&&!(units.length>=2&&units.length<=6&&units.every(u=>unitRe.test(u))&&units[0]===input.unit))return cookieResponse(400,{error:'INVALID_INPUT'});
     cookieSession=await createOperatorCookieSession({env,fetchImpl}).protectedRead(event);
     rotatedCookie=cookieSession.setCookie;
@@ -261,10 +263,12 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
      if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
      const perms=cookieSession.authority?.tenants?.[TENANT]||[];
-     const preview=await previewTestMailboxBooking({record,unit:input.unit,units,transport:cookieSession.transport,unitCheckFn:previoUnitChecker(env,fetchImpl),
+     let unit=input.unit,list=units;
+     if(auto){const picked=await pickFreeUnits({record,transport:cookieSession.transport,unitCheckFn:previoUnitChecker(env,fetchImpl)});unit=picked[0];list=picked.length>1?picked:null;}
+     const preview=await previewTestMailboxBooking({record,unit,units:list,transport:cookieSession.transport,unitCheckFn:previoUnitChecker(env,fetchImpl),
       priceCheckFn:previoPriceChecker(env,fetchImpl),previoWriterOn:previoBookingWriter(env,fetchImpl)!==null});
      if(!(perms.includes('write')&&perms.includes('approve'))){preview.blockers.push('ONECLICK_ROLE_REQUIRED');preview.ready=false;}
-     return cookieResponse(200,{result:{caseId:record.caseId,revision:record.revision,...preview}});
+     return cookieResponse(200,{result:{caseId:record.caseId,revision:record.revision,autoPicked:auto,...preview}});
     }catch(error){
      const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'TEST_MAILBOX_REJECTED';
      return cookieResponse(TEST_MAILBOX_ERRORS[code],{error:code});

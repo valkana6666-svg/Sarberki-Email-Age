@@ -329,6 +329,10 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
    else assert.ok([409,422].includes(pv.status),'a case that cannot be finalized gives a fixed code: '+pv.status);
    await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-oneclick-preview',caseId:case3,unit:'11',units:'12'},{method:'GET',status:400});
    await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-oneclick-preview',caseId:case3,unit:'11',extra:'x'},{method:'GET',status:403});
+   // Automatic unit choice (owner 2026-11-13): no Previo unit reader -> fixed refusal, never a guess; auto + units is invalid.
+   const ap=await call('both',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-oneclick-preview',caseId:case3,unit:'auto'},{method:'GET'});
+   assert.ok([409,422].includes(ap.status),'auto without a Previo reader: '+ap.status);if(ap.status===409)assert.match(ap.json.error,/AUTO_UNIT_UNAVAILABLE|CONFIRMATION_|NO_FREE_UNIT/);
+   await call('both',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-oneclick-preview',caseId:case3,unit:'auto',units:'11,12'},{method:'GET',status:400});
    assert.equal((await latest(case3)).revision,rev,'the preview writes nothing');
   });
   await t.test('record/list security: unique list ids, tenant/Bearer/CSRF refusals, look-alike rows hidden, revoked membership reads nothing',async()=>{

@@ -405,20 +405,20 @@ function showBooking(caseId,record){
  el('modify-unit').replaceChildren(...modifyKeys.flatMap(k=>unitsOfType(k)).map(u=>{const o=document.createElement('option');o.value=u.id;o.textContent=u.id;return o;}));
  if(b?.unit)el('modify-unit').value=b.unit;
  if(dpt)el('deposit-date').value=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Budapest'});
- el('oneclick-preview').disabled=!(record.canOneClick===true&&selectedUnits().length===bookingUnitsNeeded);
+ el('oneclick-preview').disabled=!(record.canOneClick===true&&[0,bookingUnitsNeeded].includes(selectedUnits().length));
 }
 const bookingErrors={PREVIO_RECORDING_REQUIRED:'Add meg a Previo-hivatkozást, és pipáld be a rögzítést.',ALREADY_FINALIZED:'Ez a foglalás már véglegesítve van.',
  CONFIRMATION_FACTS_MISSING:'Hiányzik a pontos dátum, a felnőttszám vagy egy gyermek életkora.',CONFIRMATION_CABIN_UNKNOWN:'A háztípus nincs egyértelműen megadva.',
  CONFIRMATION_PRICE_MISSING:'Az árlista ehhez nem ad igazolt árat; kézi ellenőrzés szükséges.',DEPOSIT_POLICY_UNVERIFIED:'A foglaló határideje nem számítható (pl. múltbeli érkezés).',
  NOT_FINALIZED:'Előbb véglegesíteni kell a foglalást.',UNIT_TAKEN:'Ez az egység erre az időszakra már foglalt (egy másik véglegesített foglalás miatt). Válassz másik egységet.',UNITS_MIXED_SPLIT:'Osztott A/B és C egység vegyesen: az ár kézi számítást igényel (külön foglalások vagy kézi ár).',UNIT_NOT_IN_TYPE:'Ez az egység nem a foglalás háztípusához tartozik.',UNITS_COUNT_MISMATCH:'Pontosan annyi egységet válassz, ahányat a vendég kért.',UNITS_INVALID:'Az egységválasztás érvénytelen (ismétlődés?).',PREVIO_WRITE_DISABLED:'A Previo-írás (V2) nincs bekapcsolva.',NOT_ACTIVE_BOOKING:'Csak véglegesített foglalás mondható le vagy módosítható.',NOTHING_CHANGED:'Nincs változás a dátumban vagy az egységben.',PREVIO_MANUAL_BOOKING:'Kézzel rögzített Previo-foglalás: a Previóban módosítsd.',MULTI_UNIT_MODIFY_UNSUPPORTED:'Több egységes foglalás módosítása még nem támogatott.',PREVIO_MODIFY_UNVERIFIED:'A Previo-módosítás nem igazolható – nézd meg a Previóban.',PREVIO_MODIFY_NOT_REVERTED:'FIGYELEM: a Previóban módosult, nálunk nem mentődött, és a visszaállítás sem sikerült – nézd meg a Previóban!',INVALID_REASON:'Adj meg rövid lemondási okot (egy sor).',CANCEL_NOT_CONFIRMED:'Pipáld be a lemondás megerősítését.',PREVIO_WRITE_UNCERTAIN:'A Previo nem igazolta a létrehozást – nézd meg a Previóban, mielőtt újra próbálod.',PREVIO_BOOKING_NOT_ACTIVE:'Ehhez az ügyhöz a Previóban már van egy lemondott foglalás – kézi ellenőrzés kell.',PREVIO_ORPHAN_OPTION:'A Previóban létrejött az opció, de nálunk nem mentődött, és a lemondás sem igazolt – nézd meg a Previóban!',PREVIO_AUTH_REFUSED:'A Previo elutasította a kulcsot.',PREVIO_REJECTED:'A Previo elutasította a foglalást.',PREVIO_TIMEOUT:'A Previo nem válaszolt időben.',PREVIO_UNAVAILABLE:'A Previo nem érhető el.',UNIT_TAKEN_IN_PREVIO:'A Previo szerint ez az egység erre az időszakra egy másik foglalás miatt foglalt. Válassz másik egységet.',INVALID_DATE:'Érvénytelen dátum.',CASE_CONFLICT:'A foglalás közben megváltozott; nyisd meg újra.',
- PREVIEW_CHANGED:'Az adatok az előnézet óta változtak – nem történt írás. Készíts új előnézetet.',PREVIO_UNIT_UNVERIFIED:'A Previo most nem igazolta, hogy az egység szabad – nem történt írás.',ONECLICK_ROLE_REQUIRED:'Ehhez a fióknak rögzítő és jóváhagyó jog is kell.',ONECLICK_NOT_CONFIRMED:'Pipáld be, hogy az előnézetet elolvastad.',
+ PREVIEW_CHANGED:'Az adatok az előnézet óta változtak – nem történt írás. Készíts új előnézetet.',PREVIO_UNIT_UNVERIFIED:'A Previo most nem igazolta, hogy az egység szabad – nem történt írás.',ONECLICK_ROLE_REQUIRED:'Ehhez a fióknak rögzítő és jóváhagyó jog is kell.',ONECLICK_NOT_CONFIRMED:'Pipáld be, hogy az előnézetet elolvastad.',NO_FREE_UNIT:'Ebben a háztípusban a kért időszakra nincs szabad ház (a Previo szerint).',AUTO_UNIT_UNAVAILABLE:'Itt nem tudok automatikusan házat választani – válassz egységet kézzel.',
  FORBIDDEN:'Ehhez nincs írási jog.',STORAGE_FAILURE:'Az adatbázis-funkció nem érhető el (valószínűleg még nincs telepítve). Szólj Claude-nak.',
  TEST_MAILBOX_REJECTED:'Az adatbázis elutasította (lehet, hogy a frissítés még nincs telepítve).',NOT_FOUND:'A foglalás nem található; töltsd be újra a listát.'};
 let bookingUnitsNeeded=1;
 const selectedUnits=()=>bookingUnitsNeeded>1?[...el('booking-unit').selectedOptions].map(o=>o.value).filter(Boolean):[el('booking-unit').value].filter(Boolean);
 const bookingInputs=event=>{const auto=el('previo-auto').checked&&!el('previo-auto').disabled;
  if(event?.target?.id==='booking-unit')oneClickReset();
- el('oneclick-preview').disabled=!(bookingCase&&!el('oneclick-wrap').hidden&&selectedUnits().length===bookingUnitsNeeded);
+ el('oneclick-preview').disabled=!(bookingCase&&!el('oneclick-wrap').hidden&&[0,bookingUnitsNeeded].includes(selectedUnits().length));
  for(const id of ['previo-ref','previo-recorded'])if(bookingCase&&!el('previo-auto').disabled)el(id).disabled=auto;
  el('booking-finalize').disabled=!(bookingCase&&selectedUnits().length===bookingUnitsNeeded&&(auto||!el('previo-ref').disabled&&/^[A-Za-z0-9\/_.-]{1,40}$/.test(el('previo-ref').value.trim())&&el('previo-recorded').checked));
  el('deposit-mark').disabled=!(bookingCase&&!el('deposit-confirm').disabled&&el('deposit-confirm').checked&&/^\d{4}-\d{2}-\d{2}$/.test(el('deposit-date').value));
@@ -458,19 +458,22 @@ const oneClickPrice={match:'egyezik a Previo-árral',mismatch:'ELTÉR a Previo-�
  not_comparable:'gyermekes eset: Previo-ár nem összevethető',unreadable:'Previo-ár most nem olvasható',not_checked:'Previo-ár nincs ellenőrizve'};
 function oneClickReset(){oneClick=null;el('oneclick-summary').textContent='';el('oneclick-confirm').checked=false;el('oneclick-confirm').disabled=true;el('oneclick-go').disabled=true;}
 el('oneclick-preview').addEventListener('click',async()=>{
- const target=bookingCase,chosen=selectedUnits();if(!authenticated||!target||actionBusy||chosen.length!==bookingUnitsNeeded)return;
+ // No unit chosen -> the server picks free unit(s) (owner 2026-11-13); a manual choice always wins.
+ const target=bookingCase,chosen=selectedUnits(),auto=chosen.length===0;if(!authenticated||!target||actionBusy||!auto&&chosen.length!==bookingUnitsNeeded)return;
  const turn=epoch;oneClickReset();el('oneclick-preview').disabled=true;el('oneclick-summary').textContent='Előnézet készül (Previo-olvasás)…';
  try{
-  const p=await request({tenantId:TENANT,caseId:target.caseId,action:'test-mailbox-oneclick-preview',unit:chosen[0],...(chosen.length>1?{units:chosen.join(',')}:{})},'GET');
+  const p=await request({tenantId:TENANT,caseId:target.caseId,action:'test-mailbox-oneclick-preview',...(auto?{unit:'auto'}:{unit:chosen[0],...(chosen.length>1?{units:chosen.join(',')}:{})})},'GET');
   if(!current(turn)||bookingCase!==target)return;
-  if(p?.caseId!==target.caseId||p.revision!==target.revision||!/^[a-f0-9]{64}$/.test(p.previewHash||'')||typeof p.letterText!=='string')throw Error('INVALID_DATA');
+  if(p?.caseId!==target.caseId||p.revision!==target.revision||!/^[a-f0-9]{64}$/.test(p.previewHash||'')||typeof p.letterText!=='string'||!Array.isArray(p.units)||p.units.length!==bookingUnitsNeeded)throw Error('INVALID_DATA');
+  // Show the server's choice in the selector; changing it afterwards resets this preview (manual override).
+  if(auto){for(const o of el('booking-unit').options)o.selected=p.units.includes(o.value);if(bookingUnitsNeeded===1)el('booking-unit').value=p.units[0];}
   const deadline=new Date(p.deposit?.receiptDeadlineUtc).toLocaleString('hu-HU',{timeZone:'Europe/Budapest'});
   el('oneclick-summary').textContent=(p.ready?'✅ Minden ellenőrzés rendben.':'⛔ Nem indítható: '+p.blockers.map(b=>oneClickBlockers[b]||b).join('; ')+'.')+
-   '\nEgység'+(p.units.length>1?'ek: ':': ')+p.units.join(', ')+(p.blockers.includes('PREVIO_UNIT_UNVERIFIED')?'':' (Previo: szabad)')+
+   '\n'+(auto?'Automatikusan választott egység':'Egység')+(p.units.length>1?'ek: ':': ')+p.units.join(', ')+(auto?' (a választóban átírható)':'')+(p.blockers.includes('PREVIO_UNIT_UNVERIFIED')?'':' (Previo: szabad)')+
    '\nÁr: '+huf(p.total)+' Ft – '+(oneClickPrice[p.price?.status]||'')+
    '\nFoglaló: '+p.deposit.pct+'% = '+huf(p.deposit.amount)+' Ft, határidő kb. '+deadline+' (a véglegesítés pillanatától számít)'+
    '\nFoglalási szám a levélben: '+p.voucher+'\n\n— A vendégnek szóló visszaigazoló levél —\n'+p.letterText;
-  if(p.ready){oneClick={caseId:target.caseId,revision:target.revision,previewHash:p.previewHash,units:chosen};el('oneclick-confirm').disabled=false;}
+  if(p.ready){oneClick={caseId:target.caseId,revision:target.revision,previewHash:p.previewHash,units:p.units};el('oneclick-confirm').disabled=false;}
  }catch(error){
   if(!current(turn))return;
   if(error?.message==='AUTH_REQUIRED')failed(error);
