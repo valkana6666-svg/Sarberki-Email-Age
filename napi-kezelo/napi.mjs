@@ -413,6 +413,8 @@ function showBooking(caseId,record){
  el('previo-auto-wrap').hidden=record.previoWrite!==true;el('previo-auto').disabled=!fin||record.previoWrite!==true;el('previo-auto').checked=false;
  // One-click V2: only for an account with write AND approve, V2 writer on, not finalized (server hint; re-checked).
  oneClickReset();el('oneclick-wrap').hidden=record.canOneClick!==true;
+ // Owner iPhone practice 2026-11-13: two similar buttons confused; with one-click available the manual path is folded.
+ el('manual-path').open=record.canOneClick!==true;
  for(const id of ['deposit-date','deposit-confirm'])el(id).disabled=!dpt;
  for(const id of ['cancel-reason','cancel-confirm'])el(id).disabled=record.canCancelBooking!==true;el('cancel-confirm').checked=false;el('cancel-reason').value='';
  // V2 modification: same type's units, current values preselected.
