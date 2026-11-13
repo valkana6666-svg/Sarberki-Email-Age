@@ -111,6 +111,7 @@ const LIST_BOOKING=Object.freeze({finalized:'Véglegesítve',deposit_received:'F
 const shortDay=d=>d.slice(5).replace('-','.')+'.';
 function mailboxRowLabel(row){
  const s=row.summary||{},parts=[s.name||'Név nélkül'];
+ if(s.email)parts.push(s.email);
  if(s.unit)parts.push(s.unit);
  if(s.arrival&&s.departure)parts.push(s.arrival.slice(0,4)+'.'+shortDay(s.arrival)+'–'+shortDay(s.departure));
  if(Number.isInteger(s.guests))parts.push(s.guests+' fő');
