@@ -138,3 +138,23 @@ test('without the grant (Approver has no write) the DB refuses the finalize; the
   assert.equal(r.approved,false);assert.equal(r.saved.data.booking.status,'finalized');assert.equal(r.saved.data.state.approval,'pending');
  }finally{await db.close();}
 });
+
+test('owner 2026-11-13: one-click also works AFTER the inquiry reply was approved (the real order of the day)',async()=>{
+ const {db,transportFor,newCase}=await fixture();
+ try{
+  await db.exec(await read('deployment/test-mailbox/oneclick-approver-write.sql'));
+  const first=await newCase('call_oneclick_after_approve'),t=transportFor('operator');
+  assert.ok(first.data.drafts?.length,'the intake case has its inquiry draft');
+  await t('/rest/v1/rpc/sc_tm_decide',{method:'POST',body:{p_tenant:TENANT,p_case:first.caseId,p_expected:first.revision,p_draft_hash:sha(first.data.drafts.at(-1).text),p_decision:'approve',p_reason:null}});
+  const row0=(await db.query('select * from sc_cases where case_id=$1',[first.caseId])).rows[0];
+  assert.equal(row0.data.state.approval,'approved_internal');
+  const record={tenantId:TENANT,caseId:first.caseId,revision:Number(row0.revision),data:row0.data};
+  const ok=await previewTestMailboxBooking({record,unit:'11',transport:t,unitCheckFn:free,priceCheckFn:async()=>({status:'not_comparable'}),previoWriterOn:true});
+  assert.deepEqual(ok.blockers,[]);assert.equal(ok.ready,true);
+  const r=await oneClickTestMailboxBooking({record,unit:'11',previewHash:ok.previewHash,oneClickConfirmed:true,previoWriter:fakeWriter(),attestationKey:KEY,transport:t,unitCheckFn:free});
+  assert.equal(r.approved,true);
+  const row=(await db.query('select * from sc_cases where case_id=$1',[first.caseId])).rows[0];
+  assert.equal(row.data.state.approval,'approved_internal');assert.equal(row.data.booking.status,'finalized');
+  assert.match(row.data.drafts.at(-1).text,/VOUCHER/);assert.equal(row.data.internalApproval.draftHash,sha(row.data.drafts.at(-1).text));
+ }finally{await db.close();}
+});

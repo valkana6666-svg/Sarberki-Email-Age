@@ -157,7 +157,6 @@ export async function previewTestMailboxBooking({record,unit,units=null,transpor
  const built=buildBookingConfirmation({values,quote,previo:{reference:'V2-0',recordedAt:clock()},language,bookingNumber:voucher});
  const blockers=[];
  if(previoWriterOn!==true)blockers.push('PREVIO_WRITE_DISABLED');
- if(record.data?.state?.approval==='approved_internal')blockers.push('ALREADY_APPROVED');
  if(typeof unitCheckFn!=='function'||previoUnit?.status!=='free')blockers.push('PREVIO_UNIT_UNVERIFIED');
  let price={status:'not_checked'};
  if(list.length>1)price={status:'multi_unit'};
