@@ -71,5 +71,6 @@ test('V2 voucher block (owner 2026-11-13): only with a Previo voucher number, al
   assert.doesNotMatch(plain,/━|VOUCHER|VAVČER/,language);
  }
  const hu=buildBookingConfirmation({values,quote,previo,language:'hu',bookingNumber:'SC-084EEBFC978222E2'}).text;
- assert.match(hu,/Érkezés: 2027\.06\.24\. \(csütörtök\), bejelentkezés 14:00-tól/);assert.match(hu,/Éjszakák: 2/);
+ assert.match(hu,/Érkezés: 2027\.06\.24\. \(csütörtök\), bejelentkezés 14:00-tól/);
+ assert.match(hu,/^Kedves Teszt Vendég!\n\nKöszönjük megerősítését! Foglalását rögzítettük, az alábbi adatokkal\./,'owner 2026-11-13: answers the guest\'s yes');assert.match(hu,/Éjszakák: 2/);
 });
