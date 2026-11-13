@@ -388,7 +388,7 @@ function showBooking(caseId,record){
   for(const o of el('booking-unit').options)o.selected=suggested.includes(o.value);
   if(bookingUnitsNeeded===1)el('booking-unit').value=suggested[0];
   el('booking-state').textContent+='\nJavasolt egymás melletti egységek (Previo, csak olvasva): '+suggested.join(' + ')+' – előre kijelölve.';
- }
+ }else if(fin&&!['finalized','deposit_received'].includes(b?.status)&&(cabinKey||genericSplit))suggestFreeUnits(caseId,record.revision);
  for(const id of ['previo-ref','previo-recorded'])el(id).disabled=!fin;
  // V2: offered only when the server says it can write the Previo TEST booking itself.
  el('previo-auto-wrap').hidden=record.previoWrite!==true;el('previo-auto').disabled=!fin||record.previoWrite!==true;el('previo-auto').checked=false;
@@ -415,6 +415,24 @@ const bookingErrors={PREVIO_RECORDING_REQUIRED:'Add meg a Previo-hivatkozást, �
  FORBIDDEN:'Ehhez nincs írási jog.',STORAGE_FAILURE:'Az adatbázis-funkció nem érhető el (valószínűleg még nincs telepítve). Szólj Claude-nak.',
  TEST_MAILBOX_REJECTED:'Az adatbázis elutasította (lehet, hogy a frissítés még nincs telepítve).',NOT_FOUND:'A foglalás nem található; töltsd be újra a listát.'};
 let bookingUnitsNeeded=1;
+// Owner 2026-11-13: always offer free unit(s) automatically (our bookings + Previo, read only); the operator may change
+// them. Applied only while the same case is open and nothing was chosen by hand meanwhile.
+async function suggestFreeUnits(caseId,revision){
+ const turn=epoch;
+ try{
+  const r=await request({tenantId:TENANT,caseId,action:'test-mailbox-suggest-units'},'GET');
+  if(!current(turn)||bookingCase?.caseId!==caseId||bookingCase.revision!==revision||selectedUnits().length)return;
+  if(r?.caseId!==caseId||!Array.isArray(r.units)||r.units.length!==bookingUnitsNeeded)return;
+  const opts=[...el('booking-unit').options];if(!r.units.every(u=>opts.some(o=>o.value===u)))return;
+  for(const o of opts)o.selected=r.units.includes(o.value);if(bookingUnitsNeeded===1)el('booking-unit').value=r.units[0];
+  el('booking-state').textContent+='\nJavasolt szabad egység'+(r.units.length>1?'ek':'')+' (saját foglalások + Previo, csak olvasva): '+r.units.join(', ')+' – előre kijelölve, átírható.';
+  bookingInputs();
+ }catch(error){
+  if(!current(turn)||bookingCase?.caseId!==caseId)return;
+  if(error?.message==='AUTH_REQUIRED')return;
+  el('booking-state').textContent+='\n'+(error?.message==='NO_FREE_UNIT'?'Nincs szabad ház ebben a típusban a kért időszakra (Previo szerint).':'Automatikus házjavaslat most nem érhető el – válassz kézzel.');
+ }
+}
 const selectedUnits=()=>bookingUnitsNeeded>1?[...el('booking-unit').selectedOptions].map(o=>o.value).filter(Boolean):[el('booking-unit').value].filter(Boolean);
 const bookingInputs=event=>{const auto=el('previo-auto').checked&&!el('previo-auto').disabled;
  if(event?.target?.id==='booking-unit')oneClickReset();

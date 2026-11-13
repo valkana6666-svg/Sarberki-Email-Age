@@ -96,11 +96,16 @@ async function prepareConfirmation({record,unit,units,transport,quoteFn,unitChec
 
 // One-click V2 automatic unit choice (owner 2026-11-13: "magától válasszon, de lehessen manuálisan módosítani").
 // Read only: the type's units in inventory order; a unit counts only if our own bookings leave it free AND Previo
-// answers "free" for the whole stay. Generic split requests (no A/B/C) are not guessed: the operator picks.
+// answers "free" for the whole stay. Every house type (owner: "minden házra"): a generic "Osztott" request is placed
+// by party size per unit (A/B base 2 guests; C base 4, extra bed up to 5); larger parties are never guessed.
 export async function pickFreeUnits({record,transport,unitCheckFn}){
  const values=record?.data?.state?.values||{};
  const needed=Number(values.units_requested||1);
  let cabin=null;try{cabin=cabinKeyFromUnit(values.unit);}catch{}
+ if(!cabin&&String(values.unit||'').trim().toLowerCase()==='osztott'&&Number.isInteger(needed)&&needed>0){
+  const guests=Number(values.adults||0)+Number(values.children||0),perUnit=Math.ceil(guests/needed);
+  cabin=guests>0&&perUnit<=2?'splitA':perUnit>=3&&perUnit<=5?'splitC':null;
+ }
  if(!cabin||typeof unitCheckFn!=='function'||typeof transport!=='function'||!Number.isInteger(needed)||needed<1||needed>6)fail('AUTO_UNIT_UNAVAILABLE');
  if(!/^\d{4}-\d{2}-\d{2}$/.test(values.arrival||'')||!/^\d{4}-\d{2}-\d{2}$/.test(values.departure||''))fail('CONFIRMATION_FACTS_MISSING');
  const picked=[];

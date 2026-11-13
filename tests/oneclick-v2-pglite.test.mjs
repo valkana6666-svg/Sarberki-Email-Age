@@ -175,7 +175,12 @@ test('owner 2026-11-13: automatic unit choice skips units taken here or in Previ
   assert.deepEqual(asked,['12','13'],'11 is skipped without a Previo call (ours), 12 is taken in Previo');
   await assert.rejects(pickFreeUnits({record:b,transport:t,unitCheckFn:async()=>({status:'unknown'})}),/NO_FREE_UNIT/);
   await assert.rejects(pickFreeUnits({record:b,transport:t,unitCheckFn:null}),/AUTO_UNIT_UNAVAILABLE/);
-  const generic={...b,data:{...b.data,state:{...b.data.state,values:{...b.data.state.values,unit:'Osztott'}}}};
-  await assert.rejects(pickFreeUnits({record:generic,transport:t,unitCheckFn:previo}),/AUTO_UNIT_UNAVAILABLE/);
+  // Every house type: a generic "Osztott" request is placed by party size (2 guests -> A/B, 3-5 -> C, more -> never guessed).
+  const withValues=v=>({...b,data:{...b.data,state:{...b.data.state,values:{...b.data.state.values,unit:'Osztott',...v}}}});
+  assert.match((await pickFreeUnits({record:withValues({adults:2,children:0}),transport:t,unitCheckFn:free}))[0],/^(7|8|9|10)\/[AB]$/);
+  assert.match((await pickFreeUnits({record:withValues({adults:4,children:1}),transport:t,unitCheckFn:free}))[0],/^(7|8|9|10)\/C$/);
+  await assert.rejects(pickFreeUnits({record:withValues({adults:6,children:0}),transport:t,unitCheckFn:free}),/AUTO_UNIT_UNAVAILABLE/);
+  const two=await pickFreeUnits({record:withValues({adults:4,children:0,units_requested:2}),transport:t,unitCheckFn:free});
+  assert.equal(two.length,2);assert.ok(two.every(u=>/\/[AB]$/.test(u)),'2 x 2 guests -> two A/B units');
  }finally{await db.close();}
 });

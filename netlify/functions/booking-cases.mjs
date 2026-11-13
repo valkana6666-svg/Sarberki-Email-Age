@@ -244,6 +244,26 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      return cookieResponse(200,{result:{caseId:record.caseId,needed:true,language,text:testMailboxTranslations.get(key)}});
     }catch(error){return cookieResponse(503,{error:translationErrorCode(error?.message)});}
    }
+   // Automatic free-unit suggestion (owner 2026-11-13: "mindig automatikusan ajánljon fel egy szabad egységet",
+   // manual choice stays possible). Read only: our bookings + the Previo TEST unit read.
+   if(input.action==='test-mailbox-suggest-units'){
+    if(event.httpMethod!=='GET'||!cookieMode||!mailboxOn||live||input.tenantId!==TENANT||Object.keys(input).sort().join(',')!=='action,caseId,tenantId')
+     return cookieResponse(403,{error:'FORBIDDEN'});
+    if(typeof input.caseId!=='string'||!/^tm-[a-f0-9]{12,32}$/.test(input.caseId))return cookieResponse(400,{error:'INVALID_INPUT'});
+    cookieSession=await createOperatorCookieSession({env,fetchImpl}).protectedRead(event);
+    rotatedCookie=cookieSession.setCookie;
+    try{
+     const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.'+TENANT+'&case_id=eq.'+encodeURIComponent(input.caseId));
+     const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
+     const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
+     if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
+     const units=await pickFreeUnits({record,transport:cookieSession.transport,unitCheckFn:previoUnitChecker(env,fetchImpl)});
+     return cookieResponse(200,{result:{caseId:record.caseId,revision:record.revision,units}});
+    }catch(error){
+     const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'TEST_MAILBOX_REJECTED';
+     return cookieResponse(TEST_MAILBOX_ERRORS[code],{error:code});
+    }
+   }
    // One-click V2 preview (PERM-20261112-ONECLICK): read only - our checks + the Previo TEST unit/price reads.
    if(input.action==='test-mailbox-oneclick-preview'){
     const keyset=Object.keys(input).sort().join(',');
