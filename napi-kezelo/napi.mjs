@@ -285,7 +285,12 @@ async function openTestMailboxCase(caseId,turn,status){
  // The case stores the reviewed Hungarian type name ("Családi"); preselect that type, never a silent Deluxe default
  // (owner iPhone test 2026-11-09: a Családi request was priced as Deluxe). Osztott without A/B/C: no preselection.
  const caseCabin=CABIN_NAMES[values.unit]?values.unit:Object.entries(CABIN_NAMES).find(([,n])=>n.hu.toLowerCase()===String(values.unit||'').trim().toLowerCase())?.[0];
- if(caseCabin)el('price-cabin').value=caseCabin;
+ // Owner iPhone test 2026-11-13: a generic "Osztott" 4-guest request was priced as Deluxe (the selector silently kept
+ // its first option). Now: the case's type, or for generic "Osztott" the part that fits the party (A/B up to 2, C 3-5,
+ // same rule as the automatic unit choice); otherwise the blank option - never a silent default.
+ const guests=Number(values.adults||0)+Number(values.children||0),perUnit=Math.ceil(guests/(Number.isInteger(record.unitsRequested)&&record.unitsRequested>1?record.unitsRequested:1));
+ const splitGuess=String(values.unit||'').trim().toLowerCase()==='osztott'?(guests>0&&perUnit<=2?'splitA':perUnit>=3&&perUnit<=5?'splitC':''):'';
+ el('price-cabin').value=caseCabin||splitGuess||'';
  showBooking(caseId,record);
  if(record.approval==='approved_internal'){approvedText=record.draft.text;el('copy-approved').hidden=false;approvedCase={caseId,revision:record.revision};el('send-approved').hidden=record.channel==='phone'||record.channel==='chat';}
  if(record.canEditDraft===true){el('draft-editor').value=record.draft.text;el('draft-editor').disabled=false;}
@@ -312,6 +317,7 @@ el('copy-approved').addEventListener('click',async()=>{
 el('price-calc').addEventListener('click',async()=>{
  const target=priceCase;if(!authenticated||!target)return;
  const v=target.values,ages=String(v.child_ages||'').split(',').filter(Boolean).map(Number);
+ if(!el('price-cabin').value){el('price-result').textContent='Előbb válaszd ki a háztípust.';return;}
  const input={arrival:v.arrival,departure:v.departure,cabin:el('price-cabin').value,adults:Number(v.adults),children:Number(v.children||0)===ages.length?ages:[]};
  el('price-insert').disabled=true;el('price-available').checked=false;el('price-available').disabled=true;priceQuote=null;
  if(!/^\d{4}-\d{2}-\d{2}$/.test(input.arrival||'')||!/^\d{4}-\d{2}-\d{2}$/.test(input.departure||'')||!Number.isInteger(input.adults)||input.adults<1||Number(v.children||0)!==ages.length){

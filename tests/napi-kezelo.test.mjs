@@ -457,7 +457,11 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   // Owner iPhone test 2026-11-09: a Családi case must not be priced with the Deluxe default.
   guestValues={adults:'4',children:'0',unit:'Családi'};await open();assert.equal(e['price-cabin'].value,'family');
   guestValues={adults:'4',children:'0',unit:'VIP'};await open();assert.equal(e['price-cabin'].value,'vip');
+  // Owner iPhone test 2026-11-13: generic "Osztott" is priced by the part that fits the party, never as Deluxe.
+  guestValues={adults:'3',children:'1',child_ages:'8',unit:'Osztott'};await open();assert.equal(e['price-cabin'].value,'splitC');
+  guestValues={adults:'2',children:'0',unit:'Osztott'};await open();assert.equal(e['price-cabin'].value,'splitA');
   guestValues={adults:'4',children:'0'};await open();
+  assert.equal(e['price-cabin'].value,'','no type in the case: blank, no silent Deluxe default');
   assert.equal(e['detail-draft'].textContent,'Kitalált első tervezet.');assert.match(e['detail-capacity'].textContent,/szabad helyet a rendszer nem ellenőrzi.*kézi Previo-ellenőrzés/);
   assert.match(e['detail-status'].textContent,/^Jóváhagyásra vár\./);
   // Writer: may edit, may not decide.
@@ -496,6 +500,9 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   assert.equal(e['send-approved'].hidden,true,'a pending draft cannot be sent');
   // Price panel: visible on the case; a failed calculation is reported and nothing can be inserted.
   assert.equal(e['price-panel'].hidden,false);const priceCount=posts.length;
+  await e['price-calc'].dispatch('click');await settle();
+  assert.equal(e['price-result'].textContent,'Előbb válaszd ki a háztípust.');assert.equal(posts.length,priceCount);
+  e['price-cabin'].value='deluxe';
   await e['price-calc'].dispatch('click');await settle();
   assert.equal(posts.length,priceCount);assert.match(e['price-result'].textContent,/^Az ár nem számítható: .*kézzel ellenőrizze\.$/u);assert.equal(e['price-insert'].disabled,true);
   await e['approve-draft'].dispatch('click');await settle();
