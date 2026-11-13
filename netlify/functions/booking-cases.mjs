@@ -36,6 +36,19 @@ const testMailboxTranslations=new Map();
 const headers={'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 const response=(statusCode,body)=>({statusCode,headers,body:JSON.stringify(body)});
 // Cookie-reader case picker gets metadata only, never raw inquiry content.
+// Owner 2026-11-13: the operator must recognise a case in the list without its id - guest name, house type, stay,
+// guests, when the mail arrived and the booking state. Same protected read as opening the case; plain short strings.
+const listText=(v,max)=>typeof v==='string'&&v.trim()?v.replace(/[\u0000-\u001f]+/g,' ').trim().slice(0,max):null;
+const listDay=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)?v:null;
+function testMailboxListSummary(record){
+ const v=record?.data?.state?.values||{},m=Array.isArray(record?.data?.messages)?record.data.messages:[];
+ const adults=Number(v.adults),children=Number(v.children||0);
+ const received=m.map(x=>x?.received_at).filter(x=>typeof x==='string'&&!Number.isNaN(Date.parse(x))).sort()[0]||null;
+ return {name:listText(v.name,60),unit:listText(v.unit,30),arrival:listDay(v.arrival),departure:listDay(v.departure),
+  guests:Number.isInteger(adults)&&adults>0&&Number.isInteger(children)&&children>=0?adults+children:null,receivedAt:received,
+  booking:['finalized','deposit_received','cancelled'].includes(record?.data?.booking?.status)?record.data.booking.status:null};
+}
+
 export function syntheticCaseSummaries(records,exactReceipt=null){
  if(!Array.isArray(records))throw Error('INVALID_CASE_LIST');
  return records.filter(row=>row?.tenantId==='sarberki-test'&&
@@ -475,7 +488,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     const sent=await sentDraftKeys(cookieSession.transport,TENANT);
     return cookieResponse(200,{result:records.filter(record=>isTestMailboxCase(record,TENANT)).slice(0,100).map(record=>({tenantId:record.tenantId,caseId:record.caseId,revision:record.revision,
      category:testMailboxCategory(record,sent),kind:'test-mailbox',
-     approval:['pending','approved_internal','returned_for_edit','rejected'].includes(record.data.state?.approval)?record.data.state.approval:null}))});
+     approval:['pending','approved_internal','returned_for_edit','rejected'].includes(record.data.state?.approval)?record.data.state.approval:null,summary:testMailboxListSummary(record)}))});
    }
    const exactAttempt=event.httpMethod==='POST'&&(input.action==='diagnose-exact-receipt'||input.action==='ingest-and-draft'&&Object.hasOwn(input,'sourceReceipt'));
    if(exactAttempt){
@@ -558,7 +571,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      if(testMailboxIngestEnabled(env,cloudApproval))result=result.concat(records.filter(record=>isTestMailboxCase(record)).map(record=>({tenantId:record.tenantId,caseId:record.caseId,revision:record.revision,
       category:testMailboxCategory(record,sent),kind:'test-mailbox',
       // State label only (metadata, no guest content): lets the operator find an approved reply to send.
-      approval:['pending','approved_internal','returned_for_edit','rejected'].includes(record.data.state?.approval)?record.data.state.approval:null}))).slice(0,100);
+      approval:['pending','approved_internal','returned_for_edit','rejected'].includes(record.data.state?.approval)?record.data.state.approval:null,summary:testMailboxListSummary(record)}))).slice(0,100);
     }else if(input.action==='service-approval-state'){
      if(!isIsolatedReviewCaseId(input.caseId))return cookieResponse(403,{error:'FORBIDDEN'});
      result=await serviceFlow().state(input.caseId,Number(input.expectedRevision));

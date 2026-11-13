@@ -106,6 +106,18 @@ function updateCounts(){
  for(const section of Object.keys(sections))el('count-'+section).textContent=listLoaded?rows.filter(row=>row.category===section).length+' foglalás':'Nincs betöltve';
 }
 const ROW_STATUS=Object.freeze({approved_internal:'Jóváhagyva – küldhető',returned_for_edit:'Javításra visszaküldve',rejected:'Elutasítva'});
+// Owner 2026-11-13: recognisable rows - guest, house type, stay, guests, mail time, state; the id only as a short tail.
+const LIST_BOOKING=Object.freeze({finalized:'Véglegesítve',deposit_received:'Foglaló beérkezett',cancelled:'Lemondva'});
+const shortDay=d=>d.slice(5).replace('-','.')+'.';
+function mailboxRowLabel(row){
+ const s=row.summary||{},parts=[s.name||'Név nélkül'];
+ if(s.unit)parts.push(s.unit);
+ if(s.arrival&&s.departure)parts.push(s.arrival.slice(0,4)+'.'+shortDay(s.arrival)+'–'+shortDay(s.departure));
+ if(Number.isInteger(s.guests))parts.push(s.guests+' fő');
+ if(s.receivedAt)parts.push('levél: '+new Date(s.receivedAt).toLocaleString('hu-HU',{timeZone:'Europe/Budapest',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}));
+ const state=LIST_BOOKING[s.booking]||ROW_STATUS[row.approval];if(state)parts.push(state);
+ return parts.join(' · ')+' (…'+String(row.caseId).slice(-6)+')';
+}
 function renderRows(){
  updateCounts();el('cases-title').textContent=sections[selectedSection][0]+' – tárolt tesztfoglalások';
  // Approved test-mail replies (ready to send) first, so the operator does not have to search for them.
@@ -113,7 +125,7 @@ function renderRows(){
  visible.forEach((row,index)=>{
   const li=document.createElement('li'),label=document.createElement('span'),button=document.createElement('button');
   // Mailbox cases keep the identity shown by the save receipt even when the list order changes.
-  label.textContent=row.kind==='test-mailbox'?'Tesztlevél-foglalás '+row.caseId+(ROW_STATUS[row.approval]?' · '+ROW_STATUS[row.approval]:''):'Tesztfoglalás '+(rows.indexOf(row)+1);button.type='button';button.textContent='Megnyitás';
+  label.textContent=row.kind==='test-mailbox'?mailboxRowLabel(row):'Tesztfoglalás '+(rows.indexOf(row)+1);button.type='button';button.textContent='Megnyitás';
   button.setAttribute('aria-label',label.textContent+' megnyitása');
   button.addEventListener('click',()=>openCase(row.caseId));li.append(label,button);fragment.append(li);
  });

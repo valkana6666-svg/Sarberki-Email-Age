@@ -289,7 +289,9 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
    await call('writer',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-ingest',messageId:id3},{headers:gmail,status:200});
    const list=(await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'daily-list'},{method:'GET',status:200})).json.result;
    const byId=Object.fromEntries(list.map(row=>[row.caseId,row]));
-   assert.deepEqual(byId[case3],{tenantId:'sarberki-test',caseId:case3,revision:1,category:'approval',kind:'test-mailbox',approval:'pending'});
+   assert.deepEqual(byId[case3],{tenantId:'sarberki-test',caseId:case3,revision:1,category:'approval',kind:'test-mailbox',approval:'pending',
+    // Owner 2026-11-13: recognisable list rows (no ids to decode): type, stay, guests, mail time, booking state.
+    summary:{name:null,unit:'Deluxe',arrival:'2027-05-14',departure:'2027-05-16',guests:2,receivedAt:'2026-10-31T10:00:00.000Z',booking:null}});
    assert.equal(byId[caseId].category,'progress');
    const off=(await call('reader',baseEnv,{tenantId:'sarberki-test',action:'daily-list'},{method:'GET',status:200})).json.result;
    assert.equal(off.some(row=>row.caseId.startsWith('tm-')),false,'hidden while the switch is off');

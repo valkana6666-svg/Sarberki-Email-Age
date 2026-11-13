@@ -438,7 +438,7 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   listPrefix=[{tenantId:'sarberki-test',caseId:'tm-'+'cd'.repeat(8),revision:1,category:'incoming',kind:'test-mailbox'}];
   await open();
   assert.equal(e['case-list'].children[0].children[0].textContent,originalLabel);
-  assert.ok(originalLabel.includes(caseId),'visible label carries the stable case identity');
+  assert.ok(originalLabel.includes('…'+caseId.slice(-6)+')'),'visible label carries the stable case identity (short tail)');
   assert.equal(e['case-list'].children[0].children[1].attributes['aria-label'],originalLabel+' megnyitása');
   // Live case shape: adults/children are known while the separate guests field is absent.
   assert.match(e['detail-facts'].textContent,/Létszám: 4 felnőtt, 0 gyermek/);
