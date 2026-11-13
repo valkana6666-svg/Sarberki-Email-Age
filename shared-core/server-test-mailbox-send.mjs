@@ -10,7 +10,7 @@
 import {createHash} from 'node:crypto';
 import {TEST_GMAIL_ACCOUNT} from '../gmail-policy.mjs';
 
-export const ALLOWED_TEST_REPLY_RECIPIENTS=Object.freeze(['sarberkito@gmail.com']);
+export const ALLOWED_TEST_REPLY_RECIPIENTS=Object.freeze(['sarberkito@gmail.com','valkana6666@gmail.com']); // owner 2026-11-13
 const GMAIL='https://gmail.googleapis.com/gmail/v1/users/me';
 const fail=code=>{const error=Error(code);error.code=code;throw error;};
 const sha=text=>createHash('sha256').update(String(text),'utf8').digest('hex');

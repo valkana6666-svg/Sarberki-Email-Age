@@ -6,7 +6,7 @@ export function reviewDisplay(text,review){
  if(t&&r.startsWith(t))return r.slice(t.length).trim()||'A magyar ellenőrző szöveg megegyezik a választervezettel.';
  return r;
 }
-import {readTestGmailInbox,TEST_GMAIL_ACCOUNT,gmailReadableBody,isTestInquiry,isTestPairInquiry,senderAddress,TEST_GUEST_SENDER} from '../gmail-policy.mjs';
+import {readTestGmailInbox,TEST_GMAIL_ACCOUNT,gmailReadableBody,isTestInquiry,isTestPairInquiry,senderAddress,isTestGuestSender} from '../gmail-policy.mjs';
 import {automatedMailReason} from '../shared-core/automated-mail-filter.mjs';
 import {buildEmailInquiryDraft} from '../shared-core/inquiry-channel-adapters.mjs';
 import {closedMailRequestFromGmailRecord} from '../shared-core/synthetic-mail-fixtures.mjs';
@@ -35,7 +35,7 @@ function previewText(message,header,body){
  if(ok&&isTestPairInquiry(header))return {text:body,saveable:true,messageId:message.id};
  // The test guest's reply (not a forward) can be added to its existing case; the server finds the case by thread.
  const reply=Boolean(header['in-reply-to']||header.references)&&!/^\s*(?:fwd?|fw|wg|tr)\s*:/iu.test(String(header.subject??''));
- if(ok&&reply&&senderAddress(header.from)===TEST_GUEST_SENDER)return {text:body,saveable:true,followup:true,messageId:message.id};
+ if(ok&&reply&&isTestGuestSender(senderAddress(header.from)))return {text:body,saveable:true,followup:true,messageId:message.id};
  return null;
 }
 function closedPreviewText(message,header,body){

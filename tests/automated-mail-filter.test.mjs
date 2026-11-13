@@ -47,7 +47,7 @@ test('own-mailbox sender is rejected only when the profile asks for it',()=>{
 
 test('only the TEST mailbox profile is enabled; the live profile fails closed',()=>{
  const t=enabledMailboxProfile('sarberki-test');
- assert.equal(t.account,TEST_GMAIL_ACCOUNT);assert.deepEqual([...t.allowedSenders],['sarberkito@gmail.com']);assert.equal(t.sourceScope,'test-mailbox-source-v1');
+ assert.equal(t.account,TEST_GMAIL_ACCOUNT);assert.deepEqual([...t.allowedSenders],['sarberkito@gmail.com','valkana6666@gmail.com']);assert.equal(t.sourceScope,'test-mailbox-source-v1');
  assert.equal(MAILBOX_PROFILES['sarberki-live'].account,'info@sarberkito.hu');
  assert.equal(MAILBOX_PROFILES['sarberki-live'].enabled,false);
  assert.equal(MAILBOX_PROFILES['sarberki-live'].blockOwnSender,true);
@@ -62,4 +62,13 @@ test('notifications: TEST keeps synthetic headers; live carries no sender or sub
  const live=notificationText(MAILBOX_PROFILES['sarberki-live'],h);
  assert.equal(live.includes('guest@example.test')||live.includes('Vendég')||live.includes('Érdeklődés'),false);
  for(const p of [undefined,null,{},{notificationIncludesHeaders:'true'}])assert.equal(notificationText(p,h).includes('guest@'),false,JSON.stringify(p));
+});
+
+test('owner 2026-11-13: the owner address is a test guest (sender + reply recipient); lookalikes are not',async()=>{
+ const {isTestPairInquiry,isTestGuestSender}=await import('../gmail-policy.mjs');
+ const {ALLOWED_TEST_REPLY_RECIPIENTS}=await import('../shared-core/server-test-mailbox-send.mjs');
+ assert.equal(isTestPairInquiry({from:'Tulajdonos <Valkana6666@gmail.com>',subject:'Foglalás'}),true);
+ assert.equal(isTestPairInquiry({from:'Tulajdonos <valkana6666@gmail.com>',subject:'Re: Foglalás'}),false);
+ for(const a of ['valkana6666@gmail.com.example.test','x.valkana6666@gmail.com','guest@example.test'])assert.equal(isTestGuestSender(a),false,a);
+ assert.deepEqual([...ALLOWED_TEST_REPLY_RECIPIENTS],['sarberkito@gmail.com','valkana6666@gmail.com']);
 });

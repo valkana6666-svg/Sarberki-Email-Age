@@ -12,7 +12,7 @@ import {unitsOfType,conflictsFor} from './unit-inventory.mjs';
 import {previoUnitLine} from './server-previo-unit-check.mjs';
 import {V2_REFERENCE} from './server-previo-booking-sync.mjs';
 import {voucherFor} from './server-previo-reservation-write.mjs';
-import {senderAddress,TEST_GUEST_SENDER} from '../gmail-policy.mjs';
+import {senderAddress,isTestGuestSender} from '../gmail-policy.mjs';
 
 export const CONFIRM_SCOPE='test-mailbox-confirm-v1';
 const fail=code=>{const error=Error(code);error.code=code;throw error;};
@@ -117,7 +117,7 @@ export async function confirmTestMailboxBooking({record,previoReference,previoRe
   const deadline=buildBookingConfirmation({values,quote,previo:{reference:'V2-0',recordedAt:clock()},language}).deposit.receiptDeadlineUtc;
   // Contact data only from the fictional test-pair sender (AGENTS: no real guest data on TEST); phone if extracted.
   const email=senderAddress(record.data?.sender);
-  const contact=sentContact=email===TEST_GUEST_SENDER?{email,phone:/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(String(values.phone||'').trim())?String(values.phone).trim():null}:null;
+  const contact=sentContact=isTestGuestSender(email)?{email,phone:/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(String(values.phone||'').trim())?String(values.phone).trim():null}:null;
   previoCreated=await previoWriter.createOption({tenantId:record.tenantId,caseId:record.caseId,values,cabin,unit,
    ...(list.length>1?{units:list,parties:quote.unitBreakdown.map(b=>({adults:b.adults,children:b.children}))}:{}),
    contactName:String(values.name||'').trim()||'Vendég '+record.caseId,contact,totalHuf:quote.total,optionExpiresUtc:deadline});

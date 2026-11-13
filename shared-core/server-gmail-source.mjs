@@ -3,7 +3,7 @@
 // request shape from SERVER-read content. The token is neither stored nor returned. Not wired to any
 // case write here: storing still requires the server-attested write path of the next work package.
 import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
-import {readTestGmailInbox,gmailReadableBody,TEST_GMAIL_ACCOUNT,isTestPairInquiry,senderAddress,TEST_GUEST_SENDER} from '../gmail-policy.mjs';
+import {readTestGmailInbox,gmailReadableBody,TEST_GMAIL_ACCOUNT,isTestPairInquiry,senderAddress,isTestGuestSender} from '../gmail-policy.mjs';
 import {automatedMailReason} from './automated-mail-filter.mjs';
 import {enabledMailboxProfile} from './server-mailbox-profiles.mjs';
 import {TEST_DEPLOYMENT} from './server-deployment.mjs';
@@ -65,7 +65,7 @@ export async function readVerifiedTestMailboxMessage({token,messageId,fetchImpl=
   const direct=[headers.to,headers.cc].flatMap(v=>String(v||'').split(',')).map(address);
   if(!direct.includes(account))fail('NOT_ADDRESSED_TO_TEST_MAILBOX');
  }else if(followup){
-  if(senderAddress(headers.from)!==TEST_GUEST_SENDER)fail('NOT_TEST_PAIR_INQUIRY');
+  if(!isTestGuestSender(senderAddress(headers.from)))fail('NOT_TEST_PAIR_INQUIRY');
   if(automatedMailReason(headers,{ownAddresses:[PROFILE.account],blockOwnSender:PROFILE.blockOwnSender}))fail('AUTOMATED_MESSAGE');
   if(address(headers.to)!==TEST_GMAIL_ACCOUNT||String(headers.to).includes(','))fail('NOT_ADDRESSED_TO_TEST_MAILBOX');
  }else{

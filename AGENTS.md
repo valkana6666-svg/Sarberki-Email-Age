@@ -19,6 +19,7 @@
 - **Engedélyezett kör, kizárólag:** a `sarberkiprojecttest@gmail.com` (rendszer-tesztpostafiók) és a `sarberkito@gmail.com` (ideiglenes, közös tesztfeladó) **egymás közötti** levelezése, **csak kitalált** tartalommal (nincs valódi vendég-, foglalási vagy személyes adat). Bármely más címzett, másolat (Cc/Bcc) vagy továbbítás tilos.
 - **Ki küldhet:** (1) Claude a tulajdonos által bekötött Gmail-csatlakozón keresztül; (2) a V1 TEST-rendszer – emberi jóváhagyás után és később automatikusan is –, de csak külön megvalósított és tesztelt küldési képességgel: rögzített címzettlista (csak a fenti pár), idempotens küldési napló, alapból kikapcsolt kapcsoló és egylépéses kikapcsolás. Ennek elkészültéig a rendszer nem küld.
 - **Sorrend (tulajdonos, 11-03):** előbb Claude-küldés + emberi jóváhagyás néhány levéllel; utána a rendszer automatikus küldése erre a párra.
+- **Bővítés (tulajdonos, 2026-11-13):** a tulajdonos saját címe (`valkana6666@gmail.com`) is a tesztkör része feladóként (tesztlevél → `sarberkiprojecttest@gmail.com`) és a rá adott válasz címzettjeként, kitalált tartalommal, visszavonásig („ha azt akarom, hogy ne legyen hozzákötve, szólok”). Más cím, Cc/Bcc, továbbítás továbbra is tilos.
 - Az `info@sarberkito.hu`, valódi vendég, production és Previo-írás továbbra is tilos; az alábbi „Tilos valódi e-mail küldése” szabály minden más esetre érvényes.
 
 ## FÓKUSZ ÉS HATÉKONYSÁG – tulajdonosi döntés, 2026-11-02 (minden ágensre: Claude, Work, Codex, óránkénti futás)
