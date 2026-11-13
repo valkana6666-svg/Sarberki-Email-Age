@@ -24,3 +24,8 @@ test('quoted history (our own offer) is ignored; hint only for a reply on an ope
  assert.match(bookingIntentHint(msgs,null),/foglaljuk le/);
  assert.equal(bookingIntentHint(msgs,'finalized'),null);
 });
+
+test('owner 2026-11-13: "Igen, foglaljuk" is an acceptance; a plain thanks or a negated yes is not',()=>{
+ for(const t of ['Igen, foglaljuk.','Igen foglaljuk','Igen, akkor foglaljuk!'])assert.equal(bookingAcceptanceFromText(t).accepted,true,t);
+ for(const t of ['Igen, köszönjük az ajánlatot','Igen, de még nem foglaljuk','Köszönjük, még gondolkodunk'])assert.equal(bookingAcceptanceFromText(t).accepted,false,t);
+});

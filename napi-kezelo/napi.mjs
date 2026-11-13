@@ -384,7 +384,7 @@ el('unavailable-insert').addEventListener('click',async()=>{
 // separate step. The server builds the confirmation letter; it still goes through approval and the send button.
 const bookingStatus={finalized:'Véglegesítve (Previóban rögzítve) – a foglaló még nem érkezett meg.',deposit_received:'Foglaló beérkezett.',cancelled:'Lemondva.'};
 function showBooking(caseId,record){
- const b=record.booking;bookingCase={caseId,revision:record.revision};el('booking-panel').hidden=false;
+ const b=record.booking;bookingCase={caseId,revision:record.revision,intent:typeof record.bookingIntent==='string'&&record.bookingIntent.length>0};el('booking-panel').hidden=false;
  const dep=b?.deposit&&Number.isSafeInteger(b.deposit.amount)?'\nFoglaló: '+b.deposit.pct+'% = '+huf(b.deposit.amount)+' Ft, határidő: '+new Date(b.deposit.deadlineUtc).toLocaleString('hu-HU',{timeZone:'Europe/Budapest'}):'';
  const intent=typeof record.bookingIntent==='string'&&record.bookingIntent?'🟢 A vendég foglalni szeretne („'+record.bookingIntent+'”). Rögzítsd a Previóban, majd: Véglegesítés.\n':'';
  el('booking-state').textContent=intent+(b?(bookingStatus[b.status]||'Ismeretlen állapot')+(Array.isArray(b.units)?'\nEgységek: '+b.units.join(', '):b.unit?'\nEgység: '+b.unit:'')+(b.previoReference?'\nPrevio-hivatkozás: '+b.previoReference:'')+dep+(b.depositReceivedOn?'\nBeérkezett: '+b.depositReceivedOn:''):'Még nincs véglegesítve.');
@@ -505,7 +505,10 @@ el('oneclick-preview').addEventListener('click',async()=>{
   // Show the server's choice in the selector; changing it afterwards resets this preview (manual override).
   if(auto){for(const o of el('booking-unit').options)o.selected=p.units.includes(o.value);if(bookingUnitsNeeded===1)el('booking-unit').value=p.units[0];}
   const deadline=new Date(p.deposit?.receiptDeadlineUtc).toLocaleString('hu-HU',{timeZone:'Europe/Budapest'});
-  el('oneclick-summary').textContent=(p.ready?'✅ Minden ellenőrzés rendben.':'⛔ Nem indítható: '+p.blockers.map(b=>oneClickBlockers[b]||b).join('; ')+'.')+
+  // Owner 2026-11-13: the first mail is only an inquiry; book after the guest's explicit yes. A warning, not a block
+  // (a phone confirmation is valid too).
+  const noIntent=target.intent!==true?'⚠️ A vendég még nem írta vissza, hogy foglalni szeretne. Csak akkor foglalj, ha elfogadta az ajánlatot (pl. telefonon).\n':'';
+  el('oneclick-summary').textContent=noIntent+(p.ready?'✅ Minden ellenőrzés rendben.':'⛔ Nem indítható: '+p.blockers.map(b=>oneClickBlockers[b]||b).join('; ')+'.')+
    '\n'+(auto?'Automatikusan választott egység':'Egység')+(p.units.length>1?'ek: ':': ')+p.units.join(', ')+(auto?' (a választóban átírható)':'')+(p.blockers.includes('PREVIO_UNIT_UNVERIFIED')?'':' (Previo: szabad)')+
    '\nÁr: '+huf(p.total)+' Ft – '+(oneClickPrice[p.price?.status]||'')+
    '\nFoglaló: '+p.deposit.pct+'% = '+huf(p.deposit.amount)+' Ft, határidő kb. '+deadline+' (a véglegesítés pillanatától számít)'+

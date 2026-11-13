@@ -7,7 +7,7 @@ import {activeMessageText} from '../sarberki-core.mjs';
 const ACCEPT=[
  // Hungarian
  /lefoglaln[áé]\p{L}*/iu,/foglalj(?:uk|átok|ák|a)\s+le\b/iu,/(?:kérjük|kérem|szeretnénk|szeretném)\s+(?:a\s+)?(?:foglalás\p{L}*\s+)?(?:lefoglalni|véglegesíteni|rögzíteni)/iu,
- /(?:kérjük|kérem)\s+(?:a\s+)?(?:foglalást|foglalni)/iu,/elfogadjuk\s+(?:az\s+)?(?:ajánlat|árat)/iu,/mehet\s+a\s+foglalás/iu,/(?:rendben|jó|oké|ok),?\s+(?:akkor\s+)?(?:foglaljuk|lefoglaljuk|kérjük)/iu,
+ /(?:kérjük|kérem)\s+(?:a\s+)?(?:foglalást|foglalni)/iu,/elfogadjuk\s+(?:az\s+)?(?:ajánlat|árat)/iu,/mehet\s+a\s+foglalás/iu,/(?:igen|rendben|jó|oké|ok),?\s+(?:akkor\s+)?(?:foglaljuk|lefoglaljuk|kérjük)/iu,
  // German
  /(?:möchten|würden|wollen)\s+(?:\p{L}+\s+){0,5}?(?:verbindlich\s+)?(?:buchen|reservieren)\b/iu,/bitte\s+(?:\p{L}+\s+){0,4}?(?:buchen|reservieren)\b/iu,/verbindlich\s+(?:buchen|reservieren|zusagen)/iu,
  /(?:wir\s+)?nehmen\s+(?:das|den|die)\s+(?:angebot|haus|häuser|ferienhaus)/iu,/(?:buchen|reservieren)\s+(?:wir|ich)\b/iu,
