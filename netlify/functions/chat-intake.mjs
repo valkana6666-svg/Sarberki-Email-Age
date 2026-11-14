@@ -35,7 +35,8 @@ export function createChatIntakeHandler({env=process.env,fetchImpl=fetch,random=
    const r=await fetchImpl(TEST_PROJECT+'/auth/v1/token?grant_type=password',{method:'POST',redirect:'error',signal:AbortSignal.timeout(10000),
     headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json'},body:JSON.stringify({email:env.INTAKE_ACCOUNT_EMAIL,password:env.INTAKE_ACCOUNT_PASSWORD})});
    // stage (TEST diagnostics, owner switch-on 2026-11-14): which step failed - no detail, no secret.
-   if(!r.ok)return json(503,{error:'TRY_LATER',stage:'auth-'+r.status});
+   if(!r.ok){let code='';try{code=String((await r.json())?.error_code||'').replace(/[^a-z_]/g,'').slice(0,40);}catch{}
+    return json(503,{error:'TRY_LATER',stage:'auth-'+r.status+(code?'-'+code:'')});}
    token=(await r.json())?.access_token;
   }catch{return json(503,{error:'TRY_LATER',stage:'auth-network'});}
   if(typeof token!=='string'||!token)return json(503,{error:'TRY_LATER',stage:'auth-token'});
