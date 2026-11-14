@@ -1,4 +1,4 @@
-// #8: daily-operator icon = turquoise approved logo on black, including the ribbon text.
+// Daily-operator icon (owner 2026-11-14: royal blue + orange, same as the launcher), including the ribbon text.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -40,17 +40,24 @@ export function ribbonTextShare(img){
  return dark/total;
 }
 
+// Owner 2026-11-14 ("Ez a kék narancssárga, nagyon jó", replaces #8 turquoise-on-black): royal-blue background,
+// orange Sárberki logo, the same icon as the launcher; the ribbon still carries the lettering.
+const isBlue=([r,g,b])=>b>=110&&b>r+40&&b>g+20;
+const isOrange=([r,g,b])=>r>=200&&g>=80&&g<=170&&b<=80;
 for(const name of ['icon-512.png','icon-192.png','apple-touch-icon.png']){
- test(`${name}: black background, turquoise-only artwork`,()=>{
+ test(`${name}: royal-blue background, orange logo`,()=>{
   const img=icon(name);
-  assert.deepEqual(img.pixel(0,0).slice(0,3),[0,0,0]);
-  for(let y=0;y<img.height;y+=3)for(let x=0;x<img.width;x+=3){
-   const [r,g,b,alpha]=img.pixel(x,y);assert.equal(alpha,255);
-   const k=g/TURQUOISE[1];
-   assert.ok(Math.abs(r-TURQUOISE[0]*k)<=2&&Math.abs(b-TURQUOISE[2]*k)<=2,`non-turquoise pixel at ${x},${y}`);
-  }
+  for(const [x,y] of [[0,0],[img.width-1,0],[0,img.height-1],[img.width-1,img.height-1]])assert.ok(isBlue(img.pixel(x,y)),`corner ${x},${y} not royal blue`);
+  let orange=0,total=0;for(let y=0;y<img.height;y+=3)for(let x=0;x<img.width;x+=3){total++;if(isOrange(img.pixel(x,y)))orange++;}
+  assert.ok(orange/total>0.08,'too little orange artwork');
  });
  test(`${name}: ribbon carries the "Sárberki Horgásztó" lettering`,()=>{
-  assert.ok(ribbonTextShare(icon(name))>0.2,'ribbon looks plain');
+  const img=icon(name);let gaps=0,total=0;
+  for(let y=Math.round(img.height*0.52);y<Math.round(img.height*0.60);y++)
+   for(let x=Math.round(img.width*0.22);x<Math.round(img.width*0.78);x++){total++;if(!isOrange(img.pixel(x,y)))gaps++;}
+  assert.ok(gaps/total>0.2,'ribbon looks plain');
+ });
+ test(`${name}: identical to the launcher icon`,()=>{
+  assert.deepEqual(readFileSync(new URL('../napi-kezelo/icons/'+name,import.meta.url)),readFileSync(new URL('../indito/icons/'+name,import.meta.url)));
  });
 }
