@@ -23,10 +23,14 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
    // A stay request usually starts with dates and the party, not with "is there a free place?" (owner demo check
    // 2026-11-11): stay dates together with a party size also open the booking conversation; FAQ questions do not.
    if(faq.intent==='availability')bookingContext=true;
-   else if(!bookingContext&&!['hotTub','fishing','deposit','pet'].includes(faq.intent)){
+   else if(!bookingContext){
     const probe=normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now:clock()}).normalized;
+    const party=Number.isInteger(probe.adults)||Number.isInteger(probe.guests),stay=probe.dates||hasPotentialStayDate(message);
+    const info=['hotTub','fishing','deposit','pet'].includes(faq.intent);
     // Dates AND a party size: a date alone ("szeretnénk foglalni") stays the booking FAQ answer, as before.
-    if((probe.dates||hasPotentialStayDate(message))&&(Number.isInteger(probe.adults)||Number.isInteger(probe.guests)))bookingContext=true;
+    // Owner iPhone test 2026-11-14: a stay request with a side question ("… május 22-25, három felnőtt. Hoznának egy
+    // kutyát.") opens the booking too; the central reply answers the side question as well.
+    if(stay&&(party||info&&probe.cabin&&!probe.cabin.startsWith('?')))bookingContext=true;
    }
    if(!bookingContext){
     // An informational first turn may already name the cabin, dates or party ("zanima nas družinska hiška poleti"):
@@ -44,7 +48,10 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
    // hozni?") updates the stay too; the central reply then answers the question as well (sweep 2026-11-12).
    if(!bookingUpdate&&['hotTub','fishing','deposit','pet'].includes(faq.intent)){
     const info=normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized;
-    if((typeof info.phone==='string'&&info.phone.trim())||(info.dates&&!info.dates.inferred_year))bookingUpdate=info;
+    // Owner iPhone test 2026-11-14: "Egy családi faház érdekelne, három felnőtt, május 22-25. Hoznának egy kutyát."
+    // got only the pet answer. A date without year still marks a stay when party size or a cabin comes with it.
+    const party=Number.isInteger(info.adults)||Number.isInteger(info.guests),cabin=typeof info.cabin==='string'&&info.cabin&&!info.cabin.startsWith('?');
+    if((typeof info.phone==='string'&&info.phone.trim())||(info.dates&&!info.dates.inferred_year)||(info.dates&&(party||cabin))||(party&&cabin))bookingUpdate=info;
    }
    const unparsedStayDate=!bookingUpdate?.dates&&hasPotentialStayDate(message);
    const uncertainParty=ambiguousPartyFieldsFromText(message);
