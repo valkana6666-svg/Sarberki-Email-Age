@@ -121,14 +121,16 @@ function mailboxRowLabel(row){
 }
 function renderRows(){
  updateCounts();el('cases-title').textContent=sections[selectedSection][0]+' – tárolt tesztfoglalások';
- // Approved test-mail replies (ready to send) first, so the operator does not have to search for them.
- const visible=rows.filter(row=>row.category===selectedSection).sort((a,b)=>(b.approval==='approved_internal')-(a.approval==='approved_internal')||String(b.summary?.receivedAt||'').localeCompare(String(a.summary?.receivedAt||''))),fragment=document.createDocumentFragment();
+ // Owner 2026-11-14: strict time order, newest first, for every case (chat/phone rows are highlighted instead).
+ const visible=rows.filter(row=>row.category===selectedSection).sort((a,b)=>String(b.summary?.receivedAt||'').localeCompare(String(a.summary?.receivedAt||''))),fragment=document.createDocumentFragment();
  visible.forEach((row,index)=>{
   const li=document.createElement('li'),label=document.createElement('span'),button=document.createElement('button');
   // Mailbox cases keep the identity shown by the save receipt even when the list order changes.
   label.textContent=row.kind==='test-mailbox'?mailboxRowLabel(row):'Tesztfoglalás '+(rows.indexOf(row)+1);button.type='button';button.textContent='Megnyitás';
   button.setAttribute('aria-label',label.textContent+' megnyitása');
-  button.addEventListener('click',()=>openCase(row.caseId));li.append(label,button);fragment.append(li);
+  button.addEventListener('click',()=>openCase(row.caseId));li.append(label,button);
+  // Owner 2026-11-14: a chatbot request is visibly set apart (colour + badge), still in time order.
+  if(row.summary?.channel==='chat')li.classList.add('row-chat');else if(row.summary?.channel==='phone')li.classList.add('row-phone');fragment.append(li);
  });
  el('case-list').replaceChildren(fragment);
  if(!authenticated)el('list-status').textContent='A foglalási listához jelentkezzen be a Belépés részben.';
