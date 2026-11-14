@@ -5,16 +5,19 @@ require('./write-build-info.cjs');
 const output = path.resolve('dist');
 fs.rmSync(output, {recursive:true, force:true});
 fs.mkdirSync(output);
-const allowedDirectories = new Set(['business','guest-reply','shared-core','price-source','sarberki-chatbot-project','napi-kezelo']);
+const allowedDirectories = new Set(['business','guest-reply','shared-core','price-source','sarberki-chatbot-project','napi-kezelo','indito']);
 const chatbotAssets = new Set(['index.html','chat-session.mjs','chat-view.mjs','chat-capacity-client.mjs','chat-request-client.mjs','remote-chat-client.mjs','inquiry-preview.mjs','operator-session.mjs','version-status.mjs','manifest.webmanifest','icons']);
 const dailyAssets = new Set(['index.html','napi.mjs','napi-email.mjs','napi-view.mjs','napi.css','manifest.webmanifest','icons']);
+// Owner 2026-11-14: static launcher (logo, two links, manifest, icons) - nothing else from that folder.
+const launcherAssets = new Set(['index.html','logo.svg','manifest.webmanifest','icons']);
 function copyDirectory(source, relative='') {
  for (const entry of fs.readdirSync(source,{withFileTypes:true})) {
   const rel=path.join(relative,entry.name);
   if(relative==='sarberki-chatbot-project'&&!chatbotAssets.has(entry.name))continue;
   if(relative==='napi-kezelo'&&!dailyAssets.has(entry.name))continue;
-  if(['napi-kezelo/icons','sarberki-chatbot-project/icons'].includes(relative)&&!['icon-192.png','icon-512.png','apple-touch-icon.png'].includes(entry.name))continue;
-  if(/\.(?:png|webmanifest)$/.test(entry.name)&&!relative.startsWith('sarberki-chatbot-project')&&!relative.startsWith('napi-kezelo')&&!(relative===''&&entry.name==='operator.webmanifest'))continue;
+  if(relative==='indito'&&!launcherAssets.has(entry.name))continue;
+  if(['napi-kezelo/icons','sarberki-chatbot-project/icons','indito/icons'].includes(relative)&&!['icon-192.png','icon-512.png','apple-touch-icon.png'].includes(entry.name))continue;
+  if(/\.(?:png|webmanifest)$/.test(entry.name)&&!relative.startsWith('sarberki-chatbot-project')&&!relative.startsWith('napi-kezelo')&&!relative.startsWith('indito')&&!(relative===''&&entry.name==='operator.webmanifest'))continue;
   if(entry.isSymbolicLink()) continue;
   if(entry.isDirectory()) {
    if(relative==='' && !allowedDirectories.has(entry.name))continue;
