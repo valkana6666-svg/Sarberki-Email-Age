@@ -91,8 +91,9 @@ export function createHandler({env = process.env, send = fetch, ledger = null, l
         body:new URLSearchParams({
           token,user,
           title:'Sárberki · új levél',
-          url:ORIGIN + '/',
-          url_title:'Sarberki tesztoldal megnyitasa',
+          // Owner 2026-11-14: the notification opens the daily operator view, not the old test page.
+          url:ORIGIN + '/napi-kezelo/',
+          url_title:'Napi kezelő megnyitása',
           message:notificationText(PROFILE,{from,subject})
         }),
         signal:AbortSignal.timeout(10000)
