@@ -116,7 +116,8 @@ export function cabinFromText(text=''){
       || /\bfamily\s+(?:cabin|house|accommodation|unit)\b/iu.test(text)
       || /\b(?:familien(?:haus|hütte|unterkunft)|familien\s+(?:haus|unterkunft))\b/iu.test(text)
       || /\bdružinsk\w*\s+(?:hišk\w*|koč\w*|nastanitev)\b/iu.test(text)) found.push('Családi');
-  if (/\bdeluxe\b/iu.test(text)) found.push('Deluxe');
+  // Owner iPhone test 2026-11-14: "Delux faházat" (no final e) and other everyday spellings are Deluxe too.
+  if (/(?<!\p{L})del[uü](?:xe?|ksz)(?!\p{L})|(?<!\p{L})del[uü](?:xe?|ksz)(?:-?(?:ot|et|be|ba|ben|ban|re|ra|hez|hoz|ről|ról|t))(?!\p{L})/iu.test(text)) found.push('Deluxe');
   if (/\b(?:osztott|split|geteilte[rs]?|deljen[ai]?)\b/iu.test(text)) found.push('Osztott');
   if (/(?<!\p{L})(?:különálló|kulonallo|külön\s+álló)(?!\p{L})/iu.test(text)
       || /\b(?:standalone|detached)\s+(?:cabin|house|accommodation|unit)\b/iu.test(text)
@@ -535,17 +536,17 @@ function childAgesWithoutBabies(text=''){
 export function requestedUnitsFromText(text=''){
   text=activeMessageText(text);
   const open=/\b(?:több|multiple|several|mehrere|več)\s+(?:szállás)?(?:egység\w*|faház\w*|ház\w*|apartman\w*|units?|cabins?|houses?|einheiten|enot\w*)\b/iu.test(text);
-  const namedOpen=text.match(/(?<!\p{L})(?:több|multiple|several|mehrere|več)\s+(?:vip|családi|csaladi|deluxe|osztott|family|familien\p{L}*|družinsk\p{L}*)\s+(?:faház\p{L}*|ház\p{L}*|apartman\p{L}*|cabins?|houses?|cottages?|hišk\p{L}*|koč\p{L}*)/iu);
+  const namedOpen=text.match(/(?<!\p{L})(?:több|multiple|several|mehrere|več)\s+(?:vip|családi|csaladi|del[uü](?:xe?|ksz)|osztott|family|familien\p{L}*|družinsk\p{L}*)\s+(?:faház\p{L}*|ház\p{L}*|apartman\p{L}*|cabins?|houses?|cottages?|hišk\p{L}*|koč\p{L}*)/iu);
   if(open||namedOpen) return {count:null,open:true,evidence:namedOpen?.[0]||text.match(/\b(?:több|multiple|several|mehrere|več)\s+(?:szállás)?(?:egység\w*|faház\w*|ház\w*|apartman\w*|units?|cabins?|houses?|einheiten|enot\w*)\b/iu)?.[0]||''};
   const values={egy:1,'1':1,két:2,kettő:2,'2':2,három:3,'3':3,négy:4,'4':4,öt:5,'5':5,hat:6,'6':6,one:1,two:2,three:3,four:4,five:5,six:6,ein:1,eine:1,zwei:2,drei:3,vier:4,'fünf':5,funf:5,sechs:6,en:1,ena:1,eno:1,dva:2,dve:2,tri:3,'štiri':4,stiri:4,pet:5,'šest':6,sest:6};
   const sized=text.match(/\b(egy|1|két|kettő|2|három|3|négy|4|one|two|three|four|ein|eine|zwei|drei|vier|en|ena|dva|dve|tri|štiri|stiri)\s*(?:db|darab)\s*(?:2|két|kettő)\s*[- ]?fős\s+(?:osztott\s+)?apartman\w*/iu);
   if(sized) return {count:values[sized[1].toLocaleLowerCase()]||0,open:false,evidence:sized[0]};
-  const m=text.match(/\b(egy|1|két|kettő|2|három|3|négy|4|öt|5|hat|6|one|two|three|four|five|six|ein|eine|zwei|drei|vier|fünf|funf|sechs|en|ena|eno|dva|dve|tri|štiri|stiri|pet|šest|sest)\s+(?:külön\s*)?(?:db\s*)?(?:vip|családi|deluxe|osztott|family|familien|družinsk\w*)?(?:\s*[-–]?\s*)(?:ház(?:at|ba|ban|ra|hoz)?|faház(?:at|ba|ban|ra|hoz)?|apartman(?:t|ba|ban|ra)?|egység(?:et|be)?|cabins?|houses?|units?|cottages?|häuser|hauser|einheiten|hišk\w*|hisk\w*|koč\w*|enot\w*)(?!\p{L})/iu);
+  const m=text.match(/\b(egy|1|két|kettő|2|három|3|négy|4|öt|5|hat|6|one|two|three|four|five|six|ein|eine|zwei|drei|vier|fünf|funf|sechs|en|ena|eno|dva|dve|tri|štiri|stiri|pet|šest|sest)\s+(?:külön\s*)?(?:db\s*)?(?:vip|családi|del[uü](?:xe?|ksz)|osztott|family|familien|družinsk\w*)?(?:\s*[-–]?\s*)(?:ház(?:at|ba|ban|ra|hoz)?|faház(?:at|ba|ban|ra|hoz)?|apartman(?:t|ba|ban|ra)?|egység(?:et|be)?|cabins?|houses?|units?|cottages?|häuser|hauser|einheiten|hišk\w*|hisk\w*|koč\w*|enot\w*)(?!\p{L})/iu);
   if(!m){
     // A single, specifically named cabin in singular form means one unit.
     // This must not turn a generic enquiry, a plural request or split-unit
     // combinations into an invented booking-unit count.
-    const single=text.match(/(?<!\p{L})(?:vip|családi|csaladi|deluxe|family|familien(?:haus|hütte)?|družinsk\p{L}*|különálló|kulonallo)\s+(?:faház(?:at|ba|ban|ra|hoz|ról)?|ház(?:at|ba|ban|ra|hoz|ról)?|apartman(?:t|ba|ban|ra)?|cabin|house|cottage|hiško|hiška|kočo|koča)(?!\p{L})/iu);
+    const single=text.match(/(?<!\p{L})(?:vip|családi|csaladi|del[uü](?:xe?|ksz)|family|familien(?:haus|hütte)?|družinsk\p{L}*|különálló|kulonallo)\s+(?:faház(?:at|ba|ban|ra|hoz|ról)?|ház(?:at|ba|ban|ra|hoz|ról)?|apartman(?:t|ba|ban|ra)?|cabin|house|cottage|hiško|hiška|kočo|koča)(?!\p{L})/iu);
     const cabin=single?cabinFromText(text):null;
     if(single&&cabin&&!cabin.startsWith('?')&&cabin!=='Osztott')
       return {count:1,open:false,evidence:single[0]};
