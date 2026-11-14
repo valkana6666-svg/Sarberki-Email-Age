@@ -45,7 +45,8 @@ function testMailboxListSummary(record){
  const adults=Number(v.adults),children=Number(v.children||0);
  const received=m.map(x=>x?.received_at).filter(x=>typeof x==='string'&&!Number.isNaN(Date.parse(x))).sort()[0]||null;
  const email=typeof record?.data?.sender==='string'&&/^[^\s@<>]{1,64}@[^\s@<>]{1,190}$/.test(record.data.sender)?record.data.sender.toLowerCase():null;
- return {name:listText(v.name,60),email,unit:listText(v.unit,30),arrival:listDay(v.arrival),departure:listDay(v.departure),
+ const channel=['phone','chat'].includes(record?.data?.testMailbox?.channel)?record.data.testMailbox.channel:'email';
+ return {name:listText(v.name,60),email,channel,unit:listText(v.unit,30),arrival:listDay(v.arrival),departure:listDay(v.departure),
   guests:Number.isInteger(adults)&&adults>0&&Number.isInteger(children)&&children>=0?adults+children:null,receivedAt:received,
   booking:['finalized','deposit_received','cancelled'].includes(record?.data?.booking?.status)?record.data.booking.status:null};
 }

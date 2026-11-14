@@ -110,19 +110,19 @@ const ROW_STATUS=Object.freeze({approved_internal:'Jóváhagyva – küldhető',
 const LIST_BOOKING=Object.freeze({finalized:'Véglegesítve',deposit_received:'Foglaló beérkezett',cancelled:'Lemondva'});
 const shortDay=d=>d.slice(5).replace('-','.')+'.';
 function mailboxRowLabel(row){
- const s=row.summary||{},parts=[s.name||'Név nélkül'];
+ const s=row.summary||{},parts=[(s.channel==='chat'?'💬 Chat · ':s.channel==='phone'?'📞 Telefon · ':'')+(s.name||'Név nélkül')];
  if(s.email)parts.push(s.email);
  if(s.unit)parts.push(s.unit);
  if(s.arrival&&s.departure)parts.push(s.arrival.slice(0,4)+'.'+shortDay(s.arrival)+'–'+shortDay(s.departure));
  if(Number.isInteger(s.guests))parts.push(s.guests+' fő');
- if(s.receivedAt)parts.push('levél: '+new Date(s.receivedAt).toLocaleString('hu-HU',{timeZone:'Europe/Budapest',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}));
+ if(s.receivedAt)parts.push((s.channel==='email'||!s.channel?'levél: ':'beérkezett: ')+new Date(s.receivedAt).toLocaleString('hu-HU',{timeZone:'Europe/Budapest',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}));
  const state=LIST_BOOKING[s.booking]||ROW_STATUS[row.approval];if(state)parts.push(state);
  return parts.join(' · ')+' (…'+String(row.caseId).slice(-6)+')';
 }
 function renderRows(){
  updateCounts();el('cases-title').textContent=sections[selectedSection][0]+' – tárolt tesztfoglalások';
  // Approved test-mail replies (ready to send) first, so the operator does not have to search for them.
- const visible=rows.filter(row=>row.category===selectedSection).sort((a,b)=>(b.approval==='approved_internal')-(a.approval==='approved_internal')),fragment=document.createDocumentFragment();
+ const visible=rows.filter(row=>row.category===selectedSection).sort((a,b)=>(b.approval==='approved_internal')-(a.approval==='approved_internal')||String(b.summary?.receivedAt||'').localeCompare(String(a.summary?.receivedAt||''))),fragment=document.createDocumentFragment();
  visible.forEach((row,index)=>{
   const li=document.createElement('li'),label=document.createElement('span'),button=document.createElement('button');
   // Mailbox cases keep the identity shown by the save receipt even when the list order changes.
