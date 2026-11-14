@@ -11,6 +11,7 @@ test('alternative dates require clarification instead of selecting a stay',()=>{
  const v=parse('2026-11-01 to 2026-11-03 or 2026-11-08 to 2026-11-10');
  assert.equal(v.arrival,undefined);assert.equal(v.departure,undefined);
 });
-test('inferred year is not silently promoted to confirmed server dates',()=>{
- const v=parse('November 1-3 for 2 adults');assert.equal(v.arrival,undefined);assert.equal(v.departure,undefined);
+test('a yearless date is the nearest future one (owner 2026-11-14)',()=>{
+ const v=parse('November 1-3 for 2 adults');assert.equal(v.arrival,'2026-11-01');assert.equal(v.departure,'2026-11-03');
+ const past=parse('October 1-3 for 2 adults');assert.equal(past.arrival,'2027-10-01','already past this year -> next year');
 });

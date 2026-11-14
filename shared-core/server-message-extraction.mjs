@@ -9,7 +9,9 @@ export function extractServerMessage(envelope,{previous=null}={}){
  // A follow-up "inkább június 26-tól 28-ig" (no year) in a booking whose stay is already in that year: the
  // inferred year matches the known stay, so it is a date change, not an unknown year (sweep 2026-11-12).
  const sameYear=n.dates?.inferred_year&&/^\d{4}-/.test(previous?.arrival||'')&&n.dates.arrival.slice(0,4)===previous.arrival.slice(0,4);
- if(n.dates&&(!n.dates.inferred_year||sameYear)){values.arrival=n.dates.arrival;values.departure=n.dates.departure;}
+ // Owner rule 2026-11-14: a yearless date is the nearest future one and is used as is (sameYear kept for the record).
+ void sameYear;
+ if(n.dates){values.arrival=n.dates.arrival;values.departure=n.dates.departure;}
  for(const key of ['guests','adults','children'])if(Number.isSafeInteger(n[key])&&n[key]>=0)values[key]=String(n[key]);
  if(typeof n.phone==='string'&&n.phone.trim())values.phone=n.phone;
  if(n.child_ages.length)values.child_ages=n.child_ages.join(',');

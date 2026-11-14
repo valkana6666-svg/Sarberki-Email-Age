@@ -38,7 +38,7 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
     // Held aside (not an active inquiry, the snapshot stays empty) until the booking conversation opens.
     const seen=normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized;
     if(seen.cabin&&!seen.cabin.startsWith('?'))early.cabin=seen.cabin;
-    if(seen.dates&&!seen.dates.inferred_year)early.dates=structuredClone(seen.dates);
+    if(seen.dates)early.dates=structuredClone(seen.dates); // yearless = nearest future (owner rule 2026-11-14)
     for(const key of ['guests','adults','children'])if(Number.isInteger(seen[key]))early[key]=seen[key];
     return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};
    }

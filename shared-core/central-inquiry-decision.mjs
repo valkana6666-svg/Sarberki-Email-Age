@@ -141,7 +141,8 @@ export function evaluateCentralInquiry({message='',language='hu',now=new Date(),
   if(value.status==='contradictory')contradictions.push({code:'invalid_'+field,message:'Ellentmondásos adat: '+field});
   if(value.status==='clarify')missing.push(field==='unit'?'accommodation':field);
  }
- if(dates.inferred_year===true&&datesConfirmed!==true)missing.push('dates_confirmation');
+ // Owner rule 2026-11-14: a date without a year is the nearest future one (a day already past this year -> next year);
+ // nobody books two years ahead, so the year is never asked back.
  if(n.units_open_request===true)missing.push('units_requested');
  if(n.guests>40||n.units_requested>10)contradictions.push({code:'party_or_units_out_of_range',message:'A létszám vagy egységszám kezelői pontosítást igényel.'});
  if(n.child_ages.some(age=>!Number.isInteger(age)||age<0||age>17))contradictions.push({code:'invalid_child_ages',message:'Érvényes 0–17 éves gyermekéletkor szükséges.'});

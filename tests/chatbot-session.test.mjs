@@ -80,7 +80,7 @@ const iphoneInquiry='Jó napot! November 26-tól 28-ig szeretnénk egy Deluxe fa
 test('Hungarian booking date confirmation continues the active iPhone inquiry',()=>{
  const chat=createChatInquirySession({clock:()=>now});
  const first=chat.reply(iphoneInquiry);
- assert.ok(first.decision.missing.includes('dates_confirmation'));
+ assert.ok(!first.decision.missing.includes('dates_confirmation'),'Owner rule 2026-11-14: a yearless date is the nearest future one; the year is never asked back.');
  const result=chat.reply('2026. november 26-tól 28-ig szeretnénk foglalni.');
  assert.ok(result.decision);
  assert.deepEqual(result.decision.facts.dates,{arrival:'2026-11-26',departure:'2026-11-28',inferred_year:false});

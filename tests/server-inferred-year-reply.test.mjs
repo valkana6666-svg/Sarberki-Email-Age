@@ -17,19 +17,19 @@ function serverDraft(text,n=1){
  return {data,text:buildEmailInquiryDraft(serverInquiryOptions({tenantId:'sarberki-test',caseId,data},new Date(clock()))).text};
 }
 
-test('year-less range: the reply repeats dates and party and asks to confirm the year, not for the dates',()=>{
+test('year-less range: the reply repeats dates and party and does not ask for the year (owner 2026-11-14)',()=>{
  for(const [mail,dates,party] of [['Jó napot! Május 20-23 között jönnénk 4-en egy kutyával. Tóth Éva','2027.05.20. és 2027.05.23.','4 fő'],
   ['Szia! Augusztus 1-4 között lenne szabad családi ház 6 főre? Nagy Péter','2027.08.01. és 2027.08.04.','6 fő']]){
   const {text}=serverDraft(mail);
   assert.ok(text.includes(dates),text);assert.ok(text.includes(party),text);
-  assert.match(text,/erősítse meg az érkezés és távozás évét/);
+  assert.doesNotMatch(text,/évét/);
   assert.doesNotMatch(text,/írja meg a pontos érkezési és távozási dátumot/);
  }
 });
-test('the guessed year never becomes a case fact: price still refuses until the year is confirmed',()=>{
+test('the nearest-future year becomes the case fact, so the price can be calculated (owner 2026-11-14)',()=>{
  const {data}=serverDraft('Jó napot! Május 20-23 között jönnénk 4-en. Tóth Éva',2);
- assert.equal(data.state.values.arrival,undefined);
- assert.throws(()=>quoteInputFromCase({...data.state.values,adults:'4'},'deluxe'),/PRICE_FACTS_MISSING/);
+ assert.equal(data.state.values.arrival,'2027-05-20');assert.equal(data.state.values.departure,'2027-05-23');
+ assert.doesNotThrow(()=>quoteInputFromCase({...data.state.values,adults:'4'},'deluxe'));
 });
 test('a full date with year is unchanged (stored fact, no year question)',()=>{
  const {text,data}=serverDraft('Jó napot! 2027. június 10-től 13-ig jönnénk ketten, Deluxe faházba. Kiss Anna',3);

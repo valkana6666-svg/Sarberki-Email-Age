@@ -7,11 +7,11 @@ import {serverInquiryOptions} from '../shared-core/server-inquiry-options.mjs';
 import {buildEmailInquiryDraft} from '../shared-core/inquiry-channel-adapters.mjs';
 const clock=()=>new Date('2026-11-12T09:00:00Z');
 
-test('e-mail follow-up: a yearless date change in the same year is applied; an unknown year still is not',()=>{
+test('e-mail follow-up: a yearless date is the nearest future one (owner 2026-11-14)',()=>{
  const env={text:'Bocsánat, inkább június 26-tól 28-ig jönnénk. Gyerek nincs.',received_at:'2026-11-12T09:00:00Z'};
  assert.deepEqual([extractServerMessage(env,{previous:{arrival:'2027-06-24'}}).arrival,extractServerMessage(env,{previous:{arrival:'2027-06-24'}}).departure],['2027-06-26','2027-06-28']);
- assert.equal(extractServerMessage(env).arrival,undefined,'first message: inferred year is still confirmed by the guest');
- assert.equal(extractServerMessage(env,{previous:{arrival:'2028-06-24'}}).arrival,undefined,'different year: not assumed');
+ assert.equal(extractServerMessage(env).arrival,'2027-06-26','first message: nearest future June');
+ assert.equal(extractServerMessage(env,{previous:{arrival:'2028-06-24'}}).arrival,'2027-06-26','nobody books two years ahead');
 });
 
 test('e-mail follow-up: the questions of the newest guest message are answered (pet, parking)',()=>{

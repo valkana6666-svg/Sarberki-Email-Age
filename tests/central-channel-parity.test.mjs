@@ -28,15 +28,16 @@ test('Gmail and chat envelopes yield identical central facts and decisions in fo
   assert.deepEqual(evaluateCentralInquiry({message,language,now,facts:email}),evaluateCentralInquiry({message,language,now,facts:chat}));
  }
 });
-test('missing accommodation, inferred year, adults zero and party contradiction never become ready',()=>{
- for(const changed of [{cabin:'? ismeretlen'},{dates:{arrival,departure,inferred_year:true}},
+test('missing accommodation, adults zero and party contradiction never become ready; an inferred year does (owner 2026-11-14)',()=>{
+ for(const changed of [{cabin:'? ismeretlen'},
   {adults:0,guests:0},{guests:7},{children:2,guests:4,child_ages:[7]},
   {children:1,guests:3,child_ages:[18]},{children:0,child_ages:[7]},
   {dates:{arrival:'2026-02-30',departure:'2026-03-02'}},
   {dates:{arrival:departure,departure:arrival}},{units_open_request:true}]){
   const result=evaluate({facts:{...facts,...changed}});assert.equal(result.readyForCapacityCheck,false);assert.equal(result.capacity.verified,false);
  }
- assert.equal(evaluate({facts:{...facts,dates:{arrival,departure,inferred_year:true}},datesConfirmed:true}).readyForCapacityCheck,true);
+ // Owner rule 2026-11-14: a yearless date is the nearest future one; the year is never asked back.
+ assert.equal(evaluate({facts:{...facts,dates:{arrival,departure,inferred_year:true}}}).readyForCapacityCheck,true);
  assert.equal(evaluate({facts:{...facts,dates:{arrival:'2020-01-01',departure:'2020-01-03'}}}).requiresHumanReview,true);
 });
 test('current exact selected capacity permits internal decision; missing, stale, wrong tenant/party/units do not',async()=>{

@@ -66,7 +66,7 @@ test('a reply in the case thread from the same guest is appended; facts merged; 
   const created=await ingestTestMailboxMessage({...common,messageId:THREAD});
   const caseId=created.caseId;
   let row=(await db.query('select * from sc_cases where case_id=$1',[caseId])).rows[0];
-  assert.equal(row.data.state.values.arrival,undefined,'year-less date not a fact yet');
+  assert.equal(row.data.state.values.arrival,'2027-05-20','yearless date = nearest future (owner 2026-11-14)');
   await transportFor('approver')('/rest/v1/rpc/sc_tm_decide',{method:'POST',body:{p_tenant:TENANT,p_case:caseId,p_expected:1,p_draft_hash:sha(row.data.drafts[0].text),p_decision:'approve',p_reason:null}});
   const appended=await appendTestMailboxFollowup({...common,messageId:'38f2a0b1c2d3e4a1'});
   assert.deepEqual(appended,{caseId,revision:3});
