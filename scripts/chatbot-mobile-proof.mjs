@@ -118,7 +118,7 @@ try{
   await page.waitForFunction(()=>document.getElementById('deployed_version')?.dataset.versionState==='current');
   assert.ok((await page.locator('#deployed_version').innerText()).includes(loadedCommit.slice(0,12)));
   report.checks.push({engine,test:'bfcache-stale-version-warning-and-explicit-refresh',result:'PASS'});
-  await page.locator('#operator_panel summary').click();
+  await page.locator('#operator_panel > summary').click();
   const configBefore=unavailableConfigReads;
   await page.locator('#operator_email').fill('mobile-operator@synthetic.invalid');await page.locator('#operator_password').fill('synthetic-password-for-offline-proof');
   await page.locator('#operator_login button[type=submit]').click();
@@ -129,7 +129,7 @@ try{
   for(const id of ['server_chat_reply','server_operator_hu','server_guest_draft']){assert.equal(await page.locator('#'+id).inputValue(),'');assert.equal(await page.locator('#'+id).getAttribute('readonly')!==null,true);}
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   report.checks.push({engine,test:'unavailable-config-and-unauthenticated-server-data-remain-unverified',result:'PASS'});
-  await page.locator('#operator_panel summary').click();
+  await page.locator('#operator_panel > summary').click();
   await page.locator('#language').selectOption('en');await page.locator('#resetChat').click();
   await submit('Is a Deluxe cabin available from 2026-11-13 to 2026-11-15?');
   assert.match(await page.locator('.operator-review').last().innerText(),/felnőtt/);

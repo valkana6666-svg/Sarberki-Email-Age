@@ -1,6 +1,7 @@
 import {createChatInquirySession} from './chat-session.mjs';
 import {renderChatbotIntent} from '../chatbot-v1.mjs';
 import {REQUEST_TEXT,requestFacts} from './chat-request-client.mjs';
+import {nameFromText} from '../sarberki-core.mjs';
 
 // The audience is chosen by the host, never by a guest-controlled URL parameter.
 // Guest rendering never inserts operator review text or server controls.
@@ -20,6 +21,9 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
   if(box.dataset.sent==='1')return;
   const title=document.createElement('strong');title.textContent=t.title;
   const label=document.createElement('label');label.textContent=t.phone;const phone=document.createElement('input');phone.type='tel';phone.maxLength=24;phone.autocomplete='tel';label.append(phone);
+  // Owner 2026-11-14: the guest's name (prefilled from a signature like "Üdv: Kiss Anna") and e-mail too.
+  const nlabel=document.createElement('label');nlabel.textContent=t.name;const pname=document.createElement('input');pname.type='text';pname.maxLength=80;pname.autocomplete='name';
+  pname.value=said.map(m=>nameFromText(m)).filter(Boolean).at(-1)||'';nlabel.append(pname);
   // Owner 2026-11-14: e-mail too, so the confirmation and the voucher can go out by e-mail.
   const elabel=document.createElement('label');elabel.textContent=t.email;const mail=document.createElement('input');mail.type='email';mail.maxLength=254;mail.autocomplete='email';elabel.append(mail);
   const consent=document.createElement('label');const check=document.createElement('input');check.type='checkbox';consent.append(check,document.createTextNode(' '+t.consent));
@@ -30,11 +34,11 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
   for(const x of [phone,mail,check])x.addEventListener('input',()=>{send.disabled=!valid();});check.addEventListener('change',()=>{send.disabled=!valid();});
   send.addEventListener('click',async()=>{
    if(!valid())return;send.disabled=true;
-   const ok=await requestSender({facts:requestFacts(session.snapshot()),phone:phone.value.trim(),email:mail.value.trim(),language:session.language,transcript:said.slice(-12)});
+   const ok=await requestSender({facts:requestFacts(session.snapshot()),phone:phone.value.trim(),email:mail.value.trim(),name:pname.value.trim(),language:session.language,transcript:said.slice(-12)});
    if(ok){box.dataset.sent='1';box.replaceChildren(Object.assign(document.createElement('p'),{textContent:t.sent}));}
    else{result.textContent=t.fail;send.disabled=false;}
   });
-  box.replaceChildren(title,label,elabel,consent,send,note,result);
+  box.replaceChildren(title,nlabel,label,elabel,consent,send,note,result);
  }
  if(box){box.className='chat-request';box.hidden=true;log.after(box);}
  function append(who,text,lang,review=''){

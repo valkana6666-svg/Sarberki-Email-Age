@@ -277,7 +277,9 @@ async function openTestMailboxCase(caseId,turn,status){
  const reqMail=typeof record.values?.email==='string'&&record.values.email?record.values.email:'';
  const chName=record.channel==='phone'?'telefon (AI-recepciós)':'chat';
  const source=record.channel==='phone'||record.channel==='chat'?'Forrás: '+chName+(reqMail?' – e-mail: '+reqMail+'; a jóváhagyott levél a „Küldés e-mailben” gombbal megy ki (új levélként).\n':' – e-mail-cím nincs: válasz visszahívással; a levél a „Jóváhagyott szöveg másolása” gombbal másolható.\n'):'';
- el('detail-status').textContent=source+(status||tmStatus[record.approval]);
+ // Chat/phone (owner 2026-11-14): the approved letter goes out by e-mail (if given) or is copied - not 'Válasz küldése'.
+ const chanApproved=(record.channel==='phone'||record.channel==='chat')&&record.approval==='approved_internal'&&!status?'Belső jóváhagyás mentve. '+(reqMail?'A levél a „Küldés e-mailben” gombbal küldhető (csak a tesztcímre).':'A levél a „Jóváhagyott szöveg másolása” gombbal másolható; a vendéget hívd vissza.'):null;
+ el('detail-status').textContent=source+(chanApproved||status||tmStatus[record.approval]);
  el('detail-draft').textContent=record.draft.text;
  el('detail-summary').textContent=reviewSummary(record.draft.text,record.draft.operatorReviewText);
  el('detail-capacity').textContent=record.previoRead===true
@@ -533,7 +535,7 @@ el('oneclick-go').addEventListener('click',()=>{
  const unitPart=o.units.length>1?{unit:o.units[0],units:o.units}:{unit:o.units[0]};
  el('oneclick-confirm').disabled=true;
  bookingAction('oneclick-go',{action:'test-mailbox-oneclick',...unitPart,previewHash:o.previewHash,oneClickConfirmed:true},
-  r=>'Kész: a Previo-tesztben opció rögzítve, a visszaigazoló levél '+(r.approved?'elkészült és JÓVÁHAGYVA – a „Válasz küldése” gombbal küldhető.':'elkészült, de a jóváhagyás nem sikerült – hagyd jóvá a szokott gombbal.')+(r.deposit?' Foglaló: '+huf(r.deposit.amount)+' Ft.':''));
+  r=>'Kész: a Previo-tesztben opció rögzítve, a visszaigazoló levél '+(r.approved?'elkészült és JÓVÁHAGYVA – a levél alatti küldés gombbal küldhető.':'elkészült, de a jóváhagyás nem sikerült – hagyd jóvá a szokott gombbal.')+(r.deposit?' Foglaló: '+huf(r.deposit.amount)+' Ft.':''));
 });
 el('deposit-mark').addEventListener('click',()=>bookingAction('deposit-mark',{action:'test-mailbox-deposit',receivedOn:el('deposit-date').value,depositConfirmed:el('deposit-confirm').checked},
  r=>'Foglaló beérkezése rögzítve.'+(r.previoSync==='confirmed'?' A Previo-tesztben megerősítve (zöld).':r.previoSync==='confirm_failed'?' FIGYELEM: a Previo-megerősítés nem sikerült – nézd meg a Previóban.':'')));

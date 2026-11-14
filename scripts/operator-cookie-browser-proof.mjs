@@ -71,7 +71,7 @@ export async function runOperatorCookieBrowserProof({browser,engine,root,report}
   });
  };
  let context,page;
- const open=async()=>{page=await context.newPage();await page.goto(origin+'/sarberki-chatbot-project/index.html');await page.locator('#operator_panel summary').click();};
+ const open=async()=>{page=await context.newPage();await page.goto(origin+'/sarberki-chatbot-project/index.html');await page.locator('#operator_panel > summary').click();};
  const authenticated=()=>page.locator('#operator_status').filter({hasText:'Hitelesített tartós'}).waitFor();
  const login=async()=>{await page.locator('#operator_email').fill('reader@synthetic.invalid');await page.locator('#operator_password').fill('SYNTHETIC_BROWSER_PASSWORD_NOT_A_REAL_CREDENTIAL');await page.locator('#operator_login button').click();await authenticated();};
  try{
@@ -80,7 +80,7 @@ export async function runOperatorCookieBrowserProof({browser,engine,root,report}
   assert.equal(await page.evaluate(()=>document.cookie.includes('__Host-sarberki-operator')),false);
   assert.equal(await page.evaluate(()=>localStorage.length+sessionStorage.length),0);assert.equal(await page.locator('#operator_password').inputValue(),'');
   report.checks.push({engine,test:'persistent-HttpOnly-Secure-Strict-cookie-no-browser-token-storage',result:'PASS',authTransport:'synthetic',netlifyEventTransport:'synthetic'});
-  await page.reload();await page.locator('#operator_panel summary').click();await authenticated();assert.equal(state.login,1);
+  await page.reload();await page.locator('#operator_panel > summary').click();await authenticated();assert.equal(state.login,1);
   const savedState=await context.storageState();await context.close();
   context=await browser.newContext({storageState:savedState,viewport:{width:390,height:844},isMobile:true,hasTouch:true});await install(context);await open();await authenticated();assert.equal(state.login,1);assert.ok(state.refresh>=2);
   report.checks.push({engine,test:'reload-and-new-browser-context-restore-without-password',result:'PASS',actualIPhoneVerified:false});
@@ -88,11 +88,11 @@ export async function runOperatorCookieBrowserProof({browser,engine,root,report}
   assert.ok(state.caseReads>=2);assert.match(await page.locator('#server_operator_hu').inputValue(),/nem igazolt/);assert.equal(await page.locator('#server_guest_draft').inputValue(),'');
   report.checks.push({engine,test:'cookie-Auth-membership-case-GET-common-preview-unknown-evidence-remains-blocked',result:'PASS',restTransport:'synthetic'});
   state.revoked=true;const reads=state.caseReads;
-  await page.reload();await page.locator('#operator_panel summary').click();await page.locator('#operator_status').filter({hasText:'Új bejelentkezés szükséges'}).waitFor();
+  await page.reload();await page.locator('#operator_panel > summary').click();await page.locator('#operator_status').filter({hasText:'Új bejelentkezés szükséges'}).waitFor();
   await page.locator('#server_case_id').fill('case-synthetic');await page.locator('#server_case_load').click();await page.locator('#server_data_status').filter({hasText:'Szerveres adat nem igazolt'}).waitFor();assert.equal(state.caseReads,reads);
   await login();await page.locator('#operator_logout').click();await page.locator('#operator_status').filter({hasText:'Kijelentkezve.'}).waitFor();assert.equal(state.logout,1);
   assert.equal((await context.cookies()).some(c=>c.name===cookieName),false);
-  await page.reload();await page.locator('#operator_panel summary').click();await page.locator('#operator_status').filter({hasText:'Új bejelentkezés szükséges'}).waitFor();
+  await page.reload();await page.locator('#operator_panel > summary').click();await page.locator('#operator_status').filter({hasText:'Új bejelentkezés szükséges'}).waitFor();
   assert.equal(await page.locator('#server_chat_reply').inputValue(),'');
   report.checks.push({engine,test:'revoked-refresh-and-explicit-logout-prevent-readback-and-reopening',result:'PASS'});
   // Two tabs share the browser's native cookie jar. This raw, older-tab request
