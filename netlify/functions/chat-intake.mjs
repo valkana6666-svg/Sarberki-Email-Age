@@ -34,10 +34,11 @@ export function createChatIntakeHandler({env=process.env,fetchImpl=fetch,random=
   try{
    const r=await fetchImpl(TEST_PROJECT+'/auth/v1/token?grant_type=password',{method:'POST',redirect:'error',signal:AbortSignal.timeout(10000),
     headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json'},body:JSON.stringify({email:env.INTAKE_ACCOUNT_EMAIL,password:env.INTAKE_ACCOUNT_PASSWORD})});
-   if(!r.ok)return json(503,{error:'TRY_LATER'});
+   // stage (TEST diagnostics, owner switch-on 2026-11-14): which step failed - no detail, no secret.
+   if(!r.ok)return json(503,{error:'TRY_LATER',stage:'auth-'+r.status});
    token=(await r.json())?.access_token;
-  }catch{return json(503,{error:'TRY_LATER'});}
-  if(typeof token!=='string'||!token)return json(503,{error:'TRY_LATER'});
+  }catch{return json(503,{error:'TRY_LATER',stage:'auth-network'});}
+  if(typeof token!=='string'||!token)return json(503,{error:'TRY_LATER',stage:'auth-token'});
   try{
    const transport=createSupabaseTransport({url:TEST_PROJECT+'/',publishableKey:env.SUPABASE_PUBLISHABLE_KEY,token,fetchImpl});
    await createIntakeRequest({channel:'chat',externalId,facts:{...input.facts,phone:input.phone.trim(),language:input.language},summary,
@@ -46,7 +47,7 @@ export function createChatIntakeHandler({env=process.env,fetchImpl=fetch,random=
    return json(200,{status:'sent'});
   }catch(error){
    // A limit hit and a storage failure look the same to the visitor: "try later" (no detail leaks).
-   return json(error?.code==='INVALID_INPUT'?400:503,{error:error?.code==='INVALID_INPUT'?'INVALID_INPUT':'TRY_LATER'});
+   return json(error?.code==='INVALID_INPUT'?400:503,{error:error?.code==='INVALID_INPUT'?'INVALID_INPUT':'TRY_LATER',stage:'store-'+(['FORBIDDEN','STORAGE_FAILURE','SETUP_REQUIRED','INVALID_EVIDENCE'].includes(error?.code)?error.code:'other')});
   }
  };
 }

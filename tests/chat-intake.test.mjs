@@ -36,7 +36,7 @@ test('creates the request through the intake account; the IP is only a keyed fin
  assert.equal(rpc.body.p_data.state.values.phone,'+36 30 000 0000');assert.equal(rpc.body.p_data.state.values.unit,'Deluxe');
  assert.ok(!calls.some(c=>c.url.includes('previo')),'no Previo read from the public path');
  const down=await createChatIntakeHandler({env,fetchImpl:async(url)=>String(url).includes('token')?new Response(JSON.stringify({access_token:'j'})):new Response('{"message":"limit detail"}',{status:400})})(req());
- assert.equal(down.status,503);assert.deepEqual(await down.json(),{error:'TRY_LATER'});
+ assert.equal(down.status,503);const body=await down.json();assert.equal(body.error,'TRY_LATER');assert.match(body.stage,/^store-/);assert.doesNotMatch(JSON.stringify(body),/limit detail/,'no provider detail leaks');
 });
 
 test('chat facts -> request facts only when dates, adults and a cabin type are known',()=>{
