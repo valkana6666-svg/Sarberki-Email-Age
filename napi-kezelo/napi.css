@@ -15,3 +15,5 @@ body.simple [data-detail],body.simple .muted:not(.note){display:none!important}.
 
 /* Owner 2026-11-14: chatbot / phone requests clearly set apart in the case list. */
 #case-list li.row-chat{border-left:5px solid #3fa7ff;background:#10202e;padding-left:10px;border-radius:8px}#case-list li.row-phone{border-left:5px solid #45c46b;background:#12241a;padding-left:10px;border-radius:8px}
+/* Owner 2026-11-14: one icon is enough - switch between the daily view and the chatbot. */
+.app-switch{display:inline-block;padding:8px 12px;border:1px solid #5d5750;border-radius:9px;color:var(--orange);text-decoration:none;font-weight:700;white-space:nowrap}
