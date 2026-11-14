@@ -73,8 +73,16 @@ export async function sendApprovedTestMailboxReply({record,token,fetchImpl=globa
  };
  const profile=await call('/profile');
  if(String(profile?.emailAddress||'').toLowerCase()!==TEST_GMAIL_ACCOUNT)fail('WRONG_GMAIL_ACCOUNT');
- // A new e-mail has no thread to check: the DB send ledger is the only duplicate guard, so it is required.
- if(reply.mode==='new'&&!ledger)fail('SEND_LEDGER_REQUIRED');
+ // A new e-mail has no thread: its duplicate guard is the same X-Sarberki-Reply marker searched among the sent
+ // messages to that address (plus the DB ledger when it is on). A failed search sends nothing.
+ if(reply.mode==='new'){
+  const list=await call('/messages?q='+encodeURIComponent('in:sent to:'+reply.recipient+' newer_than:90d')+'&maxResults=50');
+  for(const m of list?.messages||[]){
+   if(!/^[A-Za-z0-9_-]{1,256}$/.test(String(m?.id||'')))continue;
+   const msg=await call('/messages/'+m.id+'?format=metadata&metadataHeaders=X-Sarberki-Reply');
+   if((msg?.payload?.headers||[]).some(h=>String(h?.name).toLowerCase()==='x-sarberki-reply'&&h.value===reply.marker))return {status:'already_sent'};
+  }
+ }
  if(reply.mode!=='new'){
   const thread=await call('/threads/'+encodeURIComponent(reply.threadId)+'?format=metadata&metadataHeaders=X-Sarberki-Reply');
   const already=(thread?.messages||[]).some(m=>(m?.payload?.headers||[]).some(h=>String(h?.name).toLowerCase()==='x-sarberki-reply'&&h.value===reply.marker));

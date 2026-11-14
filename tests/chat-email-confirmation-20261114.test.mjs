@@ -28,13 +28,19 @@ test('chat request: e-mail accepted (with or without phone), invalid e-mail refu
 
 const chatRecord=(email)=>{const text='Kedves Vendégünk!\n\nVOUCHER …';return {caseId:'tm-aaaaaaaaaaaaaaaa',revision:3,data:{sourceReceipt:{provider:'chat',external_id:'chat_x'},
  state:{approval:'approved_internal',values:{language:'hu',...(email?{email}:{})}},internalApproval:{scope:'test-mailbox-v1',draftHash:sha(text)},drafts:[{text}]}};};
-test('chat case: new e-mail only to the test pair; no e-mail -> NO_EMAIL; no ledger -> nothing sent',async()=>{
+test('chat case: new e-mail only to the test pair; no e-mail -> NO_EMAIL; already sent -> not again',async()=>{
  assert.equal(approvedTestMailboxReply(chatRecord('valkana6666@gmail.com')).mode,'new');
  assert.throws(()=>approvedTestMailboxReply(chatRecord('vendeg@example.test')),/RECIPIENT_NOT_ALLOWED/);
  assert.throws(()=>approvedTestMailboxReply(chatRecord(null)),/NO_EMAIL/);
  const calls=[];const fetchImpl=async(url,o={})=>{calls.push({url:String(url),body:o.body});return new Response(JSON.stringify(String(url).endsWith('/profile')?{emailAddress:'sarberkiprojecttest@gmail.com'}:{id:'m1'}));};
- await assert.rejects(sendApprovedTestMailboxReply({record:chatRecord('valkana6666@gmail.com'),token:'t'.repeat(40),fetchImpl}),/SEND_LEDGER_REQUIRED/);
- assert.ok(!calls.some(c=>c.url.includes('/messages/send')),'nothing sent without the ledger');
+ // Already sent (marker found among the sent messages to that address): nothing is sent again.
+ const rec=chatRecord('valkana6666@gmail.com'),marker=rec.caseId+':'+sha(rec.data.drafts[0].text);
+ const dupFetch=async(url)=>{const u=String(url);calls.push({url:u});
+  if(u.endsWith('/profile'))return new Response(JSON.stringify({emailAddress:'sarberkiprojecttest@gmail.com'}));
+  if(u.includes('/messages?q='))return new Response(JSON.stringify({messages:[{id:'old1'}]}));
+  return new Response(JSON.stringify({payload:{headers:[{name:'X-Sarberki-Reply',value:marker}]}}));};
+ assert.equal((await sendApprovedTestMailboxReply({record:rec,token:'t'.repeat(40),fetchImpl:dupFetch})).status,'already_sent');
+ assert.ok(!calls.some(c=>c.url.includes('/messages/send')),'not sent twice');
  const ledger={claim:async()=>({status:'claimed',claimId:'c1'}),finish:async()=>true};
  const r=await sendApprovedTestMailboxReply({record:chatRecord('valkana6666@gmail.com'),token:'t'.repeat(40),fetchImpl,ledger});
  assert.equal(r.status,'sent');
