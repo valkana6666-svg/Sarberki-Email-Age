@@ -21,10 +21,20 @@ const refused=code=>{const error=Error(code);error.code=code;error.notSent=true;
 const headerSafe=value=>typeof value==='string'&&value.length>0&&value.length<=2000&&!/[\r\n]/.test(value);
 
 // Pure checks on the stored case: approved, approved hash == latest draft, fixed test pair, valid thread.
+// Chat/phone requests (owner 2026-11-14) have no Gmail thread: the approved text goes out as a NEW e-mail to the
+// address the guest gave in the request - in TEST only to the fixed test pair - and only with the DB send ledger.
 export function approvedTestMailboxReply(record){
  const data=record?.data,latest=data?.drafts?.at?.(-1),src=data?.sourceReceipt;
  if(data?.state?.approval!=='approved_internal'||data?.internalApproval?.scope!=='test-mailbox-v1')fail('NOT_APPROVED');
  if(typeof latest?.text!=='string'||!latest.text.trim()||data.internalApproval.draftHash!==sha(latest.text))fail('NOT_APPROVED');
+ if(['chat','phone'].includes(src?.provider)){
+  const recipient=String(data?.state?.values?.email||'').toLowerCase();
+  if(!recipient)fail('NO_EMAIL');
+  if(!ALLOWED_TEST_REPLY_RECIPIENTS.includes(recipient))fail('RECIPIENT_NOT_ALLOWED');
+  const lang=data?.state?.values?.language;
+  const subject={de:'Sárberki Horgásztó – Ihre Anfrage',en:'Sárberki Horgásztó – your request',si:'Sárberki Horgásztó – vaše povpraševanje'}[lang]||'Sárberki Horgásztó – foglalási igénye';
+  return {mode:'new',recipient,text:latest.text,threadId:null,inReplyTo:null,subject,marker:record.caseId+':'+sha(latest.text),draftHash:sha(latest.text)};
+ }
  const recipient=String(src?.from_email||'').toLowerCase();
  if(!ALLOWED_TEST_REPLY_RECIPIENTS.includes(recipient)||src?.to!==TEST_GMAIL_ACCOUNT)fail('RECIPIENT_NOT_ALLOWED');
  if(!/^[A-Za-z0-9_-]{1,256}$/.test(String(src.thread_id||''))||!headerSafe(src.rfc_message_id)||!headerSafe(src.subject||'x'))fail('SOURCE_UNVERIFIED');
@@ -34,6 +44,10 @@ export function approvedTestMailboxReply(record){
  return {recipient,text:latest.text,threadId:src.thread_id,inReplyTo,subject:String(src.subject||''),marker,draftHash:sha(latest.text)};
 }
 
+export function newMessageMime({recipient,text,subject,marker}){
+ return ['From: '+TEST_GMAIL_ACCOUNT,'To: '+recipient,'Subject: =?UTF-8?B?'+b64(subject)+'?=','X-Sarberki-Reply: '+marker,'MIME-Version: 1.0',
+  'Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',b64(text.replace(/\r?\n/g,'\r\n')).replace(/.{76}/g,'$&\r\n')].join('\r\n');
+}
 export function replyMime({recipient,text,subject,inReplyTo,marker}){
  // A mail without subject is stored as '(nincs tárgy)'; the reply then carries a bare 'Re:' (same thread).
  const base=subject.trim()==='(nincs tárgy)'?'':subject.trim();
@@ -59,9 +73,13 @@ export async function sendApprovedTestMailboxReply({record,token,fetchImpl=globa
  };
  const profile=await call('/profile');
  if(String(profile?.emailAddress||'').toLowerCase()!==TEST_GMAIL_ACCOUNT)fail('WRONG_GMAIL_ACCOUNT');
- const thread=await call('/threads/'+encodeURIComponent(reply.threadId)+'?format=metadata&metadataHeaders=X-Sarberki-Reply');
- const already=(thread?.messages||[]).some(m=>(m?.payload?.headers||[]).some(h=>String(h?.name).toLowerCase()==='x-sarberki-reply'&&h.value===reply.marker));
- if(already)return {status:'already_sent'};
+ // A new e-mail has no thread to check: the DB send ledger is the only duplicate guard, so it is required.
+ if(reply.mode==='new'&&!ledger)fail('SEND_LEDGER_REQUIRED');
+ if(reply.mode!=='new'){
+  const thread=await call('/threads/'+encodeURIComponent(reply.threadId)+'?format=metadata&metadataHeaders=X-Sarberki-Reply');
+  const already=(thread?.messages||[]).some(m=>(m?.payload?.headers||[]).some(h=>String(h?.name).toLowerCase()==='x-sarberki-reply'&&h.value===reply.marker));
+  if(already)return {status:'already_sent'};
+ }
  let claimId=null;
  if(ledger){
   const claim=await ledger.claim({draftHash:reply.draftHash}).catch(error=>fail(error?.code==='FORBIDDEN'?'FORBIDDEN':'STORAGE_FAILURE'));
@@ -72,7 +90,7 @@ export async function sendApprovedTestMailboxReply({record,token,fetchImpl=globa
  }
  let sent;
  try{
-  sent=await call('/messages/send',{method:'POST',body:JSON.stringify({raw:b64url(replyMime(reply)),threadId:reply.threadId})});
+  sent=await call('/messages/send',{method:'POST',body:JSON.stringify(reply.mode==='new'?{raw:b64url(newMessageMime(reply))}:{raw:b64url(replyMime(reply)),threadId:reply.threadId})});
   if(typeof sent?.id!=='string')fail('SEND_FAILED');
  }catch(error){
   // Best effort: a failed finish leaves the row in 'sending', which also blocks any automatic resend.

@@ -60,7 +60,7 @@ export function syntheticCaseSummaries(records,exactReceipt=null){
   .map(row=>({tenantId:'sarberki-test',caseId:row.caseId,revision:row.revision})).slice(0,100);
 }
 // Fixed public codes for the test-mailbox action; anything else becomes STORAGE_FAILURE.
-const TEST_MAILBOX_ERRORS=Object.freeze({GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACCOUNT:403,FORBIDDEN:403,GMAIL_RATE_LIMITED:429,INVALID_INPUT:400,
+const TEST_MAILBOX_ERRORS=Object.freeze({NO_EMAIL:409,SEND_LEDGER_REQUIRED:503,GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACCOUNT:403,FORBIDDEN:403,GMAIL_RATE_LIMITED:429,INVALID_INPUT:400,
  GMAIL_SOURCE_UNVERIFIED:422,NOT_MARKED_TEST_MESSAGE:422,NOT_TEST_PAIR_INQUIRY:422,REPLY_HANDLED_IN_GMAIL:422,NOT_A_FOLLOWUP:422,FOLLOWUP_CASE_NOT_FOUND:404,ALREADY_IN_CASE:409,LIVE_MAILBOX_READER_PENDING:503,AUTOMATED_MESSAGE:422,REPLY_NOT_ALLOWED:422,NOT_ADDRESSED_TO_TEST_MAILBOX:422,INVALID_SENDER:422,MESSAGE_ID_REQUIRED:422,
  TEXT_PART_REQUIRED:422,EMPTY_TEXT:422,TEXT_TOO_LONG:422,UNREADABLE_TEXT:422,INVALID_DRAFT:422,STORAGE_FAILURE:503,
  NOT_APPROVED:409,RECIPIENT_NOT_ALLOWED:403,SOURCE_UNVERIFIED:422,SEND_FAILED:502,SEND_OUTCOME_UNKNOWN:409,CASE_CONFLICT:409,
@@ -341,7 +341,8 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
       const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
       if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
       // Phone/chat requests (V3-1) have no Gmail thread: the operator answers by phone or a new e-mail.
-      if(record.data.sourceReceipt?.provider!=='gmail')return cookieResponse(409,{error:'NOT_EMAIL_CASE'});
+      // Owner 2026-11-14: a chat/phone request with an e-mail address gets the approved text as a new e-mail.
+      if(record.data.sourceReceipt?.provider!=='gmail'&&!record.data.state?.values?.email)return cookieResponse(409,{error:'NOT_EMAIL_CASE'});
       if(record.revision!==input.expectedRevision)return cookieResponse(409,{error:'CASE_CONFLICT'});
       // Owner switch: with the DB send ledger installed (deployment/test-mailbox/send-ledger.sql) every send is
       // claimed atomically under the approver's own session; if the ledger is required but missing, nothing is sent.

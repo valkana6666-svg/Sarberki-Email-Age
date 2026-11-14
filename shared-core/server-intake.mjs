@@ -49,6 +49,8 @@ export function intakeValues(facts={}){
  if(typeof facts.cabin==='string'&&CABINS[facts.cabin])v.unit=CABINS[facts.cabin];
  if(int(facts.units,1,6))v.units_requested=String(facts.units);
  if(typeof facts.phone==='string'&&/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(facts.phone.trim()))v.phone=facts.phone.trim();
+ // Owner 2026-11-14: the chat request carries an e-mail address too (confirmation + voucher by e-mail).
+ if(typeof facts.email==='string'&&/^[^\s@<>"(),;:]{1,64}@[^\s@<>"(),;:]{1,190}\.[A-Za-z]{2,}$/.test(facts.email.trim()))v.email=facts.email.trim().toLowerCase();
  if(typeof facts.name==='string'&&/^[\p{L}][\p{L} .'-]{0,78}$/u.test(facts.name.trim()))v.name=facts.name.trim();
  v.language=LANGS.includes(facts.language)?facts.language:'hu';
  return v;
@@ -97,7 +99,7 @@ export async function createIntakeRequest({channel,externalId,facts,summary,tran
  // A reply-quote header ("… ezt írta:", "… wrote:") would make the engine drop everything after it as an old quoted
  // letter (found 2026-11-12): neutralise such markers in the agent/chat summary.
  summary=summary.replace(/(ezt írta|írta|wrote|schrieb|je napisal|je napisala)\s*:/giu,'$1 –');
- const text=`${label}\n\n${summary.trim()}${v.phone?'\nTelefon: '+v.phone:''}${v.name?'\nNév: '+v.name:''}`;
+ const text=`${label}\n\n${summary.trim()}${v.phone?'\nTelefon: '+v.phone:''}${v.email?'\nE-mail: '+v.email:''}${v.name?'\nNév: '+v.name:''}`;
  const envelope={mailbox_id:'intake:'+channel,message_id:externalId,thread_id:externalId,rfc_message_id:'<'+externalId+'@intake>',
   sender:'intake:'+channel,received_at:at,text};
  let saved;

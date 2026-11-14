@@ -141,7 +141,8 @@ export async function confirmTestMailboxBooking({record,previoReference,previoRe
   // Option expiry = the deposit deadline of this very confirmation (pure; computed before the write).
   const deadline=buildBookingConfirmation({values,quote,previo:{reference:'V2-0',recordedAt:clock()},language}).deposit.receiptDeadlineUtc;
   // Contact data only from the fictional test-pair sender (AGENTS: no real guest data on TEST); phone if extracted.
-  const email=senderAddress(record.data?.sender);
+  // Chat/phone requests (owner 2026-11-14): the e-mail the guest gave in the request; TEST: test pair only.
+  const email=['chat','phone'].includes(record.data?.sourceReceipt?.provider)?String(values.email||'').toLowerCase():senderAddress(record.data?.sender);
   const contact=sentContact=isTestGuestSender(email)?{email,phone:/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(String(values.phone||'').trim())?String(values.phone).trim():null}:null;
   previoCreated=await previoWriter.createOption({tenantId:record.tenantId,caseId:record.caseId,values,cabin,unit,
    ...(list.length>1?{units:list,parties:quote.unitBreakdown.map(b=>({adults:b.adults,children:b.children}))}:{}),
