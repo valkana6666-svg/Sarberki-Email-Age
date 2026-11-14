@@ -81,7 +81,7 @@ try{
   const rw=byWriter.json?.result,ra=byApprover.json?.result;
   const shape=r=>r?.caseId===row.caseId&&r.revision===row.revision&&/^[a-f0-9]{64}$/.test(r.draft?.hash||'')&&
    Array.isArray(r.decisions)&&r.internalApproval?.sendAllowed!==true&&r.internalApproval?.bookingAllowed!==true;
-  check('record '+row.caseId,byWriter.status===200&&byApprover.status===200&&shape(rw)&&shape(ra)&&rw.approval===ra.approval&&rw.draft.hash===ra.draft.hash,
+  check('record '+row.caseId+' ['+byWriter.status+'/'+byApprover.status+']',byWriter.status===200&&byApprover.status===200&&shape(rw)&&shape(ra)&&rw.approval===ra.approval&&rw.draft.hash===ra.draft.hash,
    {revision:rw?.revision,approval:rw?.approval});
   check('writer cannot decide '+row.caseId,rw?.canDecide===false);
   if(ra?.approval!=='pending')check('no decision outside pending '+row.caseId,ra?.canDecide===false);
