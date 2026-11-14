@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sárberki</title>
+<!-- Owner 2026-11-14: one launcher icon (phone, tablet, computer) with the Sárberki logo, royal blue,
+     opening the daily operator view and the chatbot. Static page: no data, no login here. -->
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#12318f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sárberki">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="./icons/icon-192.png">
+<style>
+:root{--blue:#12318f;--blue2:#2a56d6;--orange:#ff7a00;--text:#fff}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{min-height:100vh;background:radial-gradient(circle at 50% 20%,var(--blue2),var(--blue) 65%);color:var(--text);
+ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;display:flex;flex-direction:column;align-items:center;
+ padding:max(24px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
+.logo{width:min(78vw,520px);height:auto;margin:12px 0 4px}
+h1{margin:0 0 4px;font-size:clamp(22px,4vw,34px);letter-spacing:.04em}
+.sub{margin:0 0 28px;opacity:.85;font-size:clamp(14px,2.4vw,18px)}
+.tiles{display:grid;grid-template-columns:1fr;gap:16px;width:min(100%,820px)}
+@media (min-width:640px){.tiles{grid-template-columns:1fr 1fr}}
+a.tile{display:flex;flex-direction:column;gap:6px;padding:24px 22px;border-radius:18px;text-decoration:none;color:var(--text);
+ background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.25);min-height:150px;transition:transform .1s,background .1s}
+a.tile:hover,a.tile:focus-visible{background:rgba(255,255,255,.18);transform:translateY(-2px);outline:none;border-color:var(--orange)}
+a.tile .ico{font-size:40px;line-height:1}
+a.tile .name{font-size:clamp(22px,3.4vw,28px);font-weight:800}
+a.tile .desc{opacity:.85;font-size:15px}
+.badge{display:inline-block;margin-top:24px;padding:4px 12px;border:1px solid rgba(255,255,255,.4);border-radius:999px;font-size:13px;letter-spacing:.12em;opacity:.8}
+</style>
+</head>
+<body>
+<img class="logo" src="./logo.svg" alt="Sárberki Horgásztó · Lenti">
+<h1>Sárberki Horgásztó</h1>
+<p class="sub">Foglalások és vendégkapcsolat egy helyen</p>
+<nav class="tiles">
+ <a class="tile" href="../napi-kezelo/"><span class="ico">📋</span><span class="name">Napi kezelő</span><span class="desc">Beérkezett levelek és chates igények, válaszok, foglalás egy kattintással</span></a>
+ <a class="tile" href="../sarberki-chatbot-project/"><span class="ico">💬</span><span class="name">Chatbot</span><span class="desc">A vendég chatbotja – kipróbálás, szabad hely, foglalási igény</span></a>
+</nav>
+<span class="badge">TESZT</span>
+</body>
+</html>
