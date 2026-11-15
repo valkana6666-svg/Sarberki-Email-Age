@@ -31,16 +31,20 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
   const consent=document.createElement('label');const check=document.createElement('input');check.type='checkbox';consent.append(check,document.createTextNode(' '+t.consent));
   const send=document.createElement('button');send.type='button';send.textContent=t.send;send.disabled=true;
   const note=document.createElement('p');note.textContent=t.note;const result=document.createElement('p');result.setAttribute('role','status');
-  const phoneOk=()=>/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(phone.value.trim()),mailOk=()=>/^[^\s@<>"(),;:]{1,64}@[^\s@<>"(),;:]{1,190}\.[A-Za-z]{2,}$/.test(mail.value.trim());
+  const phoneOk=()=>/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(phone.value.trim()),mailVal=()=>mail.value.trim().replace(/[.,;]+$/u,''),mailOk=()=>/^[^\s@<>"(),;:]{1,64}@[^\s@<>"(),;:]{1,190}\.[A-Za-z]{2,}$/.test(mailVal());
+  // Owner iPhone test 2026-11-15: iOS adds a trailing "." (double space) - it is dropped; a wrong address is explained.
+  const hint=document.createElement('p');hint.className='chat-hint';hint.setAttribute('role','status');
+  const explain=()=>{hint.textContent=mail.value.trim()&&!mailOk()?t.emailBad:phone.value.trim()&&!phoneOk()?t.phoneBad:'';};
   const valid=()=>check.checked&&(phoneOk()||mailOk())&&(!phone.value.trim()||phoneOk())&&(!mail.value.trim()||mailOk());
+  mail.addEventListener('blur',()=>{if(mailOk())mail.value=mailVal();explain();});for(const x of [phone,mail])x.addEventListener('input',explain);
   for(const x of [phone,mail,check])x.addEventListener('input',()=>{send.disabled=!valid();});check.addEventListener('change',()=>{send.disabled=!valid();});
   send.addEventListener('click',async()=>{
    if(!valid())return;send.disabled=true;
-   const ok=await requestSender({facts:requestFacts(session.snapshot()),phone:phone.value.trim(),email:mail.value.trim(),name:pname.value.trim(),language:session.language,transcript:said.slice(-12)});
+   const ok=await requestSender({facts:requestFacts(session.snapshot()),phone:phone.value.trim(),email:mailOk()?mailVal():mail.value.trim(),name:pname.value.trim(),language:session.language,transcript:said.slice(-12)});
    if(ok){box.dataset.sent='1';box.replaceChildren(Object.assign(document.createElement('p'),{textContent:t.sent}));}
    else{result.textContent=t.fail;send.disabled=false;}
   });
-  box.replaceChildren(title,nlabel,label,elabel,consent,send,note,result);
+  box.replaceChildren(title,nlabel,label,elabel,hint,consent,send,note,result);
  }
  if(box){box.className='chat-request';box.hidden=true;log.after(box);}
  function append(who,text,lang,review=''){

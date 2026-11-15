@@ -23,7 +23,7 @@ export function createChatIntakeHandler({env=process.env,fetchImpl=fetch,random=
   if(!input||typeof input!=='object'||Array.isArray(input)||![KEYS,KEYS_EMAIL].includes(Object.keys(input).sort().join(',')))return json(400,{error:'INVALID_INPUT'});
   if(input.consent!==true)return json(400,{error:'CONSENT_REQUIRED'});
   // Owner 2026-11-14: phone and/or e-mail - at least one valid contact (the e-mail receives the confirmation + voucher).
-  const phoneOk=typeof input.phone==='string'&&/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(input.phone.trim()),email=typeof input.email==='string'?input.email.trim():'';
+  const phoneOk=typeof input.phone==='string'&&/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(input.phone.trim()),email=typeof input.email==='string'?input.email.trim().replace(/[.,;]+$/u,''):''; // iOS trailing '.' (owner test 2026-11-15)
   if(email&&!EMAIL_RE.test(email))return json(400,{error:'EMAIL_INVALID'});
   if(!phoneOk&&!email)return json(400,{error:'PHONE_REQUIRED'});
   if(typeof input.phone!=='string'||input.phone.trim()&&!phoneOk)return json(400,{error:'PHONE_REQUIRED'});

@@ -59,3 +59,11 @@ test('Pushover only after a successfully stored request (owner 2026-11-15); inva
  assert.equal((await run(body,false)).pushes.length,0,'failed storage: no note');
  assert.equal((await run({...body,consent:false},true)).pushes.length,0,'invalid request: no note');
 });
+
+test('iOS trailing dot after the e-mail address is dropped (owner iPhone test 2026-11-15)',async()=>{
+ let stored=null;const fetchImpl=async(url,o={})=>{const u=String(url);if(u.includes('/auth/v1/token'))return new Response(JSON.stringify({access_token:'jwt'}));
+  if(u.endsWith('/rpc/sc_intake_create'))stored=JSON.parse(o.body);return new Response(JSON.stringify({caseId:'tm-x',revision:1}));};
+ const r=await createChatIntakeHandler({env,fetchImpl})(req({...body,email:'valkana6666@gmail.com.'}));
+ assert.equal(r.status,200);assert.equal(stored.p_data.state.values.email,'valkana6666@gmail.com');
+ assert.deepEqual(await (await createChatIntakeHandler({env,fetchImpl})(req({...body,email:'nem-email.'}))).json(),{error:'EMAIL_INVALID'});
+});
