@@ -29,6 +29,7 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
   for(const file of ['deployment/cloud-approval/install.sql','deployment/cloud-approval/separate-approver-permission.sql','deployment/exact-receipt/install.sql'])await db.exec(await read(file));
   await db.query('insert into sc_isolated_approval_key(key_hex) values($1)',[KEY]);
   await db.exec(await read('deployment/test-mailbox/install.sql'));await db.exec('update sc_test_mailbox_config set enabled=true');
+  await db.exec(await read('deployment/test-mailbox/guest-contact.sql'));
   for(const [role,id] of Object.entries(actors)){await db.query('insert into auth.users values($1)',[id]);await db.query('insert into auth.sessions values($1,$2,null)',[sessions[role],id]);
    await db.query("insert into sc_memberships values('sarberki-test',$1,$2,$3,$4)",[id,...grants[role]]);}
   const fetchImpl=async(raw,options={})=>{
@@ -64,6 +65,7 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
     else if(url.pathname.endsWith('/rpc/sc_tm_redraft'))result=(await db.query('select sc_tm_redraft($1,$2,$3,$4) r',[body.p_tenant,body.p_case,body.p_expected,JSON.stringify(body.p_draft)])).rows[0].r;
     else if(url.pathname.endsWith('/rpc/sc_tm_price_redraft'))result=(await db.query('select sc_tm_price_redraft($1,$2,$3,$4,$5) r',[body.p_tenant,body.p_case,body.p_expected,JSON.stringify(body.p_draft),JSON.stringify(body.p_proof)])).rows[0].r;
     else if(url.pathname.endsWith('/rpc/sc_tm_unavailable_redraft'))result=(await db.query('select sc_tm_unavailable_redraft($1,$2,$3,$4,$5) r',[body.p_tenant,body.p_case,body.p_expected,JSON.stringify(body.p_draft),JSON.stringify(body.p_proof)])).rows[0].r;
+    else if(url.pathname.endsWith('/rpc/sc_tm_set_guest_contact'))result=(await db.query('select sc_tm_set_guest_contact($1,$2,$3,$4,$5) r',[body.p_tenant,body.p_case,body.p_expected,body.p_name,body.p_email])).rows[0].r;
     else if(url.pathname.endsWith('/rpc/sc_tm_decide'))result=(await db.query('select sc_tm_decide($1,$2,$3,$4,$5,$6) r',[body.p_tenant,body.p_case,body.p_expected,body.p_draft_hash,body.p_decision,body.p_reason])).rows[0].r;
     else if(url.pathname.endsWith('/rpc/sc_tm_send_claim'))result=(await db.query('select sc_tm_send_claim($1,$2,$3,$4) r',[body.p_tenant,body.p_case,body.p_expected,body.p_draft_hash])).rows[0].r;
     else if(url.pathname.endsWith('/rpc/sc_tm_send_finish'))result=(await db.query('select sc_tm_send_finish($1,$2,$3,$4) r',[body.p_tenant,body.p_claim,body.p_status,body.p_gmail_message_id])).rows[0].r;
@@ -342,6 +344,18 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
    await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-suggest-units',caseId:case3},{status:403});
    await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-suggest-units',caseId:'x'},{method:'GET',status:400});
    assert.equal((await latest(case3)).revision,rev,'the preview writes nothing');
+   // Guest contact (owner 2026-11-15): exact keys, valid name/e-mail, write right; CAS revision +1.
+   const ct={tenantId:'sarberki-test',action:'test-mailbox-contact',caseId:case3,expectedRevision:rev};
+   await call('writer',enabledEnv,{...ct,name:'',email:''},{status:400});
+   await call('writer',enabledEnv,{...ct,name:'<b>x</b>',email:''},{status:400});
+   await call('writer',enabledEnv,{...ct,name:'Teszt Vendég',email:'nem-email'},{status:400});
+   await call('writer',enabledEnv,{...ct,name:'Teszt Vendég'},{status:403});
+   await call('reader',enabledEnv,{...ct,name:'Teszt Vendég',email:''},{status:403});
+   assert.equal((await latest(case3)).revision,rev,'refused contact edits write nothing');
+   const cs=await call('writer',enabledEnv,{...ct,name:'Teszt Vendég',email:'sarberkito@gmail.com'});
+   assert.equal(cs.status,200);assert.equal(cs.json.result.revision,rev+1);
+   assert.equal((await latest(case3)).data.state.values.name,'Teszt Vendég');
+   await call('writer',enabledEnv,{...ct,name:'Más Vendég',email:''},{status:409});
   });
   await t.test('record/list security: unique list ids, tenant/Bearer/CSRF refusals, look-alike rows hidden, revoked membership reads nothing',async()=>{
    const case3='tm-18f2a0b1c2d3e4f7',get=(role,input,options)=>call(role,enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:case3,...input},{method:'GET',...options});

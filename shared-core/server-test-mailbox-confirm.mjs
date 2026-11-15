@@ -136,6 +136,8 @@ export async function confirmTestMailboxBooking({record,previoReference,previoRe
   const deposit=buildBookingConfirmation({values,quote,previo:{reference:'V2-0',recordedAt:clock()},language}).deposit;
   if(oneClickPreviewHash({record,list,cabin,quote,deposit,language})!==expectedPreviewHash)fail('PREVIEW_CHANGED');
  }
+ // Owner 2026-11-15: a Previo booking needs the guest's real name (no placeholder); checked before any write.
+ if(previoAuto===true&&!String(values.name||'').trim())fail('NAME_REQUIRED');
  let previoCreated=null,sentContact=null;
  if(previoAuto===true){
   // Option expiry = the deposit deadline of this very confirmation (pure; computed before the write).
@@ -146,7 +148,7 @@ export async function confirmTestMailboxBooking({record,previoReference,previoRe
   const contact=sentContact=isTestGuestSender(email)?{email,phone:/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(String(values.phone||'').trim())?String(values.phone).trim():null}:null;
   previoCreated=await previoWriter.createOption({tenantId:record.tenantId,caseId:record.caseId,values,cabin,unit,
    ...(list.length>1?{units:list,parties:quote.unitBreakdown.map(b=>({adults:b.adults,children:b.children}))}:{}),
-   contactName:String(values.name||'').trim()||'Vendég '+record.caseId,contact,totalHuf:quote.total,optionExpiresUtc:deadline});
+   contactName:String(values.name||'').trim(),contact,totalHuf:quote.total,optionExpiresUtc:deadline});
   previoReference='V2-'+previoCreated.resId;
  }
  const recordedAt=clock();
@@ -184,6 +186,8 @@ export async function previewTestMailboxBooking({record,unit,units=null,transpor
  const blockers=[];
  if(previoWriterOn!==true)blockers.push('PREVIO_WRITE_DISABLED');
  if(typeof unitCheckFn!=='function'||previoUnit?.status!=='free')blockers.push('PREVIO_UNIT_UNVERIFIED');
+ // Owner 2026-11-15: no V2 booking without the guest's name (Previo contact + voucher).
+ if(!String(values.name||'').trim())blockers.push('NAME_REQUIRED');
  let price={status:'not_checked'};
  if(list.length>1)price={status:'multi_unit'};
  else if(typeof priceCheckFn==='function'){let c=null;try{c=await priceCheckFn({values,cabin});}catch{}
@@ -203,6 +207,7 @@ export async function previewTestMailboxBooking({record,unit,units=null,transpor
 export async function oneClickTestMailboxBooking({record,unit,units=null,previewHash,oneClickConfirmed,previoWriter,attestationKey,transport,
  quoteFn=fetchPublicPriceReference,unitCheckFn=null,clock=()=>new Date().toISOString()}={}){
  if(oneClickConfirmed!==true)fail('ONECLICK_NOT_CONFIRMED');
+ if(!String(record?.data?.state?.values?.name||'').trim())fail('NAME_REQUIRED');
  if(typeof previewHash!=='string'||!/^[a-f0-9]{64}$/.test(previewHash))fail('PREVIEW_CHANGED');
  if(typeof unitCheckFn!=='function')fail('PREVIO_UNIT_UNVERIFIED');
  // Previo must say "free" for every unit right now (the plain finalize only refuses "taken").

@@ -419,6 +419,10 @@ function showBooking(caseId,record){
  // V2: offered only when the server says it can write the Previo TEST booking itself.
  el('previo-auto-wrap').hidden=record.previoWrite!==true;el('previo-auto').disabled=!fin||record.previoWrite!==true;el('previo-auto').checked=false;
  // One-click V2: only for an account with write AND approve, V2 writer on, not finalized (server hint; re-checked).
+ // Owner 2026-11-15: the guest's name is required for a Previo booking; editable here before booking.
+ const canContact=record.canEditContact===true;el('contact-wrap').hidden=!canContact;el('contact-save').disabled=!canContact;
+ el('contact-name').value=typeof record.values?.name==='string'?record.values.name:'';el('contact-email').value=typeof record.values?.email==='string'?record.values.email:'';
+ if(canContact&&!el('contact-name').value.trim())el('booking-state').textContent+='\n⛔ Hiányzik a vendég neve – írd be lent, és mentsd (foglalás csak névvel).';
  oneClickReset();el('oneclick-wrap').hidden=record.canOneClick!==true;
  // Owner iPhone practice 2026-11-13: two similar buttons confused; with one-click available the manual path is folded.
  el('manual-path').open=record.canOneClick!==true;
@@ -440,6 +444,7 @@ const bookingErrors={PREVIO_RECORDING_REQUIRED:'Add meg a Previo-hivatkozást, �
  CONFIRMATION_PRICE_MISSING:'Az árlista ehhez nem ad igazolt árat; kézi ellenőrzés szükséges.',DEPOSIT_POLICY_UNVERIFIED:'A foglaló határideje nem számítható (pl. múltbeli érkezés).',
  NOT_FINALIZED:'Előbb véglegesíteni kell a foglalást.',UNIT_TAKEN:'Ez az egység erre az időszakra már foglalt (egy másik véglegesített foglalás miatt). Válassz másik egységet.',UNITS_MIXED_SPLIT:'Osztott A/B és C egység vegyesen: az ár kézi számítást igényel (külön foglalások vagy kézi ár).',UNIT_NOT_IN_TYPE:'Ez az egység nem a foglalás háztípusához tartozik.',UNITS_COUNT_MISMATCH:'Pontosan annyi egységet válassz, ahányat a vendég kért.',UNITS_INVALID:'Az egységválasztás érvénytelen (ismétlődés?).',PREVIO_WRITE_DISABLED:'A Previo-írás (V2) nincs bekapcsolva.',NOT_ACTIVE_BOOKING:'Csak véglegesített foglalás mondható le vagy módosítható.',NOTHING_CHANGED:'Nincs változás a dátumban vagy az egységben.',PREVIO_MANUAL_BOOKING:'Kézzel rögzített Previo-foglalás: a Previóban módosítsd.',MULTI_UNIT_MODIFY_UNSUPPORTED:'Több egységes foglalás módosítása még nem támogatott.',PREVIO_MODIFY_UNVERIFIED:'A Previo-módosítás nem igazolható – nézd meg a Previóban.',PREVIO_MODIFY_NOT_REVERTED:'FIGYELEM: a Previóban módosult, nálunk nem mentődött, és a visszaállítás sem sikerült – nézd meg a Previóban!',INVALID_REASON:'Adj meg rövid lemondási okot (egy sor).',CANCEL_NOT_CONFIRMED:'Pipáld be a lemondás megerősítését.',PREVIO_WRITE_UNCERTAIN:'A Previo nem igazolta a létrehozást – nézd meg a Previóban, mielőtt újra próbálod.',PREVIO_BOOKING_NOT_ACTIVE:'Ehhez az ügyhöz a Previóban már van egy lemondott foglalás – kézi ellenőrzés kell.',PREVIO_ORPHAN_OPTION:'A Previóban létrejött az opció, de nálunk nem mentődött, és a lemondás sem igazolt – nézd meg a Previóban!',PREVIO_AUTH_REFUSED:'A Previo elutasította a kulcsot.',PREVIO_REJECTED:'A Previo elutasította a foglalást.',PREVIO_TIMEOUT:'A Previo nem válaszolt időben.',PREVIO_UNAVAILABLE:'A Previo nem érhető el.',UNIT_TAKEN_IN_PREVIO:'A Previo szerint ez az egység erre az időszakra egy másik foglalás miatt foglalt. Válassz másik egységet.',INVALID_DATE:'Érvénytelen dátum.',CASE_CONFLICT:'A foglalás közben megváltozott; nyisd meg újra.',
  PREVIEW_CHANGED:'Az adatok az előnézet óta változtak – nem történt írás. Készíts új előnézetet.',PREVIO_UNIT_UNVERIFIED:'A Previo most nem igazolta, hogy az egység szabad – nem történt írás.',ONECLICK_ROLE_REQUIRED:'Ehhez a fióknak rögzítő és jóváhagyó jog is kell.',ONECLICK_NOT_CONFIRMED:'Pipáld be, hogy az előnézetet elolvastad.',NO_FREE_UNIT:'Ebben a háztípusban a kért időszakra nincs szabad ház (a Previo szerint).',AUTO_UNIT_UNAVAILABLE:'Itt nem tudok automatikusan házat választani – válassz egységet kézzel.',
+ NAME_REQUIRED:'Hiányzik a vendég neve – írd be fent („Vendég neve”), és mentsd.',INVALID_INPUT:'Hibás adat (pl. a név vagy az e-mail-cím formátuma).',
  FORBIDDEN:'Ehhez nincs írási jog.',STORAGE_FAILURE:'Az adatbázis-funkció nem érhető el (valószínűleg még nincs telepítve). Szólj Claude-nak.',
  TEST_MAILBOX_REJECTED:'Az adatbázis elutasította (lehet, hogy a frissítés még nincs telepítve).',NOT_FOUND:'A foglalás nem található; töltsd be újra a listát.'};
 let bookingUnitsNeeded=1;
@@ -499,7 +504,7 @@ el('booking-finalize').addEventListener('click',()=>{const auto=el('previo-auto'
 // the preview the operator read; the server recomputes it and stops before any write if anything changed.
 const oneClickBlockers={PREVIO_WRITE_DISABLED:'a Previo-írás (V2) nincs bekapcsolva',ALREADY_APPROVED:'a levél már jóvá van hagyva',
  PREVIO_UNIT_UNVERIFIED:'a Previo most nem igazolta, hogy az egység szabad',PREVIO_PRICE_MISMATCH:'a Previo-ár eltér az árlistától',
- ONECLICK_ROLE_REQUIRED:'ehhez a fióknak rögzítő és jóváhagyó jog is kell'};
+ ONECLICK_ROLE_REQUIRED:'ehhez a fióknak rögzítő és jóváhagyó jog is kell',NAME_REQUIRED:'hiányzik a vendég neve – írd be fent, és mentsd'};
 const oneClickPrice={match:'egyezik a Previo-árral',mismatch:'ELTÉR a Previo-ártól',multi_unit:'több egység: Previo-ár nem összevetve',
  not_comparable:'gyermekes eset: Previo-ár nem összevethető',unreadable:'Previo-ár most nem olvasható',not_checked:'Previo-ár nincs ellenőrizve'};
 function oneClickReset(){oneClick=null;el('oneclick-summary').textContent='';el('oneclick-confirm').checked=false;el('oneclick-confirm').disabled=true;el('oneclick-go').disabled=true;}
@@ -537,6 +542,8 @@ el('oneclick-go').addEventListener('click',()=>{
  bookingAction('oneclick-go',{action:'test-mailbox-oneclick',...unitPart,previewHash:o.previewHash,oneClickConfirmed:true},
   r=>'Kész: a Previo-tesztben opció rögzítve, a visszaigazoló levél '+(r.approved?'elkészült és JÓVÁHAGYVA – a levél alatti küldés gombbal küldhető.':'elkészült, de a jóváhagyás nem sikerült – hagyd jóvá a szokott gombbal.')+(r.deposit?' Foglaló: '+huf(r.deposit.amount)+' Ft.':''));
 });
+el('contact-save').addEventListener('click',()=>bookingAction('contact-save',{action:'test-mailbox-contact',name:el('contact-name').value.trim(),email:el('contact-email').value.trim()},
+ () =>'Név / e-mail mentve.'));
 el('deposit-mark').addEventListener('click',()=>bookingAction('deposit-mark',{action:'test-mailbox-deposit',receivedOn:el('deposit-date').value,depositConfirmed:el('deposit-confirm').checked},
  r=>'Foglaló beérkezése rögzítve.'+(r.previoSync==='confirmed'?' A Previo-tesztben megerősítve (zöld).':r.previoSync==='confirm_failed'?' FIGYELEM: a Previo-megerősítés nem sikerült – nézd meg a Previóban.':'')));
 el('booking-modify').addEventListener('click',()=>bookingAction('booking-modify',{action:'test-mailbox-modify',arrival:el('modify-arrival').value,departure:el('modify-departure').value,unit:el('modify-unit').value,modifyConfirmed:el('modify-confirm').checked},
