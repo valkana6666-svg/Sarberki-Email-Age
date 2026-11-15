@@ -29,7 +29,7 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
   // Owner 2026-11-14: e-mail too, so the confirmation and the voucher can go out by e-mail.
   const elabel=document.createElement('label');elabel.textContent=t.email;const mail=document.createElement('input');mail.type='email';mail.maxLength=254;mail.autocomplete='email';elabel.append(mail);
   const consent=document.createElement('label');const check=document.createElement('input');check.type='checkbox';consent.append(check,document.createTextNode(' '+t.consent));
-  const send=document.createElement('button');send.type='button';send.textContent=t.send;send.disabled=true;
+  const send=document.createElement('button');send.type='button';send.textContent=t.send;
   const note=document.createElement('p');note.textContent=t.note;const result=document.createElement('p');result.setAttribute('role','status');
   const phoneOk=()=>/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(phone.value.trim()),mailVal=()=>mail.value.trim().replace(/[.,;]+$/u,''),mailOk=()=>/^[^\s@<>"(),;:]{1,64}@[^\s@<>"(),;:]{1,190}\.[A-Za-z]{2,}$/.test(mailVal());
   // Owner iPhone test 2026-11-15: iOS adds a trailing "." (double space) - it is dropped; a wrong address is explained.
@@ -37,12 +37,16 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
   const explain=()=>{hint.textContent=mail.value.trim()&&!mailOk()?t.emailBad:phone.value.trim()&&!phoneOk()?t.phoneBad:'';};
   const valid=()=>check.checked&&(phoneOk()||mailOk())&&(!phone.value.trim()||phoneOk())&&(!mail.value.trim()||mailOk());
   mail.addEventListener('blur',()=>{if(mailOk())mail.value=mailVal();explain();});for(const x of [phone,mail])x.addEventListener('input',explain);
-  for(const x of [phone,mail,check])x.addEventListener('input',()=>{send.disabled=!valid();});check.addEventListener('change',()=>{send.disabled=!valid();});
+  // Owner iPhone test 2026-11-15: a disabled button gave no reason (and iOS autofill fires no input event), so the
+  // button stays tappable and a tap explains what is still missing.
   send.addEventListener('click',async()=>{
-   if(!valid())return;send.disabled=true;
+   if(send.dataset.busy==='1')return;
+   if(mailOk())mail.value=mailVal();
+   if(!valid()){explain();if(!hint.textContent)hint.textContent=!check.checked?t.needConsent:t.needContact;return;}
+   hint.textContent='';send.dataset.busy='1';send.disabled=true;
    const ok=await requestSender({facts:requestFacts(session.snapshot()),phone:phone.value.trim(),email:mailOk()?mailVal():mail.value.trim(),name:pname.value.trim(),language:session.language,transcript:said.slice(-12)});
    if(ok){box.dataset.sent='1';box.replaceChildren(Object.assign(document.createElement('p'),{textContent:t.sent}));}
-   else{result.textContent=t.fail;send.disabled=false;}
+   else{result.textContent=t.fail;send.disabled=false;delete send.dataset.busy;}
   });
   box.replaceChildren(title,nlabel,label,elabel,hint,consent,send,note,result);
  }
