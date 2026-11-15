@@ -62,7 +62,9 @@ export function buildReservationXml({tenantId,caseId,values,cabin,unit,units=nul
  const partyValues=list.length>1?parties.map(p=>({adults:String(p.adults),children:String((p.children||[]).length),child_ages:(p.children||[]).join(',')})):[values];
  const guestsPerUnit=partyValues.map(v=>guestCategories(v,property));
  const voucher=voucherFor({tenantId,caseId});
- const expiry=new Date(optionExpiresUtc).toISOString().slice(0,19).replace('T',' ');
+ // Previo reads the option expiry as hotel-local time (like the 14:00/10:00 term); a UTC string made the option
+ // expire one hour before the deadline in the guest letter (Work Previo check 2026-11-15: 12:33 vs 13:33).
+ const expiry=new Date(optionExpiresUtc).toLocaleString('sv-SE',{timeZone:'Europe/Budapest',hour12:false}).slice(0,19);
  const xml=['<?xml version="1.0"?>','<request>',`<hotId>${property.hotelId}</hotId>`,'<newReservation>','<commissions>',
   ...list.map((u,i)=>['<commission>',`<guests><numGuest>${guestsPerUnit[i].length}</numGuest>`,...guestsPerUnit[i].map(g=>`<guest><guaId>${g}</guaId></guest>`),'</guests>',
    `<obkId>${obkId}</obkId><objId>${property.rooms[u]}</objId><cosId>${STATUS.option}</cosId><cmsId>${SOURCE_EMAIL}</cmsId><prlId>${property.ratePlanId}</prlId>`,

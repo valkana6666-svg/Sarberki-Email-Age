@@ -15,7 +15,7 @@ test('XML: 73521, room kind + chosen unit, option status, e-mail source, rate pl
  assert.equal(r.url,'https://api.previo.app/x1/hotel/reservation');assert.equal(r.hotelId,'73521');
  assert.match(r.voucher,/^SC-[0-9A-F]{16}$/);assert.equal(r.voucher,voucherFor(base));
  for(const part of ['<hotId>73521</hotId>','<numGuest>4</numGuest>','<obkId>1012899</obkId>','<objId>2392199</objId>',`<cosId>${STATUS.option}</cosId>`,'<cmsId>1</cmsId>','<prlId>385033</prlId>',
-  '<optionExpiration>2026-11-16 10:00:00</optionExpiration>','<from>2027-06-15 14:00:00</from><to>2027-06-17 10:00:00</to>','<name>Teszt Vendég &lt;A&amp;B&gt;</name>','<total>128200</total><curId>9</curId>'])
+  '<optionExpiration>2026-11-16 11:00:00</optionExpiration>','<from>2027-06-15 14:00:00</from><to>2027-06-17 10:00:00</to>','<name>Teszt Vendég &lt;A&amp;B&gt;</name>','<total>128200</total><curId>9</curId>'])
   assert.ok(r.xml.includes(part),part);
  assert.equal((r.xml.match(/<guaId>472221<\/guaId>/g)||[]).length,2,'2 adults');
  assert.equal((r.xml.match(/<guaId>472223<\/guaId>/g)||[]).length,1,'12-year-old retains the IFA-exempt 9–17 category');
