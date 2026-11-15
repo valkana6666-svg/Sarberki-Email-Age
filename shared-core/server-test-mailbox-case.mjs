@@ -6,6 +6,7 @@
 // independent approver. Not wired to a Netlify route or switch (separate, owner-gated step).
 import {createBookingCaseStore} from '../booking-cases.mjs';
 import {extractServerMessage} from './server-message-extraction.mjs';
+import {emailAssistNeeded,mergeEmailAssist,emailAssistNote} from './email-assist.mjs';
 import {serverInquiryOptions} from './server-inquiry-options.mjs';
 import {emailDraftWithCapacity} from './server-capacity-draft.mjs';
 import {readVerifiedTestMailboxMessage,attestTestMailboxSource} from './server-gmail-source.mjs';
@@ -23,7 +24,7 @@ function storageFailure(error){
  return 'STORAGE_FAILURE';
 }
 
-export async function ingestTestMailboxMessage({token,messageId,transport,attestationKey,fetchImpl=globalThis.fetch,clock=()=>new Date().toISOString(),deployment=TEST_DEPLOYMENT,availabilitySource=null}={}){
+export async function ingestTestMailboxMessage({token,messageId,transport,attestationKey,fetchImpl=globalThis.fetch,clock=()=>new Date().toISOString(),deployment=TEST_DEPLOYMENT,availabilitySource=null,emailAssist=null}={}){
  const TENANT=deployment.tenantId;
  if(typeof transport!=='function')fail('SETUP_REQUIRED');
  // 1. Server-side Gmail read and gates (marked subject, single recipient, no reply, plain text...).
@@ -32,7 +33,12 @@ export async function ingestTestMailboxMessage({token,messageId,transport,attest
  const caseId='tm-'+source.message_id;
  let saved;
  const store=createBookingCaseStore({storage:{getItem:()=>'[]',setItem:(_,value)=>{saved=JSON.parse(value);}},tenantId:TENANT,clock,id:()=>caseId});
- const values=extractServerMessage(envelope);
+ let values=extractServerMessage(envelope),assisted=[];
+ // Language model step 2 (owner 2026-11-15): only when a booking fact is still empty; proposals are validated and flagged.
+ if(typeof emailAssist==='function'&&emailAssistNeeded(values)){
+  let hints={};try{hints=await emailAssist({text:envelope.text,receivedAt:envelope.received_at})||{};}catch{hints={};}
+  ({values,used:assisted}=mergeEmailAssist(values,hints));
+ }
  store.ingest(scope(envelope),values,{approvedCaseId:null});
  const data=saved?.find(c=>c.id===caseId);
  if(!data||data.messages.length!==1)fail('INVALID_DRAFT');
@@ -45,7 +51,7 @@ export async function ingestTestMailboxMessage({token,messageId,transport,attest
  const at=clock();
  const plan=await emailDraftWithCapacity(serverInquiryOptions({tenantId:TENANT,caseId,data},new Date(at)),availabilitySource,{clock:()=>Date.parse(clock())});
  if(typeof plan.text!=='string'||!plan.text.trim())fail('INVALID_DRAFT');
- data.drafts=[{text:plan.text,operatorReviewText:plan.operatorReviewText,at,revision:data.state.revision,basedOnMessageCount:1,reviewStatus:'manual_review_required'}];
+ data.drafts=[{text:plan.text,operatorReviewText:(plan.operatorReviewText||'')+(assisted.length?'\n\n'+emailAssistNote(assisted).trim():''),at,revision:data.state.revision,basedOnMessageCount:1,reviewStatus:'manual_review_required'}];
  data.state.approval='pending';
  // 3. Server attestation (own key, own scope); the database recomputes it, nothing secret is stored.
  const proof=attestTestMailboxSource({key:attestationKey,tenantId:TENANT,source,envelope,checkedAt:clock(),deployment});
