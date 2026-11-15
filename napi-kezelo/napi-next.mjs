@@ -5,13 +5,16 @@ export function nextStepFor(record,{sendable=false}={}){
  if(!record)return null;
  const b=record.booking,status=b?.status;
  const intent=typeof record.bookingIntent==='string'&&record.bookingIntent.length>0;
- if(record.canMarkDeposit===true)return {kind:'deposit',label:'Foglaló beérkezett (ma)',ask:'A foglaló a teljes összegben beérkezett a bankszámlára?'};
+ // Owner 2026-11-15: the system's job ends when the booking is recorded in Previo. Checking/correcting it (e.g. the
+ // cabin), the voucher, proforma, deposit invoice, final invoice and payment are done by hand in Previo.
+ if(['finalized','deposit_received'].includes(status))return {kind:'handoff',label:null,ask:null,
+  info:'✅ A foglalás rögzítve a Previóban'+(b?.unit?' ('+b.unit+'. egység)':'')+'. Innen a Previóban folytasd: adatok ellenőrzése/javítása, voucher, díjbekérő, előleg- és végszámla.'};
  if(record.canOneClick===true&&!['finalized','deposit_received','cancelled'].includes(status)&&intent)
   return {kind:'book',label:'Foglalás (előnézet)',ask:null};
  if(record.approval==='pending'&&record.canDecide===true)
   return sendable?{kind:'approveSend',label:'Válasz jóváhagyása és küldése',ask:'Jóváhagyod, és elküldöd a választ a vendégnek?'}
    :{kind:'approve',label:'Válasz jóváhagyása',ask:'Jóváhagyod a választ?'};
  if(record.approval==='approved_internal'&&sendable)
-  return {kind:'send',label:['finalized','deposit_received'].includes(status)?'Visszaigazolás küldése':'Válasz küldése',ask:'Elküldöd a levelet a vendégnek? (Ha már elment, a rendszer nem küldi el újra.)'};
+  return {kind:'send',label:'Válasz küldése',ask:'Elküldöd a levelet a vendégnek? (Ha már elment, a rendszer nem küldi el újra.)'};
  return null;
 }

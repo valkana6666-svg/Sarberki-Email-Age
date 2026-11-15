@@ -12,8 +12,9 @@ test('next step follows the case state and the server hints',()=>{
  assert.equal(nextStepFor({approval:'pending',canDecide:true,canOneClick:true,bookingIntent:'igen, foglalnánk'},{sendable:true}).kind,'book','guest said yes: booking first');
  assert.equal(nextStepFor({approval:'pending',canDecide:true,canOneClick:true,bookingIntent:''},{sendable:true}).kind,'approveSend','no yes yet: no booking button');
  const booked={approval:'approved_internal',booking:{status:'finalized'},canMarkDeposit:false,canOneClick:false};
- assert.deepEqual([nextStepFor(booked,{sendable:true}).kind,nextStepFor(booked,{sendable:true}).label],['send','Visszaigazolás küldése']);
- assert.equal(nextStepFor({...booked,canMarkDeposit:true},{sendable:true}).kind,'deposit');
+ // Owner 2026-11-15: after the Previo booking the rest is done in Previo - no letter, no deposit button here.
+ const h=nextStepFor({...booked,booking:{status:'finalized',unit:'12'},canMarkDeposit:true},{sendable:true});
+ assert.equal(h.kind,'handoff');assert.equal(h.label,null);assert.match(h.info,/rögzítve a Previóban \(12\. egység\).*voucher, díjbekérő/);
  assert.equal(nextStepFor({approval:'approved_internal'},{sendable:false}),null,'chat case without e-mail: nothing to send');
  assert.equal(nextStepFor({approval:'rejected',canDecide:true}),null);
 });

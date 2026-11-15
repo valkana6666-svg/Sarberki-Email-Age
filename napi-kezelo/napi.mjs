@@ -553,7 +553,7 @@ el('oneclick-go').addEventListener('click',()=>{
  const unitPart=o.units.length>1?{unit:o.units[0],units:o.units}:{unit:o.units[0]};
  el('oneclick-confirm').disabled=true;
  bookingAction('oneclick-go',{action:'test-mailbox-oneclick',...unitPart,previewHash:o.previewHash,oneClickConfirmed:true},
-  r=>'Kész: a Previo-tesztben opció rögzítve, a visszaigazoló levél '+(r.approved?'elkészült és JÓVÁHAGYVA – a levél alatti küldés gombbal küldhető.':'elkészült, de a jóváhagyás nem sikerült – hagyd jóvá a szokott gombbal.')+(r.deposit?' Foglaló: '+huf(r.deposit.amount)+' Ft.':''));
+  r=>'✅ Kész: a foglalás rögzítve a Previo-tesztben (opció). Innen a Previóban folytasd: adatok ellenőrzése/javítása, voucher, díjbekérő, előleg- és végszámla.');
 });
 el('contact-save').addEventListener('click',()=>bookingAction('contact-save',{action:'test-mailbox-contact',name:el('contact-name').value.trim(),email:el('contact-email').value.trim()},
  () =>'Név / e-mail mentve.'));
@@ -759,7 +759,9 @@ function renderNextStep(caseId,record){
  hideNext();
  const ch=record.channel,sendable=ch==='phone'||ch==='chat'?typeof record.values?.email==='string'&&record.values.email.length>0:true;
  const step=nextStepFor(record,{sendable});if(!step)return;
- nextCase={caseId,revision:record.revision,step};el('next-go').textContent=step.label;el('next-step').hidden=false;
+ nextCase={caseId,revision:record.revision,step};el('next-step').hidden=false;
+ if(step.kind==='handoff'){el('next-go').hidden=true;el('next-text').textContent=step.info;return;}
+ el('next-go').textContent=step.label;
 }
 function nextAsk(text,yes){el('next-text').textContent=text;el('next-go').hidden=true;el('next-yes').textContent=yes;el('next-yes').hidden=false;el('next-no').hidden=false;}
 function nextWatch(source,n){ // mirror a result that the existing (hidden in simple view) control shows
