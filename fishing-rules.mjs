@@ -13,6 +13,16 @@ export const fishing = Object.freeze({
   minimumCm: {zander:30,pike:40,carp:30,grassCarp:40,catfish:50}
 });
 
+// Owner iPhone chat test 2026-11-15 ("a horgászati szabályokat kérdeztem … nem küldött rá jó választ"): a rules
+// question gets the general conditions, the minimum sizes and the link to the full rules page (same approved facts).
+export function fishingRulesSummary(language='hu'){
+ const lang=['hu','de','en','si'].includes(language)?language:'hu';
+ const min={hu:'Minimum méretek: süllő 30 cm, csuka 40 cm, ponty 30 cm, amur 40 cm, harcsa 50 cm.',de:'Mindestmaße: Zander 30 cm, Hecht 40 cm, Karpfen 30 cm, Graskarpfen 40 cm, Wels 50 cm.',
+  en:'Minimum sizes: zander 30 cm, pike 40 cm, carp 30 cm, grass carp 40 cm, catfish 50 cm.',si:'Najmanjše mere: smuč 30 cm, ščuka 40 cm, krap 30 cm, amur 40 cm, som 50 cm.'}[lang];
+ const link={hu:'A teljes horgászati szabályzat: ',de:'Die vollständige Angelordnung: ',en:'Full fishing rules: ',si:'Celoten ribiški red: '}[lang]+fishing.rulesSource;
+ return [FISHING_GENERAL_TEXT[lang],min,link].join('\n');
+}
+
 // Single source of the general fishing rules sentence (email, chatbot and public reply panel).
 export const FISHING_GENERAL_TEXT=Object.freeze({
       hu:'A horgászathoz Magyarországra érvényes állami horgászjegy szükséges. Csak szakáll nélküli, legfeljebb 6-os méretű horog használható. Kötelező felszerelés a pontybölcső, merítőháló, sebfertőtlenítő és pontyzsák. A választott tóhoz és időtartamhoz tartozó Sárberki horgászjegyet külön kell kiválasztani.',

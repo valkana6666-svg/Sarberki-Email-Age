@@ -1,6 +1,6 @@
 // Sárberki V1 chatbot: safe, informational-only responses. No PMS, booking or outbound mail.
 import {BUSINESS} from './business-config.mjs';
-import {FISHING_GENERAL_TEXT} from './fishing-rules.mjs';
+import {FISHING_GENERAL_TEXT,fishingQuestion,fishingRulesSummary} from './fishing-rules.mjs';
 import {hotTubSentence} from './sarberki-core.mjs';
 const WORDS={
  hu:{welcome:'Üdvözöljük a Sárberki Horgásztónál! Miben segíthetünk?',unknown:'Ezt jelenleg nem tudom hitelesen megválaszolni. Munkatársunk segít a pontosításban.',availability:'Szabad helyet csak a teljes időszakra elvégzett kapacitásellenőrzés után tudunk igazolni. Kérjük, írja meg az érkezés és távozás dátumát, valamint a felnőttek és gyermekek számát.',hotTub:'A dézsa egyes faházaknál külön bérelhető, külön díj ellenében. Elérhetőségét külön ellenőrizzük.',deposit:'Az előleg mértéke a létszámtól, fizetési határideje az érkezésig hátralévő időtől függ. A fizetési ablak 14 napnál több idő esetén 7 nap, legfeljebb 14 nap esetén 24 óra; a konkrét határidőt külön visszaigazoljuk.',checkin:'Érkezés 14:00 órától, távozás 10:00 óráig.',booking:'Foglalás csak külön visszaigazolás után érvényes. A chatbot nem hoz létre foglalást.',fishing:'Horgászathoz érvényes állami horgászjegy és külön Sárberki horgászjegy szükséges. Legfeljebb 6-os méretű, szakáll nélküli horog használható; a kötelező horgászfelszerelésről is gondoskodni kell.',cabins:'Családi, VIP, Deluxe és osztott apartman típusok találhatók nálunk. A szabad helyeket és a megfelelő férőhelyet a teljes kért időszakra külön ellenőrizzük.'},
@@ -55,5 +55,12 @@ export function chatbotReply({message='',language='hu'}={}){
  else if(asksBooking)intent='booking';
  else if(mentionsStay||/háztyp|szállástípus/u.test(text))intent='cabins';
  else if(/érkez|távoz|check.?in|check.?out|anreise|abreise|prijava|odjava/u.test(text))intent='checkin';
- return {intent,language:WORDS[lang]?lang:'hu',reply:t[intent],bookingCreated:false,emailSent:false,availabilityVerified:false,brand:BUSINESS.brandName};
+ // Owner iPhone chat test 2026-11-15: fishing questions get the specific approved answer (tickets, hooks, sizes,
+ // take-away prices) or, for a rules question, the rules summary with the link - not always the same general sentence.
+ let reply=t[intent];
+ if(intent==='fishing'){
+  if(/szabály|szabaly|regel|ordnung|\brules?\b|pravil|red\b/iu.test(text))reply=fishingRulesSummary(lang);
+  else{const q=fishingQuestion(text,lang);if(q&&q.kind!=='review'&&q.kind!=='general_conditions')reply=q.answer;}
+ }
+ return {intent,language:WORDS[lang]?lang:'hu',reply,bookingCreated:false,emailSent:false,availabilityVerified:false,brand:BUSINESS.brandName};
 }
