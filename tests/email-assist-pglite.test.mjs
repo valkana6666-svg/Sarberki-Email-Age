@@ -94,6 +94,8 @@ test('validation: invented, past, too long, wrong cabin and day-not-in-text prop
  assert.equal(validateEmailAssist({arrival:'2027-07-09',departure:'2027-09-12'},{text,receivedAt}).arrival,undefined);
  assert.equal(validateEmailAssist({adults:0,children:2,child_ages:[5],unit:'Kastély'},{text,receivedAt}).adults,undefined);
  assert.equal(validateEmailAssist({children:2,child_ages:[5]},{text,receivedAt}).child_ages,undefined);
+ assert.deepEqual(mergeEmailAssist({guests:'2'},{adults:'2'}),{values:{guests:'2',adults:'2',children:'0'},used:['adults','children']});
+ assert.deepEqual(mergeEmailAssist({guests:'3'},{adults:'2'}),{values:{guests:'3'},used:[]},'adults must equal the known total');
  assert.deepEqual(mergeEmailAssist({arrival:'2027-01-01',departure:'2027-01-03',adults:'3'},{arrival:'2027-07-09',departure:'2027-07-12',adults:'2',unit:'VIP'}),
   {values:{arrival:'2027-01-01',departure:'2027-01-03',adults:'3',unit:'VIP'},used:['unit']});
 });

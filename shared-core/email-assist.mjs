@@ -12,7 +12,7 @@ export function emailAssistConfigured(env){
   typeof env.CHAT_ASSIST_MODEL==='string'&&/^[A-Za-z0-9._:-]{1,128}$/.test(env.CHAT_ASSIST_MODEL)?key:null;
 }
 export function emailAssistNeeded(values){
- return !values.arrival||!values.departure||!(values.adults||values.guests)||!values.unit;
+ return !values.arrival||!values.departure||!values.adults||!values.unit;
 }
 const SCHEMA={type:'object',additionalProperties:false,required:FIELDS,properties:{
  arrival:{type:['string','null']},departure:{type:['string','null']},adults:{type:['integer','null']},
@@ -62,7 +62,11 @@ export function mergeEmailAssist(values,hints){
  const merged={...values},used=[];
  if(!values.arrival&&!values.departure&&hints.arrival&&hints.departure){merged.arrival=hints.arrival;merged.departure=hints.departure;used.push('arrival','departure');}
  if(!values.adults&&!values.guests&&hints.adults){merged.adults=hints.adults;used.push('adults');}
- if(values.children===undefined&&hints.children!==undefined){merged.children=hints.children;used.push('children');
+ // Owner iPhone test 2026-11-15: "ketten a feleségemmel" gave guests=2 but no adults, so the draft asked again. When the
+ // proposal's adults equals the known total, the rest is arithmetic: adults = total and no children.
+ else if(values.guests&&!values.adults&&hints.adults&&hints.adults===String(values.guests)&&(values.children===undefined||values.children==='0')){
+  merged.adults=hints.adults;used.push('adults');if(values.children===undefined){merged.children='0';used.push('children');}}
+ if(merged.children===undefined&&hints.children!==undefined){merged.children=hints.children;used.push('children');
   if(hints.child_ages&&!values.child_ages){merged.child_ages=hints.child_ages;used.push('child_ages');}}
  if(!values.unit&&hints.unit){merged.unit=hints.unit;used.push('unit');}
  return {values:merged,used};
