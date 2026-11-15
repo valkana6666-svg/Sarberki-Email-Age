@@ -30,6 +30,10 @@ const chatRecord=(email)=>{const text='Kedves Vendégünk!\n\nVOUCHER …';retur
  state:{approval:'approved_internal',values:{language:'hu',...(email?{email}:{})}},internalApproval:{scope:'test-mailbox-v1',draftHash:sha(text)},drafts:[{text}]}};};
 test('chat case: new e-mail only to the test pair; no e-mail -> NO_EMAIL; already sent -> not again',async()=>{
  assert.equal(approvedTestMailboxReply(chatRecord('valkana6666@gmail.com')).mode,'new');
+ // Owner 2026-11-15: a booked case's letter carries a confirmation subject; an offer keeps the request subject.
+ assert.equal(approvedTestMailboxReply(chatRecord('valkana6666@gmail.com')).subject,'Sárberki Horgásztó – foglalási igénye');
+ const booked=chatRecord('valkana6666@gmail.com');booked.data.booking={status:'finalized'};
+ assert.equal(approvedTestMailboxReply(booked).subject,'Sárberki Horgásztó – foglalása visszaigazolva');
  assert.throws(()=>approvedTestMailboxReply(chatRecord('vendeg@example.test')),/RECIPIENT_NOT_ALLOWED/);
  assert.throws(()=>approvedTestMailboxReply(chatRecord(null)),/NO_EMAIL/);
  const calls=[];const fetchImpl=async(url,o={})=>{calls.push({url:String(url),body:o.body});return new Response(JSON.stringify(String(url).endsWith('/profile')?{emailAddress:'sarberkiprojecttest@gmail.com'}:{id:'m1'}));};

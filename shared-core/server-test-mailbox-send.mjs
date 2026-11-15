@@ -32,7 +32,10 @@ export function approvedTestMailboxReply(record){
   if(!recipient)fail('NO_EMAIL');
   if(!ALLOWED_TEST_REPLY_RECIPIENTS.includes(recipient))fail('RECIPIENT_NOT_ALLOWED');
   const lang=data?.state?.values?.language;
-  const subject={de:'Sárberki Horgásztó – Ihre Anfrage',en:'Sárberki Horgásztó – your request',si:'Sárberki Horgásztó – vaše povpraševanje'}[lang]||'Sárberki Horgásztó – foglalási igénye';
+  // Owner 2026-11-15: a booked case's letter is a confirmation, so its subject says so (an offer keeps "request").
+  const booked=['finalized','deposit_received'].includes(data?.booking?.status);
+  const subject=booked?({de:'Sárberki Horgásztó – Buchungsbestätigung',en:'Sárberki Horgásztó – booking confirmation',si:'Sárberki Horgásztó – potrditev rezervacije'}[lang]||'Sárberki Horgásztó – foglalása visszaigazolva')
+   :({de:'Sárberki Horgásztó – Ihre Anfrage',en:'Sárberki Horgásztó – your request',si:'Sárberki Horgásztó – vaše povpraševanje'}[lang]||'Sárberki Horgásztó – foglalási igénye');
   return {mode:'new',recipient,text:latest.text,threadId:null,inReplyTo:null,subject,marker:record.caseId+':'+sha(latest.text),draftHash:sha(latest.text)};
  }
  const recipient=String(src?.from_email||'').toLowerCase();
