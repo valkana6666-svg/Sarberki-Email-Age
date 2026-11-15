@@ -15,7 +15,7 @@ class Element {
  async dispatch(type,event={}){for(const fn of this.listeners[type]||[])await fn({preventDefault(){},...event});}
 }
 function fakeDocument(){
- const ids=['count-incoming','count-followup','count-approval','count-progress','count-closed','cases-panel','cases-title','email-picker','email-picker-wrap','email-previous','email-next','read-email','email-status','email-list','email-detail','email-draft-request','email-draft-status','email-draft-text','email-draft-review','email-draft-checks','draft-editor','save-draft','approve-draft','approve-confirm','return-draft','reject-draft','decision-reason','email-save-case','email-save-status','detail-messages','detail-facts','chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','copy-approved','send-approved','price-panel','price-cabin','price-calc','price-result','price-available','price-insert','unavailable-confirm','unavailable-insert','unavailable-result','booking-panel','booking-state','booking-unit','booking-result','previo-ref','previo-recorded','previo-auto','previo-auto-wrap','oneclick-wrap','manual-path','oneclick-preview','oneclick-summary','oneclick-confirm','oneclick-go','cancel-reason','cancel-confirm','booking-cancel','modify-wrap','modify-arrival','modify-departure','modify-unit','modify-confirm','booking-modify','booking-finalize','deposit-date','deposit-confirm','deposit-mark','contact-wrap','contact-name','contact-email','contact-save','detail-link','section-heading','section-description'];
+ const ids=['count-incoming','count-followup','count-approval','count-progress','count-closed','cases-panel','cases-title','email-picker','email-picker-wrap','email-previous','email-next','read-email','email-status','email-list','email-detail','email-draft-request','email-draft-status','email-draft-text','email-draft-review','email-draft-checks','draft-editor','save-draft','approve-draft','approve-confirm','return-draft','reject-draft','decision-reason','email-save-case','email-save-status','detail-messages','detail-facts','chat-form','chat-input','chat-output','chat-send','chat-reset','login','logout','email','password','session-status','load-cases','list-status','case-list','case-detail','detail-status','detail-summary','detail-capacity','detail-price','detail-draft','copy-approved','send-approved','price-panel','price-cabin','price-calc','price-result','price-available','price-insert','unavailable-confirm','unavailable-insert','unavailable-result','booking-panel','booking-state','booking-unit','booking-result','previo-ref','previo-recorded','previo-auto','previo-auto-wrap','oneclick-wrap','manual-path','oneclick-preview','oneclick-summary','oneclick-confirm','oneclick-go','cancel-reason','cancel-confirm','booking-cancel','modify-wrap','modify-arrival','modify-departure','modify-unit','modify-confirm','booking-modify','booking-finalize','deposit-date','deposit-confirm','deposit-mark','next-step','next-text','next-go','next-yes','next-no','next-result','contact-wrap','contact-name','contact-email','contact-save','detail-link','section-heading','section-description'];
  const elements=Object.fromEntries(ids.map(id=>[id,new Element()]));
  const nav=['incoming','followup','approval','progress','closed'].map(section=>{const e=new Element();e.dataset.section=section;return e;});
  const listeners={};
@@ -135,7 +135,7 @@ test('distinct daily PWA route retains original test app and never invents statu
  assert.match(html,/közös foglalástár tárolt állapotát/iu);
  assert.match(html,/<textarea id="draft-editor"[^>]+disabled>/u);
  assert.match(html,/<button id="approve-draft"[^>]+disabled>/u);
- assert.match(html,/<button id="reject-draft" type="button" disabled>Elutasítás \(nem kell vele foglalkozni\)<\/button>/u);assert.match(html,/<button id="return-draft" type="button" disabled data-detail>/u);
+ assert.match(html,/<button id="reject-draft" type="button" disabled>Elutasítás \(nem kell vele foglalkozni\)<\/button>/u);assert.match(html,/<button id="return-draft" type="button" data-detail disabled>/u);
  // Owner 2026-11-15: rejecting is visible in the simple view (no data-detail on the reject button).
  assert.doesNotMatch(html,/<button id="reject-draft"[^>]*data-detail/u);
  assert.ok(fs.existsSync('index.html'));assert.ok(fs.existsSync('cloud-approval.html'));
@@ -467,6 +467,7 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   assert.equal(e['detail-draft'].textContent,'Kitalált első tervezet.');assert.match(e['detail-capacity'].textContent,/szabad helyet a rendszer nem ellenőrzi.*kézi Previo-ellenőrzés/);
   assert.match(e['detail-status'].textContent,/^Jóváhagyásra vár\./);
   // Writer: may edit, may not decide.
+  assert.equal(e['next-step'].hidden,true,'no decide right: no next-step button');
   assert.equal(e['draft-editor'].disabled,false);assert.equal(e['approve-confirm'].disabled,true);assert.equal(e['reject-draft'].disabled,true);
   assert.equal(e['save-draft'].disabled,true);
   e['draft-editor'].value='Kitalált második tervezet.';await e['draft-editor'].dispatch('input');assert.equal(e['save-draft'].disabled,false);
@@ -477,6 +478,12 @@ test('test-mailbox case: list and open, Writer redraft, independent Approver ret
   role='approver';await open();
   assert.equal(e['draft-editor'].disabled,true);assert.equal(e['approve-confirm'].disabled,false);assert.equal(e['return-draft'].disabled,false);
   assert.equal(e['approve-draft'].disabled,true);
+  // Owner 2026-11-15: one "next step" button; the first tap only asks, "Mégse" returns, nothing is posted.
+  const before=posts.length;
+  assert.equal(e['next-step'].hidden,false);assert.equal(e['next-go'].textContent,'Válasz jóváhagyása és küldése');
+  await e['next-go'].dispatch('click');assert.equal(e['next-yes'].hidden,false);assert.match(e['next-text'].textContent,/Jóváhagyod/);
+  await e['next-no'].dispatch('click');assert.equal(e['next-yes'].hidden,true);assert.equal(e['next-go'].hidden,false);
+  assert.equal(posts.length,before,'asking posts nothing');
   e['decision-reason'].value='Kitalált indok';await e['return-draft'].dispatch('click');await settle();
   assert.deepEqual(posts.at(-1),{tenantId:'sarberki-test',caseId,action:'test-mailbox-decide',decision:'return',expectedRevision:2,reviewedDraftHash:hash('Kitalált második tervezet.'),reason:'Kitalált indok'});
   assert.match(e['detail-status'].textContent,/Visszaküldés mentve/);assert.match(e['detail-price'].textContent,/visszaküldve javításra.*Kitalált indok/);

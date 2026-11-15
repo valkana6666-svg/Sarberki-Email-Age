@@ -8,6 +8,7 @@ import {createServerChatClient} from '../sarberki-chatbot-project/remote-chat-cl
 import {translationErrorMessage} from '../translation-errors.mjs';
 import {CABIN_NAMES,huf,priceExplanation} from '../shared-core/price-insert-sentence.mjs';
 import {unitsOfType} from '../shared-core/unit-inventory.mjs';
+import {nextStepFor} from './napi-next.mjs';
 
 const TEST_ORIGIN='https://leafy-chimera-2403e5.netlify.app';
 // The server session states the deployment's single tenant (live store slice 2); TEST until it says otherwise.
@@ -163,7 +164,7 @@ el('chat-form').addEventListener('submit',async event=>{
 });
 el('chat-reset').addEventListener('click',resetChat);
 function clearDetail(){
- resetActions();
+ resetActions();hideNext();
  el('detail-messages').replaceChildren();el('detail-facts').textContent='';
  el('case-detail').hidden=true;
  for(const id of ['detail-status','detail-summary','detail-capacity','detail-price','detail-draft'])el(id).textContent='';
@@ -305,6 +306,7 @@ async function openTestMailboxCase(caseId,turn,status){
   tmCase.canDecide=true;el('approve-confirm').disabled=false;
   for(const id of ['return-draft','reject-draft','decision-reason'])el(id).disabled=false;
  }
+ renderNextStep(caseId,record);
 }
 // Copy for a manual Gmail reply; the separate "Válasz küldése" button sends the approved text server-side (test pair only).
 // Feedback is shown on the button itself (the status line is far above on a phone).
@@ -737,3 +739,61 @@ addEventListener('pagehide',conceal);
 addEventListener('pageshow',event=>{if(event.persisted)void reveal();});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')conceal();else void reveal();});
 void resume();
+
+// Owner 2026-11-15: "Következő lépés" – one button for the step that comes now (napi-next.mjs). It drives the existing,
+// server-checked actions; "Igen" is the confirming tap (a real gesture, so the Google send consent can open).
+let nextCase=null,nextTimer=null;
+function hideNext(){nextCase=null;if(nextTimer){clearInterval(nextTimer);nextTimer=null;}el('next-step').hidden=true;el('next-yes').hidden=true;el('next-no').hidden=true;el('next-go').hidden=false;el('next-go').disabled=false;el('next-text').textContent='';el('next-result').textContent='';}
+function renderNextStep(caseId,record){
+ hideNext();
+ const ch=record.channel,sendable=ch==='phone'||ch==='chat'?typeof record.values?.email==='string'&&record.values.email.length>0:true;
+ const step=nextStepFor(record,{sendable});if(!step)return;
+ nextCase={caseId,revision:record.revision,step};el('next-go').textContent=step.label;el('next-step').hidden=false;
+}
+function nextAsk(text,yes){el('next-text').textContent=text;el('next-go').hidden=true;el('next-yes').textContent=yes;el('next-yes').hidden=false;el('next-no').hidden=false;}
+function nextWatch(source,n){ // mirror a result that the existing (hidden in simple view) control shows
+ if(nextTimer)clearInterval(nextTimer);let left=100;
+ nextTimer=setInterval(()=>{if(nextCase!==n||--left<0){clearInterval(nextTimer);nextTimer=null;return;}const t=el(source).textContent;if(t&&t!==el('next-result').textContent)el('next-result').textContent=t;},300);
+}
+el('next-go').addEventListener('click',()=>{
+ const n=nextCase;if(!n||actionBusy)return;
+ if(n.step.kind!=='book'){nextAsk(n.step.ask,'Igen');return;}
+ el('next-go').disabled=true;el('next-result').textContent='Előnézet készül (Previo-olvasás)…';el('oneclick-preview').click();
+ let left=100;if(nextTimer)clearInterval(nextTimer);
+ nextTimer=setInterval(()=>{
+  if(nextCase!==n||--left<0){clearInterval(nextTimer);nextTimer=null;if(nextCase===n){el('next-go').disabled=false;el('next-result').textContent='Az előnézet nem készült el; próbáld újra.';}return;}
+  const summary=el('oneclick-summary').textContent;
+  if(!el('oneclick-confirm').disabled){clearInterval(nextTimer);nextTimer=null;el('next-result').textContent='';
+   nextAsk(summary.split('\n\n— ')[0]+'\n\nA visszaigazoló levél teljes szövege a „Teljes nézet”-ben olvasható.','Igen, foglalás');}
+  else if(!el('oneclick-preview').disabled&&/⛔|nem készült/.test(summary)){clearInterval(nextTimer);nextTimer=null;el('next-go').disabled=false;el('next-result').textContent=summary.split('\n\n— ')[0];}
+ },300);
+});
+el('next-no').addEventListener('click',()=>{const n=nextCase;if(!n)return;el('next-text').textContent='';el('next-yes').hidden=true;el('next-no').hidden=true;el('next-go').hidden=false;el('next-go').disabled=false;});
+el('next-yes').addEventListener('click',()=>{
+ const n=nextCase;if(!n||actionBusy||!authenticated)return;
+ el('next-yes').hidden=true;el('next-no').hidden=true;el('next-text').textContent='';
+ const kind=n.step.kind;
+ if(kind==='book'){el('oneclick-confirm').checked=true;el('oneclick-confirm').dispatchEvent(new Event('change'));el('next-result').textContent='Foglalás folyamatban…';nextWatch('booking-result',n);el('oneclick-go').click();return;}
+ if(kind==='deposit'){if(!el('deposit-date').value)el('deposit-date').value=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Budapest'});el('deposit-confirm').checked=true;el('next-result').textContent='Mentés…';nextWatch('booking-result',n);el('deposit-mark').click();return;}
+ if(kind==='approve'){el('approve-confirm').checked=true;el('next-result').textContent='Jóváhagyás…';void tmMutate('approve');return;}
+ if(kind==='send'){el('next-result').textContent='Google-engedély…';nextWatch('send-approved',n);el('send-approved').click();return;}
+ if(kind==='approveSend'){
+  const base=tmCase;if(!base||base.caseId!==n.caseId||base.revision!==n.revision)return;
+  actionBusy=true;el('next-result').textContent='Google-engedély…';
+  const fail=code=>{actionBusy=false;if(nextCase===n){el('next-result').textContent='Nem ment el – '+(sendErrors[code]||'a művelet nem igazolt; nincs automatikus ismétlés. Nyisd meg újra az ügyet.');el('next-go').hidden=false;}};
+  emailReader.requestSendToken(async token=>{
+   if(nextCase!==n||!authenticated)return fail('CHANGED');
+   try{
+    el('next-result').textContent='Jóváhagyás…';
+    const a=await request({tenantId:TENANT,caseId:base.caseId,action:'test-mailbox-decide',decision:'approve',expectedRevision:base.revision,reviewedDraftHash:base.hash});
+    if(a?.caseId!==base.caseId||a.approval!=='approved_internal'||a.revision!==base.revision+1)throw Error('INVALID_DATA');
+    el('next-result').textContent='Küldés…';
+    const r=await request({tenantId:TENANT,caseId:base.caseId,action:'test-mailbox-send',expectedRevision:a.revision},'POST',{'X-Sarberki-Gmail-Token':token});
+    if(r?.caseId!==base.caseId||!['sent','already_sent'].includes(r.status))throw Error('INVALID_DATA');
+    actionBusy=false;const turn=epoch;
+    await openTestMailboxCase(base.caseId,turn,r.status==='sent'?'Jóváhagyva és elküldve ✓':'Jóváhagyva; a levél már el volt küldve ✓');
+    if(current(turn))el('next-result').textContent=r.status==='sent'?'Jóváhagyva és elküldve ✓':'Jóváhagyva; a levél már el volt küldve ✓';
+   }catch(error){if(error?.message==='AUTH_REQUIRED'){actionBusy=false;failed(error);}else fail(error?.message);}
+  },fail);
+ }
+});

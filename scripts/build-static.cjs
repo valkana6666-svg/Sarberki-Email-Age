@@ -7,7 +7,7 @@ fs.rmSync(output, {recursive:true, force:true});
 fs.mkdirSync(output);
 const allowedDirectories = new Set(['business','guest-reply','shared-core','price-source','sarberki-chatbot-project','napi-kezelo','indito']);
 const chatbotAssets = new Set(['index.html','chat-session.mjs','chat-view.mjs','chat-capacity-client.mjs','chat-request-client.mjs','chat-assist-client.mjs','remote-chat-client.mjs','inquiry-preview.mjs','operator-session.mjs','version-status.mjs','manifest.webmanifest','icons']);
-const dailyAssets = new Set(['index.html','napi.mjs','napi-email.mjs','napi-view.mjs','napi.css','manifest.webmanifest','icons']);
+const dailyAssets = new Set(['index.html','napi.mjs','napi-email.mjs','napi-view.mjs','napi-next.mjs','napi.css','manifest.webmanifest','icons']);
 // Owner 2026-11-14: static launcher (logo, two links, manifest, icons) - nothing else from that folder.
 const launcherAssets = new Set(['index.html','logo.svg','manifest.webmanifest','icons']);
 function copyDirectory(source, relative='') {
