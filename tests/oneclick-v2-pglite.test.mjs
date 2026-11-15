@@ -1,5 +1,6 @@
 // One-click V2 (owner PERM-20261112-ONECLICK, 2026-11-12): preview -> one operator step -> Previo TEST option +
 // confirmation letter + approval. Real PostgreSQL (PGlite), fictional data, a fake Previo writer, no network.
+import {previoBookingNote} from '../shared-core/operator-notify.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -135,7 +136,7 @@ test('without the grant (Approver has no write) the DB refuses the finalize; the
   const record2=await newCase('call_oneclick_0004'),tw=transportFor('writer'),w2=fakeWriter();
   const ok2=await previewTestMailboxBooking({record:record2,unit:'12',transport:tw,unitCheckFn:free,previoWriterOn:true});
   const r=await oneClickTestMailboxBooking({record:record2,unit:'12',previewHash:ok2.previewHash,oneClickConfirmed:true,previoWriter:w2,attestationKey:KEY,transport:tw,unitCheckFn:free});
-  assert.equal(r.approved,false);assert.equal(r.saved.data.booking.status,'finalized');assert.equal(r.saved.data.state.approval,'pending');
+  assert.equal(r.approved,false);assert.equal(r.saved.data.booking.status,'finalized');assert.match(previoBookingNote(r.saved)||'',/^Foglalás beíródott a Previo-tesztbe/);assert.equal(r.saved.data.state.approval,'pending');
  }finally{await db.close();}
 });
 

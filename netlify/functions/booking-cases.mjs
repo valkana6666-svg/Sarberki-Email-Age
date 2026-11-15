@@ -1,4 +1,5 @@
 import {createHash} from 'node:crypto';
+import {previoBookingNote,notifyPushover} from '../../shared-core/operator-notify.mjs';
 import {askEmailAssist,emailAssistConfigured} from '../../shared-core/email-assist.mjs';
 import {clarificationEnabled} from '../../shared-core/server-clarification-review.mjs';
 import {createTubServiceApproval,createServiceApprovalAttestor} from '../../shared-core/server-tub-approval.mjs';
@@ -412,6 +413,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
        oneClickConfirmed:input.oneClickConfirmed,previoWriter,attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,transport:cookieSession.transport,
        unitCheckFn:previoUnitChecker(env,fetchImpl)});
       if(!saved)return cookieResponse(409,{error:'CASE_CONFLICT'});
+      await notifyPushover(env,fetchImpl,previoBookingNote(saved)); // owner 2026-11-15: Previo booking -> phone
       return cookieResponse(200,{result:{caseId:saved.case_id,revision:Number(saved.revision),approval:saved.data?.state?.approval,bookingStatus:saved.data?.booking?.status,approved,
        ...(deposit?{deposit:{pct:deposit.pct,amount:deposit.amount,receiptDeadlineUtc:deposit.receiptDeadlineUtc}}:{})}});
      }catch(error){
@@ -449,6 +451,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
       else if(input.action==='test-mailbox-cancel')saved=await cancelTestMailboxBooking({record,reason:input.reason,cancelConfirmed:input.cancelConfirmed,transport:cookieSession.transport,previoWriter});
       else saved=await markTestMailboxDepositReceived({record,receivedOn:input.receivedOn,depositConfirmed:input.depositConfirmed,transport:cookieSession.transport,previoWriter});
       if(!saved)return cookieResponse(409,{error:'CASE_CONFLICT'});
+      if(input.action==='test-mailbox-confirm'&&input.previoAuto===true)await notifyPushover(env,fetchImpl,previoBookingNote(saved)); // owner 2026-11-15
       return cookieResponse(200,{result:{caseId:saved.case_id,revision:Number(saved.revision),approval:saved.data?.state?.approval,bookingStatus:saved.data?.booking?.status,
        ...(deposit?{deposit:{pct:deposit.pct,amount:deposit.amount,receiptDeadlineUtc:deposit.receiptDeadlineUtc}}:{}),...(saved.previoSync?{previoSync:saved.previoSync}:{})}});
      }catch(error){
