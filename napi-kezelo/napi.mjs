@@ -273,7 +273,7 @@ async function openTestMailboxCase(caseId,turn,status){
   if(typeof message.text!=='string')throw Error('INVALID_DATA');
   const item=document.createElement('p');item.className='readout';
   // Owner 2026-11-15 („egyszerűsítsd”): the quoted earlier letter is folded in the simple view.
-  const own=message.text.split(/\n(?=[^\n]*(?:ezt írta|wrote|schrieb|je napisal)[^\n]*:\s*\n)|\n>/u)[0].trimEnd();
+  const own=message.text.split(/\n(?=[^\n]*<[^>\n]+@[^>\n]+>[\s\S]{0,160}?(?:írta|wrote|schrieb|napisal)\s*:)|\n(?=[^\n]*(?:ezt írta|wrote|schrieb|je napisal)[^\n]*:\s*\n)|\n>/u)[0].trimEnd();
   item.textContent=(message.received_at?localTime(message.received_at)+'\n':'')+message.text;
   if(own&&own.length<message.text.trim().length){const short=document.createElement('p');short.className='readout msg-short';short.textContent=(message.received_at?localTime(message.received_at)+'\n':'')+own+'\n(korábbi levelünk idézete elrejtve)';item.setAttribute('data-detail','');messages.append(short);}
   messages.append(item);
@@ -315,6 +315,8 @@ async function openTestMailboxCase(caseId,turn,status){
   tmCase.canDecide=true;el('approve-confirm').disabled=false;
   for(const id of ['return-draft','reject-draft','decision-reason'])el(id).disabled=false;
  }
+ // Owner 2026-11-15: a booked case repeats its essentials under „Foglalás véglegesítése”; the long operator block is full view only.
+ el('detail-summary').className=['finalized','deposit_received','cancelled'].includes(record.booking?.status)?'readout booked-hide':'readout';
  renderNextStep(caseId,record);
 }
 // Copy for a manual Gmail reply; the separate "Válasz küldése" button sends the approved text server-side (test pair only).

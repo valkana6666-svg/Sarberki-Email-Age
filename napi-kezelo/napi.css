@@ -22,3 +22,4 @@ body.simple [data-detail],body.simple .muted:not(.note){display:none!important}.
 .next-step{border:2px solid var(--orange,#ff7a00);border-radius:14px;padding:12px 14px;margin:10px 0 16px}.next-step h3{margin:0 0 6px}.next-step button{margin:6px 8px 0 0}.next-step #next-text{white-space:pre-wrap}
 /* Owner 2026-11-15 („egyszerűsítsd”): simple view hides old rows, the access card once signed in, quoted mail. */
 body.simple li.row-old{display:none!important}body:not(.simple) .row-note,body:not(.simple) .msg-short{display:none!important}.row-note{opacity:.75;font-size:.9rem;list-style:none}body.simple.signed-in .access-card{display:none!important}
+body.simple .booked-hide{display:none!important}
