@@ -670,7 +670,8 @@ async function mutate(kind){
 el('save-draft').addEventListener('click',()=>tmCase?tmMutate('redraft'):mutate('edit'));
 el('approve-draft').addEventListener('click',()=>tmCase?tmMutate('approve'):mutate('approve'));
 el('return-draft').addEventListener('click',()=>tmMutate('return'));
-el('reject-draft').addEventListener('click',()=>tmMutate('reject'));
+// Owner 2026-11-15 („Ez így nagyon bonyolult”): Elutasítás is visible in the simple view; one confirm against a mis-tap.
+el('reject-draft').addEventListener('click',()=>{if(typeof confirm!=='function'||confirm('Elutasítod ezt az ügyet? Vendéglevél nem megy, a Previóban sem történik semmi.'))tmMutate('reject');});
 async function loadCases({selectAvailable=false}={}){
  if(!authenticated||actionBusy)return;
  clearData('Foglalások ellenőrzése…');const turn=epoch;el('load-cases').disabled=true;
