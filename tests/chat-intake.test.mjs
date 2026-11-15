@@ -44,3 +44,18 @@ test('chat facts -> request facts only when dates, adults and a cabin type are k
  assert.deepEqual(requestFacts({dates:{arrival:'2027-07-12',departure:'2027-07-15'},adults:2,children:1,child_ages:[5],cabin:'Osztott C'}),
   {arrival:'2027-07-12',departure:'2027-07-15',adults:2,children:1,childAges:[5],cabin:'splitC'});
 });
+
+test('Pushover only after a successfully stored request (owner 2026-11-15); invalid or failed requests send none',async()=>{
+ const notifyEnv={...env,INTAKE_NOTIFY:'pushover',PUSHOVER_API_TOKEN:'t'.repeat(30),PUSHOVER_USER_KEY:'u'.repeat(30)};
+ const run=async(b,store)=>{const pushes=[];const fetchImpl=async(url,o={})=>{const u=String(url);
+  if(u.includes('api.pushover.net')){pushes.push(JSON.parse(o.body));return new Response('{}');}
+  if(u.includes('/auth/v1/token'))return new Response(JSON.stringify({access_token:'jwt'}));
+  return store?new Response(JSON.stringify({caseId:'tm-x',revision:1})):new Response('{}',{status:400});};
+  const r=await createChatIntakeHandler({env:notifyEnv,fetchImpl})(req(b));return {status:r.status,pushes};};
+ const ok=await run(body,true);
+ assert.equal(ok.status,200);assert.equal(ok.pushes.length,1,'exactly one note per stored request');
+ assert.doesNotMatch(JSON.stringify(ok.pushes[0]),/\+36|Deluxe|2027/,'no personal or stay data in the note');
+ assert.match(ok.pushes[0].url,/\/napi-kezelo\/$/);
+ assert.equal((await run(body,false)).pushes.length,0,'failed storage: no note');
+ assert.equal((await run({...body,consent:false},true)).pushes.length,0,'invalid request: no note');
+});
