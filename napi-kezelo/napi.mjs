@@ -422,7 +422,7 @@ function showBooking(caseId,record){
  // Owner 2026-11-15: the guest's name is required for a Previo booking; editable here before booking.
  const canContact=record.canEditContact===true;el('contact-wrap').hidden=!canContact;el('contact-save').disabled=!canContact;
  el('contact-name').value=typeof record.values?.name==='string'?record.values.name:'';el('contact-email').value=typeof record.values?.email==='string'?record.values.email:'';
- if(canContact&&!el('contact-name').value.trim())el('booking-state').textContent+='\n⛔ Hiányzik a vendég neve – írd be lent, és mentsd (foglalás csak névvel).';
+ if(canContact&&fin&&!el('contact-name').value.trim())el('booking-state').textContent+='\n⛔ Hiányzik a vendég neve – írd be lent, és mentsd (foglalás csak névvel).';
  oneClickReset();el('oneclick-wrap').hidden=record.canOneClick!==true;
  // Owner iPhone practice 2026-11-13: two similar buttons confused; with one-click available the manual path is folded.
  el('manual-path').open=record.canOneClick!==true;
