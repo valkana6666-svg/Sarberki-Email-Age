@@ -4,18 +4,41 @@
 // is checked here; anything outside the facts falls back to the existing "our team will help" answer.
 import {BUSINESS} from '../business-config.mjs';
 import {renderChatbotIntent} from '../chatbot-v1.mjs';
+import {fishing} from '../fishing-rules.mjs';
 
 const LANGS=['hu','de','en','si'];
 const LANG_NAME={hu:'Hungarian',de:'German',en:'English',si:'Slovenian'};
 const INTENTS=['checkin','deposit','pet','hotTub','fishing','cabins','booking','availability'];
-// Extra approved operational facts (business-config.mjs), Hungarian source wording; the model replies in the guest's language.
+// Approved facts for the model (owner 2026-11-15 „tesztekkel bombázni”: the knowledge was too thin). Only central,
+// already-approved sources: business-config.mjs, fishing-rules.mjs, the chatbot texts and the property's own public
+// contact data. Room prices are NOT included (the deterministic engine quotes them); no internal house numbers.
 function extraFacts(){
- const o=BUSINESS.operationalRules,lines=[];
- if(o.reception24h)lines.push('A recepció a nap 24 órájában elérhető.');
- if(o.pierPerHouse==='own')lines.push('Minden faháznak saját stégje van.');
- if(o.electricitySettlement==='metered_separate')lines.push('Az áramfogyasztást mérő alapján, külön számoljuk el.');
- lines.push('Online foglalási igény: '+BUSINESS.bookingUrl);
- return lines;
+ const o=BUSINESS.operationalRules,b=BUSINESS.bookingRules,p=BUSINESS.pricingRules,t=BUSINESS.accommodationTypes,f=fishing;
+ const n=x=>String(x).replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+ const L=[];
+ L.push('Cím: Sárberki Horgásztó és Üdülőfalu, 8960 Lenti, Sárberki tó utca 1. Telefon: +36 30 640 7621. E-mail: info@sarberkito.hu. Honlap: https://sarberkito.hu');
+ if(o.reception24h)L.push('A recepció a nap 24 órájában elérhető.');
+ L.push('Bejelentkezés 14:00 és éjjel 2:00 között (a Sárberki voucherén is így szerepel), kijelentkezés 10:00-ig.');
+ if(o.pierPerHouse==='own')L.push('Minden faháznak saját stégje van; az osztott házaknál a felső (C) apartmannak saját stégje van, az A és B apartman egy stéget közösen használ.');
+ L.push('Az osztott házakban az A és B apartman a földszinten van közös terasszal, a C apartman az emeleten, csigalépcsővel, saját terasszal.');
+ const caps=[t.deluxe&&'Deluxe faház legfeljebb '+t.deluxe.maxGuests+' fő',t.family&&'Családi faház legfeljebb '+t.family.maxGuests+' fő',t.vip&&'VIP apartman legfeljebb '+t.vip.maxGuests+' fő',
+  t.small&&'Különálló 2 fős faház 2 fő (gyermeknek pótágy kérhető)','osztott 2 fős apartman (A/B) 2 fő','osztott 4 fős apartman (C) 4 fő, pótággyal legfeljebb 5'].filter(Boolean);
+ L.push('Szállástípusok és férőhely: '+caps.join('; ')+'.');
+ if(o.electricitySettlement==='metered_separate')L.push('Az áramot faházanként mérőóra alapján, a szállásdíjon felül számoljuk el (érkezéskor és távozáskor közösen leolvassuk); a korábbi évek alapján ez kb. 1000–1200 Ft/fő/éjszaka.');
+ if(o.parking)L.push('Parkolási lehetőség van; nagyobb csoportnál előre egyeztetjük.');
+ if(o.firewood)L.push('Tűzifa felár ellenében kérhető; az árát munkatársunk közli.');
+ if(o.petAllowedForFee&&o.petFeeVerified)L.push('Háziállat hozható, díja '+n(o.petFeeHufPerPetPerDay)+' Ft/nap/állat.');
+ L.push('Idegenforgalmi adó: '+n(p.tourismTaxAdultNightlyHuf)+' Ft/fő/éjszaka (felnőtt).');
+ if(o.returningGuestDiscountPct)L.push('Visszatérő vendégeknek (2 éven belüli korábbi tartózkodás esetén) '+o.returningGuestDiscountPct+'% szállásdíj-kedvezmény járhat; ezt munkatársunk ellenőrzi.');
+ L.push('Lemondás: az érkezés előtt legalább '+b.cancellationDaysUnder15Guests+' nappal történő lemondásnál a foglaló nem vész el.');
+ L.push('Fizetés: a foglalót banki átutalással kérjük; a fizetés részleteit a visszaigazolással küldjük.');
+ L.push('Foglalás: a chatben foglalási igényt lehet küldeni, vagy online: '+BUSINESS.bookingUrl+'; a foglalás a visszaigazolásunkkal válik érvényessé.');
+ const tk=f.tickets,row=(lake,name)=>name+': 12 órás '+n(tk[lake].adult.hours12)+' / '+n(tk[lake].child.hours12)+' Ft, 24 órás '+n(tk[lake].adult.hours24)+' / '+n(tk[lake].child.hours24)+' Ft, heti '+n(tk[lake].adult.week)+' / '+n(tk[lake].child.week)+' Ft';
+ L.push('Horgászjegyek (felnőtt / gyermek) – '+row('normal','Normál tó')+'; '+row('record','Rekord tó')+'. A rekord tavi jegy a normál tóra is érvényes. Faházvendégek 12 órás jegyet nem válthatnak, nekik 24 órás jegy kell.');
+ const m=f.minimumCm;L.push('Minimum méretek: süllő '+m.zander+' cm, csuka '+m.pike+' cm, ponty '+m.carp+' cm, amur '+m.grassCarp+' cm, harcsa '+m.catfish+' cm.');
+ const k=f.fishPerKg;L.push('Elvihető hal ára kilogrammonként: süllő '+n(k.zander)+' Ft, csuka '+n(k.pike)+' Ft, harcsa '+n(k.catfish)+' Ft, 5 kg alatti ponty '+n(k.carpUnder5Kg)+' Ft, 5 kg alatti amur '+n(k.grassCarpUnder5Kg)+' Ft, keszeg '+n(k.bream)+' Ft, kárász '+n(k.crucian)+' Ft.');
+ L.push('A teljes horgászati szabályzat: '+f.rulesSource);
+ return L;
 }
 export function chatAssistKnowledge(){
  return [...INTENTS.map(i=>renderChatbotIntent(i,'hu')),...extraFacts()].map(t=>'- '+t).join('\n');
@@ -43,7 +66,7 @@ export function checkAssistAnswer(text){
  const kb=chatAssistKnowledge(),kbNums=new Set(kb.match(/\d+/g)||[]);
  if((t.match(/\d+/g)||[]).some(n=>!kbNums.has(n)))return null;
  const links=t.match(/(?:https?:\/\/|www\.)\S+/gi)||[];
- if(links.some(l=>!l.replace(/[).,;!?]+$/,'').startsWith(BUSINESS.bookingUrl.replace(/\/$/,''))))return null;
+ if(links.some(l=>!/^(?:https?:\/\/)?(?:www\.)?sarberkito\.hu(?:\/|$)/i.test(l.replace(/[).,;!?]+$/,''))))return null;
  if(/\b(?:7|8|9|10)\s*\/\s*[ABC]\b|\b(?:ház|house|haus|hiš\w*)\s*(?:szám|number|nr|št)?\.?\s*\d/iu.test(t))return null;
  if(/[<>]/.test(t))return null;
  return t;

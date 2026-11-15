@@ -91,7 +91,9 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
    renderRequest();
    // V3-SMALLTALK (owner 2026-11-15): a question the rules did not understand may get a fact-bound model answer;
    // it replaces the "our team will help" line in place, only if nothing newer was said meanwhile.
-   if(assistProvider&&!result.decision&&result.response?.intent==='unknown'){
+   // Owner 2026-11-15 („tesztekkel bombázni”): every informational question (not only an unknown one) gets the
+   // fact-bound model answer; the rule-based answer stays when the model has nothing approved to say.
+   if(assistProvider&&!result.decision){
     const turn=session.turn,entry=log.lastElementChild,lang=session.language;
     assistProvider({message:question,language:lang}).then(answer=>{
      if(!answer||session.turn!==turn||log.lastElementChild!==entry)return;
