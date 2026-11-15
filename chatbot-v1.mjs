@@ -57,6 +57,8 @@ export function chatbotReply({message='',language='hu'}={}){
  else if(/érkez|távoz|check.?in|check.?out|anreise|abreise|prijava|odjava/u.test(text))intent='checkin';
  // Owner iPhone chat test 2026-11-15: fishing questions get the specific approved answer (tickets, hooks, sizes,
  // take-away prices) or, for a rules question, the rules summary with the link - not always the same general sentence.
+ // Owner iPhone chat test 2026-11-15: "Mik a napijegy árak?" has no fishing word, but the fishing module knows tickets.
+ if(intent==='unknown'){const q=fishingQuestion(text,lang);if(q&&q.kind!=='review')intent='fishing';}
  let reply=t[intent];
  if(intent==='fishing'){
   if(/szabály|szabaly|regel|ordnung|\brules?\b|pravil|red\b/iu.test(text))reply=fishingRulesSummary(lang);

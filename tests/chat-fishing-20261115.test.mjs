@@ -21,3 +21,9 @@ test('with the request form shown, the chat reply does not ask for a phone numbe
  const two='Az ajánlathoz még szükségünk van\nKérjük, írja meg, hány felnőtt érkezik.\nMegírna egy telefonszámot, amelyen elérhetjük?\n\nZ';
  assert.equal(withoutPhoneQuestion(two,'hu'),'Az ajánlathoz még szükségünk van\nKérjük, írja meg, hány felnőtt érkezik.\n\nZ');
 });
+
+test('ticket words without a fishing word still get the ticket prices (owner iPhone test 2026-11-15)',()=>{
+ assert.match(chatbotReply({message:'Mik a napijegy árak?',language:'hu'}).reply,/24 órás 7 500 \/ 3 750 Ft/);
+ assert.match(chatbotReply({message:'Mennyi a hetijegy?',language:'hu'}).reply,/heti 32 500/);
+ assert.equal(chatbotReply({message:'Mi a wifi jelszó?',language:'hu'}).intent,'unknown');
+});
