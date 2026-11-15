@@ -581,12 +581,16 @@ export function languageFromText(text='',{conservative=false}={}){
   return best[0][1]>0 && best[0][1]>best[1][1] ? best[0][0] : 'unknown';
 }
 export function replySummary(language='hu', {arrival=null,departure=null,guests=null,adults:knownAdults=null,children=null,childAges=[],pier=false,hotTub=false,dog=false}={}){
-  if(!arrival||!departure||!guests) return '';
+  if(!arrival||!departure) return '';
   const fmtNumeric=iso=>{const [y,m,d]=iso.split('-');return `${d}.${m}.${y}`;};
   // Hungarian order is year.month.day. (e.g. 2026.11.13.); German and Slovene keep day.month.year.
   const fmtHungarian=iso=>{const [y,m,d]=iso.split('-');return `${y}.${m}.${d}.`;};
   const enMonths=['January','February','March','April','May','June','July','August','September','October','November','December'];
   const fmtEnglish=iso=>{const [y,m,d]=iso.split('-');return `${Number(d)} ${enMonths[Number(m)-1]} ${y}`;};
+  // Owner iPhone chat test 2026-11-15: dates known but party not yet - the reply now repeats the understood dates
+  // (before, nothing showed that "December 12.-14." was understood).
+  if(!guests)return {hu:`${fmtHungarian(arrival)} és ${fmtHungarian(departure)} között keresnek szállást.`,de:`Sie möchten vom ${fmtNumeric(arrival)} bis ${fmtNumeric(departure)} bei uns übernachten.`,
+   en:`You would like to stay with us from ${fmtEnglish(arrival)} to ${fmtEnglish(departure)}.`,si:`Pri nas želite bivati od ${fmtNumeric(arrival)} do ${fmtNumeric(departure)}.`}[language]||'';
   const adults=Number.isInteger(knownAdults)?knownAdults:Number.isFinite(children)?Math.max(0,guests-children):null;
   const ageList=(lang)=>{
     if(!Array.isArray(childAges)||!childAges.length||childAges.length!==children) return '';
