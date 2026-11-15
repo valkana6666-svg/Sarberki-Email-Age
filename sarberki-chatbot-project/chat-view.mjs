@@ -1,10 +1,20 @@
 import {createChatInquirySession} from './chat-session.mjs';
 import {renderChatbotIntent} from '../chatbot-v1.mjs';
 import {REQUEST_TEXT,requestFacts} from './chat-request-client.mjs';
-import {nameFromText} from '../sarberki-core.mjs';
+import {nameFromText,replyQuestions} from '../sarberki-core.mjs';
 
 const ASSIST_NOTE={hu:'(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)',de:'(Automatische Auskunft – Details bestätigt unser Team gerne.)',
  en:'(Automatic information – our team will gladly confirm the details.)',si:'(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)'};
+// Owner iPhone test 2026-11-15: where the request form (which asks for phone/e-mail) is shown, the reply does not ask
+// for a phone number again; an emptied "details still needed" block is dropped too.
+const MISSING_TITLE={hu:'Az ajánlathoz még szükségünk van',de:'Noch benötigte Angaben',en:'Details still needed',si:'Podatki za dopolnitev'};
+export function withoutPhoneQuestion(text,lang){
+ const q=replyQuestions(lang,{needPhone:true})[0];if(!q||typeof text!=='string'||!text.includes(q))return text;
+ const lines=text.split('\n').filter(l=>l.trim()!==q);
+ const i=lines.findIndex(l=>l.trim()===MISSING_TITLE[lang]);
+ if(i>=0&&(i+1>=lines.length||!lines[i+1].trim())){lines.splice(i,1);if(i<lines.length&&!lines[i]?.trim()&&i>0&&!lines[i-1].trim())lines.splice(i,1);}
+ return lines.join('\n');
+}
 // The audience is chosen by the host, never by a guest-controlled URL parameter.
 // Guest rendering never inserts operator review text or server controls.
 export function mountChatView(root,{audience='guest',language='auto',clock,capacityProvider=null,requestSender=null,assistProvider=null}={}){
@@ -76,7 +86,7 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
    if(messages===0)greeting();
    append('Vendég / Guest',question,session.language);
    said.push(question);
-   append('Sárberki',result.text,session.language,result.operatorReviewText);
+   append('Sárberki',requestSender?withoutPhoneQuestion(result.text,session.language):result.text,session.language,result.operatorReviewText);
    messages++;updateStatus();input.value='';
    renderRequest();
    // V3-SMALLTALK (owner 2026-11-15): a question the rules did not understand may get a fact-bound model answer;
