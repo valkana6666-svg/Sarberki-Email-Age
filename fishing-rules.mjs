@@ -35,7 +35,7 @@ export function fishingQuestion(text='', language='hu') {
   // Gyakori ékezet nélküli magyar levél; a díjakat és szabályokat nem változtatja.
   text=String(text).replace(/horgasz/giu,'horgász').replace(/szabaly/giu,'szabály').replace(/szakall/giu,'szakáll');
   // Ticket words without a fishing word ('napijegy', 'hetijegy', 'a jegy a tóra') still mean a fishing ticket.
-  const ticketOnly=/(?:napi\s*jegy|heti\s*jegy|gyer(?:e|me)k\s*jegy|felnőtt\s*jegy|horgász\s*jegy|horgász\s*engedély(?!ez)|jegy\w*[^.!?\n]{0,15}t[oó]ra)/iu.test(text);
+  const ticketOnly=/(?:napi\s*jegy|heti\s*jegy|gyer(?:e|me)k\s*jegy|felnőtt\s*jegy|horgász\s*jegy|horgász\s*engedély(?!ez)|faházvendég\p{L}*[^.!?\n]{0,40}jegy|jegy\w*[^.!?\n]{0,15}t[oó]ra)/iu.test(text);
   if (!ticketOnly && !/horgász|hal(?:at|at fog|elvitel|ár)|ponty|csuka|süllő|harcsa|hor(?:og|got|gok)|szakállas|normál\s*tó|rekord\s*tó|angeln|angel(?:karte|schein)|fishing|\bfish\b|fish(?:ing)? ticket|barbed|hook|haken|widerhaken|mindestmaß|min(?:imum)?\s+(?:fish\s+)?size|ribolov|lovili\s+ribe|loviti\s+ribe|trnek|trnki|zalust/iu.test(text)) return null;
   const lang=['hu','de','en','si'].includes(language)?language:'hu';
   const wantsHook=/(?:szakállas|szakáll nélküli|hor(?:og|got|gok)|barbed\s+hooks?|barbless\s+hooks?|haken|widerhaken|trnek|trnki|zalust)/iu.test(text);
