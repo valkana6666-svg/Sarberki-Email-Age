@@ -24,6 +24,10 @@ function extraFacts(){
  const caps=[t.deluxe&&'Deluxe faház legfeljebb '+t.deluxe.maxGuests+' fő',t.family&&'Családi faház legfeljebb '+t.family.maxGuests+' fő',t.vip&&'VIP apartman legfeljebb '+t.vip.maxGuests+' fő',
   t.small&&'Különálló 2 fős faház 2 fő (gyermeknek pótágy kérhető)','osztott 2 fős apartman (A/B) 2 fő','osztott 4 fős apartman (C) 4 fő, pótággyal legfeljebb 5'].filter(Boolean);
  L.push('Szállástípusok és férőhely: '+caps.join('; ')+'.');
+ const cnt=k=>t[k]?.physicalHouseNumbers?.length||0;
+ L.push('Összesen '+(cnt('vip')+cnt('family')+cnt('deluxe')+cnt('small')+BUSINESS.splitHouseLayout.order.length)+' ház: '+cnt('vip')+' VIP apartman, '+cnt('family')+' Családi faház, '+cnt('deluxe')+' Deluxe faház, '+cnt('small')+' Különálló 2 fős faház és '+BUSINESS.splitHouseLayout.order.length+' osztott ház ('+BUSINESS.splitPhysicalUnits.length+' apartman).');
+ const tub=BUSINESS.hotTubRentalRules.houseNumbers,kinds=[['vip','VIP apartman'],['family','Családi faház'],['deluxe','Deluxe faház'],['small','Különálló 2 fős faház']].filter(([k])=>t[k]?.physicalHouseNumbers?.some(h=>tub.includes(h))).map(([,v])=>v);
+ L.push('Dézsa a következő háztípusokhoz bérelhető: '+kinds.join(', ')+'; az osztott apartmanokhoz nem.');
  if(o.electricitySettlement==='metered_separate')L.push('Az áramot faházanként mérőóra alapján, a szállásdíjon felül számoljuk el (érkezéskor és távozáskor közösen leolvassuk); a korábbi évek alapján ez kb. 1000–1200 Ft/fő/éjszaka.');
  if(o.parking)L.push('Parkolási lehetőség van; nagyobb csoportnál előre egyeztetjük.');
  if(o.firewood)L.push('Tűzifa felár ellenében kérhető; az árát munkatársunk közli.');

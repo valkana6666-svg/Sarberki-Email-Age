@@ -27,3 +27,10 @@ test('ticket words without a fishing word still get the ticket prices (owner iPh
  assert.match(chatbotReply({message:'Mennyi a hetijegy?',language:'hu'}).reply,/heti 32 500/);
  assert.equal(chatbotReply({message:'Mi a wifi jelszó?',language:'hu'}).intent,'unknown');
 });
+
+test('question battery (owner 2026-11-15): the rule part never answers a hook question with ticket prices',async()=>{
+ assert.match(chatbotReply({message:'Szakállas horog engedélyezett?',language:'hu'}).reply,/^Szakállas horog nem használható/);
+ const {chatAssistKnowledge}=await import('../shared-core/chat-assist.mjs');const kb=chatAssistKnowledge();
+ assert.match(kb,/Összesen 15 ház/);assert.match(kb,/Dézsa a következő háztípusokhoz bérelhető: VIP apartman, Családi faház, Deluxe faház, Különálló 2 fős faház; az osztott apartmanokhoz nem/);
+ assert.match(kb,/Rekord tó: 12 órás 7 500 \/ 3 750 Ft/);assert.doesNotMatch(kb,/\b(?:7|8|9|10)\/[ABC]\b/,'no internal house numbers');
+});
