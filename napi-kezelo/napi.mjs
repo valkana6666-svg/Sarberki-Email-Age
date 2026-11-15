@@ -131,12 +131,17 @@ function renderRows(){
   button.setAttribute('aria-label',label.textContent+' megnyitása');
   button.addEventListener('click',()=>openCase(row.caseId));li.append(label,button);
   // Owner 2026-11-14: a chatbot request is visibly set apart (colour + badge), still in time order.
-  if(row.summary?.channel==='chat')li.classList.add('row-chat');else if(row.summary?.channel==='phone')li.classList.add('row-phone');fragment.append(li);
+  if(row.summary?.channel==='chat')li.classList.add('row-chat');else if(row.summary?.channel==='phone')li.classList.add('row-phone');
+  // Owner 2026-11-15 („egyszerűsítsd”): cancelled/rejected and old fixture rows are hidden in the simple view.
+  if(row.kind!=='test-mailbox'||row.summary?.booking==='cancelled'||row.approval==='rejected')li.className=(li.className?li.className+' ':'')+'row-old';fragment.append(li);
  });
+ const old=visible.filter(row=>row.kind!=='test-mailbox'||row.summary?.booking==='cancelled'||row.approval==='rejected').length;
+
  el('case-list').replaceChildren(fragment);
  if(!authenticated)el('list-status').textContent='A foglalási listához jelentkezzen be a Belépés részben.';
  else if(!listLoaded)el('list-status').textContent='A kategória foglalási listája még nincs betöltve. Nyomja meg az Foglalások frissítése gombot.';
  else el('list-status').textContent=visible.length?'A kiválasztott kategória: '+visible.length+' tárolt tesztfoglalás.':'Ebben a kategóriában nincs elérhető tárolt tesztfoglalás.';
+ if(authenticated&&listLoaded&&old&&document.body?.classList?.contains?.('simple'))el('list-status').textContent+=' Ebből '+old+' régi vagy lezárt elrejtve – a „Teljes nézet” mutatja.';
 }
 
 let chatEpoch=0,chatBusy=false;
@@ -184,7 +189,7 @@ function clearData(message='A listához jelentkezzen be.'){
  el('case-list').replaceChildren();clearDetail();el('list-status').textContent=message;
 }
 function sessionUI(isAuthenticated,message){
- authenticated=isAuthenticated;emailReader.setEnabled(isAuthenticated);el('session-status').textContent=message;
+ authenticated=isAuthenticated;emailReader.setEnabled(isAuthenticated);document.body?.classList?.toggle?.('signed-in',isAuthenticated);el('session-status').textContent=message;
  el('login').hidden=isAuthenticated;el('logout').hidden=!isAuthenticated;
  el('load-cases').disabled=!isAuthenticated;
  el('chat-input').disabled=!isAuthenticated;el('chat-send').disabled=!isAuthenticated||chatBusy;
@@ -267,7 +272,11 @@ async function openTestMailboxCase(caseId,turn,status){
  for(const message of record.messages){
   if(typeof message.text!=='string')throw Error('INVALID_DATA');
   const item=document.createElement('p');item.className='readout';
-  item.textContent=(message.received_at?localTime(message.received_at)+'\n':'')+message.text;messages.append(item);
+  // Owner 2026-11-15 („egyszerűsítsd”): the quoted earlier letter is folded in the simple view.
+  const own=message.text.split(/\n(?=[^\n]*(?:ezt írta|wrote|schrieb|je napisal)[^\n]*:\s*\n)|\n>/u)[0].trimEnd();
+  item.textContent=(message.received_at?localTime(message.received_at)+'\n':'')+message.text;
+  if(own&&own.length<message.text.trim().length){const short=document.createElement('p');short.className='readout msg-short';short.textContent=(message.received_at?localTime(message.received_at)+'\n':'')+own+'\n(korábbi levelünk idézete elrejtve)';item.setAttribute('data-detail','');messages.append(short);}
+  messages.append(item);
  }
  const values=record.values||{};
  el('detail-messages').replaceChildren(messages);void showTranslation(caseId,turn);
