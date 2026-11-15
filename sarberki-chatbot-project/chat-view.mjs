@@ -3,9 +3,11 @@ import {renderChatbotIntent} from '../chatbot-v1.mjs';
 import {REQUEST_TEXT,requestFacts} from './chat-request-client.mjs';
 import {nameFromText} from '../sarberki-core.mjs';
 
+const ASSIST_NOTE={hu:'(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)',de:'(Automatische Auskunft – Details bestätigt unser Team gerne.)',
+ en:'(Automatic information – our team will gladly confirm the details.)',si:'(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)'};
 // The audience is chosen by the host, never by a guest-controlled URL parameter.
 // Guest rendering never inserts operator review text or server controls.
-export function mountChatView(root,{audience='guest',language='auto',clock,capacityProvider=null,requestSender=null}={}){
+export function mountChatView(root,{audience='guest',language='auto',clock,capacityProvider=null,requestSender=null,assistProvider=null}={}){
  const operator=audience==='operator',session=createChatInquirySession({language,clock});
  const log=root.querySelector('[data-chat-log]'),input=root.querySelector('[data-chat-input]');
  const form=root.querySelector('[data-chat-form]'),reset=root.querySelector('[data-chat-reset]');
@@ -69,6 +71,15 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
    append('Sárberki',result.text,session.language,result.operatorReviewText);
    messages++;updateStatus();input.value='';
    renderRequest();
+   // V3-SMALLTALK (owner 2026-11-15): a question the rules did not understand may get a fact-bound model answer;
+   // it replaces the "our team will help" line in place, only if nothing newer was said meanwhile.
+   if(assistProvider&&!result.decision&&result.response?.intent==='unknown'){
+    const turn=session.turn,entry=log.lastElementChild,lang=session.language;
+    assistProvider({message:question,language:lang}).then(answer=>{
+     if(!answer||session.turn!==turn||log.lastElementChild!==entry)return;
+     entry.remove();append('Sárberki',answer+'\n\n'+(ASSIST_NOTE[lang]||ASSIST_NOTE.hu),lang,lang!=='hu'?'[Gépi válasz a jóváhagyott tájékoztató alapján]':'');
+    }).catch(()=>{});
+   }
    // Operator test only: a verified Previo TEST read replaces the last answer in place (never the guest widget).
    if(operator&&capacityProvider&&result.capacityInput){
     const turn=session.turn,entry=log.lastElementChild;
