@@ -481,7 +481,10 @@ export function dateRangeFromText(text='',now=new Date(),timeZone='Europe/Budape
     : text.split(/[;\n]/u);
   const ranges=parts.map(p=>parseDateRange(p,now,timeZone)).filter(Boolean);
   if(new Set(ranges.map(r=>r.arrival+'|'+r.departure)).size>1)return null;
-  let result=parseDateRange(text,now,timeZone)||singleDateWithNights(text,now);
+  let result=parseDateRange(text,now,timeZone);
+  // Chat test 2026-11-16: "augusztus 10-től 3 éjszakára" was read as a day range 10→3 (invalid) and then dropped;
+  // an invalid range now falls back to start date + night count.
+  if(!result||!validIsoDate(result.departure)||result.departure<=result.arrival)result=singleDateWithNights(text,now)||result;
   if(!result)return null;
   if(/(?:jövőre|jovore|következő évben|next year|nächstes jahr|naslednje leto)/iu.test(text)&&result.inferredYear){
     const year=Number(new Intl.DateTimeFormat('en',{timeZone,year:'numeric'}).format(now))+1;

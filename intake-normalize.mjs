@@ -28,8 +28,11 @@ export function normalizeInquiryInput({
 
   const dateRange=dateRangeFromText(text,now,timeZone);
   const guests=guestCountFromText(text);
-  const adults=adultCountFromText(text);
-  const explicitChildren=childCountFromText(text);
+  // Chat test 2026-11-16: "négyen jönnénk, felnőttek" / "ketten, gyerek nélkül" - a total plus "all adults" is an
+  // adult count (no child mentioned with a number).
+  const allAdults=Number.isInteger(guests)&&/(?<!\p{L})(?:mind(?:annyian)?\s+)?felnőttek(?!\p{L})|csak\s+felnőtt|gyerek(?:ek)?\s+nélkül|gyermek(?:ek)?\s+nélkül|(?<!\p{L})(?:all|only)\s+adults(?!\p{L})|nur\s+erwachsene|ohne\s+kinder|brez\s+otrok|samo\s+odrasl/iu.test(text);
+  const adults=adultCountFromText(text) ?? (allAdults?guests:null);
+  const explicitChildren=childCountFromText(text) ?? (allAdults&&adultCountFromText(text)==null?0:null);
   // Adult-only requests imply zero children unless the message mentions a child
   // whose count is still unresolved. Do not silently discard ambiguous children.
   const childMention=hasChildMention(text);

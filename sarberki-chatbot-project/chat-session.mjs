@@ -40,8 +40,14 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
     if(seen.cabin&&!seen.cabin.startsWith('?'))early.cabin=seen.cabin;
     if(seen.dates)early.dates=structuredClone(seen.dates); // yearless = nearest future (owner rule 2026-11-14)
     for(const key of ['guests','adults','children'])if(Number.isInteger(seen[key]))early[key]=seen[key];
-    return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};
+    // Chat test 2026-11-16: a stay given in pieces ("foglalnék" → "Deluxe" → "június 1-4" → "négyen") opens the booking
+    // once the dates and a cabin or party size are known, instead of answering each piece as a separate question.
+    const party=Number.isInteger(early.adults)||Number.isInteger(early.guests);
+    if(!(early.dates&&(party||early.cabin)&&(faq.intent==='unknown'||faq.intent==='booking'||faq.intent==='cabins'||seen.dates||Number.isInteger(seen.adults)||Number.isInteger(seen.guests))))
+     return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};
+    bookingContext=true;
    }
+
    // Informational detours do not replace the active stay or its missing facts.
    let bookingUpdate=['booking','cabins','checkin'].includes(faq.intent)?normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized:null;
    // An informational question that also brings a phone number or full stay dates ("Telefonszámom … Lehet kutyát
