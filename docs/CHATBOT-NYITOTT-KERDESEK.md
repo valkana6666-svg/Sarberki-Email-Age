@@ -9,7 +9,7 @@ Forrás: kérdéssor 2026-11-15 (102 kérdés) és 2026-11-16 (+40 nehezebb kér
 ## Szállás, felszereltség
 1. ✅ **Van wifi.** (tulajdonos 11-18)
 2. ✅ **Van TV és légkondi.** (tulajdonos 11-18)
-3. Van konyha / főzési lehetőség a házakban? Hűtő, mikró, kávéfőző?
+3. ✅ **Van konyha, lehet főzni, mikró is van.** (tulajdonos 11-18; hűtő/kávéfőző nem megerősítve)
 4. Van ágynemű és törölköző? (Ha nem: kérhető-e, mennyiért?)
 5. Van grillezési lehetőség (saját grill / közös)?
 6. Van gyerekágy (kiságy), etetőszék?
