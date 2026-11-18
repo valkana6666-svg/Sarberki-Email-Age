@@ -31,7 +31,7 @@ const OWNER_FACTS=Object.freeze([
  'A tóban fürödni nem lehet; 1 km-re városi strand és termálfürdő van.', // 22. kérdés (tulajdonos 11-18)
  'A normál és a rekord tó a telepített halak méretében különbözik: a rekord tóba nagyobb méretű halakat telepítettünk.', // 16. kérdés (tulajdonos 11-18)
  'Horgászjegyet a recepción lehet venni.', // 15. kérdés (tulajdonos 11-18)
- 'SZÉP-kártyával is lehet fizetni.', // 8. kérdés (tulajdonos 11-18; a 2027-es hivatalos árlista is így)
+ 'A helyszínen bankkártyával, készpénzzel és SZÉP-kártyával is lehet fizetni; az előleget (foglalót) csak banki átutalással lehet küldeni.', // 8. kérdés (tulajdonos 11-18; SZÉP a 2027-es hivatalos árlistában is)
  'Macska is hozható (a háziállatra vonatkozó díjjal).', // 24. kérdés (tulajdonos 11-18)
  'Hétvégén halászlé- és lángossütés van; kifejezetten a vendégeknek szervezett programok nincsenek.', // 23. kérdés (tulajdonos 11-18)
  // 10. és 9. kérdés: a hivatalos 2027-es árlistából (SARBERKI_2027_ARAK_FORRAS_2026-10-26.md, docs/OWNER-DECISION-2027-CHILD-PRICING-2026-10-26.md)
