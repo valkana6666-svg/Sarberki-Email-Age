@@ -27,12 +27,12 @@ Forrás: kérdéssor 2026-11-15 (102 kérdés) és 2026-11-16 (+40 nehezebb kér
 14. ✅ **Csónakból nem; etetőhajóval (robothajó) lehet etetni.** (tulajdonos 11-18)
 15. Hol lehet horgászjegyet venni (recepción, online)?
 16. ✅ **A rekord tóba nagyobb méretű halakat telepítettek; ebben különbözik a normál tótól.** (tulajdonos 11-18)
-17. Kell-e gyereknek horgászjegy, és hány éves kortól?
-18. Van-e nem szállóvendégeknek külön belépő / napijegy?
+17. ⚠️ Tulajdonos 11-18: „gyerek horgászjegy nem kell” – **ellentmond** a jóváhagyott gyermekjegy-áraknak (fishing-rules.mjs: gyermek 12 órás/24 órás/heti jegy) → pontosítás kell, addig nem módosítva.
+18. ✅ **Nem szállóvendég is vehet napijegyet.** (tulajdonos 11-18)
 
 ## Környék, egyéb
-19. Van étterem / büfé a területen vagy a közelben?
-20. Van bolt a közelben (milyen messze)?
+19. ✅ **Büfé és étterem van a területen.** (tulajdonos 11-18)
+20. ✅ **1 km-en belül bevásárlóközpont (Penny, SPAR).** (tulajdonos 11-18)
 21. Van játszótér?
 22. Lehet fürödni a tóban? Van strand / fürdő a közelben (pl. Lenti termál)?
 23. Milyen programokat ajánlotok a környéken?

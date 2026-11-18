@@ -24,6 +24,9 @@ const OWNER_FACTS=Object.freeze([
  'Éjszaka is lehet horgászni.', // 12. kérdés (tulajdonos 11-18)
  'Horgászonként 2 bottal lehet horgászni.', // 13. kérdés (tulajdonos 11-18)
  'Csónakból nem lehet horgászni, de etetőhajóval (robothajóval) lehet etetni.', // 14. kérdés (tulajdonos 11-18)
+ 'Nem szállóvendégek is vehetnek napijegyet a horgászathoz.', // 18. kérdés (tulajdonos 11-18)
+ 'A területen büfé és étterem van.', // 19. kérdés (tulajdonos 11-18)
+ '1 km-en belül nagy bevásárlóközpont van (Penny és SPAR).', // 20. kérdés (tulajdonos 11-18)
  'A normál és a rekord tó a telepített halak méretében különbözik: a rekord tóba nagyobb méretű halakat telepítettünk.', // 16. kérdés (tulajdonos 11-18)
 ]);
 function extraFacts(){
