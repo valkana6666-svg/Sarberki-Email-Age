@@ -27,6 +27,8 @@ const OWNER_FACTS=Object.freeze([
  'Nem szállóvendégek is vehetnek napijegyet a horgászathoz.', // 18. kérdés (tulajdonos 11-18)
  'A területen büfé és étterem van.', // 19. kérdés (tulajdonos 11-18)
  '1 km-en belül nagy bevásárlóközpont van (Penny és SPAR).', // 20. kérdés (tulajdonos 11-18)
+ 'Játszótér van.', // 21. kérdés (tulajdonos 11-18)
+ 'A tóban fürödni nem lehet; 1 km-re városi strand és termálfürdő van.', // 22. kérdés (tulajdonos 11-18)
  'A normál és a rekord tó a telepített halak méretében különbözik: a rekord tóba nagyobb méretű halakat telepítettünk.', // 16. kérdés (tulajdonos 11-18)
 ]);
 function extraFacts(){

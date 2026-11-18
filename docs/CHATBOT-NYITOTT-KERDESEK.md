@@ -33,8 +33,8 @@ Forrás: kérdéssor 2026-11-15 (102 kérdés) és 2026-11-16 (+40 nehezebb kér
 ## Környék, egyéb
 19. ✅ **Büfé és étterem van a területen.** (tulajdonos 11-18)
 20. ✅ **1 km-en belül bevásárlóközpont (Penny, SPAR).** (tulajdonos 11-18)
-21. Van játszótér?
-22. Lehet fürödni a tóban? Van strand / fürdő a közelben (pl. Lenti termál)?
+21. ✅ **Játszótér van.** (tulajdonos 11-18)
+22. ✅ **A tóban nem lehet fürödni; 1 km-re városi strand és termálfürdő.** (tulajdonos 11-18)
 23. Milyen programokat ajánlotok a környéken?
 
 ## Ellenőrizendő (a modell következtetett)
