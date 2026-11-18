@@ -7,8 +7,8 @@ A tulajdonos válasza után a tény bekerül a tudásbázisba (`shared-core/chat
 Forrás: kérdéssor 2026-11-15 (102 kérdés) és 2026-11-16 (+40 nehezebb kérdés), célzott foglalási forgatókönyvek (26/26 jó).
 
 ## Szállás, felszereltség
-1. Van wifi? (Ha igen: minden házban? jelszó a házban kiírva?)
-2. Van TV? Légkondicionáló?
+1. ✅ **Van wifi.** (tulajdonos 11-18)
+2. ✅ **Van TV és légkondi.** (tulajdonos 11-18)
 3. Van konyha / főzési lehetőség a házakban? Hűtő, mikró, kávéfőző?
 4. Van ágynemű és törölköző? (Ha nem: kérhető-e, mennyiért?)
 5. Van grillezési lehetőség (saját grill / közös)?

@@ -12,6 +12,11 @@ const INTENTS=['checkin','deposit','pet','hotTub','fishing','cabins','booking','
 // Approved facts for the model (owner 2026-11-15 „tesztekkel bombázni”: the knowledge was too thin). Only central,
 // already-approved sources: business-config.mjs, fishing-rules.mjs, the chatbot texts and the property's own public
 // contact data. Room prices are NOT included (the deterministic engine quotes them); no internal house numbers.
+// Owner answers to docs/CHATBOT-NYITOTT-KERDESEK.md (chat, 2026-11-18), recorded verbatim in meaning.
+const OWNER_FACTS=Object.freeze([
+ 'Van wifi.',                          // 1. kérdés (tulajdonos 11-18)
+ 'Van TV és légkondicionáló.',         // 2. kérdés (tulajdonos 11-18)
+]);
 function extraFacts(){
  const o=BUSINESS.operationalRules,b=BUSINESS.bookingRules,p=BUSINESS.pricingRules,t=BUSINESS.accommodationTypes,f=fishing;
  const n=x=>String(x).replace(/\B(?=(\d{3})+(?!\d))/g,' ');
@@ -43,6 +48,7 @@ function extraFacts(){
  const m=f.minimumCm;L.push('Minimum méretek: süllő '+m.zander+' cm, csuka '+m.pike+' cm, ponty '+m.carp+' cm, amur '+m.grassCarp+' cm, harcsa '+m.catfish+' cm.');
  const k=f.fishPerKg;L.push('Elvihető hal ára kilogrammonként: süllő '+n(k.zander)+' Ft, csuka '+n(k.pike)+' Ft, harcsa '+n(k.catfish)+' Ft, 5 kg alatti ponty '+n(k.carpUnder5Kg)+' Ft, 5 kg alatti amur '+n(k.grassCarpUnder5Kg)+' Ft, keszeg '+n(k.bream)+' Ft, kárász '+n(k.crucian)+' Ft.');
  L.push('A teljes horgászati szabályzat: '+f.rulesSource);
+ L.push(...OWNER_FACTS);
  return L;
 }
 export function chatAssistKnowledge(){
