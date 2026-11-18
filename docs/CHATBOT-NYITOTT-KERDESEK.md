@@ -11,7 +11,7 @@ Forrás: kérdéssor 2026-11-15 (102 kérdés) és 2026-11-16 (+40 nehezebb kér
 2. ✅ **Van TV és légkondi.** (tulajdonos 11-18)
 3. ✅ **Van konyha, lehet főzni, mikró is van.** (tulajdonos 11-18; hűtő/kávéfőző nem megerősítve)
 4. Van ágynemű és törölköző? (Ha nem: kérhető-e, mennyiért?)
-5. Van grillezési lehetőség (saját grill / közös)?
+5. ✅ **Van külön kialakított grillezési lehetőség.** (tulajdonos 11-18)
 6. Van gyerekágy (kiságy), etetőszék?
 7. Van-e késői kijelentkezés (late check-out)? Feltétel/díj?
 

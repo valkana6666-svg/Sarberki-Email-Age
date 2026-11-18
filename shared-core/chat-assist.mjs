@@ -17,6 +17,7 @@ const OWNER_FACTS=Object.freeze([
  'Van wifi.',                          // 1. kérdés (tulajdonos 11-18)
  'Van TV és légkondicionáló.',         // 2. kérdés (tulajdonos 11-18)
  'Van konyha, lehet főzni; mikrohullámú sütő is van.', // 3. kérdés (tulajdonos 11-18)
+ 'Van külön kialakított grillezési lehetőség.', // 5. kérdés (tulajdonos 11-18)
 ]);
 function extraFacts(){
  const o=BUSINESS.operationalRules,b=BUSINESS.bookingRules,p=BUSINESS.pricingRules,t=BUSINESS.accommodationTypes,f=fishing;
