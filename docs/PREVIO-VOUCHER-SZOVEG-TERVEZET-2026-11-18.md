@@ -35,5 +35,5 @@ Forrás: jóváhagyott tények (`business-config.mjs`, `shared-core/chat-assist.
 - E-mail szöveg: rövid kísérőszöveg, a részletek a csatolt visszaigazolásban vannak – HU: „Köszönjük foglalását! A visszaigazolást csatoltan küldjük.”; DE: „Vielen Dank für Ihre Buchung! Die Bestätigung finden Sie im Anhang.”; EN: „Thank you for your booking! Please find the confirmation attached.”; SL: „Hvala za vašo rezervacijo! Potrditev je priložena.”
 
 ## Nyitott (tulajdonos)
-1. Kedvezményezett neve, bankszámlaszám/IBAN, GPS-koordináta – az éles voucherről (csak ezek a mezők, vendégadat nélkül).
+1. ~~Bankszámla~~ – tulajdonos 2026-11-18: **a teszthez nem kell**; a TEST-be a bankszámla nélküli változat kerül (#9 6975779953). GPS-koordináta: opcionális, később.
 2. Engedély a fenti szövegek beírására a TEST-ben (műveletenként: melyik mező, mely nyelvek). Küldés (boríték ikon) ezzel nem engedélyezett.
