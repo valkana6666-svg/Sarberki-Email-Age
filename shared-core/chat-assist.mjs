@@ -18,6 +18,9 @@ const OWNER_FACTS=Object.freeze([
  'Van TV és légkondicionáló.',         // 2. kérdés (tulajdonos 11-18)
  'Van konyha, lehet főzni; mikrohullámú sütő is van.', // 3. kérdés (tulajdonos 11-18)
  'Van külön kialakított grillezési lehetőség.', // 5. kérdés (tulajdonos 11-18)
+ 'Ágynemű és törölköző van, nem kell külön fizetni érte.', // 4. kérdés (tulajdonos 11-18)
+ 'Gyerekágy (kiságy) és etetőszék nincs.', // 6. kérdés (tulajdonos 11-18)
+ 'A normál és a rekord tó a telepített halak méretében különbözik: a rekord tóba nagyobb méretű halakat telepítettünk.', // 16. kérdés (tulajdonos 11-18)
 ]);
 function extraFacts(){
  const o=BUSINESS.operationalRules,b=BUSINESS.bookingRules,p=BUSINESS.pricingRules,t=BUSINESS.accommodationTypes,f=fishing;

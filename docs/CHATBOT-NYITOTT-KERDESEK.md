@@ -10,9 +10,9 @@ Forrás: kérdéssor 2026-11-15 (102 kérdés) és 2026-11-16 (+40 nehezebb kér
 1. ✅ **Van wifi.** (tulajdonos 11-18)
 2. ✅ **Van TV és légkondi.** (tulajdonos 11-18)
 3. ✅ **Van konyha, lehet főzni, mikró is van.** (tulajdonos 11-18; hűtő/kávéfőző nem megerősítve)
-4. Van ágynemű és törölköző? (Ha nem: kérhető-e, mennyiért?)
+4. ✅ **Van ágynemű és törölköző, nem kell külön fizetni.** (tulajdonos 11-18)
 5. ✅ **Van külön kialakított grillezési lehetőség.** (tulajdonos 11-18)
-6. Van gyerekágy (kiságy), etetőszék?
+6. ✅ **Gyerekágy és etetőszék nincs.** (tulajdonos 11-18)
 7. Van-e késői kijelentkezés (late check-out)? Feltétel/díj?
 
 ## Árak, fizetés
@@ -26,7 +26,7 @@ Forrás: kérdéssor 2026-11-15 (102 kérdés) és 2026-11-16 (+40 nehezebb kér
 13. Hány bottal lehet horgászni?
 14. Lehet csónakból horgászni / van csónak?
 15. Hol lehet horgászjegyet venni (recepción, online)?
-16. Mi a különbség a normál és a rekord tó között (halállomány, méret, szabály)?
+16. ✅ **A rekord tóba nagyobb méretű halakat telepítettek; ebben különbözik a normál tótól.** (tulajdonos 11-18)
 17. Kell-e gyereknek horgászjegy, és hány éves kortól?
 18. Van-e nem szállóvendégeknek külön belépő / napijegy?
 
