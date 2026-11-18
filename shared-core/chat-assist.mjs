@@ -30,6 +30,13 @@ const OWNER_FACTS=Object.freeze([
  'Játszótér van.', // 21. kérdés (tulajdonos 11-18)
  'A tóban fürödni nem lehet; 1 km-re városi strand és termálfürdő van.', // 22. kérdés (tulajdonos 11-18)
  'A normál és a rekord tó a telepített halak méretében különbözik: a rekord tóba nagyobb méretű halakat telepítettünk.', // 16. kérdés (tulajdonos 11-18)
+ 'Horgászjegyet a recepción lehet venni.', // 15. kérdés (tulajdonos 11-18)
+ 'SZÉP-kártyával is lehet fizetni.', // 8. kérdés (tulajdonos 11-18; a 2027-es hivatalos árlista is így)
+ 'Macska is hozható (a háziállatra vonatkozó díjjal).', // 24. kérdés (tulajdonos 11-18)
+ 'Hétvégén halászlé- és lángossütés van; kifejezetten a vendégeknek szervezett programok nincsenek.', // 23. kérdés (tulajdonos 11-18)
+ // 10. és 9. kérdés: a hivatalos 2027-es árlistából (SARBERKI_2027_ARAK_FORRAS_2026-10-26.md, docs/OWNER-DECISION-2027-CHILD-PRICING-2026-10-26.md)
+ '2027-es árak, gyermekek: 0–3 éves korig díjmentes; 4–8 éves kor között 5 000 Ft/fő/éjszaka, de csak a ház alapárában foglalt létszám felett; 9 éves kortól felnőttnek számít.',
+ '2027-es árak, pótfő (pótágy): a ház alapárában foglalt létszám felett 10 000 Ft/fő/éjszaka, főszezonban (július 1. – augusztus 22.) 11 000 Ft/fő/éjszaka, legfeljebb a háztípus férőhelyéig. A pontos árat a konkrét foglalásra munkatársunk adja meg.',
 ]);
 function extraFacts(){
  const o=BUSINESS.operationalRules,b=BUSINESS.bookingRules,p=BUSINESS.pricingRules,t=BUSINESS.accommodationTypes,f=fishing;

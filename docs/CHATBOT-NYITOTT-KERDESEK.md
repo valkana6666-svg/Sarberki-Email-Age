@@ -16,18 +16,18 @@ Forrás: kérdéssor 2026-11-15 (102 kérdés) és 2026-11-16 (+40 nehezebb kér
 7. ✅ **Későbbi kijelentkezés: egyedi elbírálás, foglaltságtól függ.** (tulajdonos 11-18)
 
 ## Árak, fizetés
-8. Lehet kártyával fizetni a helyszínen? SZÉP-kártyát elfogadtok (melyik zseb)?
-9. Pótágy ára (felnőtt / gyermek)? (A régi listaár ellentmondásos – friss megerősítés kell.)
-10. Hány éves kortól fizet a gyermek a szállásért? (A régi lista: 0–3 ingyenes, 3–8 kedvezményes – megerősítendő.)
+8. ✅ **SZÉP-kártya elfogadott** (tulajdonos 11-18 + 2027-es hivatalos árlista). ❓ Bankkártya a helyszínen: nincs rá hivatalos adat.
+9. ✅ **Hivatalos 2027-es árlista:** alaplétszám felett +10 000 Ft/fő/éj, főszezonban +11 000 Ft/fő/éj, a férőhelyig.
+10. ✅ **Hivatalos 2027-es döntés (2026-10-26):** 0–3 év ingyenes; 4–8 év 5 000 Ft/fő/éj az alaplétszám felett; 9 évtől felnőtt. (A tulajdonos 11-18-i „3 évtől fizet” válasza helyett a hivatalos leírás érvényes, a tulajdonos utasítása szerint.)
 11. Lehet-e foglalás dátumát módosítani, és milyen feltétellel?
 
 ## Horgászat
 12. ✅ **Lehet éjszaka horgászni.** (tulajdonos 11-18)
 13. ✅ **2 bottal.** (tulajdonos 11-18)
 14. ✅ **Csónakból nem; etetőhajóval (robothajó) lehet etetni.** (tulajdonos 11-18)
-15. Hol lehet horgászjegyet venni (recepción, online)?
+15. ✅ **A recepción.** (tulajdonos 11-18)
 16. ✅ **A rekord tóba nagyobb méretű halakat telepítettek; ebben különbözik a normál tótól.** (tulajdonos 11-18)
-17. ⚠️ Tulajdonos 11-18: „gyerek horgászjegy nem kell” – **ellentmond** a jóváhagyott gyermekjegy-áraknak (fishing-rules.mjs: gyermek 12 órás/24 órás/heti jegy) → pontosítás kell, addig nem módosítva.
+17. ✅ **A hivatalos gyermekjegy-árak maradnak** (fishing-rules.mjs); a tulajdonos 11-18-án jelezte, hogy a „nem kell” válasz téves volt.
 18. ✅ **Nem szállóvendég is vehet napijegyet.** (tulajdonos 11-18)
 
 ## Környék, egyéb
@@ -35,11 +35,11 @@ Forrás: kérdéssor 2026-11-15 (102 kérdés) és 2026-11-16 (+40 nehezebb kér
 20. ✅ **1 km-en belül bevásárlóközpont (Penny, SPAR).** (tulajdonos 11-18)
 21. ✅ **Játszótér van.** (tulajdonos 11-18)
 22. ✅ **A tóban nem lehet fürödni; 1 km-re városi strand és termálfürdő.** (tulajdonos 11-18)
-23. Milyen programokat ajánlotok a környéken?
+23. ✅ **Hétvégén halászlé- és lángossütés; külön vendégprogram nincs.** (tulajdonos 11-18)
 
 ## Ellenőrizendő (a modell következtetett)
-24. Macskát is lehet hozni? (A „háziállat hozható” szabályból következtette.)
-25. Késői érkezés: a voucheren „bejelentkezés 14:00–2:00” áll – ez minden vendégre érvényes?
+24. ✅ **Macska is hozható.** (tulajdonos 11-18)
+25. ✅ **Hivatalos forrás szerint igen:** a Previo-voucher 14:00–2:00 bejelentkezést ír, a recepció 24 órás (szabalyok.txt 2.2a). Nincs ellentmondás, nem kérdezzük újra.
 
 ---
 Állapot: a válaszokat a tulajdonos napi összefoglalóban adja meg; minden válasz után a tényt beírjuk és a kérdéssor újrafut.
