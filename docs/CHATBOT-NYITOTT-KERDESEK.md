@@ -22,9 +22,9 @@ Forrás: kérdéssor 2026-11-15 (102 kérdés) és 2026-11-16 (+40 nehezebb kér
 11. Lehet-e foglalás dátumát módosítani, és milyen feltétellel?
 
 ## Horgászat
-12. Lehet éjszaka horgászni?
-13. Hány bottal lehet horgászni?
-14. Lehet csónakból horgászni / van csónak?
+12. ✅ **Lehet éjszaka horgászni.** (tulajdonos 11-18)
+13. ✅ **2 bottal.** (tulajdonos 11-18)
+14. ✅ **Csónakból nem; etetőhajóval (robothajó) lehet etetni.** (tulajdonos 11-18)
 15. Hol lehet horgászjegyet venni (recepción, online)?
 16. ✅ **A rekord tóba nagyobb méretű halakat telepítettek; ebben különbözik a normál tótól.** (tulajdonos 11-18)
 17. Kell-e gyereknek horgászjegy, és hány éves kortól?

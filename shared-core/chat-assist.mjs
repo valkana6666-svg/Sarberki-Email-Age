@@ -21,6 +21,9 @@ const OWNER_FACTS=Object.freeze([
  'Ágynemű és törölköző van, nem kell külön fizetni érte.', // 4. kérdés (tulajdonos 11-18)
  'Gyerekágy (kiságy) és etetőszék nincs.', // 6. kérdés (tulajdonos 11-18)
  'Későbbi kijelentkezés egyedi elbírálás alapján, a foglaltságtól függően lehetséges; kérjük, előre jelezze.', // 7. kérdés (tulajdonos 11-18)
+ 'Éjszaka is lehet horgászni.', // 12. kérdés (tulajdonos 11-18)
+ 'Horgászonként 2 bottal lehet horgászni.', // 13. kérdés (tulajdonos 11-18)
+ 'Csónakból nem lehet horgászni, de etetőhajóval (robothajóval) lehet etetni.', // 14. kérdés (tulajdonos 11-18)
  'A normál és a rekord tó a telepített halak méretében különbözik: a rekord tóba nagyobb méretű halakat telepítettünk.', // 16. kérdés (tulajdonos 11-18)
 ]);
 function extraFacts(){
