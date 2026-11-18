@@ -34,8 +34,9 @@ const OWNER_FACTS=Object.freeze([
  'A helyszínen bankkártyával, készpénzzel és SZÉP-kártyával is lehet fizetni; az előleget (foglalót) csak banki átutalással lehet küldeni.', // 8. kérdés (tulajdonos 11-18; SZÉP a 2027-es hivatalos árlistában is)
  'Macska is hozható (a háziállatra vonatkozó díjjal).', // 24. kérdés (tulajdonos 11-18)
  'Hétvégén halászlé- és lángossütés van; kifejezetten a vendégeknek szervezett programok nincsenek.', // 23. kérdés (tulajdonos 11-18)
- // 10. és 9. kérdés: a hivatalos 2027-es árlistából (SARBERKI_2027_ARAK_FORRAS_2026-10-26.md, docs/OWNER-DECISION-2027-CHILD-PRICING-2026-10-26.md)
- '2027-es árak, gyermekek: 0–3 éves korig díjmentes; 4–8 éves kor között 5 000 Ft/fő/éjszaka, de csak a ház alapárában foglalt létszám felett; 9 éves kortól felnőttnek számít.',
+ // 10. és 9. kérdés: 2027-es árlista + a legutóbbi tulajdonosi gyerekár-szabály (2026-11-09, az árkalkulátor is így számol;
+ // a 10-26-i „0–3 ingyenes” változatot felülírta – a tulajdonos 11-18-i „3 éves kortól fizet” válasza ezzel egyezik)
+ '2027-es árak, gyermekek: 0–2 éves korig díjmentes; 3–8 éves kor között 5 000 Ft/fő/éjszaka (főszezonban +10%), de csak a ház alapárában foglalt létszám felett; 9 éves kortól felnőttárat fizet.',
  '2027-es árak, pótfő (pótágy): a ház alapárában foglalt létszám felett 10 000 Ft/fő/éjszaka, főszezonban (július 1. – augusztus 22.) 11 000 Ft/fő/éjszaka, legfeljebb a háztípus férőhelyéig. A pontos árat a konkrét foglalásra munkatársunk adja meg.',
 ]);
 function extraFacts(){

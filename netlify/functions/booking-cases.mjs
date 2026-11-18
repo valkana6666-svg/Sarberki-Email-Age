@@ -17,7 +17,7 @@ import {dailyCaseSummary} from '../../shared-core/server-daily-case-view.mjs';
 import {ingestTestMailboxMessage} from '../../shared-core/server-test-mailbox-case.mjs';
 import {appendTestMailboxFollowup,triageTestMailboxMessages} from '../../shared-core/server-test-mailbox-followup.mjs';
 import {sendApprovedTestMailboxReply} from '../../shared-core/server-test-mailbox-send.mjs';
-import {priceTestMailboxCase} from '../../shared-core/server-test-mailbox-price.mjs';
+import {priceTestMailboxCase,draftNeedsPrice} from '../../shared-core/server-test-mailbox-price.mjs';
 import {previoPriceChecker} from '../../shared-core/server-previo-price-check.mjs';
 import {previoUnitChecker} from '../../shared-core/server-previo-unit-check.mjs';
 import {previoSplitPlacementReader} from '../../shared-core/server-previo-split-placement.mjs';
@@ -136,6 +136,8 @@ function testMailboxView(record,authority,tenant='sarberki-test',previoRead=fals
   internalApproval:data.internalApproval?{scope:data.internalApproval.scope,at:data.internalApproval.at,capacityVerified:false,priceVerified:false,sendAllowed:false,bookingAllowed:false}:null,
   // Display hints only: the database re-checks permission, state, revision, hash and approver independence.
   canEditDraft:permissions.includes('write')&&['pending','returned_for_edit','rejected'].includes(state),
+  // Next-step hint: the pending draft was never priced (the price step itself stays server-checked).
+  priceable:permissions.includes('write')&&state==='pending'&&draftNeedsPrice(latest.text,data.state?.values?.language),
   canDecide:permissions.includes('approve')&&state==='pending'&&(latest.createdBy!==authority?.subject||latest.machineDraft===true),
   // V1 booking completion: finalized only after the operator's Previo attestation; deposit received is separate.
   unitsRequested:Number(data.state?.values?.units_requested||1),

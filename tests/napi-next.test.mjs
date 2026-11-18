@@ -27,3 +27,9 @@ test('simple view keeps only the next step, the facts, the letter and Elutasít�
  assert.doesNotMatch(html,/<button id="reject-draft"[^>]*data-detail/);
  assert.doesNotMatch(html,/<div id="next-step"[^>]*data-detail/);
 });
+
+test('owner test 2026-11-18 (Nagy Márton): an unpriced pending reply asks for the price before approval',()=>{
+ assert.equal(nextStepFor({approval:'pending',canDecide:true,priceable:true},{sendable:true}).kind,'price');
+ assert.equal(nextStepFor({approval:'pending',canDecide:true,priceable:false},{sendable:true}).kind,'approveSend');
+ assert.equal(nextStepFor({approval:'approved_internal',priceable:true},{sendable:true}).kind,'send');
+});

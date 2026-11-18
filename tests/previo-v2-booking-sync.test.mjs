@@ -39,7 +39,7 @@ test('V2 finalize: search, create the option on the chosen unit, save "V2-<resId
  const r=await confirmTestMailboxBooking({record:record(),previoAuto:true,previoWriter:previoBookingWriter(ENV,p.fetchImpl,{pauseMs:0}),unit:'12',attestationKey:KEY,transport:d.transport});
  assert.deepEqual(p.calls.map(c=>c.path),['/x1/hotel/searchReservations','/x1/hotel/reservation']);
  const xml=p.calls[1].body;
- assert.match(xml,/<objId>2392199<\/objId>/);assert.match(xml,/<cosId>1<\/cosId>/);assert.match(xml,/<name>Teszt Elek<\/name>/);assert.match(xml,/<total>128200<\/total>/);
+ assert.match(xml,/<objId>2392199<\/objId>/);assert.match(xml,/<cosId>1<\/cosId>/);assert.match(xml,/<name>Teszt Elek<\/name>/);assert.match(xml,/<total>126000<\/total>/); // owner 2026-11-18: Previo gets the accommodation only (128 200 − 2 200 IFA)
  assert.doesNotMatch(xml,/<email>|<phone>/);
  const saved=d.rpc[0].body;
  assert.equal(saved.p_booking.previoReference,'V2-5001');assert.match(saved.p_booking.previoReference,V2_REFERENCE);
@@ -138,7 +138,7 @@ test('multi-unit: two Családi houses -> one Previo reservation with two commiss
  assert.equal((xml.match(/<commission>/g)||[]).length,2);
  assert.match(xml,/<objId>2392187<\/objId>[\s\S]*<objId>2392189<\/objId>/);
  assert.equal((xml.match(/<numGuest>4<\/numGuest>/g)||[]).length,2);
- assert.match(xml,/<total>228800<\/total>/);
+ assert.match(xml,/<total>220000<\/total>/);
  const b=d.rpc[0].body.p_booking;assert.deepEqual(b.units,['2','3']);assert.equal(b.unit,'2');
  assert.match(d.rpc[0].body.p_draft.operatorReviewText,/Egységek: 2, 3/);
 });

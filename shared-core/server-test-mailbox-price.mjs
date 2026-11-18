@@ -54,6 +54,12 @@ function placePrice(text,lang,sentence){
  if(fi<0||text.includes(sentence.split(':')[0]+':'))return null;
  lines.splice(fi+1,0,'',sentence);return lines.join('\n');
 }
+// Display hint (owner test 2026-11-18, Nagy Márton: the simple view went straight to approval without a price): the
+// draft still holds the generic price sentence or the "capacity not yet verified" line, i.e. it was never priced.
+export function draftNeedsPrice(text,language){
+ const lang=PRICE_LINE[language]?language:'hu';if(typeof text!=='string')return false;
+ return text.includes(PRICE_LINE[lang])||text.split('\n').some(l=>l.startsWith(CAPACITY_PENDING_LINE[lang])||l.startsWith(LEGACY_CAPACITY_PENDING_LINE[lang]));
+}
 export function pricedDraft({latest,quote,language}){
  const lang=PRICE_LINE[language]?language:'hu';
  const placed=placePrice(latest?.text,lang,priceSentence(quote,lang));

@@ -126,6 +126,11 @@ export function oneClickPreviewHash({record,list,cabin,quote,deposit,language}){
   voucherFor({tenantId:record.tenantId,caseId:record.caseId})]));
 }
 
+// Owner decision 2026-11-18 („azt szeretném, számolja ki a Previo az IFA-t”): Previo gets the accommodation price
+// only; the tourism tax is Previo's own line (as on the live voucher). The guest letter still shows the full total.
+export function previoAccommodationHuf(quote){
+ const a=quote?.accommodation;if(!Number.isSafeInteger(a)||a<=0)fail('PRICE_REQUIRED');return a;
+}
 export async function confirmTestMailboxBooking({record,previoReference,previoRecorded,previoAuto=false,previoWriter=null,unit,units=null,attestationKey,transport,
  quoteFn=fetchPublicPriceReference,unitCheckFn=null,clock=()=>new Date().toISOString(),expectedPreviewHash=null,requireFree=false}={}){
  if(previoAuto===true){if(!previoWriter)fail('PREVIO_WRITE_DISABLED');}
@@ -148,7 +153,7 @@ export async function confirmTestMailboxBooking({record,previoReference,previoRe
   const contact=sentContact=isTestGuestSender(email)?{email,phone:/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(String(values.phone||'').trim())?String(values.phone).trim():null}:null;
   previoCreated=await previoWriter.createOption({tenantId:record.tenantId,caseId:record.caseId,values,cabin,unit,
    ...(list.length>1?{units:list,parties:quote.unitBreakdown.map(b=>({adults:b.adults,children:b.children}))}:{}),
-   contactName:String(values.name||'').trim(),contact,totalHuf:quote.total,optionExpiresUtc:deadline,
+   contactName:String(values.name||'').trim(),contact,totalHuf:previoAccommodationHuf(quote),optionExpiresUtc:deadline,
    channel:['chat','phone'].includes(record.data?.sourceReceipt?.provider)?record.data.sourceReceipt.provider:'email'});
   previoReference='V2-'+previoCreated.resId;
  }
@@ -296,7 +301,7 @@ export async function modifyTestMailboxBooking({record,arrival,departure,unit,mo
  const language=/^(hu|de|en|si)$/.test(values.language||'')?values.language:'hu';
  const built=buildBookingConfirmation({values,quote,previo:{reference:b.previo.reference,recordedAt:b.previo.recordedAt},language,bookingNumber:voucher,modified:true});
  const resId=Number(v2[1]);
- const changedInPrevio=await previoWriter.modifyBooking({tenantId:record.tenantId,caseId:record.caseId,resId,oldValues:old,values,cabin,unit,totalHuf:quote.total});
+ const changedInPrevio=await previoWriter.modifyBooking({tenantId:record.tenantId,caseId:record.caseId,resId,oldValues:old,values,cabin,unit,totalHuf:previoAccommodationHuf(quote)});
  const draft={text:built.text,operatorReviewText:built.operatorReviewText+
   `\nMódosítás: ${old.arrival}→${old.departure}, egység ${b.unit} ⇒ ${arrival}→${departure}, egység ${unit} (csak kezelői adat). Previo-foglalás ${resId} módosítva és visszaolvasva.`+
   (b.status==='deposit_received'?'\nA foglaló már beérkezett: az esetleges különbözetet kézzel egyeztesd a vendéggel.':'')};
@@ -304,7 +309,7 @@ export async function modifyTestMailboxBooking({record,arrival,departure,unit,mo
  const proof=attestModification({key:attestationKey,tenantId:record.tenantId,caseId:record.caseId,expectedRevision:record.revision,draft,change,checkedAt:clock()});
  let saved;
  const revert=async()=>{try{await previoWriter.modifyBooking({tenantId:record.tenantId,caseId:record.caseId,resId,oldValues:values,values:old,cabin,unit:b.unit,
-   totalHuf:quoteFn(quoteInputFromCase(old,cabin)).total});return true;}catch{return false;}};
+   totalHuf:previoAccommodationHuf(quoteFn(quoteInputFromCase(old,cabin)))});return true;}catch{return false;}};
  try{saved=await transport('/rest/v1/rpc/sc_tm_modify_booking',{method:'POST',body:{p_tenant:record.tenantId,p_case:record.caseId,p_expected:record.revision,p_change:change,p_draft:draft,p_proof:proof}});}
  catch(error){if(!(await revert())){const e=Error('PREVIO_MODIFY_NOT_REVERTED');e.code='PREVIO_MODIFY_NOT_REVERTED';throw e;}throw error;}
  if(!saved&&!(await revert()))fail('PREVIO_MODIFY_NOT_REVERTED');

@@ -770,6 +770,19 @@ function nextWatch(source,n){ // mirror a result that the existing (hidden in si
 }
 el('next-go').addEventListener('click',()=>{
  const n=nextCase;if(!n||actionBusy)return;
+ if(n.step.kind==='price'){ // the existing price controls (hidden in simple view): calculate, then the operator confirms
+  if(!el('price-cabin').value){el('next-result').textContent='A háztípus nincs egyértelműen megadva – a „Teljes nézet”-ben válaszd ki, majd számold ki az árat.';return;}
+  el('next-go').disabled=true;el('next-result').textContent='Ár számítása…';el('price-calc').click();
+  let left=100;if(nextTimer)clearInterval(nextTimer);
+  nextTimer=setInterval(()=>{
+   if(nextCase!==n||--left<0){clearInterval(nextTimer);nextTimer=null;if(nextCase===n)el('next-go').disabled=false;return;}
+   const t=el('price-result').textContent;if(!t||t==='Ár számítása…')return;
+   clearInterval(nextTimer);nextTimer=null;el('next-go').disabled=false;el('next-result').textContent='';
+   if(el('price-available').disabled){el('next-result').textContent=t;return;}
+   nextAsk(t+'\n\nSzabad erre az időszakra a választott ház (a Previóban ellenőrizted)? Ha igen, beillesztem az árat a válaszba.','Igen, beillesztem');
+  },300);
+  return;
+ }
  if(n.step.kind!=='book'){nextAsk(n.step.ask,'Igen');return;}
  el('next-go').disabled=true;el('next-result').textContent='Előnézet készül (Previo-olvasás)…';el('oneclick-preview').click();
  let left=100;if(nextTimer)clearInterval(nextTimer);
@@ -788,6 +801,7 @@ el('next-yes').addEventListener('click',()=>{
  const kind=n.step.kind;
  if(kind==='book'){el('oneclick-confirm').checked=true;el('oneclick-confirm').dispatchEvent(new Event('change'));el('next-result').textContent='Foglalás folyamatban…';nextWatch('booking-result',n);el('oneclick-go').click();return;}
  if(kind==='deposit'){if(!el('deposit-date').value)el('deposit-date').value=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Budapest'});el('deposit-confirm').checked=true;el('next-result').textContent='Mentés…';nextWatch('booking-result',n);el('deposit-mark').click();return;}
+ if(kind==='price'){el('price-available').checked=true;el('price-available').dispatchEvent(new Event('change'));el('next-result').textContent='Ár beillesztése…';nextWatch('price-result',n);el('price-insert').click();return;}
  if(kind==='approve'){el('approve-confirm').checked=true;el('next-result').textContent='Jóváhagyás…';void tmMutate('approve');return;}
  if(kind==='send'){el('next-result').textContent='Google-engedély…';nextWatch('send-approved',n);el('send-approved').click();return;}
  if(kind==='approveSend'){

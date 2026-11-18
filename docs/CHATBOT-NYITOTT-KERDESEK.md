@@ -18,7 +18,7 @@ Forrás: kérdéssor 2026-11-15 (102 kérdés) és 2026-11-16 (+40 nehezebb kér
 ## Árak, fizetés
 8. ✅ **Helyszínen bankkártya, készpénz és SZÉP-kártya; az előleg csak banki átutalással.** (tulajdonos 11-18; SZÉP a 2027-es árlistában is)
 9. ✅ **Hivatalos 2027-es árlista:** alaplétszám felett +10 000 Ft/fő/éj, főszezonban +11 000 Ft/fő/éj, a férőhelyig.
-10. ✅ **Hivatalos 2027-es döntés (2026-10-26):** 0–3 év ingyenes; 4–8 év 5 000 Ft/fő/éj az alaplétszám felett; 9 évtől felnőtt. (A tulajdonos 11-18-i „3 évtől fizet” válasza helyett a hivatalos leírás érvényes, a tulajdonos utasítása szerint.)
+10. ✅ **0–2 év ingyenes; 3–8 év 5 000 Ft/fő/éj az alaplétszám felett; 9 évtől felnőttár.** Forrás: a legutóbbi tulajdonosi szabály (2026-11-09, `docs/PREVIO-GYEREKAR-JAVASLAT-2026-11-09.md`; az árkalkulátor is így számol), egyezik a tulajdonos 11-18-i „3 éves kortól fizet” válaszával. (11-18-án először tévesen a régebbi, 10-26-i „0–3 ingyenes” változat került be – javítva.)
 11. Lehet-e foglalás dátumát módosítani, és milyen feltétellel?
 
 ## Horgászat
