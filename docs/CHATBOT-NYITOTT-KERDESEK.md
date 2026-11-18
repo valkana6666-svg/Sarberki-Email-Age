@@ -13,7 +13,7 @@ Forrás: kérdéssor 2026-11-15 (102 kérdés) és 2026-11-16 (+40 nehezebb kér
 4. ✅ **Van ágynemű és törölköző, nem kell külön fizetni.** (tulajdonos 11-18)
 5. ✅ **Van külön kialakított grillezési lehetőség.** (tulajdonos 11-18)
 6. ✅ **Gyerekágy és etetőszék nincs.** (tulajdonos 11-18)
-7. Van-e késői kijelentkezés (late check-out)? Feltétel/díj?
+7. ✅ **Későbbi kijelentkezés: egyedi elbírálás, foglaltságtól függ.** (tulajdonos 11-18)
 
 ## Árak, fizetés
 8. Lehet kártyával fizetni a helyszínen? SZÉP-kártyát elfogadtok (melyik zseb)?

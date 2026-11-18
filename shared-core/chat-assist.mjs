@@ -20,6 +20,7 @@ const OWNER_FACTS=Object.freeze([
  'Van külön kialakított grillezési lehetőség.', // 5. kérdés (tulajdonos 11-18)
  'Ágynemű és törölköző van, nem kell külön fizetni érte.', // 4. kérdés (tulajdonos 11-18)
  'Gyerekágy (kiságy) és etetőszék nincs.', // 6. kérdés (tulajdonos 11-18)
+ 'Későbbi kijelentkezés egyedi elbírálás alapján, a foglaltságtól függően lehetséges; kérjük, előre jelezze.', // 7. kérdés (tulajdonos 11-18)
  'A normál és a rekord tó a telepített halak méretében különbözik: a rekord tóba nagyobb méretű halakat telepítettünk.', // 16. kérdés (tulajdonos 11-18)
 ]);
 function extraFacts(){
