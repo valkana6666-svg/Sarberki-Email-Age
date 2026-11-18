@@ -89,7 +89,7 @@ test('one-click: preview -> one step -> Previo option, finalized, letter approve
   assert.doesNotMatch(ok.letterText,/Egység|egység: 11|11-es/,'no internal unit number in the guest letter');
   const w=fakeWriter();
   const r=await oneClickTestMailboxBooking({record,unit:'11',previewHash:ok.previewHash,oneClickConfirmed:true,previoWriter:w,attestationKey:KEY,transport:t,unitCheckFn:free});
-  assert.equal(r.approved,true);assert.equal(w.calls.filter(c=>c[0]==='create').length,1);
+  assert.equal(r.approved,true);assert.equal(w.calls.filter(c=>c[0]==='create').length,1);assert.equal(w.calls[0][1].channel,'phone'); // phone intake → Previo source „telefon”
   const row=(await db.query('select * from sc_cases where case_id=$1',[record.caseId])).rows[0];
   assert.equal(Number(row.revision),record.revision+2);assert.equal(row.data.state.approval,'approved_internal');assert.equal(row.data.booking.status,'finalized');
   assert.equal(row.data.booking.previo.reference,'V2-900001');assert.equal(row.data.internalApproval.draftHash,sha(row.data.drafts.at(-1).text));

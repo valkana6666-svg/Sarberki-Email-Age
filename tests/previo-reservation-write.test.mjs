@@ -116,3 +116,8 @@ test('an unrelated cancelled voucher does not suppress a new case',async()=>{
  assert.equal(result.created,true);assert.equal(result.resId,950);
  assert.deepEqual(calls,['https://api.previo.app/x1/hotel/searchReservations','https://api.previo.app/x1/hotel/reservation']);
 });
+
+test('reservation source follows the channel: chat → website (3), phone → 2, e-mail/unknown → 1',()=>{
+ for(const [channel,id] of [['chat',3],['phone',2],['email',1],[undefined,1],['fax',1]])
+  assert.match(buildReservationXml({...base,channel}).xml,new RegExp('<cmsId>'+id+'</cmsId>'));
+});

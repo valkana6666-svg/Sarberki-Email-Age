@@ -15,7 +15,10 @@ export const PREVIO_XML_ORIGIN='https://api.previo.app';
 export const WRITE_SWITCH_VALUE='sandbox-73521-only';
 export const STATUS=Object.freeze({option:1,confirmed:2,cancelled:7});
 const HUF_CURRENCY_ID=9;            // REST suggester + public booking page (CUR_ID 9 = HUF), 73521, 2026-11-09
-const SOURCE_EMAIL=1;               // cmsId 1 = e-mail (Previo XML docs)
+// Reservation source (Previo XML docs, cmsId: 1 e-mail, 2 phone, 3 website). Owner 2026-11-15 / Work 2026-11-18:
+// a chat request must appear as „weboldal” in Previo, not „E-mail”; unknown channels keep the e-mail default.
+export const SOURCE_BY_CHANNEL=Object.freeze({email:1,phone:2,chat:3});
+const sourceFor=channel=>SOURCE_BY_CHANNEL[channel]??SOURCE_BY_CHANNEL.email;
 const fail=code=>{const e=Error(code);e.code=code;throw e;};
 const day=x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&new Date(x+'T00:00:00Z').toISOString().slice(0,10)===x;
 const xmlText=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
@@ -49,7 +52,7 @@ export function contactPersonXml(name,contact){
 }
 // Multi-unit (owner 2026-11-11): units (2..6, first = unit) and parties [{adults,children:[ages]}] per unit -> one
 // reservation with one commission per unit (Previo XML "New group reservation").
-export function buildReservationXml({tenantId,caseId,values,cabin,unit,units=null,parties=null,contactName,contact=null,totalHuf,optionExpiresUtc,property=PREVIO_TEST_73521}){
+export function buildReservationXml({tenantId,caseId,values,cabin,unit,units=null,parties=null,contactName,contact=null,totalHuf,optionExpiresUtc,channel='email',property=PREVIO_TEST_73521}){
  if(String(property?.hotelId)!=='73521')fail('SANDBOX_ONLY');
  if(!day(values?.arrival)||!day(values?.departure)||values.departure<=values.arrival)fail('DATES_REQUIRED');
  const obkId=property.roomKinds?.[cabin];if(!int(obkId))fail('ROOM_KIND_UNKNOWN');
@@ -67,7 +70,7 @@ export function buildReservationXml({tenantId,caseId,values,cabin,unit,units=nul
  const expiry=new Date(optionExpiresUtc).toLocaleString('sv-SE',{timeZone:'Europe/Budapest',hour12:false}).slice(0,19);
  const xml=['<?xml version="1.0"?>','<request>',`<hotId>${property.hotelId}</hotId>`,'<newReservation>','<commissions>',
   ...list.map((u,i)=>['<commission>',`<guests><numGuest>${guestsPerUnit[i].length}</numGuest>`,...guestsPerUnit[i].map(g=>`<guest><guaId>${g}</guaId></guest>`),'</guests>',
-   `<obkId>${obkId}</obkId><objId>${property.rooms[u]}</objId><cosId>${STATUS.option}</cosId><cmsId>${SOURCE_EMAIL}</cmsId><prlId>${property.ratePlanId}</prlId>`,
+   `<obkId>${obkId}</obkId><objId>${property.rooms[u]}</objId><cosId>${STATUS.option}</cosId><cmsId>${sourceFor(channel)}</cmsId><prlId>${property.ratePlanId}</prlId>`,
    '</commission>'].join('')),
   '</commissions>',
   `<optionExpiration>${expiry}</optionExpiration>`,

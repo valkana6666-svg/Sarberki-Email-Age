@@ -148,7 +148,8 @@ export async function confirmTestMailboxBooking({record,previoReference,previoRe
   const contact=sentContact=isTestGuestSender(email)?{email,phone:/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(String(values.phone||'').trim())?String(values.phone).trim():null}:null;
   previoCreated=await previoWriter.createOption({tenantId:record.tenantId,caseId:record.caseId,values,cabin,unit,
    ...(list.length>1?{units:list,parties:quote.unitBreakdown.map(b=>({adults:b.adults,children:b.children}))}:{}),
-   contactName:String(values.name||'').trim(),contact,totalHuf:quote.total,optionExpiresUtc:deadline});
+   contactName:String(values.name||'').trim(),contact,totalHuf:quote.total,optionExpiresUtc:deadline,
+   channel:['chat','phone'].includes(record.data?.sourceReceipt?.provider)?record.data.sourceReceipt.provider:'email'});
   previoReference='V2-'+previoCreated.resId;
  }
  const recordedAt=clock();
