@@ -90,7 +90,7 @@ export function syntheticCaseSummaries(records,exactReceipt=null){
   .map(row=>({tenantId:'sarberki-test',caseId:row.caseId,revision:row.revision})).slice(0,100);
 }
 // Fixed public codes for the test-mailbox action; anything else becomes STORAGE_FAILURE.
-const TEST_MAILBOX_ERRORS=Object.freeze({PREVIO_DATES_EDITED:409,NO_EMAIL:409,SEND_LEDGER_REQUIRED:503,GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACCOUNT:403,FORBIDDEN:403,GMAIL_RATE_LIMITED:429,INVALID_INPUT:400,
+const TEST_MAILBOX_ERRORS=Object.freeze({PREVIO_DATES_EDITED:409,PREVIO_PREFILLED_OTHER_UNIT:409,NO_EMAIL:409,SEND_LEDGER_REQUIRED:503,GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACCOUNT:403,FORBIDDEN:403,GMAIL_RATE_LIMITED:429,INVALID_INPUT:400,
  GMAIL_SOURCE_UNVERIFIED:422,NOT_MARKED_TEST_MESSAGE:422,NOT_TEST_PAIR_INQUIRY:422,REPLY_HANDLED_IN_GMAIL:422,NOT_A_FOLLOWUP:422,FOLLOWUP_CASE_NOT_FOUND:404,ALREADY_IN_CASE:409,LIVE_MAILBOX_READER_PENDING:503,AUTOMATED_MESSAGE:422,REPLY_NOT_ALLOWED:422,NOT_ADDRESSED_TO_TEST_MAILBOX:422,INVALID_SENDER:422,MESSAGE_ID_REQUIRED:422,
  TEXT_PART_REQUIRED:422,EMPTY_TEXT:422,TEXT_TOO_LONG:422,UNREADABLE_TEXT:422,INVALID_DRAFT:422,STORAGE_FAILURE:503,
  NOT_APPROVED:409,RECIPIENT_NOT_ALLOWED:403,SOURCE_UNVERIFIED:422,SEND_FAILED:502,SEND_OUTCOME_UNKNOWN:409,CASE_CONFLICT:409,
@@ -309,8 +309,10 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
      const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
      if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
-     const units=await pickFreeUnits({record,transport:cookieSession.transport,unitCheckFn:ownUnitChecker(env,fetchImpl,record)});
-     return cookieResponse(200,{result:{caseId:record.caseId,revision:record.revision,units}});
+     // Owner test 2026-11-19: a pre-filled Previo option (staff may have moved it) wins over the first free unit.
+     let own=null;try{own=await prefilledUnit(env,fetchImpl,record);}catch{}
+     const units=own?[own]:await pickFreeUnits({record,transport:cookieSession.transport,unitCheckFn:ownUnitChecker(env,fetchImpl,record)});
+     return cookieResponse(200,{result:{caseId:record.caseId,revision:record.revision,units,prefilled:!!own}});
     }catch(error){
      const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'TEST_MAILBOX_REJECTED';
      return cookieResponse(TEST_MAILBOX_ERRORS[code],{error:code});
@@ -336,7 +338,9 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
      const perms=cookieSession.authority?.tenants?.[TENANT]||[];
      let unit=input.unit,list=units;
-     const ownUnit=auto?await prefilledUnit(env,fetchImpl,record):null;
+     // The case's pre-filled Previo option is checked whatever the selector shows (owner test 2026-11-19).
+     const ownUnit=await prefilledUnit(env,fetchImpl,record);
+     if(ownUnit&&!auto&&(units||unit!==ownUnit)){const e=Error('PREVIO_PREFILLED_OTHER_UNIT');e.code='PREVIO_PREFILLED_OTHER_UNIT';throw e;}
      if(ownUnit){unit=ownUnit;list=null;}
      else if(auto){const picked=await pickFreeUnits({record,transport:cookieSession.transport,unitCheckFn:ownUnitChecker(env,fetchImpl,record)});unit=picked[0];list=picked.length>1?picked:null;}
      const rg=await returningGuestPricing(env,fetchImpl,record);
