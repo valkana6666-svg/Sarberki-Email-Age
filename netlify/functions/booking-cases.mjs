@@ -23,7 +23,7 @@ import {previoUnitChecker} from '../../shared-core/server-previo-unit-check.mjs'
 import {previoSplitPlacementReader} from '../../shared-core/server-previo-split-placement.mjs';
 import {previoBookingWriter} from '../../shared-core/server-previo-booking-sync.mjs';
 import {confirmTestMailboxBooking,previewTestMailboxBooking,pickFreeUnits,oneClickTestMailboxBooking,markTestMailboxDepositReceived,cancelTestMailboxBooking,modifyTestMailboxBooking} from '../../shared-core/server-test-mailbox-confirm.mjs';
-import {bookingIntentHint} from '../../shared-core/booking-intent.mjs';
+import {caseBookingIntent} from '../../shared-core/booking-intent.mjs';
 import {previoAvailabilitySource} from '../../shared-core/server-capacity-draft.mjs';
 import {buildAvailabilityOptions} from './availability-options.mjs';
 import {markTestMailboxUnavailable} from '../../shared-core/server-test-mailbox-unavailable.mjs';
@@ -143,7 +143,7 @@ function testMailboxView(record,authority,tenant='sarberki-test',previoRead=fals
   unitsRequested:Number(data.state?.values?.units_requested||1),
   booking:data.booking?{status:data.booking.status,unit:data.booking.unit??null,units:Array.isArray(data.booking.units)?data.booking.units:null,previoReference:data.booking.previo?.reference??null,deposit:data.booking.deposit??null,depositReceivedOn:data.booking.depositReceived?.on??null}:null,
   // Hint only (V1): the guest's reply reads as an explicit booking acceptance; nothing is booked here.
-  bookingIntent:bookingIntentHint(data.messages,data.booking?.status),
+  bookingIntent:caseBookingIntent(data.messages,data.booking?.status,data.sourceReceipt?.provider),
   canFinalize:permissions.includes('write')&&!['finalized','deposit_received'].includes(data.booking?.status),
   // One-click V2 (PERM-20261112-ONECLICK): one account with write AND approve, the V2 writer on, not yet finalized.
   canOneClick:permissions.includes('write')&&permissions.includes('approve')&&previoWrite===true&&!['finalized','deposit_received'].includes(data.booking?.status),

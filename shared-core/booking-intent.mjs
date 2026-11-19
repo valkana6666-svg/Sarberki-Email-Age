@@ -38,3 +38,13 @@ export function bookingIntentHint(messages,bookingStatus){
  const r=bookingAcceptanceFromText(messages.at(-1)?.text);
  return r.accepted?r.phrase:null;
 }
+
+// Owner test 2026-11-18 (Nagy Márton): a chat „Igény elküldése” or a phone intake IS the guest's booking request (with
+// consent, contact and name), so the daily view offers the booking step at once – the one-click preview reads the free
+// unit and the price from Previo before anything is written, and the operator still confirms.
+export const INTAKE_BOOKING_REQUEST=Object.freeze({chat:'chates foglalási igény',phone:'telefonos foglalási igény'});
+export function caseBookingIntent(messages,bookingStatus,provider){
+ const hint=bookingIntentHint(messages,bookingStatus);if(hint)return hint;
+ if(['finalized','deposit_received','cancelled'].includes(bookingStatus))return null;
+ return INTAKE_BOOKING_REQUEST[provider]??null;
+}

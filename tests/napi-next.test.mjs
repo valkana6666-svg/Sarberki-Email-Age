@@ -33,3 +33,15 @@ test('owner test 2026-11-18 (Nagy Márton): an unpriced pending reply asks for t
  assert.equal(nextStepFor({approval:'pending',canDecide:true,priceable:false},{sendable:true}).kind,'approveSend');
  assert.equal(nextStepFor({approval:'approved_internal',priceable:true},{sendable:true}).kind,'send');
 });
+
+test('owner test 2026-11-18: a chat/phone intake is a booking request → the booking step comes first',async()=>{
+ const {caseBookingIntent}=await import('../shared-core/booking-intent.mjs');
+ const one=[{text:'Van szabad családi faház május 14-17?'}];
+ assert.equal(caseBookingIntent(one,null,'chat'),'chates foglalási igény');
+ assert.equal(caseBookingIntent(one,null,'phone'),'telefonos foglalási igény');
+ assert.equal(caseBookingIntent(one,null,'gmail'),null); // a first e-mail inquiry is interest, not a booking
+ assert.equal(caseBookingIntent(one,'finalized','chat'),null);
+ assert.equal(caseBookingIntent(one,'cancelled','chat'),null);
+ const rec={approval:'pending',canDecide:true,priceable:true,canOneClick:true,bookingIntent:caseBookingIntent(one,null,'chat')};
+ assert.equal(nextStepFor(rec,{sendable:true}).kind,'book');
+});
