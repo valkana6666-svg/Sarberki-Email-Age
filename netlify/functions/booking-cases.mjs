@@ -21,6 +21,17 @@ import {priceTestMailboxCase,draftNeedsPrice} from '../../shared-core/server-tes
 import {previoPriceChecker} from '../../shared-core/server-previo-price-check.mjs';
 import {previoUnitChecker,previoOwnBookingFinder} from '../../shared-core/server-previo-unit-check.mjs';
 import {voucherFor} from '../../shared-core/server-previo-reservation-write.mjs';
+import {previoGuestHistoryChecker} from '../../shared-core/server-previo-guest-history.mjs';
+import {applyReturningDiscount,returningGuestLine} from '../../shared-core/returning-guest.mjs';
+import {fetchPublicPriceReference} from '../../price-source/public-price-fallback.mjs';
+// Owner 2026-11-19 (prepared, switch RETURNING_GUEST_CHECK=test-only, default off): returning-guest check from Previo
+// past stays; only a certain (e-mail/phone) match changes the price. → {decision, quoteFn}
+async function returningGuestPricing(env,fetchImpl,record){
+ const check=previoGuestHistoryChecker(env,fetchImpl);if(!check)return {decision:null,quoteFn:fetchPublicPriceReference};
+ const v=record?.data?.state?.values||{};
+ let decision;try{decision=await check({guest:{email:v.email,phone:v.phone,name:v.name},referenceDay:new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Budapest'})});}catch{decision={status:'unknown'};}
+ return {decision,quoteFn:input=>applyReturningDiscount(fetchPublicPriceReference(input),decision)};
+}
 // Owner 2026-11-19 (chat pre-fill): the case's own Previo option (same booking number) never blocks its unit.
 function ownUnitChecker(env,fetchImpl,record){
  const base=previoUnitChecker(env,fetchImpl);if(!base)return null;
@@ -328,10 +339,11 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      const ownUnit=auto?await prefilledUnit(env,fetchImpl,record):null;
      if(ownUnit){unit=ownUnit;list=null;}
      else if(auto){const picked=await pickFreeUnits({record,transport:cookieSession.transport,unitCheckFn:ownUnitChecker(env,fetchImpl,record)});unit=picked[0];list=picked.length>1?picked:null;}
-     const preview=await previewTestMailboxBooking({record,unit,units:list,transport:cookieSession.transport,unitCheckFn:ownUnitChecker(env,fetchImpl,record),
+     const rg=await returningGuestPricing(env,fetchImpl,record);
+     const preview=await previewTestMailboxBooking({record,unit,units:list,transport:cookieSession.transport,unitCheckFn:ownUnitChecker(env,fetchImpl,record),quoteFn:rg.quoteFn,
       priceCheckFn:previoPriceChecker(env,fetchImpl),previoWriterOn:previoBookingWriter(env,fetchImpl)!==null});
      if(!(perms.includes('write')&&perms.includes('approve'))){preview.blockers.push('ONECLICK_ROLE_REQUIRED');preview.ready=false;}
-     return cookieResponse(200,{result:{caseId:record.caseId,revision:record.revision,autoPicked:auto,prefilled:!!ownUnit,...preview}});
+     return cookieResponse(200,{result:{caseId:record.caseId,revision:record.revision,autoPicked:auto,prefilled:!!ownUnit,returningGuest:returningGuestLine(rg.decision),...preview}});
     }catch(error){
      const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'TEST_MAILBOX_REJECTED';
      return cookieResponse(TEST_MAILBOX_ERRORS[code],{error:code});
@@ -430,7 +442,8 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
       if(record.revision!==input.expectedRevision)return cookieResponse(409,{error:'CASE_CONFLICT'});
       const previoWriter=previoBookingWriter(env,fetchImpl);
       if(!previoWriter)return cookieResponse(409,{error:'PREVIO_WRITE_DISABLED'});
-      const {saved,approved,deposit}=await oneClickTestMailboxBooking({record,unit:input.unit,units:input.units??null,previewHash:input.previewHash,
+      const rg=await returningGuestPricing(env,fetchImpl,record);
+      const {saved,approved,deposit}=await oneClickTestMailboxBooking({record,unit:input.unit,units:input.units??null,previewHash:input.previewHash,quoteFn:rg.quoteFn,
        oneClickConfirmed:input.oneClickConfirmed,previoWriter,attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,transport:cookieSession.transport,
        unitCheckFn:ownUnitChecker(env,fetchImpl,record)});
       if(!saved)return cookieResponse(409,{error:'CASE_CONFLICT'});

@@ -535,7 +535,8 @@ el('oneclick-preview').addEventListener('click',async()=>{
   // Owner 2026-11-13: the first mail is only an inquiry; book after the guest's explicit yes. A warning, not a block
   // (a phone confirmation is valid too).
   const noIntent=target.intent!==true?'⚠️ A vendég még nem írta vissza, hogy foglalni szeretne. Csak akkor foglalj, ha elfogadta az ajánlatot (pl. telefonon).\n':'';
-  const pre=p.prefilled?'📝 A Previo-tesztben már előre kitöltve (opció) – a Previóban ellenőrzött/javított egység: '+p.units.join(', ')+'.\n':'';
+  const rgLine=typeof p.returningGuest==='string'&&p.returningGuest?p.returningGuest+'\n':'';
+  const pre=rgLine+(p.prefilled?'📝 A Previo-tesztben már előre kitöltve (opció) – a Previóban ellenőrzött/javított egység: '+p.units.join(', ')+'.\n':'');
   el('oneclick-summary').textContent=pre+noIntent+(p.ready?'✅ Minden ellenőrzés rendben.':'⛔ Nem indítható: '+p.blockers.map(b=>oneClickBlockers[b]||b).join('; ')+'.')+
    '\n'+(auto?'Automatikusan választott egység':'Egység')+(p.units.length>1?'ek: ':': ')+p.units.join(', ')+(auto?' (a választóban átírható)':'')+(p.blockers.includes('PREVIO_UNIT_UNVERIFIED')?'':' (Previo: szabad)')+
    '\nÁr: '+huf(p.total)+' Ft – '+(oneClickPrice[p.price?.status]||'')+
