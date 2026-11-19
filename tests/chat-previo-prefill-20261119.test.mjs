@@ -60,3 +60,18 @@ test('approval of a pre-filled option: the expiry moves to the deposit deadline 
  const stubborn=previoBookingWriter(env,async(u,o)=>String(u).endsWith('/reservation')?new Response('<reservations><reservation><resId>77</resId></reservation></reservations>'):new Response(block()));
  expiry='2026-11-21 09:00:00';assert.equal(await stubborn.extendOption(args),false,'Previo kept the old expiry → the operator is told');
 });
+
+test('#9 7005064928: the pre-fill writes the returning-guest price and a staff note into Previo',async()=>{
+ const {prefillNote}=await import('../shared-core/server-chat-prefill.mjs');
+ const w=fakeWriter();
+ const base={env:{CHAT_PREVIO_PREFILL:'test-only'},tenantId:'sarberki-test',caseId:'tm-abcdefabcdefabcdefabcdef',facts,name:'Teszt Elek',email:'valkana6666@gmail.com',phone:'+36 30 000 0000',writer:w,unitCheckFn:async()=>({status:'free'}),now:()=>NOW};
+ await prefillChatBooking({...base,historyFn:async()=>({status:'eligible',matchedBy:['name','email','phone'],lastStay:'2025-08-13',pct:20})});
+ assert.equal(w.calls[0].totalHuf,144000,'180 000 − 20%');assert.match(w.calls[0].note,/Törzsvendég.*20% kedvezmény beszámítva \(36000 Ft\)/);
+ const w2=fakeWriter();await prefillChatBooking({...base,writer:w2,historyFn:async()=>({status:'possible',matchedBy:['name'],lastStay:'2025-08-13',pct:20})});
+ assert.equal(w2.calls[0].totalHuf,180000,'a partial match never changes the price');assert.match(w2.calls[0].note,/Lehetséges törzsvendég/);
+ const w3=fakeWriter();await prefillChatBooking({...base,writer:w3,historyFn:null});
+ assert.equal(w3.calls[0].totalHuf,180000);assert.match(w3.calls[0].note,/állítsd megerősítettre/);assert.doesNotMatch(prefillNote(null),/@/);
+ const {buildReservationXml}=await import('../shared-core/server-previo-reservation-write.mjs');
+ const x=buildReservationXml({tenantId:'t',caseId:'c',values:{arrival:'2027-06-10',departure:'2027-06-13',adults:'2',children:'0',child_ages:''},cabin:'deluxe',unit:'11',contactName:'A',totalHuf:1,optionExpiresUtc:'2027-01-01T00:00:00Z',note:'Teszt <megjegyzés>\nsor'}).xml;
+ assert.match(x,/<gNote>Teszt &lt;megjegyzés&gt; sor<\/gNote>/);
+});

@@ -53,7 +53,7 @@ export function contactPersonXml(name,contact){
 }
 // Multi-unit (owner 2026-11-11): units (2..6, first = unit) and parties [{adults,children:[ages]}] per unit -> one
 // reservation with one commission per unit (Previo XML "New group reservation").
-export function buildReservationXml({tenantId,caseId,values,cabin,unit,units=null,parties=null,contactName,contact=null,totalHuf,optionExpiresUtc,channel='email',property=PREVIO_TEST_73521}){
+export function buildReservationXml({tenantId,caseId,values,cabin,unit,units=null,parties=null,contactName,contact=null,totalHuf,optionExpiresUtc,channel='email',note=null,property=PREVIO_TEST_73521}){
  if(String(property?.hotelId)!=='73521')fail('SANDBOX_ONLY');
  if(!day(values?.arrival)||!day(values?.departure)||values.departure<=values.arrival)fail('DATES_REQUIRED');
  const obkId=property.roomKinds?.[cabin];if(!int(obkId))fail('ROOM_KIND_UNKNOWN');
@@ -75,6 +75,8 @@ export function buildReservationXml({tenantId,caseId,values,cabin,unit,units=nul
    '</commission>'].join('')),
   '</commissions>',
   `<optionExpiration>${expiry}</optionExpiration>`,
+  // Owner 2026-11-19 (#9 7005064928): a short staff note in Previo (no guest contact data, plain text, ≤300 chars).
+  ...(note?[`<gNote>${xmlText(String(note).replace(/[\r\n]+/g,' ').slice(0,300))}</gNote>`]:[]),
   `<term><from>${values.arrival} 14:00:00</from><to>${values.departure} 10:00:00</to></term>`,
   `<voucher>${voucher}</voucher>`,
   contactPersonXml(name,contact),

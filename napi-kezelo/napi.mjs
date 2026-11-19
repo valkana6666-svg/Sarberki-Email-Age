@@ -428,6 +428,7 @@ function showBooking(caseId,record){
   if(bookingUnitsNeeded===1)el('booking-unit').value=suggested[0];
   el('booking-state').textContent+='\nJavasolt egymás melletti egységek (Previo, csak olvasva): '+suggested.join(' + ')+' – előre kijelölve.';
  }else if(fin&&!['finalized','deposit_received'].includes(b?.status)&&(cabinKey||genericSplit))suggestFreeUnits(caseId,record.revision);
+ if(record.previoRead===true)showPrevioStatus(caseId,record.revision);
  for(const id of ['previo-ref','previo-recorded'])el(id).disabled=!fin;
  // V2: offered only when the server says it can write the Previo TEST booking itself.
  el('previo-auto-wrap').hidden=record.previoWrite!==true;el('previo-auto').disabled=!fin||record.previoWrite!==true;el('previo-auto').checked=false;
@@ -463,6 +464,15 @@ const bookingErrors={PREVIO_PREFILLED_OTHER_UNIT:'Ez a foglalás a Previóban m�
 let bookingUnitsNeeded=1;
 // Owner 2026-11-13: always offer free unit(s) automatically (our bookings + Previo, read only); the operator may change
 // them. Applied only while the same case is open and nothing was chosen by hand meanwhile.
+// #9 7005064928: what Previo shows for this case right now (read-only; the staff decide in Previo).
+async function showPrevioStatus(caseId,revision){
+ const turn=epoch;
+ try{
+  const r=await request({tenantId:TENANT,caseId,action:'test-mailbox-previo-status'},'GET');
+  if(!current(turn)||bookingCase?.caseId!==caseId||bookingCase.revision!==revision||r?.caseId!==caseId||typeof r.line!=='string'||!r.line)return;
+  el('booking-state').textContent+='\n'+r.line;
+ }catch{}
+}
 async function suggestFreeUnits(caseId,revision){
  const turn=epoch;
  try{

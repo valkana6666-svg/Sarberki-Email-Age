@@ -22,6 +22,7 @@ import {previoPriceChecker} from '../../shared-core/server-previo-price-check.mj
 import {previoUnitChecker,previoOwnBookingFinder} from '../../shared-core/server-previo-unit-check.mjs';
 import {voucherFor} from '../../shared-core/server-previo-reservation-write.mjs';
 import {previoGuestHistoryChecker} from '../../shared-core/server-previo-guest-history.mjs';
+import {readPrevioCaseStatus,previoCaseView,previoStatusLine} from '../../shared-core/server-previo-status.mjs';
 import {applyReturningDiscount,returningGuestLine} from '../../shared-core/returning-guest.mjs';
 import {fetchPublicPriceReference} from '../../price-source/public-price-fallback.mjs';
 // Owner 2026-11-19 (prepared, switch RETURNING_GUEST_CHECK=test-only, default off): returning-guest check from Previo
@@ -298,6 +299,23 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    }
    // Automatic free-unit suggestion (owner 2026-11-13: "mindig automatikusan ajánljon fel egy szabad egységet",
    // manual choice stays possible). Read only: our bookings + the Previo TEST unit read.
+   // #9 7005064928: the case's booking as Previo shows it now (staff approval/change/cancel), read-only, TEST only.
+   if(input.action==='test-mailbox-previo-status'){
+    if(event.httpMethod!=='GET'||!cookieMode||!mailboxOn||live||input.tenantId!==TENANT||Object.keys(input).sort().join(',')!=='action,caseId,tenantId')
+     return cookieResponse(403,{error:'FORBIDDEN'});
+    if(typeof input.caseId!=='string'||!/^tm-[a-f0-9]{12,32}$/.test(input.caseId))return cookieResponse(400,{error:'INVALID_INPUT'});
+    cookieSession=await createOperatorCookieSession({env,fetchImpl}).protectedRead(event);
+    rotatedCookie=cookieSession.setCookie;
+    const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.'+TENANT+'&case_id=eq.'+encodeURIComponent(input.caseId));
+    const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
+    const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
+    if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
+    if(env.PREVIO_READ_API_ENABLED!=='sandbox-73521-only'||String(env.PREVIO_HOTEL_ID)!=='73521')return cookieResponse(200,{result:{caseId:record.caseId,line:null}});
+    const v=record.data?.state?.values||{};
+    const list=await readPrevioCaseStatus({apiKey:env.PREVIO_API_KEY,voucher:voucherFor({tenantId:record.tenantId,caseId:record.caseId}),arrival:v.arrival,departure:v.departure,fetchImpl});
+    const view=list===null?{state:'unknown',changes:[]}:previoCaseView(list,{arrival:v.arrival,departure:v.departure,unit:record.data?.booking?.unit??null});
+    return cookieResponse(200,{result:{caseId:record.caseId,state:view.state,changes:view.changes,line:previoStatusLine(view)}});
+   }
    if(input.action==='test-mailbox-suggest-units'){
     if(event.httpMethod!=='GET'||!cookieMode||!mailboxOn||live||input.tenantId!==TENANT||Object.keys(input).sort().join(',')!=='action,caseId,tenantId')
      return cookieResponse(403,{error:'FORBIDDEN'});
