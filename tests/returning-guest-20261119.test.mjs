@@ -7,14 +7,18 @@ import {fetchPublicPriceReference} from '../price-source/public-price-fallback.m
 import {buildBookingConfirmation} from '../shared-core/booking-confirmation-draft.mjs';
 
 const stays=[{email:'Teszt.Elek@Example.test',phone:'06 30 111 2222',name:'Teszt Elek',lastDay:'2025-08-10'},{email:'mas@example.test',phone:null,name:'Kovács Péter',lastDay:'2026-06-01'}];
-test('decision: same e-mail or phone within 730 days → eligible; name only → possible; too old / nothing → none',()=>{
+test('decision (owner 2026-11-19): name + e-mail + phone all match → eligible; any partial match → operator decides',()=>{
  const ref='2026-11-19';
- assert.deepEqual({...returningGuestDecision({guest:{email:'teszt.elek@example.test'},stays,referenceDay:ref})},{status:'eligible',matchedBy:'email',lastStay:'2025-08-10',pct:20});
- assert.equal(returningGuestDecision({guest:{phone:'+36 30 111 2222'},stays,referenceDay:ref}).matchedBy,'phone','06… and +36… are the same number');
+ const all={name:'Elek Teszt',email:'teszt.elek@example.test',phone:'+36 30 111 2222'};
+ const d=returningGuestDecision({guest:all,stays,referenceDay:ref});
+ assert.equal(d.status,'eligible');assert.deepEqual([...d.matchedBy],['name','email','phone']);assert.equal(d.lastStay,'2025-08-10');
+ const two=returningGuestDecision({guest:{...all,phone:'+36 20 999 9999'},stays,referenceDay:ref});
+ assert.equal(two.status,'possible');assert.deepEqual([...two.matchedBy],['name','email'],'two of three: the operator decides');
  assert.equal(returningGuestDecision({guest:{name:'Kovacs  Péter'},stays,referenceDay:ref}).status,'possible','a name never gives the discount automatically');
- assert.equal(returningGuestDecision({guest:{email:'teszt.elek@example.test'},stays,referenceDay:'2027-08-11'}).status,'none','731 days after the last day');
- assert.equal(returningGuestDecision({guest:{email:'teszt.elek@example.test'},stays,referenceDay:'2027-08-10'}).status,'eligible','exactly 730 days');
- assert.equal(returningGuestDecision({guest:{email:'uj@example.test'},stays,referenceDay:ref}).status,'none');
+ assert.equal(returningGuestDecision({guest:{email:'teszt.elek@example.test'},stays,referenceDay:ref}).status,'possible','e-mail alone is not enough');
+ assert.equal(returningGuestDecision({guest:all,stays,referenceDay:'2027-08-11'}).status,'none','731 days after the last day');
+ assert.equal(returningGuestDecision({guest:all,stays,referenceDay:'2027-08-10'}).status,'eligible','exactly 730 days');
+ assert.equal(returningGuestDecision({guest:{name:'Új Vendég',email:'uj@example.test'},stays,referenceDay:ref}).status,'none');
  assert.equal(normPhone('0036 30 111 2222'),normPhone('06-30-111-2222'));
 });
 test('price: 20% off the accommodation only; IFA unchanged; deposit from the discounted price; letter shows the discount',()=>{
@@ -25,8 +29,8 @@ test('price: 20% off the accommodation only; IFA unchanged; deposit from the dis
  const c=buildBookingConfirmation({values:{arrival:'2027-05-14',departure:'2027-05-17',adults:'3',children:'2',name:'Teszt Elek'},quote:d,previo:{reference:'V2-1',recordedAt:'2026-11-19T08:00:00Z'},language:'hu'});
  assert.match(c.text,/Szállásdíj: 180 000 Ft − törzsvendég-kedvezmény 20% \(36 000 Ft\) = 144 000 Ft, idegenforgalmi adó: 4 950 Ft, összesen: 148 950 Ft/);
  assert.equal(c.deposit.amount,72000);
- assert.match(returningGuestLine({status:'eligible',matchedBy:'email',lastStay:'2025-08-10',pct:20}),/Törzsvendég.*e-mail-cím.*2025-08-10.*20%/);
- assert.match(returningGuestLine({status:'possible',matchedBy:'name',lastStay:'2026-06-01',pct:20}),/csak a név egyezik/);
+ assert.match(returningGuestLine({status:'eligible',matchedBy:['name','email','phone'],lastStay:'2025-08-10',pct:20}),/név, e-mail-cím és telefonszám is egyezik.*2025-08-10.*20%/);
+ assert.match(returningGuestLine({status:'possible',matchedBy:['name'],lastStay:'2026-06-01',pct:20}),/csak ez egyezik.*: név\. .*a te döntésed/);
 });
 test('Previo history: checked-out stays only, contacts kept in memory; off unless both switches; TEST only; no data in the result',async()=>{
  const xml='<reservations>'+[[9,'a@example.test','2025-08-10'],[7,'b@example.test','2025-09-01'],[2,'c@example.test','2026-12-01']].map(([st,e,to])=>`<reservation><status><statusId>${st}</statusId></status><term><from>2025-01-01 14:00:00</from><to>${to} 10:00:00</to></term><contactPerson><name>X</name><email>${e}</email></contactPerson></reservation>`).join('')+'</reservations>';
@@ -36,6 +40,6 @@ test('Previo history: checked-out stays only, contacts kept in memory; off unles
  assert.equal(previoGuestHistoryChecker({...env,RETURNING_GUEST_CHECK:''}),null);
  assert.equal(previoGuestHistoryChecker({...env,PREVIO_HOTEL_ID:'753011'}),null,'the live property is not wired');
  const r=await previoGuestHistoryChecker(env,async()=>new Response(xml))({guest:{email:'a@example.test'},referenceDay:'2026-11-19'});
- assert.equal(r.status,'eligible');assert.equal(JSON.stringify(r).includes('example.test'),false,'no guest data in the result');
+ assert.equal(r.status,'possible','e-mail only → operator');assert.equal(JSON.stringify(r).includes('example.test'),false,'no guest data in the result');
  assert.equal((await previoGuestHistoryChecker(env,async()=>new Response('nope',{status:500}))({guest:{},referenceDay:'2026-11-19'})).status,'unknown');
 });
