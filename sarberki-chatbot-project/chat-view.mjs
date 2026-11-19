@@ -31,6 +31,9 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
   const facts=requestFacts(session.snapshot()),t=REQUEST_TEXT[session.language]||REQUEST_TEXT.hu;
   box.hidden=!facts;if(!facts){box.replaceChildren();return;}
   if(box.dataset.sent==='1')return;
+  // Keep what the guest already typed when the form is rebuilt after a new message (e.g. the children's ages).
+  const keep=(sel,prop='value')=>box.querySelector(sel)?.[prop];
+  const kept={name:keep('input[type=text]'),phone:keep('input[type=tel]'),mail:keep('input[type=email]'),consent:keep('input[type=checkbox]','checked')};
   const title=document.createElement('strong');title.textContent=t.title;
   const label=document.createElement('label');label.textContent=t.phone;const phone=document.createElement('input');phone.type='tel';phone.maxLength=24;phone.autocomplete='tel';label.append(phone);
   // Owner 2026-11-14: the guest's name (prefilled from a signature like "Üdv: Kiss Anna") and e-mail too.
@@ -74,16 +77,19 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
    // Owner 2026-11-19, step 1: the chat answers with the checked free cabin and price; step 2 is a separate button.
    result.textContent=t.checking;
    const offer=await offerProvider({facts:base.facts,language:lang});
+   // Owner 2026-11-19: say exactly what is missing; a fixable gap keeps the form – the guest answers, presses again.
+   if(offer?.status==='MISSING'&&offer.fixable){append('Sárberki',offer.text,lang);result.textContent=offer.text;send.disabled=false;delete send.dataset.busy;return;}
    box.dataset.sent='1'; // the form is done; changing the facts later starts a new request
    if(offer?.status==='AVAILABLE'){
     append('Sárberki',offer.text,lang);
     const warn=document.createElement('p');warn.className='chat-hint';warn.textContent=t.confirmNote;
     box.replaceChildren(warn,...finalStep(t.confirm,{acceptedTotal:offer.total},t.confirmed));
    }else{
-    append('Sárberki',offer?.status==='UNAVAILABLE'?offer.text:t.noOffer,lang);
+    append('Sárberki',offer&&['UNAVAILABLE','MISSING'].includes(offer.status)?offer.text:t.noOffer,lang);
     box.replaceChildren(...finalStep(t.toTeam,{},t.sent));
    }
   });
+  if(kept.name)pname.value=kept.name;if(kept.phone)phone.value=kept.phone;if(kept.mail)mail.value=kept.mail;if(kept.consent)check.checked=true;
   box.replaceChildren(title,nlabel,label,elabel,hint,consent,send,note,result);
  }
  if(box){box.className='chat-request';box.hidden=true;log.after(box);}

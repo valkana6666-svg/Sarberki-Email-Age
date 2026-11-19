@@ -24,7 +24,7 @@ export function createChatOfferProvider({request=fetch}={}){
    const r=await request('/.netlify/functions/chat-offer',{method:'POST',credentials:'same-origin',cache:'no-store',redirect:'error',
     headers:{'Content-Type':'application/json'},body:JSON.stringify({facts,language})});
    if(!r.ok)return null;const b=await r.json();const o=b?.offer;
-   return o&&['AVAILABLE','UNAVAILABLE'].includes(o.status)&&typeof o.text==='string'&&(o.status==='UNAVAILABLE'||Number.isSafeInteger(o.total))?o:null;
+   return o&&['AVAILABLE','UNAVAILABLE','MISSING'].includes(o.status)&&typeof o.text==='string'&&(o.status!=='AVAILABLE'||Number.isSafeInteger(o.total))?o:null;
   }catch{return null;}
  };
 }
