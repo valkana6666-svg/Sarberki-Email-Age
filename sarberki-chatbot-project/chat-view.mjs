@@ -17,7 +17,7 @@ export function withoutPhoneQuestion(text,lang){
 }
 // The audience is chosen by the host, never by a guest-controlled URL parameter.
 // Guest rendering never inserts operator review text or server controls.
-export function mountChatView(root,{audience='guest',language='auto',clock,capacityProvider=null,requestSender=null,assistProvider=null}={}){
+export function mountChatView(root,{audience='guest',language='auto',clock,capacityProvider=null,requestSender=null,assistProvider=null,offerProvider=null}={}){
  const operator=audience==='operator',session=createChatInquirySession({language,clock});
  const log=root.querySelector('[data-chat-log]'),input=root.querySelector('[data-chat-input]');
  const form=root.querySelector('[data-chat-form]'),reset=root.querySelector('[data-chat-reset]');
@@ -54,9 +54,35 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
    if(mailOk())mail.value=mailVal();
    if(!valid()){explain();if(!hint.textContent)hint.textContent=!check.checked?t.needConsent:t.needContact;return;}
    hint.textContent='';send.dataset.busy='1';send.disabled=true;
-   const ok=await requestSender({facts:requestFacts(session.snapshot()),phone:phone.value.trim(),email:mailOk()?mailVal():mail.value.trim(),name:pname.value.trim(),language:session.language,transcript:said.slice(-12)});
-   if(ok){box.dataset.sent='1';box.replaceChildren(Object.assign(document.createElement('p'),{textContent:t.sent}));}
-   else{result.textContent=t.fail;send.disabled=false;delete send.dataset.busy;}
+   const base={facts:requestFacts(session.snapshot()),phone:phone.value.trim(),email:mailOk()?mailVal():mail.value.trim(),name:pname.value.trim(),language:session.language,transcript:said.slice(-12)};
+   const lang=session.language;
+   // One final button (step 2 or the team path): sends the request; on success the box shows its thank-you text.
+   const finalStep=(label,extra,doneText)=>{
+    const go=document.createElement('button');go.type='button';go.textContent=label;const res=document.createElement('p');res.setAttribute('role','status');
+    go.addEventListener('click',async()=>{if(go.dataset.busy==='1')return;go.dataset.busy='1';go.disabled=true;
+     const ok=await requestSender({...base,...extra});
+     if(ok){box.dataset.sent='1';box.replaceChildren(Object.assign(document.createElement('p'),{textContent:doneText}));append('Sárberki',doneText,lang);}
+     else{res.textContent=t.fail;go.disabled=false;delete go.dataset.busy;}});
+    return [go,res];
+   };
+   if(!offerProvider){ // no offer service: the request goes to the team at once (as before)
+    const ok=await requestSender(base);
+    if(ok){box.dataset.sent='1';box.replaceChildren(Object.assign(document.createElement('p'),{textContent:t.sent}));}
+    else{result.textContent=t.fail;send.disabled=false;delete send.dataset.busy;}
+    return;
+   }
+   // Owner 2026-11-19, step 1: the chat answers with the checked free cabin and price; step 2 is a separate button.
+   result.textContent=t.checking;
+   const offer=await offerProvider({facts:base.facts,language:lang});
+   box.dataset.sent='1'; // the form is done; changing the facts later starts a new request
+   if(offer?.status==='AVAILABLE'){
+    append('Sárberki',offer.text,lang);
+    const warn=document.createElement('p');warn.className='chat-hint';warn.textContent=t.confirmNote;
+    box.replaceChildren(warn,...finalStep(t.confirm,{acceptedTotal:offer.total},t.confirmed));
+   }else{
+    append('Sárberki',offer?.status==='UNAVAILABLE'?offer.text:t.noOffer,lang);
+    box.replaceChildren(...finalStep(t.toTeam,{},t.sent));
+   }
   });
   box.replaceChildren(title,nlabel,label,elabel,hint,consent,send,note,result);
  }
