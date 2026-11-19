@@ -15,7 +15,7 @@ test('offer: free Családi, 3 felnőtt + 5 és 6 éves → 184 950 Ft (szállás
  const o=await buildChatOffer({facts,language:'hu',capacityFn:free(2),now:NOW});
  assert.equal(o.status,'AVAILABLE');assert.equal(o.total,184950);assert.equal(o.accommodation,180000);assert.equal(o.tourismTax,4950);
  assert.equal(o.depositPct,50);assert.equal(o.deposit,90000);
- assert.match(o.text,/2027\.05\.14\. – 2027\.05\.17\..*3 éj, 5 fő: 3 felnőtt, 2 gyermek/);
+ assert.match(o.text,/2027\.05\.14\. – 2027\.05\.17\. között \(3 éj, 5 fő: 3 felnőtt, 2 gyermek\) a kért háztípusban \(Családi\)/);
  assert.match(o.text,/Ár: 184 950 Ft \(szállásdíj 180 000 Ft \+ idegenforgalmi adó 4 950 Ft\)/);
  assert.match(o.text,/Foglalás véglegesítése/);assert.doesNotMatch(o.text,/\b(?:1[0-5]|[1-9])\.? ?(?:ház|egység)\b/,'no internal house number');
  for(const lang of ['de','en','si'])assert.equal((await buildChatOffer({facts,language:lang,capacityFn:free(1),now:NOW})).total,184950);

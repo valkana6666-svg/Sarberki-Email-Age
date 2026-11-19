@@ -29,14 +29,14 @@ export function offerInput(facts){
 }
 
 const TEXT={
- hu:{free:(c,a,d,n,p)=>`Jó hír: a(z) ${c} ${a} – ${d} között (${n} éj, ${p}) jelenleg szabad.`,
+ hu:{free:(c,a,d,n,p)=>`Jó hír: ${a} – ${d} között (${n} éj, ${p}) a kért háztípusban (${c}) jelenleg van szabad hely.`,
   price:(t,acc,tax)=>`Ár: ${t} Ft (szállásdíj ${acc} Ft + idegenforgalmi adó ${tax} Ft).`,
   deposit:(pct,amt)=>`Foglaló: a szállásdíj ${pct}%-a, ${amt} Ft, banki átutalással; a pontos határidőt a visszaigazolásban küldjük.`,
   cancel:d=>`Lemondás: az érkezés előtt legalább ${d} nappal díjmentes, a foglaló nem vész el.`,
   extra:'A dézsát és más szolgáltatást külön egyeztetjük.',
   confirm:'Ha megfelel, nyomja meg a „Foglalás véglegesítése” gombot. Munkatársunk a foglalást rögzíti és e-mailben visszaigazolja.',
   party:(a,c)=>`${a+c} fő: ${a} felnőtt${c?`, ${c} gyermek`:''}`,
-  none:(c,a,d)=>`Sajnos a(z) ${c} ${a} – ${d} között nem szabad. Elküldhetjük kérését munkatársunknak, aki más időpontot vagy háztípust ajánl.`},
+  none:(c,a,d)=>`Sajnos ${a} – ${d} között a kért háztípusban (${c}) nincs szabad hely. Elküldhetjük kérését munkatársunknak, aki más időpontot vagy háztípust ajánl.`},
  de:{free:(c,a,d,n,p)=>`Gute Nachricht: ${c} ist vom ${a} bis ${d} (${n} Nächte, ${p}) derzeit frei.`,
   price:(t,acc,tax)=>`Preis: ${t} Ft (Unterkunft ${acc} Ft + Kurtaxe ${tax} Ft).`,
   deposit:(pct,amt)=>`Anzahlung: ${pct}% des Unterkunftspreises, ${amt} Ft, per Banküberweisung; die genaue Frist senden wir mit der Bestätigung.`,
