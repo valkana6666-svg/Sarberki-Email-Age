@@ -790,7 +790,9 @@ el('next-go').addEventListener('click',()=>{
   if(nextCase!==n||--left<0){clearInterval(nextTimer);nextTimer=null;if(nextCase===n){el('next-go').disabled=false;el('next-result').textContent='Az előnézet nem készült el; próbáld újra.';}return;}
   const summary=el('oneclick-summary').textContent;
   if(!el('oneclick-confirm').disabled){clearInterval(nextTimer);nextTimer=null;el('next-result').textContent='';
-   nextAsk(summary.split('\n\n— ')[0]+'\n\nA visszaigazoló levél teljes szövege a „Teljes nézet”-ben olvasható.','Igen, foglalás');}
+   // Owner 2026-11-19: the guest's letter is shown right under the approval button.
+   nextAsk(n.step.send?summary+'\n\nJóváhagyás után: a foglalás bekerül a Previo-tesztbe, és a fenti levél kimegy a vendégnek.':summary.split('\n\n— ')[0]+'\n\nA visszaigazoló levél teljes szövege a „Teljes nézet”-ben olvasható.',
+    n.step.send?'Igen: Previo + levél küldése':'Igen, foglalás');}
   else if(!el('oneclick-preview').disabled&&/⛔|nem készült/.test(summary)){clearInterval(nextTimer);nextTimer=null;el('next-go').disabled=false;el('next-result').textContent=summary.split('\n\n— ')[0];}
  },300);
 });
@@ -799,6 +801,32 @@ el('next-yes').addEventListener('click',()=>{
  const n=nextCase;if(!n||actionBusy||!authenticated)return;
  el('next-yes').hidden=true;el('next-no').hidden=true;el('next-text').textContent='';
  const kind=n.step.kind;
+ if(kind==='book'&&n.step.send){ // one approval: Google consent first (needs this click), then Previo, then the letter
+  const o=oneClick;if(!o||bookingCase?.caseId!==o.caseId||bookingCase.revision!==o.revision)return;
+  actionBusy=true;el('next-result').textContent='Google-engedély…';
+  let booked=false;
+  const fail=code=>{actionBusy=false;if(nextCase!==n)return;
+   el('next-result').textContent=booked?'✅ A foglalás rögzítve a Previo-tesztben, de a levél NEM ment el – '+(sendErrors[code]||'a küldés nem igazolt.')+' Küldd el a „Válasz küldése” gombbal.'
+    :'Nem sikerült – '+(bookingErrors[code]||sendErrors[code]||'a művelet nem igazolt; nincs automatikus ismétlés. Nyisd meg újra az ügyet.');el('next-go').hidden=false;};
+  emailReader.requestSendToken(async token=>{
+   if(nextCase!==n||!authenticated)return fail('CHANGED');
+   try{
+    el('next-result').textContent='Foglalás a Previóban…';
+    const unitPart=o.units.length>1?{unit:o.units[0],units:o.units}:{unit:o.units[0]};
+    const r=await request({tenantId:TENANT,caseId:o.caseId,expectedRevision:o.revision,action:'test-mailbox-oneclick',...unitPart,previewHash:o.previewHash,oneClickConfirmed:true});
+    if(r?.caseId!==o.caseId)throw Error('INVALID_DATA');
+    booked=true;
+    if(r.approved!==true||r.approval!=='approved_internal')return fail('NOT_APPROVED');
+    el('next-result').textContent='Visszaigazoló levél küldése…';
+    const m=await request({tenantId:TENANT,caseId:o.caseId,action:'test-mailbox-send',expectedRevision:r.revision},'POST',{'X-Sarberki-Gmail-Token':token});
+    if(m?.caseId!==o.caseId||!['sent','already_sent'].includes(m.status))throw Error('INVALID_DATA');
+    actionBusy=false;rows=[];listLoaded=false;updateCounts();el('case-list').replaceChildren();const turn=epoch;
+    const done='✅ Foglalás rögzítve a Previo-tesztben, a visszaigazoló levél elküldve.';
+    await openTestMailboxCase(o.caseId,turn,done);if(current(turn))el('next-result').textContent=done;
+   }catch(error){if(error?.message==='AUTH_REQUIRED'){actionBusy=false;failed(error);}else fail(error?.message);}
+  },fail);
+  return;
+ }
  if(kind==='book'){el('oneclick-confirm').checked=true;el('oneclick-confirm').dispatchEvent(new Event('change'));el('next-result').textContent='Foglalás folyamatban…';nextWatch('booking-result',n);el('oneclick-go').click();return;}
  if(kind==='deposit'){if(!el('deposit-date').value)el('deposit-date').value=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Budapest'});el('deposit-confirm').checked=true;el('next-result').textContent='Mentés…';nextWatch('booking-result',n);el('deposit-mark').click();return;}
  if(kind==='price'){el('price-available').checked=true;el('price-available').dispatchEvent(new Event('change'));el('next-result').textContent='Ár beillesztése…';nextWatch('price-result',n);el('price-insert').click();return;}

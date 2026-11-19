@@ -45,3 +45,9 @@ test('owner test 2026-11-18: a chat/phone intake is a booking request → the bo
  const rec={approval:'pending',canDecide:true,priceable:true,canOneClick:true,bookingIntent:caseBookingIntent(one,null,'chat')};
  assert.equal(nextStepFor(rec,{sendable:true}).kind,'book');
 });
+
+test('owner 2026-11-19: with a guest e-mail the booking step is one approval (Previo + letter)',()=>{
+ const r={canOneClick:true,bookingIntent:'chates foglalási igény',approval:'pending'};
+ assert.deepEqual(nextStepFor(r,{sendable:true}),{kind:'book',label:'Foglalás jóváhagyása',ask:null,send:true});
+ assert.equal(nextStepFor(r,{sendable:false}).send,undefined);
+});

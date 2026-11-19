@@ -10,7 +10,8 @@ export function nextStepFor(record,{sendable=false}={}){
  if(['finalized','deposit_received'].includes(status))return {kind:'handoff',label:null,ask:null,
   info:'✅ A foglalás rögzítve a Previóban'+(b?.unit?' ('+b.unit+'. egység)':'')+'. Innen a Previóban folytasd: adatok ellenőrzése/javítása, voucher, díjbekérő, előleg- és végszámla.'};
  if(record.canOneClick===true&&!['finalized','deposit_received','cancelled'].includes(status)&&intent)
-  return {kind:'book',label:'Foglalás (előnézet)',ask:null};
+  // Owner 2026-11-19: with a guest e-mail the one button books in Previo AND sends the confirmation (one approval).
+  return sendable?{kind:'book',label:'Foglalás jóváhagyása',ask:null,send:true}:{kind:'book',label:'Foglalás (előnézet)',ask:null};
  // Owner test 2026-11-18 (Nagy Márton): price first – the reply must not be approved without the price.
  if(record.approval==='pending'&&record.priceable===true)
   return {kind:'price',label:'Ár kiszámítása',ask:null};
