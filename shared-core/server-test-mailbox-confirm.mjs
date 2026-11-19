@@ -166,6 +166,7 @@ export async function confirmTestMailboxBooking({record,previoReference,previoRe
  draft.operatorReviewText+='\n'+(list.length>1?'Egységek: '+list.join(', '):'Egység: '+unit)+' (csak kezelői adat, a vendéglevélben nem szerepel).';
  if(previoUnit&&!previoCreated)draft.operatorReviewText+='\n'+previoUnitLine(previoUnit,unit,previoReference);
  if(previoUnit&&previoCreated)draft.operatorReviewText+='\nPrevio (csak olvasó, létrehozás előtt): a(z) '+unit+' egységen nem volt más foglalás erre az időszakra.';
+ if(previoCreated?.expiryUpdated===false)draft.operatorReviewText+='\nFIGYELEM: a chatből előre kitöltött Previo-opció lejárata (48 óra) nem frissült automatikusan – a Previóban állítsd át a foglaló határidejére.';
  if(previoCreated)draft.operatorReviewText+=`\nPrevio (V2, automatikus): opció létrehozva a Previo-tesztben – azonosító ${previoCreated.resId}, ${list.length>1?'egységek '+list.join(', '):'egység '+unit}, lejár a foglalói határidővel${previoWriter.sendContact&&sentContact?'; kapcsolattartó: név, e-mail'+(sentContact.phone?', telefon':''):'; kapcsolattartó: csak név'}. A foglaló beérkezésekor a rendszer megerősíti.`;
  const proof=attestConfirmation({key:attestationKey,tenantId:record.tenantId,caseId:record.caseId,expectedRevision:record.revision,draft,booking,checkedAt:clock()});
  let saved;

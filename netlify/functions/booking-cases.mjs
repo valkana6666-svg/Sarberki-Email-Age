@@ -19,7 +19,24 @@ import {appendTestMailboxFollowup,triageTestMailboxMessages} from '../../shared-
 import {sendApprovedTestMailboxReply} from '../../shared-core/server-test-mailbox-send.mjs';
 import {priceTestMailboxCase,draftNeedsPrice} from '../../shared-core/server-test-mailbox-price.mjs';
 import {previoPriceChecker} from '../../shared-core/server-previo-price-check.mjs';
-import {previoUnitChecker} from '../../shared-core/server-previo-unit-check.mjs';
+import {previoUnitChecker,previoOwnBookingFinder} from '../../shared-core/server-previo-unit-check.mjs';
+import {voucherFor} from '../../shared-core/server-previo-reservation-write.mjs';
+// Owner 2026-11-19 (chat pre-fill): the case's own Previo option (same booking number) never blocks its unit.
+function ownUnitChecker(env,fetchImpl,record){
+ const base=previoUnitChecker(env,fetchImpl);if(!base)return null;
+ const own=voucherFor({tenantId:record.tenantId,caseId:record.caseId});
+ return args=>base({...args,previoReference:own});
+}
+// The unit of the case's pre-filled Previo option (the staff may have moved it to another house in Previo). A date the
+// staff changed in Previo is not carried over automatically yet: PREVIO_DATES_EDITED (align the case by hand).
+async function prefilledUnit(env,fetchImpl,record){
+ const find=previoOwnBookingFinder(env,fetchImpl),v=record?.data?.state?.values||{};if(!find)return null;
+ const r=await find({voucher:voucherFor({tenantId:record.tenantId,caseId:record.caseId}),arrival:v.arrival,departure:v.departure});
+ if(r?.status!=='read'||r.bookings.length!==1||!r.bookings[0].unit)return null;
+ const b=r.bookings[0];
+ if(b.from!==v.arrival||b.to!==v.departure){const e=Error('PREVIO_DATES_EDITED');e.code='PREVIO_DATES_EDITED';throw e;}
+ return b.unit;
+}
 import {previoSplitPlacementReader} from '../../shared-core/server-previo-split-placement.mjs';
 import {previoBookingWriter} from '../../shared-core/server-previo-booking-sync.mjs';
 import {confirmTestMailboxBooking,previewTestMailboxBooking,pickFreeUnits,oneClickTestMailboxBooking,markTestMailboxDepositReceived,cancelTestMailboxBooking,modifyTestMailboxBooking} from '../../shared-core/server-test-mailbox-confirm.mjs';
@@ -62,7 +79,7 @@ export function syntheticCaseSummaries(records,exactReceipt=null){
   .map(row=>({tenantId:'sarberki-test',caseId:row.caseId,revision:row.revision})).slice(0,100);
 }
 // Fixed public codes for the test-mailbox action; anything else becomes STORAGE_FAILURE.
-const TEST_MAILBOX_ERRORS=Object.freeze({NO_EMAIL:409,SEND_LEDGER_REQUIRED:503,GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACCOUNT:403,FORBIDDEN:403,GMAIL_RATE_LIMITED:429,INVALID_INPUT:400,
+const TEST_MAILBOX_ERRORS=Object.freeze({PREVIO_DATES_EDITED:409,NO_EMAIL:409,SEND_LEDGER_REQUIRED:503,GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACCOUNT:403,FORBIDDEN:403,GMAIL_RATE_LIMITED:429,INVALID_INPUT:400,
  GMAIL_SOURCE_UNVERIFIED:422,NOT_MARKED_TEST_MESSAGE:422,NOT_TEST_PAIR_INQUIRY:422,REPLY_HANDLED_IN_GMAIL:422,NOT_A_FOLLOWUP:422,FOLLOWUP_CASE_NOT_FOUND:404,ALREADY_IN_CASE:409,LIVE_MAILBOX_READER_PENDING:503,AUTOMATED_MESSAGE:422,REPLY_NOT_ALLOWED:422,NOT_ADDRESSED_TO_TEST_MAILBOX:422,INVALID_SENDER:422,MESSAGE_ID_REQUIRED:422,
  TEXT_PART_REQUIRED:422,EMPTY_TEXT:422,TEXT_TOO_LONG:422,UNREADABLE_TEXT:422,INVALID_DRAFT:422,STORAGE_FAILURE:503,
  NOT_APPROVED:409,RECIPIENT_NOT_ALLOWED:403,SOURCE_UNVERIFIED:422,SEND_FAILED:502,SEND_OUTCOME_UNKNOWN:409,CASE_CONFLICT:409,
@@ -281,7 +298,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
      const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
      if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
-     const units=await pickFreeUnits({record,transport:cookieSession.transport,unitCheckFn:previoUnitChecker(env,fetchImpl)});
+     const units=await pickFreeUnits({record,transport:cookieSession.transport,unitCheckFn:ownUnitChecker(env,fetchImpl,record)});
      return cookieResponse(200,{result:{caseId:record.caseId,revision:record.revision,units}});
     }catch(error){
      const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'TEST_MAILBOX_REJECTED';
@@ -308,11 +325,13 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
      const perms=cookieSession.authority?.tenants?.[TENANT]||[];
      let unit=input.unit,list=units;
-     if(auto){const picked=await pickFreeUnits({record,transport:cookieSession.transport,unitCheckFn:previoUnitChecker(env,fetchImpl)});unit=picked[0];list=picked.length>1?picked:null;}
-     const preview=await previewTestMailboxBooking({record,unit,units:list,transport:cookieSession.transport,unitCheckFn:previoUnitChecker(env,fetchImpl),
+     const ownUnit=auto?await prefilledUnit(env,fetchImpl,record):null;
+     if(ownUnit){unit=ownUnit;list=null;}
+     else if(auto){const picked=await pickFreeUnits({record,transport:cookieSession.transport,unitCheckFn:ownUnitChecker(env,fetchImpl,record)});unit=picked[0];list=picked.length>1?picked:null;}
+     const preview=await previewTestMailboxBooking({record,unit,units:list,transport:cookieSession.transport,unitCheckFn:ownUnitChecker(env,fetchImpl,record),
       priceCheckFn:previoPriceChecker(env,fetchImpl),previoWriterOn:previoBookingWriter(env,fetchImpl)!==null});
      if(!(perms.includes('write')&&perms.includes('approve'))){preview.blockers.push('ONECLICK_ROLE_REQUIRED');preview.ready=false;}
-     return cookieResponse(200,{result:{caseId:record.caseId,revision:record.revision,autoPicked:auto,...preview}});
+     return cookieResponse(200,{result:{caseId:record.caseId,revision:record.revision,autoPicked:auto,prefilled:!!ownUnit,...preview}});
     }catch(error){
      const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'TEST_MAILBOX_REJECTED';
      return cookieResponse(TEST_MAILBOX_ERRORS[code],{error:code});
@@ -413,7 +432,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
       if(!previoWriter)return cookieResponse(409,{error:'PREVIO_WRITE_DISABLED'});
       const {saved,approved,deposit}=await oneClickTestMailboxBooking({record,unit:input.unit,units:input.units??null,previewHash:input.previewHash,
        oneClickConfirmed:input.oneClickConfirmed,previoWriter,attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,transport:cookieSession.transport,
-       unitCheckFn:previoUnitChecker(env,fetchImpl)});
+       unitCheckFn:ownUnitChecker(env,fetchImpl,record)});
       if(!saved)return cookieResponse(409,{error:'CASE_CONFLICT'});
       await notifyPushover(env,fetchImpl,previoBookingNote(saved)); // owner 2026-11-15: Previo booking -> phone
       return cookieResponse(200,{result:{caseId:saved.case_id,revision:Number(saved.revision),approval:saved.data?.state?.approval,bookingStatus:saved.data?.booking?.status,approved,

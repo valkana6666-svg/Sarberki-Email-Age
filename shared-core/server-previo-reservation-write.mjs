@@ -23,6 +23,7 @@ const fail=code=>{const e=Error(code);e.code=code;throw e;};
 const day=x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&new Date(x+'T00:00:00Z').toISOString().slice(0,10)===x;
 const xmlText=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 const int=v=>Number.isSafeInteger(v)&&v>0;
+export const hotelLocal=utc=>{if(typeof utc!=='string'||Number.isNaN(Date.parse(utc)))fail('OPTION_EXPIRY_REQUIRED');return new Date(utc).toLocaleString('sv-SE',{timeZone:'Europe/Budapest',hour12:false}).slice(0,19);};
 
 // Stable, guest-data-free reservation identifier for idempotency (same tenant + case -> same voucher).
 export function voucherFor({tenantId,caseId}){
@@ -67,7 +68,7 @@ export function buildReservationXml({tenantId,caseId,values,cabin,unit,units=nul
  const voucher=voucherFor({tenantId,caseId});
  // Previo reads the option expiry as hotel-local time (like the 14:00/10:00 term); a UTC string made the option
  // expire one hour before the deadline in the guest letter (Work Previo check 2026-11-15: 12:33 vs 13:33).
- const expiry=new Date(optionExpiresUtc).toLocaleString('sv-SE',{timeZone:'Europe/Budapest',hour12:false}).slice(0,19);
+ const expiry=hotelLocal(optionExpiresUtc);
  const xml=['<?xml version="1.0"?>','<request>',`<hotId>${property.hotelId}</hotId>`,'<newReservation>','<commissions>',
   ...list.map((u,i)=>['<commission>',`<guests><numGuest>${guestsPerUnit[i].length}</numGuest>`,...guestsPerUnit[i].map(g=>`<guest><guaId>${g}</guaId></guest>`),'</guests>',
    `<obkId>${obkId}</obkId><objId>${property.rooms[u]}</objId><cosId>${STATUS.option}</cosId><cmsId>${sourceFor(channel)}</cmsId><prlId>${property.ratePlanId}</prlId>`,
@@ -84,7 +85,7 @@ export function buildReservationXml({tenantId,caseId,values,cabin,unit,units=nul
 
 // Modification (owner 2026-11-11): new dates and/or a new unit of the same room kind for a single-room reservation.
 // Previo XML "Modify" (resId + term + price; the room by its commission comId + objId).
-export function buildModifyXml({resId,comId,cabin,unit,values,totalHuf,property=PREVIO_TEST_73521}){
+export function buildModifyXml({resId,comId,cabin,unit,values,totalHuf,optionExpiresUtc=null,property=PREVIO_TEST_73521}){
  if(String(property?.hotelId)!=='73521')fail('SANDBOX_ONLY');
  if(!int(resId)||!int(comId))fail('RESERVATION_ID_REQUIRED');
  if(!day(values?.arrival)||!day(values?.departure)||values.departure<=values.arrival)fail('DATES_REQUIRED');
@@ -95,6 +96,8 @@ export function buildModifyXml({resId,comId,cabin,unit,values,totalHuf,property=
   xml:['<?xml version="1.0"?>','<request>',`<hotId>${property.hotelId}</hotId>`,'<newReservation>',`<resId>${resId}</resId>`,
    `<commissions><commission><comId>${comId}</comId><obkId>${obkId}</obkId><objId>${objId}</objId></commission></commissions>`,
    `<term><from>${values.arrival} 14:00:00</from><to>${values.departure} 10:00:00</to></term>`,
+   // Owner 2026-11-19: a pre-filled chat option (48 h) gets the deposit deadline when the staff approve it.
+   ...(optionExpiresUtc?[`<optionExpiration>${hotelLocal(optionExpiresUtc)}</optionExpiration>`]:[]),
    `<price><total>${totalHuf}</total><curId>${HUF_CURRENCY_ID}</curId></price>`,'</newReservation>','</request>'].join('')});
 }
 

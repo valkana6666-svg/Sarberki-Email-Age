@@ -9,6 +9,7 @@ import {createIntakeRequest} from '../../shared-core/server-intake.mjs';
 import {createSupabaseTransport} from '../../shared-core/supabase-case-repository.mjs';
 import {notifyOperator} from './intake.mjs';
 import {offerInput} from '../../shared-core/server-chat-offer.mjs';
+import {prefillChatBooking} from '../../shared-core/server-chat-prefill.mjs';
 import {fetchPublicPriceReference} from '../../price-source/public-price-fallback.mjs';
 
 const ORIGIN='https://leafy-chimera-2403e5.netlify.app',TEST_PROJECT='https://mojnqizbcaczstguikpv.supabase.co',TENANT='sarberki-test';
@@ -61,9 +62,14 @@ export function createChatIntakeHandler({env=process.env,fetchImpl=fetch,random=
   if(typeof token!=='string'||!token)return json(503,{error:'TRY_LATER',stage:'auth-token'});
   try{
    const transport=createSupabaseTransport({url:TEST_PROJECT+'/',publishableKey:env.SUPABASE_PUBLISHABLE_KEY,token,fetchImpl});
-   await createIntakeRequest({channel:'chat',externalId,facts:{...input.facts,...(phoneOk?{phone:input.phone.trim()}:{}),...(email?{email}:{}),language:input.language},summary,
+   const created=await createIntakeRequest({channel:'chat',externalId,facts:{...input.facts,...(phoneOk?{phone:input.phone.trim()}:{}),...(email?{email}:{}),language:input.language},summary,
     transport,attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,availabilitySource:null,tenantId:TENANT});
-   await notifyOperator(env,fetchImpl,'chat');
+   // Owner 2026-11-19 (PERM-20261119-CHAT-PREFILL): a confirmed chat booking is pre-filled in Previo TEST as an option.
+   let prefill={status:'off'};
+   if(input.acceptedTotal!==undefined&&created?.caseId){
+    try{prefill=await prefillChatBooking({env,fetchImpl,tenantId:TENANT,caseId:created.caseId,facts:input.facts,name:input.facts?.name,email,phone:phoneOk?input.phone.trim():''});}catch{prefill={status:'failed'};}
+   }
+   await notifyOperator(env,fetchImpl,'chat',input.acceptedTotal===undefined?'':prefill.status==='created'?'A vendég véglegesítette; a Previo-tesztben opcióként előre kitöltve ('+prefill.unit+'. egység) – ellenőrizd és hagyd jóvá.':'A vendég véglegesítette – jóváhagyás a napi kezelőben.');
    return json(200,{status:'sent'});
   }catch(error){
    // A limit hit and a storage failure look the same to the visitor: "try later" (no detail leaks).

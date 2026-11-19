@@ -50,7 +50,30 @@ export async function checkPrevioUnit({apiKey,unit,arrival,departure,previoRefer
  finally{clearTimeout(timer);}
 }
 
+// Owner 2026-11-19 (chat pre-fill): the case's OWN active Previo booking (by its booking number), looked up over a
+// wide window so a date the staff changed in Previo is found too. Read-only; ids, unit and dates only.
+export async function findOwnPrevioBooking({apiKey,voucher,arrival,departure,windowDays=60,property=PREVIO_TEST_73521,fetchImpl=globalThis.fetch,timeoutMs=8000}={}){
+ if(String(property?.hotelId)!=='73521'||!/^SC-[0-9A-F]{16}$/.test(String(voucher||''))||!day(arrival)||!day(departure))return {status:'unknown'};
+ if(typeof apiKey!=='string'||!/^[A-Za-z0-9._~+/=-]{16,512}$/.test(apiKey))return {status:'unknown'};
+ const shift=(d,n)=>new Date(Date.parse(d+'T00:00:00Z')+n*86400000).toISOString().slice(0,10);
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
+ try{
+  const r=await fetchImpl(ORIGIN+'/x1/hotel/searchReservations',{method:'POST',redirect:'error',cache:'no-store',signal:controller.signal,
+   headers:{Authorization:'ApiKey '+apiKey,'Content-Type':'application/xml',Accept:'application/xml'},body:unitSearchXml({hotelId:property.hotelId,arrival:shift(arrival,-windowDays),departure:shift(departure,windowDays)})});
+  if(!r.ok)return {status:'unknown'};
+  const text=await r.text();if(/<error>/.test(text)||!/<reservations/.test(text))return {status:'unknown'};
+  const own=reservationsFromXml(text).filter(x=>x.voucher===voucher&&!FREEING.has(x.statusId));
+  const unitOf=objId=>Object.entries(property.rooms||{}).find(([,id])=>id===objId)?.[0]??null;
+  return {status:'read',bookings:own.map(x=>Object.freeze({resId:x.resId,unit:unitOf(x.objId),from:x.from,to:x.to,statusId:x.statusId}))};
+ }catch{return {status:'unknown'};}
+ finally{clearTimeout(timer);}
+}
+
 // Same owner switch as the other Level 1 reads (default off).
+export function previoOwnBookingFinder(env,fetchImpl){
+ if(env?.PREVIO_READ_API_ENABLED!=='sandbox-73521-only'||String(env?.PREVIO_HOTEL_ID)!=='73521')return null;
+ return args=>findOwnPrevioBooking({...args,apiKey:env.PREVIO_API_KEY,fetchImpl});
+}
 export function previoUnitChecker(env,fetchImpl){
  if(env?.PREVIO_READ_API_ENABLED!=='sandbox-73521-only'||String(env?.PREVIO_HOTEL_ID)!=='73521')return null;
  return args=>checkPrevioUnit({...args,apiKey:env.PREVIO_API_KEY,fetchImpl});

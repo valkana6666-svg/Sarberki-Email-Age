@@ -17,11 +17,11 @@ const json=(status,body)=>new Response(JSON.stringify(body),{status,headers:{'co
 
 // V3-4: one Pushover note to the operator for a new phone/chat request. OFF unless INTAKE_NOTIFY=pushover (AGENTS:
 // automatic Pushover only with the owner's explicit permission). No personal data in the note; best effort only.
-export async function notifyOperator(env,fetchImpl,channel){
+export async function notifyOperator(env,fetchImpl,channel,extra=''){
  if(env.INTAKE_NOTIFY!=='pushover')return false;
  const token=env.PUSHOVER_API_TOKEN?.trim(),user=env.PUSHOVER_USER_KEY?.trim();
  if(!token||!user)return false;
- const message=channel==='phone'?'Új telefonos foglalási igény érkezett a napi kezelőbe.':'Új chates foglalási igény érkezett a napi kezelőbe.';
+ const message=(channel==='phone'?'Új telefonos foglalási igény érkezett a napi kezelőbe.':'Új chates foglalási igény érkezett a napi kezelőbe.')+(extra?' '+extra:'');
  try{
   const r=await fetchImpl('https://api.pushover.net/1/messages.json',{method:'POST',redirect:'error',signal:AbortSignal.timeout(5000),
    headers:{'Content-Type':'application/json'},body:JSON.stringify({token,user,title:'Sárberki TEST',message,url:'https://leafy-chimera-2403e5.netlify.app/napi-kezelo/',url_title:'Napi kezelő'})});

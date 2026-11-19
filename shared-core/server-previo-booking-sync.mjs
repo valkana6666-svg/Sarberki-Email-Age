@@ -3,12 +3,13 @@
 // proven pieces (server-previo-reservation-write.mjs: create/confirm/cancel PASS on 73521, 2026-11-10/11).
 // Locks: API TEST 73521 only; switch PREVIO_WRITE_ENABLED=sandbox-73521-only (default off); a recorded owner
 // permission id in PREVIO_WRITE_PERMISSION_ID; idempotent voucher per case. No guest e-mail/phone is sent.
-import {buildReservationXml,buildStatusXml,buildModifyXml,buildVoucherSearchXml,reservationsWithVoucher,parseReservationResponse,voucherFor,
+import {buildReservationXml,buildStatusXml,buildModifyXml,buildVoucherSearchXml,reservationsWithVoucher,parseReservationResponse,voucherFor,hotelLocal,
  writePrevioReservation,WRITE_SWITCH_VALUE,PREVIO_XML_ORIGIN} from './server-previo-reservation-write.mjs';
 
 const fail=code=>{const e=Error(code);e.code=code;throw e;};
 export const V2_REFERENCE=/^V2-(\d{1,12})$/;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const list1=units=>!Array.isArray(units)||units.length<=1;
 
 // null = V2 writing is off (the V1 manual Previo step applies).
 export function previoBookingWriter(env,fetchImpl=globalThis.fetch,{pauseMs=5000}={}){
@@ -36,7 +37,13 @@ export function previoBookingWriter(env,fetchImpl=globalThis.fetch,{pauseMs=5000
     const r=await writePrevioReservation({env:writeEnv,permissionId,request,fetchImpl});
     // An existing record for this case is reused only while it is active (option/confirmed); a cancelled one stops.
     if(r.created===false&&![1,2].includes(r.statusId))fail('PREVIO_BOOKING_NOT_ACTIVE');
-    return {resId:r.resId,voucher:request.voucher,created:r.created};
+    // Owner 2026-11-19: the case's option already exists (chat pre-fill, 48 h): its expiry moves to the deposit deadline
+    // (documented modify + optionExpiration, read back). Not verified -> the operator note says so; nothing else changes.
+    let expiryUpdated=null;
+    if(r.created===false&&r.statusId===1&&list1(units)){
+     try{expiryUpdated=await this.extendOption({tenantId,caseId,resId:r.resId,values,cabin,unit,totalHuf,optionExpiresUtc});}catch{expiryUpdated=false;}
+    }
+    return {resId:r.resId,voucher:request.voucher,created:r.created,expiryUpdated};
    }catch(error){
     if(!['PREVIO_TIMEOUT','PREVIO_UNAVAILABLE','PREVIO_RESPONSE_UNREADABLE'].includes(error?.code))throw error;
     await sleep(pauseMs);
@@ -44,6 +51,18 @@ export function previoBookingWriter(env,fetchImpl=globalThis.fetch,{pauseMs=5000
     if(found.length===1&&found[0].ok)return {resId:found[0].resId,voucher:request.voucher,created:true};
     fail('PREVIO_WRITE_UNCERTAIN');
    }
+  },
+  async extendOption({tenantId,caseId,resId,values,cabin,unit,totalHuf,optionExpiresUtc}){
+   const voucher=voucherFor({tenantId,caseId});
+   const find=async()=>{const text=await post('/x1/hotel/searchReservations',buildVoucherSearchXml({hotelId:'73521',voucher,arrival:values.arrival,departure:values.departure}));
+    if(/<error>/.test(text))fail('PREVIO_SEARCH_FAILED');
+    return [...text.matchAll(/<reservation>([\s\S]*?)<\/reservation>/g)].map(m=>m[1]).filter(b=>b.includes(`<voucher>${voucher}</voucher>`)&&b.includes(`<resId>${resId}</resId>`))
+     .map(b=>({comId:Number(b.match(/<comId>(\d+)<\/comId>/)?.[1]),expiry:b.match(/<optionExpiration>([^<]*)<\/optionExpiration>/)?.[1]??null}));};
+   const before=await find();if(before.length!==1||!before[0].comId)return false;
+   const result=parseReservationResponse(await post('/x1/hotel/reservation',buildModifyXml({resId,comId:before[0].comId,cabin,unit,values,totalHuf,optionExpiresUtc}).xml));
+   if(!result.ok)return false;
+   const after=await find();
+   return after.length===1&&String(after[0].expiry||'').slice(0,16)===hotelLocal(optionExpiresUtc).slice(0,16);
   },
   // Modification: find the reservation by its voucher (old dates), require exactly one room, send the change, then
   // read it back at the new dates. A changed outcome that cannot be read back -> PREVIO_MODIFY_UNVERIFIED.
