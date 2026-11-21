@@ -24,6 +24,9 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
  const select=operator?root.querySelector('[data-chat-language]'):null;
  const status=root.querySelector('[data-chat-status]');
  let messages=0,said=[];
+ // Owner 2026-11-19: as soon as dates, party and type are clear, the chat checks the free cabin and the price at once.
+ let autoOffer=null; // {key, offer}
+ const factsKey=f=>f?JSON.stringify(f):null;
  // V3-3: once the stay facts are known, the guest may send them to reception (only with a requestSender).
  const box=requestSender?document.createElement('div'):null;
  function renderRequest(){
@@ -42,8 +45,9 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
   // Owner 2026-11-14: e-mail too, so the confirmation and the voucher can go out by e-mail.
   const elabel=document.createElement('label');elabel.textContent=t.email;const mail=document.createElement('input');mail.type='email';mail.maxLength=254;mail.autocomplete='email';elabel.append(mail);
   const consent=document.createElement('label');const check=document.createElement('input');check.type='checkbox';consent.append(check,document.createTextNode(' '+t.consent));
-  const send=document.createElement('button');send.type='button';send.textContent=t.send;
-  const note=document.createElement('p');note.textContent=t.note;const result=document.createElement('p');result.setAttribute('role','status');
+  const known=autoOffer&&autoOffer.key===factsKey(facts)?autoOffer.offer:null;
+  const send=document.createElement('button');send.type='button';send.textContent=known?.status==='AVAILABLE'?t.confirm:known?.status==='UNAVAILABLE'?t.toTeam:t.send;
+  const note=document.createElement('p');note.textContent=known?.status==='AVAILABLE'?t.confirmNote:known?.status==='UNAVAILABLE'?'':t.note;if(known?.status==='AVAILABLE')note.className='chat-hint';const result=document.createElement('p');result.setAttribute('role','status');
   const phoneOk=()=>/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(phone.value.trim()),mailVal=()=>mail.value.trim().replace(/[.,;]+$/u,''),mailOk=()=>/^[^\s@<>"(),;:]{1,64}@[^\s@<>"(),;:]{1,190}\.[A-Za-z]{2,}$/.test(mailVal());
   // Owner iPhone test 2026-11-15: iOS adds a trailing "." (double space) - it is dropped; a wrong address is explained.
   const hint=document.createElement('p');hint.className='chat-hint';hint.setAttribute('role','status');
@@ -68,6 +72,19 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
      else{res.textContent=t.fail;go.disabled=false;delete go.dataset.busy;}});
     return [go,res];
    };
+   const known=autoOffer&&autoOffer.key===factsKey(base.facts)?autoOffer.offer:null;
+   if(known?.status==='AVAILABLE'){ // the offer is already in the chat: this button finalises it
+    const ok=await requestSender({...base,acceptedTotal:known.total});
+    if(ok){box.dataset.sent='1';box.replaceChildren(Object.assign(document.createElement('p'),{textContent:t.confirmed}));append('Sárberki',t.confirmed,lang);}
+    else{result.textContent=t.fail;send.disabled=false;delete send.dataset.busy;}
+    return;
+   }
+   if(known?.status==='UNAVAILABLE'){
+    const ok=await requestSender(base);
+    if(ok){box.dataset.sent='1';box.replaceChildren(Object.assign(document.createElement('p'),{textContent:t.sent}));}
+    else{result.textContent=t.fail;send.disabled=false;delete send.dataset.busy;}
+    return;
+   }
    if(!offerProvider){ // no offer service: the request goes to the team at once (as before)
     const ok=await requestSender(base);
     if(ok){box.dataset.sent='1';box.replaceChildren(Object.assign(document.createElement('p'),{textContent:t.sent}));}
@@ -121,6 +138,17 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
    append('Sárberki',requestSender?withoutPhoneQuestion(result.text,session.language):result.text,session.language,result.operatorReviewText);
    messages++;updateStatus();input.value='';
    renderRequest();
+   const f=offerProvider&&box&&box.dataset.sent!=='1'?requestFacts(session.snapshot()):null,key=factsKey(f);
+   if(f&&(!autoOffer||autoOffer.key!==key)){
+    const turn=session.turn,entry=log.lastElementChild,lang=session.language;
+    offerProvider({facts:f,language:lang}).then(offer=>{
+     if(session.turn!==turn||!offer||offer.status==='MISSING'&&offer.fixable)return; // the engine already asks for the missing detail
+     autoOffer={key,offer};
+     // The checked answer replaces the generic "not yet verified" reply when nothing newer was said.
+     if(['AVAILABLE','UNAVAILABLE'].includes(offer.status)){if(log.lastElementChild===entry)entry.remove();append('Sárberki',offer.text,lang);}
+     renderRequest();
+    }).catch(()=>{});
+   }
    // V3-SMALLTALK (owner 2026-11-15): a question the rules did not understand may get a fact-bound model answer;
    // it replaces the "our team will help" line in place, only if nothing newer was said meanwhile.
    // Owner 2026-11-15 („tesztekkel bombázni”): every informational question (not only an unknown one) gets the
@@ -143,7 +171,7 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
    }
   }catch{input.setCustomValidity('Új beszélgetés szükséges / Please start a new chat.');input.reportValidity();}
  }
- function newChat(){session.reset();messages=0;said=[];if(box){delete box.dataset.sent;renderRequest();}input.value='';input.setCustomValidity('');greeting();}
+ function newChat(){session.reset();messages=0;said=[];autoOffer=null;if(box){delete box.dataset.sent;renderRequest();}input.value='';input.setCustomValidity('');greeting();}
  function changeLanguage(){session.setLanguage(select.value);if(messages===0)greeting();else updateStatus();}
  form.addEventListener('submit',submit);reset.addEventListener('click',newChat);
  select?.addEventListener('change',changeLanguage);greeting();
