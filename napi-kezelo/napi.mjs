@@ -429,7 +429,7 @@ function showBooking(caseId,record){
   if(bookingUnitsNeeded===1)el('booking-unit').value=suggested[0];
   el('booking-state').textContent+='\nJavasolt egymás melletti egységek (Previo, csak olvasva): '+suggested.join(' + ')+' – előre kijelölve.';
  }else if(fin&&!['finalized','deposit_received'].includes(b?.status)&&(cabinKey||genericSplit))suggestFreeUnits(caseId,record.revision);
- if(record.previoRead===true)showPrevioStatus(caseId,record.revision);
+ if(record.previoRead===true)showPrevioStatus(caseId,record.revision,record);
  for(const id of ['previo-ref','previo-recorded'])el(id).disabled=!fin;
  // V2: offered only when the server says it can write the Previo TEST booking itself.
  el('previo-auto-wrap').hidden=record.previoWrite!==true;el('previo-auto').disabled=!fin||record.previoWrite!==true;el('previo-auto').checked=false;
@@ -454,7 +454,7 @@ function showBooking(caseId,record){
  if(dpt)el('deposit-date').value=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Budapest'});
  el('oneclick-preview').disabled=!(record.canOneClick===true&&[0,bookingUnitsNeeded].includes(selectedUnits().length));
 }
-const bookingErrors={PREVIO_PREFILLED_OTHER_UNIT:'Ez a foglalás a Previóban már előre ki van töltve egy másik egységen. Hagyd üresen a választót (vagy válaszd azt az egységet), hogy a Previóban lévőt használjuk.',PREVIO_DATES_EDITED:'A Previóban módosították ennek a foglalásnak a dátumát. Az ügy dátumát még kézzel kell igazítani (Módosítás), utána hagyd jóvá.',PREVIO_RECORDING_REQUIRED:'Add meg a Previo-hivatkozást, és pipáld be a rögzítést.',ALREADY_FINALIZED:'Ez a foglalás már véglegesítve van.',
+const bookingErrors={PREVIO_NOT_CONFIRMED:'A Previóban még nincs megerősítve ez a foglalás.',PREVIO_PRICE_EDITED:'A Previóban átírták az árat – a levelet kézzel egyeztesd (vagy állítsd vissza az árat).',PREVIO_PREFILLED_OTHER_UNIT:'Ez a foglalás a Previóban már előre ki van töltve egy másik egységen. Hagyd üresen a választót (vagy válaszd azt az egységet), hogy a Previóban lévőt használjuk.',PREVIO_DATES_EDITED:'A Previóban módosították ennek a foglalásnak a dátumát. Az ügy dátumát még kézzel kell igazítani (Módosítás), utána hagyd jóvá.',PREVIO_RECORDING_REQUIRED:'Add meg a Previo-hivatkozást, és pipáld be a rögzítést.',ALREADY_FINALIZED:'Ez a foglalás már véglegesítve van.',
  CONFIRMATION_FACTS_MISSING:'Hiányzik a pontos dátum, a felnőttszám vagy egy gyermek életkora.',CONFIRMATION_CABIN_UNKNOWN:'A háztípus nincs egyértelműen megadva.',
  CONFIRMATION_PRICE_MISSING:'Az árlista ehhez nem ad igazolt árat; kézi ellenőrzés szükséges.',DEPOSIT_POLICY_UNVERIFIED:'A foglaló határideje nem számítható (pl. múltbeli érkezés).',
  NOT_FINALIZED:'Előbb véglegesíteni kell a foglalást.',UNIT_TAKEN:'Ez az egység erre az időszakra már foglalt (egy másik véglegesített foglalás miatt). Válassz másik egységet.',UNITS_MIXED_SPLIT:'Osztott A/B és C egység vegyesen: az ár kézi számítást igényel (külön foglalások vagy kézi ár).',UNIT_NOT_IN_TYPE:'Ez az egység nem a foglalás háztípusához tartozik.',UNITS_COUNT_MISMATCH:'Pontosan annyi egységet válassz, ahányat a vendég kért.',UNITS_INVALID:'Az egységválasztás érvénytelen (ismétlődés?).',PREVIO_WRITE_DISABLED:'A Previo-írás (V2) nincs bekapcsolva.',NOT_ACTIVE_BOOKING:'Csak véglegesített foglalás mondható le vagy módosítható.',NOTHING_CHANGED:'Nincs változás a dátumban vagy az egységben.',PREVIO_MANUAL_BOOKING:'Kézzel rögzített Previo-foglalás: a Previóban módosítsd.',MULTI_UNIT_MODIFY_UNSUPPORTED:'Több egységes foglalás módosítása még nem támogatott.',PREVIO_MODIFY_UNVERIFIED:'A Previo-módosítás nem igazolható – nézd meg a Previóban.',PREVIO_MODIFY_NOT_REVERTED:'FIGYELEM: a Previóban módosult, nálunk nem mentődött, és a visszaállítás sem sikerült – nézd meg a Previóban!',INVALID_REASON:'Adj meg rövid lemondási okot (egy sor).',CANCEL_NOT_CONFIRMED:'Pipáld be a lemondás megerősítését.',PREVIO_WRITE_UNCERTAIN:'A Previo nem igazolta a létrehozást – nézd meg a Previóban, mielőtt újra próbálod.',PREVIO_BOOKING_NOT_ACTIVE:'Ehhez az ügyhöz a Previóban már van egy lemondott foglalás – kézi ellenőrzés kell.',PREVIO_ORPHAN_OPTION:'A Previóban létrejött az opció, de nálunk nem mentődött, és a lemondás sem igazolt – nézd meg a Previóban!',PREVIO_AUTH_REFUSED:'A Previo elutasította a kulcsot.',PREVIO_REJECTED:'A Previo elutasította a foglalást.',PREVIO_TIMEOUT:'A Previo nem válaszolt időben.',PREVIO_UNAVAILABLE:'A Previo nem érhető el.',UNIT_TAKEN_IN_PREVIO:'A Previo szerint ez az egység erre az időszakra egy másik foglalás miatt foglalt. Válassz másik egységet.',INVALID_DATE:'Érvénytelen dátum.',CASE_CONFLICT:'A foglalás közben megváltozott; nyisd meg újra.',
@@ -466,7 +466,7 @@ let bookingUnitsNeeded=1;
 // Owner 2026-11-13: always offer free unit(s) automatically (our bookings + Previo, read only); the operator may change
 // them. Applied only while the same case is open and nothing was chosen by hand meanwhile.
 // #9 7005064928: what Previo shows for this case right now (read-only; the staff decide in Previo).
-async function showPrevioStatus(caseId,revision){
+async function showPrevioStatus(caseId,revision,record=null){
  const turn=epoch;
  try{
   const r=await request({tenantId:TENANT,caseId,action:'test-mailbox-previo-status'},'GET');
@@ -483,9 +483,16 @@ async function showPrevioStatus(caseId,revision){
   if(['option','confirmed'].includes(r.state)&&nextCase?.caseId===caseId&&nextCase.step?.kind!=='handoff'){
    if(nextTimer){clearInterval(nextTimer);nextTimer=null;}el('next-result').textContent=''; // a started preview is not needed any more
    nextCase={...nextCase,step:{kind:'handoff',label:null,ask:null}};el('next-step').hidden=false;el('next-go').hidden=true;el('next-yes').hidden=true;el('next-no').hidden=true;
-   el('next-text').textContent=r.state==='option'
-    ?'📝 Ez a foglalás már bent van a Previóban (opció). A jóváhagyás a Previóban történik: állapot → „megerősítve”, majd a borítékkal küldd ki a Previo voucherét. Itt nincs teendő.'
-    :'✅ A Previóban megerősítve. A vendég levele a Previo vouchere (boríték). Itt nincs teendő.';
+   const finalized=['finalized','deposit_received'].includes(record?.booking?.status);
+   const mail=typeof record?.values?.email==='string'&&record.values.email.length>0;
+   // Owner 2026-11-21: after the staff confirmed in Previo, the guest always gets OUR confirmation letter (one click).
+   if(r.state==='confirmed'&&!finalized&&mail&&record?.canOneClick===true){
+    nextCase={...nextCase,step:{kind:'previoLetter',label:'Visszaigazoló levél küldése',ask:'Elküldöd a visszaigazoló levelet a vendégnek a Previóban megerősített adatokkal (ház, dátum, ár, foglaló)?'}};
+    el('next-go').textContent='Visszaigazoló levél küldése';el('next-go').hidden=false;el('next-go').disabled=false;
+    el('next-text').textContent='✅ A Previóban megerősítve. Most küldd el a vendégnek a visszaigazoló levelet.';
+   }else el('next-text').textContent=r.state==='option'
+    ?'📝 Ez a foglalás már bent van a Previóban (opció). Ellenőrizd a Previóban, és állítsd „megerősítve”-re – utána itt elküldheted a vendégnek a visszaigazoló levelet.'
+    :finalized?'✅ A Previóban megerősítve, a visszaigazolás rögzítve. Itt nincs több teendő.':'✅ A Previóban megerősítve.'+(mail?'':' (Nincs e-mail-cím – értesítsd telefonon.)');
   }
  }catch{}
 }
@@ -812,6 +819,7 @@ el('next-go').addEventListener('click',()=>{
   },300);
   return;
  }
+ if(n.step.kind==='previoLetter'){nextAsk(n.step.ask,'Igen, küldés');return;}
  if(n.step.kind!=='book'){nextAsk(n.step.ask,'Igen');return;}
  el('next-go').disabled=true;el('next-result').textContent='Előnézet készül (Previo-olvasás)…';el('oneclick-preview').click();
  let left=100;if(nextTimer)clearInterval(nextTimer);
@@ -830,6 +838,28 @@ el('next-yes').addEventListener('click',()=>{
  const n=nextCase;if(!n||actionBusy||!authenticated)return;
  el('next-yes').hidden=true;el('next-no').hidden=true;el('next-text').textContent='';
  const kind=n.step.kind;
+ if(kind==='previoLetter'){ // Google consent first (needs this click), then finalize + approve, then send
+  actionBusy=true;el('next-result').textContent='Google-engedély…';
+  let saved=false;
+  const fail=code=>{actionBusy=false;if(nextCase!==n)return;
+   el('next-result').textContent=(saved?'A visszaigazolás rögzítve, de a levél NEM ment el – ':'Nem sikerült – ')+(bookingErrors[code]||sendErrors[code]||'a művelet nem igazolt; nincs automatikus ismétlés.')+(saved?' Küldd el a „Válasz küldése” gombbal.':'');el('next-go').hidden=false;};
+  emailReader.requestSendToken(async token=>{
+   if(nextCase!==n||!authenticated)return fail('CHANGED');
+   try{
+    el('next-result').textContent='Visszaigazolás rögzítése (Previo-adatokkal)…';
+    const r=await request({tenantId:TENANT,caseId:n.caseId,expectedRevision:n.revision,action:'test-mailbox-previo-confirmed',letterConfirmed:true});
+    if(r?.caseId!==n.caseId)throw Error('INVALID_DATA');saved=true;
+    if(r.approved!==true||r.approval!=='approved_internal')return fail('NOT_APPROVED');
+    el('next-result').textContent='Levél küldése…';
+    const m=await request({tenantId:TENANT,caseId:n.caseId,action:'test-mailbox-send',expectedRevision:r.revision},'POST',{'X-Sarberki-Gmail-Token':token});
+    if(m?.caseId!==n.caseId||!['sent','already_sent'].includes(m.status))throw Error('INVALID_DATA');
+    actionBusy=false;rows=[];listLoaded=false;updateCounts();el('case-list').replaceChildren();const turn=epoch;
+    const done='✅ A visszaigazoló levél elküldve a vendégnek.';
+    await openTestMailboxCase(n.caseId,turn,done);if(current(turn))el('next-result').textContent=done;
+   }catch(error){if(error?.message==='AUTH_REQUIRED'){actionBusy=false;failed(error);}else fail(error?.message);}
+  },fail);
+  return;
+ }
  if(kind==='book'&&n.step.send){ // one approval: Google consent first (needs this click), then Previo, then the letter
   const o=oneClick;if(!o||bookingCase?.caseId!==o.caseId||bookingCase.revision!==o.revision)return;
   actionBusy=true;el('next-result').textContent='Google-engedély…';

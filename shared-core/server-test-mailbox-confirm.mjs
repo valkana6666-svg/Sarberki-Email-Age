@@ -132,7 +132,7 @@ export function previoAccommodationHuf(quote){
  const a=quote?.accommodation;if(!Number.isSafeInteger(a)||a<=0)fail('PRICE_REQUIRED');return a;
 }
 export async function confirmTestMailboxBooking({record,previoReference,previoRecorded,previoAuto=false,previoWriter=null,unit,units=null,attestationKey,transport,
- quoteFn=fetchPublicPriceReference,unitCheckFn=null,clock=()=>new Date().toISOString(),expectedPreviewHash=null,requireFree=false}={}){
+ quoteFn=fetchPublicPriceReference,unitCheckFn=null,clock=()=>new Date().toISOString(),expectedPreviewHash=null,requireFree=false,bookingNumber=null,confirmedLetter=false}={}){
  if(previoAuto===true){if(!previoWriter)fail('PREVIO_WRITE_DISABLED');}
  else if(previoRecorded!==true)fail('PREVIO_RECORDING_REQUIRED');
  const {values,list,cabin,quote,previoUnit,language}=await prepareConfirmation({record,unit,units,transport,quoteFn,unitCheckFn,previoReference,requireFree});
@@ -158,7 +158,7 @@ export async function confirmTestMailboxBooking({record,previoReference,previoRe
   previoReference='V2-'+previoCreated.resId;
  }
  const recordedAt=clock();
- const built=buildBookingConfirmation({values,quote,previo:{reference:previoReference,recordedAt},language,bookingNumber:previoCreated?.voucher??null});
+ const built=buildBookingConfirmation({values,quote,previo:{reference:previoReference,recordedAt},language,bookingNumber:previoCreated?.voucher??bookingNumber,confirmed:confirmedLetter===true});
  const draft={text:built.text,operatorReviewText:built.operatorReviewText};
  const booking={previoReference:built.previo.reference,previoRecordedAt:recordedAt,depositPct:built.deposit.pct,depositAmount:built.deposit.amount,depositDeadlineUtc:built.deposit.receiptDeadlineUtc,unit};
  if(list.length>1)booking.units=list;
@@ -213,6 +213,28 @@ export async function previewTestMailboxBooking({record,unit,units=null,transpor
 // produced (sc_tm_decide: machine draft, so its creator may approve; the DB re-checks the approve permission). The
 // operator's session must hold write AND approve. Nothing is sent. If the approval step fails after a successful
 // finalize, the case stays finalized with the letter pending approval (safe; the normal approve button still works).
+// Owner 2026-11-21: the staff confirmed the pre-filled booking IN PREVIO (status 2); our case is finalized with that
+// Previo reference and the guest gets our confirmation letter (approved here, sent by the operator's click).
+// previo = the case's own booking as read back from Previo just now: {resId, unit, from, to, price}.
+export async function previoConfirmedLetter({record,previo,attestationKey,transport,quoteFn=fetchPublicPriceReference,unitCheckFn=null,clock=()=>new Date().toISOString()}={}){
+ const v=record?.data?.state?.values||{};
+ if(!previo||!Number.isSafeInteger(previo.resId)||!previo.unit)fail('PREVIO_NOT_CONFIRMED');
+ if(previo.from!==v.arrival||previo.to!==v.departure)fail('PREVIO_DATES_EDITED');
+ const voucher=voucherFor({tenantId:record.tenantId,caseId:record.caseId});
+ // The price the staff left in Previo must be the one we would write in the letter (else the staff decide by hand).
+ const quote=quoteFn(quoteInputFromCase(v,splitCabinFromUnits(v.unit,[previo.unit])??cabinKeyFromUnit(v.unit)));
+ if(Number.isSafeInteger(previo.price)&&Number.isSafeInteger(quote?.accommodation)&&previo.price!==quote.accommodation)fail('PREVIO_PRICE_EDITED');
+ const {saved,deposit}=await confirmTestMailboxBooking({record,previoReference:'V2-'+previo.resId,previoRecorded:true,unit:previo.unit,attestationKey,transport,quoteFn,unitCheckFn,clock,
+  bookingNumber:voucher,confirmedLetter:true});
+ if(!saved)return {saved:null,approved:false,deposit};
+ const text=saved.data?.drafts?.at(-1)?.text;let approvedRow=null;
+ if(typeof text==='string'&&saved.data?.state?.approval==='pending'){
+  try{approvedRow=await transport('/rest/v1/rpc/sc_tm_decide',{method:'POST',body:{p_tenant:record.tenantId,p_case:record.caseId,p_expected:Number(saved.revision),
+   p_draft_hash:sha(text),p_decision:'approve',p_reason:null}});}catch{approvedRow=null;}
+ }
+ return {saved:approvedRow||saved,approved:!!approvedRow,deposit};
+}
+
 export async function oneClickTestMailboxBooking({record,unit,units=null,previewHash,oneClickConfirmed,previoWriter,attestationKey,transport,
  quoteFn=fetchPublicPriceReference,unitCheckFn=null,clock=()=>new Date().toISOString()}={}){
  if(oneClickConfirmed!==true)fail('ONECLICK_NOT_CONFIRMED');
