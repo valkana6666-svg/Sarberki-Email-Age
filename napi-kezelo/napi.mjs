@@ -471,6 +471,14 @@ async function showPrevioStatus(caseId,revision){
   const r=await request({tenantId:TENANT,caseId,action:'test-mailbox-previo-status'},'GET');
   if(!current(turn)||bookingCase?.caseId!==caseId||bookingCase.revision!==revision||r?.caseId!==caseId||typeof r.line!=='string'||!r.line)return;
   el('booking-state').textContent+='\n'+r.line;
+  // Owner 2026-11-21 (option A): a booking already in Previo is approved THERE (status → „megerősítve”) and the guest
+  // gets Previo's own voucher (envelope). The daily view offers no second approval or letter for it.
+  if(['option','confirmed'].includes(r.state)&&nextCase?.caseId===caseId&&nextCase.step?.kind!=='handoff'){
+   nextCase={...nextCase,step:{kind:'handoff',label:null,ask:null}};el('next-step').hidden=false;el('next-go').hidden=true;el('next-yes').hidden=true;el('next-no').hidden=true;
+   el('next-text').textContent=r.state==='option'
+    ?'📝 Ez a foglalás már bent van a Previóban (opció). A jóváhagyás a Previóban történik: állapot → „megerősítve”, majd a borítékkal küldd ki a Previo voucherét. Itt nincs teendő.'
+    :'✅ A Previóban megerősítve. A vendég levele a Previo vouchere (boríték). Itt nincs teendő.';
+  }
  }catch{}
 }
 async function suggestFreeUnits(caseId,revision){
