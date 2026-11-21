@@ -78,25 +78,28 @@ export function buildBookingConfirmation({values,quote,previo,language,bookingNu
  const rd=quote.returningDiscount,b=quote.accommodationBeforeDiscount;
  const disc=rd&&Number.isSafeInteger(b)?{hu:`${huf(b)} Ft − törzsvendég-kedvezmény ${rd.pct}% (${huf(rd.amount)} Ft) = `,de:`${huf(b)} HUF − Stammgastrabatt ${rd.pct}% (${huf(rd.amount)} HUF) = `,
   en:`${huf(b)} HUF − returning-guest discount ${rd.pct}% (${huf(rd.amount)} HUF) = `,si:`${huf(b)} HUF − popust za stalne goste ${rd.pct}% (${huf(rd.amount)} HUF) = `}:{hu:'',de:'',en:'',si:''};
+ // Owner 2026-11-21: the returning-guest discount applies to the hot tub too (priced separately by the staff).
+ const tub=rd?{hu:`\nTörzsvendégként a dézsa bérleti díjából is ${rd.pct}% kedvezmény jár.`,de:`\nAls Stammgast erhalten Sie auch auf den Badezuber ${rd.pct}% Rabatt.`,
+  en:`\nAs a returning guest you also get ${rd.pct}% off the hot tub.`,si:`\nKot stalni gost imate tudi ${rd.pct}% popusta na masažno kad.`}:{hu:'',de:'',en:'',si:''};
  const T={
   hu:[`${name?`Kedves ${name}!`:'Kedves Vendégünk!'}`,modified?'Foglalását kérésének megfelelően módosítottuk; az alábbi adatok érvényesek.':'Köszönjük megerősítését! Foglalását rögzítettük, az alábbi adatokkal.',
    `Foglalás\n${dot(values.arrival)} – ${dot(values.departure)}, ${cabin}, ${party}.${num.hu}`,
-   `Ár\nSzállásdíj: ${disc.hu}${huf(quote.accommodation)} Ft, idegenforgalmi adó: ${huf(quote.tourismTax)} Ft, összesen: ${huf(quote.total)} Ft.`,
+   `Ár\nSzállásdíj: ${disc.hu}${huf(quote.accommodation)} Ft, idegenforgalmi adó: ${huf(quote.tourismTax)} Ft, összesen: ${huf(quote.total)} Ft.${tub.hu}`,
    `Foglaló\nA foglaló a szállásdíj ${policy.depositPct}%-a: ${huf(amount)} Ft. Kérjük, hogy ${due.date} ${due.time}-ig (magyarországi idő) érkezzen meg. A foglalás a foglaló beérkezése után válik véglegessé.${pay?'\n'+pay:'\nA fizetés módjáról külön tájékoztatjuk.'}`,
    ...(cancel?[`Lemondás\nAz érkezés előtt legalább ${cancel} nappal történő lemondásnál a foglaló nem vész el.`]:[]),'Üdvözlettel:\n'+BUSINESS.brandName],
   de:[`${name?`Liebe/r ${name},`:'Liebe Gäste,'}`,modified?'wir haben Ihre Buchung wunschgemäß geändert; es gelten die folgenden Angaben.':'vielen Dank für Ihre Bestätigung! Wir haben Ihre Buchung mit den folgenden Angaben erfasst.',
    `Buchung\n${dot(values.arrival)} – ${dot(values.departure)}, ${cabin}, ${party}.${num.de}`,
-   `Preis\nÜbernachtung: ${disc.de}${huf(quote.accommodation)} HUF, Kurtaxe: ${huf(quote.tourismTax)} HUF, gesamt: ${huf(quote.total)} HUF.`,
+   `Preis\nÜbernachtung: ${disc.de}${huf(quote.accommodation)} HUF, Kurtaxe: ${huf(quote.tourismTax)} HUF, gesamt: ${huf(quote.total)} HUF.${tub.de}`,
    `Anzahlung\nDie Anzahlung beträgt ${policy.depositPct}% des Übernachtungspreises: ${huf(amount)} HUF. Bitte sorgen Sie dafür, dass sie bis ${due.date} ${due.time} Uhr (ungarische Zeit) eingeht. Die Buchung wird mit Eingang der Anzahlung verbindlich.${pay?'\n'+pay:'\nÜber die Zahlungsweise informieren wir Sie gesondert.'}`,
    ...(cancel?[`Stornierung\nBei einer Stornierung mindestens ${cancel} Tage vor der Anreise verfällt die Anzahlung nicht.`]:[]),'Mit freundlichen Grüßen\n'+BUSINESS.brandName],
   en:[`${name?`Dear ${name},`:'Dear Guest,'}`,modified?'we have changed your booking as requested; the details below apply.':'thank you for your confirmation! We have recorded your booking with the details below.',
    `Booking\n${dot(values.arrival)} – ${dot(values.departure)}, ${cabin}, ${party}.${num.en}`,
-   `Price\nAccommodation: ${disc.en}${huf(quote.accommodation)} HUF, tourist tax: ${huf(quote.tourismTax)} HUF, total: ${huf(quote.total)} HUF.`,
+   `Price\nAccommodation: ${disc.en}${huf(quote.accommodation)} HUF, tourist tax: ${huf(quote.tourismTax)} HUF, total: ${huf(quote.total)} HUF.${tub.en}`,
    `Deposit\nThe deposit is ${policy.depositPct}% of the accommodation price: ${huf(amount)} HUF. Please make sure it arrives by ${due.date} ${due.time} (Hungarian time). The booking becomes final once the deposit has been received.${pay?'\n'+pay:'\nWe will send the payment details separately.'}`,
    ...(cancel?[`Cancellation\nIf you cancel at least ${cancel} days before arrival, the deposit is not forfeited.`]:[]),'Kind regards,\n'+BUSINESS.brandName],
   si:[`${name?`Spoštovani ${name},`:'Spoštovani gost,'}`,modified?'vašo rezervacijo smo spremenili po vaši želji; veljajo spodnji podatki.':'hvala za vašo potrditev! Vašo rezervacijo smo zabeležili s spodnjimi podatki.',
    `Rezervacija\n${dot(values.arrival)} – ${dot(values.departure)}, ${cabin}, ${party}.${num.si}`,
-   `Cena\nNastanitev: ${disc.si}${huf(quote.accommodation)} HUF, turistična taksa: ${huf(quote.tourismTax)} HUF, skupaj: ${huf(quote.total)} HUF.`,
+   `Cena\nNastanitev: ${disc.si}${huf(quote.accommodation)} HUF, turistična taksa: ${huf(quote.tourismTax)} HUF, skupaj: ${huf(quote.total)} HUF.${tub.si}`,
    `Predplačilo\nPredplačilo znaša ${policy.depositPct}% cene nastanitve: ${huf(amount)} HUF. Prosimo, da prispe do ${due.date} ${due.time} (madžarski čas). Rezervacija postane dokončna po prejemu predplačila.${pay?'\n'+pay:'\nO načinu plačila vas obvestimo posebej.'}`,
    ...(cancel?[`Odpoved\nPri odpovedi najmanj ${cancel} dni pred prihodom predplačilo ne zapade.`]:[]),'Lep pozdrav,\n'+BUSINESS.brandName]};
  // Opening (owner 2026-11-13): the letter answers the guest's yes - "köszönjük a megerősítést".

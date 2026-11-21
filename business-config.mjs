@@ -41,6 +41,8 @@ export const BUSINESS = Object.freeze({
     returningGuestDiscountPct: 20,
     returningGuestLookbackDays: 730,
     returningGuestRequiresHistoryCheck: true,
+    // Owner 2026-11-21 (2027 price list: „20% a szállás és dézsa árából”): the hot tub is discounted too.
+    returningGuestDiscountAppliesTo: Object.freeze(['accommodation','hotTub']),
     petAllowedForFee: true,
     petFeeVerified: true,
     petFeeHufPerPetPerDay: 2000,

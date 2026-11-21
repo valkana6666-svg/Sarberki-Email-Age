@@ -47,7 +47,7 @@ export async function prefillChatBooking({env,fetchImpl=globalThis.fetch,tenantI
 // Staff note in Previo (no guest contact data): where the booking came from and what was checked.
 export function prefillNote(returning,quote){
  const base='Chatből, a vendég véglegesítette; a rendszer töltötte ki – ellenőrizd, és ha rendben, állítsd megerősítettre.';
- if(returning?.status==='eligible')return base+` Törzsvendég (név+e-mail+telefon egyezik, utolsó: ${returning.lastStay}): ${returning.pct}% kedvezmény beszámítva (${quote?.returningDiscount?.amount??'?'} Ft).`;
+ if(returning?.status==='eligible')return base+` Törzsvendég (név+e-mail+telefon egyezik, utolsó: ${returning.lastStay}): ${returning.pct}% kedvezmény beszámítva (${quote?.returningDiscount?.amount??'?'} Ft); a dézsa árából is ${returning.pct}% jár.`;
  if(returning?.status==='possible')return base+` Lehetséges törzsvendég (részleges egyezés, utolsó: ${returning.lastStay}) – a kedvezményről te döntesz.`;
  return base;
 }

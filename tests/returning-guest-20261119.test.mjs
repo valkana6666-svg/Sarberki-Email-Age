@@ -29,6 +29,7 @@ test('price: 20% off the accommodation only; IFA unchanged; deposit from the dis
  const c=buildBookingConfirmation({values:{arrival:'2027-05-14',departure:'2027-05-17',adults:'3',children:'2',name:'Teszt Elek'},quote:d,previo:{reference:'V2-1',recordedAt:'2026-11-19T08:00:00Z'},language:'hu'});
  assert.match(c.text,/Szállásdíj: 180 000 Ft − törzsvendég-kedvezmény 20% \(36 000 Ft\) = 144 000 Ft, idegenforgalmi adó: 4 950 Ft, összesen: 148 950 Ft/);
  assert.equal(c.deposit.amount,72000);
+ assert.match(c.text,/Törzsvendégként a dézsa bérleti díjából is 20% kedvezmény jár\./,'owner 2026-11-21: the hot tub too');
  assert.match(returningGuestLine({status:'eligible',matchedBy:['name','email','phone'],lastStay:'2025-08-10',pct:20}),/név, e-mail-cím és telefonszám is egyezik.*2025-08-10.*20%/);
  assert.match(returningGuestLine({status:'possible',matchedBy:['name'],lastStay:'2026-06-01',pct:20}),/csak ez egyezik.*: név\. .*a te döntésed/);
 });

@@ -60,7 +60,7 @@ function extraFacts(){
  if(o.firewood)L.push('Tűzifa felár ellenében kérhető; az árát munkatársunk közli.');
  if(o.petAllowedForFee&&o.petFeeVerified)L.push('Háziállat hozható, díja '+n(o.petFeeHufPerPetPerDay)+' Ft/nap/állat.');
  L.push('Idegenforgalmi adó: '+n(p.tourismTaxAdultNightlyHuf)+' Ft/fő/éjszaka (felnőtt).');
- if(o.returningGuestDiscountPct)L.push('Visszatérő vendégeknek (2 éven belüli korábbi tartózkodás esetén) '+o.returningGuestDiscountPct+'% szállásdíj-kedvezmény járhat; ezt munkatársunk ellenőrzi.');
+ if(o.returningGuestDiscountPct)L.push('Visszatérő vendégeknek (2 éven belüli korábbi tartózkodás esetén) '+o.returningGuestDiscountPct+'% kedvezmény járhat a szállásdíjból és a dézsa árából; ezt munkatársunk ellenőrzi.');
  L.push('Lemondás: az érkezés előtt legalább '+b.cancellationDaysUnder15Guests+' nappal történő lemondásnál a foglaló nem vész el.');
  L.push('Fizetés: a foglalót banki átutalással kérjük; a fizetés részleteit a visszaigazolással küldjük.');
  L.push('Szállásár: pontos árat a pontos érkezési és távozási dátum, a háztípus és a létszám (felnőttek, gyermekek életkora) alapján adunk; kérjük, írja meg ezeket a chatben, és elkészítjük az ajánlatot.');

@@ -43,7 +43,7 @@ export function applyReturningDiscount(quote,decision){
 export function returningGuestLine(decision){
  const HU={name:'név',email:'e-mail-cím',phone:'telefonszám'};
  const list=f=>(Array.isArray(f)?f:[]).map(x=>HU[x]).filter(Boolean).join(', ');
- if(decision?.status==='eligible')return `🎁 Törzsvendég (név, e-mail-cím és telefonszám is egyezik; utolsó tartózkodás: ${decision.lastStay}) – ${decision.pct}% kedvezmény a szállásdíjból beszámítva.`;
+ if(decision?.status==='eligible')return `🎁 Törzsvendég (név, e-mail-cím és telefonszám is egyezik; utolsó tartózkodás: ${decision.lastStay}) – ${decision.pct}% kedvezmény a szállásdíjból beszámítva; a dézsa árából is ${decision.pct}% jár (ha kér dézsát, azt külön számold).`;
  if(decision?.status==='possible')return `❓ Lehetséges törzsvendég: csak ez egyezik egy korábbi tartózkodással (${decision.lastStay}): ${list(decision.matchedBy)}. Kedvezményt nem számoltunk – a te döntésed: nézz utána a Previóban.`;
  if(decision?.status==='unknown')return 'Törzsvendég-ellenőrzés most nem sikerült – ha a vendég visszatérő, ellenőrizd kézzel.';
  return null;
