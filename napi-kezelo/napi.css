@@ -23,3 +23,6 @@ body.simple [data-detail],body.simple .muted:not(.note){display:none!important}.
 /* Owner 2026-11-15 („egyszerűsítsd”): simple view hides old rows, the access card once signed in, quoted mail. */
 body.simple li.row-old{display:none!important}body:not(.simple) .row-note,body:not(.simple) .msg-short{display:none!important}.row-note{opacity:.75;font-size:.9rem;list-style:none}body.simple.signed-in .access-card{display:none!important}
 body.simple .booked-hide{display:none!important}
+
+/* Owner 2026-11-21: a booking already in Previo is handled there – the reply draft and its checks are not shown. */
+body.in-previo [data-previo-hide]{display:none!important}

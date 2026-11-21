@@ -135,7 +135,7 @@ test('distinct daily PWA route retains original test app and never invents statu
  assert.match(html,/közös foglalástár tárolt állapotát/iu);
  assert.match(html,/<textarea id="draft-editor"[^>]+disabled>/u);
  assert.match(html,/<button id="approve-draft"[^>]+disabled>/u);
- assert.match(html,/<button id="reject-draft" type="button" disabled>Elutasítás \(nem kell vele foglalkozni\)<\/button>/u);assert.match(html,/<button id="return-draft" type="button" data-detail disabled>/u);
+ assert.match(html,/<button id="reject-draft" type="button" data-previo-hide disabled>Elutasítás \(nem kell vele foglalkozni\)<\/button>/u);assert.match(html,/<button id="return-draft" type="button" data-detail disabled>/u);
  // Owner 2026-11-15: rejecting is visible in the simple view (no data-detail on the reject button).
  assert.doesNotMatch(html,/<button id="reject-draft"[^>]*data-detail/u);
  assert.ok(fs.existsSync('index.html'));assert.ok(fs.existsSync('cloud-approval.html'));

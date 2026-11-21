@@ -404,6 +404,7 @@ el('unavailable-insert').addEventListener('click',async()=>{
 // separate step. The server builds the confirmation letter; it still goes through approval and the send button.
 const bookingStatus={finalized:'Véglegesítve (Previóban rögzítve) – a foglaló még nem érkezett meg.',deposit_received:'Foglaló beérkezett.',cancelled:'Lemondva.'};
 function showBooking(caseId,record){
+ document.body?.classList?.remove?.('in-previo');
  const b=record.booking;bookingCase={caseId,revision:record.revision,intent:typeof record.bookingIntent==='string'&&record.bookingIntent.length>0};el('booking-panel').hidden=false;
  const dep=b?.deposit&&Number.isSafeInteger(b.deposit.amount)?'\nFoglaló: '+b.deposit.pct+'% = '+huf(b.deposit.amount)+' Ft, határidő: '+new Date(b.deposit.deadlineUtc).toLocaleString('hu-HU',{timeZone:'Europe/Budapest'}):'';
  const intent=typeof record.bookingIntent==='string'&&record.bookingIntent?'🟢 A vendég foglalni szeretne („'+record.bookingIntent+'”). Rögzítsd a Previóban, majd: Véglegesítés.\n':'';
@@ -473,6 +474,12 @@ async function showPrevioStatus(caseId,revision){
   el('booking-state').textContent+='\n'+r.line;
   // Owner 2026-11-21 (option A): a booking already in Previo is approved THERE (status → „megerősítve”) and the guest
   // gets Previo's own voucher (envelope). The daily view offers no second approval or letter for it.
+  if(['option','confirmed'].includes(r.state)){
+   // Owner 2026-11-21 (screenshots): only what matters for a booking already in Previo – no draft, no "approve/send" texts.
+   document.body?.classList?.add?.('in-previo');
+   el('detail-status').textContent='Forrás: chat. A foglalás már bent van a Previóban – ott kezeld (ellenőrzés, jóváhagyás, módosítás, lemondás, voucher).';
+   el('booking-state').textContent=el('booking-state').textContent.split('\n').filter(l=>!/^🟢|^Még nincs véglegesítve|^📝 A Previo-tesztben már előre kitöltve/.test(l)).join('\n');
+  }
   if(['option','confirmed'].includes(r.state)&&nextCase?.caseId===caseId&&nextCase.step?.kind!=='handoff'){
    nextCase={...nextCase,step:{kind:'handoff',label:null,ask:null}};el('next-step').hidden=false;el('next-go').hidden=true;el('next-yes').hidden=true;el('next-no').hidden=true;
    el('next-text').textContent=r.state==='option'
