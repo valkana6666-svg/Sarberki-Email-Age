@@ -110,7 +110,8 @@ export async function buildChatOffer({facts,language,capacityFn,quoteFn=fetchPub
     if(q?.status==='public_reference'&&Number.isSafeInteger(q.total)&&q.cabin===cabin)found.push({cabin,name:CABIN_NAMES[cabin]?.[lang]||cabin,total:q.total});
    }
   }
-  const top=found.slice(0,3);
+  // Owner 2026-11-21: the three most similar free types, the more expensive first (a Deluxe guest sees VIP first).
+  const top=found.slice(0,3).sort((a,b)=>b.total-a.total);
   const text=t.none(cabinName,dot(input.arrival),dot(input.departure))+(alternatives?'\n'+(top.length?t.alt(top.map(a=>`${a.name} – ${huf(a.total)} Ft`).join('; ')):t.noAlt):'');
   return {status:'UNAVAILABLE',text,alternatives:top};
  }

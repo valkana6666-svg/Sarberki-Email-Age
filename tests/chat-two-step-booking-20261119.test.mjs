@@ -97,3 +97,10 @@ test('owner 2026-11-21: requested type booked → free alternatives at once (own
  const none=await buildChatOffer({facts:{arrival:'2027-06-10',departure:'2027-06-13',adults:2,children:0,childAges:[],cabin:'deluxe'},language:'hu',capacityFn:async({cabin})=>({freeByCabin:{[cabin]:0}}),now:NOW});
  assert.match(none.text,/más háztípusban sincs szabad hely/);
 });
+
+test('owner 2026-11-21: among the similar free types the more expensive comes first',async()=>{
+ const cap=async({cabin})=>({freeByCabin:{[cabin]:cabin==='deluxe'?0:1}});
+ const o=await buildChatOffer({facts:{arrival:'2027-06-10',departure:'2027-06-13',adults:2,children:0,childAges:[],cabin:'deluxe'},language:'hu',capacityFn:cap,now:NOW});
+ assert.deepEqual(o.alternatives.map(a=>a.cabin),['vip','family','splitC']);
+ assert.ok(o.alternatives[0].total>=o.alternatives[1].total&&o.alternatives[1].total>=o.alternatives[2].total);
+});
