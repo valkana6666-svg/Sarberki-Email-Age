@@ -11,6 +11,11 @@ import {depositReceiptDeadline} from '../sarberki-core.mjs';
 import {BUSINESS} from '../business-config.mjs';
 
 const CABINS=['vip','family','deluxe','small','splitA','splitB','splitC'];
+// Owner 2026-11-21: alternatives in order of SIMILARITY to the requested type (not price): cabins first for a cabin,
+// apartments first for an apartment. Types too small for the party are skipped anyway.
+const SIMILAR=Object.freeze({deluxe:['vip','family','splitC','small','splitA'],vip:['deluxe','family','splitC','small','splitA'],
+ family:['vip','deluxe','splitC','small','splitA'],small:['splitA','splitC','deluxe','family','vip'],
+ splitA:['small','splitC','deluxe','family','vip'],splitB:['small','splitC','deluxe','family','vip'],splitC:['small','splitA','deluxe','family','vip']});
 const huf=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' ');
 const day=x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&new Date(x+'T00:00:00Z').toISOString().slice(0,10)===x;
 const dot=d=>d.replaceAll('-','.')+'.';
@@ -93,17 +98,17 @@ export async function buildChatOffer({facts,language,capacityFn,quoteFn=fetchPub
  const decision=capacityDecision(read,input.cabin,1);
  if(decision==='UNAVAILABLE'){
   // Owner 2026-11-19: no free cabin of the requested type → offer the free alternatives at once. AGENTS: alternatives
-  // only after a VERIFIED "booked" answer; each type gets its own capacity read; unknown reads are left out.
+  // only after a VERIFIED "booked" answer; each type gets its own capacity read; unknown reads are left out; most similar first.
   const guests=input.adults+input.children.length,found=[];
   if(alternatives){
-   for(const cabin of ['family','deluxe','vip','small','splitA','splitC']){
+   for(const cabin of SIMILAR[input.cabin]||[]){
+    if(found.length===3)break; // no more Previo reads than needed
     if(cabin===input.cabin||cabin==='splitA'&&input.cabin==='splitB'||!(BUSINESS.accommodationTypes[cabin]?.maxGuests>=guests))continue;
     let r;try{r=await capacityFn({cabin,arrival:input.arrival,departure:input.departure});}catch{continue;}
     if(capacityDecision(r,cabin,1)!=='AVAILABLE')continue;
     let q;try{q=await quoteFn({...input,cabin});}catch{continue;}
     if(q?.status==='public_reference'&&Number.isSafeInteger(q.total)&&q.cabin===cabin)found.push({cabin,name:CABIN_NAMES[cabin]?.[lang]||cabin,total:q.total});
    }
-   found.sort((a,b)=>a.total-b.total);
   }
   const top=found.slice(0,3);
   const text=t.none(cabinName,dot(input.arrival),dot(input.departure))+(alternatives?'\n'+(top.length?t.alt(top.map(a=>`${a.name} – ${huf(a.total)} Ft`).join('; ')):t.noAlt):'');

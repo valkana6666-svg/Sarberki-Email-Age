@@ -88,11 +88,11 @@ test('texts: the consent hint is the consent hint (regression 2026-11-21: it had
  for(const l of ['hu','de','en','si']){assert.notEqual(REQUEST_TEXT[l].needConsent,REQUEST_TEXT[l].sent);assert.doesNotMatch(REQUEST_TEXT[l].needConsent,/Köszönjük|Vielen Dank|Thank you|Hvala/);}
 });
 
-test('owner 2026-11-21: requested type booked → free alternatives at once (own read per type, max 3, cheapest first); unknown reads left out',async()=>{
+test('owner 2026-11-21: requested type booked → free alternatives at once (own read per type, max 3, most similar first); unknown reads left out',async()=>{
  const reads=[];const cap=async({cabin})=>{reads.push(cabin);if(cabin==='vip')throw Error('x');return {freeByCabin:{[cabin]:['family','splitC'].includes(cabin)?1:0}};};
  const o=await buildChatOffer({facts:{arrival:'2027-06-10',departure:'2027-06-13',adults:4,children:0,childAges:[],cabin:'deluxe'},language:'hu',capacityFn:cap,now:NOW});
- assert.equal(o.status,'UNAVAILABLE');assert.deepEqual(o.alternatives.map(a=>a.cabin),['splitC','family']);
- assert.match(o.text,/a kért háztípusban \(Deluxe\) nincs szabad hely\.\nUgyanerre az időszakra szabad: Osztott C – .* Ft; Családi – .* Ft\./);
+ assert.equal(o.status,'UNAVAILABLE');assert.deepEqual(o.alternatives.map(a=>a.cabin),['family','splitC'],'Deluxe → cabins first');
+ assert.match(o.text,/a kért háztípusban \(Deluxe\) nincs szabad hely\.\nUgyanerre az időszakra szabad: Családi – .* Ft; Osztott C – .* Ft\./);
  assert.ok(!reads.includes('splitA')&&!reads.includes('small'),'types too small for 4 are not even read');
  const none=await buildChatOffer({facts:{arrival:'2027-06-10',departure:'2027-06-13',adults:2,children:0,childAges:[],cabin:'deluxe'},language:'hu',capacityFn:async({cabin})=>({freeByCabin:{[cabin]:0}}),now:NOW});
  assert.match(none.text,/más háztípusban sincs szabad hely/);
