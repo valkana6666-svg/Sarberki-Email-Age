@@ -481,6 +481,7 @@ async function showPrevioStatus(caseId,revision){
    el('booking-state').textContent=el('booking-state').textContent.split('\n').filter(l=>!/^🟢|^Még nincs véglegesítve|^📝 A Previo-tesztben már előre kitöltve/.test(l)).join('\n');
   }
   if(['option','confirmed'].includes(r.state)&&nextCase?.caseId===caseId&&nextCase.step?.kind!=='handoff'){
+   if(nextTimer){clearInterval(nextTimer);nextTimer=null;}el('next-result').textContent=''; // a started preview is not needed any more
    nextCase={...nextCase,step:{kind:'handoff',label:null,ask:null}};el('next-step').hidden=false;el('next-go').hidden=true;el('next-yes').hidden=true;el('next-no').hidden=true;
    el('next-text').textContent=r.state==='option'
     ?'📝 Ez a foglalás már bent van a Previóban (opció). A jóváhagyás a Previóban történik: állapot → „megerősítve”, majd a borítékkal küldd ki a Previo voucherét. Itt nincs teendő.'
