@@ -30,7 +30,7 @@ import {fetchPublicPriceReference} from '../../price-source/public-price-fallbac
 async function returningGuestPricing(env,fetchImpl,record){
  const check=previoGuestHistoryChecker(env,fetchImpl);if(!check)return {decision:null,quoteFn:fetchPublicPriceReference};
  const v=record?.data?.state?.values||{};
- let decision;try{decision=await check({guest:{email:v.email,phone:v.phone,name:v.name},referenceDay:new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Budapest'})});}catch{decision={status:'unknown'};}
+ let decision;try{decision=await check({guest:{email:v.email,phone:v.phone,name:v.name},referenceDay:v.arrival});}catch{decision={status:'unknown'};} // owner 2026-11-21: 730 days back from the arrival
  return {decision,quoteFn:input=>applyReturningDiscount(fetchPublicPriceReference(input),decision)};
 }
 // Owner 2026-11-19 (chat pre-fill): the case's own Previo option (same booking number) never blocks its unit.

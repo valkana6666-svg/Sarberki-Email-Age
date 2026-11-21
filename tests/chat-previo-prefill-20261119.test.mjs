@@ -65,7 +65,9 @@ test('#9 7005064928: the pre-fill writes the returning-guest price and a staff n
  const {prefillNote}=await import('../shared-core/server-chat-prefill.mjs');
  const w=fakeWriter();
  const base={env:{CHAT_PREVIO_PREFILL:'test-only'},tenantId:'sarberki-test',caseId:'tm-abcdefabcdefabcdefabcdef',facts,name:'Teszt Elek',email:'valkana6666@gmail.com',phone:'+36 30 000 0000',writer:w,unitCheckFn:async()=>({status:'free'}),now:()=>NOW};
- await prefillChatBooking({...base,historyFn:async()=>({status:'eligible',matchedBy:['name','email','phone'],lastStay:'2025-08-13',pct:20})});
+ let asked=null;
+ await prefillChatBooking({...base,historyFn:async a=>{asked=a;return {status:'eligible',matchedBy:['name','email','phone'],lastStay:'2025-08-13',pct:20};}});
+ assert.equal(asked.referenceDay,'2027-05-14','owner 2026-11-21: 730 days back from the arrival');
  assert.equal(w.calls[0].totalHuf,144000,'180 000 − 20%');assert.match(w.calls[0].note,/Törzsvendég.*20% kedvezmény beszámítva \(36000 Ft\)/);
  const w2=fakeWriter();await prefillChatBooking({...base,writer:w2,historyFn:async()=>({status:'possible',matchedBy:['name'],lastStay:'2025-08-13',pct:20})});
  assert.equal(w2.calls[0].totalHuf,180000,'a partial match never changes the price');assert.match(w2.calls[0].note,/Lehetséges törzsvendég/);

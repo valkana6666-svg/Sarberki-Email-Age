@@ -27,7 +27,7 @@ export async function prefillChatBooking({env,fetchImpl=globalThis.fetch,tenantI
  // + phone, RETURNING_GUEST_CHECK on) pays 20% less; a partial match is left to the staff (note).
  const history=historyFn===undefined?previoGuestHistoryChecker(env,fetchImpl):historyFn;
  let returning=null;
- if(typeof history==='function'){try{returning=await history({guest:{name:contactName,email,phone},referenceDay:new Date(now()).toLocaleDateString('en-CA',{timeZone:'Europe/Budapest'})});}catch{returning={status:'unknown'};}}
+ if(typeof history==='function'){try{returning=await history({guest:{name:contactName,email,phone},referenceDay:input.arrival});}catch{returning={status:'unknown'};}} // owner 2026-11-21: from the arrival
  let quote;try{quote=applyReturningDiscount(await quoteFn(input),returning);}catch{return {status:'failed',reason:'PRICE'};}
  if(quote?.status!=='public_reference'||!Number.isSafeInteger(quote.accommodation)||quote.accommodation<=0||quote.cabin!==input.cabin)return {status:'failed',reason:'PRICE'};
  let unit=null;

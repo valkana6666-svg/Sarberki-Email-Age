@@ -3,7 +3,7 @@
 // days and the guest is in the guest book (a checked-out stay). Pure decision + price step; no data source here.
 // Owner 2026-11-19: automatic discount only when NAME, E-MAIL AND PHONE all match the same earlier stay; any partial
 // match (e.g. the name only) is for the operator to decide and look into. The 730 days are counted back from the
-// booking day (pending owner confirmation); IFA is not discounted; the deposit follows the discounted accommodation.
+// ARRIVAL day of the new stay (owner 2026-11-21); IFA is not discounted; the deposit follows the discounted accommodation.
 import {BUSINESS} from '../business-config.mjs';
 
 const DAY=86400000;
