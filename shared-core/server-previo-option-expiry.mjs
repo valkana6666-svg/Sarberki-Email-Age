@@ -46,6 +46,12 @@ export async function cancelExpiredOptions({env,fetchImpl=globalThis.fetch,now=(
  let text;try{text=await search();}catch{return {status:'unknown'};}
  const due=expiredOwnOptions(text,now()).slice(0,EXPIRY_MAX_PER_RUN),results=[];
  for(const r of due){
+  // #9 7081585610: the staff may confirm or extend the option after the first read. Right before each write Previo is
+  // read again and the booking must still be the same expired option (status 1, same booking number, expiry past the
+  // cutoff). The XML API has no conditional update, so a window of about one request (~1 s) remains between this
+  // re-read and the write; a booking confirmed exactly then is cancelled and shows in the log/read-back (status 7).
+  let fresh;try{fresh=expiredOwnOptions(await search(),now()).find(x=>x.resId===r.resId&&x.voucher===r.voucher);}catch{fresh=undefined;}
+  if(!fresh){results.push({resId:r.resId,voucher:r.voucher,write:'skipped',code:'CHANGED_OR_UNREADABLE'});continue;}
   try{await w.setStatus({resId:r.resId,status:'cancelled'});results.push({resId:r.resId,voucher:r.voucher,write:'sent'});}
   catch(e){results.push({resId:r.resId,voucher:r.voucher,write:'failed',code:typeof e?.code==='string'?e.code:'WRITE'});}
  }

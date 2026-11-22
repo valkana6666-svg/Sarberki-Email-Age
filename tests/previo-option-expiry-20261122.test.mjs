@@ -51,3 +51,21 @@ test('off without its own switch or on another property; cancels, reads back, ca
  const r2=await cancelExpiredOptions({env,writer:bad,fetchImpl:async()=>new Response(xml([res(1,OWN,1,'2026-11-21 10:00:00')])),now:()=>NOW});
  assert.deepEqual(r2.results,[{resId:1,voucher:OWN,write:'failed',code:'PREVIO_WRITE_FAILED'}]);
 });
+
+test('#9 7081585610: an option confirmed or extended after the first read is not cancelled (fresh re-read before each write)',async()=>{
+ const env={OPTION_EXPIRY_CANCEL:'test-only',PREVIO_HOTEL_ID:'73521',PREVIO_API_KEY:'k'.repeat(20)};
+ let reads=0;const calls=[];
+ // First read: 1, 2, 3 all expired options. Before the writes: 1 confirmed by the staff, 2 extended, 3 unchanged.
+ const fetchImpl=async()=>{reads++;return new Response(reads===1
+  ?xml([res(1,OWN,1,'2026-11-21 10:00:00'),res(2,OWN,1,'2026-11-21 10:00:00'),res(3,OWN,1,'2026-11-21 10:00:00')])
+  :xml([res(1,OWN,2,'2026-11-21 10:00:00'),res(2,OWN,1,'2026-11-24 10:00:00'),res(3,OWN,calls.some(c=>c.resId===3)?7:1,'2026-11-21 10:00:00')]));};
+ const r=await cancelExpiredOptions({env,writer:{setStatus:async a=>{calls.push(a);return {ok:true};}},fetchImpl,now:()=>NOW});
+ assert.deepEqual(calls.map(c=>c.resId),[3],'only the still-expired option is written');
+ assert.deepEqual(r.results.map(x=>[x.resId,x.write]),[[1,'skipped'],[2,'skipped'],[3,'sent']]);
+ assert.equal(r.results[2].cancelled,true);
+ // An unreadable re-read never writes.
+ calls.length=0;reads=0;
+ const flaky=async()=>{reads++;return new Response(reads===1?xml([res(5,OWN,1,'2026-11-21 10:00:00')]):'<error>x</error>');};
+ const r2=await cancelExpiredOptions({env,writer:{setStatus:async a=>{calls.push(a);}},fetchImpl:flaky,now:()=>NOW});
+ assert.equal(calls.length,0);assert.equal(r2.results[0].write,'skipped');
+});
