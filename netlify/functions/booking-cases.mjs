@@ -207,6 +207,7 @@ async function sentDraftKeys(transport,tenant){
   return new Set((Array.isArray(rows)?rows:[]).filter(r=>r.status==='sent').map(r=>r.case_id+':'+r.draft_hash));}catch{return new Set();}
 }
 function testMailboxCategory(record,sent){
+ if(record.data.booking?.status==='deposit_received')return 'closed'; // owner 2026-11-22: closed when the deposit arrived
  const latest=record.data.drafts?.at?.(-1),hash=createHash('sha256').update(String(latest?.text??''),'utf8').digest('hex');
  if(latest?.followup===true&&!sent.has(record.caseId+':'+hash))return 'followup';
  return record.data.state?.approval==='pending'?'approval':'progress';
@@ -532,7 +533,15 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
        modifyConfirmed:input.modifyConfirmed,attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,transport:cookieSession.transport,previoWriter,
        unitCheckFn:live?null:previoUnitChecker(env,fetchImpl)}));
       else if(input.action==='test-mailbox-cancel')saved=await cancelTestMailboxBooking({record,reason:input.reason,cancelConfirmed:input.cancelConfirmed,transport:cookieSession.transport,previoWriter});
-      else saved=await markTestMailboxDepositReceived({record,receivedOn:input.receivedOn,depositConfirmed:input.depositConfirmed,transport:cookieSession.transport,previoWriter});
+      else{
+       // Owner 2026-11-22: a booking the staff already confirmed in Previo needs no Previo write (read-only check).
+       let previoConfirmed=false;const v=record.data?.state?.values||{};
+       if(!live&&/^V2-\d+$/.test(String(record.data?.booking?.previo?.reference||''))&&env.PREVIO_READ_API_ENABLED==='sandbox-73521-only'){
+        try{const list=await readPrevioCaseStatus({apiKey:env.PREVIO_API_KEY,voucher:voucherFor({tenantId:record.tenantId,caseId:record.caseId}),arrival:v.arrival,departure:v.departure,fetchImpl});
+         previoConfirmed=list!==null&&previoCaseView(list,{arrival:v.arrival,departure:v.departure}).state==='confirmed';}catch{previoConfirmed=false;}
+       }
+       saved=await markTestMailboxDepositReceived({record,receivedOn:input.receivedOn,depositConfirmed:input.depositConfirmed,transport:cookieSession.transport,previoWriter,previoConfirmed});
+      }
       if(!saved)return cookieResponse(409,{error:'CASE_CONFLICT'});
       if(input.action==='test-mailbox-confirm'&&input.previoAuto===true)await notifyPushover(env,fetchImpl,previoBookingNote(saved)); // owner 2026-11-15
       return cookieResponse(200,{result:{caseId:saved.case_id,revision:Number(saved.revision),approval:saved.data?.state?.approval,bookingStatus:saved.data?.booking?.status,

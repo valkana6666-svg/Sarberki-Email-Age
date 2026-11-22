@@ -255,12 +255,13 @@ export async function oneClickTestMailboxBooking({record,unit,units=null,preview
 }
 
 // Separate operator step: the deposit has arrived (date as the operator saw it on the bank statement).
-export async function markTestMailboxDepositReceived({record,receivedOn,depositConfirmed,transport,previoWriter=null}={}){
+// previoConfirmed: Previo already shows the booking as confirmed (staff did it there) → no Previo write at all.
+export async function markTestMailboxDepositReceived({record,receivedOn,depositConfirmed,transport,previoWriter=null,previoConfirmed=false}={}){
  if(depositConfirmed!==true)fail('DEPOSIT_NOT_CONFIRMED');
  if(typeof transport!=='function')fail('SETUP_REQUIRED');
  if(!/^\d{4}-\d{2}-\d{2}$/.test(receivedOn||''))fail('INVALID_DATE');
  if(record?.data?.booking?.status!=='finalized')fail('NOT_FINALIZED');
- const v2=String(record.data.booking.previo?.reference||'').match(V2_REFERENCE);
+ const v2=previoConfirmed===true?null:String(record.data.booking.previo?.reference||'').match(V2_REFERENCE);
  if(v2&&!previoWriter)fail('PREVIO_WRITE_DISABLED');
  const saved=await transport('/rest/v1/rpc/sc_tm_deposit_received',{method:'POST',body:{p_tenant:record.tenantId,p_case:record.caseId,p_expected:record.revision,p_received_on:receivedOn}});
  // V2: the Previo option becomes "confirmed" (green). Our state is already saved; a failed Previo update is reported.

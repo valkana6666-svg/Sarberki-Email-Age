@@ -93,6 +93,11 @@ test('deposit received on a V2 booking -> Previo confirmed (2); a manual V1 refe
  const r2=await markTestMailboxDepositReceived({record:rec('P-1'),receivedOn:'2026-11-11',depositConfirmed:true,transport,previoWriter:previoBookingWriter(ENV,p2.fetchImpl)});
  assert.equal(r2.previoSync,undefined);assert.equal(p2.calls.length,0);
  await assert.rejects(markTestMailboxDepositReceived({record:rec('V2-5001'),receivedOn:'2026-11-11',depositConfirmed:true,transport}),/PREVIO_WRITE_DISABLED/);
+ // Owner 2026-11-22: the staff already confirmed it in Previo → no Previo write, writer not even needed.
+ const p3=previo();
+ const r3=await markTestMailboxDepositReceived({record:rec('V2-5001'),receivedOn:'2026-11-22',depositConfirmed:true,transport,previoWriter:previoBookingWriter(ENV,p3.fetchImpl),previoConfirmed:true});
+ assert.equal(r3.previoSync,undefined);assert.equal(p3.calls.length,0);
+ assert.equal((await markTestMailboxDepositReceived({record:rec('V2-5001'),receivedOn:'2026-11-22',depositConfirmed:true,transport,previoConfirmed:true})).revision,5);
 });
 
 test('cancel a V2 booking -> our state first, then Previo storno (7); manual reference -> no Previo call; inactive refused',async()=>{

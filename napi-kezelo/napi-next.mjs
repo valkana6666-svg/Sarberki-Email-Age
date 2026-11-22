@@ -7,7 +7,13 @@ export function nextStepFor(record,{sendable=false}={}){
  const intent=typeof record.bookingIntent==='string'&&record.bookingIntent.length>0;
  // Owner 2026-11-15: the system's job ends when the booking is recorded in Previo. Checking/correcting it (e.g. the
  // cabin), the voucher, proforma, deposit invoice, final invoice and payment are done by hand in Previo.
- if(['finalized','deposit_received'].includes(status))return {kind:'handoff',label:null,ask:null,
+ // Owner 2026-11-22: the case is closed („Lezárt”) when the deposit has arrived; the staff mark it with one button.
+ if(status==='deposit_received')return {kind:'handoff',label:null,ask:null,
+  info:'✅ A foglaló beérkezett – a foglalás lezárva'+(b?.unit?' ('+b.unit+'. egység)':'')+'. A többi (számla, módosítás, lemondás) a Previóban.'};
+ if(status==='finalized'&&record.canMarkDeposit===true)return {kind:'deposit',label:'Foglaló beérkezett',
+  ask:'Megérkezett a foglaló? A mai dátummal rögzítem, és a foglalás a „Lezárt foglalások” közé kerül.',
+  info:'✅ A foglalás rögzítve a Previóban'+(b?.unit?' ('+b.unit+'. egység)':'')+'. Ha megérkezett a foglaló, nyomd meg a gombot.'};
+ if(status==='finalized')return {kind:'handoff',label:null,ask:null,
   info:'✅ A foglalás rögzítve a Previóban'+(b?.unit?' ('+b.unit+'. egység)':'')+'. Innen a Previóban folytasd: adatok ellenőrzése/javítása, voucher, díjbekérő, előleg- és végszámla.'};
  if(record.canOneClick===true&&!['finalized','deposit_received','cancelled'].includes(status)&&intent)
   // Owner 2026-11-19: with a guest e-mail the one button books in Previo AND sends the confirmation (one approval).

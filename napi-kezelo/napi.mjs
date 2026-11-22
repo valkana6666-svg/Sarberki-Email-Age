@@ -21,7 +21,8 @@ const sections=Object.freeze({
  approval:['Jóváhagyásra vár','Átnézendő választervezetek.'],
  progress:['Folyamatban','Pontosításra vagy ellenőrzésre váró foglalások.'],
  // No close/reject lifecycle exists on the server yet; never imply closed cases.
- closed:['Lezárt foglalások','A foglaláslezárás még nincs bekötve a szerveren, ezért ide jelenleg egyetlen foglalás sem kerülhet. Az elutasított tesztlevél-foglalás a Folyamatban részben marad.']
+ // Owner 2026-11-22: closed = the deposit has arrived (marked by the staff). Cancellations etc. are handled in Previo.
+ closed:['Lezárt foglalások','Foglalások, amelyeknél a foglaló beérkezett.']
 });
 const el=id=>document.getElementById(id);
 for(const button of document.querySelectorAll('[data-section]'))button.addEventListener('click',()=>{
@@ -488,7 +489,7 @@ async function showPrevioStatus(caseId,revision,record=null){
    el('detail-status').textContent='Forrás: chat. A foglalás már bent van a Previóban – ott kezeld (ellenőrzés, jóváhagyás, módosítás, lemondás, voucher).';
    el('booking-state').textContent=el('booking-state').textContent.split('\n').filter(l=>!/^🟢|^Még nincs véglegesítve|^📝 A Previo-tesztben már előre kitöltve/.test(l)).join('\n');
   }
-  if(['option','confirmed'].includes(r.state)&&nextCase?.caseId===caseId&&nextCase.step?.kind!=='handoff'){
+  if(['option','confirmed'].includes(r.state)&&nextCase?.caseId===caseId&&!['handoff','deposit'].includes(nextCase.step?.kind)){
    if(nextTimer){clearInterval(nextTimer);nextTimer=null;}el('next-result').textContent=''; // a started preview is not needed any more
    nextCase={...nextCase,step:{kind:'handoff',label:null,ask:null}};el('next-step').hidden=false;el('next-go').hidden=true;el('next-yes').hidden=true;el('next-no').hidden=true;
    const finalized=['finalized','deposit_received'].includes(record?.booking?.status);
@@ -805,7 +806,7 @@ function renderNextStep(caseId,record){
  const step=nextStepFor(record,{sendable});if(!step)return;
  nextCase={caseId,revision:record.revision,step};el('next-step').hidden=false;
  if(step.kind==='handoff'){el('next-go').hidden=true;el('next-text').textContent=step.info;return;}
- el('next-go').textContent=step.label;
+ el('next-go').textContent=step.label;if(step.info)el('next-text').textContent=step.info;
 }
 function nextAsk(text,yes){el('next-text').textContent=text;el('next-go').hidden=true;el('next-yes').textContent=yes;el('next-yes').hidden=false;el('next-no').hidden=false;}
 function nextWatch(source,n){ // mirror a result that the existing (hidden in simple view) control shows
@@ -895,7 +896,7 @@ el('next-yes').addEventListener('click',()=>{
   return;
  }
  if(kind==='book'){el('oneclick-confirm').checked=true;el('oneclick-confirm').dispatchEvent(new Event('change'));el('next-result').textContent='Foglalás folyamatban…';nextWatch('booking-result',n);el('oneclick-go').click();return;}
- if(kind==='deposit'){if(!el('deposit-date').value)el('deposit-date').value=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Budapest'});el('deposit-confirm').checked=true;el('next-result').textContent='Mentés…';nextWatch('booking-result',n);el('deposit-mark').click();return;}
+ if(kind==='deposit'){if(!el('deposit-date').value)el('deposit-date').value=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Budapest'});el('deposit-confirm').checked=true;el('deposit-confirm').dispatchEvent(new Event('change'));el('next-result').textContent='Mentés…';nextWatch('booking-result',n);el('deposit-mark').click();return;}
  if(kind==='price'){el('price-available').checked=true;el('price-available').dispatchEvent(new Event('change'));el('next-result').textContent='Ár beillesztése…';nextWatch('price-result',n);el('price-insert').click();return;}
  if(kind==='approve'){el('approve-confirm').checked=true;el('next-result').textContent='Jóváhagyás…';void tmMutate('approve');return;}
  if(kind==='send'){el('next-result').textContent='Google-engedély…';nextWatch('send-approved',n);el('send-approved').click();return;}
