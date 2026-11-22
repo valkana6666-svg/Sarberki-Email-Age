@@ -103,8 +103,14 @@ function resetActions(){
  el('draft-editor').value='';el('draft-editor').disabled=true;el('save-draft').disabled=true;
  el('approve-draft').disabled=true;el('approve-confirm').checked=false;el('approve-confirm').disabled=true;
 }
+// Owner 2026-11-22 („tisztítsd ki a kezelőt teljesen”): test cases from before the clean slate are archived – hidden
+// from the simple view and its counts; the „Teljes nézet” still shows them (nothing is deleted from the database).
+const CLEAN_SLATE='2026-11-22T11:30:00Z';
+const simpleView=()=>!!document.body?.classList?.contains?.('simple');
+const archived=row=>row.kind!=='test-mailbox'||!(String(row.summary?.receivedAt||'')>=CLEAN_SLATE);
+const shown=row=>!simpleView()||!archived(row);
 function updateCounts(){
- for(const section of Object.keys(sections))el('count-'+section).textContent=listLoaded?rows.filter(row=>row.category===section).length+' foglalás':'Nincs betöltve';
+ for(const section of Object.keys(sections))el('count-'+section).textContent=listLoaded?rows.filter(row=>row.category===section&&shown(row)).length+' foglalás':'Nincs betöltve';
 }
 const ROW_STATUS=Object.freeze({approved_internal:'Jóváhagyva – küldhető',returned_for_edit:'Javításra visszaküldve',rejected:'Elutasítva'});
 // Owner 2026-11-13: recognisable rows - guest, house type, stay, guests, mail time, state; the id only as a short tail.
@@ -123,7 +129,8 @@ function mailboxRowLabel(row){
 function renderRows(){
  updateCounts();el('cases-title').textContent=sections[selectedSection][0]+' – tárolt tesztfoglalások';
  // Owner 2026-11-14: strict time order, newest first, for every case (chat/phone rows are highlighted instead).
- const visible=rows.filter(row=>row.category===selectedSection).sort((a,b)=>String(b.summary?.receivedAt||'').localeCompare(String(a.summary?.receivedAt||''))),fragment=document.createDocumentFragment();
+ const archivedCount=rows.filter(row=>row.category===selectedSection&&!shown(row)).length;
+ const visible=rows.filter(row=>row.category===selectedSection&&shown(row)).sort((a,b)=>String(b.summary?.receivedAt||'').localeCompare(String(a.summary?.receivedAt||''))),fragment=document.createDocumentFragment();
  visible.forEach((row,index)=>{
   const li=document.createElement('li'),label=document.createElement('span'),button=document.createElement('button');
   // Mailbox cases keep the identity shown by the save receipt even when the list order changes.
@@ -142,6 +149,7 @@ function renderRows(){
  else if(!listLoaded)el('list-status').textContent='A kategória foglalási listája még nincs betöltve. Nyomja meg az Foglalások frissítése gombot.';
  else el('list-status').textContent=visible.length?'A kiválasztott kategória: '+visible.length+' tárolt tesztfoglalás.':'Ebben a kategóriában nincs elérhető tárolt tesztfoglalás.';
  if(authenticated&&listLoaded&&old&&document.body?.classList?.contains?.('simple'))el('list-status').textContent+=' Ebből '+old+' régi vagy lezárt elrejtve – a „Teljes nézet” mutatja.';
+ if(authenticated&&listLoaded&&archivedCount&&simpleView())el('list-status').textContent+=' '+archivedCount+' régebbi teszt archiválva (2026.11.22. előtti) – a „Teljes nézet” mutatja.';
 }
 
 let chatEpoch=0,chatBusy=false;
