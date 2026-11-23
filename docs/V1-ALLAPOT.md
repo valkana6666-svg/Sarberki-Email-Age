@@ -30,6 +30,7 @@ Frissítve: 2026-11-23. Teljes előzmény, minden engedély és eredmény szó s
 | CHATBOT-11 | tulajdonos (édesapa) | Dátumváltoztatási szabály. |
 | ÉLES-PREVIO-OLVASÁS | Claude (saját GitHub-hozzáférés) | **Claude saját, csak olvasó éles próbája PASS 11-23** (`previo-live-read.yml`, titok `PREVIO_LIVE_API_KEY`, runok 45163738332, 45163917232): árlisták 200 (8, köztük „Törzsvendég 20% kedvezmény” 155701), típusok 200 (6/23), naptár 200 (jún. 15–17. minden típus olvasva), **árszámítás 200: Deluxe 2 éj 2 fő 128 200 Ft = a mi árlistánk IFA-val együtt**, foglaláskeresés 200 (2026. júl. 1–3.: 18 foglalás, teljes vendégadat-mezőkkel – csak darabszám/mezőnév rögzítve). 403: `Hotel.rooms`, `Hotel.getGuestCategories`. Befizetés-végpont: nem próbált. Napi kezelő 🔎 sor BEKAPCSOLVA (`PREVIO_LIVE_SHOW`). `PREVIO_LIVE_READ` KI. |
 | ÉLES-1 | tulajdonos döntése | Éles postafiók csak olvasva (terv: archívum LIVE-MAILBOX-PLAN). Utána éles Previo olvasókulcs (levél kész, nincs elküldve), majd éles V2. |
+| ÜGYFÉLSZERZÉS (V3 után) | HALASZTVA | Previót használó szálláshelyek: Work 20–30 nyilvános honlap → igazolt jelöltek adatlapja, testreszabási nehézség és feltételes költség, 2–3 pilot; automatizálás csak a kézi út bevált után (#9 7101032904). Most semmi. |
 | V3 | később | Telefonos asszisztens (terv jóváhagyva 11-12, irány „A” 11-15). |
 
 ## Engedélyek (új bejegyzés ide; a korábbiak az archívumban)
