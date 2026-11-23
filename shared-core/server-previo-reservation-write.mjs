@@ -3,7 +3,7 @@
 // V1 booking and its operator-chosen unit, and guards the one network call behind four independent locks:
 //  1. API TEST property 73521 only (the live 753011 is refused in code, whatever the switch says);
 //  2. server switch PREVIO_WRITE_ENABLED === 'sandbox-73521-only' (default off; not set anywhere);
-//  3. a per-operation owner permission id recorded in docs/V1-ALLAPOT.md "Engedélyek" (AGENTS.md);
+//  3. a per-operation owner permission id recorded in docs/V1-ALLAPOT.md "Engedélyek" (AGENTS.md; history: docs/V1-ALLAPOT-NAPLO-2026-11.md);
 //  4. idempotency: our voucher "SC-<hash>" is searched first; an existing reservation is never created twice.
 // Status ids (System.getReservationStatuses, read 2026-11-09): 1 opce = option (V1 "Véglegesítve", deposit not
 // paid yet), 2 potvrzeno = confirmed (V1 "Foglaló beérkezett"), 7 storno. Guest data: only category + count; the
