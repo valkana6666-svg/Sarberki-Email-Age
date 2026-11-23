@@ -34,3 +34,4 @@ Frissítve: 2026-11-23. Teljes előzmény, minden engedély és eredmény szó s
 ## Engedélyek (új bejegyzés ide; a korábbiak az archívumban)
 | Típus | Engedélyező | Időpont | Pontos művelet | Tesztadat / zárás |
 |---|---|---|---|---|
+| ELŐZETES – PERM-20261123-LIVE-SHOW (éles OLVASÁS, nem írás) | Tulajdonos (Claude-munkamenet, 2026-11-23: „Megerősítem”, a kérdésre: olvashatja-e a rendszer az éles Previo szabadhely-naptárát, csak olvasva) | 2026-11-23, bekapcsolás ELŐTT | 753011: kizárólag GET `/rest/calendar/availability` a napi kezelő 🔎 sorához (`PREVIO_LIVE_SHOW=availability-only`, `PREVIO_LIVE_API_KEY`), típusonként és időszakonként, 5 perces gyorsítótár; foglalás, vendég, ár, írás TILOS | Megjelenítés csak a kezelőnek; zárás: `PREVIO_LIVE_SHOW` törlése + újratelepítés |
