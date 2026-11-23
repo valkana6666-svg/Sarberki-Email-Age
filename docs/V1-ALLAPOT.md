@@ -9,7 +9,7 @@ Frissítve: 2026-11-23. Teljes előzmény, minden engedély és eredmény szó s
 | Személyzet megerősít a Previóban → „Visszaigazoló levél küldése” (egy kattintás) | ÉLŐ PASS | levelek 11-22 12:25, 12:57 |
 | Ütközés: foglalt házat kihagy, a következő szabadot adja (A teszt) | PASS | Gábor → 3-as ház, Anna 2-es |
 | „Foglaló beérkezett” gomb → „Lezárt foglalások” (Previóban megerősítettre nem ír) | KÉSZ, élőben nem nyomták meg | `116ef7b` |
-| Lejárt rendszer-opció automatikus lemondása (15 percenként, +15 perc türelem, friss újraolvasás írás előtt) | BEKAPCSOLVA, 4/4 PASS (kézi indítás) | `c08944f`; időzítős futás NEM IGAZOLT |
+| Lejárt **chates** opció automatikus lemondása (15 percenként, +15 perc türelem, friss újraolvasás írás előtt; az e-mailes úton foglalt opciót nem mondja le – tulajdonos 11-23 „B”, ismérv: Previo-megjegyzés „Chatből…”) | BEKAPCSOLVA, 4/4 PASS (kézi indítás) | `c08944f`; időzítős futás NEM IGAZOLT |
 | Törzsvendég 20% (név+e-mail+telefon; 730 nap az érkezéstől; dézsa is) | BEKAPCSOLVA, 7 eset PASS | archívum: TÖRZSVENDÉG |
 | Vendéglevél sima szöveg + telefonbarát HTML (voucher táblázatban) | KÉSZ TEST | `5dcfbd7`; Gmail/iPhone NEM IGAZOLT |
 | Napi kezelő: olvasható opció-lejárat, Previóban lemondott ügynél nincs teendő | KÉSZ TEST, élő olvasás PASS | `4d230de` |
@@ -25,7 +25,6 @@ Frissítve: 2026-11-23. Teljes előzmény, minden engedély és eredmény szó s
 | ÜTKÖZÉS-B/C | tulajdonos (chat) → Claude visszaolvas | B: VIP okt. 1–3. Hanna, majd Iván (alternatívák); C: Deluxe jún. 10–13. |
 | IFA-PREVIO | Work (#9 7081590641) | Új IFA-időszak 2026-11-22–12-31 a 2027-es szabály másolataként (PERM-20261122-TEST-IFA); oka: a szabály a foglalás létrehozásának dátumához kötődik. Utána Claude visszaolvassa. |
 | FOGLALÓ-OLVASÁS | Work (#9 7078873700) → Claude | Hol rögzíti a Previo a befizetést, van-e olvasó API → automatikus „Lezárt”. |
-| OPCIÓ-E-MAIL-ÚT | tulajdonos döntése | Az e-mailes egy-kattintásos úton a Previo-opció lejárata = foglaló-határidő, így foglaló nélkül az automatikus lemondás lemondja (Kovács Pista így járt). Így maradjon? |
 | PIACI-SZEGMENS | Work/Claude | A Previo mentéskor kötelezőnek kéri; beírható-e az API-n a létrehozáskor (dokumentáció). |
 | CHATBOT-11 | tulajdonos (édesapa) | Dátumváltoztatási szabály. |
 | ÉLES-1 | tulajdonos döntése | Éles postafiók csak olvasva (terv: archívum LIVE-MAILBOX-PLAN). Utána éles Previo olvasókulcs (levél kész, nincs elküldve), majd éles V2. |

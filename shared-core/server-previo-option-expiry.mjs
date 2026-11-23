@@ -21,13 +21,17 @@ export function hotelLocalNow(ms){
 const norm=s=>String(s||'').trim().replace('T',' ').slice(0,19);
 const validLocal=s=>/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s);
 
-// Pure: which reservations in a search answer are the system's own, still options, and expired (plus grace).
+// Pure: which reservations in a search answer are the system's own CHAT pre-fills (staff note „Chatből…”, written by
+// server-chat-prefill.mjs), still options, and expired (plus grace). Owner 2026-11-23 („B”): an option from the e-mail
+// one-click path (its expiry is the deposit deadline) is never cancelled here – the staff handle it. A staff-edited
+// note only ever makes the system skip a booking, never cancel more.
 export function expiredOwnOptions(text,nowMs,graceMinutes=EXPIRY_GRACE_MINUTES){
  const cutoff=hotelLocalNow(nowMs-graceMinutes*60000);
  return [...String(text||'').matchAll(/<reservation>([\s\S]*?)<\/reservation>/g)].map(([,b])=>b).map(b=>({
   resId:Number(b.match(/<resId>(\d+)<\/resId>/)?.[1]),voucher:b.match(/<voucher>([^<]*)<\/voucher>/)?.[1]??'',
-  statusId:Number(b.match(/<statusId>(\d+)<\/statusId>/)?.[1]),expires:norm(b.match(/<optionExpiration>([^<]*)<\/optionExpiration>/)?.[1])
- })).filter(r=>Number.isSafeInteger(r.resId)&&r.resId>0&&OWN_VOUCHER.test(r.voucher)&&r.statusId===1&&validLocal(r.expires)&&r.expires<cutoff);
+  statusId:Number(b.match(/<statusId>(\d+)<\/statusId>/)?.[1]),expires:norm(b.match(/<optionExpiration>([^<]*)<\/optionExpiration>/)?.[1]),
+  chat:/Chatből/.test(b.match(/<gNote>([^<]*)<\/gNote>/)?.[1]||'')
+ })).filter(r=>Number.isSafeInteger(r.resId)&&r.resId>0&&OWN_VOUCHER.test(r.voucher)&&r.statusId===1&&r.chat&&validLocal(r.expires)&&r.expires<cutoff);
 }
 
 const shift=(ms,days)=>new Date(ms+days*86400000).toISOString().slice(0,10);

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {expiredOwnOptions,cancelExpiredOptions,hotelLocalNow,EXPIRY_MAX_PER_RUN} from '../shared-core/server-previo-option-expiry.mjs';
 
 const NOW=Date.parse('2026-11-22T12:30:00Z'); // 13:30 in Budapest
-const res=(resId,voucher,status,exp)=>`<reservation><resId>${resId}</resId><voucher>${voucher}</voucher><status><statusId>${status}</statusId></status>${exp?`<optionExpiration>${exp}</optionExpiration>`:''}</reservation>`;
+const res=(resId,voucher,status,exp,note='Systém - Chatből érkezett. A vendég véglegesítette')=>`<reservation><resId>${resId}</resId><voucher>${voucher}</voucher><status><statusId>${status}</statusId></status>${exp?`<optionExpiration>${exp}</optionExpiration>`:''}<gNote>${note}</gNote></reservation>`;
 const xml=rows=>'<?xml version="1.0"?><reservations>'+rows.join('')+'</reservations>';
 const OWN='SC-0123456789ABCDEF';
 
@@ -68,4 +68,14 @@ test('#9 7081585610: an option confirmed or extended after the first read is not
  const flaky=async()=>{reads++;return new Response(reads===1?xml([res(5,OWN,1,'2026-11-21 10:00:00')]):'<error>x</error>');};
  const r2=await cancelExpiredOptions({env,writer:{setStatus:async a=>{calls.push(a);}},fetchImpl:flaky,now:()=>NOW});
  assert.equal(calls.length,0);assert.equal(r2.results[0].write,'skipped');
+});
+
+test('owner 2026-11-23 („B”): an expired option from the e-mail one-click path (no „Chatből” note) is never cancelled',()=>{
+ const t=xml([res(1,OWN,1,'2026-11-21 10:00:00'),res(2,OWN,1,'2026-11-21 10:00:00',''),res(3,OWN,1,'2026-11-21 10:00:00','Személyzet átírta')]);
+ assert.deepEqual(expiredOwnOptions(t,NOW).map(r=>r.resId),[1]);
+});
+
+test('the chat pre-fill note carries the „Chatből” marker the auto-cancel relies on',async()=>{
+ const {prefillNote}=await import('../shared-core/server-chat-prefill.mjs');
+ for(const r of [null,{status:'eligible',lastStay:'2025-08-13',pct:20},{status:'possible',lastStay:'2025-08-13',pct:20}])assert.match(prefillNote(r,{returningDiscount:{amount:1}}),/^Chatből/);
 });
