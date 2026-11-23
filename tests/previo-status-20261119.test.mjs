@@ -9,7 +9,7 @@ test('state from Previo: option with expiry, staff-confirmed, cancelled; staff c
  const opt=caseBookingsFromXml('<reservations>'+block(1,'2027-09-03','2027-09-06',2392197,'<optionExpiration>2026-11-21 10:07:00</optionExpiration>')+'</reservations>',V);
  assert.deepEqual({...opt[0]},{resId:91,state:'option',unit:'11',from:'2027-09-03',to:'2027-09-06',price:189000,optionExpiration:'2026-11-21 10:07:00'});
  const v=previoCaseView(opt,{arrival:'2027-09-03',departure:'2027-09-06'});assert.equal(v.state,'option');assert.deepEqual(v.changes,[]);
- assert.match(previoStatusLine(v),/opció \(még nincs jóváhagyva\) · 11\. egység · 2027-09-03 → 2027-09-06 · 189 000 Ft · opció lejár: 2026-11-21 10:07/);
+ assert.match(previoStatusLine(v),/opció \(még nincs jóváhagyva\) · 11\. egység · 2027-09-03 → 2027-09-06 · 189 000 Ft · opció lejár: 2026\. 11\. 21\. 10:07/);
  const moved=previoCaseView(caseBookingsFromXml(block(2,'2027-09-04','2027-09-07',2392199),V),{arrival:'2027-09-03',departure:'2027-09-06',unit:'11'});
  assert.equal(moved.state,'confirmed');assert.deepEqual(moved.changes,['DATES','UNIT']);assert.match(previoStatusLine(moved),/megerősítve.*\n⚠️ A Previóban módosították: dátum, egység – a Previo az irányadó/);
  assert.equal(previoCaseView(caseBookingsFromXml(block(7,'2027-09-03','2027-09-06',2392197),V),{arrival:'2027-09-03',departure:'2027-09-06'}).state,'cancelled');
@@ -22,4 +22,13 @@ test('a failed read is UNKNOWN, never cancelled; every status is searched; TEST 
  assert.equal(await readPrevioCaseStatus({apiKey:'k'.repeat(20),voucher:V,arrival:'2027-09-03',departure:'2027-09-06',fetchImpl:async()=>new Response('x',{status:500})}),null);
  assert.equal(await readPrevioCaseStatus({apiKey:'k'.repeat(20),voucher:V,arrival:'2027-09-03',departure:'2027-09-06',property:{hotelId:'753011'}}),null);
  assert.match(previoStatusLine({state:'unknown',changes:[]}),/ez NEM lemondás/);
+});
+
+test('owner 2026-11-22/23: the option expiry is readable and, with auto-cancel on, the staff are told the system cancels it',async()=>{
+ const {localExpiry}=await import('../shared-core/server-previo-status.mjs');
+ assert.equal(localExpiry('2026-11-24T12:47:17'),'2026. 11. 24. 12:47');assert.equal(localExpiry('2026-11-24 08:05:00'),'2026. 11. 24. 08:05');assert.equal(localExpiry('x'),null);
+ const v={state:'option',changes:[],booking:{unit:'3',from:'2027-08-02',to:'2027-08-05',price:181500,optionExpiration:'2026-11-24T12:47:17'}};
+ assert.match(previoStatusLine(v),/opció lejár: 2026\. 11\. 24\. 12:47$/);
+ assert.match(previoStatusLine(v,{autoCancel:true}),/opció lejár: 2026\. 11\. 24\. 12:47 \(ha addig nem erősítitek meg, a rendszer lemondja\)/);
+ assert.match(previoStatusLine({state:'cancelled',changes:[],booking:{unit:'3'}}),/lemondva · 3\. egység/);
 });

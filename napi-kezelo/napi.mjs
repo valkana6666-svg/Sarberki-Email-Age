@@ -489,6 +489,16 @@ async function showPrevioStatus(caseId,revision,record=null){
    el('detail-status').textContent='Forrás: chat. A foglalás már bent van a Previóban – ott kezeld (ellenőrzés, jóváhagyás, módosítás, lemondás, voucher).';
    el('booking-state').textContent=el('booking-state').textContent.split('\n').filter(l=>!/^🟢|^Még nincs véglegesítve|^📝 A Previo-tesztben már előre kitöltve/.test(l)).join('\n');
   }
+  // Owner 2026-11-22: an expired option is cancelled by the system (or the staff cancelled it in Previo): no reply,
+  // approval or letter is offered for it any more.
+  if(r.state==='cancelled'){
+   document.body?.classList?.add?.('in-previo');
+   el('detail-status').textContent='A foglalás a Previóban lemondva (például lejárt opció). Itt nincs teendő.';
+   if(nextCase?.caseId===caseId){if(nextTimer){clearInterval(nextTimer);nextTimer=null;}
+    nextCase={...nextCase,step:{kind:'handoff',label:null,ask:null}};el('next-step').hidden=false;el('next-go').hidden=true;el('next-yes').hidden=true;el('next-no').hidden=true;
+    el('next-result').textContent='';el('next-text').textContent='❌ A Previóban lemondva – a ház újra szabad. Ha a vendég mégis kéri, új foglalás kell (chat vagy e-mail).';}
+   return;
+  }
   if(['option','confirmed'].includes(r.state)&&nextCase?.caseId===caseId&&!['handoff','deposit'].includes(nextCase.step?.kind)){
    if(nextTimer){clearInterval(nextTimer);nextTimer=null;}el('next-result').textContent=''; // a started preview is not needed any more
    nextCase={...nextCase,step:{kind:'handoff',label:null,ask:null}};el('next-step').hidden=false;el('next-go').hidden=true;el('next-yes').hidden=true;el('next-no').hidden=true;

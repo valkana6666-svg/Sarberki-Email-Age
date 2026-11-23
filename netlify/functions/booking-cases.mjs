@@ -318,7 +318,7 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     const v=record.data?.state?.values||{};
     const list=await readPrevioCaseStatus({apiKey:env.PREVIO_API_KEY,voucher:voucherFor({tenantId:record.tenantId,caseId:record.caseId}),arrival:v.arrival,departure:v.departure,fetchImpl});
     const view=list===null?{state:'unknown',changes:[]}:previoCaseView(list,{arrival:v.arrival,departure:v.departure,unit:record.data?.booking?.unit??null});
-    return cookieResponse(200,{result:{caseId:record.caseId,state:view.state,changes:view.changes,line:previoStatusLine(view)}});
+    return cookieResponse(200,{result:{caseId:record.caseId,state:view.state,changes:view.changes,line:previoStatusLine(view,{autoCancel:env.OPTION_EXPIRY_CANCEL==='test-only'})}});
    }
    if(input.action==='test-mailbox-suggest-units'){
     if(event.httpMethod!=='GET'||!cookieMode||!mailboxOn||live||input.tenantId!==TENANT||Object.keys(input).sort().join(',')!=='action,caseId,tenantId')

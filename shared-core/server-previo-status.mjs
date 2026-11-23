@@ -52,14 +52,17 @@ export async function readPrevioCaseStatus({apiKey,voucher,arrival,departure,win
  finally{clearTimeout(timer);}
 }
 // Operator line (Hungarian, no personal data).
-export function previoStatusLine(view){
+// Previo's hotel-local "2026-11-24 12:47:17" (or with T) → "2026. 11. 24. 12:47".
+export function localExpiry(x){const m=String(x||'').match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);return m?`${m[1]}. ${m[2]}. ${m[3]}. ${m[4]}:${m[5]}`:null;}
+// autoCancel (owner 2026-11-22): the expired option is cancelled by the system – the staff are told so.
+export function previoStatusLine(view,{autoCancel=false}={}){
  if(!view)return null;
  if(view.state==='unknown')return 'Previo (élő, csak olvasva): '+PREVIO_STATUS_HU.unknown+' – ez NEM lemondás.';
  if(view.state==='missing')return null;
  if(view.state==='multiple')return 'Previo (élő): több szoba / foglalás ezzel a számmal – kezeld a Previóban.';
  const b=view.booking,parts=[PREVIO_STATUS_HU[view.state]||view.state];
  if(b.unit)parts.push(b.unit+'. egység');if(b.from&&b.to)parts.push(b.from+' → '+b.to);if(Number.isSafeInteger(b.price))parts.push(String(b.price).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+' Ft');
- if(view.state==='option'&&b.optionExpiration)parts.push('opció lejár: '+b.optionExpiration);
+ if(view.state==='option'&&b.optionExpiration)parts.push('opció lejár: '+(localExpiry(b.optionExpiration)||b.optionExpiration)+(autoCancel?' (ha addig nem erősítitek meg, a rendszer lemondja)':''));
  const warn=view.changes.length?'\n⚠️ A Previóban módosították: '+view.changes.map(c=>({DATES:'dátum',UNIT:'egység'}[c]||c)).join(', ')+' – a Previo az irányadó.':'';
  return '📋 Previo (élő, csak olvasva): '+parts.join(' · ')+warn;
 }
