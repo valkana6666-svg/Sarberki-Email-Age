@@ -1,0 +1,34 @@
+name: Previo LIVE read-only probe (753011)
+# Owner 2026-11-23 (PERM-20261123-LIVE-READ-PROBE): Claude's own read-only access to the live Previo. Runs only when
+# docs/PREVIO-LIVE-READ-REQUEST.md changes on the test branch; the request is its last line (JSON). The key is the
+# repository secret PREVIO_LIVE_API_KEY and is never printed. Output is sanitized by the script (no guest values).
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths: [docs/PREVIO-LIVE-READ-REQUEST.md]
+permissions:
+  contents: read
+concurrency:
+  group: previo-live-read
+  cancel-in-progress: false
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Sanitizer self-test (synthetic)
+        run: node --test tests/previo-live-read-20261123.test.mjs
+      - name: Live read-only probe
+        env:
+          PREVIO_LIVE_API_KEY: ${{ secrets.PREVIO_LIVE_API_KEY }}
+        run: |
+          if [ -z "$PREVIO_LIVE_API_KEY" ]; then echo "BLOCKED: repository secret PREVIO_LIVE_API_KEY is not set"; exit 1; fi
+          REQ="$(grep -v '^\s*$' docs/PREVIO-LIVE-READ-REQUEST.md | tail -n 1)"
+          node scripts/previo-live-read.mjs "$REQ" | tee probe.json
+          { echo '```json'; cat probe.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
