@@ -46,7 +46,7 @@ test('MIME reply: fixed sender and recipient, same thread headers, marker, exact
  assert.doesNotMatch(mime,/\r\n(?:Cc|Bcc):/i);
  const subject=Buffer.from(/Subject: =\?UTF-8\?B\?([^?]+)\?=/.exec(mime)[1],'base64').toString('utf8');
  assert.equal(subject,'Re: Sárberki élő teszt – 5. booking request');
- const body=Buffer.from(mime.split('\r\n\r\n')[1].replace(/\r\n/g,''),'base64').toString('utf8');
+ const body=Buffer.from(mime.split('\r\n\r\n')[2].split('\r\n--')[0].replace(/\r\n/g,''),'base64') /* 2026-11-23: text/plain part of multipart/alternative */.toString('utf8');
  assert.equal(body.replace(/\r\n/g,'\n'),TEXT);
 });
 

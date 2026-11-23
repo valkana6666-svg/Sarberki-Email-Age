@@ -9,6 +9,7 @@
 // (4xx) is released for a new attempt, an unknown outcome (timeout/5xx) is never retried automatically.
 import {createHash} from 'node:crypto';
 import {TEST_GMAIL_ACCOUNT} from '../gmail-policy.mjs';
+import {letterHtml} from './letter-html.mjs';
 
 export const ALLOWED_TEST_REPLY_RECIPIENTS=Object.freeze(['sarberkito@gmail.com','valkana6666@gmail.com']); // owner 2026-11-13
 const GMAIL='https://gmail.googleapis.com/gmail/v1/users/me';
@@ -47,17 +48,24 @@ export function approvedTestMailboxReply(record){
  return {recipient,text:latest.text,threadId:src.thread_id,inReplyTo,subject:String(src.subject||''),marker,draftHash:sha(latest.text)};
 }
 
+// Owner 2026-11-23: plain text (the reference, unchanged) + the same text as simple HTML (multipart/alternative), so the
+// letter reads well on a phone. The boundary is derived from the text hash (deterministic, never inside base64).
+const part=(type,body)=>['Content-Type: '+type+'; charset=UTF-8','Content-Transfer-Encoding: base64','',b64(body).replace(/.{76}/g,'$&\r\n')];
+export function letterBody(text){
+ const plain=text.replace(/\r?\n/g,'\r\n'),boundary='sarberki-'+sha(text).slice(0,24);
+ return ['Content-Type: multipart/alternative; boundary="'+boundary+'"','','--'+boundary,...part('text/plain',plain),'--'+boundary,
+  ...part('text/html',letterHtml(text)),'--'+boundary+'--',''];
+}
 export function newMessageMime({recipient,text,subject,marker}){
  return ['From: '+TEST_GMAIL_ACCOUNT,'To: '+recipient,'Subject: =?UTF-8?B?'+b64(subject)+'?=','X-Sarberki-Reply: '+marker,'MIME-Version: 1.0',
-  'Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',b64(text.replace(/\r?\n/g,'\r\n')).replace(/.{76}/g,'$&\r\n')].join('\r\n');
+  ...letterBody(text)].join('\r\n');
 }
 export function replyMime({recipient,text,subject,inReplyTo,marker}){
  // A mail without subject is stored as '(nincs tárgy)'; the reply then carries a bare 'Re:' (same thread).
  const base=subject.trim()==='(nincs tárgy)'?'':subject.trim();
  const reSubject=/^re:/i.test(base)?base:('Re: '+base).trim();
  return ['From: '+TEST_GMAIL_ACCOUNT,'To: '+recipient,'Subject: =?UTF-8?B?'+b64(reSubject)+'?=','In-Reply-To: '+inReplyTo,'References: '+inReplyTo,
-  'X-Sarberki-Reply: '+marker,'MIME-Version: 1.0','Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',
-  b64(text.replace(/\r?\n/g,'\r\n')).replace(/.{76}/g,'$&\r\n')].join('\r\n');
+  'X-Sarberki-Reply: '+marker,'MIME-Version: 1.0',...letterBody(text)].join('\r\n');
 }
 
 export async function sendApprovedTestMailboxReply({record,token,fetchImpl=globalThis.fetch,timeoutMs=10000,ledger=null}={}){

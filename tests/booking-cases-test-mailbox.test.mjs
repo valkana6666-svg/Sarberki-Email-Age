@@ -243,7 +243,7 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
     assert.equal(gmailSends.length,1);assert.equal(gmailSends[0].threadId,id2);
     const mime=Buffer.from(gmailSends[0].raw,'base64url').toString('utf8');
     assert.match(mime,/^From: sarberkiprojecttest@gmail\.com\r\nTo: sarberkito@gmail\.com\r\n/);
-    const body=Buffer.from(mime.split('\r\n\r\n')[1].replace(/\r\n/g,''),'base64').toString('utf8').replace(/\r\n/g,'\n');
+    const body=Buffer.from(mime.split('\r\n\r\n')[2].split('\r\n--')[0].replace(/\r\n/g,''),'base64') /* 2026-11-23: text/plain part of multipart/alternative */.toString('utf8').replace(/\r\n/g,'\n');
     assert.equal(body,(await latest(case3)).data.drafts.at(-1).text,'exactly the approved stored text');
     assert.equal((await latest(case3)).revision,2,'sending does not change the case');
    }finally{fromHeader='Teszt <sarberkito@gmail.com>';}
