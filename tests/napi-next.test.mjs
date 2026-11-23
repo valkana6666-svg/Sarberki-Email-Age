@@ -56,3 +56,15 @@ test('owner 2026-11-19: with a guest e-mail the booking step is one approval (Pr
  assert.deepEqual(nextStepFor(r,{sendable:true}),{kind:'book',label:'Foglalás jóváhagyása',ask:null,send:true});
  assert.equal(nextStepFor(r,{sendable:false}).send,undefined);
 });
+
+test('owner 2026-11-23: deposit deadline notice – ok, due within 2 days, overdue (Hungarian time)',async()=>{
+ const {depositNotice}=await import('../napi-kezelo/napi-next.mjs');
+ const deadline='2026-11-30T21:13:21.000Z',at=iso=>Date.parse(iso);
+ assert.equal(depositNotice(deadline,at('2026-11-23T21:13:00Z')).level,'ok');
+ assert.match(depositNotice(deadline,at('2026-11-23T21:13:00Z')).text,/11\. 30\. 22:13/);
+ const soon=depositNotice(deadline,at('2026-11-29T09:00:00Z'));assert.equal(soon.level,'soon');assert.match(soon.short,/2 napon belül/);
+ const over=depositNotice(deadline,at('2026-12-01T08:00:00Z'));assert.equal(over.level,'overdue');assert.match(over.text,/lejárt/);
+ assert.equal(depositNotice('nope'),null);
+ const step=nextStepFor({booking:{status:'finalized',unit:'2',deposit:{deadlineUtc:deadline}},canMarkDeposit:true},{sendable:true,now:at('2026-12-01T08:00:00Z')});
+ assert.equal(step.kind,'deposit');assert.match(step.info,/határideje lejárt/);
+});

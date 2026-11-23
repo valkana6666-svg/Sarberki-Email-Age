@@ -23,6 +23,7 @@ import {previoUnitChecker,previoOwnBookingFinder} from '../../shared-core/server
 import {voucherFor} from '../../shared-core/server-previo-reservation-write.mjs';
 import {PREVIO_LIVE_753011} from '../../shared-core/previo-booking-intent.mjs';
 import {liveAvailabilityReader,liveAvailabilityLine} from '../../shared-core/server-previo-live-view.mjs';
+import {prepareDepositReminder,reminderDue} from '../../shared-core/server-deposit-reminder.mjs';
 import {previoGuestHistoryChecker} from '../../shared-core/server-previo-guest-history.mjs';
 import {readPrevioCaseStatus,previoCaseView,previoStatusLine} from '../../shared-core/server-previo-status.mjs';
 import {applyReturningDiscount,returningGuestLine} from '../../shared-core/returning-guest.mjs';
@@ -81,7 +82,9 @@ function testMailboxListSummary(record){
  const channel=['phone','chat'].includes(record?.data?.testMailbox?.channel)?record.data.testMailbox.channel:'email';
  return {name:listText(v.name,60),email,channel,unit:listText(v.unit,30),arrival:listDay(v.arrival),departure:listDay(v.departure),
   guests:Number.isInteger(adults)&&adults>0&&Number.isInteger(children)&&children>=0?adults+children:null,receivedAt:received,
-  booking:['finalized','deposit_received','cancelled'].includes(record?.data?.booking?.status)?record.data.booking.status:null};
+  booking:['finalized','deposit_received','cancelled'].includes(record?.data?.booking?.status)?record.data.booking.status:null,
+  // Owner 2026-11-23: the list shows a due / overdue deposit (finalized bookings only).
+  depositDue:record?.data?.booking?.status==='finalized'&&typeof record.data.booking.deposit?.deadlineUtc==='string'&&!Number.isNaN(Date.parse(record.data.booking.deposit.deadlineUtc))?record.data.booking.deposit.deadlineUtc:null};
 }
 
 export function syntheticCaseSummaries(records,exactReceipt=null){
@@ -93,7 +96,7 @@ export function syntheticCaseSummaries(records,exactReceipt=null){
   .map(row=>({tenantId:'sarberki-test',caseId:row.caseId,revision:row.revision})).slice(0,100);
 }
 // Fixed public codes for the test-mailbox action; anything else becomes STORAGE_FAILURE.
-const TEST_MAILBOX_ERRORS=Object.freeze({PREVIO_NOT_CONFIRMED:409,PREVIO_PRICE_EDITED:409,PREVIO_DATES_EDITED:409,PREVIO_PREFILLED_OTHER_UNIT:409,NO_EMAIL:409,SEND_LEDGER_REQUIRED:503,GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACCOUNT:403,FORBIDDEN:403,GMAIL_RATE_LIMITED:429,INVALID_INPUT:400,
+const TEST_MAILBOX_ERRORS=Object.freeze({REMINDER_NOT_DUE:409,REMINDER_ALREADY_SENT:409,REMINDER_FACTS_MISSING:422,PREVIO_NOT_CONFIRMED:409,PREVIO_PRICE_EDITED:409,PREVIO_DATES_EDITED:409,PREVIO_PREFILLED_OTHER_UNIT:409,NO_EMAIL:409,SEND_LEDGER_REQUIRED:503,GMAIL_AUTH_REQUIRED:401,WRONG_GMAIL_ACCOUNT:403,FORBIDDEN:403,GMAIL_RATE_LIMITED:429,INVALID_INPUT:400,
  GMAIL_SOURCE_UNVERIFIED:422,NOT_MARKED_TEST_MESSAGE:422,NOT_TEST_PAIR_INQUIRY:422,REPLY_HANDLED_IN_GMAIL:422,NOT_A_FOLLOWUP:422,FOLLOWUP_CASE_NOT_FOUND:404,ALREADY_IN_CASE:409,LIVE_MAILBOX_READER_PENDING:503,AUTOMATED_MESSAGE:422,REPLY_NOT_ALLOWED:422,NOT_ADDRESSED_TO_TEST_MAILBOX:422,INVALID_SENDER:422,MESSAGE_ID_REQUIRED:422,
  TEXT_PART_REQUIRED:422,EMPTY_TEXT:422,TEXT_TOO_LONG:422,UNREADABLE_TEXT:422,INVALID_DRAFT:422,STORAGE_FAILURE:503,
  NOT_APPROVED:409,RECIPIENT_NOT_ALLOWED:403,SOURCE_UNVERIFIED:422,SEND_FAILED:502,SEND_OUTCOME_UNKNOWN:409,CASE_CONFLICT:409,
@@ -123,7 +126,8 @@ const TEST_MAILBOX_FIELDS=Object.freeze({
  'test-mailbox-modify':['action,arrival,caseId,departure,expectedRevision,modifyConfirmed,tenantId,unit'],
  'test-mailbox-oneclick':['action,caseId,expectedRevision,oneClickConfirmed,previewHash,tenantId,unit','action,caseId,expectedRevision,oneClickConfirmed,previewHash,tenantId,unit,units'],
  // Owner 2026-11-21: the staff confirmed the booking in Previo → finalize with Previo's data + approve our confirmation letter.
- 'test-mailbox-previo-confirmed':['action,caseId,expectedRevision,letterConfirmed,tenantId']
+ 'test-mailbox-previo-confirmed':['action,caseId,expectedRevision,letterConfirmed,tenantId'],
+ 'test-mailbox-deposit-reminder':['action,caseId,expectedRevision,reminderConfirmed,tenantId']
 });
 function validTestMailboxInput(input){
  if(input.action==='test-mailbox-triage')return Array.isArray(input.messageIds)&&input.messageIds.length>0&&input.messageIds.length<=25&&input.messageIds.every(id=>typeof id==='string'&&/^[a-f0-9]{12,32}$/.test(id));
@@ -135,6 +139,7 @@ function validTestMailboxInput(input){
  if(input.action==='test-mailbox-oneclick'&&input.units!==undefined&&!(Array.isArray(input.units)&&input.units.length>=2&&input.units.length<=6&&input.units.every(u=>typeof u==='string'&&/^(?:[1-9]|1[0-5]|(?:7|8|9|10)\/[ABC])$/.test(u))&&input.units[0]===input.unit))return false;
  if(input.action==='test-mailbox-oneclick')return true;
  if(input.action==='test-mailbox-previo-confirmed')return input.letterConfirmed===true;
+ if(input.action==='test-mailbox-deposit-reminder')return input.reminderConfirmed===true;
  if(input.action==='test-mailbox-confirm'&&input.units!==undefined&&!(Array.isArray(input.units)&&input.units.length>=2&&input.units.length<=6&&input.units.every(u=>typeof u==='string'&&/^(?:[1-9]|1[0-5]|(?:7|8|9|10)\/[ABC])$/.test(u))&&input.units[0]===input.unit))return false;
  if(input.action==='test-mailbox-confirm'&&input.previoAuto!==undefined)return input.previoAuto===true&&typeof input.unit==='string'&&/^(?:[1-9]|1[0-5]|(?:7|8|9|10)\/[ABC])$/.test(input.unit);
  if(input.action==='test-mailbox-confirm')return input.previoRecorded===true&&typeof input.previoReference==='string'&&/^[A-Za-z0-9\/_.-]{1,40}$/.test(input.previoReference)&&typeof input.unit==='string'&&/^(?:[1-9]|1[0-5]|(?:7|8|9|10)\/[ABC])$/.test(input.unit);
@@ -183,6 +188,8 @@ function testMailboxView(record,authority,tenant='sarberki-test',previoRead=fals
   canOneClick:permissions.includes('write')&&permissions.includes('approve')&&previoWrite===true&&!['finalized','deposit_received'].includes(data.booking?.status),
   canEditContact:permissions.includes('write')&&!['finalized','deposit_received'].includes(data.booking?.status),
   canMarkDeposit:permissions.includes('write')&&data.booking?.status==='finalized',
+  // Owner 2026-11-23: the guest reminder is offered in the last 2 days before the deposit deadline (once).
+  reminderDue:permissions.includes('write')&&permissions.includes('approve')&&reminderDue(data.booking),reminderSent:!!data.booking?.depositReminder,
   canCancelBooking:permissions.includes('write')&&['finalized','deposit_received'].includes(data.booking?.status),
   canModifyBooking:permissions.includes('write')&&['finalized','deposit_received'].includes(data.booking?.status)&&/^V2-\d+$/.test(data.booking?.previo?.reference||'')&&!Array.isArray(data.booking?.units)&&previoWrite===true};
 }
@@ -421,9 +428,26 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
      return cookieResponse(403,{error:'FORBIDDEN'});
     if(!validTestMailboxInput(input))return cookieResponse(400,{error:'INVALID_INPUT'});
     const session=createOperatorCookieSession({env,fetchImpl});
-    cookieSession=await (['test-mailbox-decide','test-mailbox-send','test-mailbox-oneclick','test-mailbox-previo-confirmed'].includes(input.action)?session.protectedApproval(event):session.protectedWrite(event));
+    cookieSession=await (['test-mailbox-decide','test-mailbox-send','test-mailbox-oneclick','test-mailbox-previo-confirmed','test-mailbox-deposit-reminder'].includes(input.action)?session.protectedApproval(event):session.protectedWrite(event));
     rotatedCookie=cookieSession.setCookie;
-    if(['test-mailbox-oneclick','test-mailbox-previo-confirmed'].includes(input.action)&&!cookieSession.authority?.tenants?.[TENANT]?.includes('write'))return cookieResponse(403,{error:'ONECLICK_ROLE_REQUIRED'});
+    if(['test-mailbox-oneclick','test-mailbox-previo-confirmed','test-mailbox-deposit-reminder'].includes(input.action)&&!cookieSession.authority?.tenants?.[TENANT]?.includes('write'))return cookieResponse(403,{error:'ONECLICK_ROLE_REQUIRED'});
+    // Owner 2026-11-23: deposit reminder 2 days before the deadline – prepared and approved here, sent by the same click.
+    if(input.action==='test-mailbox-deposit-reminder'){
+     try{
+      if(live)return cookieResponse(403,{error:'FORBIDDEN'});
+      const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.'+TENANT+'&case_id=eq.'+encodeURIComponent(input.caseId));
+      const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
+      const record=row&&{tenantId:row.tenant_id,caseId:row.case_id,revision:Number(row.revision),data:row.data};
+      if(!record||!isTestMailboxCase(record,TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
+      if(record.revision!==input.expectedRevision)return cookieResponse(409,{error:'CASE_CONFLICT'});
+      const {saved,approved}=await prepareDepositReminder({record,attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,transport:cookieSession.transport});
+      if(!saved)return cookieResponse(409,{error:'CASE_CONFLICT'});
+      return cookieResponse(200,{result:{caseId:saved.case_id,revision:Number(saved.revision),approval:saved.data?.state?.approval,approved}});
+     }catch(error){
+      const code=TEST_MAILBOX_ERRORS[error?.code]?error.code:'TEST_MAILBOX_REJECTED';
+      return cookieResponse(TEST_MAILBOX_ERRORS[code],{error:code});
+     }
+    }
     if(input.action==='test-mailbox-previo-confirmed'){
      try{
       if(live||env.PREVIO_READ_API_ENABLED!=='sandbox-73521-only'||String(env.PREVIO_HOTEL_ID)!=='73521')return cookieResponse(403,{error:'FORBIDDEN'});
