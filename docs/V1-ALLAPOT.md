@@ -27,6 +27,7 @@ Frissítve: 2026-11-23. Teljes előzmény, minden engedély és eredmény szó s
 | FOGLALÓ-OLVASÁS | Work (#9 7078873700) → Claude | Hol rögzíti a Previo a befizetést, van-e olvasó API → automatikus „Lezárt”. |
 | PIACI-SZEGMENS | Work/Claude | A Previo mentéskor kötelezőnek kéri; beírható-e az API-n a létrehozáskor (dokumentáció). |
 | CHATBOT-11 | tulajdonos (édesapa) | Dátumváltoztatási szabály. |
+| ÉLES-PREVIO-OLVASÁS | Work → Claude → tulajdonos | Éles olvasókulcs megjött (11-20), Netlify `PREVIO_LIVE_API_KEY` (Work 11-23). Élő próba: rate-plan 200 (8), szállástípus 200 (6 típus/23 egység), `/rest/rooms` **403 – nincs „Hotel.rooms” modul-jog**; naptár/ár NEM IGAZOLT. Kód: az éles ág csak a saját kulcsát használja, a TEST-kulcsra soha nem esik vissza (`previoCapacityReader`). Kapcsoló `PREVIO_LIVE_READ` KI. |
 | ÉLES-1 | tulajdonos döntése | Éles postafiók csak olvasva (terv: archívum LIVE-MAILBOX-PLAN). Utána éles Previo olvasókulcs (levél kész, nincs elküldve), majd éles V2. |
 | V3 | később | Telefonos asszisztens (terv jóváhagyva 11-12, irány „A” 11-15). |
 

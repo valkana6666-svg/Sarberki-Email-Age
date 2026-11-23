@@ -191,8 +191,12 @@ export function previoCapacityReader(env,fetchImpl){
  // Live read (753011): separate switch, default off, its own mapping/rate plan; prepared 2026-11-07, NOT enabled.
  // Enable only after the owner accepts the documented no-hold evidence and the key's live scope is verified.
  if(env.PREVIO_LIVE_READ==='availability-only'){
+  // #9 7094479542 (2026-11-23): the live read-only key has its OWN variable. Without it the live branch is off – it
+  // never falls back to the TEST key (PREVIO_API_KEY stays the 73521 read/write key).
+  const liveKey=env.PREVIO_LIVE_API_KEY;
+  if(typeof liveKey!=='string'||liveKey.length<16||liveKey===env.PREVIO_API_KEY)return null;
   let liveMap;try{liveMap=JSON.parse(env.PREVIO_LIVE_ROOM_KIND_MAP||'');}catch{return null;}
-  return ({cabin,arrival,departure})=>readPrevioFreeCapacity({apiKey:env.PREVIO_API_KEY,hotelId:'753011',ratePlanId:env.PREVIO_LIVE_RATE_PLAN_ID,
+  return ({cabin,arrival,departure})=>readPrevioFreeCapacity({apiKey:liveKey,hotelId:'753011',ratePlanId:env.PREVIO_LIVE_RATE_PLAN_ID,
    mapping:liveMap,cabins:[cabin],arrival,departure,allowLive:true,fetchImpl});
  }
  if(env.PREVIO_READ_API_ENABLED!=='sandbox-73521-only')return null;
