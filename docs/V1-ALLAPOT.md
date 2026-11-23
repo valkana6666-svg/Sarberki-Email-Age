@@ -7,11 +7,11 @@ Frissítve: 2026-11-23. Teljes előzmény, minden engedély és eredmény szó s
 | E-mail: Gmail → közös AI → napi kezelő → jóváhagyás → küldés (tesztpár) | ÉLŐ PASS | archívum: TEST-MAIL-SEND, ONECLICK-V2 |
 | Chat: azonnali ajánlat (ár, szabad ház, alternatívák drágábbal elöl) → véglegesítés → Pushover → Previo-opció 48 h | ÉLŐ PASS | Teszt Anna 11-22, Teszt Gábor 11-22 |
 | Személyzet megerősít a Previóban → „Visszaigazoló levél küldése” (egy kattintás) | ÉLŐ PASS | levelek 11-22 12:25, 12:57 |
-| Ütközés: foglalt házat kihagy, a következő szabadot adja (A teszt) | PASS | Gábor → 3-as ház, Anna 2-es |
+| Ütközés A/B/C (tulajdonos, chat, 11-22/23) | **PASS** | A: Gábor → 3-as ház; B: Hanna VIP okt. 1–3. opció (1-es ház, lejár 11-25 21:52, szándékosan nem megerősítve → időzítős lemondás próbája), Iván ugyanarra: „nincs szabad”, alternatívák drágábbal elöl; C: Deluxe jún. 10–13. foglalt (4 tesztfoglalás), VIP/Családi/Osztott C |
 | „Foglaló beérkezett” gomb → „Lezárt foglalások” (Previóban megerősítettre nem ír) | KÉSZ, élőben nem nyomták meg | `116ef7b` |
 | Lejárt **chates** opció automatikus lemondása (15 percenként, +15 perc türelem, friss újraolvasás írás előtt; az e-mailes úton foglalt opciót nem mondja le – tulajdonos 11-23 „B”, ismérv: Previo-megjegyzés „Chatből…”) | BEKAPCSOLVA, 4/4 PASS (kézi indítás) | `c08944f`; időzítős futás NEM IGAZOLT |
 | Törzsvendég 20% (név+e-mail+telefon; 730 nap az érkezéstől; dézsa is) | BEKAPCSOLVA, 7 eset PASS | archívum: TÖRZSVENDÉG |
-| Vendéglevél sima szöveg + telefonbarát HTML (voucher táblázatban) | KÉSZ TEST | `5dcfbd7`; Gmail/iPhone NEM IGAZOLT |
+| Vendéglevél sima szöveg + telefonbarát HTML (voucher táblázatban) | **ÉLŐ PASS iPhone Gmail 11-23 22:13** | Teszt Lili: chat → Previo 2-es ház → személyzeti megerősítés → levél (186 450 Ft = 181 500 + 4 950 IFA) |
 | Napi kezelő: olvasható opció-lejárat, Previóban lemondott ügynél nincs teendő | KÉSZ TEST, élő olvasás PASS | `4d230de` |
 | Napi Drive-mentés + visszaállítás | minden reggel PASS | #9 napi komment |
 | Netlify | 11-23: a keret elfogyott (`usage_exceeded`, az oldal leállt) → tulajdonos Pro-csomagra váltott, 3 párhuzamos telepítés; **telepítéseket összevonni** (doksi: `[skip netlify]`) | – |
