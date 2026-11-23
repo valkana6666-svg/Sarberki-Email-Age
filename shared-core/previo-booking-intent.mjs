@@ -19,6 +19,15 @@ export const PREVIO_TEST_73521=Object.freeze({
  mealTypeId:null
 });
 
+// LIVE property 753011, READ-ONLY reference (Work, #9 7094271550 / 7094479542, 2026-11-23, live read-only key):
+// GET /rest/premise/kind → 6 kinds / 23 units, GET /rest/rate-plan → 8 plans, base plan 146385. Type level only:
+// no unit ids (Hotel.rooms 403) and no guest categories yet. Never used for a TEST (73521) request or any write.
+export const PREVIO_LIVE_753011=Object.freeze({
+ hotelId:'753011',ratePlanId:146385,
+ roomKinds:Object.freeze({vip:766437,family:766435,deluxe:766439,small:766433,splitA:766441,splitB:766441,splitC:766443}),
+ unitCounts:Object.freeze({vip:1,family:5,deluxe:4,small:1,splitAB:8,splitC:4})
+});
+
 // guestCategories: {adult, child:[{id, minAge, maxAge}]} (default: the property's own); mealTypeId: null when the
 // property has no meal plans (then it is left out). Children 9+ are priced as adults (owner 2026-11-09) – in Previo that
 // is the child category's own behaviour above the included occupancy.

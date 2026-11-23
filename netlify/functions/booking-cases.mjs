@@ -21,6 +21,7 @@ import {priceTestMailboxCase,draftNeedsPrice} from '../../shared-core/server-tes
 import {previoPriceChecker} from '../../shared-core/server-previo-price-check.mjs';
 import {previoUnitChecker,previoOwnBookingFinder} from '../../shared-core/server-previo-unit-check.mjs';
 import {voucherFor} from '../../shared-core/server-previo-reservation-write.mjs';
+import {PREVIO_LIVE_753011} from '../../shared-core/previo-booking-intent.mjs';
 import {previoGuestHistoryChecker} from '../../shared-core/server-previo-guest-history.mjs';
 import {readPrevioCaseStatus,previoCaseView,previoStatusLine} from '../../shared-core/server-previo-status.mjs';
 import {applyReturningDiscount,returningGuestLine} from '../../shared-core/returning-guest.mjs';
@@ -195,8 +196,11 @@ export function previoCapacityReader(env,fetchImpl){
   // never falls back to the TEST key (PREVIO_API_KEY stays the 73521 read/write key).
   const liveKey=env.PREVIO_LIVE_API_KEY;
   if(typeof liveKey!=='string'||liveKey.length<16||liveKey===env.PREVIO_API_KEY)return null;
-  let liveMap;try{liveMap=JSON.parse(env.PREVIO_LIVE_ROOM_KIND_MAP||'');}catch{return null;}
-  return ({cabin,arrival,departure})=>readPrevioFreeCapacity({apiKey:liveKey,hotelId:'753011',ratePlanId:env.PREVIO_LIVE_RATE_PLAN_ID,
+  // #9 7095569457: the verified live type ids and base rate plan are the default (PREVIO_LIVE_753011); an env value
+  // still overrides them, and a malformed override refuses instead of falling back.
+  let liveMap=Object.fromEntries(Object.entries(PREVIO_LIVE_753011.roomKinds).map(([k,v])=>[k,String(v)]));
+  if(env.PREVIO_LIVE_ROOM_KIND_MAP){try{liveMap=JSON.parse(env.PREVIO_LIVE_ROOM_KIND_MAP);}catch{return null;}}
+  return ({cabin,arrival,departure})=>readPrevioFreeCapacity({apiKey:liveKey,hotelId:'753011',ratePlanId:env.PREVIO_LIVE_RATE_PLAN_ID||String(PREVIO_LIVE_753011.ratePlanId),
    mapping:liveMap,cabins:[cabin],arrival,departure,allowLive:true,fetchImpl});
  }
  if(env.PREVIO_READ_API_ENABLED!=='sandbox-73521-only')return null;

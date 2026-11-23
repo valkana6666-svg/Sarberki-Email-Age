@@ -75,3 +75,23 @@ test('live read 753011: only with PREVIO_LIVE_READ=availability-only, own mappin
  const {readPrevioFreeCapacity}=await import('../shared-core/server-previo-rest-read.mjs');
  await assert.rejects(readPrevioFreeCapacity({apiKey:key,hotelId:'753011',ratePlanId:'1',mapping:{deluxe:'1'},cabins:['deluxe'],arrival:'2027-06-10',departure:'2027-06-13',fetchImpl:async()=>{throw Error('no');}}),/LIVE_PROPERTY_REFUSED/);
 });
+
+test('#9 7095569457: the live 753011 reference matches the verified live survey and stays apart from TEST 73521',async()=>{
+ const {PREVIO_LIVE_753011,PREVIO_TEST_73521}=await import('../shared-core/previo-booking-intent.mjs');
+ const {BUSINESS}=await import('../business-config.mjs');
+ // Same ids as the public booking links in business-config (verified earlier) and as Work's live read 2026-11-23.
+ for(const [k,v] of Object.entries(PREVIO_LIVE_753011.roomKinds))assert.equal(v,BUSINESS.accommodationTypes[k].publicBookingRoomId,k);
+ assert.equal(PREVIO_LIVE_753011.ratePlanId,146385);
+ // Unit counts: live survey = our physical inventory (A/B is one shared pool of 8; never proof of an A+B pair).
+ const n=k=>BUSINESS.accommodationTypes[k].physicalHouseNumbers.length;
+ assert.deepEqual({vip:n('vip'),family:n('family'),deluxe:n('deluxe'),small:n('small'),splitAB:n('splitA')+n('splitB'),splitC:n('splitC')},{...PREVIO_LIVE_753011.unitCounts});
+ // No live id is a TEST id.
+ const test=new Set([...Object.values(PREVIO_TEST_73521.roomKinds),PREVIO_TEST_73521.ratePlanId]);
+ for(const v of [...Object.values(PREVIO_LIVE_753011.roomKinds),PREVIO_LIVE_753011.ratePlanId])assert.ok(!test.has(v),String(v));
+ // The live reader uses these by default (no hand-typed env map needed); an env override still wins.
+ const calls=[];const env={PREVIO_LIVE_READ:'availability-only',PREVIO_API_KEY:'synthetic-previo-key-0123456789',PREVIO_LIVE_API_KEY:'synthetic-live-readonly-key-9876543210'};
+ const ok=async(url,options)=>{calls.push(url);return new Response(JSON.stringify([{ratePlanId:146385,availability:[{date:'2027-06-15',roomKinds:[{id:766439,availability:1}]},{date:'2027-06-16',roomKinds:[{id:766439,availability:1}]}]}]),{status:200});};
+ const r=await previoCapacityReader(env,ok)({cabin:'deluxe',arrival:'2027-06-15',departure:'2027-06-17'});
+ assert.equal(r.freeByCabin.deluxe,1);assert.match(calls[0],/146385/);assert.match(calls[0],/766439/);
+ assert.equal(previoCapacityReader({...env,PREVIO_LIVE_ROOM_KIND_MAP:'{bad'},ok),null,'a malformed override refuses');
+});
