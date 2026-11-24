@@ -1,7 +1,7 @@
 import {createChatInquirySession} from './chat-session.mjs';
 import {renderChatbotIntent} from '../chatbot-v1.mjs';
 import {REQUEST_TEXT,requestFacts} from './chat-request-client.mjs';
-import {nameFromText,replyQuestions} from '../sarberki-core.mjs';
+import {nameFromText,replyQuestions,requestFlagsFromText} from '../sarberki-core.mjs';
 
 const ASSIST_NOTE={hu:'(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)',de:'(Automatische Auskunft – Details bestätigt unser Team gerne.)',
  en:'(Automatic information – our team will gladly confirm the details.)',si:'(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)'};
@@ -17,6 +17,16 @@ export function withoutPhoneQuestion(text,lang){
 }
 // The audience is chosen by the host, never by a guest-controlled URL parameter.
 // Guest rendering never inserts operator review text or server controls.
+// A hot tub WISH (not a question about it): the engine's own request detector (negation-aware), and either not a
+// question or with a wish verb ("Van dézsa? Mennyibe kerül?" is a question; "dézsát is szeretnénk" is a wish).
+const WISH=/szeretn|kérn|kérünk|bérel(?:n|né|ünk)|foglaln|would like|we'?d like|want|möchten|hätten gern|buchen|želi|radi bi/iu;
+const tubWish=t=>requestFlagsFromText(t).hotTubRequested&&(!/\?\s*$/.test(t.trim())||WISH.test(t));
+const TUB_WORD=/dézs|dezsa|hot[ -]?tub|whirlpool|badefass|badezuber|jacuzzi|masaž\p{L}*\s*kad/iu;
+// The guest's latest decision counts: a wish, or a refusal ("dézsát mégsem kérünk"); a mere question decides nothing.
+export function hotTubWished(messages){
+ const decisive=messages.filter(t=>TUB_WORD.test(t)&&(tubWish(t)||!requestFlagsFromText(t).hotTubRequested));
+ return decisive.length>0&&tubWish(decisive.at(-1));
+}
 export function mountChatView(root,{audience='guest',language='auto',clock,capacityProvider=null,requestSender=null,assistProvider=null,offerProvider=null}={}){
  const operator=audience==='operator',session=createChatInquirySession({language,clock});
  const log=root.querySelector('[data-chat-log]'),input=root.querySelector('[data-chat-input]');
@@ -27,11 +37,13 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
  // Owner 2026-11-19: as soon as dates, party and type are clear, the chat checks the free cabin and the price at once.
  let autoOffer=null; // {key, offer}
  const factsKey=f=>f?JSON.stringify(f):null;
+ // The stay facts plus the hot tub wish (owner chat test 2026-11-24); one definition for the offer, the form and the send.
+ const stayFacts=()=>{const f=requestFacts(session.snapshot());if(f&&hotTubWished(said))f.hotTub=true;return f;};
  // V3-3: once the stay facts are known, the guest may send them to reception (only with a requestSender).
  const box=requestSender?document.createElement('div'):null;
  function renderRequest(){
   if(!box)return;
-  const facts=requestFacts(session.snapshot()),t=REQUEST_TEXT[session.language]||REQUEST_TEXT.hu;
+  const facts=stayFacts(),t=REQUEST_TEXT[session.language]||REQUEST_TEXT.hu;
   box.hidden=!facts;if(!facts){box.replaceChildren();return;}
   if(box.dataset.sent==='1')return;
   // Keep what the guest already typed when the form is rebuilt after a new message (e.g. the children's ages).
@@ -61,7 +73,7 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
    if(mailOk())mail.value=mailVal();
    if(!valid()){explain();if(!hint.textContent)hint.textContent=!check.checked?t.needConsent:t.needContact;return;}
    hint.textContent='';send.dataset.busy='1';send.disabled=true;
-   const base={facts:requestFacts(session.snapshot()),phone:phone.value.trim(),email:mailOk()?mailVal():mail.value.trim(),name:pname.value.trim(),language:session.language,transcript:said.slice(-12)};
+   const base={facts:stayFacts(),phone:phone.value.trim(),email:mailOk()?mailVal():mail.value.trim(),name:pname.value.trim(),language:session.language,transcript:said.slice(-12)};
    const lang=session.language;
    // One final button (step 2 or the team path): sends the request; on success the box shows its thank-you text.
    const finalStep=(label,extra,doneText)=>{
@@ -138,7 +150,12 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
    append('Sárberki',requestSender?withoutPhoneQuestion(result.text,session.language):result.text,session.language,result.operatorReviewText);
    messages++;updateStatus();input.value='';
    renderRequest();
-   const f=offerProvider&&box&&box.dataset.sent!=='1'?requestFacts(session.snapshot()):null,key=factsKey(f);
+   const f=offerProvider&&box&&box.dataset.sent!=='1'?stayFacts():null; // hot tub wish included (owner 2026-11-24)
+   const key=factsKey(f);
+   // Same stay, a booking reply again ("Mennyi lesz összesen?"): show the checked offer again, not a price-less draft.
+   if(f&&autoOffer&&autoOffer.key===key&&result.decision&&['AVAILABLE','UNAVAILABLE'].includes(autoOffer.offer?.status)){
+    log.lastElementChild?.remove();append('Sárberki',autoOffer.offer.text,session.language);
+   }
    if(f&&(!autoOffer||autoOffer.key!==key)){
     const turn=session.turn,entry=log.lastElementChild,lang=session.language;
     offerProvider({facts:f,language:lang}).then(offer=>{

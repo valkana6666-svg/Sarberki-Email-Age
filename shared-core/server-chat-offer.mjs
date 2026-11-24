@@ -22,6 +22,17 @@ const dot=d=>d.replaceAll('-','.')+'.';
 
 // The chat's facts (chat-request-client requestFacts) → {input} | {missing:CODE} | null (not a clear stay at all).
 // Owner 2026-11-19: when the booking cannot be confirmed, the guest is told exactly what is missing.
+// Owner chat test 2026-11-24: a guest who asked for the hot tub sees its price in the offer (business-config rule),
+// or that it cannot be rented with the split apartments. The free slot and the days are arranged by the team.
+export function hotTubLine(language,cabin){
+ const r=BUSINESS.hotTubRentalRules||{},houses=BUSINESS.accommodationTypes?.[cabin]?.physicalHouseNumbers||[];
+ const ok=houses.some(h=>(r.houseNumbers||[]).includes(h)),p=huf(r.baseHufPer24Hours||0),n=r.includedPeople||6,x=huf(r.extraPersonHufPer24Hours||0);
+ const L={hu:ok?`Dézsa: ${p} Ft / 24 óra (legfeljebb ${n} főig, efölött +${x} Ft/fő). A napokat és a szabad időpontot munkatársunk egyezteti, a dézsa díját a visszaigazolásban adjuk hozzá.`:'Dézsa ehhez a háztípushoz nem bérelhető.',
+  de:ok?`Badezuber: ${p} HUF / 24 Stunden (bis ${n} Personen, darüber +${x} HUF/Person). Tage und freien Termin stimmen wir ab; der Preis kommt in die Bestätigung.`:'Für diesen Haustyp kann kein Badezuber gemietet werden.',
+  en:ok?`Hot tub: ${p} HUF / 24 hours (up to ${n} people, +${x} HUF per extra person). We arrange the days and a free slot; its price is added in the confirmation.`:'The hot tub cannot be rented with this accommodation type.',
+  si:ok?`Masažna kad: ${p} HUF / 24 ur (do ${n} oseb, nad tem +${x} HUF/osebo). Dneve in prost termin uskladimo, ceno dodamo v potrditev.`:'Za to vrsto nastanitve masažne kadi ni mogoče najeti.'};
+ return L[language]||L.hu;
+}
 export function offerCheck(facts){
  if(!facts||typeof facts!=='object'||Array.isArray(facts))return null;
  const adults=facts.adults,ages=Array.isArray(facts.childAges)?facts.childAges:[],children=Number.isInteger(facts.children)?facts.children:ages.length;
@@ -124,6 +135,7 @@ export async function buildChatOffer({facts,language,capacityFn,quoteFn=fetchPub
  const deposit=Math.round(quote.accommodation*policy.depositPct/100);
  const nights=Math.round((Date.parse(input.departure)-Date.parse(input.arrival))/86400000);
  const text=[t.free(cabinName,dot(input.arrival),dot(input.departure),nights,t.party(input.adults,input.children.length)),
-  t.price(huf(quote.total),huf(quote.accommodation),huf(quote.tourismTax)),t.deposit(policy.depositPct,huf(deposit)),t.cancel(cancellationDays),t.extra,t.confirm].join('\n');
+  t.price(huf(quote.total),huf(quote.accommodation),huf(quote.tourismTax)),t.deposit(policy.depositPct,huf(deposit)),t.cancel(cancellationDays),
+  ...(facts?.hotTub===true?[hotTubLine(language,input.cabin)]:[]),t.extra,t.confirm].join('\n');
  return {status:'AVAILABLE',text,cabin:input.cabin,arrival:input.arrival,departure:input.departure,total:quote.total,accommodation:quote.accommodation,tourismTax:quote.tourismTax,depositPct:policy.depositPct,deposit,checkedAt:now()};
 }
