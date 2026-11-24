@@ -35,6 +35,13 @@ test('only allowlisted calls: GET REST reads, the XML search and the suggester; 
  assert.equal(r.reservations.reservations,0);
  assert.equal(r['get:https://evil.example/'].error,'PATH');
  assert.ok(calls.every(c=>c.url.startsWith('https://api.previo.app/')&&c.hotel==='753011'&&c.auth==='ApiKey '+KEY));
- assert.ok(calls.every(c=>c.method==='GET'||/\/suggester$|\/x1\/hotel\/searchReservations$/.test(c.url)),'POST only for the calculation and the search');
+ assert.ok(calls.every(c=>c.method==='GET'||/\/suggester$|\/x1\/hotel\/searchReservations$|\/x1\/hotel\/getPayments$/.test(c.url)),'POST only for the calculation and the search');
  assert.ok(!calls.some(c=>/\/x1\/hotel\/reservation$|setReservation|cancel|status/i.test(c.url)));
+});
+
+test('payments probe: count and field names only, never an amount or a name',async()=>{
+ const fetchImpl=async()=>new Response('<payments><payment><id>1</id><amount>90750</amount><name>Kitalált Vendég</name></payment></payments>');
+ const r=await run({probes:['payments'],from:'2026-11-01',to:'2026-11-30'},{apiKey:KEY,fetchImpl});
+ const out=JSON.stringify(r);assert.equal(r.payments.payments,1);assert.ok(r.payments.tags.includes('amount'));
+ assert.ok(!out.includes('90750')&&!out.includes('Kitalált'));
 });
