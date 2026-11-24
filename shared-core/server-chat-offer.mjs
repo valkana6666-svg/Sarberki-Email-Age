@@ -136,6 +136,7 @@ export async function buildChatOffer({facts,language,capacityFn,quoteFn=fetchPub
  const nights=Math.round((Date.parse(input.departure)-Date.parse(input.arrival))/86400000);
  const text=[t.free(cabinName,dot(input.arrival),dot(input.departure),nights,t.party(input.adults,input.children.length)),
   t.price(huf(quote.total),huf(quote.accommodation),huf(quote.tourismTax)),t.deposit(policy.depositPct,huf(deposit)),t.cancel(cancellationDays),
-  ...(facts?.hotTub===true?[hotTubLine(language,input.cabin)]:[]),t.extra,t.confirm].join('\n');
+  // With the hot tub line the first "extras are arranged separately" sentence would repeat it.
+  ...(facts?.hotTub===true?[hotTubLine(language,input.cabin),t.extra.replace(/^[^.]+\.\s*/,'')]:[t.extra]),t.confirm].join('\n');
  return {status:'AVAILABLE',text,cabin:input.cabin,arrival:input.arrival,departure:input.departure,total:quote.total,accommodation:quote.accommodation,tourismTax:quote.tourismTax,depositPct:policy.depositPct,deposit,checkedAt:now()};
 }

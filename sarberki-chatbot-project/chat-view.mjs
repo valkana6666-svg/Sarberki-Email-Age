@@ -8,7 +8,18 @@ const ASSIST_NOTE={hu:'(Automatikus tájékoztatás – a részleteket munkatár
 // Owner iPhone test 2026-11-15: where the request form (which asks for phone/e-mail) is shown, the reply does not ask
 // for a phone number again; an emptied "details still needed" block is dropped too.
 const MISSING_TITLE={hu:'Az ajánlathoz még szükségünk van',de:'Noch benötigte Angaben',en:'Details still needed',si:'Podatki za dopolnitev'};
+// The short request lists the phone as a bullet ("– egy telefonszámot, amelyen elérhetjük."); the chat form asks for it.
+const PHONE_BULLET={hu:'egy telefonszámot, amelyen elérhetjük',de:'eine Telefonnummer, unter der wir Sie erreichen können',en:'a phone number where we can reach you',si:'telefonsko številko, na kateri vas lahko dosežemo'};
+function withoutPhoneBullet(text,lang){
+ const b=PHONE_BULLET[lang];if(!b||typeof text!=='string')return text;
+ const lines=text.split('\n'),i=lines.findIndex(l=>/^\s*[–-]\s*/.test(l)&&l.replace(/^\s*[–-]\s*/,'').replace(/[.,;]\s*$/,'')===b);
+ if(i<0)return text;
+ const last=/\.\s*$/.test(lines[i]);lines.splice(i,1);
+ if(last&&i>0&&/^\s*[–-]\s*/.test(lines[i-1]))lines[i-1]=lines[i-1].replace(/[,;]\s*$/,'.');
+ return lines.join('\n');
+}
 export function withoutPhoneQuestion(text,lang){
+ text=withoutPhoneBullet(text,lang);
  const q=replyQuestions(lang,{needPhone:true})[0];if(!q||typeof text!=='string'||!text.includes(q))return text;
  const lines=text.split('\n').filter(l=>l.trim()!==q);
  const i=lines.findIndex(l=>l.trim()===MISSING_TITLE[lang]);
