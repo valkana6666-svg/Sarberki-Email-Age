@@ -6,6 +6,8 @@ import {hotTubLine,buildChatOffer} from '../shared-core/server-chat-offer.mjs';
 
 test('wish vs question vs refusal – the latest decision counts',()=>{
  assert.equal(hotTubWished(['Van dézsa? Mennyibe kerül?']),false,'a question is not a wish');
+ assert.equal(hotTubWished(['Az osztott apartmanhoz lehet dézsát bérelni?']),false,'an infinitive question is not a wish');
+ assert.equal(hotTubWished(['Dézsát bérelnénk.']),true);
  assert.equal(hotTubWished(['Van dézsa? Mennyibe kerül?','Hárman jönnénk.','És dézsát is szeretnénk arra az időre.']),true);
  assert.equal(hotTubWished(['Dézsát is szeretnénk.','Mennyi a dézsa?']),true,'a later question does not cancel');
  assert.equal(hotTubWished(['Dézsát is szeretnénk.','Dézsát mégsem kérünk.']),false,'a later refusal does');

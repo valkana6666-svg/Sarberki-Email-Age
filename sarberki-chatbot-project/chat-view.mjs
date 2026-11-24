@@ -30,7 +30,7 @@ export function withoutPhoneQuestion(text,lang){
 // Guest rendering never inserts operator review text or server controls.
 // A hot tub WISH (not a question about it): the engine's own request detector (negation-aware), and either not a
 // question or with a wish verb ("Van dézsa? Mennyibe kerül?" is a question; "dézsát is szeretnénk" is a wish).
-const WISH=/szeretn|kérn|kérünk|bérel(?:n|né|ünk)|foglaln|would like|we'?d like|want|möchten|hätten gern|buchen|želi|radi bi/iu;
+const WISH=/szeretn|kérn|kérünk|bérel(?:né|nénk|ünk)|foglaln[áé]|would like|we'?d like|(?<!do you )want|möchten|hätten gern|buchen\b(?!\?)|želi|radi bi/iu; // not an infinitive question ("lehet dézsát bérelni?")
 const tubWish=t=>requestFlagsFromText(t).hotTubRequested&&(!/\?\s*$/.test(t.trim())||WISH.test(t));
 const TUB_WORD=/dézs|dezsa|hot[ -]?tub|whirlpool|badefass|badezuber|jacuzzi|masaž\p{L}*\s*kad/iu;
 // The guest's latest decision counts: a wish, or a refusal ("dézsát mégsem kérünk"); a mere question decides nothing.
