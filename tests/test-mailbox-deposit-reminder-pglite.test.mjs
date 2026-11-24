@@ -84,7 +84,7 @@ test('deposit reminder on real PostgreSQL: window, attestation, approve rights, 
   record=await load();
   const latest=record.data.drafts.at(-1);
   assert.equal(latest.depositReminder,true);assert.equal(latest.machineDraft,true);assert.equal(record.data.state.approval,'approved_internal');
-  assert.match(latest.text,/^Kedves Kis Anna!/);assert.match(latest.text,/Foglaló: 94 500 Ft/);assert.match(latest.text,/közeleg a foglaló befizetési határideje/);
+  assert.match(latest.text,/^Tisztelt Kis Anna!/);assert.match(latest.text,/Foglaló: 94 500 Ft/);assert.match(latest.text,/közeleg a foglaló befizetési határideje/);
   assert.ok(record.data.booking.depositReminder?.preparedAt,'marked once');assert.equal(record.data.booking.status,'finalized','booking unchanged');
   // The send path accepts it (approved latest draft) with the reminder subject; the reply goes to the guest's thread.
   const reply=approvedTestMailboxReply(record);assert.equal(reply.text,latest.text);
@@ -116,7 +116,7 @@ test('reminder text: 4 languages, booking number, amount and Hungarian-time dead
  const values={name:'Teszt Lili',arrival:'2027-07-05',departure:'2027-07-08',unit:'Családi'};
  const booking={status:'finalized',deposit:{amount:90750,deadlineUtc:'2026-11-30T21:13:21.000Z'}};
  const hu=buildDepositReminder({values,booking,bookingNumber:'SC-D3BE7E9BC94D1838'});
- assert.match(hu,/^Kedves Teszt Lili!/);assert.match(hu,/2027\.07\.05\. – 2027\.07\.08\., Családi, foglalási szám: SC-D3BE7E9BC94D1838/);
+ assert.match(hu,/^Tisztelt Teszt Lili!/);assert.match(hu,/2027\.07\.05\. – 2027\.07\.08\., Családi, foglalási szám: SC-D3BE7E9BC94D1838/);
  assert.match(hu,/Foglaló: 90 750 Ft/);assert.match(hu,/Határidő: 2026\.11\.30\. 22:13 \(magyarországi idő\)/);
  for(const [lang,re] of [['de',/Anzahlung: 90 750 HUF/],['en',/Deposit: 90 750 HUF/],['si',/Predplačilo: 90 750 HUF/]])assert.match(buildDepositReminder({values,booking,language:lang}),re);
  const t=Date.parse(booking.deposit.deadlineUtc);

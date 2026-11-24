@@ -82,7 +82,7 @@ export function buildBookingConfirmation({values,quote,previo,language,bookingNu
  const tub=rd?{hu:`\nTörzsvendégként a dézsa bérleti díjából is ${rd.pct}% kedvezmény jár.`,de:`\nAls Stammgast erhalten Sie auch auf den Badezuber ${rd.pct}% Rabatt.`,
   en:`\nAs a returning guest you also get ${rd.pct}% off the hot tub.`,si:`\nKot stalni gost imate tudi ${rd.pct}% popusta na masažno kad.`}:{hu:'',de:'',en:'',si:''};
  const T={
-  hu:[`${name?`Kedves ${name}!`:'Kedves Vendégünk!'}`,modified?'Foglalását kérésének megfelelően módosítottuk; az alábbi adatok érvényesek.':confirmed?'Köszönjük foglalását! Foglalását megerősítettük, az alábbi adatokkal.':'Köszönjük megerősítését! Foglalását rögzítettük, az alábbi adatokkal.',
+  hu:[`${name?`Tisztelt ${name}!`:'Tisztelt Vendégünk!'}`,modified?'Foglalását kérésének megfelelően módosítottuk; az alábbi adatok érvényesek.':confirmed?'Köszönjük foglalását! Foglalását megerősítettük, az alábbi adatokkal.':'Köszönjük megerősítését! Foglalását rögzítettük, az alábbi adatokkal.',
    `Foglalás\n${dot(values.arrival)} – ${dot(values.departure)}, ${cabin}, ${party}.${num.hu}`,
    `Ár\nSzállásdíj: ${disc.hu}${huf(quote.accommodation)} Ft, idegenforgalmi adó: ${huf(quote.tourismTax)} Ft, összesen: ${huf(quote.total)} Ft.${tub.hu}`,
    `Foglaló\nA foglaló a szállásdíj ${policy.depositPct}%-a: ${huf(amount)} Ft. Kérjük, hogy ${due.date} ${due.time}-ig (magyarországi idő) érkezzen meg. A foglalás a foglaló beérkezése után válik véglegessé.${pay?'\n'+pay:'\nA fizetés módjáról külön tájékoztatjuk.'}`,

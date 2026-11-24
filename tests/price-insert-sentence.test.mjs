@@ -60,7 +60,7 @@ test('a complete draft without the generic price sentence gets the price in plac
  assert.match(out.operatorReviewText,/Ár-részletezés \(kezelői, a vendég nem látja\)/);
  const de=pricedDraft({latest:{text:'Guten Tag\n\nDie Verfügbarkeit ist noch nicht verifiziert.\n'},quote,language:'de'});
  assert.match(de.text,/Richtpreis \(Deluxe\)/);
- assert.throws(()=>pricedDraft({latest:{text:'Kedves Vendégünk!\n\nÜdvözlettel:'},quote,language:'hu'}),/PRICE_LINE_MISSING/);
+ assert.throws(()=>pricedDraft({latest:{text:'Tisztelt Vendégünk!\n\nÜdvözlettel:'},quote,language:'hu'}),/PRICE_LINE_MISSING/);
 });
 
 test('level 1: with the Previo-verified free line the price follows it, once',async()=>{

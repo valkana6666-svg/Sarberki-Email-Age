@@ -10,7 +10,7 @@ const KEY='a1'.repeat(32),sha=t=>createHash('sha256').update(t,'utf8').digest('h
 const engine=(language,name)=>buildReplyDraft({language,name,original:'Kitalált érdeklődés',arrival:'2027-05-14',departure:'2027-05-16',guests:2,adults:2,children:0});
 
 test('every language: greeting and signature kept, body replaced, no price; operator gets the Hungarian meaning',()=>{
- for(const [lang,name,greeting] of [['hu','Kovács Anna','Kedves Anna!'],['de','Anna Müller','Guten Tag, Anna!'],['en','John Smith','Dear John,'],['si','Ana Novak','Pozdravljeni, Ana!']]){
+ for(const [lang,name,greeting] of [['hu','Kovács Anna','Tisztelt Kovács Anna!'],['de','Anna Müller','Guten Tag, Anna!'],['en','John Smith','Dear John,'],['si','Ana Novak','Pozdravljeni, Ana!']]){
   const before=engine(lang,name),{text,operatorReviewText}=unavailableDraft({latest:{text:before},language:lang});
   assert.ok(text.startsWith(greeting+'\n\n'+UNAVAILABLE_TEXT[lang]+'\n\n'),lang);
   assert.ok(text.endsWith('\nSárberki Horgásztó'),lang);

@@ -25,7 +25,7 @@ export function composeGuestReply(raw={}){
   const lang=facts.language;
   const name=facts.name;
   const greeting={
-    hu:name?'Kedves '+name+'!':'Kedves Vendégünk!',
+    hu:name?'Tisztelt '+name+'!':'Tisztelt Vendégünk!', // owner 2026-11-24: „Tisztelt” for everyone
     de:name?'Guten Tag, '+name+'!':'Guten Tag!',
     en:name?'Dear '+name+',':'Dear Guest,',
     si:name?'Pozdravljeni, '+name+'!':'Pozdravljeni!'

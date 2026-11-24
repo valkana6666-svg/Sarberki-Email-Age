@@ -263,10 +263,10 @@ test('UI extracts one requested Családi cabin and full signed guest name, retai
  assert.equal(h.node('f_units_requested').value,'1');
  assert.equal(h.window.SarberkiCaseController.snapshot().values.units_requested,'1');
  assert.equal(h.node('f_name').value,'Teszt Vendég');
- assert.match(h.node('draft').value,/^Kedves Teszt Vendég!/u);
+ assert.match(h.node('draft').value,/^Tisztelt Teszt Vendég!/u);
  h.node('refresh').click();
  assert.equal(h.node('f_units_requested').value,'1');
- assert.match(h.node('draft').value,/^Kedves Teszt Vendég!/u);
+ assert.match(h.node('draft').value,/^Tisztelt Teszt Vendég!/u);
 });
 test('UI never fabricates a single unit from generic availability and preserves explicit two-unit requests',()=>{
  const h=harness();

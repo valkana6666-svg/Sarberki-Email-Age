@@ -50,7 +50,7 @@ try{
   assert.equal(drafted.review.decision.safety.emailSent,false);
   assert.equal(drafted.review.decision.safety.bookingCreated,false);
   assert.equal(drafted.review.decision.facts.guests,4);
-  assert.match(drafted.record.data.drafts.at(-1).operatorReviewText,/Kedves|Köszönjük/);
+  assert.match(drafted.record.data.drafts.at(-1).operatorReviewText,/Tisztelt|Kedves|Köszönjük/);
   assert.equal(drafted.record.data.drafts.at(-1).operatorReviewText,drafted.review.operatorReviewText);
  });
  const id=first.record.caseId,hash=createHash('sha256').update(drafted.record.data.drafts.at(-1).text).digest('hex');

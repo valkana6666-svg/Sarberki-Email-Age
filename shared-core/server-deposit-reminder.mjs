@@ -61,7 +61,7 @@ export function buildDepositReminder({values,booking,bookingNumber=null,language
  const ask={hu:fin?'Kérjük, ha még nem tette meg, utalja el a foglalót, vagy jelezze nekünk, ha kérdése van. ':'',de:fin?'Bitte überweisen Sie die Anzahlung, falls noch nicht geschehen, oder melden Sie sich bei Fragen. ':'',
   en:fin?'If you have not done so yet, please transfer the deposit or let us know if you have any questions. ':'',si:fin?'Če tega še niste storili, prosimo, nakažite predplačilo ali nam sporočite, če imate vprašanja. ':''};
  const T={
-  hu:[name?`Kedves ${name}!`:'Kedves Vendégünk!','',
+  hu:[name?`Tisztelt ${name}!`:'Tisztelt Vendégünk!','',
    lead.hu,'',
    `Foglaló: ${huf(amount)} Ft`,`Határidő: ${due.date} ${due.time} (magyarországi idő)`,'',
    ask.hu+'A foglalás a foglaló beérkezése után válik véglegessé. Ha már elutalta, köszönjük, ezt a levelet tekintse tárgytalannak.','',

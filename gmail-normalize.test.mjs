@@ -186,7 +186,7 @@ test('guest-facing email style follows language-specific conventions',()=>{
   const de=buildReplyDraft({language:'de',name:'Thomas Berger',...common});
   const en=buildReplyDraft({language:'en',name:'John Smith',...common});
   const si=buildReplyDraft({language:'si',name:'Janez Novak',...common});
-  assert.match(hu,/^Kedves Péter!/u);
+  assert.match(hu,/^Tisztelt Nagy Péter!/u);
   assert.match(de,/^Guten Tag, Thomas!/u);
   assert.match(en,/^Dear John,/u);
   assert.match(en,/16 October 2026/u);
@@ -830,7 +830,7 @@ test('Hungarian short signature extracts guest name',()=>{
     arrival:'2026-10-09',departure:'2026-10-13',guests:6,adults:null,children:null,phone:null,cabin:'? – emberi döntésre vár',
     knowledgeLines:['Horgászati tájékoztató.']
   });
-  assert.match(draft,/^Kedves István!/u);
+  assert.match(draft,/^Tisztelt Kovács István!/u);
 });
 
 test('guest reply is grouped by topic and avoids repeated review language',()=>{
@@ -920,8 +920,8 @@ test('signed Test Guest name is not shortened to generic Vendég in HU salutatio
  const original='2026. október 23–25. között Családi faházat szeretnénk.\nÜdvözlettel:\nTeszt Vendég';
  assert.equal(nameFromText(original),'Teszt Vendég');
  const draft=buildReplyDraft({language:'hu',name:'Teszt Vendég',original,arrival:'2026-10-23',departure:'2026-10-25',cabin:'Családi',adults:2,children:2,childAges:[5,8],guests:4});
- assert.match(draft,/^Kedves Teszt Vendég!/u);
- assert.doesNotMatch(draft,/^Kedves Vendég!/u);
+ assert.match(draft,/^Tisztelt Teszt Vendég!/u);
+ assert.doesNotMatch(draft,/^Tisztelt Vendég!/u);
  const ordinary=buildReplyDraft({language:'hu',name:'Kovács László',original:'Deluxe faházat szeretnék',cabin:'Deluxe'});
- assert.match(ordinary,/^Kedves László!/u);
+ assert.match(ordinary,/^Tisztelt Kovács László!/u);
 });

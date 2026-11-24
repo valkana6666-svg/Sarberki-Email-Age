@@ -300,7 +300,7 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
    const record=role=>call(role,enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:case3},{method:'GET',status:200}).then(r=>r.json.result);
    const reader=await record('reader');
    assert.deepEqual({e:reader.canEditDraft,d:reader.canDecide,a:reader.approval,r:reader.revision},{e:false,d:false,a:'pending',r:1});
-   assert.equal(reader.messages[0].text,TEXT);assert.match(reader.draft.text,/Kedves Vendégünk/);assert.equal(reader.draft.hash,await hashOf(case3));
+   assert.equal(reader.messages[0].text,TEXT);assert.match(reader.draft.text,/Tisztelt Vendégünk/);assert.equal(reader.draft.hash,await hashOf(case3));
    assert.deepEqual(reader.decisions,[]);assert.equal(reader.values.arrival,'2027-05-14');
    assert.equal(JSON.stringify(reader).includes(KEY),false);assert.equal('testMailbox' in reader,false);assert.equal('sourceReceipt' in reader,false);
    assert.deepEqual([(await record('writer')).canEditDraft,(await record('writer')).canDecide],[true,false]);

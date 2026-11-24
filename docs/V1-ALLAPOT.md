@@ -13,8 +13,8 @@ Frissítve: 2026-11-23. Teljes előzmény, minden engedély és eredmény szó s
 | Törzsvendég 20% (név+e-mail+telefon; 730 nap az érkezéstől; dézsa is) | BEKAPCSOLVA, 7 eset PASS | archívum: TÖRZSVENDÉG |
 | Vendéglevél sima szöveg + telefonbarát HTML (voucher táblázatban) | **ÉLŐ PASS iPhone Gmail 11-23 22:13** | Teszt Lili: chat → Previo 2-es ház → személyzeti megerősítés → levél (186 450 Ft = 181 500 + 4 950 IFA) |
 | Napi kezelő: olvasható opció-lejárat, Previóban lemondott ügynél nincs teendő | KÉSZ TEST, élő olvasás PASS | `4d230de` |
-| Napi Drive-mentés + visszaállítás | minden reggel PASS | #9 napi komment |
-| Netlify | 11-23: a keret elfogyott (`usage_exceeded`, az oldal leállt) → tulajdonos Pro-csomagra váltott, 3 párhuzamos telepítés; **telepítéseket összevonni** (doksi: `[skip netlify]`) | – |
+| Magyar megszólítás (tulajdonos 11-24) | **„Tisztelt …!” mindenkinek**, magyar vendégnél teljes névvel („Tisztelt Kovács Anna!”), név nélkül „Tisztelt Vendégünk!”; nemet nem találgat (válaszjavaslat, visszaigazolás, emlékeztetők) | e commit |
+| Napi Drive-mentés + visszaállítás; Netlify Pro (11-23, keret elfogyott → Pro; telepítéseket összevonni, doksi `[skip netlify]`) | minden reggel PASS | #9 napi komment |
 
 ## Aktív kapcsolók (Netlify TEST, „Production” context) és állandó engedélyek
 - `CHAT_PREVIO_PREFILL=test-only` – PERM-20261119-CHAT-PREFILL; `OPTION_EXPIRY_CANCEL=test-only` – PERM-20261122-OPTION-EXPIRY-CANCEL; `RETURNING_GUEST_CHECK=test-only`; Previo-írás csak 73521 (`PREVIO_WRITE_ENABLED=sandbox-73521-only`), az éles 753011-et a kód elutasítja.

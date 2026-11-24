@@ -219,7 +219,7 @@ try{
   const markedRequests=[];const watchMarked=request=>markedRequests.push(new URL(request.url()).pathname);page.on('request',watchMarked);
   await page.locator('#email-draft-request').click();await page.locator('#email-draft-text:not([disabled])').waitFor();
   page.off('request',watchMarked);assert.deepEqual(markedRequests.filter(path=>path!=='/build-info.mjs'),['/.netlify/functions/operator-session']);
-  assert.match(await page.locator('#email-draft-text').inputValue(),/Kedves Vendégünk/);
+  assert.match(await page.locator('#email-draft-text').inputValue(),/Tisztelt Vendégünk/);
   // Emulated iPhone app switch: hidden -> visible. Real background/iOS snapshot is not emulated.
   await page.locator('#email-draft-text').fill('Kitalált, félkész helyi szerkesztés.');
   const switchRequests=[];const watchSwitch=request=>switchRequests.push(new URL(request.url()).pathname);page.on('request',watchSwitch);
@@ -260,7 +260,7 @@ try{
   // Only the encrypted snapshot and the timestamp marker may be stored; never plaintext mail or reply text.
   const storedNow=await page.evaluate(()=>({keys:Object.keys(localStorage).sort(),session:sessionStorage.length,text:Object.values(localStorage).join('|')}));
   assert.equal(storedNow.session,0);assert.ok(storedNow.keys.every(key=>['sarberki-napi-concealed-at','sarberki-napi-state','sarberki-napi-view'].includes(key)),storedNow.keys.join());
-  for(const plain of ['Guten Tag','Jó napot','Sárberki élő teszt','Kedves Vendégünk'])assert.equal(storedNow.text.includes(plain),false,'plaintext stored: '+plain);
+  for(const plain of ['Guten Tag','Jó napot','Sárberki élő teszt','Tisztelt Vendégünk'])assert.equal(storedNow.text.includes(plain),false,'plaintext stored: '+plain);
   assert.deepEqual(errors,[]);state.markedMail=false;
   check(engine,'marked-test-mailbox-preview-html-inert-and-reply-excluded');
   await page.locator('#read-email').click();await page.locator('#email-detail').filter({hasText:'Kitalált eredeti e-mail'}).waitFor();

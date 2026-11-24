@@ -10,7 +10,7 @@ const isShort=text=>/^– /m.test(text)&&!/Foglalás állapota|Reservierungsstat
 test('missing dates, nothing else: short direct request (HU)',()=>{
  const t=draft('Szia! Nyáron szeretnénk jönni 4 fővel. Mikor van szabad hely, és mennyibe kerül?\nPéter');
  assert.equal(isShort(t),true,t);
- assert.match(t,/^Kedves Péter!\n\nKöszönjük érdeklődését\. Hogy pontos ajánlatot és árat tudjunk küldeni, kérjük, írja meg:\n– a pontos érkezési és távozási dátumot,/);
+ assert.match(t,/^Tisztelt Péter!\n\nKöszönjük érdeklődését\. Hogy pontos ajánlatot és árat tudjunk küldeni, kérjük, írja meg:\n– a pontos érkezési és távozási dátumot,/);
  assert.match(t,/– egy telefonszámot, amelyen elérhetjük\.\n\nEzek alapján ellenőrizzük a szabad helyet, és küldjük az ajánlatot\.\n\nÜdvözlettel:\nSárberki Horgásztó$/);
  assert.doesNotMatch(t,/Szállás\n|Ár és díjak|elérhetőséget külön/);
 });
@@ -73,7 +73,7 @@ test('owner-approved answers reach the daily-view letter and stay in the short f
 
 test('slangy unaccented mail: day-ticket question without the word "horgász" still gets the ticket answer',()=>{
  const t=draft('Sziasztok!\n5-en lennénk 2027. július 10-14. Mennyi az eloleg? Van steg a hazhoz? Mennyibe kerul a napijegy?\nKöszi: Kovács Bence');
- assert.match(t,/^Kedves Bence!/);
+ assert.match(t,/^Tisztelt Kovács Bence!/);
  assert.match(t,/5 fő részére/);
  assert.match(t,/– Normál tó: 24 órás 7 500 \/ 3 750 Ft\.\n– Rekord tó: 24 órás 11 250 \/ 5 650 Ft\./);
  assert.doesNotMatch(t,/heti/);

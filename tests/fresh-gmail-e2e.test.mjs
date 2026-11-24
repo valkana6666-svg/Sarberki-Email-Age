@@ -164,7 +164,7 @@ Milyen lehetőségek vannak erre az időpontra?
   assert.equal(record.normalized.guests,6);
   assert.equal(record.normalized.dates?.arrival,'2026-10-09');
   assert.equal(record.normalized.dates?.departure,'2026-10-13');
-  assert.match(record.reply_draft,/^Kedves István!/u);
+  assert.match(record.reply_draft,/^Tisztelt Kovács István!/u);
   assert.match(record.reply_draft,/6 fő/u);
   assert.match(record.reply_draft,/Szállás\n/u);
   assert.match(record.reply_draft,/Horgászat\n/u);

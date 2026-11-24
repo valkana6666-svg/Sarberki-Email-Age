@@ -4,7 +4,7 @@ import {extractServerMessage} from './server-message-extraction.mjs';
 import {CaseServiceError} from './server-case-service.mjs';
 export const CLARIFICATION_TEMPLATE='missing-phone-en-v1';
 export const CLARIFICATION_TEXT='Hello,\n\nPlease provide a contact phone number.\n\nThank you.';
-export const CLARIFICATION_HU='Kedves Vendég!\n\nKérjük, adja meg kapcsolattartási telefonszámát.\n\nKöszönjük.';
+export const CLARIFICATION_HU='Tisztelt Vendég!\n\nKérjük, adja meg kapcsolattartási telefonszámát.\n\nKöszönjük.';
 export const clarificationHash=text=>createHash('sha256').update(text,'utf8').digest('hex');
 const deny=()=>{throw new CaseServiceError('REVIEW_NOT_READY','REVIEW_NOT_READY');};
 export function clarificationEnabled(env){return env.CASE_CLARIFICATION_ENABLED==='sarberki-test-exact-phone-only-v1';}

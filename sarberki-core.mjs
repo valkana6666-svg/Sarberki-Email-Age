@@ -983,7 +983,10 @@ export function buildReplyDraft({language='hu',name=null,original='',arrival=nul
   // English/German/Slovene letter keeps the given name ("John Smith" -> "Kedves John!").
   const hungarianOrder=lang==='hu'&&!['en','de','si'].includes(languageFromText(original,{conservative:true}));
   const first=nameParts.length?(familySigned||lang==='hu'&&/^(?:vendég(?:ünk)?|érdeklődő)$/iu.test(lastNamePart)?nameParts.join(' '):(hungarianOrder?lastNamePart:nameParts[0])):null;
-  const greetings={hu:first?`Kedves ${first}!`:'Kedves Vendégünk!',de:first?`Guten Tag, ${first}!`:'Guten Tag!',en:first?`Dear ${first},`:'Dear Guest,',si:first?`Pozdravljeni, ${first}!`:'Pozdravljeni!'};
+  // Owner 2026-11-24: Hungarian letters greet everyone with „Tisztelt” – with the full name for a Hungarian guest
+  // ("Tisztelt Kovács Anna!"), never a gender guess.
+  const huName=first&&hungarianOrder&&nameParts.length>1?nameParts.join(' '):first;
+  const greetings={hu:huName?`Tisztelt ${huName}!`:'Tisztelt Vendégünk!',de:first?`Guten Tag, ${first}!`:'Guten Tag!',en:first?`Dear ${first},`:'Dear Guest,',si:first?`Pozdravljeni, ${first}!`:'Pozdravljeni!'};
   const intros={hu:'Köszönjük érdeklődését.',de:'Vielen Dank für Ihre Anfrage.',en:'Thank you for your enquiry.',si:'Hvala za vaše povpraševanje.'};
   const closings={hu:'Üdvözlettel:',de:'Mit freundlichen Grüßen',en:'Kind regards,',si:'Lep pozdrav'};
   const titles={

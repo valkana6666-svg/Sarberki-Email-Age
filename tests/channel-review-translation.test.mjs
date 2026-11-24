@@ -15,7 +15,7 @@ for(const [language,message]of Object.entries(messages))test('same frozen decisi
  const status=renderCentralConversation(chat.decision,{language:'hu'}),review=chat.operatorReviewText;
  assert.ok(review.includes(status));assert.ok(review.indexOf(status)<review.indexOf('Üdvözlettel:'));
  assert.ok(review.trimEnd().endsWith('Sárberki Horgásztó'));
- assert.match(chat.operatorReviewText,/Kedves Vendégünk!/u);
+ assert.match(chat.operatorReviewText,/Tisztelt Vendégünk!/u);
  assert.match(chat.operatorReviewText,/kapacitás ellenőrzése még nem igazolt/);
  assert.match(email.operatorReviewText,/kapacitás ellenőrzése még nem igazolt/);
  assert.equal(chat.decision.facts.language,language);assert.equal(Object.isFrozen(chat.decision),true);

@@ -86,7 +86,7 @@ test('first automatic German inquiry with shared Telefon token uses existing int
  const chat=createChatInquirySession({clock});
  const message='Guten Tag! Wir suchen ein Deluxe Ferienhaus vom 23.10.2026 bis 25.10.2026 für 2 Erwachsene und 0 Kinder. Telefon: +36 30 123 4567.';
  assert.equal(languageFromText(message),'de');assert.equal(languageFromText(message,{conservative:true}),'unknown');
- const reply=chat.reply(message);assert.equal(chat.language,'de');assert.equal(reply.response.language,'de');assert.match(reply.text,/Guten Tag/);assert.doesNotMatch(reply.text,/Kedves Vendég/);
+ const reply=chat.reply(message);assert.equal(chat.language,'de');assert.equal(reply.response.language,'de');assert.match(reply.text,/Guten Tag/);assert.doesNotMatch(reply.text,/Tisztelt Vendég/);
  chat.reply('telefon');assert.equal(chat.language,'de','later switches keep the original conservative contract');
 });
 test('first-turn shared contact words do not block clear SI/EN messages; ambiguous tie retains Hungarian',()=>{

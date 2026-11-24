@@ -11,7 +11,7 @@ test('owner example: Deluxe 2027-06-10..13, 2 adults -> 189 000 + 3 300 = 192 30
  assert.equal(quote.accommodation,189000);assert.equal(quote.tourismTax,3300);assert.equal(quote.total,192300);
  const out=buildBookingConfirmation({values,quote,previo,language:'hu',paymentInstructions:null});
  assert.equal(out.deposit.pct,50);assert.equal(out.deposit.amount,94500);assert.equal(out.deposit.windowHours,168);
- assert.match(out.text,/^Kedves Kis Anna!/);
+ assert.match(out.text,/^Tisztelt Kis Anna!/);
  assert.match(out.text,/2027\.06\.10\. – 2027\.06\.13\., Deluxe, 2 fő \(2 felnőtt\)/);
  assert.match(out.text,/Szállásdíj: 189 000 Ft, idegenforgalmi adó: 3 300 Ft, összesen: 192 300 Ft\./);
  assert.match(out.text,/szállásdíj 50%-a: 94 500 Ft\. Kérjük, hogy 2027\.05\.27\. 10:00-ig/);
@@ -72,5 +72,5 @@ test('V2 voucher block (owner 2026-11-13): only with a Previo voucher number, al
  }
  const hu=buildBookingConfirmation({values,quote,previo,language:'hu',bookingNumber:'SC-084EEBFC978222E2'}).text;
  assert.match(hu,/Érkezés: 2027\.06\.24\. \(csütörtök\), bejelentkezés 14:00-tól/);
- assert.match(hu,/^Kedves Teszt Vendég!\n\nKöszönjük megerősítését! Foglalását rögzítettük, az alábbi adatokkal\./,'owner 2026-11-13: answers the guest\'s yes');assert.match(hu,/Éjszakák: 2/);
+ assert.match(hu,/^Tisztelt Teszt Vendég!\n\nKöszönjük megerősítését! Foglalását rögzítettük, az alábbi adatokkal\./,'owner 2026-11-13: answers the guest\'s yes');assert.match(hu,/Éjszakák: 2/);
 });

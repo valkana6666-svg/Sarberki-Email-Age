@@ -47,7 +47,7 @@ test('WP4a module output is accepted by sc_tm_create; reader, disabled switch, w
   const result=await ingest('writer');assert.deepEqual({...result,revision:Number(result.revision)},{caseId:'tm-'+ID,revision:1});
   const data=(await db.query('select data from sc_cases where case_id=$1',['tm-'+ID])).rows[0].data;
   assert.equal(data.state.approval,'pending');assert.equal(data.drafts.length,1);assert.equal(data.drafts[0].createdBy,users.writer[0]);
-  assert.match(data.drafts[0].text,/Kedves Vendégünk/);assert.equal(data.state.values.arrival,'2027-05-14');assert.equal(data.messages[0].text,TEXT);
+  assert.match(data.drafts[0].text,/Tisztelt Vendégünk/);assert.equal(data.state.values.arrival,'2027-05-14');assert.equal(data.messages[0].text,TEXT);
   for(const secret of [TOKEN,KEY])assert.equal(JSON.stringify(data).includes(secret),false);
   assert.deepEqual((await db.query('select kind from sc_audit where case_id=$1',['tm-'+ID])).rows.map(r=>r.kind),['tm_create']);
   await assert.rejects(ingest('writer'),error=>error.code==='STORAGE_FAILURE','duplicate message, fixed code only');

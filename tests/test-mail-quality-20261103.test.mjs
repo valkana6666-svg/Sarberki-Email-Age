@@ -46,13 +46,13 @@ test('a family signature keeps the full family name in the greeting',()=>{
  const de=draft(4,'Guten Tag, wir möchten vom 5. bis 9. August 2027 ein Haus für 2 Erwachsene und 1 Kind (7 Jahre) buchen. Ist etwas frei und was kostet es?\nMit freundlichen Grüßen, Familie Müller');
  assert.match(de.text,/^Guten Tag, Familie Müller!/u);
  const hu=draft(2,'Jó napot! 2027. július 10. és 14. között jönnénk 2 felnőtt és 2 gyerek (6 és 9 évesek), és hoznánk egy kis kutyát is.\nÜdvözlettel: Nagy család');
- assert.match(hu.text,/^Kedves Nagy család!/u);
- assert.match(draft(1,'Jó napot! 2027. május 14-től 16-ig szeretnénk egy faházat 2 felnőtt részére.\nKöszönettel: Kiss Anna').text,/^Kedves Anna!/u);
+ assert.match(hu.text,/^Tisztelt Nagy család!/u);
+ assert.match(draft(1,'Jó napot! 2027. május 14-től 16-ig szeretnénk egy faházat 2 felnőtt részére.\nKöszönettel: Kiss Anna').text,/^Tisztelt Kiss Anna!/u);
 });
 
 test('the Hungarian operator copy of a foreign letter greets with the given name, not the family name',()=>{
  const en=draft(5,'Hello, we are 5 adults and would like to stay from 20 to 23 September 2027. Do you have a cabin for all of us?\nBest regards, John Smith');
- assert.match(en.text,/^Dear John,/u);assert.match(en.operatorReviewText,/^Kedves John!/u);
+ assert.match(en.text,/^Dear John,/u);assert.match(en.operatorReviewText,/^Tisztelt John!/u);
  const hu=draft(1,'Jó napot! 2027. május 14-től 16-ig szeretnénk egy faházat 2 felnőtt részére.\nKöszönettel: Kiss Anna');
- assert.match(hu.operatorReviewText,/^Kedves Anna!/u,'Hungarian order unchanged for a Hungarian guest');
+ assert.match(hu.operatorReviewText,/^Tisztelt Kiss Anna!/u,'Hungarian guest: full name with „Tisztelt” (owner 2026-11-24)');
 });

@@ -167,8 +167,8 @@ test('actual fake GIS read -> exact registry staging -> explicit cookie Writer -
    assert.equal(values.language,language);assert.equal(values.arrival,'2026-10-23');assert.equal(values.departure,'2026-10-25');
    assert.equal(values.adults,'2');assert.equal(values.children,'0');assert.equal(values.unit,'Deluxe');assert.equal(values.phone,core.phoneFromText(syntheticMailEnvelope(language).text));
    assert.equal(saved.data.messages[0].message_id,mime.id);
-   assert.match(saved.data.drafts[0].text,{hu:/^Kedves Vendégünk/u,de:/^Guten Tag/u,si:/^Pozdravljeni/u,en:/^Dear Guest/u}[language]);
-   assert.match(saved.data.drafts[0].operatorReviewText,/^Kedves Vendégünk/u);
+   assert.match(saved.data.drafts[0].text,{hu:/^Tisztelt Vendégünk/u,de:/^Guten Tag/u,si:/^Pozdravljeni/u,en:/^Dear Guest/u}[language]);
+   assert.match(saved.data.drafts[0].operatorReviewText,/^Tisztelt Vendégünk/u);
 
    await ui.element('gmail_open_selected').click();await ui.element('gmail_cloud_fixture_save').click();assert.equal(ui.element('server_preview_revision').value,'1');
    await post({tenantId:'sarberki-test',action:'review-draft',caseId:id,expectedRevision:1});

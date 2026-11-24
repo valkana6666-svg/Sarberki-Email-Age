@@ -315,7 +315,7 @@ test('observed iPhone flow: 38-mail style read, AI preview, edit, app switch and
   await e['read-email'].dispatch('click');await p.settle();
   assert.equal(e['email-list'].children.length,3);
   e['email-picker'].value='1';await e['email-picker'].dispatch('change');await e['email-draft-request'].dispatch('click');await p.settle();
-  assert.match(e['email-draft-text'].value,/Kedves Vendégünk/);e['email-draft-text'].value='Proba123';
+  assert.match(e['email-draft-text'].value,/Tisztelt Vendégünk/);e['email-draft-text'].value='Proba123';
   const gmailReads=p.calls.filter(x=>x.host==='gmail.googleapis.com').length;
   p.doc.visibilityState='hidden';await p.doc.dispatch('visibilitychange');p.doc.visibilityState='visible';await p.doc.dispatch('visibilitychange');await p.settle();
   assert.equal(p.doc.body.classList.contains('concealed'),false);assert.equal(e.logout.hidden,false);
