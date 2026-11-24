@@ -245,8 +245,13 @@ export function adultCountFromText(text=''){
   if(hw) return huWords[hw];
   const siWords={en:1,ena:1,eno:1,dva:2,dve:2,trije:3,tri:3,štirje:4,stirje:4,štiri:4,stiri:4,pet:5,šest:6,sest:6,sedem:7,osem:8};
   const sw=text.match(/\b(en|ena|eno|dva|dve|trije|tri|štirje|stirje|štiri|stiri|pet|šest|sest|sedem|osem)\s+odrasl\w*\b/iu)?.[1]?.toLocaleLowerCase('sl-SI');
-  return sw ? siWords[sw] : null;
+  if(sw) return siWords[sw];
+  // Chat test 2026-11-24 ("We are two adults and two kids"): English number words.
+  const ew=text.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+adults?\b/iu)?.[1]?.toLowerCase();
+  return ew ? EN_WORDS[ew] : null;
 }
+const EN_WORDS={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
+const DE_CHILD_WORDS={ein:1,eine:1,einem:1,einen:1,zwei:2,drei:3,vier:4,fünf:5,fuenf:5,sechs:6};
 // Babies (sweep 2026-11-11): "ein Baby (1 Jahr)", "egy kisbaba (8 hónapos)", "a baby" count as children; a stated
 // age (months -> 0) is kept, an unstated one stays unknown so the reply asks for it.
 const BABY_WORDS='(?:kis)?(?:baba|babá\\p{L}*|baby|babys|babies|toddlers?|kleinkind\\p{L}*|säugling\\p{L}*|saugling\\p{L}*|infant\\p{L}*|dojenč\\p{L}*|dojenc\\p{L}*)';
@@ -270,14 +275,19 @@ export function childCountFromText(text=''){
 function childCountWithoutBabies(text=''){
   if(ambiguousPartyFieldsFromText(text).includes('children'))return null;
   if(/\b(?:nincs(?:enek)?\s+(?:gyerek|gyermek)|(?:gyermek|gyerek)(?:ek)?\s+(?:nélkül|nelkul)|(?:gyermek|gyerek)(?:ek)?\s+(?:nincs(?:enek)?|nem\s+(?:jön|jon|jönnek|jonnek|lesz|lesznek))|no\s+(?:children|kids)|without\s+(?:children|kids)|keine\s+kinder|ohne\s+kinder|brez\s+otrok|ni\s+otrok)\b/iu.test(text))return 0;
-  const m=text.match(/\b(\d{1,2})\s*(?:gyerek\w*|gyermek\w*|children|child|kids?|kinder|kind|(?:otrok|otroc)\w*)\b/iu);
+  const m=text.match(/\b(\d{1,2})\s*(?:gyerek\w*|gyermek\w*|children|child|kids?|kinder\w*|kind|(?:otrok|otroc)\w*)\b/iu);
   if(m) return Number(m[1]);
   const huWords={egy:1,két:2,ket:2,kettő:2,ketto:2,három:3,harom:3,négy:4,negy:4,öt:5,ot:5,hat:6};
   const hw=text.match(/\b(egy|két|ket|kettő|ketto|három|harom|négy|negy|öt|ot|hat)\s+(?:gyerek\w*|gyermek\w*)\b/iu)?.[1]?.toLocaleLowerCase('hu-HU');
   if(hw) return huWords[hw];
   const siWords={en:1,ena:1,eno:1,dva:2,dve:2,trije:3,tri:3,štirje:4,stirje:4,štiri:4,stiri:4,pet:5,šest:6,sest:6};
   const sw=text.match(/\b(en|ena|eno|dva|dve|trije|tri|štirje|stirje|štiri|stiri|pet|šest|sest)\s+(?:otrok|otroc)\w*\b/iu)?.[1]?.toLocaleLowerCase('sl-SI');
-  return sw ? siWords[sw] : null;
+  if(sw) return siWords[sw];
+  // Chat test 2026-11-24 ("zwei Erwachsene und zwei Kinder", "two adults and two kids"): German and English words.
+  const dw=text.match(/(?<!\p{L})(ein|eine|einem|einen|zwei|drei|vier|fünf|fuenf|sechs)\s+kind(?:er|ern)?(?!\p{L})/iu)?.[1]?.toLowerCase();
+  if(dw) return DE_CHILD_WORDS[dw];
+  const ew=text.match(/\b(one|two|three|four|five|six)\s+(?:children|child|kids?)\b/iu)?.[1]?.toLowerCase();
+  return ew ? EN_WORDS[ew] : null;
 }
 function parseDateRange(text='', now=new Date(), timeZone='Europe/Budapest'){
   // Explicit form labels are a pair, not an unlabelled date-range separator.

@@ -57,7 +57,9 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
     // Owner iPhone test 2026-11-14: "Egy családi faház érdekelne, három felnőtt, május 22-25. Hoznának egy kutyát."
     // got only the pet answer. A date without year still marks a stay when party size or a cabin comes with it.
     const party=Number.isInteger(info.adults)||Number.isInteger(info.guests),cabin=typeof info.cabin==='string'&&info.cabin&&!info.cabin.startsWith('?');
-    if((typeof info.phone==='string'&&info.phone.trim())||(info.dates&&!info.dates.inferred_year)||(info.dates&&(party||cabin))||(party&&cabin))bookingUpdate=info;
+    // Chat test 2026-11-24 (DE): in a stay already being arranged, naming the cabin ("Ein Familienhaus bitte, und wir
+    // hätten gern auch einen Badezuber") is a booking update, not a hot tub question.
+    if((typeof info.phone==='string'&&info.phone.trim())||(info.dates&&!info.dates.inferred_year)||(info.dates&&(party||cabin))||(party&&cabin)||(cabin&&bookingContext&&facts.dates&&!/\?\s*$/.test(message.trim())))bookingUpdate=info; // a question about the cabin's tub stays a question
    }
    const unparsedStayDate=!bookingUpdate?.dates&&hasPotentialStayDate(message);
    const uncertainParty=ambiguousPartyFieldsFromText(message);

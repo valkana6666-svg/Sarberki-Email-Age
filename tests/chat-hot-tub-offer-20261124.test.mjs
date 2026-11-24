@@ -34,3 +34,16 @@ test('the chat drops the phone bullet (the form below asks for it) and keeps the
  assert.equal(withoutPhoneQuestion('– your exact dates,\n– a phone number where we can reach you.','en'),'– your exact dates.');
  assert.equal(withoutPhoneQuestion('Nincs benne.','hu'),'Nincs benne.');
 });
+
+test('chat test 2026-11-24 (DE): number words for the party, and the cabin named together with a tub wish updates the stay',async()=>{
+ const {createChatInquirySession}=await import('../sarberki-chatbot-project/chat-session.mjs');
+ const chat=createChatInquirySession({clock:()=>new Date('2026-11-24T12:00:00Z')});
+ chat.reply('Wir möchten vom 12. bis 15. Juli 2027 kommen, zwei Erwachsene und zwei Kinder.');
+ let s=chat.snapshot();assert.equal(s.adults,2);assert.equal(s.children,2);
+ chat.reply('Die Kinder sind 4 und 10 Jahre alt.');
+ const r=chat.reply('Ein Familienhaus bitte, und wir hätten gern auch einen Badezuber.');
+ s=chat.snapshot();assert.equal(s.cabin,'Családi');assert.deepEqual(s.child_ages,[4,10]);assert.ok(r.decision,'a booking reply, not the hot tub FAQ');
+ const en=createChatInquirySession({clock:()=>new Date('2026-11-24T12:00:00Z')});
+ en.reply('We would like to stay from 12 to 15 July 2027, two adults and one child.');
+ assert.equal(en.snapshot().adults,2);assert.equal(en.snapshot().children,1);
+});
