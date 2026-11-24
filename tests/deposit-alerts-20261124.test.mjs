@@ -1,0 +1,37 @@
+// Owner 2026-11-24: Pushover 48 h before a deposit deadline and when it passed. Synthetic only.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {depositAlerts} from '../shared-core/server-deposit-alerts.mjs';
+import {runDepositAlerts} from '../netlify/functions/deposit-alerts.mjs';
+
+const H=3600000,DL='2026-11-30T21:13:21.000Z',T=Date.parse(DL);
+const row={caseId:'tm-aaaaaaaaaaaaaaaa',unit:'Családi',arrival:'2027-07-05',departure:'2027-07-08',deadlineUtc:DL};
+
+test('each alert fires in exactly one hourly slot; text has type, dates, deadline – no guest data',()=>{
+ const at=ms=>depositAlerts([row],ms).map(a=>a.kind);
+ assert.deepEqual(at(T-49*H),[]);assert.deepEqual(at(T-48*H),['soon']);assert.deepEqual(at(T-47.5*H),['soon']);assert.deepEqual(at(T-47*H),[]);
+ assert.deepEqual(at(T-H),[]);assert.deepEqual(at(T),['overdue']);assert.deepEqual(at(T+59*60000),['overdue']);assert.deepEqual(at(T+H),[]);
+ // Hourly runs across the whole window: one "soon" and one "overdue", never more.
+ let soon=0,over=0;for(let m=T-60*H;m<T+5*H;m+=H){for(const a of depositAlerts([row],m+7*60000)){if(a.kind==='soon')soon++;else over++;}}
+ assert.equal(soon,1);assert.equal(over,1);
+ const [a]=depositAlerts([row],T-48*H);
+ assert.match(a.text,/^⏳ A foglaló 2 nap múlva lejár – Családi, 2027\.07\.05\. – 2027\.07\.08\. Határidő: 11\. 30\. 22:13/);
+ assert.match(depositAlerts([row],T+60000)[0].text,/^⚠️ Lejárt a foglaló határideje/);
+ assert.deepEqual(depositAlerts([{...row,deadlineUtc:'x'}],T),[]);assert.deepEqual(depositAlerts(null,T),[]);
+});
+
+test('job: off without its switches; signs in with the intake account, calls only sc_deposit_alerts, sends the due alerts',async()=>{
+ const env={DEPOSIT_ALERTS:'test-only',INTAKE_NOTIFY:'pushover',SUPABASE_URL:'https://mojnqizbcaczstguikpv.supabase.co',SUPABASE_PUBLISHABLE_KEY:'sb_publishable_synthetic',
+  INTAKE_ACCOUNT_EMAIL:'intake-test@sarberki.invalid',INTAKE_ACCOUNT_PASSWORD:'synthetic'};
+ assert.equal((await runDepositAlerts({env:{...env,DEPOSIT_ALERTS:''}})).status,'off');
+ assert.equal((await runDepositAlerts({env:{...env,INTAKE_NOTIFY:''}})).status,'off');
+ const calls=[],sent=[];
+ const fetchImpl=async(url,o)=>{calls.push(String(url));
+  if(String(url).includes('/auth/v1/token'))return new Response(JSON.stringify({access_token:'synthetic-token'}));
+  return new Response(JSON.stringify([row,{...row,caseId:'tm-bbbbbbbbbbbbbbbb',deadlineUtc:'2026-12-10T10:00:00Z'}]));};
+ const r=await runDepositAlerts({env,fetchImpl,now:()=>T-48*H+7*60000,notify:async(e,f,text)=>{sent.push(text);return true;}});
+ assert.deepEqual(r,{status:'ran',checked:2,alerts:1,sent:1});
+ assert.equal(calls.length,2);assert.match(calls[1],/\/rest\/v1\/rpc\/sc_deposit_alerts$/);
+ assert.match(sent[0],/2 nap múlva lejár/);
+ assert.equal((await runDepositAlerts({env,fetchImpl:async()=>new Response('{}',{status:400})})).status,'auth_failed');
+});

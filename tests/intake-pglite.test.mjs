@@ -23,7 +23,7 @@ test('intake: one pending case per call, only the intake account can create it, 
    const url=new URL('https://x'+path);
    if(method==='GET'&&url.pathname==='/rest/v1/sc_cases')return (await db.query('select * from sc_cases where tenant_id=$1',[TENANT])).rows;
    const fn=url.pathname.split('/').at(-1);
-   const args={sc_intake_create:['p_tenant','p_case','p_data','p_proof'],sc_tm_create:['p_tenant','p_case','p_data','p_proof'],sc_tm_confirm_booking:['p_tenant','p_case','p_expected','p_booking','p_draft','p_proof']}[fn];
+   const args={sc_deposit_alerts:['p_tenant'],sc_intake_create:['p_tenant','p_case','p_data','p_proof'],sc_tm_create:['p_tenant','p_case','p_data','p_proof'],sc_tm_confirm_booking:['p_tenant','p_case','p_expected','p_booking','p_draft','p_proof']}[fn];
    const vals=args.map(k=>typeof body[k]==='object'&&body[k]!==null?JSON.stringify(body[k]):body[k]??null);
    return (await db.query(`select ${fn}(${vals.map((_,i)=>'$'+(i+1)).join(',')}) r`,vals)).rows[0].r;
   }catch(error){throw Object.assign(Error(error.code==='42501'?'FORBIDDEN':'DB'),{code:error.code==='42501'?'FORBIDDEN':'DB',detail:error.message});}
@@ -38,6 +38,8 @@ test('intake: one pending case per call, only the intake account can create it, 
   await db.query('insert into sc_isolated_approval_key(key_hex) values($1)',[KEY]);
   for(const f of ['deployment/test-mailbox/install.sql','deployment/test-mailbox/booking-status.sql','deployment/test-mailbox/booking-unit.sql','deployment/test-mailbox/booking-cancel.sql','deployment/test-mailbox/booking-multiunit.sql','deployment/intake/install.sql'])await db.exec(await read(f));
   assert.equal((await db.exec(await read('deployment/intake/install.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
+  await db.exec(await read('deployment/intake/deposit-alerts.sql')); // owner 2026-11-24
+  assert.equal((await db.exec(await read('deployment/intake/deposit-alerts.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
   await db.exec('update sc_test_mailbox_config set enabled=true');
   for(const [role,id] of Object.entries(ids)){await db.query('insert into auth.users values($1)',[id]);await db.query('insert into auth.sessions values($1,$2,null)',[sessions[role],id]);}
   // Writer: normal operator membership. Intake: NO membership, only the intake registry.
@@ -67,6 +69,18 @@ test('intake: one pending case per call, only the intake account can create it, 
   await assert.rejects(confirmTestMailboxBooking({record,previoReference:'P-1',previoRecorded:true,unit:'11',attestationKey:KEY,transport:transportFor('intake')}),/FORBIDDEN|DB/);
   const {saved}=await confirmTestMailboxBooking({record,previoReference:'TEST-73521-9',previoRecorded:true,unit:'11',attestationKey:KEY,transport:transportFor('writer')});
   assert.equal(saved.revision,2);
+  // Owner 2026-11-24 (deposit alerts): only the intake account may read; deadline 7 days away → not in the window;
+  // at 48 h → type, dates, deadline only (no name, e-mail, phone); deposit received → gone.
+  const alerts=()=>transportFor('intake')('/rest/v1/rpc/sc_deposit_alerts',{method:'POST',body:{p_tenant:TENANT}});
+  await assert.rejects(transportFor('writer')('/rest/v1/rpc/sc_deposit_alerts',{method:'POST',body:{p_tenant:TENANT}}),/FORBIDDEN/);
+  assert.deepEqual(await alerts(),[]);
+  await db.query("update sc_cases set data=jsonb_set(data,'{booking,deposit,deadlineUtc}',to_jsonb((now()+interval '48 hours')::text)) where case_id=$1",[caseId]);
+  const due=await alerts();assert.equal(due.length,1);
+  assert.deepEqual(Object.keys(due[0]).sort(),['arrival','caseId','deadlineUtc','departure','unit']);
+  assert.ok(!/@|\+36|Teszt/.test(JSON.stringify(due)),'no guest data');
+  await db.query("update sc_cases set data=jsonb_set(data,'{booking,status}','\"deposit_received\"') where case_id=$1",[caseId]);
+  assert.deepEqual(await alerts(),[]);
+  await db.query("update sc_cases set data=jsonb_set(data,'{booking,status}','\"finalized\"') where case_id=$1",[caseId]);
   // A chat request with its own id is a separate case.
   // Chat (V3-3): strict id format; at most 3 per visitor fingerprint per hour (the 4th is refused by the database).
   await assert.rejects(createIntakeRequest({...base,channel:'chat',externalId:'chat_test_000001',transport:transportFor('intake')}),/STORAGE_FAILURE/);
