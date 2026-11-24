@@ -14,7 +14,7 @@ test('wish vs question vs refusal – the latest decision counts',()=>{
 
 test('offer: hot tub price for a house that has one; "not available" for the split apartments',async()=>{
  assert.match(hotTubLine('hu','family'),/^Dézsa: 30 000 Ft \/ 24 óra \(legfeljebb 6 főig, efölött \+4 000 Ft\/fő\)/);
- assert.equal(hotTubLine('hu','splitA'),'Dézsa ehhez a háztípushoz nem bérelhető.');
+ assert.match(hotTubLine('hu','splitA'),/^Dézsa: 30 000 Ft \/ 24 óra.*nincs saját dézsa, de egy másik háznál lévő szabad dézsát bérelhet/,'owner 2026-11-24');
  assert.match(hotTubLine('de','deluxe'),/Badezuber: 30 000 Ft/,'same currency label as the German price line');
  const capacityFn=async()=>({freeByCabin:{family:2},complete:true,bookingCreated:false,writeAttempted:false});
  const quoteFn=async()=>({status:'public_reference',cabin:'family',accommodation:181500,tourismTax:3300,total:184800});

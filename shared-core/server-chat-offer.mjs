@@ -23,14 +23,15 @@ const dot=d=>d.replaceAll('-','.')+'.';
 // The chat's facts (chat-request-client requestFacts) → {input} | {missing:CODE} | null (not a clear stay at all).
 // Owner 2026-11-19: when the booking cannot be confirmed, the guest is told exactly what is missing.
 // Owner chat test 2026-11-24: a guest who asked for the hot tub sees its price in the offer (business-config rule),
-// or that it cannot be rented with the split apartments. The free slot and the days are arranged by the team.
+// Owner 2026-11-24: a house without its own tub (split apartments) may rent a free tub at another house. The free
+// tub, the days and the slot are arranged by the team.
 export function hotTubLine(language,cabin){
  const r=BUSINESS.hotTubRentalRules||{},houses=BUSINESS.accommodationTypes?.[cabin]?.physicalHouseNumbers||[];
  const ok=houses.some(h=>(r.houseNumbers||[]).includes(h)),p=huf(r.baseHufPer24Hours||0),n=r.includedPeople||6,x=huf(r.extraPersonHufPer24Hours||0);
- const L={hu:ok?`Dézsa: ${p} Ft / 24 óra (legfeljebb ${n} főig, efölött +${x} Ft/fő). A napokat és a szabad időpontot munkatársunk egyezteti, a dézsa díját a visszaigazolásban adjuk hozzá.`:'Dézsa ehhez a háztípushoz nem bérelhető.',
-  de:ok?`Badezuber: ${p} Ft / 24 Stunden (bis ${n} Personen, darüber +${x} Ft/Person). Tage und freien Termin stimmen wir ab; der Preis kommt in die Bestätigung.`:'Für diesen Haustyp kann kein Badezuber gemietet werden.',
-  en:ok?`Hot tub: ${p} HUF / 24 hours (up to ${n} people, +${x} HUF per extra person). We arrange the days and a free slot; its price is added in the confirmation.`:'The hot tub cannot be rented with this accommodation type.',
-  si:ok?`Masažna kad: ${p} Ft / 24 ur (do ${n} oseb, nad tem +${x} Ft/osebo). Dneve in prost termin uskladimo, ceno dodamo v potrditev.`:'Za to vrsto nastanitve masažne kadi ni mogoče najeti.'};
+ const L={hu:ok?`Dézsa: ${p} Ft / 24 óra (legfeljebb ${n} főig, efölött +${x} Ft/fő). A napokat és a szabad időpontot munkatársunk egyezteti, a dézsa díját a visszaigazolásban adjuk hozzá.`:`Dézsa: ${p} Ft / 24 óra (legfeljebb ${n} főig, efölött +${x} Ft/fő). Ennél a háztípusnál nincs saját dézsa, de egy másik háznál lévő szabad dézsát bérelhet; ezt és az időpontot munkatársunk egyezteti, a díját a visszaigazolásban adjuk hozzá.`,
+  de:ok?`Badezuber: ${p} Ft / 24 Stunden (bis ${n} Personen, darüber +${x} Ft/Person). Tage und freien Termin stimmen wir ab; der Preis kommt in die Bestätigung.`:`Badezuber: ${p} Ft / 24 Stunden (bis ${n} Personen, darüber +${x} Ft/Person). Dieser Haustyp hat keinen eigenen Badezuber, Sie können aber einen freien Badezuber bei einem anderen Haus mieten; das und den Termin stimmen wir ab, der Preis kommt in die Bestätigung.`,
+  en:ok?`Hot tub: ${p} HUF / 24 hours (up to ${n} people, +${x} HUF per extra person). We arrange the days and a free slot; its price is added in the confirmation.`:`Hot tub: ${p} HUF / 24 hours (up to ${n} people, +${x} HUF per extra person). This accommodation has no hot tub of its own, but you can rent a free one at another cabin; we arrange it and the time, and add the price in the confirmation.`,
+  si:ok?`Masažna kad: ${p} Ft / 24 ur (do ${n} oseb, nad tem +${x} Ft/osebo). Dneve in prost termin uskladimo, ceno dodamo v potrditev.`:`Masažna kad: ${p} Ft / 24 ur (do ${n} oseb, nad tem +${x} Ft/osebo). Ta nastanitev nima svoje masažne kadi, lahko pa najamete prosto kad pri drugi hiški; to in termin uskladimo, ceno dodamo v potrditev.`};
  return L[language]||L.hu;
 }
 export function offerCheck(facts){

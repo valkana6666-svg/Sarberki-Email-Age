@@ -54,7 +54,9 @@ function extraFacts(){
  const cnt=k=>t[k]?.physicalHouseNumbers?.length||0;
  L.push('Összesen '+(cnt('vip')+cnt('family')+cnt('deluxe')+cnt('small')+BUSINESS.splitHouseLayout.order.length)+' ház: '+cnt('vip')+' VIP apartman, '+cnt('family')+' Családi faház, '+cnt('deluxe')+' Deluxe faház, '+cnt('small')+' Különálló 2 fős faház és '+BUSINESS.splitHouseLayout.order.length+' osztott ház ('+BUSINESS.splitPhysicalUnits.length+' apartman).');
  const tub=BUSINESS.hotTubRentalRules.houseNumbers,kinds=[['vip','VIP apartman'],['family','Családi faház'],['deluxe','Deluxe faház'],['small','Különálló 2 fős faház']].filter(([k])=>t[k]?.physicalHouseNumbers?.some(h=>tub.includes(h))).map(([,v])=>v);
- L.push('Dézsa a következő háztípusokhoz bérelhető: '+kinds.join(', ')+'; az osztott apartmanokhoz nem.');
+ // Owner 2026-11-24: the list is where the tubs STAND; a guest of a house without one (e.g. the split apartments)
+ // may still rent a free tub at another house.
+ L.push('Dézsa a következő háztípusoknál van, a ház mellett: '+kinds.join(', ')+'. Aki olyan házban lakik, amely mellett nincs dézsa (például az osztott apartmanok), egy másik háznál lévő szabad dézsát bérelhet; a szabad dézsát és időpontot munkatársunk egyezteti.');
  if(o.electricitySettlement==='metered_separate')L.push('Az áramot faházanként mérőóra alapján, a szállásdíjon felül számoljuk el (érkezéskor és távozáskor közösen leolvassuk); a korábbi évek alapján ez kb. 1000–1200 Ft/fő/éjszaka.');
  if(o.parking)L.push('Parkolási lehetőség van; nagyobb csoportnál előre egyeztetjük.');
  if(o.firewood)L.push('Tűzifa felár ellenében kérhető; az árát munkatársunk közli.');

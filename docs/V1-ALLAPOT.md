@@ -13,7 +13,7 @@ Frissítve: 2026-11-24. Teljes előzmény, minden engedély és eredmény szó s
 | Törzsvendég 20% (név+e-mail+telefon; 730 nap az érkezéstől; dézsa is) | BEKAPCSOLVA, 7 eset PASS | archívum: TÖRZSVENDÉG |
 | Vendéglevél sima szöveg + telefonbarát HTML (voucher táblázatban) | **ÉLŐ PASS iPhone Gmail 11-23 22:13** | Teszt Lili: chat → Previo 2-es ház → személyzeti megerősítés → levél (186 450 Ft = 181 500 + 4 950 IFA) |
 | Napi kezelő: olvasható opció-lejárat, Previóban lemondott ügynél nincs teendő | KÉSZ TEST, élő olvasás PASS | `4d230de` |
-| Magyar megszólítás „Tisztelt …!” (11-24, teljes név, nemet nem találgat); **többlépéses chat-teszt 11-24 (HU, DE, élő):** dézsa-kérés ára az ajánlatban, visszakérdezésre az ajánlat újra, telefon-kérdés nincs (űrlap kéri), DE/EN számszavak („zwei Kinder”, „two adults”), háztípus + dézsa egy üzenetben | **ÉLŐ PASS** | `af8eb61`, `8abf886` |
+| Magyar megszólítás „Tisztelt …!” (11-24, teljes név, nemet nem találgat); **többlépéses chat-teszt 11-24 (HU, DE, élő):** dézsa-kérés ára az ajánlatban, visszakérdezésre az ajánlat újra, telefon-kérdés nincs (űrlap kéri), DE/EN számszavak („zwei Kinder”, „two adults”), háztípus + dézsa egy üzenetben; **üzleti szabály (tulajdonos 11-24): dézsa nélküli háznál (osztott apartmanok) is bérelhető egy másik ház szabad dézsája** | **ÉLŐ PASS** | `af8eb61`, `8abf886` |
 | Napi Drive-mentés + visszaállítás; Netlify Pro (11-23, keret elfogyott → Pro; telepítéseket összevonni, doksi `[skip netlify]`) | minden reggel PASS | #9 napi komment |
 
 ## Aktív kapcsolók (Netlify TEST, „Production” context) és állandó engedélyek

@@ -55,8 +55,10 @@ export const BUSINESS = Object.freeze({
     baseHufPer24Hours: 30000,
     includedPeople: 6,
     extraPersonHufPer24Hours: 4000,
+    // Where the tubs STAND. Owner 2026-11-24: a guest of a house without one (split apartments 7-10) may rent a free
+    // tub at another house; the team arranges which one and when.
     houseNumbers: Object.freeze([1,2,3,4,5,6,11,12,13,14,15]),
-    source: "Tulajdonosi döntés, 2026-10-05; érvényesség megerősítve 2026-11-05"
+    source: "Tulajdonosi döntés, 2026-10-05; érvényesség megerősítve 2026-11-05; másik ház szabad dézsája bérelhető: 2026-11-24"
   }),
   // Owner 2026-11-12: split houses 7-8-9-10 stand in a row (neighbours = consecutive numbers). A and B are on the
   // ground floor and share one ground-floor terrace; C is upstairs, reached by a spiral staircase, with its own terrace.
