@@ -10,13 +10,18 @@ const row={caseId:'tm-aaaaaaaaaaaaaaaa',unit:'Családi',arrival:'2027-07-05',dep
 test('each alert fires in exactly one hourly slot; text has type, dates, deadline – no guest data',()=>{
  const at=ms=>depositAlerts([row],ms).map(a=>a.kind);
  assert.deepEqual(at(T-49*H),[]);assert.deepEqual(at(T-48*H),['soon']);assert.deepEqual(at(T-47.5*H),['soon']);assert.deepEqual(at(T-47*H),[]);
- assert.deepEqual(at(T-H),[]);assert.deepEqual(at(T),['overdue']);assert.deepEqual(at(T+59*60000),['overdue']);assert.deepEqual(at(T+H),[]);
- // Hourly runs across the whole window: one "soon" and one "overdue", never more.
- let soon=0,over=0;for(let m=T-60*H;m<T+5*H;m+=H){for(const a of depositAlerts([row],m+7*60000)){if(a.kind==='soon')soon++;else over++;}}
- assert.equal(soon,1);assert.equal(over,1);
+ // Deadline 22:13 Budapest → the second alert at 08:00 Budapest the same day (07:00 UTC in winter).
+ const morning=Date.parse('2026-11-30T07:00:00Z');
+ assert.deepEqual(at(morning-60000),[]);assert.deepEqual(at(morning),['today']);assert.deepEqual(at(morning+59*60000),['today']);assert.deepEqual(at(morning+H),[]);
+ assert.deepEqual(at(T),[],'nothing at expiry any more');
+ // Hourly runs across the whole window: one "soon" and one "today", never more.
+ let soon=0,today=0;for(let m=T-60*H;m<T+5*H;m+=H){for(const a of depositAlerts([row],m+7*60000)){if(a.kind==='soon')soon++;else today++;}}
+ assert.equal(soon,1);assert.equal(today,1);
+ // A deadline before 09:00 → the day alert 12 h before it (the previous evening).
+ const early={...row,deadlineUtc:'2026-11-30T07:30:00Z'};assert.deepEqual(depositAlerts([early],Date.parse('2026-11-29T19:30:00Z')).map(a=>a.kind),['today']);
  const [a]=depositAlerts([row],T-48*H);
  assert.match(a.text,/^⏳ A foglaló 2 nap múlva lejár – Családi, 2027\.07\.05\. – 2027\.07\.08\. Határidő: 11\. 30\. 22:13/);
- assert.match(depositAlerts([row],T+60000)[0].text,/^⚠️ Lejárt a foglaló határideje/);
+ assert.match(depositAlerts([row],morning)[0].text,/^⚠️ Ma lejár a foglaló határideje \(11\. 30\. 22:13\)/);
  assert.deepEqual(depositAlerts([{...row,deadlineUtc:'x'}],T),[]);assert.deepEqual(depositAlerts(null,T),[]);
 });
 

@@ -55,11 +55,11 @@ test('deposit reminder on real PostgreSQL: window, attestation, approve rights, 
   await db.exec("insert into sc_tenants values('sarberki-test','Fictional',true),('demo-test','Fictional other',true)");
   for(const f of ['deployment/cloud-approval/install.sql','deployment/cloud-approval/separate-approver-permission.sql','deployment/exact-receipt/install.sql'])await db.exec(await read(f));
   await db.query('insert into sc_isolated_approval_key(key_hex) values($1)',[KEY]);
-  for(const f of ['deployment/test-mailbox/install.sql','deployment/test-mailbox/booking-status.sql','deployment/test-mailbox/booking-unit.sql','deployment/test-mailbox/booking-cancel.sql','deployment/test-mailbox/booking-multiunit.sql','deployment/test-mailbox/booking-deposit-tz.sql','deployment/test-mailbox/booking-modify.sql','deployment/test-mailbox/deposit-reminder.sql'])await db.exec(await read(f));
+  for(const f of ['deployment/test-mailbox/install.sql','deployment/test-mailbox/booking-status.sql','deployment/test-mailbox/booking-unit.sql','deployment/test-mailbox/booking-cancel.sql','deployment/test-mailbox/booking-multiunit.sql','deployment/test-mailbox/booking-deposit-tz.sql','deployment/test-mailbox/booking-modify.sql','deployment/test-mailbox/deposit-reminder.sql','deployment/test-mailbox/deposit-reminder-2.sql'])await db.exec(await read(f));
   await db.exec('update sc_test_mailbox_config set enabled=true');
   for(const [role,id] of Object.entries(ids)){await db.query('insert into auth.users values($1)',[id]);await db.query('insert into auth.sessions values($1,$2,null)',[sessions[role],id]);}
   await db.query('insert into sc_memberships values($1,$2,true,true,false),($1,$3,true,false,true),($1,$4,true,true,true)',[TENANT,ids.writer,ids.approver,ids.both]);
-  assert.equal((await db.exec(await read('deployment/test-mailbox/deposit-reminder.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
+  assert.equal((await db.exec(await read('deployment/test-mailbox/deposit-reminder-2.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
   const common={token:'t'.repeat(40),transport:transportFor('writer'),attestationKey:KEY,fetchImpl:gmailFetch};
   const {caseId}=await ingestTestMailboxMessage({...common,messageId:THREAD});
   const load=async()=>{const r=(await db.query('select * from sc_cases where case_id=$1',[caseId])).rows[0];return {tenantId:r.tenant_id,caseId:r.case_id,revision:Number(r.revision),data:r.data};};
@@ -88,16 +88,31 @@ test('deposit reminder on real PostgreSQL: window, attestation, approve rights, 
   assert.ok(record.data.booking.depositReminder?.preparedAt,'marked once');assert.equal(record.data.booking.status,'finalized','booking unchanged');
   // The send path accepts it (approved latest draft) with the reminder subject; the reply goes to the guest's thread.
   const reply=approvedTestMailboxReply(record);assert.equal(reply.text,latest.text);
-  // Once only.
+  assert.equal(r.kind,'first');assert.equal(latest.reminderKind,'first');
+  // The first one once only.
   await assert.rejects(prepareDepositReminder({record,attestationKey:KEY,transport:transportFor('both')}),/REMINDER_ALREADY_SENT/);
+  // Owner 2026-11-24: the second ("final") reminder on the deadline day – here just after the deadline – also once.
+  await db.query("update sc_cases set data=jsonb_set(data,'{booking,deposit,deadlineUtc}',to_jsonb((now()-interval '1 hour')::text)) where case_id=$1",[caseId]);
+  record=await load();
+  const f=await prepareDepositReminder({record,attestationKey:KEY,transport:transportFor('both')});
+  assert.equal(f.kind,'final');assert.equal(f.approved,true);
+  record=await load();
+  assert.match(record.data.drafts.at(-1).text,/ma lejárt, és a foglaló még nem érkezett meg/);assert.ok(record.data.booking.depositReminderFinal?.preparedAt);
+  assert.equal(record.data.drafts.at(-1).reminderKind,'final');assert.equal(approvedTestMailboxReply(record).text,record.data.drafts.at(-1).text,'e-mail case: sent in its own thread');
+  await assert.rejects(prepareDepositReminder({record,attestationKey:KEY,transport:transportFor('both')}),/REMINDER_ALREADY_SENT/);
+  // 12 hours after the deadline: nothing any more.
+  await db.query("update sc_cases set data=jsonb_set(data #- '{booking,depositReminderFinal}','{booking,deposit,deadlineUtc}',to_jsonb((now()-interval '13 hours')::text)) where case_id=$1",[caseId]);
+  record=await load();
+  await assert.rejects(prepareDepositReminder({record,attestationKey:KEY,transport:transportFor('both')}),/REMINDER_NOT_DUE/);
   const raw=async()=>transportFor('both')('/rest/v1/rpc/sc_tm_deposit_reminder',{method:'POST',body:{p_tenant:TENANT,p_case:caseId,p_expected:record.revision,p_draft:{text:'x'},p_proof:{scope:'test-mailbox-deposit-reminder-v1',checkedAt:new Date().toISOString(),attestation:'0'.repeat(64)}}});
   await assert.rejects(raw(),/DB|FORBIDDEN/);
   // Deposit received afterwards still works.
-  const after=(await db.query("select count(*)::int n from sc_audit where case_id=$1 and kind='tm_deposit_reminder'",[caseId])).rows[0].n;assert.equal(after,1);
+  const kinds=(await db.query("select kind from sc_audit where case_id=$1 and kind like 'tm_deposit_reminder%' order by revision",[caseId])).rows.map(r=>r.kind);
+  assert.deepEqual(kinds,['tm_deposit_reminder_first','tm_deposit_reminder_final']);
  }finally{await db.close();}
 });
 
-test('reminder text: 4 languages, booking number, amount and Hungarian-time deadline; window = last 2 days, once',()=>{
+test('reminder text: 4 languages, booking number, amount and Hungarian-time deadline; first and final windows, each once',async()=>{
  const values={name:'Teszt Lili',arrival:'2027-07-05',departure:'2027-07-08',unit:'Családi'};
  const booking={status:'finalized',deposit:{amount:90750,deadlineUtc:'2026-11-30T21:13:21.000Z'}};
  const hu=buildDepositReminder({values,booking,bookingNumber:'SC-D3BE7E9BC94D1838'});
@@ -105,6 +120,19 @@ test('reminder text: 4 languages, booking number, amount and Hungarian-time dead
  assert.match(hu,/Foglaló: 90 750 Ft/);assert.match(hu,/Határidő: 2026\.11\.30\. 22:13 \(magyarországi idő\)/);
  for(const [lang,re] of [['de',/Anzahlung: 90 750 HUF/],['en',/Deposit: 90 750 HUF/],['si',/Predplačilo: 90 750 HUF/]])assert.match(buildDepositReminder({values,booking,language:lang}),re);
  const t=Date.parse(booking.deposit.deadlineUtc);
- assert.equal(reminderDue(booking,t-3*86400000),false);assert.equal(reminderDue(booking,t-86400000),true);assert.equal(reminderDue(booking,t+1),false);
- assert.equal(reminderDue({...booking,depositReminder:{preparedAt:'x'}},t-86400000),false);assert.equal(reminderDue({...booking,status:'deposit_received'},t-86400000),false);
+ const {reminderKind}=await import('../shared-core/server-deposit-reminder.mjs');
+ assert.equal(reminderKind(booking,t-3*86400000),null);assert.equal(reminderKind(booking,t-86400000),'first');
+ assert.equal(reminderKind(booking,Date.parse('2026-11-30T07:00:00Z')),'final','same Budapest day');
+ assert.equal(reminderKind(booking,t+1),'final');assert.equal(reminderKind(booking,t+13*3600000),null);
+ assert.equal(reminderKind({...booking,depositReminder:{preparedAt:'x'}},t-86400000),null);assert.equal(reminderKind({...booking,depositReminder:{preparedAt:'x'}},t+1),'final');
+ assert.equal(reminderKind({...booking,depositReminderFinal:{preparedAt:'x'}},t+1),null);assert.equal(reminderDue({...booking,status:'deposit_received'},t-86400000),false);
+ const fin=buildDepositReminder({values,booking,kind:'final',nowMs:t-3600000});
+ assert.match(fin,/a foglaló befizetési határideje ma lejár\./);assert.match(fin,/Kérjük, ha még nem tette meg, utalja el a foglalót/);
+});
+
+test('chat/phone case: the reminder subjects say what they are (first / final)',()=>{
+ const rec=kind=>({caseId:'tm-1a1a32e75c490832',data:{state:{approval:'approved_internal',values:{email:'sarberkito@gmail.com',language:'hu'}},sourceReceipt:{provider:'chat'},
+  booking:{status:'finalized'},drafts:[{text:'x',depositReminder:true,reminderKind:kind}],internalApproval:{scope:'test-mailbox-v1',draftHash:createHash('sha256').update('x','utf8').digest('hex')}}});
+ assert.equal(approvedTestMailboxReply(rec('first')).subject,'Sárberki Horgásztó – emlékeztető: foglaló');
+ assert.equal(approvedTestMailboxReply(rec('final')).subject,'Sárberki Horgásztó – ma lejár a foglaló határideje');
 });

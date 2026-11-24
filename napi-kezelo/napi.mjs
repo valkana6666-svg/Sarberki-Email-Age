@@ -225,7 +225,7 @@ async function resume(){
   if(saved&&emailReader.restoreSnapshot(saved))reloadedAfterSwitch=false;
   else dropState();
   if(reloadedAfterSwitch){reloadedAfterSwitch=false;el('email-status').textContent='Az alkalmazásváltás közben a böngésző újratöltötte az oldalt. A leveleket és a helyi AI-javaslatot biztonsági okból nem tároljuk, ezért olvassa be újra a leveleket.';}
-  await loadCases({selectAvailable:true});
+  await loadCases({selectAvailable:true});openLinkedCase();
  }catch(error){if(turn===epoch)failed(error);}
 }
 el('login').addEventListener('submit',async event=>{
@@ -235,7 +235,7 @@ el('login').addEventListener('submit',async event=>{
  el('password').value='';emailReader.clear();resetChat();session.clear();clearData();const turn=epoch;
  sessionUI(false,'Bejelentkezés ellenőrzése…');
  try{dropState();rememberKey(await session.login(email,password));if(turn===epoch&&document.visibilityState!=='hidden'){
-  sessionUI(true,'Bejelentkezve.');await loadCases({selectAvailable:true});
+  sessionUI(true,'Bejelentkezve.');await loadCases({selectAvailable:true});openLinkedCase();
  }}
  catch(error){if(turn===epoch)failed(error);}
 });
@@ -669,6 +669,14 @@ async function tmMutate(kind){
   if(error.message==='AUTH_REQUIRED')failed(error);
   else {clearDetail();el('list-status').textContent=error.message==='FORBIDDEN'?'A művelethez nincs megfelelő jogosultság.':'A mentés eredménye nem igazolt, vagy a foglalás közben megváltozott. Töltse be újra; nincs automatikus ismétlés.';}
  }}finally{actionBusy=false;}
+}
+// Owner 2026-11-24: a Pushover link (?case=tm-…) opens that booking right after sign-in, once.
+let linkedCase=(()=>{try{const c=new URLSearchParams(location.search).get('case');return /^tm-[a-f0-9]{12,32}$/.test(c||'')?c:null;}catch{return null;}})();
+function openLinkedCase(){
+ const id=linkedCase;if(!id||!authenticated)return;linkedCase=null;
+ const row=rows.find(r=>r.caseId===id);
+ if(row&&sections[row.category]){const tile=document.querySelector('[data-section="'+row.category+'"]');if(tile)tile.click();}
+ void openCase(id);
 }
 async function openCase(caseId){
  if(!authenticated||actionBusy)return;

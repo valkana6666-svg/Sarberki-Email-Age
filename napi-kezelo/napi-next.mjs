@@ -21,14 +21,16 @@ export function nextStepFor(record,{sendable=false,now=Date.now()}={}){
  if(status==='deposit_received')return {kind:'handoff',label:null,ask:null,
   info:'✅ A foglaló beérkezett – a foglalás lezárva'+(b?.unit?' ('+b.unit+'. egység)':'')+'. A többi (számla, módosítás, lemondás) a Previóban.'};
  // Owner 2026-11-23: in the last 2 days before the deadline the guest gets a reminder (one click, e-mail needed).
- if(status==='finalized'&&record.reminderDue===true&&sendable)return {kind:'reminder',label:'Emlékeztető küldése a vendégnek',
-  ask:'Elküldöd a vendégnek az emlékeztetőt, hogy 2 napon belül lejár a foglaló határideje? (Egy foglaláshoz csak egyszer.)',
-  info:'⏳ 2 napon belül lejár a foglaló határideje, és még nincs megjelölve. Küldj emlékeztetőt a vendégnek.'+
+ // Owner 2026-11-24: two reminders – 2 days before and on the deadline day.
+ const fin=record.reminderKind==='final';
+ if(status==='finalized'&&record.reminderDue===true&&sendable)return {kind:'reminder',label:fin?'Utolsó emlékeztető küldése (ma lejár)':'Emlékeztető küldése a vendégnek',
+  ask:fin?'Elküldöd a vendégnek az utolsó emlékeztetőt, hogy ma lejár a foglaló határideje?':'Elküldöd a vendégnek az emlékeztetőt, hogy 2 napon belül lejár a foglaló határideje?',
+  info:(fin?'⚠️ Ma lejár a foglaló határideje, és még nincs megjelölve. Küldd el az utolsó emlékeztetőt a vendégnek.':'⏳ 2 napon belül lejár a foglaló határideje, és még nincs megjelölve. Küldj emlékeztetőt a vendégnek.')+
    (depositNotice(b?.deposit?.deadlineUtc,now)?'\n'+depositNotice(b.deposit.deadlineUtc,now).text:'')+'\nHa a foglaló már megjött: „Teljes nézet” → Foglaló beérkezett.'};
  if(status==='finalized'&&record.canMarkDeposit===true)return {kind:'deposit',label:'Foglaló beérkezett',
   ask:'Megérkezett a foglaló? A mai dátummal rögzítem, és a foglalás a „Lezárt foglalások” közé kerül.',
   info:'✅ A foglalás rögzítve a Previóban'+(b?.unit?' ('+b.unit+'. egység)':'')+'. Ha megérkezett a foglaló, nyomd meg a gombot.'+
-   (depositNotice(b?.deposit?.deadlineUtc,now)?'\n'+depositNotice(b.deposit.deadlineUtc,now).text:'')+(record.reminderSent?'\n📧 Emlékeztető elküldve.':'')};
+   (depositNotice(b?.deposit?.deadlineUtc,now)?'\n'+depositNotice(b.deposit.deadlineUtc,now).text:'')+(record.reminderSent?'\n📧 1. emlékeztető elküldve.':'')+(record.reminderFinalSent?'\n📧 Utolsó emlékeztető elküldve.':'')};
  if(status==='finalized')return {kind:'handoff',label:null,ask:null,
   info:'✅ A foglalás rögzítve a Previóban'+(b?.unit?' ('+b.unit+'. egység)':'')+'. Innen a Previóban folytasd: adatok ellenőrzése/javítása, voucher, díjbekérő, előleg- és végszámla.'};
  if(record.canOneClick===true&&!['finalized','deposit_received','cancelled'].includes(status)&&intent)

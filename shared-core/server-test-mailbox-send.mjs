@@ -36,7 +36,9 @@ export function approvedTestMailboxReply(record){
   // Owner 2026-11-15: a booked case's letter is a confirmation, so its subject says so (an offer keeps "request").
   const booked=['finalized','deposit_received'].includes(data?.booking?.status);
   // Owner 2026-11-23: the deposit reminder says what it is.
-  const subject=latest?.depositReminder===true?({de:'Sárberki Horgásztó – Erinnerung: Anzahlung',en:'Sárberki Horgásztó – reminder: deposit',si:'Sárberki Horgásztó – opomnik: predplačilo'}[lang]||'Sárberki Horgásztó – emlékeztető: foglaló')
+  const subject=latest?.depositReminder===true?(latest.reminderKind==='final'
+    ?({de:'Sárberki Horgásztó – Anzahlungsfrist heute',en:'Sárberki Horgásztó – deposit due today',si:'Sárberki Horgásztó – rok za predplačilo danes'}[lang]||'Sárberki Horgásztó – ma lejár a foglaló határideje')
+    :({de:'Sárberki Horgásztó – Erinnerung: Anzahlung',en:'Sárberki Horgásztó – reminder: deposit',si:'Sárberki Horgásztó – opomnik: predplačilo'}[lang]||'Sárberki Horgásztó – emlékeztető: foglaló'))
    :booked?({de:'Sárberki Horgásztó – Buchungsbestätigung',en:'Sárberki Horgásztó – booking confirmation',si:'Sárberki Horgásztó – potrditev rezervacije'}[lang]||'Sárberki Horgásztó – foglalása visszaigazolva')
    :({de:'Sárberki Horgásztó – Ihre Anfrage',en:'Sárberki Horgásztó – your request',si:'Sárberki Horgásztó – vaše povpraševanje'}[lang]||'Sárberki Horgásztó – foglalási igénye');
   return {mode:'new',recipient,text:latest.text,threadId:null,inReplyTo:null,subject,marker:record.caseId+':'+sha(latest.text),draftHash:sha(latest.text)};

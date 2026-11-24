@@ -6,6 +6,12 @@
 // Later (Previo Hotel.getPayments right): a payment recorded in Previo will also close the case and skip the alert.
 const HOUR=3600000;
 const dot=d=>/^\d{4}-\d{2}-\d{2}$/.test(String(d||''))?String(d).replaceAll('-','.')+'.':null;
+// 08:00 Budapest time on the Budapest calendar day of ms (DST-safe: find the UTC hour that is 8 o'clock there).
+function budapestAt8(ms){
+ const day=new Date(ms).toLocaleDateString('en-CA',{timeZone:'Europe/Budapest'});
+ for(const h of [6,7]){const c=Date.parse(day+'T0'+h+':00:00Z');if(new Date(c).toLocaleString('en-GB',{timeZone:'Europe/Budapest',hour:'2-digit',hourCycle:'h23'})==='08')return c;}
+ return Date.parse(day+'T07:00:00Z');
+}
 const when=ms=>new Date(ms).toLocaleString('hu-HU',{timeZone:'Europe/Budapest',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
 
 export function depositAlerts(rows,nowMs=Date.now()){
@@ -13,12 +19,15 @@ export function depositAlerts(rows,nowMs=Date.now()){
  for(const r of Array.isArray(rows)?rows:[]){
   const t=Date.parse(r?.deadlineUtc||'');if(Number.isNaN(t))continue;
   const left=t-nowMs;
-  const kind=left>47*HOUR&&left<=48*HOUR?'soon':left<=0&&left>-HOUR?'overdue':null;
+  // Owner 2026-11-24: the second alert on the deadline DAY so the staff can still send the same-day reminder: at
+  // 08:00 Budapest that day, or 12 h before the deadline if it is earlier than 09:00.
+  const morning=budapestAt8(t),dayAlert=t-morning>=HOUR?morning:t-12*HOUR;
+  const kind=left>47*HOUR&&left<=48*HOUR?'soon':nowMs>=dayAlert&&nowMs<dayAlert+HOUR?'today':null;
   if(!kind)continue;
   const stay=[String(r.unit||'').slice(0,30),dot(r.arrival)&&dot(r.departure)?dot(r.arrival)+' – '+dot(r.departure):null].filter(Boolean).join(', ');
   out.push({caseId:String(r.caseId||''),kind,text:kind==='soon'
    ?`⏳ A foglaló 2 nap múlva lejár – ${stay}${stay.endsWith('.')?'':'.'} Határidő: ${when(t)}. Ha megjött, a napi kezelőben: „Foglaló beérkezett”; ha nem, küldhetsz emlékeztetőt a vendégnek.`
-   :`⚠️ Lejárt a foglaló határideje (${when(t)}) – ${stay}${stay.endsWith('.')?'':'.'} Még nincs megjelölve: ellenőrizd az utalást, vagy egyeztess a vendéggel.`});
+   :`⚠️ Ma lejár a foglaló határideje (${when(t)}) – ${stay}${stay.endsWith('.')?'':'.'} Még nincs megjelölve. Ha megjött: „Foglaló beérkezett”; ha nem, küldd el a vendégnek az utolsó emlékeztetőt.`});
  }
  return out;
 }

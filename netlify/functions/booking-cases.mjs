@@ -23,7 +23,7 @@ import {previoUnitChecker,previoOwnBookingFinder} from '../../shared-core/server
 import {voucherFor} from '../../shared-core/server-previo-reservation-write.mjs';
 import {PREVIO_LIVE_753011} from '../../shared-core/previo-booking-intent.mjs';
 import {liveAvailabilityReader,liveAvailabilityLine} from '../../shared-core/server-previo-live-view.mjs';
-import {prepareDepositReminder,reminderDue} from '../../shared-core/server-deposit-reminder.mjs';
+import {prepareDepositReminder,reminderDue,reminderKind} from '../../shared-core/server-deposit-reminder.mjs';
 import {previoGuestHistoryChecker} from '../../shared-core/server-previo-guest-history.mjs';
 import {readPrevioCaseStatus,previoCaseView,previoStatusLine} from '../../shared-core/server-previo-status.mjs';
 import {applyReturningDiscount,returningGuestLine} from '../../shared-core/returning-guest.mjs';
@@ -189,7 +189,8 @@ function testMailboxView(record,authority,tenant='sarberki-test',previoRead=fals
   canEditContact:permissions.includes('write')&&!['finalized','deposit_received'].includes(data.booking?.status),
   canMarkDeposit:permissions.includes('write')&&data.booking?.status==='finalized',
   // Owner 2026-11-23: the guest reminder is offered in the last 2 days before the deposit deadline (once).
-  reminderDue:permissions.includes('write')&&permissions.includes('approve')&&reminderDue(data.booking),reminderSent:!!data.booking?.depositReminder,
+  reminderDue:permissions.includes('write')&&permissions.includes('approve')&&reminderDue(data.booking),reminderKind:reminderKind(data.booking),
+  reminderSent:!!data.booking?.depositReminder,reminderFinalSent:!!data.booking?.depositReminderFinal,
   canCancelBooking:permissions.includes('write')&&['finalized','deposit_received'].includes(data.booking?.status),
   canModifyBooking:permissions.includes('write')&&['finalized','deposit_received'].includes(data.booking?.status)&&/^V2-\d+$/.test(data.booking?.previo?.reference||'')&&!Array.isArray(data.booking?.units)&&previoWrite===true};
 }
