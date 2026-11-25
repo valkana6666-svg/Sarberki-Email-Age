@@ -1,0 +1,1218 @@
+{
+ "build": "0cba1e5ad3ca0eda091efe448631056b6e2d5c6e",
+ "page": "https://leafy-chimera-2403e5.netlify.app/sarberki-chatbot-project/",
+ "data": "fictional only; request form never submitted (intake endpoints blocked in the browser)",
+ "conversations": 100,
+ "turns": 877,
+ "pass": 100,
+ "perLanguage": {
+  "hu": {
+   "conversations": 25,
+   "pass": 25,
+   "offers": 55,
+   "offersAvailable": 51,
+   "assistCalls": 66,
+   "assistAnswered": 58
+  },
+  "de": {
+   "conversations": 25,
+   "pass": 25,
+   "offers": 59,
+   "offersAvailable": 57,
+   "assistCalls": 82,
+   "assistAnswered": 77
+  },
+  "en": {
+   "conversations": 25,
+   "pass": 25,
+   "offers": 48,
+   "offersAvailable": 45,
+   "assistCalls": 76,
+   "assistAnswered": 69
+  },
+  "si": {
+   "conversations": 25,
+   "pass": 25,
+   "offers": 58,
+   "offersAvailable": 57,
+   "assistCalls": 56,
+   "assistAnswered": 51
+  }
+ },
+ "results": [
+  {
+   "id": "HU-01",
+   "lang": "hu",
+   "turns": 16,
+   "offers": 2,
+   "available": 2,
+   "assist": 8,
+   "assistAnswered": 6,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-02",
+   "lang": "hu",
+   "turns": 18,
+   "offers": 3,
+   "available": 1,
+   "assist": 8,
+   "assistAnswered": 7,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-03",
+   "lang": "hu",
+   "turns": 19,
+   "offers": 3,
+   "available": 3,
+   "assist": 9,
+   "assistAnswered": 7,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-04",
+   "lang": "hu",
+   "turns": 16,
+   "offers": 3,
+   "available": 3,
+   "assist": 7,
+   "assistAnswered": 6,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-05",
+   "lang": "hu",
+   "turns": 19,
+   "offers": 4,
+   "available": 4,
+   "assist": 8,
+   "assistAnswered": 6,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-06",
+   "lang": "hu",
+   "turns": 7,
+   "offers": 2,
+   "available": 2,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-07",
+   "lang": "hu",
+   "turns": 6,
+   "offers": 2,
+   "available": 2,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-08",
+   "lang": "hu",
+   "turns": 6,
+   "offers": 1,
+   "available": 1,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-09",
+   "lang": "hu",
+   "turns": 6,
+   "offers": 2,
+   "available": 2,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-10",
+   "lang": "hu",
+   "turns": 8,
+   "offers": 1,
+   "available": 1,
+   "assist": 3,
+   "assistAnswered": 3,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-11",
+   "lang": "hu",
+   "turns": 6,
+   "offers": 2,
+   "available": 2,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-12",
+   "lang": "hu",
+   "turns": 3,
+   "offers": 1,
+   "available": 1,
+   "assist": 0,
+   "assistAnswered": 0,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-13",
+   "lang": "hu",
+   "turns": 5,
+   "offers": 2,
+   "available": 2,
+   "assist": 0,
+   "assistAnswered": 0,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-14",
+   "lang": "hu",
+   "turns": 6,
+   "offers": 2,
+   "available": 2,
+   "assist": 0,
+   "assistAnswered": 0,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-15",
+   "lang": "hu",
+   "turns": 6,
+   "offers": 2,
+   "available": 2,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-16",
+   "lang": "hu",
+   "turns": 8,
+   "offers": 2,
+   "available": 2,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-17",
+   "lang": "hu",
+   "turns": 9,
+   "offers": 3,
+   "available": 3,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-18",
+   "lang": "hu",
+   "turns": 8,
+   "offers": 2,
+   "available": 1,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-19",
+   "lang": "hu",
+   "turns": 9,
+   "offers": 3,
+   "available": 3,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-20",
+   "lang": "hu",
+   "turns": 9,
+   "offers": 3,
+   "available": 2,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-21",
+   "lang": "hu",
+   "turns": 6,
+   "offers": 4,
+   "available": 4,
+   "assist": 0,
+   "assistAnswered": 0,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-22",
+   "lang": "hu",
+   "turns": 7,
+   "offers": 2,
+   "available": 2,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-23",
+   "lang": "hu",
+   "turns": 7,
+   "offers": 2,
+   "available": 2,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-24",
+   "lang": "hu",
+   "turns": 6,
+   "offers": 1,
+   "available": 1,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "HU-25",
+   "lang": "hu",
+   "turns": 4,
+   "offers": 1,
+   "available": 1,
+   "assist": 0,
+   "assistAnswered": 0,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-01",
+   "lang": "de",
+   "turns": 18,
+   "offers": 2,
+   "available": 2,
+   "assist": 9,
+   "assistAnswered": 8,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-02",
+   "lang": "de",
+   "turns": 21,
+   "offers": 4,
+   "available": 4,
+   "assist": 10,
+   "assistAnswered": 9,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-03",
+   "lang": "de",
+   "turns": 17,
+   "offers": 2,
+   "available": 2,
+   "assist": 9,
+   "assistAnswered": 8,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-04",
+   "lang": "de",
+   "turns": 19,
+   "offers": 4,
+   "available": 4,
+   "assist": 9,
+   "assistAnswered": 8,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-05",
+   "lang": "de",
+   "turns": 18,
+   "offers": 3,
+   "available": 3,
+   "assist": 8,
+   "assistAnswered": 7,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-06",
+   "lang": "de",
+   "turns": 5,
+   "offers": 2,
+   "available": 2,
+   "assist": 0,
+   "assistAnswered": 0,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-07",
+   "lang": "de",
+   "turns": 5,
+   "offers": 1,
+   "available": 1,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-08",
+   "lang": "de",
+   "turns": 7,
+   "offers": 2,
+   "available": 2,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-09",
+   "lang": "de",
+   "turns": 9,
+   "offers": 3,
+   "available": 3,
+   "assist": 3,
+   "assistAnswered": 3,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-10",
+   "lang": "de",
+   "turns": 6,
+   "offers": 4,
+   "available": 4,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-11",
+   "lang": "de",
+   "turns": 7,
+   "offers": 2,
+   "available": 2,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-12",
+   "lang": "de",
+   "turns": 7,
+   "offers": 2,
+   "available": 2,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-13",
+   "lang": "de",
+   "turns": 7,
+   "offers": 1,
+   "available": 1,
+   "assist": 3,
+   "assistAnswered": 3,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-14",
+   "lang": "de",
+   "turns": 9,
+   "offers": 3,
+   "available": 3,
+   "assist": 3,
+   "assistAnswered": 3,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-15",
+   "lang": "de",
+   "turns": 6,
+   "offers": 1,
+   "available": 1,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-16",
+   "lang": "de",
+   "turns": 5,
+   "offers": 1,
+   "available": 1,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-17",
+   "lang": "de",
+   "turns": 10,
+   "offers": 4,
+   "available": 3,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-18",
+   "lang": "de",
+   "turns": 8,
+   "offers": 2,
+   "available": 2,
+   "assist": 4,
+   "assistAnswered": 4,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-19",
+   "lang": "de",
+   "turns": 7,
+   "offers": 3,
+   "available": 3,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-20",
+   "lang": "de",
+   "turns": 11,
+   "offers": 4,
+   "available": 4,
+   "assist": 3,
+   "assistAnswered": 3,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-21",
+   "lang": "de",
+   "turns": 5,
+   "offers": 1,
+   "available": 1,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-22",
+   "lang": "de",
+   "turns": 6,
+   "offers": 2,
+   "available": 2,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-23",
+   "lang": "de",
+   "turns": 6,
+   "offers": 2,
+   "available": 1,
+   "assist": 0,
+   "assistAnswered": 0,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-24",
+   "lang": "de",
+   "turns": 9,
+   "offers": 3,
+   "available": 3,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "DE-25",
+   "lang": "de",
+   "turns": 5,
+   "offers": 1,
+   "available": 1,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-01",
+   "lang": "en",
+   "turns": 18,
+   "offers": 3,
+   "available": 3,
+   "assist": 9,
+   "assistAnswered": 8,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-02",
+   "lang": "en",
+   "turns": 19,
+   "offers": 2,
+   "available": 2,
+   "assist": 9,
+   "assistAnswered": 7,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-03",
+   "lang": "en",
+   "turns": 17,
+   "offers": 3,
+   "available": 3,
+   "assist": 8,
+   "assistAnswered": 7,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-04",
+   "lang": "en",
+   "turns": 18,
+   "offers": 3,
+   "available": 3,
+   "assist": 8,
+   "assistAnswered": 7,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-05",
+   "lang": "en",
+   "turns": 18,
+   "offers": 3,
+   "available": 3,
+   "assist": 8,
+   "assistAnswered": 7,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-06",
+   "lang": "en",
+   "turns": 4,
+   "offers": 1,
+   "available": 1,
+   "assist": 0,
+   "assistAnswered": 0,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-07",
+   "lang": "en",
+   "turns": 8,
+   "offers": 3,
+   "available": 2,
+   "assist": 3,
+   "assistAnswered": 3,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-08",
+   "lang": "en",
+   "turns": 8,
+   "offers": 3,
+   "available": 2,
+   "assist": 3,
+   "assistAnswered": 3,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-09",
+   "lang": "en",
+   "turns": 6,
+   "offers": 1,
+   "available": 1,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-10",
+   "lang": "en",
+   "turns": 5,
+   "offers": 1,
+   "available": 1,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-11",
+   "lang": "en",
+   "turns": 6,
+   "offers": 2,
+   "available": 2,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-12",
+   "lang": "en",
+   "turns": 8,
+   "offers": 2,
+   "available": 2,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-13",
+   "lang": "en",
+   "turns": 6,
+   "offers": 1,
+   "available": 1,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-14",
+   "lang": "en",
+   "turns": 5,
+   "offers": 1,
+   "available": 1,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-15",
+   "lang": "en",
+   "turns": 8,
+   "offers": 3,
+   "available": 3,
+   "assist": 3,
+   "assistAnswered": 3,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-16",
+   "lang": "en",
+   "turns": 7,
+   "offers": 3,
+   "available": 3,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-17",
+   "lang": "en",
+   "turns": 8,
+   "offers": 3,
+   "available": 2,
+   "assist": 3,
+   "assistAnswered": 3,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-18",
+   "lang": "en",
+   "turns": 6,
+   "offers": 1,
+   "available": 1,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-19",
+   "lang": "en",
+   "turns": 7,
+   "offers": 2,
+   "available": 2,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-20",
+   "lang": "en",
+   "turns": 7,
+   "offers": 1,
+   "available": 1,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-21",
+   "lang": "en",
+   "turns": 5,
+   "offers": 1,
+   "available": 1,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-22",
+   "lang": "en",
+   "turns": 6,
+   "offers": 1,
+   "available": 1,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-23",
+   "lang": "en",
+   "turns": 4,
+   "offers": 1,
+   "available": 1,
+   "assist": 1,
+   "assistAnswered": 0,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-24",
+   "lang": "en",
+   "turns": 8,
+   "offers": 2,
+   "available": 2,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "EN-25",
+   "lang": "en",
+   "turns": 4,
+   "offers": 1,
+   "available": 1,
+   "assist": 0,
+   "assistAnswered": 0,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-01",
+   "lang": "si",
+   "turns": 17,
+   "offers": 3,
+   "available": 3,
+   "assist": 8,
+   "assistAnswered": 7,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-02",
+   "lang": "si",
+   "turns": 18,
+   "offers": 4,
+   "available": 4,
+   "assist": 6,
+   "assistAnswered": 5,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-03",
+   "lang": "si",
+   "turns": 18,
+   "offers": 5,
+   "available": 5,
+   "assist": 7,
+   "assistAnswered": 6,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-04",
+   "lang": "si",
+   "turns": 17,
+   "offers": 3,
+   "available": 3,
+   "assist": 7,
+   "assistAnswered": 6,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-05",
+   "lang": "si",
+   "turns": 20,
+   "offers": 3,
+   "available": 3,
+   "assist": 9,
+   "assistAnswered": 8,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-06",
+   "lang": "si",
+   "turns": 5,
+   "offers": 2,
+   "available": 2,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-07",
+   "lang": "si",
+   "turns": 6,
+   "offers": 2,
+   "available": 2,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-08",
+   "lang": "si",
+   "turns": 4,
+   "offers": 1,
+   "available": 1,
+   "assist": 0,
+   "assistAnswered": 0,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-09",
+   "lang": "si",
+   "turns": 5,
+   "offers": 1,
+   "available": 1,
+   "assist": 0,
+   "assistAnswered": 0,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-10",
+   "lang": "si",
+   "turns": 9,
+   "offers": 3,
+   "available": 3,
+   "assist": 3,
+   "assistAnswered": 3,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-11",
+   "lang": "si",
+   "turns": 5,
+   "offers": 1,
+   "available": 1,
+   "assist": 0,
+   "assistAnswered": 0,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-12",
+   "lang": "si",
+   "turns": 6,
+   "offers": 2,
+   "available": 2,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-13",
+   "lang": "si",
+   "turns": 5,
+   "offers": 3,
+   "available": 3,
+   "assist": 0,
+   "assistAnswered": 0,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-14",
+   "lang": "si",
+   "turns": 7,
+   "offers": 3,
+   "available": 2,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-15",
+   "lang": "si",
+   "turns": 6,
+   "offers": 3,
+   "available": 3,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-16",
+   "lang": "si",
+   "turns": 7,
+   "offers": 2,
+   "available": 2,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-17",
+   "lang": "si",
+   "turns": 6,
+   "offers": 2,
+   "available": 2,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-18",
+   "lang": "si",
+   "turns": 5,
+   "offers": 1,
+   "available": 1,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-19",
+   "lang": "si",
+   "turns": 7,
+   "offers": 4,
+   "available": 4,
+   "assist": 0,
+   "assistAnswered": 0,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-20",
+   "lang": "si",
+   "turns": 5,
+   "offers": 1,
+   "available": 1,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-21",
+   "lang": "si",
+   "turns": 7,
+   "offers": 3,
+   "available": 3,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-22",
+   "lang": "si",
+   "turns": 5,
+   "offers": 1,
+   "available": 1,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-23",
+   "lang": "si",
+   "turns": 5,
+   "offers": 1,
+   "available": 1,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-24",
+   "lang": "si",
+   "turns": 7,
+   "offers": 2,
+   "available": 2,
+   "assist": 2,
+   "assistAnswered": 2,
+   "issues": [],
+   "ok": true
+  },
+  {
+   "id": "SI-25",
+   "lang": "si",
+   "turns": 6,
+   "offers": 2,
+   "available": 2,
+   "assist": 1,
+   "assistAnswered": 1,
+   "issues": [],
+   "ok": true
+  }
+ ],
+ "examples": {
+  "HU": [
+   {
+    "guest": "Foglalnánk csaladi hazat?",
+    "bot": "Családi faházra foglalási igényt küldhet a chatben vagy online: https://sarberkito.hu/foglalas/  \nKérjük, írja meg az érkezés és távozás dátumát, valamint a felnőttek és gyermekek számát; a szabad helyet a teljes időszakra ellenőrizzük. A foglalás csak külön visszaigazolás után érvényes.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)"
+   },
+   {
+    "guest": "június 8-12",
+    "bot": "Tisztelt Vendégünk!\n\nKöszönjük érdeklődését.\n\nSzállás\n2027.06.08. és 2027.06.12. között keresnek szállást.\nA kért háztípus: Családi.\n\nAz ajánlathoz még szükségünk van\nKérjük, írja meg, hány felnőtt érkezik.\nKérjük, írja meg, érkezik-e gyermek is. Ha igen, kérjük, adja meg a gyermek(ek) életkorát is.\n\nFoglalás állapota\nEz az érdeklődés még nem visszaigazolt foglalás. A szükséges adatok és a választ"
+   },
+   {
+    "guest": "2 felnőtt jön",
+    "bot": "Jó hír: 2027.06.08. – 2027.06.12. között (4 éj, 2 fő: 2 felnőtt) a kért háztípusban (Családi) jelenleg van szabad hely.\nÁr: 224 400 Ft (szállásdíj 220 000 Ft + idegenforgalmi adó 4 400 Ft).\nFoglaló: a szállásdíj 50%-a, 110 000 Ft, banki átutalással; a pontos határidőt a visszaigazolásban küldjük.\nLemondás: az érkezés előtt legalább 14 nappal díjmentes, a foglaló nem vész el.\nA dézsát és más szolgá"
+   },
+   {
+    "guest": "Inkább deluxe házat kérnénk",
+    "bot": "Sajnos 2027.06.08. – 2027.06.12. között a kért háztípusban (Deluxe) nincs szabad hely.\nUgyanerre az időszakra szabad: VIP – 256 400 Ft; Családi – 224 400 Ft; Osztott C – 188 400 Ft. Ha valamelyik megfelel, írja meg a háztípust, és elkészítjük az ajánlatot."
+   }
+  ],
+  "DE": [
+   {
+    "guest": "18.06.-20.06.2027 wir sind 3 Erwachsene mit 1 Kind, 4 Jahre alt",
+    "bot": "Guten Tag!\n\nVielen Dank für Ihre Anfrage. Sie möchten vom 18.06.2027 bis 20.06.2027 mit 4 Personen (3 Erwachsene und 1 Kind im Alter von 4 Jahren) bei uns übernachten. Für Sie kommen diese Häuser infrage: Deluxe, Familienhaus oder VIP.\n\nBitte teilen Sie uns mit:\n– welchen Haustyp Sie wählen.\n\nDanach prüfen wir die Verfügbarkeit und senden Ihnen das Angebot mit Preis.\n\nMit freundlichen Grüßen\nSárbe"
+   },
+   {
+    "guest": "Hätten Sie das Familienhaus frei?",
+    "bot": "Gute Nachricht: Familienhaus ist vom 2027.06.18. bis 2027.06.20. (2 Nächte, 4 Personen: 3 Erwachsene, 1 Kinder) derzeit frei.\nPreis: 113 300 Ft (Unterkunft 110 000 Ft + Kurtaxe 3 300 Ft).\nAnzahlung: 50% des Unterkunftspreises, 55 000 Ft, per Banküberweisung; die genaue Frist senden wir mit der Bestätigung.\nStornierung: bis 14 Tage vor Anreise kostenlos, die Anzahlung verfällt nicht.\nBadezuber und "
+   },
+   {
+    "guest": "Hund erlaubt und gibt es Parkplätze?",
+    "bot": "Hunde sind erlaubt; die Gebühr beträgt 2.000 Ft pro Tag und Tier. Parkplätze sind vorhanden, bei größeren Gruppen bitten wir um vorherige Abstimmung.\n\n(Automatische Auskunft – Details bestätigt unser Team gerne.)"
+   },
+   {
+    "guest": "Entschuldigung, lieber vom 20. bis 22. Juni",
+    "bot": "Gute Nachricht: Familienhaus ist vom 2027.06.20. bis 2027.06.22. (2 Nächte, 4 Personen: 3 Erwachsene, 1 Kinder) derzeit frei.\nPreis: 113 300 Ft (Unterkunft 110 000 Ft + Kurtaxe 3 300 Ft).\nAnzahlung: 50% des Unterkunftspreises, 55 000 Ft, per Banküberweisung; die genaue Frist senden wir mit der Bestätigung.\nStornierung: bis 14 Tage vor Anreise kostenlos, die Anzahlung verfällt nicht.\nBadezuber und "
+   }
+  ],
+  "EN": [
+   {
+    "guest": "Hello, Do you have the VIP apartment available? arriving August 2 for 2 nights, 3 adults.",
+    "bot": "Good news: the VIP is currently free from 2027.08.02. to 2027.08.04. (2 nights, 3 guests: 3 adults).\nPrice: 141 900 HUF (accommodation 138 600 HUF + tourist tax 3 300 HUF).\nDeposit: 50% of the accommodation price, 69 300 HUF, by bank transfer; the exact deadline comes with the confirmation.\nCancellation: free of charge up to 14 days before arrival, the deposit is not lost.\nThe hot tub and other se"
+   },
+   {
+    "guest": "How much is the deposit and when is it due?",
+    "bot": "The deposit amount depends on the number of guests, and its due date depends on how long remains before arrival. If more than 14 days remain, it is due within 7 days; if no more than 14 days remain, it is due within 24 hours, with the exact deadline confirmed separately.\n\n(Automatic information – our team will gladly confirm the details.)"
+   },
+   {
+    "guest": "How much is it in total?",
+    "bot": "Good news: the VIP is currently free from 2027.08.02. to 2027.08.04. (2 nights, 3 guests: 3 adults).\nPrice: 141 900 HUF (accommodation 138 600 HUF + tourist tax 3 300 HUF).\nDeposit: 50% of the accommodation price, 69 300 HUF, by bank transfer; the exact deadline comes with the confirmation.\nCancellation: free of charge up to 14 days before arrival, the deposit is not lost.\nThe hot tub and other se"
+   },
+   {
+    "guest": "Can I talk to a real person?",
+    "bot": "Of course, a member of our team will be glad to help. Please leave your phone number or e-mail address and we will get in touch."
+   }
+  ],
+  "SI": [
+   {
+    "guest": "Dober dan Želimo druzinsko hisko 19.7.-21.7.2027, nas je 2 odraslih.",
+    "bot": "Dobra novica: Družinska hiška je od 2027.07.19. do 2027.07.21. (2 noči, 2 oseb: 2 odraslih) trenutno prosta.\nCena: 123 200 Ft (nastanitev 121 000 Ft + turistična taksa 2 200 Ft).\nPredplačilo: 50% cene nastanitve, 60 500 Ft, z bančnim nakazilom; točen rok pošljemo s potrditvijo.\nOdpoved: brezplačno do 14 dni pred prihodom, predplačilo ni izgubljeno.\nMasažno kad in druge storitve uredimo posebej. Če"
+   },
+   {
+    "guest": "Oprostite, raje od 22. do 24. julija",
+    "bot": "Dobra novica: Družinska hiška je od 2027.07.22. do 2027.07.24. (2 noči, 2 oseb: 2 odraslih) trenutno prosta.\nCena: 123 200 Ft (nastanitev 121 000 Ft + turistična taksa 2 200 Ft).\nPredplačilo: 50% cene nastanitve, 60 500 Ft, z bančnim nakazilom; točen rok pošljemo s potrditvijo.\nOdpoved: brezplačno do 14 dni pred prihodom, predplačilo ni izgubljeno.\nMasažno kad in druge storitve uredimo posebej. Če"
+   },
+   {
+    "guest": "Radi bi najeli tudi masažno kad",
+    "bot": "Dobra novica: Družinska hiška je od 2027.07.22. do 2027.07.24. (2 noči, 2 oseb: 2 odraslih) trenutno prosta.\nCena: 123 200 Ft (nastanitev 121 000 Ft + turistična taksa 2 200 Ft).\nPredplačilo: 50% cene nastanitve, 60 500 Ft, z bančnim nakazilom; točen rok pošljemo s potrditvijo.\nOdpoved: brezplačno do 14 dni pred prihodom, predplačilo ni izgubljeno.\nMasažna kad: 30 000 Ft / 24 ur (do 6 oseb, nad te"
+   },
+   {
+    "guest": "Masažne kadi vseeno ne potrebujemo",
+    "bot": "Dobra novica: Družinska hiška je od 2027.07.22. do 2027.07.24. (2 noči, 2 oseb: 2 odraslih) trenutno prosta.\nCena: 123 200 Ft (nastanitev 121 000 Ft + turistična taksa 2 200 Ft).\nPredplačilo: 50% cene nastanitve, 60 500 Ft, z bančnim nakazilom; točen rok pošljemo s potrditvijo.\nOdpoved: brezplačno do 14 dni pred prihodom, predplačilo ni izgubljeno.\nMasažno kad in druge storitve uredimo posebej. Če"
+   }
+  ]
+ }
+}
