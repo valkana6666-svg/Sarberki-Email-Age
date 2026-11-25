@@ -181,7 +181,7 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
    // it replaces the "our team will help" line in place, only if nothing newer was said meanwhile.
    // Owner 2026-11-15 („tesztekkel bombázni”): every informational question (not only an unknown one) gets the
    // fact-bound model answer; the rule-based answer stays when the model has nothing approved to say.
-   if(assistProvider&&!result.decision){
+   if(assistProvider&&!result.decision&&!result.noAssist){
     const turn=session.turn,entry=log.lastElementChild,lang=session.language;
     assistProvider({message:question,language:lang}).then(answer=>{
      if(!answer||session.turn!==turn||log.lastElementChild!==entry)return;

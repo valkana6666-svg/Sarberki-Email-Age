@@ -89,7 +89,7 @@ export function requestFlagsFromText(text=''){
   text=activeMessageText(text);
   const pet=/(?:kuty\p{L}*|háziállat\p{L}*|dogs?|pets?|hund\p{L}*|haustier\p{L}*|\bpes\b|\bps(?:a|u|om|i|ov|oma)\b)/iu;
   const tub=/(?:dézs\p{L}*|dezsa\p{L}*|hot[ -]?tub|whirlpool|badefass|badezuber|jacuzzi|(?:vroč\p{L}*|masaž\p{L}*)\s*kad)/iu;
-  const negation=/(?<!\p{L})(?:nem|mégsem|megsem|nincs|nélkül|nelkul|not|no|without|kein\p{L}*|nicht|ohne|brez|ne)(?!\p{L})/iu;
+  const negation=/(?<!\p{L})(?:nem|mégsem|megsem|nincs|nélkül|nelkul|not|no|without|kein\p{L}*|nicht|ohne|brez|ne|\p{L}+n['’]t|dont|wont)(?!\p{L})/iu; // "we don't need the hot tub" (language test 2026-11-25)
   const requested=pattern=>{
     const mentions=text.split(/[.!?\n,;]|\b(?:de|but|aber|ampak)\b/iu).filter(s=>pattern.test(s)); // per clause: "gyerek nincs, a kutyát hoznánk" (sweep 2026-11-11)
     return mentions.length? !negation.test(mentions.at(-1)):false;
@@ -115,7 +115,7 @@ export function cabinFromText(text=''){
   if (/\b(?:családi|csaladi)\b/iu.test(text)
       || /\bfamily\s+(?:cabin|house|accommodation|unit)\b/iu.test(text)
       || /\b(?:familien(?:haus|hütte|unterkunft)|familien\s+(?:haus|unterkunft))\b/iu.test(text)
-      || /\bdružinsk\w*\s+(?:hišk\w*|koč\w*|nastanitev)\b/iu.test(text)) found.push('Családi');
+      || /(?<!\p{L})(?:družinsk|druzinsk)\p{L}*\s+(?:hišk|hisk|koč|koc|nastanitev)\p{L}*/iu.test(text)) found.push('Családi');
   // Owner iPhone test 2026-11-14: "Delux faházat" (no final e) and other everyday spellings are Deluxe too.
   if (/(?<!\p{L})del[uü](?:xe?|ksz)(?!\p{L})|(?<!\p{L})del[uü](?:xe?|ksz)(?:-?(?:ot|et|be|ba|ben|ban|re|ra|hez|hoz|ről|ról|t))(?!\p{L})/iu.test(text)) found.push('Deluxe');
   if (/\b(?:osztott|split|geteilte[rs]?|deljen[ai]?)\b/iu.test(text)) found.push('Osztott');
@@ -240,6 +240,9 @@ export function adultCountFromText(text=''){
   // "4 fő, ebből 2 gyerek" / "4 Personen, davon 2 Kinder" / "4 people, including 2 children": adults = total − children.
   const ofWhich=text.match(/\b(\d{1,2})\s*(?:fő|fo|személy\w*|szemely\w*|personen|people|persons|guests|oseb\w*)\s*,?\s*(?:ebből|ebbol|közülük|kozuluk|davon|including|of\s+whom|od\s+tega)\s*(\d{1,2})\s*(?:gyerek\w*|gyermek\w*|kinder\w*|children|kids|otrok\w*)/iu);
   if(ofWhich&&Number(ofWhich[1])>Number(ofWhich[2])) return Number(ofWhich[1])-Number(ofWhich[2]);
+  // Language test 2026-11-25: "4 fő, mind felnőtt" / "4 people, all adults" / "4 Personen, alle Erwachsene" / "4 osebe, vsi odrasli".
+  const allAdults=text.match(/(?<!\d)(\d{1,2})\s*(?:fő|fo|személy\w*|szemely\w*|personen|people|persons|guests|oseb\w*)(?!\p{L})[^.!?\n\d]{0,12}(?:mind(?:annyian)?|csak|all|alle|nur|vsi|samo)\s+(?:felnőtt|felnott|adults?|erwachsene|odrasl)/iu);
+  if(allAdults&&!/gyerek|gyermek|child|kid|kind|otro/iu.test(text)) return Number(allAdults[1]);
   const huWords={egy:1,két:2,ket:2,kettő:2,ketto:2,három:3,harom:3,négy:4,negy:4,öt:5,ot:5,hat:6,hét:7,het:7,nyolc:8};
   const hw=text.match(/\b(egy|két|ket|kettő|ketto|három|harom|négy|negy|öt|ot|hat|hét|het|nyolc)\s+(?:felnőtt|felnott)\w*\b/iu)?.[1]?.toLocaleLowerCase('hu-HU');
   if(hw) return huWords[hw];
@@ -332,6 +335,15 @@ function parseDateRange(text='', now=new Date(), timeZone='Europe/Budapest'){
       departure:`${europeanNumeric[6]}-${String(europeanNumeric[5]).padStart(2,'0')}-${String(europeanNumeric[4]).padStart(2,'0')}`,
       inferredYear:false
     };
+  }
+  // German/Slovene day.month with the year only at the end: "05.06.-09.06.2027", "8.6.-10.6.2027" (language test
+  // 2026-11-25: read as month.day before). A Hungarian writer puts the year first ("2027.06.05-06.09").
+  const euTrailingYear=text.match(/(?<![\d.])(\d{1,2})\.(\d{1,2})\.?\s*[-–—]\s*(\d{1,2})\.(\d{1,2})\.\s*(20\d{2})\b/u);
+  if(euTrailingYear){
+    const [startDay,startMonth,endDay,endMonth,endYear]=euTrailingYear.slice(1).map(Number);
+    if(startMonth<1||startMonth>12||endMonth<1||endMonth>12||startDay<1||startDay>31||endDay<1||endDay>31)return null;
+    const startYear=endYear-(endMonth<startMonth?1:0);
+    return {arrival:`${startYear}-${String(startMonth).padStart(2,'0')}-${String(startDay).padStart(2,'0')}`,departure:`${endYear}-${String(endMonth).padStart(2,'0')}-${String(endDay).padStart(2,'0')}`,inferredYear:false};
   }
   // Guest month.day dates: 11.26–11.28. or 2026.11.26–28.
   const monthDayRange=text.match(/\b(?:(20\d{2})[.\/-])?(\d{1,2})[.\/-](\d{1,2})\.?\s*[-–—]\s*(?:(\d{1,2})[.\/-])?(\d{1,2})\.?(?!\d)/iu);
@@ -531,11 +543,14 @@ function childAgesWithoutBabies(text=''){
   if(separate.length>1)return separate.map(m=>Number(m[1]));
   const ageList=text.match(/\b(?:aged|im\s+alter\s+von|star(?:a|i|e)?)\s+((?:\d{1,2})(?:\s*(?:,|and|und|in|és|es)\s*\d{1,2})*)/iu);
   if(ageList)return [...ageList[1].matchAll(/\d{1,2}/g)].map(m=>Number(m[0]));
+  // Language test 2026-11-25: "The kids are 8" / "The kids are 8 and 5" / "Die Kinder sind 6" (ages given later).
+  const areAges=text.match(/(?<!\p{L})(?:the\s+)?(?:kids|children|child|kid|die\s+kinder|das\s+kind|kinder)\s+(?:are|is|sind|ist)\s+((?:\d{1,2})(?:\s*(?:,|and|und)\s*\d{1,2})*)(?!\s*(?:fő|people|persons|personen))(?!\d)/iu);
+  if(areAges)return [...areAges[1].matchAll(/\d{1,2}/g)].map(m=>Number(m[0]));
   const segments=[
     text.match(/\baged\s+([^.!?]{1,120})/iu)?.[1],
     text.match(/\bim\s+alter\s+von\s+([^.!?]{1,120}?)(?=\s+jahren?\b|[.!?]|$)/iu)?.[1],
     text.match(/\bstar(?:a|i|e)?\s+([^.!?]{1,120}?)(?=\s+let\b|[.!?]|$)/iu)?.[1],
-    text.match(/\b(?:children|kids?|kinder|kindern|kind|gyerek\w*|gyermek\w*|(?:otrok|otroc)\w*)\b[^0-9.!?\n]{0,40}((?:\d{1,2}\s*(?:(?:,|and|und|in|és|es|meg)\s*)?){1,6})(?=\s*(?:years? old|years?|jahre(?:n)?(?: alt)?|évesek?|evesek?|let)\b)/iu)?.[1],
+    text.match(/\b(?:children|kids?|kinder|kindern|kind|gyerek\w*|gyermek\w*|(?:otrok|otroc)\w*)\b[^0-9.!?\n]{0,40}((?:\d{1,2}\s*(?:(?:,|and|und|in|és|es|meg)\s*)?){1,6})(?=\s*(?:years? old|years?|yrs?|y\.?o\.?|jahre(?:n)?(?: alt)?|évesek?|evesek?|let)\b)/iu)?.[1],
     text.match(/((?:\d{1,2}\s*(?:(?:,|és|es|meg)\s*)?){1,6})(?=\s+(?:évesek|éves|evesek|eves)\b)/iu)?.[1]
   ].filter(Boolean);
   for(const segment of segments){
@@ -574,16 +589,16 @@ export function pierPreferenceFromText(text=''){
 export function languageFromText(text='',{conservative=false}={}){
   // Hungarian also uses ö/ü. Clear Hungarian words must not lose to the
   // German diacritic bonus alone (e.g. "faház ... között").
-  const huScore=(text.match(/\b(?:szia|üdv|szeretn|erdekl|érdekl|faház|fahaz|szállás|szallas|felnőtt|felnott|gyermek|gyerek|fő|fo(?!\p{L})|dézsa|dezsa|mennénk|mennenk|jönnénk|jonnenk|ár|ára|mennyibe|éjszaka|jó napot|jo napot|foglal|lemond|köszön|koszon|kérem|kerem|sajnos|üdvözlettel|udvozlettel)\w*/giu)||[]).length
+  const huScore=(text.match(/(?<!\p{L})(?:szia|üdv|hali|lehet|van(?:nak)?(?!\p{L})|hány|hany(?!\p{L})|mennyi|érkez|erkez|horgász|horgasz|kutyá|parkol|házak|hazak|mikor|inkább|inkabb|mégis|megis|bocsi|köszi|kosz(?:i|onom)|rendben|szuper|lenne|leszünk|vagyunk|napijegy|etetőanyag|grillez|szeretn|erdekl|érdekl|faház|fahaz|szállás|szallas|felnőtt|felnott|gyermek|gyerek|fő|fo(?!\p{L})|dézsa|dezsa|mennénk|mennenk|jönnénk|jonnenk|ár|ára|mennyibe|éjszaka|jó napot|jo napot|foglal|lemond|köszön|koszon|kérem|kerem|sajnos|üdvözlettel|udvozlettel)\w*/giu)||[]).length
     // ő and ű exist only in Hungarian among the supported languages.
     + (/[őű]/iu.test(text)?2:0);
   const deDiacritics=/[äß]/iu.test(text)||huScore===0&&/[öü]/iu.test(text)?2:0;
   const scores={
     hu:huScore,
-    de:(text.match(/\b(?:hallo|guten tag|möchte|möchten|würde|würden|hätte|hätten|anfrage|unterkunft|buchung|gäste|personen|erwachsene|kinder|verfügbar|übernacht|preis|nächte|telefon|freundlichen grüßen|für|wäre|eigenem|möglich|darf|dürfen|hund|haustier|mitbringen|gibt es)\w*/giu)||[]).length
+    de:(text.match(/(?<!\p{L})(?:hallo|guten tag|servus|kostet|kosten|angel|wann|wlan|parkpl|danke|bitte|badezuber|zuber|stammgast|ist(?!\p{L})|familienhaus|haus(?!\p{L})|buchen|frei(?!\p{L})|sie(?!\p{L})|entschuldigung|lieber|wir sind|sind wir|wir möchten|haben sie|gibt|stornobeding|anzahlung|alles klar|passt|möchte|möchten|würde|würden|hätte|hätten|anfrage|unterkunft|buchung|gäste|personen|erwachsene|kinder|verfügbar|übernacht|preis|nächte|telefon|freundlichen grüßen|für|wäre|eigenem|möglich|darf|dürfen|hund|haustier|mitbringen|gibt es)\w*/giu)||[]).length
        + deDiacritics,
-    en:(text.match(/\b(?:would|booking|reservation|accommodation|guests|adults|children|available|availability|cabin|stay|nights?|price|please|phone|total price|thank you|aged|bring|dogs?|pets?|is there|do you)\w*/giu)||[]).length,
-    si:(text.match(/\b(?:pozdravljeni|pozdrav|slovenščin|nadaljev|družinsk|hišk|masažn|nastanitev|rezervacij|oseb|odrasl|otrok|prosto|koča|ribolov|želimo|želeli|prosimo|sporočite|lahko|bivali|prihod|odhod|cena|noči|telefon|lastnim|pomolom|hvala|lep pozdrav)\w*/giu)||[]).length
+    en:(text.match(/(?<!\p{L})(?:is\s+(?:there|it)|what(?!\p{L})|time(?!\p{L})|the(?!\p{L})|we'?d like|apartment|hi(?!\p{L})|how much|how (?:many|long)|fishing|ticket|parking|can (?:we|i)|could (?:someone|you)|thanks|great|cool|sorry|actually|instead|kids|deposit|cancellation|we'?re|we'?ll|we are|looking for|sounds good|real person|returning|helipad|airport|would|booking|reservation|accommodation|guests|adults|children|available|availability|cabin|stay|nights?|price|please|phone|total price|thank you|aged|bring|dogs?|pets?|is there|do you)\w*/giu)||[]).length,
+    si:(text.match(/(?<!\p{L})(?:dober dan|živjo|zivjo|ali(?!\p{L})|je(?!\p{L})|imate|stane|koliko|kdaj|parkirišč|parkirisc|psa(?!\p{L})|ponoči|lovi(?!\p{L})|kad(?!\p{L})|oprostite|raje|vseeno|nas je|nas bo|velja|popust|stalne|heliport|letališ|govorim|povratni|predplačil|odpoved|druzinsk|hisk|pozdravljeni|pozdrav|slovenščin|nadaljev|družinsk|hišk|masažn|nastanitev|rezervacij|oseb|odrasl|otrok|prosto|koča|ribolov|želimo|želeli|prosimo|sporočite|lahko|bivali|prihod|odhod|cena|noči|telefon|lastnim|pomolom|hvala|lep pozdrav)\w*/giu)||[]).length
        + ((text.match(/[čšž]/giu)||[]).length ? 2 : 0)
   };
   const best=Object.entries(scores).sort((a,b)=>b[1]-a[1]);
