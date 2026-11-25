@@ -32,6 +32,7 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
   await db.exec(await read('deployment/test-mailbox/guest-contact.sql'));
   for(const [role,id] of Object.entries(actors)){await db.query('insert into auth.users values($1)',[id]);await db.query('insert into auth.sessions values($1,$2,null)',[sessions[role],id]);
    await db.query("insert into sc_memberships values('sarberki-test',$1,$2,$3,$4)",[id,...grants[role]]);}
+  let previoPaymentReads=0;
   const fetchImpl=async(raw,options={})=>{
    const url=new URL(raw);
    if(url.origin==='https://gmail.googleapis.com'){
@@ -44,6 +45,9 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
      headers:[{name:'Subject',value:subject},{name:'From',value:fromHeader},{name:'To',value:'sarberkiprojecttest@gmail.com'},{name:'Message-ID',value:'<f1@example.test>'}],
      parts:[{mimeType:'text/plain',body:{data:b64(bodyText)}}]}}));
    }
+   // Owner 2026-11-25: Previo TEST payments (read-only suggestion). Fictional data, no description kept.
+   if(url.origin==='https://api.previo.app'&&url.pathname==='/x1/hotel/getPayments'){previoPaymentReads++;assert.match(options.body,/<hotId>73521<\/hotId>/);
+    return new Response('<payments><payment><payId>7</payId><invId>11</invId><price>90750.00</price><issued>2026-11-24 09:00:00</issued><cptId>3</cptId><description>Kitalált Vendég</description></payment><payment><payId>8</payId><price>90750</price><issued>2026-11-01</issued><cptId>1</cptId></payment></payments>');}
    if(url.origin==='https://api.openai.com'){openaiCalls.push(JSON.parse(options.body));
     return new Response(JSON.stringify({status:'completed',output:[{type:'message',role:'assistant',status:'completed',content:[{type:'output_text',text:'Helló, 5 felnőtt vagyunk, 2027. szeptember 20. és 23. között szállnánk meg. (kitalált)'}]}]}));}
    assert.equal(url.origin,project,'all Auth/REST is synthetic');
@@ -316,6 +320,36 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
    await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:case3,extra:'1'},{method:'GET',status:403});
    await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:case3},{status:403});
    await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'test-mailbox-record',caseId:'tm-aaaaaaaaaaaaaaaa'},{method:'GET',status:404});
+  });
+  await t.test('finance view (owner 2026-11-25): list carries deposit facts only; payment hint is a read-only suggestion behind its switch',async()=>{
+   const case3='tm-18f2a0b1c2d3e4f7',original=(await latest(case3)).data;
+   const setBooking=booking=>db.query("update sc_cases set data=jsonb_set(data,'{booking}',$2::jsonb) where case_id=$1",[case3,JSON.stringify(booking)]);
+   const base={status:'finalized',unit:'2',previo:{reference:'V2-555',recordedAt:'2026-11-23T21:13:21Z'},deposit:{pct:50,amount:90750,deadlineUtc:'2026-11-30T22:13:00Z',windowHours:168},depositReminder:{sentAt:'2026-11-28T08:00:00Z'}};
+   const list=async()=>Object.fromEntries((await call('reader',enabledEnv,{tenantId:'sarberki-test',action:'daily-list'},{method:'GET',status:200})).json.result.map(r=>[r.caseId,r]))[case3];
+   try{
+    await setBooking(base);
+    let row=await list();
+    assert.deepEqual(row.summary.finance,{amount:90750,deadlineUtc:'2026-11-30T22:13:00Z',receivedOn:null,reference:'V2-555',reminders:{first:true,final:false}});
+    assert.equal(row.summary.depositDue,'2026-11-30T22:13:00Z');assert.notEqual(row.category,'closed');
+    assert.equal(/Helló|Kedves|Tisztelt/.test(JSON.stringify(row)),false,'no guest message text in the finance row');
+    const hint=(env,input={},options={})=>call('reader',env,{tenantId:'sarberki-test',action:'test-mailbox-payment-hint',caseId:case3,...input},{method:'GET',...options});
+    const hintEnv={...enabledEnv,PREVIO_PAYMENT_HINT:'test-only',PREVIO_HOTEL_ID:'73521',PREVIO_API_KEY:'synthetic-previo-test-key-0123456789'};
+    assert.deepEqual((await hint(enabledEnv,{},{status:200})).json.result,{caseId:case3,line:null},'switch off: no Previo read');
+    assert.equal(previoPaymentReads,0);
+    const on=(await hint(hintEnv,{},{status:200})).json.result;
+    assert.equal(on.line,'💰 Valószínűleg megjött a foglaló: 90 750 Ft, 2026. 11. 24., számla #11. Ha egyezik, nyomd meg: „Foglaló beérkezett”.');
+    assert.equal(JSON.stringify(on).includes('Kitalált'),false,'the payment description never leaves the server');
+    assert.equal((await latest(case3)).data.booking.status,'finalized','a suggestion never marks the deposit');
+    await hint(hintEnv,{caseId:'tm-nope'},{status:400});await hint(hintEnv,{extra:'1'},{status:403});await hint(hintEnv,{tenantId:'demo-test'},{status:403});
+    await call('reader',hintEnv,{tenantId:'sarberki-test',action:'test-mailbox-payment-hint',caseId:case3},{status:403});
+    await setBooking({...base,status:'deposit_received',depositReceived:{on:'2026-11-24',recordedAt:'2026-11-24T10:00:00Z'}});
+    row=await list();
+    assert.equal(row.category,'closed');assert.equal(row.summary.finance.receivedOn,'2026-11-24');assert.equal(row.summary.depositDue,null);
+    assert.deepEqual((await hint(hintEnv,{},{status:200})).json.result,{caseId:case3,line:null},'closed: no suggestion');
+    await setBooking({...base,deposit:{amount:-5,deadlineUtc:'nope'},previo:{reference:'x'.repeat(80)}});
+    row=await list();
+    assert.deepEqual(row.summary.finance,{amount:null,deadlineUtc:null,receivedOn:null,reference:'x'.repeat(40),reminders:{first:true,final:false}},'bad facts are shown as unknown, never guessed');
+   }finally{await db.query('update sc_cases set data=$2 where case_id=$1',[case3,JSON.stringify(original)]);}
   });
   await t.test('one-click V2 (PERM-20261112-ONECLICK): role, input and switch refusals; read-only preview names its blockers',async()=>{
    const case3='tm-18f2a0b1c2d3e4f7',rev=(await latest(case3)).revision,h='ab'.repeat(32);
