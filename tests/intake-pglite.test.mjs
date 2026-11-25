@@ -88,6 +88,17 @@ test('intake: one pending case per call, only the intake account can create it, 
   await db.query("update sc_cases set data=jsonb_set(data,'{booking,status}','\"deposit_received\"') where case_id=$1",[caseId]);
   assert.deepEqual(await alerts(),[]);
   await db.query("update sc_cases set data=jsonb_set(data,'{booking,status}','\"finalized\"') where case_id=$1",[caseId]);
+  // Owner 2026-11-25: demo deposit bookings – copies of the finalized case with DEMO references, idempotent, reversible.
+  await db.exec(await read('deployment/test-mailbox/deposit-demo-seed-20261125.sql'));
+  await db.exec(await read('deployment/test-mailbox/deposit-demo-seed-20261125.sql'));
+  assert.equal((await db.exec(await read('deployment/test-mailbox/deposit-demo-seed-20261125.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
+  const demo=(await db.query("select case_id,data from sc_cases where case_id like 'tm-dee%' order by case_id")).rows;
+  assert.deepEqual(demo.map(r=>[r.case_id,r.data.state.values.name,r.data.booking.previo.reference,r.data.booking.deposit.deadlineUtc]),[
+   ['tm-dee0000000000001','Teszt Foglaló Lejárt','DEMO-1','2026-11-25T08:00:00Z'],['tm-dee0000000000002','Teszt Foglaló Ma','DEMO-2','2026-11-26T17:00:00Z'],
+   ['tm-dee0000000000003','Teszt Foglaló Kétnap','DEMO-3','2026-11-28T19:00:00Z'],['tm-dee0000000000004','Teszt Foglaló Várakozó','DEMO-4','2026-12-05T19:00:00Z']]);
+  assert.ok(demo.every(r=>r.data.id===r.case_id&&r.data.booking.status==='finalized'&&!r.data.booking.depositReminder&&r.data.booking.deposit.amount>0));
+  await db.exec(await read('deployment/test-mailbox/deposit-demo-seed-20261125-rollback.sql'));
+  assert.equal((await db.query("select count(*)::int n from sc_cases where case_id like 'tm-dee%'")).rows[0].n,0);
   // A chat request with its own id is a separate case.
   // Chat (V3-3): strict id format; at most 3 per visitor fingerprint per hour (the 4th is refused by the database).
   await assert.rejects(createIntakeRequest({...base,channel:'chat',externalId:'chat_test_000001',transport:transportFor('intake')}),/STORAGE_FAILURE/);
