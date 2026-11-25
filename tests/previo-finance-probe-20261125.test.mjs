@@ -12,7 +12,7 @@ test('finance probe: reads only, prints shapes and link counts – never an amou
   if(m==='getDocuments')return new Response('<documents><document><docId>777</docId><resId>555001</resId><type>proforma</type><number>2026-0042</number><total>181500</total><companyName>'+NAME+'</companyName></document></documents>');
   return new Response('<error><message>x</message></error>',{status:404});};
  const r=await probe({key:'k',hotel:'73521',from:'2026-01-01',to:'2026-12-31',fetchImpl}),out=JSON.stringify(r);
- assert.ok(calls.every(([,m])=>m==='POST'));assert.deepEqual([...new Set(calls.map(c=>c[0]))],['searchReservations','getPayments','getAccountItems','getDocuments']);
+ assert.ok(calls.every(([,m])=>m==='POST'));assert.deepEqual([...new Set(calls.map(c=>c[0]))],['searchReservations','getPayments','getAccountItems','getDocuments','getAccountItemTypes','getItemTypes']);
  assert.equal(r.getPayments.payments,2);assert.equal(r.getPayments.withInvoiceId,1);
  assert.equal(r.getAccountItems.request,'resId');assert.equal(r.getAccountItems.items,2);assert.equal(r.getAccountItems.reservationsAnsweredWithOwnResId,1);
  assert.deepEqual(r.getAccountItems.itemTypes,{1:{items:1,negative:0,positive:1,zero:0},9:{items:1,negative:1,positive:0,zero:0}});assert.deepEqual(r.getAccountItems.accountBalanceSign,{withItems:1,sumNegative:0,sumZero:0,sumPositive:1});
