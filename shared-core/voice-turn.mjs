@@ -19,6 +19,35 @@ export function callerUtterances(body){
  return list.filter(x=>typeof x==='string').map(x=>x.trim().slice(0,MAX_LEN)).filter(Boolean).slice(-MAX_UTTERANCES);
 }
 
+// Live Retell call 2026-11-25 (call_80ab29bb…): speech-to-text writes numbers as a person SAYS them – „kétezer 27
+// június 2től június nyolcig”, „három felnőttet” – which no chat guest types, so the engine found no dates and never
+// opened the booking. Voice channel only (chat and e-mail unchanged): Hungarian spoken numbers → digits before the
+// shared engine. Only date-like forms (with -tól/-től/-ig/-án/-én or ordinal), a party count before felnőtt/gyerek/fő/
+// éjszaka, and „kétezer N” years are rewritten; a bare word („egy”, „hét” = week) stays as is.
+const HU_UNITS={egy:1,kettő:2,ketto:2,két:2,ket:2,három:3,harom:3,négy:4,negy:4,öt:5,ot:5,hat:6,hét:7,het:7,nyolc:8,kilenc:9};
+const HU_TENS={tizen:10,huszon:20,harminc:30};
+const HU_ORD={első:1,elso:1,elseje:1,elsej:1,második:2,masodik:2,harmadik:3,negyedik:4,ötödik:5,otodik:5,hatodik:6,hetedik:7,nyolcadik:8,kilencedik:9,tizedik:10,huszadik:20,harmincadik:30,egyedik:1,kettedik:2};
+function huNumber(word){
+ const w=word.toLocaleLowerCase('hu-HU');
+ if(HU_ORD[w]!==undefined)return HU_ORD[w];
+ if(w==='tíz'||w==='tiz')return 10;if(w==='húsz'||w==='husz')return 20;if(w==='harminc')return 30;
+ for(const [t,v] of Object.entries(HU_TENS))if(w.startsWith(t)){const rest=w.slice(t.length);if(!rest)return null;const u=HU_UNITS[rest]??HU_ORD[rest];return u!==undefined&&u<10?v+u:null;}
+ return HU_UNITS[w]??null;
+}
+const STEM='(elsej|első|elso|második|masodik|harmadik|negyedik|ötödik|otodik|hatodik|hetedik|nyolcadik|kilencedik|tizedik|huszadik|harmincadik|(?:tizen|huszon|harminc)(?:egyedik|kettedik|harmadik|negyedik|ötödik|otodik|hatodik|hetedik|nyolcadik|kilencedik|egy|kettő|ketto|két|három|harom|négy|negy|öt|ot|hat|hét|het|nyolc|kilenc)|tíz|tiz|húsz|husz|harminc|egy|kettő|ketto|két|három|harom|négy|negy|öt|ot|hat|hét|het|nyolc|kilenc)';
+export function normalizeSpokenHu(text){
+ let t=String(text||'');
+ // „kétezer 27”, „kétezer-huszonhét”, „kétezerhuszonhét” → 2027
+ t=t.replace(/kétezer[\s-]*(\d{1,2})(?!\d)/giu,(m,n)=>String(2000+Number(n)));
+ t=t.replace(new RegExp('kétezer[\\s-]*'+STEM+'(?!\\p{L})','giu'),(m,w)=>{const n=huNumber(w);return n!==null?String(2000+n):m;});
+ // day with a date suffix: „nyolcig”, „tizedikétől”, „elsejéig”, „másodikán”, „2től”
+ t=t.replace(new RegExp('(?<!\\p{L})'+STEM+'(?:ik[aáeé]|ej[eé]|[aáeé])?(t[óo]l|t[őo]l|ig|[aáeé]n)(?!\\p{L})','giu'),(m,w,suf)=>{const n=huNumber(w.replace(/(?:ik[aáeé]|ej[eé])$/u,''));return n!==null&&n>=1&&n<=31?`${n}-${suf}`:m;});
+ t=t.replace(/(?<![\d.])(\d{1,2})\s?(t[óo]l|t[őo]l|ig)(?!\p{L})/giu,'$1-$2');
+ // party: „három felnőtt(et)”, „két gyerek”, „négy fő”, „három éjszaka”
+ t=t.replace(new RegExp('(?<!\\p{L})'+STEM+'(?=\\s+(?:felnőtt|felnott|gyerek|gyermek|fő|fo(?!\\p{L})|éjszak|ejszak|éjjel))','giu'),(m,w)=>{const n=huNumber(w);return n!==null?String(n):m;});
+ return t;
+}
+
 // Spoken form of an engine reply: no letter greeting or section titles, no bullet dashes, short.
 const DROP=/^(?:Tisztelt .*!|Kedves .*[!,]|Dear .*,|Guten Tag.*!|Sehr geehrte.*,|Pozdravljeni.*!|Köszönjük érdeklődését\.|Vielen Dank für Ihre Anfrage\.|Thank you for your enquiry\.|Hvala za vaše povpraševanje\.|Szállás|Accommodation|Unterkunft|Nastanitev|Ár és díjak|Price and charges|Preis und Gebühren|Cena in stroški|Foglalási feltételek|Booking terms|Buchungsbedingungen|Pogoji rezervacije|Az ajánlathoz még szükségünk van|Details still needed|Noch benötigte Angaben|Podatki za dopolnitev|Kiegészítő információk|Additional information|Weitere Informationen|Dodatne informacije|Üdvözlettel.*|Best regards.*|Mit freundlichen Grüßen.*|Lep pozdrav.*|Sárberki.*|\(Automati.*\)|\(Samodejn.*\))$/u;
 export function speakable(text,max=700){
@@ -47,7 +76,8 @@ export function voiceAuthorized({headers,raw,env,now=Date.now()}){
 export async function voiceTurn({utterances,language='auto',clock=()=>new Date(),offerFn=null,assistFn=null}){
  if(!Array.isArray(utterances)||!utterances.length)return {reply:null,reason:'NO_UTTERANCE'};
  const s=createChatInquirySession({language,clock});let r=null;
- for(const u of utterances)r=s.reply(u);
+ // Spoken Hungarian numbers → digits (voice only); the session's own language detection decides the reply language.
+ for(const u of utterances)r=s.reply(language==='de'||language==='en'||language==='si'?u:normalizeSpokenHu(u));
  const lang=s.language,snap=s.snapshot(),facts=requestFacts(snap);
  if(facts&&hotTubWished(utterances))facts.hotTub=true;
  let text=r.text,source='engine',offer=null;

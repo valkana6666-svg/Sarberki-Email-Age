@@ -66,3 +66,18 @@ test('channel parity: the 100 four-language scenarios give the same stay facts o
  }
  assert.deepEqual(bad,[]);
 });
+
+import {normalizeSpokenHu} from '../shared-core/voice-turn.mjs';
+test('live call 2026-11-25 (call_80ab29bb…): spoken Hungarian dates and party reach the engine',async()=>{
+ assert.equal(normalizeSpokenHu('Szeretnék. Hogy vane Samads Páz kétezer 27 június 2től június nyolcig.'),'Szeretnék. Hogy vane Samads Páz 2027 június 2-től június 8-ig.');
+ assert.equal(normalizeSpokenHu('kétezer-huszonhét július elsejétől négy éjszakára'),'2027 július 1-től 4 éjszakára');
+ assert.equal(normalizeSpokenHu('június tizedikétől tizenharmadikáig két felnőtt'),'június 10-től 13-ig 2 felnőtt');
+ assert.equal(normalizeSpokenHu('Három felnőttet szeretnék. Gyerek nélkül.'),'3 felnőttet szeretnék. Gyerek nélkül.');
+ for(const t of ['egy hét múlva jönnénk','Hét órakor érkezünk','Egy Deluxe házat kérnénk'])assert.equal(normalizeSpokenHu(t),t,'no date/party context: unchanged');
+ const U=['Halló.','Miért nem hallok?','Szeretnék. Hogy vane Samads Páz kétezer 27 június 2től június nyolcig.','Három felnőttet szeretnék. Gyerek nélkül.','Három felnőtt lesz, gyerek nem lesz. Csak három felnőtt.'];
+ const r=await voiceTurn({utterances:U,clock:()=>new Date('2026-11-25T19:20:00Z')});
+ assert.deepEqual(r.facts,{arrival:'2027-06-02',departure:'2027-06-08',adults:3,children:0,cabin:null});
+ assert.match(r.reply,/2027\.06\.02\. és 2027\.06\.08\. között 3 fő/);
+ const done=await voiceTurn({utterances:[...U,'Családi házat kérnék.'],clock:()=>new Date('2026-11-25T19:20:00Z'),offerFn:async()=>({status:'AVAILABLE',total:200000,text:'Jó hír: szabad.'})});
+ assert.equal(done.source,'offer');assert.equal(done.facts.cabin,'Családi');
+});
