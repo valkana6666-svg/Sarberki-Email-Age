@@ -7,7 +7,7 @@ const SAMPLE='Jó hír: kétezer-huszonhét március negyedike és március nyol
 const key=process.env.XI_KEY;if(!key){console.log('BLOCKED key');process.exit(1);}
 const H={'xi-api-key':key,Accept:'application/json'};
 const req=JSON.parse(process.argv[2]||'{}');
-const r=await fetch(API+'/v1/shared-voices?language=hu&page_size=40&sort=cloned_by_count',{headers:H});
+const r=await fetch(API+'/v1/shared-voices?language=hu&page_size=40&sort=cloned_by_count'+(req.search?'&search='+encodeURIComponent(req.search):''),{headers:H});
 const j=await r.json().catch(()=>({}));
 console.log('VOICES_HTTP',r.status,j?.detail?.status||'');
 const voices=(j.voices||[]).map(v=>({id:v.voice_id,owner:v.public_owner_id,name:v.name,gender:v.gender,age:v.age,accent:v.accent,use:v.use_case,cloned:v.cloned_by_count,verifiedHu:(v.verified_languages||[]).some(l=>l.language==='hu')}));
