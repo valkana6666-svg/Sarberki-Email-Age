@@ -195,3 +195,32 @@ if(import.meta.url===`file://${process.argv[1]}`){
   for(const r of res.filter(r=>!r.ok))console.log('❌',r.id,[...r.factIssues,...r.issues].join(' | '));
  }else await runLive(convs,{out,from:Number(from||0),to:Number(to||convs.length)});
 }
+
+// ---- live report: per conversation, from the saved transcripts (no network) ----
+const fmtDate={hu:iso=>iso.replaceAll('-','.')+'.',de:iso=>iso.split('-').reverse().join('.'),si:iso=>iso.split('-').reverse().join('.'),
+ en:iso=>{const [y,m,d]=iso.split('-');return `${Number(d)} ${MONTH.en[Number(m)-1]} ${y}`;}};
+export function reportLive(results,convs){
+ return convs.filter(c=>results[c.id]).map(c=>{
+  // The TEST page is the operator view: its Hungarian review block is not guest text.
+  const strip=t=>String(t||'').split(/\n?Magyar kezelői ellenőrző szöveg/)[0];
+  const r={...results[c.id],transcript:results[c.id].transcript.map(t=>({...t,bot:t.bot.split('\n---\n').map(strip).join('\n---\n')}))},issues=[],bots=r.transcript.map(t=>t.bot).join('\n');
+  // A price question after a checked offer must show a price again (regression found live 2026-11-25).
+  let priced=false,noPrice=0;
+  for(const t of r.transcript){if(t.tag==='price-recheck'&&priced&&!/\d[\d  .]*\s?(?:Ft|HUF)/.test(t.bot))noPrice++;if(/\d[\d  .]*\s?(?:Ft|HUF)/.test(t.bot)&&/(?:Ft|HUF)[^\n]{0,40}\(|szabad|frei|free|prosto|prost/i.test(t.bot))priced=true;}
+  if(noPrice)issues.push(`${noPrice} árkérdésre nem jött ár`);
+  if(r.pageErrors?.length)issues.push('oldalhiba');
+  if(r.intakeRequests)issues.push('igényleadás történt');
+  if(r.offers.some(o=>o.http!==200))issues.push('ajánlat HTTP-hiba');
+  if(r.assists.some(a=>a.http!==200))issues.push('AI HTTP-hiba');
+  const missingAnswer=r.transcript.filter(t=>!t.bot.trim()).length;if(missingAnswer)issues.push(`${missingAnswer} forduló válasz nélkül`);
+  if(HOUSE_NO.test(bots))issues.push('belső házszám');
+  if(/undefined|NaN|\[object/.test(bots))issues.push('hibás szövegdarab');
+  // The stay finally understood must appear in the chat (the checked offer or the summary): arrival and departure.
+  const f=fmtDate[c.lang]||fmtDate.hu,last=r.transcript.map(t=>t.bot).filter(Boolean).join('\n');
+  const datesShown=[c.want.arrival,c.want.departure].every(d=>last.includes(f(d))||last.includes(fmtDate.hu(d))||last.includes(d));
+  if(!datesShown)issues.push('a végső dátum nem jelent meg');
+  const langOk=r.transcript.filter(t=>t.bot&&!(t.tag||'').startsWith('language-switch')).every(t=>{const l=languageFromText(t.bot.split('\n').slice(0,3).join(' '));return l==='unknown'||l===c.lang;});
+  if(!langOk)issues.push('nyelv eltér');
+  return {id:c.id,lang:c.lang,turns:c.turns.length,offers:r.offers.length,available:r.offers.filter(o=>o.status==='AVAILABLE').length,assist:r.assists.length,assistAnswered:r.assists.filter(a=>a.answered).length,issues,ok:!issues.length};
+ });
+}

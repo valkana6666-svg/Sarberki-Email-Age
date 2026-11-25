@@ -13,6 +13,9 @@ const TUB=/dézs|dezs|hot[ -]?tub|badezuber|badefass|whirlpool|jacuzzi|masažn\p
 const TUB_OFF=/mégsem|megsem|mégse|megse|nem\s+(?:kér|ker|kell|szeretn)|doch\s+nicht|nicht\s+(?:mehr|nötig)|kein(?:en)?\s+(?:badezuber|badefass|whirlpool)|after all|don'?t\s+(?:need|want)|no\s+hot\s*tub|ne\s+potrebujemo|vseeno\s+ne|ne\s+želimo/iu;
 const HANDOVER=/munkatárs|munkatars|élő\s+(?:személy|ember)|emberrel|visszahív|visszahiv|mitarbeiter|rückruf|ruckruf|zurückruf|real\s+person|human|call\s+me\s+back|someone\s+call|talk\s+to\s+(?:a|someone|staff)|osebj|povratni\s+klic|pokličite/iu;
 const THANKS=/^(?:[\p{L}]+[,!.]?\s+)?(?:köszi|köszönöm|koszonom|kösz|kosz|rendben|szuper|oké|ok(?:é|e)?|jó\s+lesz|mehet|danke|alles\s+klar|passt|super|thanks|thank\s+you|great|cool|sounds\s+good|perfect|hvala|velja|v\s+redu)(?![\p{L}])/iu;
+// A question about THIS stay (price, total, availability, deposit) stays a booking turn: the page shows the checked
+// offer again (live language test 2026-11-25: "How much is it in total?" got "cannot confirm" after the change above).
+const STAY_QUESTION=/mennyi|mennyibe|(?<!\p{L})ár(?:a|at)?(?!\p{L})|összesen|osszesen|kerül|kerul|szabad|foglal|előleg|eloleg|kost|preis|insgesamt|gesamt|frei|anzahlung|how\s+much|price|cost|total|available|deposit|koliko|cena|stane|skupaj|prost|predplačil|predplacil/iu;
 export function shortTurnKind(message){
  const t=String(message||'').trim();
  if(TUB.test(t)&&TUB_OFF.test(t)&&!/\?\s*$/.test(t))return 'tubOff';
@@ -74,7 +77,7 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
     const kind=carriesFacts?null:shortTurnKind(message);
     // A question the rules do not know ("Is there a helipad?", regular-guest discount) is a question, not a stay
     // update: the rule answer stays, and the page may ask the fact-bound model.
-    if(!carriesFacts&&!kind&&faq.intent==='unknown'&&/\?\s*$/.test(message.trim())){lastDecision=null;return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};}
+    if(!carriesFacts&&!kind&&faq.intent==='unknown'&&/\?\s*$/.test(message.trim())&&!STAY_QUESTION.test(message)){lastDecision=null;return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};}
     if(kind){lastDecision=null;const t=SHORT_REPLY[kind][language]||SHORT_REPLY[kind].hu;return {response:{...faq,reply:t},text:t,operatorReviewText:SHORT_REPLY[kind].hu,decision:null,noAssist:true};}
    }
    // Informational detours do not replace the active stay or its missing facts.

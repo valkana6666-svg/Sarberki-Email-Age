@@ -45,6 +45,7 @@ test('active stay: thanks / hand-over / hot tub refusal get a short reply, facts
   const r=s.reply(t);assert.equal(r.decision,null,t);assert.equal(r.noAssist,true,t);assert.equal(shortTurnKind(t),kind);assert.ok(r.text.length<160,t);
   assert.deepEqual({...s.snapshot(),originalText:null},{...before,originalText:null},t);
  }
+ for(const t of ['Mennyi lesz összesen?','How much is it in total?','Was kostet das insgesamt?','Koliko bo skupaj?','Wie viel kostet das?']){const r=s.reply(t);assert.ok(r.decision,'a price question in an active stay is a booking turn (the page shows the offer again): '+t);}
  const q=s.reply('Van helikopter-leszálló?');assert.equal(q.decision,null);assert.notEqual(q.noAssist,true,'the fact-bound model may answer');
  const c=s.reply('Mégis 3 felnőtt leszünk');assert.ok(c.decision,'a change is still a booking update');assert.equal(s.snapshot().adults,3);
  assert.equal(shortTurnKind('Thanks, how much is the deposit?'),null,'a question is never closed as thanks');
