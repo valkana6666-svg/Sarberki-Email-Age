@@ -84,6 +84,22 @@ export function previoLiveReader({apiKey,fetchImpl=globalThis.fetch}){
    return {http:r.status,payments:blocks.length,earliest:days[0]??null,latest:days.at(-1)??null,perYear,tags:[...new Set([...String(r.text).matchAll(/<([A-Za-z][A-Za-z0-9]*)[ >]/g)].map(m=>m[1]))].sort(),
     error:/<error>/.test(r.text)?String(r.text.match(/<message>([^<]{0,160})/)?.[1]||'error'):null};
   },
+  // Owner 2026-11-25: does getPayments filter by reservation? One past checked-out reservation is picked INSIDE the
+  // run (its id is never printed); only counts and field names come out.
+  paymentsByReservation:async({from,to})=>{
+   const sx=`<?xml version="1.0"?><request><hotId>${HOTEL}</hotId><term><from>${from}</from><to>${to}</to></term><termType>overlap</termType><statuses><cosId>9</cosId></statuses></request>`;
+   const rs=await call('/x1/hotel/searchReservations',{method:'POST',headers:{'Content-Type':'application/xml',Accept:'application/xml'},body:sx});
+   const resIds=[...String(rs.text).matchAll(/<resId>(\d+)<\/resId>/g)].map(m=>m[1]);
+   if(!resIds.length)return {reservations:0};
+   const out=[];
+   for(const id of resIds.slice(0,3)){
+    const px=`<?xml version="1.0"?><request><hotId>${HOTEL}</hotId><resId>${id}</resId></request>`;
+    const r=await call('/x1/hotel/getPayments',{method:'POST',headers:{'Content-Type':'application/xml',Accept:'application/xml'},body:px});
+    const n=[...String(r.text).matchAll(/<payment>/g)].length;
+    out.push({http:r.status,payments:n,foundRows:Number(String(r.text).match(/<foundRows>(\d+)/)?.[1]??NaN),error:/<error>/.test(r.text)?String(r.text.match(/<message>([^<]{0,160})/)?.[1]||'error'):null});
+   }
+   return {reservationsInWindow:resIds.length,checked:out};
+  },
   // Any other plain REST GET (e.g. a code list): status and SHAPE only.
   get:async path=>{const r=await get(path);return {path,http:r.status,error:r.error,shape:r.json?shape(r.json):null};}
  };
@@ -98,6 +114,7 @@ export async function run(request,{apiKey,fetchImpl}={}){
    if(p==='calendar'){if(!day(q.arrival)||!day(q.departure))out[p]={skipped:'DATES'};else out[p]=await reader.calendar(q);}
    else if(p==='price'){if(!day(q.arrival)||!day(q.departure))out[p]={skipped:'DATES'};else out[p]=await reader.price({...q,adults:Number(q.adults)||2,adultCategoryId});}
    else if(p==='reservations'){if(!day(q.from)||!day(q.to)||q.to<q.from)out[p]={skipped:'DATES'};else out[p]=await reader.reservations(q);}
+   else if(p==='paymentsByReservation'){if(!day(q.from)||!day(q.to)||q.to<q.from)out[p]={skipped:'DATES'};else out[p]=await reader.paymentsByReservation(q);}
    else if(p==='payments'){if(!day(q.from)||!day(q.to)||q.to<q.from)out[p]={skipped:'DATES'};else out[p]=await reader.payments(q);}
    else if(p.startsWith('get:'))out[p]=await reader.get(p.slice(4));
    else if(['plans','kinds','rooms','guestCategories'].includes(p)){
