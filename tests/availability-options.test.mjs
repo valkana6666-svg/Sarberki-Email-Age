@@ -2,13 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildAvailabilityOptions,handleAvailabilityOptions,isLiveAvailabilityEnabled,splitCapacityOptions} from '../netlify/functions/availability-options.mjs';
 
-test('six guests respect verified nominal capacity without unverified extra beds and split manual-review combinations',async()=>{
+test('six guests: Deluxe (owner 2026-11-25: 6 fő szállhat meg) and Family; no unverified extra beds or split manual-review combinations',async()=>{
   const free={deluxe:2,family:1,vip:1};
   const result=await buildAvailabilityOptions({arrival:'2026-10-09',departure:'2026-10-13',guests:6},async input=>({
     status:'review_required',availability:(free[input.cabin]||0)>0?'available':'unavailable',availableUnits:free[input.cabin]||0,checkedAt:new Date().toISOString(),source:'test'
   }));
-  assert.deepEqual(result.available_options.map(x=>x.key).sort(),['family']);
-  assert.deepEqual(result.available_options.map(x=>x.units),[1]);
+  assert.deepEqual(result.available_options.map(x=>x.key).sort(),['deluxe','family']);
+  assert.deepEqual(result.available_options.map(x=>x.units),[1,1]);
   const split=result.manual_review_options.map(x=>x.label).sort();
   assert.deepEqual(split,[]);
   assert.ok(result.manual_review_options.every(x=>x.same_house_preferred===true));

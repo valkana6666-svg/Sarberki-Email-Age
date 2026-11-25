@@ -67,9 +67,11 @@ for(const channel of ['chat','email']){
 for(const adults of [6,8])for(const channel of ['chat','email']){
  test(`T${adults===6?'07':'08'}: ${adults} adults require one verified suitable unit / ${channel}`,async()=>{
   const {calls,decision}=await run(facts(adults),free);
-  assert.deepEqual(calls,['family']);
+  // Owner 2026-11-25: Deluxe holds 6, so six adults are also offered a Deluxe; eight only the Family cabin.
+  const fit=adults===6?['deluxe','family']:['family'];
+  assert.deepEqual(calls,fit);
   assert.equal(decision.capacity.status,'AVAILABLE');
-  assert.deepEqual(decision.capacity.selectedOptions.map(x=>x.key),['family']);
+  assert.deepEqual(decision.capacity.selectedOptions.map(x=>x.key),fit);
   assert.equal(decision.safety.bookingCreated,false);
  });
 }

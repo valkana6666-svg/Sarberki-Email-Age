@@ -20,7 +20,7 @@ for(const [name,values] of Object.entries({invalidDate:{arrival:'2026-02-30',dep
  assert.equal((await prepareSyntheticBookingReview(p)).status,'missing_data');assert.deepEqual(p.calls,[]);
 });
 test('excluded unit capacity never reaches capacity or price providers',async()=>{
- const p=providers();p.record=structuredClone(record);Object.assign(p.record.data.state.values,{guests:'6',adults:'6'});
+ const p=providers();p.record=structuredClone(record);Object.assign(p.record.data.state.values,{guests:'7',adults:'7'}); // Deluxe holds 6 (owner 2026-11-25)
  assert.equal((await prepareSyntheticBookingReview(p)).status,'capacity_incompatible');assert.deepEqual(p.calls,[]);
 });
 for(const change of [{arrival:'2026-11-04'},{departure:'2026-11-09'},{checkedAt:'2020-01-01T00:00:00Z'},{tenantId:'demo-test'},{unitId:'VIP'},{verified:false},{nightly:NaN}])test('invalid price source cannot become a quote '+JSON.stringify(change),async()=>{
