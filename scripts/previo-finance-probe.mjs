@@ -60,6 +60,16 @@ export async function probe({key,hotel,from,to,fetchImpl=globalThis.fetch,maxRes
  if(err(doc.text)&&com&&resIds.size){doc=await call('getDocuments',`<comId>${com}</comId><resId>${[...resIds][0]}</resId>`);docBy='comId+resId';}
  const docs=blocks(doc.text,'document');
  const docRes=docs.map(b=>b.match(/<resId>(\d+)<\/resId>/)?.[1]).filter(Boolean),docInv=new Set(docs.flatMap(b=>[...b.matchAll(/<(?:invId|docId)>(\d+)<\/(?:invId|docId)>/g)].map(m=>m[1])));
+ // Raw response shape of the document call(s) and item-type code lists (reads; names of codes are business data).
+ out.documentResponseShape={root:(doc.text.match(/<([A-Za-z]+)[ >]/)||[])[1]||null,paths:tagPaths(doc.text).slice(0,40),bytes:doc.text.length};
+ const resCom=[...new Set(res.map(b=>b.match(/<comId>(\d+)<\/comId>/)?.[1]).filter(Boolean))];
+ out.comIds={fromAccounts:comIds.size,fromReservations:resCom.length,same:[...comIds].filter(c=>resCom.includes(c)).length};
+ if(resCom[0]&&resCom[0]!==com){const d2=await call('getDocuments',`<comId>${resCom[0]}</comId><term><from>${from}</from><to>${to}</to></term>`);out.documentsWithReservationComId={http:d2.http,error:err(d2.text),root:(d2.text.match(/<([A-Za-z]+)[ >]/)||[])[1]||null,paths:tagPaths(d2.text).slice(0,40)};}
+ out.codeLists={};
+ for(const [svc,m] of [['system','getAccountItemTypes'],['hotel','getAccountItemTypes'],['system','getItemTypes']]){
+  const r=await fetchImpl(ORIGIN+`/x1/${svc}/${m}`,{method:'POST',redirect:'error',signal:AbortSignal.timeout(20000),headers:{Authorization:'ApiKey '+key,'Content-Type':'application/xml',Accept:'application/xml'},body:`<?xml version="1.0"?><request><hotId>${hotel}</hotId></request>`});
+  const t=await r.text();out.codeLists[svc+'.'+m]={http:r.status,error:err(t),pairs:[...t.matchAll(/<(?:itemType|aitId|id)>(\d+)<\/(?:itemType|aitId|id)>\s*<name>([^<]{1,40})<\/name>/g)].map(x=>x[1]+'='+x[2]).slice(0,30)};
+ }
  out.getDocuments={http:doc.http,error:err(doc.text),request:docBy,documents:docs.length,withResId:docRes.length,resIdInWindow:docRes.filter(x=>resIds.has(x)).length,
   paths:tagPaths(docs.slice(0,50).join('')).filter(p=>!/name|note|desc|text|guest|mail|phone|address|street|city|zip|vat|dic|ico/i.test(p.split('>').pop())),enums:enums(doc.text,'document')};
  // The chain that would tie ONE payment to ONE reservation: payment.invId → document (invId/docId) → document.resId.

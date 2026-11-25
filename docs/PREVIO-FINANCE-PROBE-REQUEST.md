@@ -3,3 +3,4 @@ Csak olvasás (searchReservations, getPayments, getAccountItems, getDocuments); 
 
 {"from":"2026-01-01","to":"2026-12-31"}
 {"from":"2026-11-20","to":"2027-08-31"}
+{"from":"2026-11-20","to":"2027-08-31"}
