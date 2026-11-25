@@ -1,0 +1,32 @@
+name: Retell TEST agent read-only (Claude)
+# Owner 2026-11-25 (#9 7175557838): read-only use of the restricted Retell key – the TEST agent's settings and the
+# transcripts/tool calls of its test calls. Runs when docs/RETELL-READ-REQUEST.md changes on the test branch; the
+# request is its last line (JSON). The key is a repository secret and is never printed.
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths: [docs/RETELL-READ-REQUEST.md]
+permissions:
+  contents: read
+concurrency:
+  group: retell-read
+  cancel-in-progress: false
+jobs:
+  read:
+    if: github.ref == 'refs/heads/gmail-test-subject-allowlist'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Read-only Retell request
+        env:
+          RETELL_KEY: ${{ secrets.RETELL_CLAUDE_TEST_API_KEY }}
+        run: |
+          if [ -z "$RETELL_KEY" ]; then echo "BLOCKED: secret missing"; exit 1; fi
+          REQ="$(grep -v '^\s*$' docs/RETELL-READ-REQUEST.md | tail -n 1)"
+          node scripts/retell-read.mjs "$REQ"
