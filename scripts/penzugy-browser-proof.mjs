@@ -15,8 +15,8 @@ const ROWS=[row('a','finalized',fin(iso(NOW-3*H)),'Teszt Lejárt'),row('b','fina
  {...row('e',null,null,'Teszt Nyitott'),category:'incoming'}];
 const MIME={'.html':'text/html','.mjs':'text/javascript','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.webmanifest':'application/manifest+json'};
 const results=[];const check=(name,ok,detail='')=>{results.push({name,ok:!!ok});console.log((ok?'PASS ':'FAIL ')+name+(detail&&!ok?' – '+detail:''));};
-const item=(resId,voucher,state,source,price=99000)=>({key:'p-'+resId,resIds:[resId],voucher,state,rooms:1,from:'2027-07-01',to:'2027-07-03',price,currency:'HUF',house:'Deluxe',unit:'11',optionExpiration:null,created:'2026-11-20',source});
-const ITEMS=[item(777,'SC-777','confirmed',{group:'unknown',channel:null}),item(901,'BK-901','confirmed',{group:'external',channel:'Booking.com XML'}),
+const item=(resId,voucher,state,source,price=99000,payment=null)=>({key:'p-'+resId,resIds:[resId],voucher,state,rooms:1,from:'2027-07-01',to:'2027-07-03',price,currency:'HUF',house:'Deluxe',unit:'11',optionExpiration:null,created:'2026-11-20',source,payment});
+const ITEMS=[item(777,'SC-777','confirmed',{group:'unknown',channel:null}),item(901,'BK-901','confirmed',{group:'external',channel:'Booking.com XML'},99000,{state:'partial',paid:49500,due:49500,payments:1,reasons:[],lastPaymentOn:'2026-11-20'}),
  item(902,'WEB-902','confirmed',{group:'unknown',channel:null}),item(903,'X-903','cancelled',{group:'unknown',channel:null})];
 let signedIn=false,expire=false,posts=0,previoDown=false;const csrf='a'.repeat(64);
 const browser=await chromium.launch(existsSync('/opt/pw-browsers/chromium')?{executablePath:'/opt/pw-browsers/chromium'}:{});const ctx=await browser.newContext({...devices['iPhone 13']});
@@ -34,7 +34,7 @@ await ctx.route('**/*',async route=>{
   if(a==='daily-list')return route.fulfill({json:{result:ROWS}});
   if(a==='finance-previo-list')return route.fulfill({json:{result:previoDown?{items:null,reason:'PREVIO_UNAVAILABLE'}:{readAt:iso(NOW),window:{from:'2026-10-26',to:'2027-11-25'},items:ITEMS}}});
   if(a==='test-mailbox-payment-hint'){const c=u.searchParams.get('caseId');
-   return route.fulfill({json:{result:{caseId:c,line:c==='tm-'+'c'.repeat(16)?'💰 Valószínűleg megjött a foglaló: 120 000 Ft, 2026. 11. 24., számla #11. Ha egyezik, nyomd meg: „Foglaló beérkezett”.':'💰 A Previóban még nincs a foglalóval egyező befizetés.'}}});}
+   return route.fulfill({json:{result:{caseId:c,line:c==='tm-'+'c'.repeat(16)?'💰 Previo: foglaló befizetve – 120 000 Ft, utolsó: 2026. 11. 24. (pontos számla–foglalás kötés). Ha egyezik, nyomd meg: „Foglaló beérkezett”.':'💰 Previo: a Previóban nincs rögzített befizetés (nincs kiállított számla).'}}});}
   return route.fulfill({status:403,json:{error:'FORBIDDEN'}});
  }
  let file=join(DIST,decodeURIComponent(u.pathname));if(u.pathname.endsWith('/'))file=join(file,'index.html');
@@ -54,7 +54,7 @@ check('3 groups in order (overdue, soon, waiting, received, Previo-only, cancell
 check('4 tile totals (count + amount)',/1 db · 90 750 Ft/.test(await text('[data-group="overdue"] .number'))&&/1 db · 120 000 Ft/.test(await text('[data-group="waiting"] .number')));
 const all=await text('#finance-list');
 check('5 row facts: deadline passed, hours left, reminder state, received day',/⚠️ Határidő lejárt: .*\(3 órája\)/.test(all)&&/⏳ Határidő: .*\(20 óra múlva\)/.test(all)&&/Emlékeztető: első elküldve/.test(all)&&/✅ Beérkezett: 2026\. 11\. 24\./.test(all));
-check('6 payment suggestion on the matching row only',/Teszt Várakozó[\s\S]*💰 Valószínűleg megjött a foglaló: 120 000 Ft/.test(all)&&(all.match(/Valószínűleg megjött/g)||[]).length===1);
+check('6 exact Previo payment on the matching row only',/Teszt Várakozó[\s\S]*💰 Previo: foglaló befizetve – 120 000 Ft/.test(all)&&(all.match(/foglaló befizetve/g)||[]).length===1);
 await p.click('[data-group="overdue"]');await p.waitForTimeout(100);
 check('7 filter: Lejárt shows only the overdue row',(await names()).join('|')==='Teszt Lejárt · Deluxe · 2027. 06. 10. – 2027. 06. 13.');
 await p.click('[data-group="overdue"]');await p.fill('#search','v2-777');await p.waitForTimeout(100);
@@ -73,7 +73,7 @@ await p.click('[data-source="own"]');await p.waitForTimeout(100);
 check('20 source filter: Saját rendszer → our 4 cases; Previo match shown on our case',(await names()).length===4&&/Forrás: Saját rendszer – chatbot/.test(await text('#finance-list')));
 await p.click('[data-source="all"]');await p.waitForTimeout(100);
 const prow=await text('#case-p-901');
-check('21 Previo-only row: unknown payment, NEM IGAZOLT, no deposit button link',/Fizetés|NEM IGAZOLT/.test(prow)&&(await p.locator('#case-p-901 a').count())===0&&/1 db/.test(await text('[data-group="cancelled"] .number'))&&/2 db/.test(await text('[data-group="nopay"] .number')));
+check('21 Previo-only row: exact payment state (partial, due), no deposit button link',/💰 Részfizetés – 49 500 Ft, hátralék: 49 500 Ft/.test(prow)&&(await p.locator('#case-p-901 a').count())===0&&/1 db/.test(await text('[data-group="cancelled"] .number'))&&/2 db/.test(await text('[data-group="nopay"] .number')));
 if(shots)await p.screenshot({path:join(shots,'penzugy-iphone-previo.png'),fullPage:true});
 previoDown=true;await p.click('#reload');await p.waitForTimeout(500);
 check('22 Previo unreadable: our cases stay, the note says the list is NOT complete',(await names()).length===4&&/NEM teljes lista/.test(await text('#previo-status')));

@@ -51,7 +51,7 @@ test('merge: our case and its Previo booking are ONE item; Previo-only bookings 
  assert.equal(financeGroup(by['p-102'],NOW),'nopay');assert.equal(financeGroup(by['p-109'],NOW),'nopay');
  const bk=financeRowText(by['p-102'],NOW);
  assert.equal(bk.title,'Previo BK-9 · 11 · 2026. 12. 10. – 2026. 12. 12.');
- assert.deepEqual(bk.lines,['Forrás: Rendszeren kívüli – Booking.com XML','Previo-állapot: megerősítve','Foglalás összege (Previo): 99 000 Ft','Foglaló / befizetés: a Previo nem adja meg – NEM IGAZOLT, ellenőrizd a Previóban']);
+ assert.deepEqual(bk.lines,['Forrás: Rendszeren kívüli – Booking.com XML','Previo-állapot: megerősítve','Foglalás összege (Previo): 99 000 Ft','Befizetés: nem ellenőrzött (csak a közelgő foglalásokat nézzük)']);
  assert.ok(financeRowText(by['p-109'],NOW).lines[1].includes('opció lejár: 2026-11-27 10:00:00'));
  assert.equal(financeRowText(by['p-105'],NOW).lines[1],'Previo-állapot: megerősítve · 2 egység');
  assert.equal(financeRowText(by['p-104'],NOW).lines[0],'Forrás: Ismeretlen eredet');
@@ -80,7 +80,10 @@ test('source filter, totals and search across both groups and the unknown origin
 test('reader: switch and hotel gate, one read, cache, failure is an error (never an empty list)',async()=>{
  resetPrevioFinanceCache();
  const key='synthetic-previo-test-key-0123456789';let reads=0,body='';
- const ok=async(url,o)=>{reads++;body=o.body;assert.equal(url,'https://api.previo.app/x1/hotel/searchReservations');assert.equal(o.method,'POST');return new Response(XML);};
+ const ok=async(url,o)=>{assert.equal(o.method,'POST');
+  if(url.endsWith('/getPayments'))return new Response('<payments></payments>');
+  if(url.endsWith('/getDocuments'))return new Response('<documents></documents>');
+  reads++;body=o.body;assert.equal(url,'https://api.previo.app/x1/hotel/searchReservations');return new Response(XML);};
  assert.equal(previoFinanceReader({},ok),null);assert.equal(previoFinanceReader({PREVIO_PAYMENT_HINT:'test-only',PREVIO_HOTEL_ID:'753011',PREVIO_API_KEY:key},ok),null,'never the live hotel');
  let t=NOW;const r=previoFinanceReader({PREVIO_PAYMENT_HINT:'test-only',PREVIO_HOTEL_ID:'73521',PREVIO_API_KEY:key},ok,{now:()=>t});
  const v=await r();assert.equal(v.items.length,9);assert.deepEqual(v.window,{from:'2026-10-26',to:'2027-11-25'});assert.match(body,/<hotId>73521<\/hotId>/);assert.match(body,/<cosId>7<\/cosId>/);

@@ -10,7 +10,7 @@ const xml='<payments><foundRows>3</foundRows>'+
 const booking={status:'finalized',deposit:{amount:90750},previo:{recordedAt:'2026-11-23T21:13:21Z'}};
 
 test('parse keeps id, invoice, amount, date and type – never the description',()=>{
- const p=parsePayments(xml);assert.equal(p.length,3);assert.deepEqual(p[0],{payId:1,invId:11,price:90750,issued:'2026-11-24',type:3});
+ const p=parsePayments(xml);assert.equal(p.length,3);assert.deepEqual({...p[0],curId:undefined},{payId:1,invId:11,price:90750,issued:'2026-11-24',type:3,curId:undefined});
  assert.ok(!JSON.stringify(p).includes('Kitalált'));
 });
 test('suggestion: same amount, issued on/after the confirmation; never for other states',()=>{

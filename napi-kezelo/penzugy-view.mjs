@@ -7,7 +7,7 @@ export const GROUPS=Object.freeze({
  soon:{label:'Hamarosan esedékes',info:'48 órán belül lejár a határidő.'},
  waiting:{label:'Várakozó',info:'Foglaló még nem érkezett, a határidő később jár le.'},
  received:{label:'Beérkezett / lezárt',info:'A foglaló beérkezett (ember jelölte meg).'},
- nopay:{label:'Fizetés nem ismert',info:'Csak a Previóban szereplő foglalás: a Previo nem adja meg a befizetést – ellenőrizd ott.'},
+ nopay:{label:'Csak Previóban',info:'Csak a Previóban szereplő foglalás (honlap, telefon, partner): befizetés a Previo számláiból, nincs foglaló-határidő.'},
  cancelled:{label:'Lemondva',info:'Lemondott foglalás – nincs foglaló-teendő.'}
 });
 export const GROUP_ORDER=Object.freeze(['overdue','soon','waiting','received','nopay','cancelled']);
@@ -71,6 +71,15 @@ export function financeTotals(rows,now=Date.now(),source='all'){
  return out;
 }
 
+// Owner 2026-11-25 (#9 7163781838): the exact Previo link (payment → invoice → reservation); doubt is never "paid".
+const PAY_HU={paid_in_full:'✅ Previo szerint teljesen kifizetve',deposit_paid:'✅ Previo szerint foglaló befizetve',partial:'💰 Részfizetés',none_recorded:'Befizetés: a Previóban nincs rögzítve (banki utalás még nem könyvelt lehet)',
+ ambiguous:'⚠️ Befizetés nem köthető egyértelműen – ellenőrizd a Previóban',uncertain:'⚠️ Bizonytalan befizetés – ellenőrizd a Previóban',unknown:'Befizetés: a Previo most nem olvasható'};
+export function paymentText(pay){
+ if(!pay)return 'Befizetés: nem ellenőrzött (csak a közelgő foglalásokat nézzük)';
+ const amount=Number.isSafeInteger(pay.paid)&&pay.paid!==0?' – '+huf(pay.paid):'';
+ const due=pay.state==='partial'&&Number.isSafeInteger(pay.due)?', hátralék: '+huf(pay.due):'';
+ return (PAY_HU[pay.state]||PAY_HU.unknown)+(['paid_in_full','deposit_paid','partial','uncertain'].includes(pay.state)?amount:'')+due;
+}
 export const huf=n=>Number.isSafeInteger(n)?String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+' Ft':'összeg ismeretlen';
 const when=iso=>new Date(iso).toLocaleString('hu-HU',{timeZone:'Europe/Budapest',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
 const day=d=>d.replaceAll('-','. ')+'.';
@@ -81,7 +90,7 @@ export function financeRowText(row,now=Date.now()){
   const p=row.previo,title=[p.voucher?'Previo '+p.voucher:'Previo-foglalás',s.unit,s.arrival&&s.departure?day(s.arrival)+' – '+day(s.departure):null].filter(Boolean).join(' · ');
   const lines=['Forrás: '+src,'Previo-állapot: '+(PREVIO_STATE_HU[p.state]||'egyéb')+(p.rooms>1?` · ${p.rooms} egység`:'')+(p.optionExpiration?' · opció lejár: '+p.optionExpiration:''),
    'Foglalás összege (Previo): '+(Number.isSafeInteger(p.price)?huf(p.price):'ismeretlen')+(p.currency&&p.currency!=='HUF'?' '+p.currency:'')];
-  if(g!=='cancelled')lines.push('Foglaló / befizetés: a Previo nem adja meg – NEM IGAZOLT, ellenőrizd a Previóban');
+  if(g!=='cancelled')lines.push(paymentText(p.payment));
   return {title,lines,group:g};
  }
  const title=[s.name||'Név nélkül',s.unit,s.arrival&&s.departure?day(s.arrival)+' – '+day(s.departure):null].filter(Boolean).join(' · ');

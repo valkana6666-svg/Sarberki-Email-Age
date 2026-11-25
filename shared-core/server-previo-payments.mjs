@@ -12,7 +12,7 @@ export function parsePayments(xml){
  return [...String(xml||'').matchAll(/<payment>([\s\S]*?)<\/payment>/g)].map(([,b])=>{
   const num=re=>{const m=b.match(re);return m?Number(m[1]):null;};
   return Object.freeze({payId:num(/<payId>(\d+)<\/payId>/),invId:num(/<invId>(\d+)<\/invId>/),price:(()=>{const m=b.match(/<price>(-?[0-9]+(?:\.[0-9]+)?)<\/price>/);return m?Math.round(Number(m[1])):null;})(),
-   issued:b.match(/<issued>(\d{4}-\d{2}-\d{2})/)?.[1]??null,type:num(/<cptId>(\d+)<\/cptId>/)});
+   issued:b.match(/<issued>(\d{4}-\d{2}-\d{2})/)?.[1]??null,type:num(/<cptId>(\d+)<\/cptId>/),curId:b.match(/<curId>(\d+)<\/curId>/)?.[1]??null});
  }).filter(p=>Number.isSafeInteger(p.payId)&&Number.isSafeInteger(p.price)&&p.issued);
 }
 

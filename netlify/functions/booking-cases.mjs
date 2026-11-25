@@ -24,8 +24,9 @@ import {voucherFor} from '../../shared-core/server-previo-reservation-write.mjs'
 import {PREVIO_LIVE_753011} from '../../shared-core/previo-booking-intent.mjs';
 import {liveAvailabilityReader,liveAvailabilityLine} from '../../shared-core/server-previo-live-view.mjs';
 import {prepareDepositReminder,reminderDue,reminderKind} from '../../shared-core/server-deposit-reminder.mjs';
-import {previoPaymentReader,depositPaymentHint,paymentHintLine} from '../../shared-core/server-previo-payments.mjs';
-import {previoFinanceReader} from '../../shared-core/server-previo-finance.mjs';
+import {previoPaymentReader} from '../../shared-core/server-previo-payments.mjs';
+import {previoFinanceReader,previoCaseLink} from '../../shared-core/server-previo-finance.mjs';
+import {paymentLinkLine} from '../../shared-core/server-previo-payment-link.mjs';
 import {previoGuestHistoryChecker} from '../../shared-core/server-previo-guest-history.mjs';
 import {readPrevioCaseStatus,previoCaseView,previoStatusLine} from '../../shared-core/server-previo-status.mjs';
 import {applyReturningDiscount,returningGuestLine} from '../../shared-core/returning-guest.mjs';
@@ -345,7 +346,13 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
     if(!row||!isTestMailboxCase({tenantId:row.tenant_id,caseId:row.case_id,data:row.data},TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
     if(row.data?.booking?.status!=='finalized')return cookieResponse(200,{result:{caseId:row.case_id,line:null}});
-    let line;try{line=paymentHintLine(depositPaymentHint(row.data.booking,await reader()));}catch{line='💰 A Previo befizetései most nem olvashatók.';}
+    // Owner 2026-11-25 (#9 7163781838): the EXACT link (payment → invoice → partner → reservation) replaces the
+    // amount+date guess; a case without a Previo booking number cannot be linked (said so, never guessed).
+    const ref=/^V2-(\d{1,12})$/.exec(String(row.data.booking.previo?.reference||''));
+    let line;
+    if(!ref)line='💰 Nincs Previo-foglalásszám az ügyben – a befizetés nem köthető hozzá; ellenőrizd a Previóban.';
+    else{try{const link=await previoCaseLink(env,fetchImpl,{resId:Number(ref[1]),deposit:Number.isSafeInteger(row.data.booking.deposit?.amount)?row.data.booking.deposit.amount:null});
+     line=link?paymentLinkLine(link):'💰 A Previo befizetései most nem olvashatók.';}catch{line='💰 A Previo befizetései most nem olvashatók.';}}
     return cookieResponse(200,{result:{caseId:row.case_id,line}});
    }
    // Owner 2026-11-25 (#9 7161329077): every Previo booking (all channels) for the finance view – read-only, business
