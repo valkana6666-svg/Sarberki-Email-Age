@@ -141,7 +141,7 @@ const SHORT={
 };
 const SECTION={hu:['Szállás','Ár és díjak','Az ajánlathoz még szükségünk van','Foglalás állapota'],de:['Unterkunft','Preis und Gebühren','Noch benötigte Angaben','Reservierungsstatus'],
  en:['Accommodation','Price and charges','Details still needed','Booking status'],si:['Nastanitev','Cena in doplačila','Podatki za dopolnitev','Status rezervacije']};
-const PLACEHOLDER={
+export const PLACEHOLDER={
  hu:['A kért faház elérhetőségét külön visszaigazoljuk.','Az elérhetőséget külön ellenőrizzük és visszaigazoljuk.','A teljes árat a ténylegesen szabad lehetőség alapján adjuk meg.','Ez az érdeklődés még nem visszaigazolt foglalás. A szükséges adatok és a választott faház egyeztetése, valamint az aktuális elérhetőség ellenőrzése után tudjuk a foglalást visszaigazolni.'],
  de:['Wir bestätigen die Verfügbarkeit des gewünschten Hauses gesondert.','Die Verfügbarkeit prüfen und bestätigen wir gesondert.','Den Gesamtpreis nennen wir anhand der tatsächlich verfügbaren Möglichkeit.','Diese Anfrage ist noch keine bestätigte Buchung. Erst nach Klärung der erforderlichen Angaben und des gewählten Hauses sowie erneuter Verfügbarkeitsprüfung können wir die Buchung bestätigen.'],
  en:['We will confirm availability of your requested cabin separately.','We will check and confirm availability separately.','We will quote the total price for the option that is actually available.','This enquiry is not a confirmed booking. We can confirm a booking only after clarifying the required details and selected cabin and rechecking availability.'],

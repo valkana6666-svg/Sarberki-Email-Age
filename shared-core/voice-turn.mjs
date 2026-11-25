@@ -8,6 +8,7 @@ import {createChatInquirySession} from '../sarberki-chatbot-project/chat-session
 import {requestFacts} from '../sarberki-chatbot-project/chat-request-client.mjs';
 import {hotTubWished,withoutPhoneQuestion} from '../sarberki-chatbot-project/chat-view.mjs';
 import {normalizeSpoken,speakNumbersHu} from './voice-normalize.mjs';
+import {PLACEHOLDER} from './inquiry-channel-adapters.mjs';
 
 const MAX_UTTERANCES=40,MAX_LEN=1000;
 
@@ -43,8 +44,11 @@ export function speechify(text,lang='hu'){
 const CUT=/\n\s*(?:Foglalás állapota|Booking status|Reservierungsstatus|Status rezervacije|Foglalási feltételek|Booking terms|Buchungsbedingungen|Pogoji rezervacije)\s*\n[\s\S]*$/u;
 // On the phone the caller speaks, not writes.
 const SAY={hu:[[/írja meg/gu,'mondja meg'],[/Írja meg/gu,'Mondja meg'],[/írjon nekünk/gu,'szóljon nekünk']],de:[[/schreiben Sie uns/gu,'sagen Sie uns']],en:[[/please write/giu,'please tell us']],si:[[/napišite/gu,'povejte']]};
+// Letter placeholders („the availability is confirmed separately”, „the total price follows”) are noise on the phone
+// (owner's ElevenLabs call 2026-11-25): the caller hears only the facts and the question.
+const dropPlaceholders=(t,lang)=>{for(const p of [...(PLACEHOLDER[lang]||[]),...(PLACEHOLDER.hu||[])])t=t.split(p).join('');return t;};
 export function speakable(text,max=700,lang='hu'){
- text=speechify(String(text||'').replace(CUT,''),lang);
+ text=speechify(dropPlaceholders(String(text||'').replace(CUT,''),lang),lang);
  for(const [re,to] of SAY[lang]||[])text=text.replace(re,to);
  if(lang==='hu')text=speakNumbersHu(text);
  const lines=String(text||'').split('\n').map(l=>l.trim()).filter(l=>l&&!DROP.test(l)).map(l=>l.replace(/^[–-]\s*/,''));
@@ -86,6 +90,7 @@ const ACCEPT_REPLY={hu:'Köszönjük, örülünk, hogy megfelel! Ezen a vonalon 
  de:'Vielen Dank, schön, dass es passt! Über diese Leitung können wir die Buchung derzeit nicht abschließen. Bitte senden Sie Ihre Anfrage über den Chat auf unserer Website oder per E-Mail – unser Team bestätigt sie.',
  en:"Thank you, glad it suits you! We can't complete the booking on this line yet. Please send your request through the chat on our website or by e-mail, and our team will confirm it.",
  si:'Hvala, veseli nas, da vam ustreza! Rezervacije po tej liniji trenutno ne moremo dokončati. Prosimo, pošljite povpraševanje prek klepeta na naši spletni strani ali po e-pošti, naša ekipa ga bo potrdila.'};
+const ACCEPT_TUB={hu:'A dézsabérlést is írja bele az igénybe, a szabad időpontot munkatársunk egyezteti.',de:'Bitte vermerken Sie den Badezuber in der Anfrage; den freien Termin stimmt unser Team ab.',en:'Please mention the hot tub in your request; our team will arrange the free slot.',si:'Masažno kad navedite v povpraševanju, prost termin bo uskladila naša ekipa.'};
 export async function voiceTurn({utterances,language='auto',clock=()=>new Date(),offerFn=null,assistFn=null}){
  if(!Array.isArray(utterances)||!utterances.length)return {reply:null,reason:'NO_UTTERANCE'};
  const s=createChatInquirySession({language,clock});let r=null,before=null;
@@ -95,7 +100,7 @@ export async function voiceTurn({utterances,language='auto',clock=()=>new Date()
  const changed=JSON.stringify(facts)!==before;
  if(facts&&hotTubWished(utterances))facts.hotTub=true;
  let text=r.text,source='engine',offer=null;
- if(facts&&!changed&&ACCEPT.test(last)&&!STAY_ASK.test(last)){text=ACCEPT_REPLY[lang]||ACCEPT_REPLY.hu;source='accept';}
+ if(facts&&!changed&&ACCEPT.test(last)&&!STAY_ASK.test(last)){text=(ACCEPT_REPLY[lang]||ACCEPT_REPLY.hu)+(hotTubWished([utterances.at(-1)])?' '+(ACCEPT_TUB[lang]||ACCEPT_TUB.hu):'');source='accept';}
  else if(facts&&r.decision&&offerFn&&(changed||STAY_ASK.test(last))){
   try{offer=await offerFn({facts,language:lang});}catch{offer=null;}
   if(offer&&['AVAILABLE','UNAVAILABLE'].includes(offer.status)){text=offer.text;source='offer';}
@@ -103,7 +108,10 @@ export async function voiceTurn({utterances,language='auto',clock=()=>new Date()
  const sideQuestion=facts&&r.decision&&!changed&&!STAY_ASK.test(last)&&source==='engine';
  if((sideQuestion||!r.decision&&!r.noAssist)&&source==='engine'&&assistFn){
   // The caller's last words (speech is split into fragments), so „… a normál tóra. Minden négy napra.” is one question.
-  const context=utterances.slice(-3).join(' ').slice(-600);
+  // Only a short fragment („Minden négy napra.”) is joined with the caller's previous words; a full question stands alone
+  // (owner's ElevenLabs call: the hot tub question got the fishing ticket answer from the previous sentence).
+  const lastWords=String(utterances.at(-1)).trim().split(/\s+/).length;
+  const context=lastWords<=5?utterances.slice(-3).join(' ').slice(-600):String(utterances.at(-1));
   try{const a=await assistFn({message:context,language:lang});if(typeof a==='string'&&a.trim()){text=a;source='assist';}}catch{}
  }
  // On the phone the caller's number is the call itself: no "please give us a phone number" (as in the chat form).

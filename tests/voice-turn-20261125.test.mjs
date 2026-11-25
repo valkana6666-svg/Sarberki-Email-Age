@@ -114,3 +114,18 @@ test('live call 2: side questions after the offer go to the model with context; 
  const price=await t(['Horgásznapi jegy.','És mennyibe kerül a szállás?']);assert.equal(price.source,'offer','a price question still reads the offer');
  assert.match(speakable('Kérjük, írja meg, hány felnőtt érkezik.',450,'hu'),/mondja meg/);
 });
+
+// The owner's ElevenLabs call (conv_7801m8aepe61e3g98p2zmpbyzmed, read with Claude's ElevenLabs key).
+test('ElevenLabs call: short first reply without letter placeholders, a full question stands alone, hot tub kept with the acceptance',async()=>{
+ const C=()=>new Date('2026-11-25T22:55:00Z'),asked=[];
+ const assistFn=async({message})=>{asked.push(message);return 'A dézsa harmincezer forint/24 óra 6 főig.';};
+ const U1=['Szeretnék érdeklődni, hogy ööö, 2027. március 4-től 8-ig ööö, van-e szabad deluxe faház?'];
+ const first=await voiceTurn({utterances:U1,clock:C});
+ assert.doesNotMatch(first.reply,/külön visszaigazoljuk|ténylegesen szabad lehetőség/);assert.match(first.reply,/felnőtt/);
+ const U=[...U1,'Négy felnőtt érkezne, gyerek nélkül.','Azt szeretném megkérdezni, hogy ööö, minden napra a horgászjegy mennyibe kerülne egy főre? Na, normál tóra.'];
+ await voiceTurn({utterances:[...U,'Dézsa fürdőt mennyiért lehet bérelni? Dézsát.'],clock:C,assistFn});
+ assert.equal(asked.at(-1),'Dézsa fürdőt mennyiért lehet bérelni? Dézsát.','a full question is sent alone, not with the fishing question');
+ const acc=await voiceTurn({utterances:[...U,'Akkor szeretném lefoglalni ezt a deluxe faházat négy főre, ahogy az előbb említettem, és szeretnék minden napra dézsafürdőt hozzá... bérelni.'],clock:C,assistFn});
+ assert.equal(acc.source,'accept');assert.match(acc.reply,/dézsabérlést is írja bele/);
+ assert.equal(speakable('Foglaló: a szállásdíj 50%-a, 126 000 Ft.',450,'hu'),'Foglaló: a szállásdíj ötven százaléka, százhuszonhatezer forint.');
+});
