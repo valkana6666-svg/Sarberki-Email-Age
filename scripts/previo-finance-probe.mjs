@@ -74,6 +74,20 @@ export async function probe({key,hotel,from,to,fetchImpl=globalThis.fetch,maxRes
   for(const x of list){const r=x.match(/<resId>(\d+)<\/resId>/)?.[1];if(r&&resIds.has(r))docResInWindow++;
    if([...x.matchAll(/<(?:invId|docId|id)>(\d+)<\/(?:invId|docId|id)>/g)].some(m=>payInvAll.has(m[1])))docInvMatchesPayment++;}
  }
+ // The full chain: payment.invId → document(invId, comId) → reservation(comId). Unique when the partner has ONE
+ // reservation in the window; counts only.
+ const resByCom={};for(const b of res){const c=b.match(/<comId>(\d+)<\/comId>/)?.[1];if(c)resByCom[c]=(resByCom[c]||0)+1;}
+ const chain={partnersWithOneReservation:Object.values(resByCom).filter(n=>n===1).length,partnersWithSeveral:Object.values(resByCom).filter(n=>n>1).length,
+  paymentsToOneReservation:0,paymentsToSeveral:0,documentsWithoutPayment:0,variableSymbolIsResIdOrVoucher:0};
+ const vouchers=new Set(res.map(b=>b.match(/<voucher>([^<]+)<\/voucher>/)?.[1]).filter(Boolean));
+ for(const c of resCom.slice(0,25)){
+  const d=await call('getDocuments',`<comId>${c}</comId>`);if(err(d.text))continue;
+  for(const x of blocks(d.text,'document')){const inv=x.match(/<invId>(\d+)<\/invId>/)?.[1],vs=(x.match(/<variableSymbol>([^<]*)<\/variableSymbol>/)?.[1]||'').trim();
+   if(vs&&(resIds.has(vs)||vouchers.has(vs)))chain.variableSymbolIsResIdOrVoucher++;
+   const n=pays.filter(p=>inv&&p.includes(`<invId>${inv}</invId>`)).length;if(!n){chain.documentsWithoutPayment++;continue;}
+   if(resByCom[c]===1)chain.paymentsToOneReservation+=n;else chain.paymentsToSeveral+=n;}
+ }
+ out.chain=chain;
  out.documentsPerPartner={partnersAsked:Math.min(25,resCom.length),partnersWithDocuments:withDocs,documents:docCount,documentsNamingAReservationOfTheWindow:docResInWindow,documentsWhoseIdIsAPaymentInvoice:docInvMatchesPayment,paths:[...docPaths].sort().slice(0,60),enums:docEnums};
 
  if(resCom[0]&&resCom[0]!==com){const d2=await call('getDocuments',`<comId>${resCom[0]}</comId><term><from>${from}</from><to>${to}</to></term>`);out.documentsWithReservationComId={http:d2.http,error:err(d2.text),root:(d2.text.match(/<([A-Za-z]+)[ >]/)||[])[1]||null,paths:tagPaths(d2.text).slice(0,40)};}
