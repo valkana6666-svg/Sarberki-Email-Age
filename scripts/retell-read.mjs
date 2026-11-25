@@ -17,6 +17,12 @@ export async function retellRead(request,{key,fetchImpl=globalThis.fetch}){
  out.agent={http:a.http,error:a.error,...(a.json?{agent_id:a.json.agent_id,agent_name:a.json.agent_name,version:a.json.version,is_published:a.json.is_published,language:a.json.language,
   voice_id:a.json.voice_id,voice_model:a.json.voice_model??null,response_engine:{type:a.json.response_engine?.type,llm_id:a.json.response_engine?.llm_id??null},
   interruption_sensitivity:a.json.interruption_sensitivity??null,responsiveness:a.json.responsiveness??null,stt_mode:a.json.stt_mode??null}:{})};
+ // The agent's Retell LLM: prompt, first message, model and tool NAMES (never tool headers – they hold the voice key).
+ if(q.llm&&a.json?.response_engine?.llm_id){
+  const l=await get('/get-retell-llm/'+a.json.response_engine.llm_id);
+  out.llm=l.json?{http:l.http,llm_id:l.json.llm_id,version:l.json.version,model:l.json.model??null,begin_message:l.json.begin_message??null,
+   general_prompt:l.json.general_prompt??null,tools:(l.json.general_tools||[]).map(t=>({name:t.name,type:t.type,url:t.url??null,hasHeaders:!!(t.headers&&Object.keys(t.headers).length)}))}:{http:l.http,error:l.error};
+ }
  out.calls=[];
  for(const id of (Array.isArray(q.calls)?q.calls:[]).slice(0,5)){
   if(!/^call_[a-f0-9]{16,40}$/.test(id)){out.calls.push({id,skipped:'BAD_ID'});continue;}
