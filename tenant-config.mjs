@@ -6,7 +6,7 @@ export function createTenantConfig({id,brandName,languages,knowledge=[],business
  if(new Set(inventory.map(x=>x.id)).size!==inventory.length||inventory.some(x=>!x.id||!x.physicalHouse||!Number.isInteger(x.capacity)||x.capacity<1))throw Error('Hibás egységstruktúra.');
  return freeze(structuredClone({id,brandName,languages,knowledge,businessRules,inventory,pricing,adapterId,communication:{...communication,automaticSend:false,humanApprovalRequired:true}}));
 }
-const whole=[['vip',[1],5],['family',[2,3,4,5,6],8],['deluxe',[11,12,13,14],6],['small',[15],2]].flatMap(([type,houses,capacity])=>houses.map(n=>({id:String(n),physicalHouse:n,type,capacity,extraBedsVerified:false})));
+const whole=[['vip',[1],7],['family',[2,3,4,5,6],8],['deluxe',[11,12,13,14],6],['small',[15],2]].flatMap(([type,houses,capacity])=>houses.map(n=>({id:String(n),physicalHouse:n,type,capacity,extraBedsVerified:false})));
 export const SARBERKI_TENANT=createTenantConfig({id:'sarberki',brandName:BUSINESS.brandName,languages:['hu','de','en','si'],adapterId:BUSINESS.bookingProvider.kind,
  inventory:[...whole,...BUSINESS.splitPhysicalUnits.map(x=>({id:x.id,physicalHouse:x.physicalHouse,type:x.previoPool,capacity:x.nominalGuests,extraBedsVerified:false}))],
  businessRules:{booking:BUSINESS.bookingRules,operational:BUSINESS.operationalRules,pricing:BUSINESS.pricingRules},
