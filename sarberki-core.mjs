@@ -247,7 +247,7 @@ export function adultCountFromText(text=''){
   const hw=text.match(/\b(egy|két|ket|kettő|ketto|három|harom|négy|negy|öt|ot|hat|hét|het|nyolc)\s+(?:felnőtt|felnott)\w*\b/iu)?.[1]?.toLocaleLowerCase('hu-HU');
   if(hw) return huWords[hw];
   const siWords={en:1,ena:1,eno:1,dva:2,dve:2,trije:3,tri:3,štirje:4,stirje:4,štiri:4,stiri:4,pet:5,šest:6,sest:6,sedem:7,osem:8};
-  const sw=text.match(/\b(en|ena|eno|dva|dve|trije|tri|štirje|stirje|štiri|stiri|pet|šest|sest|sedem|osem)\s+odrasl\w*\b/iu)?.[1]?.toLocaleLowerCase('sl-SI');
+  const sw=text.match(/(?<!\p{L})(en|ena|eno|dva|dve|trije|tri|štirje|stirje|štiri|stiri|pet|šest|sest|sedem|osem)\s+odrasl\p{L}*/iu)?.[1]?.toLocaleLowerCase('sl-SI'); // (?<!\p{L}): \b missed „štirje” (voice test 2026-11-25)
   if(sw) return siWords[sw];
   // Chat test 2026-11-24 ("We are two adults and two kids"): English number words.
   const ew=text.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+adults?\b/iu)?.[1]?.toLowerCase();

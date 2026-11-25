@@ -38,7 +38,7 @@ test('replay through the shared engine; the checked offer when the stay is compl
  let offered=null;
  const offerFn=async({facts,language})=>{offered={facts,language};return {status:'AVAILABLE',total:128200,text:'Jó hír: a Deluxe ház 2027.06.10. – 2027.06.13. között szabad.\nÁr: 128 200 Ft.'};};
  const r=await voiceTurn({utterances:['Szia, foglalnék','Deluxe faházat','június 10-től 13-ig','ketten jövünk, 2 felnőtt'],clock:CLOCK,offerFn});
- assert.equal(r.source,'offer');assert.equal(r.reply,'Jó hír: a Deluxe ház 2027.06.10. – 2027.06.13. között szabad. Ár: 128 200 Ft.');
+ assert.equal(r.source,'offer');assert.equal(r.reply,'Jó hír: a Deluxe ház 2027. június 10. – 2027. június 13. között szabad. Ár: 128200 forint.');
  assert.deepEqual(r.facts,{arrival:'2027-06-10',departure:'2027-06-13',adults:2,children:0,cabin:'Deluxe'});assert.equal(offered.facts.cabin,'deluxe');assert.deepEqual(r.offer,{status:'AVAILABLE',total:128200});
  const missing=await voiceTurn({utterances:['Deluxe faházat szeretnénk június 10-13'],clock:CLOCK,offerFn:async()=>{throw Error('not called');}});
  assert.equal(missing.source,'engine');assert.match(missing.reply,/felnőtt/);assert.doesNotMatch(missing.reply,/^Tisztelt|Szállás /);
@@ -77,7 +77,22 @@ test('live call 2026-11-25 (call_80ab29bb…): spoken Hungarian dates and party 
  const U=['Halló.','Miért nem hallok?','Szeretnék. Hogy vane Samads Páz kétezer 27 június 2től június nyolcig.','Három felnőttet szeretnék. Gyerek nélkül.','Három felnőtt lesz, gyerek nem lesz. Csak három felnőtt.'];
  const r=await voiceTurn({utterances:U,clock:()=>new Date('2026-11-25T19:20:00Z')});
  assert.deepEqual(r.facts,{arrival:'2027-06-02',departure:'2027-06-08',adults:3,children:0,cabin:null});
- assert.match(r.reply,/2027\.06\.02\. és 2027\.06\.08\. között 3 fő/);
+ assert.match(r.reply,/2027\. június 2\. és 2027\. június 8\. között 3 fő/);assert.doesNotMatch(r.reply,/telefonszám/,'no phone number asked on a phone call');
  const done=await voiceTurn({utterances:[...U,'Családi házat kérnék.'],clock:()=>new Date('2026-11-25T19:20:00Z'),offerFn:async()=>({status:'AVAILABLE',total:200000,text:'Jó hír: szabad.'})});
  assert.equal(done.source,'offer');assert.equal(done.facts.cabin,'Családi');
+});
+
+import {buildCalls,runVoice} from '../scripts/voice-speech-e2e.mjs';
+import {normalizeSpoken,normalizeCabinNames} from '../shared-core/voice-normalize.mjs';
+test('phone-style set: 100 calls (25 per language) – spoken numbers, years, "a week", child ages, misheard cabins, fillers, corrections',async()=>{
+ const res=await runVoice(buildCalls());assert.equal(res.length,100);
+ assert.deepEqual(res.filter(r=>!r.ok).map(r=>r.id+': '+r.issues.join('; ')),[]);
+});
+test('spoken-number normaliser: four languages, and unrelated words stay unchanged',()=>{
+ assert.equal(normalizeSpoken('We would like the family cabin from June tenth to the thirteenth twenty twenty seven, three adults and two kids aged five and eight'),'We would like the family cabin from June 10 to 13 2027, 3 adults and 2 kids aged 5 and 8');
+ assert.equal(normalizeSpoken('Wir möchten vom zehnten bis sechsten Juni zweitausendsiebenundzwanzig, drei Erwachsene'),'Wir möchten vom 10. bis 6. Juni 2027, 3 Erwachsene');
+ assert.equal(normalizeSpoken('Želimo od desetega do trinajstega junija dva tisoč sedemindvajset, trije odrasli'),'Želimo od 10. do 13. junija 2027, trije odrasli');
+ assert.equal(normalizeSpoken('ketten meg a két gyerek egy ötéves és egy nyolcéves, július elsejétől egy hétre'),'ketten meg a 2 gyerek egy 5 éves és egy 8 éves, július 1-től 7 éjszakára');
+ for(const t of ['in a week we will call','Ich komme in einer Woche wieder','egy hét múlva','Hét órakor','first time here','the second floor'])assert.equal(normalizeSpoken(t),t);
+ assert.equal(normalizeCabinNames('a de luxe cabin, de luks hiško, víp apartman, v i p'),'a Deluxe cabin, Deluxe hiško, VIP apartman, VIP');
 });

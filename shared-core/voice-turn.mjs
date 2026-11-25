@@ -6,7 +6,8 @@
 import {createHmac,timingSafeEqual} from 'node:crypto';
 import {createChatInquirySession} from '../sarberki-chatbot-project/chat-session.mjs';
 import {requestFacts} from '../sarberki-chatbot-project/chat-request-client.mjs';
-import {hotTubWished} from '../sarberki-chatbot-project/chat-view.mjs';
+import {hotTubWished,withoutPhoneQuestion} from '../sarberki-chatbot-project/chat-view.mjs';
+import {normalizeSpoken} from './voice-normalize.mjs';
 
 const MAX_UTTERANCES=40,MAX_LEN=1000;
 
@@ -19,41 +20,38 @@ export function callerUtterances(body){
  return list.filter(x=>typeof x==='string').map(x=>x.trim().slice(0,MAX_LEN)).filter(Boolean).slice(-MAX_UTTERANCES);
 }
 
-// Live Retell call 2026-11-25 (call_80ab29bb…): speech-to-text writes numbers as a person SAYS them – „kétezer 27
-// június 2től június nyolcig”, „három felnőttet” – which no chat guest types, so the engine found no dates and never
-// opened the booking. Voice channel only (chat and e-mail unchanged): Hungarian spoken numbers → digits before the
-// shared engine. Only date-like forms (with -tól/-től/-ig/-án/-én or ordinal), a party count before felnőtt/gyerek/fő/
-// éjszaka, and „kétezer N” years are rewritten; a bare word („egy”, „hét” = week) stays as is.
-const HU_UNITS={egy:1,kettő:2,ketto:2,két:2,ket:2,három:3,harom:3,négy:4,negy:4,öt:5,ot:5,hat:6,hét:7,het:7,nyolc:8,kilenc:9};
-const HU_TENS={tizen:10,huszon:20,harminc:30};
-const HU_ORD={első:1,elso:1,elseje:1,elsej:1,második:2,masodik:2,harmadik:3,negyedik:4,ötödik:5,otodik:5,hatodik:6,hetedik:7,nyolcadik:8,kilencedik:9,tizedik:10,huszadik:20,harmincadik:30,egyedik:1,kettedik:2};
-function huNumber(word){
- const w=word.toLocaleLowerCase('hu-HU');
- if(HU_ORD[w]!==undefined)return HU_ORD[w];
- if(w==='tíz'||w==='tiz')return 10;if(w==='húsz'||w==='husz')return 20;if(w==='harminc')return 30;
- for(const [t,v] of Object.entries(HU_TENS))if(w.startsWith(t)){const rest=w.slice(t.length);if(!rest)return null;const u=HU_UNITS[rest]??HU_ORD[rest];return u!==undefined&&u<10?v+u:null;}
- return HU_UNITS[w]??null;
-}
-const STEM='(elsej|első|elso|második|masodik|harmadik|negyedik|ötödik|otodik|hatodik|hetedik|nyolcadik|kilencedik|tizedik|huszadik|harmincadik|(?:tizen|huszon|harminc)(?:egyedik|kettedik|harmadik|negyedik|ötödik|otodik|hatodik|hetedik|nyolcadik|kilencedik|egy|kettő|ketto|két|három|harom|négy|negy|öt|ot|hat|hét|het|nyolc|kilenc)|tíz|tiz|húsz|husz|harminc|egy|kettő|ketto|két|három|harom|négy|negy|öt|ot|hat|hét|het|nyolc|kilenc)';
-export function normalizeSpokenHu(text){
- let t=String(text||'');
- // „kétezer 27”, „kétezer-huszonhét”, „kétezerhuszonhét” → 2027
- t=t.replace(/kétezer[\s-]*(\d{1,2})(?!\d)/giu,(m,n)=>String(2000+Number(n)));
- t=t.replace(new RegExp('kétezer[\\s-]*'+STEM+'(?!\\p{L})','giu'),(m,w)=>{const n=huNumber(w);return n!==null?String(2000+n):m;});
- // day with a date suffix: „nyolcig”, „tizedikétől”, „elsejéig”, „másodikán”, „2től”
- t=t.replace(new RegExp('(?<!\\p{L})'+STEM+'(?:ik[aáeé]|ej[eé]|[aáeé])?(t[óo]l|t[őo]l|ig|[aáeé]n)(?!\\p{L})','giu'),(m,w,suf)=>{const n=huNumber(w.replace(/(?:ik[aáeé]|ej[eé])$/u,''));return n!==null&&n>=1&&n<=31?`${n}-${suf}`:m;});
- t=t.replace(/(?<![\d.])(\d{1,2})\s?(t[óo]l|t[őo]l|ig)(?!\p{L})/giu,'$1-$2');
- // party: „három felnőtt(et)”, „két gyerek”, „négy fő”, „három éjszaka”
- t=t.replace(new RegExp('(?<!\\p{L})'+STEM+'(?=\\s+(?:felnőtt|felnott|gyerek|gyermek|fő|fo(?!\\p{L})|éjszak|ejszak|éjjel))','giu'),(m,w)=>{const n=huNumber(w);return n!==null?String(n):m;});
- return t;
-}
+// Spoken numbers → written forms the engine knows (HU/DE/EN/SI), voice channel only: shared-core/voice-normalize.mjs.
+export {normalizeSpokenHu} from './voice-normalize.mjs';
 
 // Spoken form of an engine reply: no letter greeting or section titles, no bullet dashes, short.
-const DROP=/^(?:Tisztelt .*!|Kedves .*[!,]|Dear .*,|Guten Tag.*!|Sehr geehrte.*,|Pozdravljeni.*!|Köszönjük érdeklődését\.|Vielen Dank für Ihre Anfrage\.|Thank you for your enquiry\.|Hvala za vaše povpraševanje\.|Szállás|Accommodation|Unterkunft|Nastanitev|Ár és díjak|Price and charges|Preis und Gebühren|Cena in stroški|Foglalási feltételek|Booking terms|Buchungsbedingungen|Pogoji rezervacije|Az ajánlathoz még szükségünk van|Details still needed|Noch benötigte Angaben|Podatki za dopolnitev|Kiegészítő információk|Additional information|Weitere Informationen|Dodatne informacije|Üdvözlettel.*|Best regards.*|Mit freundlichen Grüßen.*|Lep pozdrav.*|Sárberki.*|\(Automati.*\)|\(Samodejn.*\))$/u;
-export function speakable(text,max=700){
+const DROP=/^(?:Kind regards,?|Freundliche Grüße,?|Lep pozdrav,?|Üdvözlettel:?|Tisztelt .*!|Kedves .*[!,]|Dear .*,|Guten Tag.*!|Sehr geehrte.*,|Pozdravljeni.*!|Köszönjük érdeklődését\.|Vielen Dank für Ihre Anfrage\.|Thank you for your enquiry\.|Hvala za vaše povpraševanje\.|Szállás|Accommodation|Unterkunft|Nastanitev|Ár és díjak|Price and charges|Preis und Gebühren|Cena in stroški|Foglalási feltételek|Booking terms|Buchungsbedingungen|Pogoji rezervacije|Az ajánlathoz még szükségünk van|Details still needed|Noch benötigte Angaben|Podatki za dopolnitev|Kiegészítő információk|Additional information|Weitere Informationen|Dodatne informacije|Üdvözlettel.*|Best regards.*|Mit freundlichen Grüßen.*|Lep pozdrav.*|Sárberki.*|\(Automati.*\)|\(Samodejn.*\))$/u;
+// Spoken dates and prices (owner 2026-11-25): „2027.06.10.” / „10.06.2027” read badly aloud – month names instead;
+// „128 200 Ft” → „128200 forint” (one number for the voice).
+const MONTHS={hu:['január','február','március','április','május','június','július','augusztus','szeptember','október','november','december'],
+ de:['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'],
+ en:['January','February','March','April','May','June','July','August','September','October','November','December'],
+ si:['januarja','februarja','marca','aprila','maja','junija','julija','avgusta','septembra','oktobra','novembra','decembra']}; // Slovene dates take the genitive („14. septembra 2027”)
+const CURRENCY={hu:'forint',de:'Forint',en:'forints',si:'forintov'};
+export function speechify(text,lang='hu'){
+ const M=MONTHS[lang]||MONTHS.hu;let t=String(text||'');
+ t=t.replace(/\b(20\d{2})\.\s?(\d{2})\.\s?(\d{2})(\.?)(?=(\s+\p{Lu})?)/gu,(m,y,mo,d,dot,cap)=>Number(mo)>=1&&Number(mo)<=12?(lang==='hu'?`${y}. ${M[mo-1]} ${Number(d)}.`:(lang==='en'?`${Number(d)} ${M[mo-1]} ${y}`:`${Number(d)}. ${M[mo-1]} ${y}`)+(dot&&cap?'.':'')):m);
+ t=t.replace(/\b(\d{2})\.(\d{2})\.(20\d{2})\b/g,(m,d,mo,y)=>Number(mo)>=1&&Number(mo)<=12?(lang==='hu'?`${y}. ${M[mo-1]} ${Number(d)}.`:lang==='en'?`${Number(d)} ${M[mo-1]} ${y}`:`${Number(d)}. ${M[mo-1]} ${y}`):m);
+ t=t.replace(/(\d{1,3}(?:[  .]\d{3})+|\d+)\s?(?:Ft|HUF)\b/g,(m,n)=>n.replace(/[  .]/g,'')+' '+(CURRENCY[lang]||CURRENCY.hu));
+ return t;
+}
+// The booking-status / terms part of a letter is not read on the phone (legal text; the checked offer says it briefly).
+const CUT=/\n\s*(?:Foglalás állapota|Booking status|Reservierungsstatus|Status rezervacije|Foglalási feltételek|Booking terms|Buchungsbedingungen|Pogoji rezervacije)\s*\n[\s\S]*$/u;
+export function speakable(text,max=700,lang='hu'){
+ text=speechify(String(text||'').replace(CUT,''),lang);
  const lines=String(text||'').split('\n').map(l=>l.trim()).filter(l=>l&&!DROP.test(l)).map(l=>l.replace(/^[–-]\s*/,''));
  let out=lines.join(' ').replace(/\s+/g,' ').trim();
- if(out.length>max){const cut=out.slice(0,max);const end=Math.max(cut.lastIndexOf('. '),cut.lastIndexOf('? '),cut.lastIndexOf('! '));out=(end>200?cut.slice(0,end+1):cut).trim();}
+ if(out.length>max){
+  // Keep the first sentences and the question the caller must answer (a long reply is interrupted on the phone).
+  const sentences=out.match(/[^.?!]+[.?!]+(?=\s|$)|[^.?!]+$/g)||[out],question=sentences.find(x=>x.trim().endsWith('?'));
+  let keep='';for(const x of sentences){if((keep+x).length>max-(question&&!keep.includes(question)?question.length:0))break;keep+=x;}
+  if(question&&!keep.includes(question.trim()))keep=keep.trim()+' '+question.trim();
+  out=(keep||out.slice(0,max)).replace(/\s+/g,' ').trim();
+ }
  return out;
 }
 
@@ -77,7 +75,7 @@ export async function voiceTurn({utterances,language='auto',clock=()=>new Date()
  if(!Array.isArray(utterances)||!utterances.length)return {reply:null,reason:'NO_UTTERANCE'};
  const s=createChatInquirySession({language,clock});let r=null;
  // Spoken Hungarian numbers → digits (voice only); the session's own language detection decides the reply language.
- for(const u of utterances)r=s.reply(language==='de'||language==='en'||language==='si'?u:normalizeSpokenHu(u));
+ for(const u of utterances)r=s.reply(normalizeSpoken(u));
  const lang=s.language,snap=s.snapshot(),facts=requestFacts(snap);
  if(facts&&hotTubWished(utterances))facts.hotTub=true;
  let text=r.text,source='engine',offer=null;
@@ -86,7 +84,9 @@ export async function voiceTurn({utterances,language='auto',clock=()=>new Date()
   if(offer&&['AVAILABLE','UNAVAILABLE'].includes(offer.status)){text=offer.text;source='offer';}
  }
  if(!r.decision&&!r.noAssist&&assistFn){try{const a=await assistFn({message:utterances.at(-1),language:lang});if(typeof a==='string'&&a.trim()){text=a;source='assist';}}catch{}}
- return {reply:speakable(text),language:lang,source,
+ // On the phone the caller's number is the call itself: no "please give us a phone number" (as in the chat form).
+ if(source==='engine')text=withoutPhoneQuestion(text,lang);
+ return {reply:speakable(text,450,lang),language:lang,source,
   facts:{arrival:snap.dates?.arrival??null,departure:snap.dates?.departure??null,adults:Number.isInteger(snap.adults)?snap.adults:null,
    children:Number.isInteger(snap.children)?snap.children:null,cabin:snap.cabin||null},
   offer:offer?{status:offer.status,total:Number.isSafeInteger(offer.total)?offer.total:null}:null};
