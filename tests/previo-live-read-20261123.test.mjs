@@ -62,13 +62,13 @@ test('reservation finance probe: tag paths, statuses, channel counts – a perso
  const calls=[];
  const fetchImpl=async(url,o)=>{calls.push([url,o.method]);
   if(url.endsWith('/searchReservations'))return new Response(res);
-  if(url.endsWith('/getReservation'))return new Response(`<reservation><resId>117760371</resId><deposit><amount>90750</amount><due>2026-07-01</due></deposit><guest><phone>${FAKE_PHONE}</phone></guest></reservation>`);
+  if(/getReservation$|getReservationPayments|getReservationAccount|getAccountItems|Invoices$/.test(url))return new Response(`<reservation><resId>117760371</resId><deposit><amount>90750</amount><due>2026-07-01</due></deposit><guest><phone>${FAKE_PHONE}</phone></guest></reservation>`);
   return new Response(JSON.stringify({code:404,error:'not found'}),{status:404});};
  const r=(await run({probes:['reservationFinance'],from:'2026-07-01',to:'2026-07-03'},{apiKey:KEY,fetchImpl})).reservationFinance,out=JSON.stringify(r);
  assert.equal(r.reservations,3);assert.equal(r.statuses['9'].count,2);assert.equal(r.statuses['7'].name,'Stornovaná');
  assert.deepEqual(r.partners['#12'],{count:1,channelName:'Booking.com'});assert.equal(r.partners['#13'].channelName,'(other)');assert.equal(r.partners['(empty)'].count,1);
  assert.ok(r.moneyPaths.includes('price>paid'));assert.ok(r.detail[0].xmlGetReservation.moneyPaths.includes('reservation>deposit>due'));
- assert.equal(r.detail.length,3);assert.equal(r.detail[0].restReservation.http,404);
- assert.ok(calls.every(([u,m])=>/searchReservations|getReservation/.test(u)?m==='POST':m==='GET'));
+ assert.equal(r.detail.length,3);assert.equal(r.ops.getReservationPayments.http,200);assert.equal(r.detail[0].restReservation.http,404);
+ assert.ok(calls.every(([u,m])=>/\/x1\/hotel\//.test(u)?m==='POST':m==='GET'));
  for(const v of [FAKE_GUEST,FAKE_MAIL,FAKE_PHONE,'90750','45000','SB-77','117760371'])assert.ok(!out.includes(v),v);
 });

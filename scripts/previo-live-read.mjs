@@ -171,7 +171,14 @@ export function previoLiveReader({apiKey,fetchImpl=globalThis.fetch}){
     detail.push({xmlGetReservation:{http:g.status,error:/<error>/.test(g.text)?String(g.text.match(/<message>([^<]{0,160})/)?.[1]||'error'):null,moneyPaths:gp.filter(t=>MONEY.test(t)),pathCount:gp.length},
      restReservation:{http:r1.status,error:r1.error,shape:r1.json?shape(r1.json):null},restReservations:{http:r2.status,error:r2.error,shape:r2.json?shape(r2.json):null}});
    }
-   return {http:rs.status,reservations:blocks.length,tagPaths:paths,moneyPaths:paths.filter(t=>MONEY.test(t)),statuses,partners,types,detail};
+   // Read-named XML operations that might hold a reservation's account/payments (get*/search* only): status + money tag paths.
+   const ops={};
+   for(const op of ['getReservationPayments','getReservationAccount','getAccountItems','searchInvoices','getInvoices','getReservationInvoices']){
+    if(!ids[0])break;
+    const r=await call('/x1/hotel/'+op,{method:'POST',headers:{'Content-Type':'application/xml',Accept:'application/xml'},body:`<?xml version="1.0"?><request><hotId>${HOTEL}</hotId><resId>${ids[0]}</resId></request>`});
+    const tp=xmlTagPaths([String(r.text)]);ops[op]={http:r.status,error:/<error>/.test(r.text)?String(r.text.match(/<message>([^<]{0,120})/)?.[1]||'error'):null,moneyPaths:tp.filter(t=>MONEY.test(t)),pathCount:tp.length};
+   }
+   return {http:rs.status,reservations:blocks.length,tagPaths:paths,moneyPaths:paths.filter(t=>MONEY.test(t)),statuses,partners,types,detail,ops};
   },
   // Any other plain REST GET (e.g. a code list): status and SHAPE only.
   get:async path=>{const r=await get(path);return {path,http:r.status,error:r.error,shape:r.json?shape(r.json):null};}
