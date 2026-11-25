@@ -24,6 +24,7 @@ import {voucherFor} from '../../shared-core/server-previo-reservation-write.mjs'
 import {PREVIO_LIVE_753011} from '../../shared-core/previo-booking-intent.mjs';
 import {liveAvailabilityReader,liveAvailabilityLine} from '../../shared-core/server-previo-live-view.mjs';
 import {prepareDepositReminder,reminderDue,reminderKind} from '../../shared-core/server-deposit-reminder.mjs';
+import {previoPaymentReader,depositPaymentHint,paymentHintLine} from '../../shared-core/server-previo-payments.mjs';
 import {previoGuestHistoryChecker} from '../../shared-core/server-previo-guest-history.mjs';
 import {readPrevioCaseStatus,previoCaseView,previoStatusLine} from '../../shared-core/server-previo-status.mjs';
 import {applyReturningDiscount,returningGuestLine} from '../../shared-core/returning-guest.mjs';
@@ -320,6 +321,22 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
    }
    // Automatic free-unit suggestion (owner 2026-11-13: "mindig automatikusan ajánljon fel egy szabad egységet",
    // manual choice stays possible). Read only: our bookings + the Previo TEST unit read.
+   // Owner 2026-11-25: a Previo payment that probably is the deposit (amount + date), shown as a suggestion only.
+   if(input.action==='test-mailbox-payment-hint'){
+    if(event.httpMethod!=='GET'||!cookieMode||!mailboxOn||live||input.tenantId!==TENANT||Object.keys(input).sort().join(',')!=='action,caseId,tenantId')
+     return cookieResponse(403,{error:'FORBIDDEN'});
+    if(typeof input.caseId!=='string'||!/^tm-[a-f0-9]{12,32}$/.test(input.caseId))return cookieResponse(400,{error:'INVALID_INPUT'});
+    cookieSession=await createOperatorCookieSession({env,fetchImpl}).protectedRead(event);
+    rotatedCookie=cookieSession.setCookie;
+    const reader=previoPaymentReader(env,fetchImpl);
+    if(!reader)return cookieResponse(200,{result:{caseId:input.caseId,line:null}});
+    const rows=await cookieSession.transport('/rest/v1/sc_cases?select=*&tenant_id=eq.'+TENANT+'&case_id=eq.'+encodeURIComponent(input.caseId));
+    const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
+    if(!row||!isTestMailboxCase({tenantId:row.tenant_id,caseId:row.case_id,data:row.data},TENANT))return cookieResponse(404,{error:'NOT_FOUND'});
+    if(row.data?.booking?.status!=='finalized')return cookieResponse(200,{result:{caseId:row.case_id,line:null}});
+    let line;try{line=paymentHintLine(depositPaymentHint(row.data.booking,await reader()));}catch{line='💰 A Previo befizetései most nem olvashatók.';}
+    return cookieResponse(200,{result:{caseId:row.case_id,line}});
+   }
    // Owner 2026-11-23: the LIVE Previo availability for the case's type and dates, shown only (own switch/key).
    if(input.action==='test-mailbox-live-availability'){
     if(event.httpMethod!=='GET'||!cookieMode||!mailboxOn||live||input.tenantId!==TENANT||Object.keys(input).sort().join(',')!=='action,caseId,tenantId')

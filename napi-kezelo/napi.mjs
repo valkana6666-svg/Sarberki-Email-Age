@@ -441,6 +441,7 @@ function showBooking(caseId,record){
  }else if(fin&&!['finalized','deposit_received'].includes(b?.status)&&(cabinKey||genericSplit))suggestFreeUnits(caseId,record.revision);
  if(record.previoRead===true)showPrevioStatus(caseId,record.revision,record);
  if(record.values?.arrival&&record.values?.departure)showLiveAvailability(caseId,record.revision);
+ if(record.booking?.status==='finalized')showPaymentHint(caseId,record.revision);
  for(const id of ['previo-ref','previo-recorded'])el(id).disabled=!fin;
  // V2: offered only when the server says it can write the Previo TEST booking itself.
  el('previo-auto-wrap').hidden=record.previoWrite!==true;el('previo-auto').disabled=!fin||record.previoWrite!==true;el('previo-auto').checked=false;
@@ -515,6 +516,16 @@ async function showPrevioStatus(caseId,revision,record=null){
     ?'📝 Ez a foglalás már bent van a Previóban (opció). Ellenőrizd a Previóban, és állítsd „megerősítve”-re – utána itt elküldheted a vendégnek a visszaigazoló levelet.'
     :finalized?'✅ A Previóban megerősítve, a visszaigazolás rögzítve. Itt nincs több teendő.':'✅ A Previóban megerősítve.'+(mail?'':' (Nincs e-mail-cím – értesítsd telefonon.)');
   }
+ }catch{}
+}
+// Owner 2026-11-25: a Previo payment that probably is the deposit – a suggestion next to the "Foglaló beérkezett" step.
+async function showPaymentHint(caseId,revision){
+ const turn=epoch;
+ try{
+  const r=await request({tenantId:TENANT,caseId,action:'test-mailbox-payment-hint'},'GET');
+  if(!current(turn)||bookingCase?.caseId!==caseId||bookingCase.revision!==revision||r?.caseId!==caseId||typeof r.line!=='string'||!r.line)return;
+  el('booking-state').textContent+='\n'+r.line;
+  if(nextCase?.caseId===caseId&&['deposit','reminder'].includes(nextCase.step?.kind)&&/^💰 Valószínűleg/.test(r.line))el('next-text').textContent=r.line+'\n'+el('next-text').textContent;
  }catch{}
 }
 // Owner 2026-11-23: the LIVE Previo availability is shown only (information); the server answers line:null when off.
