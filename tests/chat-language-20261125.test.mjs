@@ -61,3 +61,39 @@ test('100 generated conversations (25 per language): every stay understood, noth
  // Known rule-only limit (the live page adds the fact-bound model answer): a two-part question where the rules answer one part.
  assert.deepEqual(res.filter(r=>!r.ok).map(r=>r.id),['SI-03']);
 });
+
+// E-mail channel: the server's own chain (extraction → case store follow-up merge → shared engine draft).
+import {createBookingCaseStore} from '../booking-cases.mjs';
+import {extractServerMessage} from '../shared-core/server-message-extraction.mjs';
+import {scope} from '../shared-core/server-test-mailbox-case.mjs';
+import {runEmail} from '../scripts/email-language-e2e.mjs';
+function thread(letters){
+ let current=null;const caseId='tm-aaaaaaaaaaaa0001';
+ for(const [n,text] of letters.entries()){
+  const at=`2026-11-25T1${n}:00:00Z`,env={sender:'g@example.test',text,mailbox_id:'m',message_id:'x'+n,thread_id:'t',rfc_message_id:`<x${n}@e>`,references:[],received_at:at};
+  let saved;const store=createBookingCaseStore({storage:{getItem:()=>JSON.stringify(current?[current]:[]),setItem:(_,v)=>{saved=JSON.parse(v);}},tenantId:'sarberki-test',clock:()=>at,id:()=>caseId});
+  store.ingest(scope(env),extractServerMessage(env,current?{previous:current.state.values}:undefined),{approvedCaseId:current?caseId:null});
+  current=saved.find(c=>c.id===caseId);
+ }
+ return current.state.values;
+}
+test('e-mail follow-ups: a correction next to a tub wish is applied; a tub party never rewrites the stay; children survive an adults-only change',()=>{
+ const first='Dober dan, želimo družinsko hiško od 19. do 21. julija 2027, 2 odrasla in 2 otroka (5 in 8 let).\n\nLep pozdrav,\nTestni Gost';
+ let v=thread([first,'Oprostite, raje od 22. do 24. julija.\nRadi bi najeli tudi masažno kad.\n\nLep pozdrav,\nTestni Gost']);
+ assert.equal(v.arrival,'2027-07-22');assert.equal(v.departure,'2027-07-24');assert.equal(v.children,'2');assert.ok(v.request);
+ v=thread([first,'Vseeno nas bo 3 odraslih.\n\nLep pozdrav,\nTestni Gost']);
+ assert.equal(v.adults,'3');assert.equal(v.children,'2','children kept');assert.equal(String(v.child_ages).replace(/\s/g,''),'5,8');
+ v=thread([first,'Masažno kad bi radi za 6 oseb, prosimo.\n\nLep pozdrav,\nTestni Gost']);
+ assert.equal(v.adults,'2','a tub party is not the stay party');assert.equal(v.arrival,'2027-07-19');
+ v=thread(['Jó napot! 2027.07.17-07.20, 4 felnőtt.\n\nÜdvözlettel:\nTeszt Vendég','Lenne VIP apartman? És van-e dézsa?\n\nÜdvözlettel:\nTeszt Vendég']);
+ assert.equal(v.unit,'VIP','a missing cabin type is filled next to a tub question');
+ v=thread(['Jó napot! 2027.07.17-07.20, 4 felnőtt, Deluxe faház.\n\nÜdvözlettel:\nTeszt Vendég','A VIP-hez is van dézsa?\n\nÜdvözlettel:\nTeszt Vendég']);
+ assert.equal(v.unit,'Deluxe','a known cabin is not rewritten by a tub question');
+ v=thread([first,'Csak felnőttek jönnek, 3 felnőtt.\n\nÜdvözlettel']);
+ assert.equal(v.children,'0','"only adults" still clears the children');
+});
+test('100 e-mail threads (25 per language, same scenarios): facts, language, approval gate, no re-asking',async()=>{
+ const res=await runEmail(buildConversations());
+ assert.equal(res.length,100);assert.ok(res.reduce((s,r)=>s+r.letters,0)>=350);
+ assert.deepEqual(res.filter(r=>!r.ok).map(r=>r.id+': '+[...r.factIssues,...r.issues].join('; ')),[]);
+});

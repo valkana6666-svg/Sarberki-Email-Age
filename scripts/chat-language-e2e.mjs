@@ -159,7 +159,9 @@ export async function runLive(convs,{out,from=0,to=convs.length,origin='https://
   p.on('response',async res=>{const u=res.url();try{
    if(u.endsWith('/chat-offer'))net.offer.push({http:res.status(),body:await res.json().catch(()=>null)});
    else if(u.endsWith('/chat-assist'))net.assist.push({http:res.status(),answer:(await res.json().catch(()=>({})))?.answer??null});
-   else if(/chat-intake|\/intake/.test(u))net.intake++;}catch{}});
+}catch{}});
+  // Safety: the request form is never submitted; any call to an intake endpoint is blocked here and counted.
+  await ctx.route(/\/\.netlify\/functions\/(?:chat-)?intake|\/api\/(?:chat-)?intake/,route=>{net.intake++;return route.abort();});
   p.on('pageerror',e=>net.errors.push(String(e)));
   await p.goto(origin+'/sarberki-chatbot-project/');await p.waitForSelector('[data-chat-input]');
   const transcript=[];

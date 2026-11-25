@@ -13,6 +13,11 @@ export function extractServerMessage(envelope,{previous=null}={}){
  void sameYear;
  if(n.dates){values.arrival=n.dates.arrival;values.departure=n.dates.departure;}
  for(const key of ['guests','adults','children'])if(Number.isSafeInteger(n[key])&&n[key]>=0)values[key]=String(n[key]);
+ // Language test 2026-11-25: a follow-up changing only the adults ("Doch 2 Erwachsene") set children to 0 (the
+ // normaliser assumes no children when none are named) – the booked children vanished. In a follow-up the known
+ // children stay unless the letter names children or says "only adults".
+ const kidWord=/gyerek|gyermek|child|kid|kind|otro[kc]|baba|baby|csak\s+felnőtt|csak\s+felnott|only\s+adults|nur\s+erwachsene|samo\s+odrasl/iu;
+ if(Number(previous?.children)>0&&!kidWord.test(envelope.text||'')){delete values.children;delete values.guests;}
  if(typeof n.phone==='string'&&n.phone.trim())values.phone=n.phone;
  if(n.child_ages.length)values.child_ages=n.child_ages.join(',');
  if(n.cabin&&!n.cabin.startsWith('?'))values.unit=n.cabin;

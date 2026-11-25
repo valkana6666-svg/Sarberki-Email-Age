@@ -111,7 +111,14 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
    // never leak a new message, changed facts, or revoked approval into memory.
    const working=copy(cases);
    let resolution=resolveBookingCase(working,envelope,incoming);
-   const service=tubServiceMessage(envelope.text||''),serviceOnly=service.kind==='tub_request'&&service.serviceOnly;
+   const service=tubServiceMessage(envelope.text||'');
+   // Language test 2026-11-25: a follow-up that CORRECTS the stay and also mentions the tub ("Raje od 22. do 24. julija.
+   // Radi bi tudi masažno kad.") lost the correction (service-only strips every stay fact). With an explicit change word
+   // and a changed stay fact, the letter is a stay update with a tub wish; without one it stays service-only, so a tub
+   // party ("dézsa 4 főre") still never rewrites the accommodation.
+   const correction=/(?<!\p{L})(?:inkább|inkabb|mégis|megis|helyett|instead|actually|rather|lieber|doch|stattdessen|raje|vseeno|namesto|sorry|bocs\p{L}*|elnézést|oprostite|entschuldigung)(?!\p{L})/iu.test(envelope.text||'');
+   const stayChange=correction&&['arrival','departure','unit','adults','children','child_ages'].some(k=>present(incoming[k]));
+   const serviceOnly=service.kind==='tub_request'&&service.serviceOnly&&!stayChange;
    if(approvedCaseId){const found=working.find(c=>c.id===approvedCaseId&&c.sender===sender(envelope.sender));if(!found)throw Error('Az ügyösszekapcsolás nem igazolható.');resolution={status:'linked',caseId:found.id,evidence:'human_approved',...(serviceOnly?{serviceOnly:true}:{})};}
    const target=resolution.status==='linked'?working.find(c=>c.id===resolution.caseId):null;
    const eventAt=Date.parse(envelope.received_at||clock());
@@ -133,7 +140,11 @@ export function createBookingCaseStore({storage=null,clock=()=>new Date().toISOS
    }
    if(serviceOnly){
     const language=incoming.language||languageFromText(envelope.text);
-    incoming={...(target?{request:envelope.text}:{}),...(['hu','de','en','si'].includes(language)?{language}:{})};
+    // A missing stay fact given alongside a tub question (cabin type, both dates, children's ages) fills the gap; a
+    // known value is never rewritten here, and no party count is taken from a tub message (language test 2026-11-25).
+    const fill=target?Object.fromEntries(['arrival','departure','unit','child_ages'].filter(k=>present(incoming[k])&&!present(target.state.values[k])).map(k=>[k,incoming[k]])):{};
+    if(('arrival' in fill)!==('departure' in fill)){delete fill.arrival;delete fill.departure;}
+    incoming={...(target?{request:envelope.text}:{}),...fill,...(['hu','de','en','si'].includes(language)?{language}:{})};
    }
    const dateUpdate=target&&!serviceOnly?followupDateUpdate(envelope.text,target.state.values):{status:'none'};
    if(dateUpdate.status==='updated')incoming={...incoming,...dateUpdate.values,nights:String((Date.parse(dateUpdate.values.departure)-Date.parse(dateUpdate.values.arrival))/86400000)};
