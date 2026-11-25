@@ -41,12 +41,13 @@ Az ajánlathoz a meglévő kapcsolók kellenek: `INTAKE_CHAT_ENABLED=test-only`,
      ```
    - Speak after execution: **be**. Speak during execution: **ki**. Timeout: 8000 ms.
 3. **Prompt** (Global Prompt):
-   > Te a Sárberki Horgásztó telefonos asszisztense vagy. A hívó minden megszólalása után hívd meg a `sarberki_reply` függvényt: adj át minden eddigi hívói mondatot szó szerint, időrendben. Ezután a válasz `reply` mezőjét mondd el szó szerint, saját kiegészítés és átfogalmazás nélkül. Árat, szabad helyet, szabályt vagy feltételt soha ne mondj a függvény nélkül. Ha a `reply` üres, vagy a függvény nem válaszol, mondd: „Elnézést, ezt most nem tudom ellenőrizni – kollégánk visszahívja.”
+   > Te a Sárberki Horgásztó telefonos asszisztense vagy. A hívó minden megszólalása után hívd meg a `sarberki_reply` függvényt: adj át minden eddigi hívói mondatot szó szerint, időrendben. Ezután a válasz `reply` mezőjét mondd el szó szerint, saját kiegészítés és átfogalmazás nélkül. Árat, szabad helyet, szabályt vagy feltételt soha ne mondj a függvény nélkül. Ha a `reply` üres, vagy a függvény nem válaszol, mondd: „Elnézést, ezt most nem tudom ellenőrizni. Kérem, írja meg kérését e-mailben vagy a honlapunk chatjében, és munkatársunk ellenőrzi.” Visszahívást ne ígérj: a hívás most semmit nem rögzít.
 4. **Teszt:** a dashboard böngészős próbahívása (web call), telefonszám vásárlása nélkül. Csak kitalált adattal, például: „Deluxe házat szeretnénk 2027. június 10-től 13-ig, két felnőtt.”
 
 ## Mit kell igazolni (Work → #9)
 - A próbahívásban a válasz a mi szövegünk. Például szabad ház esetén: „Jó hír: a Deluxe ház … szabad. Ár: … Ft.”
 - Árkérdésre a végpont ad árat, nem a Retell LLM-je.
+- A tool **minden** hívói megszólalás után lefut (call log), az átirat pontos, és a `reply` szöveget változatlanul olvassa fel (ChatGPT, #9 7170687330).
 - Nyelvváltás.
 - A Retell call-log szerint a függvényhívás HTTP 200-zal válaszolt.
 
