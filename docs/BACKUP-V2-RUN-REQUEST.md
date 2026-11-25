@@ -148,3 +148,4 @@ Daily request 2026-11-23T05:48:41Z: Claude scheduled daily Drive backup.
 Daily request 2026-11-23T21:34:52Z: Claude pre-install backup for deposit-reminder.sql.
 Daily request 2026-11-24T05:48:16Z: Claude scheduled daily Drive backup.
 Daily request 2026-11-25T05:48:25Z: Claude scheduled daily Drive backup.
+- 2026-11-25 09:25 UTC: pre-install backup for deposit-alerts.sql + deposit-reminder-2.sql (owner 11-24)
