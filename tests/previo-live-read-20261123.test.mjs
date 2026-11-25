@@ -55,3 +55,20 @@ test('payment link probe: counts how payments tie to reservations – never an i
  assert.deepEqual(r.reservationMoneyTags,['invId','invoices']);
  for(const v of ['117760371','SB-77','Kitalált','90750'])assert.ok(!out.includes(v),v);
 });
+
+test('reservation finance probe: tag paths, statuses, channel counts – a person never shows as a partner name',async()=>{
+ const res=`<reservations><reservation><resId>117760371</resId><voucher>SB-77</voucher><status><statusId>9</statusId><name>Potvrzená</name></status><partner><comId>12</comId><name>Booking.com</name></partner><price><amount>90750</amount><paid>45000</paid></price><guest><name>${FAKE_GUEST}</name><email>${FAKE_MAIL}</email></guest></reservation>`+
+  `<reservation><resId>2</resId><status><statusId>7</statusId><name>Stornovaná</name></status><partner><comId>13</comId><name>${FAKE_GUEST}</name></partner></reservation><reservation><resId>3</resId><status><statusId>9</statusId></status><partner></partner></reservation></reservations>`;
+ const calls=[];
+ const fetchImpl=async(url,o)=>{calls.push([url,o.method]);
+  if(url.endsWith('/searchReservations'))return new Response(res);
+  if(url.endsWith('/getReservation'))return new Response(`<reservation><resId>117760371</resId><deposit><amount>90750</amount><due>2026-07-01</due></deposit><guest><phone>${FAKE_PHONE}</phone></guest></reservation>`);
+  return new Response(JSON.stringify({code:404,error:'not found'}),{status:404});};
+ const r=(await run({probes:['reservationFinance'],from:'2026-07-01',to:'2026-07-03'},{apiKey:KEY,fetchImpl})).reservationFinance,out=JSON.stringify(r);
+ assert.equal(r.reservations,3);assert.equal(r.statuses['9'].count,2);assert.equal(r.statuses['7'].name,'Stornovaná');
+ assert.deepEqual(r.partners['#12'],{count:1,channelName:'Booking.com'});assert.equal(r.partners['#13'].channelName,'(other)');assert.equal(r.partners['(empty)'].count,1);
+ assert.ok(r.moneyPaths.includes('price>paid'));assert.ok(r.detail[0].xmlGetReservation.moneyPaths.includes('reservation>deposit>due'));
+ assert.equal(r.detail.length,3);assert.equal(r.detail[0].restReservation.http,404);
+ assert.ok(calls.every(([u,m])=>/searchReservations|getReservation/.test(u)?m==='POST':m==='GET'));
+ for(const v of [FAKE_GUEST,FAKE_MAIL,FAKE_PHONE,'90750','45000','SB-77','117760371'])assert.ok(!out.includes(v),v);
+});

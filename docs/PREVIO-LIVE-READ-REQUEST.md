@@ -11,3 +11,4 @@ Engedély: PERM-20261123-LIVE-READ-PROBE (docs/V1-ALLAPOT.md). Minden új sor eg
 {"probes":["paymentsByReservation"],"from":"2026-07-01","to":"2026-07-03"}
 {"probes":["payments"],"from":"2026-11-20","to":"2026-11-20"}
 {"probes":["paymentLink","get:/rest/invoices","get:/rest/invoice","get:/rest/payments"],"from":"2026-01-01","to":"2026-11-22"}
+{"probes":["reservationFinance"],"from":"2026-11-25","to":"2027-03-31"}

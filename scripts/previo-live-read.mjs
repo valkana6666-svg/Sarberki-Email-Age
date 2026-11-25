@@ -34,6 +34,18 @@ export function xmlShape(text){
  return {reservations:blocks.length,statusCounts:status,tags,error:/<error>/.test(text)?String(text.match(/<message>([^<]{0,160})/)?.[1]||'error'):null};
 }
 
+// Tag paths ("parent>child") of XML blocks – names only.
+export function xmlTagPaths(blocks){
+ const out=new Set();
+ for(const b of blocks){const stack=[];for(const m of String(b).matchAll(/<(\/?)([A-Za-z][A-Za-z0-9]*)(\s[^>]*)?(\/?)>/g)){
+  if(m[1]){stack.pop();continue;}out.add([...stack.slice(-2),m[2]].join('>'));if(!m[4])stack.push(m[2]);}}
+ return [...out].sort();
+}
+const MONEY=/pay|paid|deposit|advance|prepay|zaloh|balance|due|debt|invoice|inv[A-Z]|invId|invName|bill|price|amount|sum|total|discount|currency|cur[A-Z]|curId/i;
+// A partner/status name is printed only when it reads like a sales channel or a status, never a person.
+const CHANNEL=/booking|airbnb|expedia|sz[aá]ll[aá]s|travel|tour|web|online|channel|previo|hotel|utaz|iroda|reise|portal|\.com|\.hu|direct|engine|ota|google|trip|agoda|hrs|e-?mail|telefon|phone|recep/i;
+export function channelSafe(name,status=false){const n=String(name??'').trim();if(!n)return null;return status||CHANNEL.test(n)?n.slice(0,40):'(other)';}
+
 export function previoLiveReader({apiKey,fetchImpl=globalThis.fetch}){
  if(typeof apiKey!=='string'||!/^[A-Za-z0-9._~+/=-]{16,512}$/.test(apiKey))throw Object.assign(Error('PREVIO_LIVE_API_KEY missing'),{code:'KEY'});
  const H={Authorization:'ApiKey '+apiKey,'X-Previo-Hotel-Id':HOTEL,'X-Previo-Language-ID':'2',Accept:'application/json'};
@@ -132,6 +144,35 @@ export function previoLiveReader({apiKey,fetchImpl=globalThis.fetch}){
    const resTags=[...new Set([...String(rs.text).matchAll(/<([A-Za-z][A-Za-z0-9]*)[ >]/g)].map(m=>m[1]))].filter(t=>/inv|pay|bill|fact|deposit|advance|price|sum/i.test(t)).sort();
    return {httpPayments:pr.status,httpReservations:rs.status,reservationsInWindow:resBlocks.length,vouchers:vouchers.size,reservationInvoiceIds:resInv.size,reservationMoneyTags:resTags,...c};
   },
+  // Owner 2026-11-25 (#9 7161329077/7161371109): which FINANCE and SOURCE facts does a reservation itself carry
+  // (all channels: web, phone, manual, OTA)? Reports tag paths, the status code list, partner (channel) counts – a
+  // partner name only when it looks like a sales channel, never a person – and the tag set of Hotel.getReservation and
+  // the REST reservation detail for up to 3 reservations. Never a guest value, price or note.
+  reservationFinance:async({from,to})=>{
+   const sx=`<?xml version="1.0"?><request><hotId>${HOTEL}</hotId><term><from>${from}</from><to>${to}</to></term><termType>overlap</termType></request>`;
+   const rs=await call('/x1/hotel/searchReservations',{method:'POST',headers:{'Content-Type':'application/xml',Accept:'application/xml'},body:sx});
+   const blocks=[...String(rs.text).matchAll(/<reservation>([\s\S]*?)<\/reservation>/g)].map(m=>m[1]);
+   const paths=xmlTagPaths(blocks);
+   const statuses={},partners={},types={};
+   for(const b of blocks){
+    const st=b.match(/<status>([\s\S]*?)<\/status>/)?.[1]||'',sid=st.match(/<statusId>(\d+)/)?.[1]||b.match(/<statusId>(\d+)/)?.[1]||'?';
+    statuses[sid]=statuses[sid]||{count:0,name:channelSafe(st.match(/<name>([^<]{0,40})/)?.[1],true)};statuses[sid].count++;
+    const pa=b.match(/<partner>([\s\S]*?)<\/partner>/)?.[1];
+    const pk=pa===undefined?'(no partner tag)':pa.trim()===''?'(empty)':'#'+(pa.match(/<(?:prtId|parId|id|comId)>(\d+)/)?.[1]||'?');
+    partners[pk]=partners[pk]||{count:0,channelName:pa?channelSafe(pa.match(/<name>([^<]{0,60})/)?.[1]):null};partners[pk].count++;
+    const ty=b.match(/<type>([\s\S]*?)<\/type>/)?.[1];const tk=ty===undefined?'(none)':(ty.match(/<\w*Id>(\d+)/)?.[1]||ty.replace(/<[^>]+>/g,'').trim().slice(0,20)||'(empty)');types[tk]=(types[tk]||0)+1;
+   }
+   const ids=blocks.map(b=>b.match(/<resId>(\d+)<\/resId>/)?.[1]).filter(Boolean).slice(0,3),detail=[];
+   for(const id of ids){
+    const gx=`<?xml version="1.0"?><request><hotId>${HOTEL}</hotId><resId>${id}</resId></request>`;
+    const g=await call('/x1/hotel/getReservation',{method:'POST',headers:{'Content-Type':'application/xml',Accept:'application/xml'},body:gx});
+    const r1=await get('/rest/reservation/'+id),r2=await get('/rest/reservations/'+id);
+    const gp=xmlTagPaths([String(g.text)]);
+    detail.push({xmlGetReservation:{http:g.status,error:/<error>/.test(g.text)?String(g.text.match(/<message>([^<]{0,160})/)?.[1]||'error'):null,moneyPaths:gp.filter(t=>MONEY.test(t)),pathCount:gp.length},
+     restReservation:{http:r1.status,error:r1.error,shape:r1.json?shape(r1.json):null},restReservations:{http:r2.status,error:r2.error,shape:r2.json?shape(r2.json):null}});
+   }
+   return {http:rs.status,reservations:blocks.length,tagPaths:paths,moneyPaths:paths.filter(t=>MONEY.test(t)),statuses,partners,types,detail};
+  },
   // Any other plain REST GET (e.g. a code list): status and SHAPE only.
   get:async path=>{const r=await get(path);return {path,http:r.status,error:r.error,shape:r.json?shape(r.json):null};}
  };
@@ -148,6 +189,7 @@ export async function run(request,{apiKey,fetchImpl}={}){
    else if(p==='reservations'){if(!day(q.from)||!day(q.to)||q.to<q.from)out[p]={skipped:'DATES'};else out[p]=await reader.reservations(q);}
    else if(p==='paymentsByReservation'){if(!day(q.from)||!day(q.to)||q.to<q.from)out[p]={skipped:'DATES'};else out[p]=await reader.paymentsByReservation(q);}
    else if(p==='paymentLink'){if(!day(q.from)||!day(q.to)||q.to<q.from)out[p]={skipped:'DATES'};else out[p]=await reader.paymentLink(q);}
+   else if(p==='reservationFinance'){if(!day(q.from)||!day(q.to)||q.to<q.from)out[p]={skipped:'DATES'};else out[p]=await reader.reservationFinance(q);}
    else if(p==='payments'){if(!day(q.from)||!day(q.to)||q.to<q.from)out[p]={skipped:'DATES'};else out[p]=await reader.payments(q);}
    else if(p.startsWith('get:'))out[p]=await reader.get(p.slice(4));
    else if(['plans','kinds','rooms','guestCategories'].includes(p)){
