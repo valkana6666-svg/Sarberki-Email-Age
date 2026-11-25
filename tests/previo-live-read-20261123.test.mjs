@@ -45,3 +45,13 @@ test('payments probe: count and field names only, never an amount or a name',asy
  const out=JSON.stringify(r);assert.equal(r.payments.payments,2);assert.equal(r.payments.earliest,'2021-05-02');assert.deepEqual(r.payments.perYear,{2021:1,2026:1});assert.ok(r.payments.tags.includes('amount'));
  assert.ok(!out.includes('90750')&&!out.includes('Kitalált'));
 });
+
+test('payment link probe: counts how payments tie to reservations – never an id, voucher or name',async()=>{
+ const fetchImpl=async(url)=>url.endsWith('/getPayments')
+  ?new Response('<payments><payment><payId>1</payId><invId>55</invId><price>90750</price><issued>2026-07-02</issued><description>Kitalált Vendég 117760371</description><number>SB-77</number></payment><payment><payId>2</payId><price>1</price><issued>2026-07-02</issued><description></description><number></number></payment><payment><payId>3</payId><price>1</price><issued>2025-01-01</issued></payment></payments>')
+  :new Response('<reservations><reservation><resId>117760371</resId><voucher>SB-77</voucher><invoices><invId>55</invId></invoices></reservation></reservations>');
+ const r=(await run({probes:['paymentLink'],from:'2026-07-01',to:'2026-07-03'},{apiKey:KEY,fetchImpl})).paymentLink,out=JSON.stringify(r);
+ assert.equal(r.paymentsInWindow,2);assert.equal(r.descIsResId,1);assert.equal(r.numberIsVoucher,1);assert.equal(r.invIdInReservation,1);assert.equal(r.anyLink,1);
+ assert.deepEqual(r.reservationMoneyTags,['invId','invoices']);
+ for(const v of ['117760371','SB-77','Kitalált','90750'])assert.ok(!out.includes(v),v);
+});

@@ -105,6 +105,33 @@ export function previoLiveReader({apiKey,fetchImpl=globalThis.fetch}){
    }
    return {reservationsInWindow:resIds.length,checked:out};
   },
+  // Owner 2026-11-25 ("a számlákat is felismerje egyenként"): can ONE payment be tied to ONE reservation? Compares,
+  // inside the run, the numbers in each payment's description / number field / invoice id with the reservation ids,
+  // vouchers and any invoice ids of the reservations in the window. Only COUNTS come out – never a value.
+  paymentLink:async({from,to})=>{
+   const pr=await call('/x1/hotel/getPayments',{method:'POST',headers:{'Content-Type':'application/xml',Accept:'application/xml'},body:`<?xml version="1.0"?><request><hotId>${HOTEL}</hotId></request>`});
+   const sx=`<?xml version="1.0"?><request><hotId>${HOTEL}</hotId><term><from>${from}</from><to>${to}</to></term><termType>overlap</termType></request>`;
+   const rs=await call('/x1/hotel/searchReservations',{method:'POST',headers:{'Content-Type':'application/xml',Accept:'application/xml'},body:sx});
+   const resBlocks=[...String(rs.text).matchAll(/<reservation>([\s\S]*?)<\/reservation>/g)].map(m=>m[1]);
+   const resIds=new Set(),vouchers=new Set(),resInv=new Set();
+   for(const b of resBlocks){const id=b.match(/<resId>(\d+)<\/resId>/)?.[1];if(id)resIds.add(id);const v=b.match(/<voucher>([^<]+)<\/voucher>/)?.[1]?.trim();if(v)vouchers.add(v);
+    for(const m of b.matchAll(/<invId>(\d+)<\/invId>/g))resInv.add(m[1]);}
+   const pays=[...String(pr.text).matchAll(/<payment>([\s\S]*?)<\/payment>/g)].map(m=>m[1]).filter(b=>{const d=b.match(/<issued>(\d{4}-\d{2}-\d{2})/)?.[1];return d&&d>=from&&d<=to;});
+   const c={paymentsInWindow:pays.length,descNumbers:0,descIsResId:0,descIsVoucher:0,numberField:{empty:0,digits:0,withLetters:0,lengths:{}},numberIsResId:0,numberIsVoucher:0,invIdInReservation:0,anyLink:0};
+   for(const b of pays){
+    const desc=(b.match(/<description>([^<]*)<\/description>/)?.[1]||''),nums=desc.match(/[A-Za-z0-9-]{5,}/g)||[];
+    if(/\d{5,}/.test(desc))c.descNumbers++;
+    const dr=nums.some(n=>resIds.has(n.replace(/\D/g,''))),dv=nums.some(n=>vouchers.has(n));if(dr)c.descIsResId++;if(dv)c.descIsVoucher++;
+    const num=(b.match(/<number>([^<]*)<\/number>/)?.[1]||'').trim();
+    if(!num)c.numberField.empty++;else if(/^\d+$/.test(num))c.numberField.digits++;else c.numberField.withLetters++;
+    if(num)c.numberField.lengths[num.length]=(c.numberField.lengths[num.length]||0)+1;
+    const nr=num&&resIds.has(num.replace(/\D/g,'')),nv=num&&vouchers.has(num);if(nr)c.numberIsResId++;if(nv)c.numberIsVoucher++;
+    const inv=b.match(/<invId>(\d+)<\/invId>/)?.[1],ir=inv&&resInv.has(inv);if(ir)c.invIdInReservation++;
+    if(dr||dv||nr||nv||ir)c.anyLink++;
+   }
+   const resTags=[...new Set([...String(rs.text).matchAll(/<([A-Za-z][A-Za-z0-9]*)[ >]/g)].map(m=>m[1]))].filter(t=>/inv|pay|bill|fact|deposit|advance|price|sum/i.test(t)).sort();
+   return {httpPayments:pr.status,httpReservations:rs.status,reservationsInWindow:resBlocks.length,vouchers:vouchers.size,reservationInvoiceIds:resInv.size,reservationMoneyTags:resTags,...c};
+  },
   // Any other plain REST GET (e.g. a code list): status and SHAPE only.
   get:async path=>{const r=await get(path);return {path,http:r.status,error:r.error,shape:r.json?shape(r.json):null};}
  };
@@ -120,6 +147,7 @@ export async function run(request,{apiKey,fetchImpl}={}){
    else if(p==='price'){if(!day(q.arrival)||!day(q.departure))out[p]={skipped:'DATES'};else out[p]=await reader.price({...q,adults:Number(q.adults)||2,adultCategoryId});}
    else if(p==='reservations'){if(!day(q.from)||!day(q.to)||q.to<q.from)out[p]={skipped:'DATES'};else out[p]=await reader.reservations(q);}
    else if(p==='paymentsByReservation'){if(!day(q.from)||!day(q.to)||q.to<q.from)out[p]={skipped:'DATES'};else out[p]=await reader.paymentsByReservation(q);}
+   else if(p==='paymentLink'){if(!day(q.from)||!day(q.to)||q.to<q.from)out[p]={skipped:'DATES'};else out[p]=await reader.paymentLink(q);}
    else if(p==='payments'){if(!day(q.from)||!day(q.to)||q.to<q.from)out[p]={skipped:'DATES'};else out[p]=await reader.payments(q);}
    else if(p.startsWith('get:'))out[p]=await reader.get(p.slice(4));
    else if(['plans','kinds','rooms','guestCategories'].includes(p)){
