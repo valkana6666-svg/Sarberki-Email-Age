@@ -1,0 +1,32 @@
+name: ElevenLabs TEST agent setup (Claude)
+# Owner 2026-11-25 („csináld meg”, „Megadom az engedélyt”): create/update the ElevenLabs test agent wired to
+# voice-turn. The voice-turn key is read from the Retell TEST tool header (same key, same endpoint) and masked.
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths: [docs/ELEVENLABS-AGENT-REQUEST.md]
+permissions:
+  contents: read
+jobs:
+  agent:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Voice-turn key from the Retell TEST tool (masked)
+        env:
+          RETELL_KEY: ${{ secrets.RETELL_CLAUDE_TEST_API_KEY }}
+        run: |
+          V=$(node -e "fetch('https://api.retellai.com/get-retell-llm/llm_bdfcae3228e04819cb2911a2807f',{headers:{Authorization:'Bearer '+process.env.RETELL_KEY}}).then(r=>r.json()).then(j=>{const t=(j.general_tools||[]).find(x=>x.name==='sarberki_reply');process.stdout.write((t&&t.headers&&t.headers['x-sarberki-voice-key'])||'')})")
+          if [ -z "$V" ]; then echo "BLOCKED: voice key not found"; exit 1; fi
+          echo "::add-mask::$V"
+          echo "VOICE_KEY=$V" >> "$GITHUB_ENV"
+      - name: Create or update the agent
+        env:
+          XI_KEY: ${{ secrets.ELEVENLABS_CLAUDE_TEST_API_KEY }}
+        run: node scripts/elevenlabs-agent.mjs
