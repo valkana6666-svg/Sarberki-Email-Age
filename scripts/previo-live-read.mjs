@@ -158,8 +158,8 @@ export function previoLiveReader({apiKey,fetchImpl=globalThis.fetch}){
     const st=b.match(/<status>([\s\S]*?)<\/status>/)?.[1]||'',sid=st.match(/<statusId>(\d+)/)?.[1]||b.match(/<statusId>(\d+)/)?.[1]||'?';
     statuses[sid]=statuses[sid]||{count:0,name:channelSafe(st.match(/<name>([^<]{0,40})/)?.[1],true)};statuses[sid].count++;
     const pa=b.match(/<partner>([\s\S]*?)<\/partner>/)?.[1];
-    const pk=pa===undefined?'(no partner tag)':pa.trim()===''?'(empty)':'#'+(pa.match(/<(?:prtId|parId|id|comId)>(\d+)/)?.[1]||'?');
-    partners[pk]=partners[pk]||{count:0,channelName:pa?channelSafe(pa.match(/<name>([^<]{0,60})/)?.[1]):null};partners[pk].count++;
+    const pk=pa===undefined?'(no partner tag)':pa.trim()===''?'(empty)':'#'+(pa.match(/<(?:prpId|prtId|parId|id)>(\d+)/)?.[1]||'?');
+    partners[pk]=partners[pk]||{count:0,channelName:pa?channelSafe(pa.match(/<name>([^<]{0,60})/)?.[1]):null,nameWords:pa?String(pa.match(/<name>([^<]{0,60})/)?.[1]||'').trim().split(/\s+/).filter(Boolean).length:null};partners[pk].count++;
     const ty=b.match(/<type>([\s\S]*?)<\/type>/)?.[1];const tk=ty===undefined?'(none)':(ty.match(/<\w*Id>(\d+)/)?.[1]||ty.replace(/<[^>]+>/g,'').trim().slice(0,20)||'(empty)');types[tk]=(types[tk]||0)+1;
    }
    const ids=blocks.map(b=>b.match(/<resId>(\d+)<\/resId>/)?.[1]).filter(Boolean).slice(0,3),detail=[];
