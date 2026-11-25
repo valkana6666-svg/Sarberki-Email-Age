@@ -219,7 +219,8 @@ export function reportLive(results,convs){
   const f=fmtDate[c.lang]||fmtDate.hu,last=r.transcript.map(t=>t.bot).filter(Boolean).join('\n');
   const datesShown=[c.want.arrival,c.want.departure].every(d=>last.includes(f(d))||last.includes(fmtDate.hu(d))||last.includes(d));
   if(!datesShown)issues.push('a végső dátum nem jelent meg');
-  const langOk=r.transcript.filter(t=>t.bot&&!(t.tag||'').startsWith('language-switch')).every(t=>{const l=languageFromText(t.bot.split('\n').slice(0,3).join(' '));return l==='unknown'||l===c.lang;});
+  // The handover reply is fixed text in the chat language (its "telefonszám" also scores as German): not checked here.
+  const langOk=r.transcript.filter(t=>t.bot&&!(t.tag||'').startsWith('language-switch')&&t.tag!=='handover').every(t=>{const l=languageFromText(t.bot.split('\n').slice(0,3).join(' '));return l==='unknown'||l===c.lang;});
   if(!langOk)issues.push('nyelv eltér');
   return {id:c.id,lang:c.lang,turns:c.turns.length,offers:r.offers.length,available:r.offers.filter(o=>o.status==='AVAILABLE').length,assist:r.assists.length,assistAnswered:r.assists.filter(a=>a.answered).length,issues,ok:!issues.length};
  });
