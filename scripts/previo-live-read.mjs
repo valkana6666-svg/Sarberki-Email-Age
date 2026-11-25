@@ -81,7 +81,12 @@ export function previoLiveReader({apiKey,fetchImpl=globalThis.fetch}){
    // Owner 2026-11-25: how far back – aggregate only (earliest/latest issue date, count per year); no amount or name.
    const days=blocks.map(b=>b.match(/<issued>(\d{4}-\d{2}-\d{2})/)?.[1]).filter(Boolean).sort();
    const perYear={};for(const d of days)perYear[d.slice(0,4)]=(perYear[d.slice(0,4)]||0)+1;
-   return {http:r.status,payments:blocks.length,earliest:days[0]??null,latest:days.at(-1)??null,perYear,tags:[...new Set([...String(r.text).matchAll(/<([A-Za-z][A-Za-z0-9]*)[ >]/g)].map(m=>m[1]))].sort(),
+   // Shape of the link fields only (counts): is there an invoice id, what does the description look like (never its text).
+   const desc=blocks.map(b=>(b.match(/<description>([^<]*)<\/description>/)?.[1]||'').trim());
+   const shapeOf={empty:desc.filter(d=>!d).length,hasLongNumber:desc.filter(d=>/\d{6,}/.test(d)).length,hasSlashNumber:desc.filter(d=>/\d+\/\d+/.test(d)).length,
+    hasWordFoglal:desc.filter(d=>/foglal|előleg|eloleg|deposit|anzahl/i.test(d)).length,withInvId:blocks.filter(b=>/<invId>\d+<\/invId>/.test(b)).length};
+   const types={};for(const b of blocks){const t=b.match(/<cptId>(\d+)<\/cptId>/)?.[1]??'?';types[t]=(types[t]||0)+1;}
+   return {http:r.status,payments:blocks.length,earliest:days[0]??null,latest:days.at(-1)??null,perYear,descriptionShape:shapeOf,paymentTypeCounts:types,tags:[...new Set([...String(r.text).matchAll(/<([A-Za-z][A-Za-z0-9]*)[ >]/g)].map(m=>m[1]))].sort(),
     error:/<error>/.test(r.text)?String(r.text.match(/<message>([^<]{0,160})/)?.[1]||'error'):null};
   },
   // Owner 2026-11-25: does getPayments filter by reservation? One past checked-out reservation is picked INSIDE the
