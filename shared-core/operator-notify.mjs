@@ -11,12 +11,13 @@ export function previoBookingNote(saved){
  return 'Foglalás beíródott a Previo-tesztbe'+(parts.length?': '+parts.join(', '):'')+'.';
 }
 // caseId (optional, owner 2026-11-24): the link opens that booking in the daily view (after sign-in).
-export async function notifyPushover(env,fetchImpl,message,{caseId=null}={}){
+// view 'finance' (owner 2026-11-25, deposit alerts): the link opens that booking in the finance view instead.
+export async function notifyPushover(env,fetchImpl,message,{caseId=null,view=null}={}){
  if(env.INTAKE_NOTIFY!=='pushover'||typeof message!=='string'||!message)return false;
  const token=env.PUSHOVER_API_TOKEN?.trim(),user=env.PUSHOVER_USER_KEY?.trim();if(!token||!user)return false;
  try{
   const r=await fetchImpl('https://api.pushover.net/1/messages.json',{method:'POST',redirect:'error',signal:AbortSignal.timeout(5000),
-   headers:{'Content-Type':'application/json'},body:JSON.stringify({token,user,title:'Sárberki TEST',message,url:/^tm-[a-f0-9]{12,32}$/.test(String(caseId||''))?NAPI+'?case='+caseId:NAPI,url_title:'Napi kezelő'})});
+   headers:{'Content-Type':'application/json'},body:JSON.stringify({token,user,title:'Sárberki TEST',message,url:(view==='finance'?NAPI+'penzugy.html':NAPI)+(/^tm-[a-f0-9]{12,32}$/.test(String(caseId||''))?'?case='+caseId:''),url_title:view==='finance'?'Pénzügyi kezelő':'Napi kezelő'})});
   return r.ok;
  }catch{return false;}
 }

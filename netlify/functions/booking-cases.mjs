@@ -85,7 +85,17 @@ function testMailboxListSummary(record){
   guests:Number.isInteger(adults)&&adults>0&&Number.isInteger(children)&&children>=0?adults+children:null,receivedAt:received,
   booking:['finalized','deposit_received','cancelled'].includes(record?.data?.booking?.status)?record.data.booking.status:null,
   // Owner 2026-11-23: the list shows a due / overdue deposit (finalized bookings only).
-  depositDue:record?.data?.booking?.status==='finalized'&&typeof record.data.booking.deposit?.deadlineUtc==='string'&&!Number.isNaN(Date.parse(record.data.booking.deposit.deadlineUtc))?record.data.booking.deposit.deadlineUtc:null};
+  depositDue:record?.data?.booking?.status==='finalized'&&typeof record.data.booking.deposit?.deadlineUtc==='string'&&!Number.isNaN(Date.parse(record.data.booking.deposit.deadlineUtc))?record.data.booking.deposit.deadlineUtc:null,
+  finance:financeSummary(record?.data?.booking)};
+}
+// Owner 2026-11-25 (separate finance view, #9 7159099524): deposit facts of a recorded booking, from the same case
+// store – amount, deadline, the day it was marked received, the Previo reference and which reminders went out.
+// Metadata only; nothing new is stored and nothing is inferred (a probable Previo payment is a separate suggestion).
+function financeSummary(b){
+ if(!['finalized','deposit_received','cancelled'].includes(b?.status))return null;
+ const d=b.deposit||{},deadline=typeof d.deadlineUtc==='string'&&!Number.isNaN(Date.parse(d.deadlineUtc))?d.deadlineUtc:null;
+ return {amount:Number.isSafeInteger(d.amount)&&d.amount>0?d.amount:null,deadlineUtc:deadline,receivedOn:listDay(b.depositReceived?.on),
+  reference:listText(b.previo?.reference,40),reminders:{first:!!b.depositReminder,final:!!b.depositReminderFinal}};
 }
 
 export function syntheticCaseSummaries(records,exactReceipt=null){

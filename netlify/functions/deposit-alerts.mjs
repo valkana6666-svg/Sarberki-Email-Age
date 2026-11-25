@@ -24,7 +24,7 @@ export async function runDepositAlerts({env=process.env,fetchImpl=globalThis.fet
  catch{return {status:'read_failed'};}
  const alerts=depositAlerts(rows,now());
  let sent=0;
- for(const a of alerts){if(await notify(env,fetchImpl,a.text,{caseId:a.caseId}))sent++;}
+ for(const a of alerts){if(await notify(env,fetchImpl,a.text,{caseId:a.caseId,view:'finance'}))sent++;}
  return {status:'ran',checked:Array.isArray(rows)?rows.length:0,alerts:alerts.length,sent};
 }
 

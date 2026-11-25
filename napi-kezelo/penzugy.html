@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="hu">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+ <meta name="theme-color" content="#12318f">
+ <meta name="apple-mobile-web-app-capable" content="yes">
+ <meta name="apple-mobile-web-app-title" content="Sárberki Pénzügy">
+ <title>Sárberki – Pénzügyi kezelő</title>
+ <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+ <link rel="stylesheet" href="./napi.css">
+</head>
+<body class="simple finance">
+<header class="top"><div class="brand"><img src="../indito/logo.svg" alt="" width="74" height="52"><div><p class="eyebrow">SÁRBERKI HORGÁSZTÓ</p><h1>Pénzügyi kezelő</h1></div></div><span class="badge">TESZT</span>
+ <nav class="app-nav" aria-label="Felületek"><a href="./">📋 Napi</a><a href="../sarberki-chatbot-project/">💬 Chatbot</a><a href="./penzugy.html" aria-current="page">💰 Pénzügy</a></nav></header>
+<main>
+ <section class="card access-card" aria-labelledby="access-title"><p class="eyebrow">HOZZÁFÉRÉS</p><h2 id="access-title">Belépés</h2><p id="session-status" role="status" aria-live="polite">Munkamenet ellenőrzése…</p>
+  <form id="login" autocomplete="on"><label for="email">E-mail-cím</label><input id="email" name="email" type="email" autocomplete="username" required><label for="password">Jelszó</label><input id="password" name="password" type="password" autocomplete="current-password" required><button class="primary" type="submit">Bejelentkezés</button></form>
+  <button class="secondary" type="button" id="logout" hidden>Kijelentkezés</button>
+ </section>
+ <nav aria-label="Foglaló-állapotok" class="menu fin-menu">
+  <button type="button" data-group="overdue" aria-pressed="false"><span class="number">–</span><span>⚠️ Lejárt</span></button>
+  <button type="button" data-group="soon" aria-pressed="false"><span class="number">–</span><span>⏳ Hamarosan<br>esedékes</span></button>
+  <button type="button" data-group="waiting" aria-pressed="false"><span class="number">–</span><span>Várakozó</span></button>
+  <button type="button" data-group="received" aria-pressed="false"><span class="number">–</span><span>✅ Beérkezett /<br>lezárt</span></button>
+ </nav>
+ <section class="card" aria-labelledby="list-title"><div class="section-title"><div><p class="eyebrow">FOGLALÓK</p><h2 id="list-title">Foglalók áttekintése</h2></div></div>
+  <label for="search">Keresés (név, e-mail, ház, Previo-szám)</label><input id="search" type="search" autocomplete="off" maxlength="80">
+  <button class="primary" type="button" id="reload" disabled>Frissítés</button>
+  <p id="list-status" role="status" aria-live="polite">A listához jelentkezzen be.</p>
+  <ul id="finance-list" class="case-list fin-list"></ul>
+ </section>
+ <section class="card"><p class="eyebrow">TUDNIVALÓ</p>
+  <p>A „💰 Valószínűleg megjött” sor csak <strong>javaslat</strong> a Previo befizetéseiből (azonos összeg, megerősítés utáni dátum) – a foglalót mindig ember jelöli meg a napi kezelőben.</p>
+  <p>Részbefizetés, azonosítatlan utalás és hátralék: <strong>NEM IGAZOLT</strong> – a Previóban a befizetés nem köthető foglaláshoz; a banki értesítő bekötése tulajdonosi döntésre vár.</p>
+ </section>
+</main>
+<footer><span>Sárberki Horgásztó</span><span id="deployed_version" role="status" aria-live="polite">Verzió ellenőrzése…</span><button id="reload_version" class="secondary" type="button">Frissítés</button></footer>
+<script type="module" src="./penzugy.mjs"></script>
+<script type="module" src="../sarberki-chatbot-project/version-status.mjs"></script>
+</body></html>

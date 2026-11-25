@@ -26,3 +26,9 @@ body.simple .booked-hide{display:none!important}
 
 /* Owner 2026-11-21: a booking already in Previo is handled there – the reply draft and its checks are not shown. */
 body.in-previo [data-previo-hide]{display:none!important}
+
+/* Owner 2026-11-25: one navigation between the daily view, the chatbot and the finance view (iPhone-friendly). */
+.app-nav{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}.app-nav a{display:inline-block;padding:8px 10px;min-height:40px;border:1px solid #5b7fe0;border-radius:9px;color:var(--orange);text-decoration:none;font-weight:700;white-space:nowrap}.app-nav a[aria-current=page]{background:var(--orange);color:#17100a;border-color:var(--orange)}
+@media(max-width:560px){.top{flex-wrap:wrap}.app-nav{flex:1 1 100%;margin-left:0}.app-nav a{flex:1;text-align:center}}
+.fin-menu button{min-height:110px}.fin-list li{display:block}.fin-list li p{margin:4px 0}.fin-overdue{border-left:5px solid #ff5a5a;padding-left:10px}.fin-soon{border-left:5px solid #ffb000;padding-left:10px}.fin-received{border-left:5px solid #45c46b;padding-left:10px;opacity:.9}.fin-cancelled{opacity:.6;padding-left:10px}.fin-linked{outline:3px solid var(--orange);outline-offset:4px;border-radius:8px}.fin-hint:empty{display:none}.fin-hint{color:#ffd38f;font-weight:700}
+input[type=search]{width:100%}
