@@ -15,11 +15,9 @@ Frissítve: 2026-11-25. Teljes előzmény, minden engedély és eredmény szó s
 | Napi kezelő: olvasható opció-lejárat, Previóban lemondott ügynél nincs teendő | KÉSZ TEST, élő olvasás PASS | `4d230de` |
 | Magyar megszólítás „Tisztelt …!” (11-24, teljes név, nemet nem találgat); **többlépéses chat-teszt 11-24 (HU, DE, élő):** dézsa-kérés ára az ajánlatban, visszakérdezésre az ajánlat újra, telefon-kérdés nincs (űrlap kéri), DE/EN számszavak („zwei Kinder”, „two adults”), háztípus + dézsa egy üzenetben; **üzleti szabály (tulajdonos 11-24): dézsa nélküli háznál (osztott apartmanok) is bérelhető egy másik ház szabad dézsája** | **ÉLŐ PASS** | `af8eb61`, `8abf886` |
 | Napi Drive-mentés + visszaállítás; Netlify Pro (11-23, keret elfogyott → Pro; telepítéseket összevonni, doksi `[skip netlify]`) | minden reggel PASS | #9 napi komment |
-
 ## Aktív kapcsolók (Netlify TEST, „Production” context) és állandó engedélyek
 - `CHAT_PREVIO_PREFILL=test-only` – PERM-20261119-CHAT-PREFILL; `OPTION_EXPIRY_CANCEL=test-only` – PERM-20261122-OPTION-EXPIRY-CANCEL; `RETURNING_GUEST_CHECK=test-only`; **Work 11-25: `PREVIO_PAYMENT_HINT=test-only` a TEST-host Production contextjében, más context üres; újratelepítés PASS: [6b06ac087e2058a1a2e6394b](https://app.netlify.com/projects/leafy-chimera-2403e5/deploys/6b06ac087e2058a1a2e6394b), build `fa0fa99fc1706f13ad7e6cd96e383b78e336b36b`. `DEPOSIT_ALERTS` nem kapcsolva: DB-run 45585298019 install WAITING.** Previo-írás csak 73521 (`PREVIO_WRITE_ENABLED=sandbox-73521-only`), az éles 753011-et a kód elutasítja.
 - Új Previo-írási engedély: végrehajtás ELŐTT ide, az „Engedélyek” alá (ki, mikor, pontos művelet, tesztadat, zárás).
-
 ## Nyitott feladatok
 | ID | Felelős | Teendő |
 |---|---|---|
