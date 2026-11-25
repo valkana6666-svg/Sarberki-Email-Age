@@ -25,6 +25,7 @@ import {PREVIO_LIVE_753011} from '../../shared-core/previo-booking-intent.mjs';
 import {liveAvailabilityReader,liveAvailabilityLine} from '../../shared-core/server-previo-live-view.mjs';
 import {prepareDepositReminder,reminderDue,reminderKind} from '../../shared-core/server-deposit-reminder.mjs';
 import {previoPaymentReader,depositPaymentHint,paymentHintLine} from '../../shared-core/server-previo-payments.mjs';
+import {previoFinanceReader} from '../../shared-core/server-previo-finance.mjs';
 import {previoGuestHistoryChecker} from '../../shared-core/server-previo-guest-history.mjs';
 import {readPrevioCaseStatus,previoCaseView,previoStatusLine} from '../../shared-core/server-previo-status.mjs';
 import {applyReturningDiscount,returningGuestLine} from '../../shared-core/returning-guest.mjs';
@@ -346,6 +347,17 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
     if(row.data?.booking?.status!=='finalized')return cookieResponse(200,{result:{caseId:row.case_id,line:null}});
     let line;try{line=paymentHintLine(depositPaymentHint(row.data.booking,await reader()));}catch{line='💰 A Previo befizetései most nem olvashatók.';}
     return cookieResponse(200,{result:{caseId:row.case_id,line}});
+   }
+   // Owner 2026-11-25 (#9 7161329077): every Previo booking (all channels) for the finance view – read-only, business
+   // facts only (no guest data); the payment state of a Previo-only booking is not readable and is shown as unknown.
+   if(input.action==='finance-previo-list'){
+    if(event.httpMethod!=='GET'||!cookieMode||!mailboxOn||live||input.tenantId!==TENANT||Object.keys(input).sort().join(',')!=='action,tenantId')
+     return cookieResponse(403,{error:'FORBIDDEN'});
+    cookieSession=await createOperatorCookieSession({env,fetchImpl}).protectedRead(event);
+    rotatedCookie=cookieSession.setCookie;
+    const reader=previoFinanceReader(env,fetchImpl);
+    if(!reader)return cookieResponse(200,{result:{items:null,reason:'OFF'}});
+    try{return cookieResponse(200,{result:await reader()});}catch{return cookieResponse(200,{result:{items:null,reason:'PREVIO_UNAVAILABLE'}});}
    }
    // Owner 2026-11-23: the LIVE Previo availability for the case's type and dates, shown only (own switch/key).
    if(input.action==='test-mailbox-live-availability'){

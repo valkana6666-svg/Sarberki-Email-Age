@@ -32,7 +32,7 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
   await db.exec(await read('deployment/test-mailbox/guest-contact.sql'));
   for(const [role,id] of Object.entries(actors)){await db.query('insert into auth.users values($1)',[id]);await db.query('insert into auth.sessions values($1,$2,null)',[sessions[role],id]);
    await db.query("insert into sc_memberships values('sarberki-test',$1,$2,$3,$4)",[id,...grants[role]]);}
-  let previoPaymentReads=0;
+  let previoPaymentReads=0,previoFinanceReads=0,previoFinanceFail=false;
   const fetchImpl=async(raw,options={})=>{
    const url=new URL(raw);
    if(url.origin==='https://gmail.googleapis.com'){
@@ -48,6 +48,9 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
    // Owner 2026-11-25: Previo TEST payments (read-only suggestion). Fictional data, no description kept.
    if(url.origin==='https://api.previo.app'&&url.pathname==='/x1/hotel/getPayments'){previoPaymentReads++;assert.match(options.body,/<hotId>73521<\/hotId>/);
     return new Response('<payments><payment><payId>7</payId><invId>11</invId><price>90750.00</price><issued>2026-11-24 09:00:00</issued><cptId>3</cptId><description>Kitalált Vendég</description></payment><payment><payId>8</payId><price>90750</price><issued>2026-11-01</issued><cptId>1</cptId></payment></payments>');}
+   if(url.origin==='https://api.previo.app'&&url.pathname==='/x1/hotel/searchReservations'){previoFinanceReads++;assert.match(options.body,/<hotId>73521<\/hotId>/);
+    if(previoFinanceFail)return new Response('<error><message>down</message></error>',{status:500});
+    return new Response('<reservations><reservation><resId>555</resId><voucher>SC-AAA</voucher><status><statusId>2</statusId></status><term><from>2026-12-01</from><to>2026-12-03</to></term><price>181500</price><guest><name>Kitalált Vendég</name></guest></reservation><reservation><resId>777</resId><voucher>BK-1</voucher><status><statusId>2</statusId></status><partner><prpId>770</prpId><name>Booking.com XML</name></partner><price>99000</price><contactPerson><email>kitalalt@example.test</email></contactPerson></reservation></reservations>');}
    if(url.origin==='https://api.openai.com'){openaiCalls.push(JSON.parse(options.body));
     return new Response(JSON.stringify({status:'completed',output:[{type:'message',role:'assistant',status:'completed',content:[{type:'output_text',text:'Helló, 5 felnőtt vagyunk, 2027. szeptember 20. és 23. között szállnánk meg. (kitalált)'}]}]}));}
    assert.equal(url.origin,project,'all Auth/REST is synthetic');
@@ -342,6 +345,17 @@ test('test-mailbox-ingest: default off; only a cookie Writer with CSRF and a Gma
     assert.equal((await latest(case3)).data.booking.status,'finalized','a suggestion never marks the deposit');
     await hint(hintEnv,{caseId:'tm-nope'},{status:400});await hint(hintEnv,{extra:'1'},{status:403});await hint(hintEnv,{tenantId:'demo-test'},{status:403});
     await call('reader',hintEnv,{tenantId:'sarberki-test',action:'test-mailbox-payment-hint',caseId:case3},{status:403});
+    // Owner 2026-11-25 (#9 7161329077): every Previo booking for the finance view – switch, keys, no guest data, failure.
+    const fin=(env,input={},options={})=>call('reader',env,{tenantId:'sarberki-test',action:'finance-previo-list',...input},{method:'GET',...options});
+    assert.deepEqual((await fin(enabledEnv,{},{status:200})).json.result,{items:null,reason:'OFF'});assert.equal(previoFinanceReads,0,'switch off: no Previo read');
+    const fl=(await fin(hintEnv,{},{status:200})).json.result,flOut=JSON.stringify(fl);
+    assert.deepEqual(fl.items.map(i=>[i.key,i.source.group,i.source.channel]),[['p-555','unknown',null],['p-777','external','Booking.com XML']]);
+    assert.ok(!flOut.includes('Kitalált')&&!flOut.includes('example.test'),'no guest value leaves the server');
+    await fin(hintEnv,{extra:'1'},{status:403});await fin(hintEnv,{tenantId:'demo-test'},{status:403});
+    await call('reader',hintEnv,{tenantId:'sarberki-test',action:'finance-previo-list'},{status:403});
+    const {resetPrevioFinanceCache}=await import('../shared-core/server-previo-finance.mjs');resetPrevioFinanceCache();previoFinanceFail=true;
+    assert.deepEqual((await fin(hintEnv,{},{status:200})).json.result,{items:null,reason:'PREVIO_UNAVAILABLE'},'Previo down: unknown, never an empty list');
+    previoFinanceFail=false;resetPrevioFinanceCache();
     await setBooking({...base,status:'deposit_received',depositReceived:{on:'2026-11-24',recordedAt:'2026-11-24T10:00:00Z'}});
     row=await list();
     assert.equal(row.category,'closed');assert.equal(row.summary.finance.receivedOn,'2026-11-24');assert.equal(row.summary.depositDue,null);

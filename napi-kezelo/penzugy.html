@@ -23,9 +23,13 @@
   <button type="button" data-group="soon" aria-pressed="false"><span class="number">–</span><span>⏳ Hamarosan<br>esedékes</span></button>
   <button type="button" data-group="waiting" aria-pressed="false"><span class="number">–</span><span>Várakozó</span></button>
   <button type="button" data-group="received" aria-pressed="false"><span class="number">–</span><span>✅ Beérkezett /<br>lezárt</span></button>
+  <button type="button" data-group="nopay" aria-pressed="false"><span class="number">–</span><span>❔ Fizetés<br>nem ismert</span></button>
+  <button type="button" data-group="cancelled" aria-pressed="false"><span class="number">–</span><span>Lemondva</span></button>
  </nav>
  <section class="card" aria-labelledby="list-title"><div class="section-title"><div><p class="eyebrow">FOGLALÓK</p><h2 id="list-title">Foglalók áttekintése</h2></div></div>
-  <label for="search">Keresés (név, e-mail, ház, Previo-szám)</label><input id="search" type="search" autocomplete="off" maxlength="80">
+  <div class="fin-sources" role="group" aria-label="Forrás"><button type="button" data-source="all" aria-pressed="true">Mind</button><button type="button" data-source="own" aria-pressed="false">Saját rendszer</button><button type="button" data-source="external" aria-pressed="false">Rendszeren kívüli</button><button type="button" data-source="unknown" aria-pressed="false">Ismeretlen eredet</button></div>
+  <p id="previo-status" class="fin-previo-status" role="status" aria-live="polite"></p>
+  <label for="search">Keresés (név, e-mail, ház, Previo-szám, csatorna)</label><input id="search" type="search" autocomplete="off" maxlength="80">
   <button class="primary" type="button" id="reload" disabled>Frissítés</button>
   <p id="list-status" role="status" aria-live="polite">A listához jelentkezzen be.</p>
   <ul id="finance-list" class="case-list fin-list"></ul>
@@ -33,6 +37,7 @@
  <section class="card"><p class="eyebrow">TUDNIVALÓ</p>
   <p>A „💰 Valószínűleg megjött” sor csak <strong>javaslat</strong> a Previo befizetéseiből (azonos összeg, megerősítés utáni dátum) – a foglalót mindig ember jelöli meg a napi kezelőben.</p>
   <p>Részbefizetés, azonosítatlan utalás és hátralék: <strong>NEM IGAZOLT</strong> – a Previóban a befizetés nem köthető foglaláshoz; a banki értesítő bekötése tulajdonosi döntésre vár.</p>
+  <p><strong>Forrás:</strong> „Saját rendszer” = chatbot, e-mail vagy a napi kezelőben rögzített ügy; „Rendszeren kívüli” = a Previo értékesítési partnert nevez meg (pl. Booking.com, Szállás); „Ismeretlen eredet” = csak a Previóban van, partner nélkül (honlap, telefon, kézi rögzítés – a Previo nem adja meg, melyik). A csak Previóban lévő foglalásnál a befizetés nem olvasható, ezért „Fizetés nem ismert”, és nem jelez.</p>
  </section>
 </main>
 <footer><span>Sárberki Horgásztó</span><span id="deployed_version" role="status" aria-live="polite">Verzió ellenőrzése…</span><button id="reload_version" class="secondary" type="button">Frissítés</button></footer>
