@@ -1,0 +1,36 @@
+name: Previo finance read-only probe (TEST 73521 + live 753011)
+# Owner 2026-11-25 (#9 7163469686; live reads under PERM-20261123-LIVE-READ-PROBE): checks the newly granted
+# Hotel.getAccountItems / Hotel.getDocuments (and getPayments) – reads only. Runs when the request file changes;
+# the request is its last line (JSON). Keys are repository secrets, never printed; output is shapes and counts only.
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths: [docs/PREVIO-FINANCE-PROBE-REQUEST.md]
+permissions:
+  contents: read
+concurrency:
+  group: previo-finance-probe
+  cancel-in-progress: false
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Sanitizer self-test (synthetic)
+        run: node --test tests/previo-finance-probe-20261125.test.mjs
+      - name: Read-only probe, TEST then live
+        env:
+          TEST_KEY: ${{ secrets.PREVIO_TEST_API_KEY }}
+          LIVE_KEY: ${{ secrets.PREVIO_LIVE_API_KEY }}
+        run: |
+          REQ="$(grep -v '^\s*$' docs/PREVIO-FINANCE-PROBE-REQUEST.md | tail -n 1)"
+          { echo '```json'; } >> "$GITHUB_STEP_SUMMARY"
+          PREVIO_KEY="$TEST_KEY" PREVIO_HOTEL=73521 node scripts/previo-finance-probe.mjs "$REQ" | tee -a "$GITHUB_STEP_SUMMARY"
+          PREVIO_KEY="$LIVE_KEY" PREVIO_HOTEL=753011 node scripts/previo-finance-probe.mjs "$REQ" | tee -a "$GITHUB_STEP_SUMMARY"
+          { echo '```'; } >> "$GITHUB_STEP_SUMMARY"
