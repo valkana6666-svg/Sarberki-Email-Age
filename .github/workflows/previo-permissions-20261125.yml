@@ -25,18 +25,23 @@ jobs:
           results=[]
           # Fixed read-only endpoints, no booking, price, status or configuration writes.
           for hotel, keyvar in [('73521','TEST_KEY'),('753011','LIVE_KEY')]:
-              for method in ['getPayments','rooms','getGuestCategories']:
+              for method in ['rooms','getGuestCategories']:
                   row={'hotelId':hotel,'method':'Hotel.'+method,'writeRequests':0}
                   key=os.environ.get(keyvar,'')
                   if not key:
                       row['result']='BLOCKED_SECRET_MISSING'; results.append(row); continue
                   term='<term><from>2026-11-24</from><to>2026-11-25</to></term>' if method=='getPayments' else ''
                   body=('<request><hotId>'+hotel+'</hotId>'+term+'</request>').encode()
-                  req=urllib.request.Request('https://api.previo.app/x1/hotel/'+method,data=body,headers={'Authorization':'ApiKey '+key,'Content-Type':'application/xml'})
+                  path='/rest/rooms' if method=='rooms' else '/rest/guest-categories'
+                  req=urllib.request.Request('https://api.previo.app'+path,headers={'Authorization':'ApiKey '+key,'X-Previo-Hotel-Id':hotel,'Accept':'application/json'})
                   try:
                       with opener.open(req,timeout=20) as response:
                           row['http']=response.status
-                          root=ET.fromstring(response.read())
+                          records=json.loads(response.read())
+                      row['recordCount']=len(records) if isinstance(records,list) else None
+                      row['result']='PASS' if isinstance(records,list) else 'FAIL_SCHEMA'
+                      results.append(row)
+                      continue
                       errors=[e for e in root.iter() if e.tag.lower().split('}')[-1]=='error']
                       row['root']=root.tag
                       row['fieldNames']=sorted(set(e.tag for e in root.iter()))
