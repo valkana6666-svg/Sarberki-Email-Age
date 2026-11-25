@@ -38,7 +38,7 @@ test('replay through the shared engine; the checked offer when the stay is compl
  let offered=null;
  const offerFn=async({facts,language})=>{offered={facts,language};return {status:'AVAILABLE',total:128200,text:'Jó hír: a Deluxe ház 2027.06.10. – 2027.06.13. között szabad.\nÁr: 128 200 Ft.'};};
  const r=await voiceTurn({utterances:['Szia, foglalnék','Deluxe faházat','június 10-től 13-ig','ketten jövünk, 2 felnőtt'],clock:CLOCK,offerFn});
- assert.equal(r.source,'offer');assert.equal(r.reply,'Jó hír: a Deluxe ház kétezer-huszonhét június tizedike – kétezer-huszonhét június tizenharmadika között szabad. Ár: százhuszonnyolcezer-kétszáz forint.');
+ assert.equal(r.source,'offer');assert.equal(r.reply,'Jó hír: a Deluxe ház kétezer-huszonhét június tizedike – kétezer-huszonhét június tizenharmadika között szabad. Ár: százhuszonnyolcezer-kétszáz forint. Szeretné lefoglalni?');
  assert.deepEqual(r.facts,{arrival:'2027-06-10',departure:'2027-06-13',adults:2,children:0,cabin:'Deluxe'});assert.equal(offered.facts.cabin,'deluxe');assert.deepEqual(r.offer,{status:'AVAILABLE',total:128200});
  const missing=await voiceTurn({utterances:['Deluxe faházat szeretnénk június 10-13'],clock:CLOCK,offerFn:async()=>{throw Error('not called');}});
  assert.equal(missing.source,'engine');assert.match(missing.reply,/felnőtt/);assert.doesNotMatch(missing.reply,/^Tisztelt|Szállás /);
@@ -100,17 +100,24 @@ test('spoken-number normaliser: four languages, and unrelated words stay unchang
 // The owner's second live call (call_33a50b161ed1377d95a7c707b1a, read with Claude's Retell key, run 45707849039).
 test('live call 2: side questions after the offer go to the model with context; acceptance gets the honest reply; amounts spoken as words',async()=>{
  const C=()=>new Date('2026-11-25T21:30:00Z');let offers=0;const asked=[];
- const offerFn=async()=>{offers++;return {status:'AVAILABLE',total:260800,text:'Jó hír: 2027.03.04. – 2027.03.08. között (4 éj, 4 fő: 4 felnőtt) a kért háztípusban (Deluxe) jelenleg van szabad hely. Ár: 260 800 Ft (szállásdíj 252 000 Ft + idegenforgalmi adó 8 800 Ft). Foglaló: 50% – 126 000 Ft.'};};
+ // The real offer shape (shared-core/server-chat-offer.mjs): one line each – free, price, deposit, cancellation, extras, chat form.
+ const offerFn=async()=>{offers++;return {status:'AVAILABLE',total:260800,deposit:126000,depositPct:50,arrival:'2027-03-04',text:['Jó hír: 2027.03.04. – 2027.03.08. között (4 éj, 4 fő: 4 felnőtt) a kért háztípusban (Deluxe) jelenleg van szabad hely.','Ár: 260 800 Ft (szállásdíj 252 000 Ft + idegenforgalmi adó 8 800 Ft).','Foglaló: a szállásdíj 50%-a, 126 000 Ft, banki átutalással; a pontos határidőt a visszaigazolásban küldjük.','Lemondás: az érkezés előtt legalább 14 nappal díjmentes, a foglaló nem vész el.','A dézsát és más szolgáltatást külön egyeztetjük.','Ha az ajánlat megfelel: lent töltse ki a nevét…'].join('\n')};};
  const assistFn=async({message})=>{asked.push(message);return 'A napijegy ára a normál tavon felnőttnek 7 500 Ft.';};
  const base=['Halló!','Akkor viszont ez nem érdekel. Érdekelnek kettőezer huszonhét március négytől március nyolcig Delux faház négy felnőtt gyerek nélkül.'];
  const t=async extra=>voiceTurn({utterances:[...base,...extra],clock:C,offerFn,assistFn});
  const o=await t([]);assert.equal(o.source,'offer');
- assert.equal(o.reply,'Jó hír: kétezer-huszonhét március negyedike – kétezer-huszonhét március nyolcadika között (négy éj, négy fő: négy felnőtt) a kért háztípusban (Deluxe) jelenleg van szabad hely. Ár: kétszázhatvanezer-nyolcszáz forint (szállásdíj kétszázötvenkétezer forint + idegenforgalmi adó nyolcezer-nyolcszáz forint). Foglaló: ötven százalék – százhuszonhatezer forint.');
+ // Owner 2026-11-25: on the phone only free + total price + „do you want to book?” – no deposit, extras or chat form.
+ assert.equal(o.reply,'Jó hír: kétezer-huszonhét március negyedike – kétezer-huszonhét március nyolcadika között (négy éj, négy fő: négy felnőtt) a kért háztípusban (Deluxe) jelenleg van szabad hely. Ár: kétszázhatvanezer-nyolcszáz forint. Szeretné lefoglalni?');
+ const terms=await t(['Mennyi a foglaló és meddig kell befizetni?']);assert.equal(terms.source,'offer');
+ assert.equal(terms.reply,'Foglalóként a szállásdíj ötven százalékát, százhuszonhatezer forintot kell banki átutalással befizetni, a visszaigazolástól számított hét napon belül. Szeretné lefoglalni?','only the answer, no repeated offer');
+ const cancel=await t(['És ha le kell mondani?']);assert.equal(cancel.reply,'Lemondás: az érkezés előtt legalább tizennégy nappal díjmentes, a foglaló nem vész el. Szeretné lefoglalni?','cancellation only when asked, alone');
+ assert.doesNotMatch(terms.reply,/lent töltse ki|dézsát és más/);
  offers=0;
  const side=await t(['Horgásznapi jegy.','Normál tóra szeretnék.']);assert.equal(side.source,'assist');assert.equal(offers,0,'no offer repeated');
  const tickets=await t(['Szeretnő két horgászszégyet venni','a normál tóra.','Minden négy napra.']);assert.equal(tickets.source,'assist');assert.equal(offers,0);
  assert.equal(asked.at(-1),'Szeretnő két horgászszégyet venni a normál tóra. Minden négy napra.','the question reaches the model whole');
  const accept=await t(['Jó, szeretném lefoglalni a szállás Megfellel nekem.']);assert.equal(accept.source,'accept');assert.doesNotMatch(accept.reply,/dátum|felnőttek/);assert.match(accept.reply,/nem tudjuk véglegesíteni/);
+ assert.match(accept.reply,/^Foglalóként a szállásdíj ötven százalékát, százhuszonhatezer forintot/,'wanting to book: the deposit and the deadline are said');
  const price=await t(['Horgásznapi jegy.','És mennyibe kerül a szállás?']);assert.equal(price.source,'offer','a price question still reads the offer');
  assert.match(speakable('Kérjük, írja meg, hány felnőtt érkezik.',450,'hu'),/mondja meg/);
 });

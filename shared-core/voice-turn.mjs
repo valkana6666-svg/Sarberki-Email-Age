@@ -9,6 +9,7 @@ import {requestFacts} from '../sarberki-chatbot-project/chat-request-client.mjs'
 import {hotTubWished,withoutPhoneQuestion} from '../sarberki-chatbot-project/chat-view.mjs';
 import {normalizeSpoken,speakNumbersHu} from './voice-normalize.mjs';
 import {PLACEHOLDER} from './inquiry-channel-adapters.mjs';
+import {depositPolicyForBooking} from '../sarberki-core.mjs';
 
 const MAX_UTTERANCES=40,MAX_LEN=1000;
 
@@ -90,6 +91,33 @@ const ACCEPT_REPLY={hu:'Köszönjük, örülünk, hogy megfelel! Ezen a vonalon 
  de:'Vielen Dank, schön, dass es passt! Über diese Leitung können wir die Buchung derzeit nicht abschließen. Bitte senden Sie Ihre Anfrage über den Chat auf unserer Website oder per E-Mail – unser Team bestätigt sie.',
  en:"Thank you, glad it suits you! We can't complete the booking on this line yet. Please send your request through the chat on our website or by e-mail, and our team will confirm it.",
  si:'Hvala, veseli nas, da vam ustreza! Rezervacije po tej liniji trenutno ne moremo dokončati. Prosimo, pošljite povpraševanje prek klepeta na naši spletni strani ali po e-pošti, naša ekipa ga bo potrdila.'};
+// Owner 2026-11-25: on the phone (cost per minute) only the essentials – free or not, and the total price. Deposit,
+// payment deadline and cancellation only when the caller asks about them or wants to book; the e-mail offer carries
+// the details. The chat-form sentence and the extras are never read on the phone.
+const TERMS_ASK=/le\s+(?:\p{L}+\s+){0,2}mond|foglaló|foglalo|előleg|eloleg|befizet|átutal|atutal|utaln|határid|hatarid|lemond|deposit|pay(?:ment)?|cancel|refund|anzahlung|zahl|überweis|storn|predplač|predplac|plačil|placil|nakazil|odpoved|odpov/iu;
+const ASK_BOOK={hu:'Szeretné lefoglalni?',de:'Möchten Sie buchen?',en:'Would you like to book it?',si:'Želite rezervirati?'};
+const TERMS={hu:(pct,amt,h)=>`Foglalóként a szállásdíj ${pct}%-át, ${amt} forintot kell banki átutalással befizetni, a visszaigazolástól számított ${h<=24?'24 órán':'7 napon'} belül.`,
+ de:(pct,amt,h)=>`Als Anzahlung sind ${pct}% des Unterkunftspreises, ${amt} Ft, per Banküberweisung innerhalb von ${h<=24?'24 Stunden':'7 Tagen'} nach der Bestätigung zu zahlen.`,
+ en:(pct,amt,h)=>`The deposit is ${pct}% of the accommodation price, ${amt} HUF, by bank transfer within ${h<=24?'24 hours':'7 days'} of the confirmation.`,
+ si:(pct,amt,h)=>`Predplačilo je ${pct}% cene nastanitve, ${amt} Ft, z bančnim nakazilom v ${h<=24?'24 urah':'7 dneh'} po potrditvi.`};
+// Cancellation only when asked about it (owner 2026-11-25: the phone says as little as needed).
+const CANCEL_ASK=/le\s+(?:\p{L}+\s+){0,2}mond|lemond|cancel|refund|storn|odpoved|odpov/iu;
+// Deposit / payment words (without the cancellation ones).
+const DEPOSIT_ASK=/foglaló|foglalo|előleg|eloleg|befizet|átutal|atutal|utaln|határid|hatarid|deposit|pay(?:ment)?|anzahlung|zahl|überweis|predplač|predplac|plačil|placil|nakazil/iu;
+export function voiceOffer(offer,{lang='hu',withTerms=false,withCancel=false,onlyTerms=false,now=new Date()}={}){
+ if(!offer||typeof offer.text!=='string')return null;
+ const lines=offer.text.split('\n').map(l=>l.trim()).filter(Boolean);
+ if(offer.status!=='AVAILABLE')return lines.join(' ');
+ // A question about the terms of an offer already given: only the answer (no repeated offer).
+ const out=onlyTerms?[]:[lines[0],(lines[1]||'').replace(/\s*\([^)]*\)/,'')];
+ if(withTerms&&Number.isSafeInteger(offer.deposit)&&Number.isFinite(offer.depositPct)){
+  const p=depositPolicyForBooking({guestCount:2,bookingAt:now.toISOString(),arrivalDate:offer.arrival});
+  out.push((TERMS[lang]||TERMS.hu)(offer.depositPct,offer.deposit,p?.paymentWindowHours??168));
+ }
+ if(withCancel){const cancel=lines.find(l=>/^(Lemondás|Stornierung|Cancellation|Odpoved):/.test(l));if(cancel)out.push(cancel);}
+ out.push(ASK_BOOK[lang]||ASK_BOOK.hu);
+ return out.filter(Boolean).join(' ');
+}
 const ACCEPT_TUB={hu:'A dézsabérlést is írja bele az igénybe, a szabad időpontot munkatársunk egyezteti.',de:'Bitte vermerken Sie den Badezuber in der Anfrage; den freien Termin stimmt unser Team ab.',en:'Please mention the hot tub in your request; our team will arrange the free slot.',si:'Masažno kad navedite v povpraševanju, prost termin bo uskladila naša ekipa.'};
 export async function voiceTurn({utterances,language='auto',clock=()=>new Date(),offerFn=null,assistFn=null}){
  if(!Array.isArray(utterances)||!utterances.length)return {reply:null,reason:'NO_UTTERANCE'};
@@ -100,10 +128,18 @@ export async function voiceTurn({utterances,language='auto',clock=()=>new Date()
  const changed=JSON.stringify(facts)!==before;
  if(facts&&hotTubWished(utterances))facts.hotTub=true;
  let text=r.text,source='engine',offer=null;
- if(facts&&!changed&&ACCEPT.test(last)&&!STAY_ASK.test(last)){text=(ACCEPT_REPLY[lang]||ACCEPT_REPLY.hu)+(hotTubWished([utterances.at(-1)])?' '+(ACCEPT_TUB[lang]||ACCEPT_TUB.hu):'');source='accept';}
- else if(facts&&r.decision&&offerFn&&(changed||STAY_ASK.test(last))){
+ if(facts&&!changed&&ACCEPT.test(last)&&!STAY_ASK.test(last)){
+  // Wants to book: now the deposit and the deadline (owner 2026-11-25), then the honest „this line cannot book yet”.
+  let terms='';
+  if(offerFn){try{const o=await offerFn({facts,language:lang});
+   if(o?.status==='AVAILABLE'&&Number.isSafeInteger(o.deposit)){offer=o;
+    const hours=depositPolicyForBooking({guestCount:2,bookingAt:clock().toISOString(),arrivalDate:o.arrival})?.paymentWindowHours??168;
+    terms=(TERMS[lang]||TERMS.hu)(o.depositPct,o.deposit,hours)+' ';}}catch{}}
+  text=terms+(ACCEPT_REPLY[lang]||ACCEPT_REPLY.hu)+(hotTubWished([utterances.at(-1)])?' '+(ACCEPT_TUB[lang]||ACCEPT_TUB.hu):'');source='accept';
+ }
+ else if(facts&&offerFn&&(r.decision&&(changed||STAY_ASK.test(last))||TERMS_ASK.test(last))){
   try{offer=await offerFn({facts,language:lang});}catch{offer=null;}
-  if(offer&&['AVAILABLE','UNAVAILABLE'].includes(offer.status)){text=offer.text;source='offer';}
+  if(offer&&['AVAILABLE','UNAVAILABLE'].includes(offer.status)){text=voiceOffer(offer,{lang,withTerms:DEPOSIT_ASK.test(last),withCancel:CANCEL_ASK.test(last),onlyTerms:!changed&&TERMS_ASK.test(last),now:clock()});source='offer';}
  }
  const sideQuestion=facts&&r.decision&&!changed&&!STAY_ASK.test(last)&&source==='engine';
  if((sideQuestion||!r.decision&&!r.noAssist)&&source==='engine'&&assistFn){

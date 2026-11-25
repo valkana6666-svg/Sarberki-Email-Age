@@ -160,6 +160,6 @@ export function speakNumbersHu(text){
  t=t.replace(/(\d+)\s?%(?:-(\p{L}+))?/gu,(m,n,suf)=>attr(huNumberWords(Number(n)))+' százalék'+(suf||'')); // „50%-a” → „ötven százaléka”
  t=t.replace(new RegExp(`\\b(20\\d{2})\\.\\s+(${HU_MONTHS})\\s+(\\d{1,2})\\.`,'g'),(m,y,mo,d)=>`${huNumberWords(Number(y))} ${mo} ${HU_ORDDAY[Number(d)]||d+'.'}`);
  t=t.replace(new RegExp(`\\b(${HU_MONTHS})\\s+(\\d{1,2})\\.(?!\\d)`,'g'),(m,mo,d)=>`${mo} ${HU_ORDDAY[Number(d)]||d+'.'}`);
- t=t.replace(/(\d+)\s+(fő|felnőtt|gyermek|gyerek|éj|éjszaka|nap)(?!\p{L})/gu,(m,n,w)=>attr(huNumberWords(Number(n)))+' '+w);
+ t=t.replace(/(\d+)\s+((?:fő|felnőtt|gyermek|gyerek|éj|éjszak|nap|órá|óra|hét|hónap|perc)\p{L}*)/gu,(m,n,w)=>attr(huNumberWords(Number(n)))+' '+w); // „7 napon”, „24 órán”, „14 nappal”
  return t;
 }
