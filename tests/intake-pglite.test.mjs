@@ -40,6 +40,8 @@ test('intake: one pending case per call, only the intake account can create it, 
   assert.equal((await db.exec(await read('deployment/intake/install.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
   await db.exec(await read('deployment/intake/deposit-alerts.sql')); // owner 2026-11-24
   assert.equal((await db.exec(await read('deployment/intake/deposit-alerts.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
+  await db.exec(await read('deployment/intake/deposit-alerts-2.sql')); // owner 2026-11-25: 08:00 alert → 74 h window
+  assert.equal((await db.exec(await read('deployment/intake/deposit-alerts-2.verify.sql'))).at(-1).rows[0].result,'VERIFY PASS');
   await db.exec('update sc_test_mailbox_config set enabled=true');
   for(const [role,id] of Object.entries(ids)){await db.query('insert into auth.users values($1)',[id]);await db.query('insert into auth.sessions values($1,$2,null)',[sessions[role],id]);}
   // Writer: normal operator membership. Intake: NO membership, only the intake registry.
@@ -76,6 +78,11 @@ test('intake: one pending case per call, only the intake account can create it, 
   assert.deepEqual(await alerts(),[]);
   await db.query("update sc_cases set data=jsonb_set(data,'{booking,deposit,deadlineUtc}',to_jsonb((now()+interval '48 hours')::text)) where case_id=$1",[caseId]);
   const due=await alerts();assert.equal(due.length,1);
+  await db.query("update sc_cases set data=jsonb_set(data,'{booking,deposit,deadlineUtc}',to_jsonb((now()+interval '70 hours')::text)) where case_id=$1",[caseId]);
+  assert.equal((await alerts()).length,1,'two days before at 08:00 can be up to ~64 h ahead');
+  await db.query("update sc_cases set data=jsonb_set(data,'{booking,deposit,deadlineUtc}',to_jsonb((now()+interval '80 hours')::text)) where case_id=$1",[caseId]);
+  assert.deepEqual(await alerts(),[],'outside the 74-hour window');
+  await db.query("update sc_cases set data=jsonb_set(data,'{booking,deposit,deadlineUtc}',to_jsonb((now()+interval '48 hours')::text)) where case_id=$1",[caseId]);
   assert.deepEqual(Object.keys(due[0]).sort(),['arrival','caseId','deadlineUtc','departure','unit']);
   assert.ok(!/@|\+36|Teszt/.test(JSON.stringify(due)),'no guest data');
   await db.query("update sc_cases set data=jsonb_set(data,'{booking,status}','\"deposit_received\"') where case_id=$1",[caseId]);

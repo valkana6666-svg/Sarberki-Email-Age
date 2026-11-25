@@ -12,9 +12,9 @@ const alertRow={caseId:'tm-'+'a'.repeat(16),unit:'2',arrival:'2027-06-10',depart
 const listRow=status=>({summary:{booking:status,finance:{amount:90750,deadlineUtc:DL,receivedOn:status==='deposit_received'?'2026-11-29':null,reference:'V2-1',reminders:{first:false,final:false}}}});
 const ticks=[];for(let t=Date.parse('2026-11-26T00:07:00Z');t<=Date.parse('2026-12-02T00:07:00Z');t+=H)ticks.push(t);
 
-test('hourly run: exactly one "2 days" alert and one deadline-day morning alert (08:07 Budapest)',()=>{
+test('hourly run: exactly one "2 days" alert (08:07 Budapest, two days before) and one deadline-day morning alert (08:07 Budapest)',()=>{
  const fired=ticks.flatMap(t=>depositAlerts([alertRow],t).map(a=>({at:new Date(t).toISOString(),kind:a.kind})));
- assert.deepEqual(fired,[{at:'2026-11-28T23:07:00.000Z',kind:'soon'},{at:'2026-11-30T07:07:00.000Z',kind:'today'}]);
+ assert.deepEqual(fired,[{at:'2026-11-28T07:07:00.000Z',kind:'soon'},{at:'2026-11-30T07:07:00.000Z',kind:'today'}]);
 });
 test('guest reminders: first in the last 2 days, final on the deadline day; each once; none after +12 h',()=>{
  const b={status:'finalized',deposit:{deadlineUtc:DL}};
@@ -37,6 +37,6 @@ test('finance groups follow the clock: waiting → soon (48 h) → overdue; mark
 test('every alert moment falls in the finance group the alert talks about',()=>{
  for(const t of ticks)for(const a of depositAlerts([alertRow],t)){
   const g=financeGroup(listRow('finalized'),t);
-  assert.ok(a.kind==='soon'?g==='soon':['soon','overdue'].includes(g),`${a.kind} at ${new Date(t).toISOString()} → ${g}`);
+  assert.ok(a.kind==='soon'?['waiting','soon'].includes(g):['soon','overdue'].includes(g),`${a.kind} at ${new Date(t).toISOString()} → ${g}`);
  }
 });
