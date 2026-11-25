@@ -38,7 +38,7 @@ test('replay through the shared engine; the checked offer when the stay is compl
  let offered=null;
  const offerFn=async({facts,language})=>{offered={facts,language};return {status:'AVAILABLE',total:128200,text:'Jó hír: a Deluxe ház 2027.06.10. – 2027.06.13. között szabad.\nÁr: 128 200 Ft.'};};
  const r=await voiceTurn({utterances:['Szia, foglalnék','Deluxe faházat','június 10-től 13-ig','ketten jövünk, 2 felnőtt'],clock:CLOCK,offerFn});
- assert.equal(r.source,'offer');assert.equal(r.reply,'Jó hír: a Deluxe ház 2027. június 10. – 2027. június 13. között szabad. Ár: 128200 forint.');
+ assert.equal(r.source,'offer');assert.equal(r.reply,'Jó hír: a Deluxe ház kétezer-huszonhét június tizedike – kétezer-huszonhét június tizenharmadika között szabad. Ár: százhuszonnyolcezer-kétszáz forint.');
  assert.deepEqual(r.facts,{arrival:'2027-06-10',departure:'2027-06-13',adults:2,children:0,cabin:'Deluxe'});assert.equal(offered.facts.cabin,'deluxe');assert.deepEqual(r.offer,{status:'AVAILABLE',total:128200});
  const missing=await voiceTurn({utterances:['Deluxe faházat szeretnénk június 10-13'],clock:CLOCK,offerFn:async()=>{throw Error('not called');}});
  assert.equal(missing.source,'engine');assert.match(missing.reply,/felnőtt/);assert.doesNotMatch(missing.reply,/^Tisztelt|Szállás /);
@@ -50,7 +50,7 @@ test('free question → fact-bound assist; thanks → short reply, no model call
  const q=await voiceTurn({utterances:['Lehet éjszaka horgászni?'],clock:CLOCK,assistFn});assert.equal(q.source,'assist');assert.equal(q.reply,'Igen, éjszaka is lehet horgászni.');
  const t=await voiceTurn({utterances:['Deluxe faházat szeretnénk 2027. június 10-től 13-ig, 2 felnőtt.','Köszi, ennyi!'],clock:CLOCK,assistFn});
  assert.equal(t.source,'engine');assert.equal(asked,1,'no model call for thanks');assert.match(t.reply,/köszönjük/i);
- assert.equal(speakable('Tisztelt Vendégünk!\n\nKöszönjük érdeklődését.\n\nSzállás\n– 2 felnőtt\nÜdvözlettel:\nSárberki Horgásztó'),'2 felnőtt');
+ assert.equal(speakable('Tisztelt Vendégünk!\n\nKöszönjük érdeklődését.\n\nSzállás\n– 2 felnőtt\nÜdvözlettel:\nSárberki Horgásztó'),'két felnőtt');
  assert.ok(speakable('x. '.repeat(500)).length<=700);
 });
 
@@ -77,7 +77,7 @@ test('live call 2026-11-25 (call_80ab29bb…): spoken Hungarian dates and party 
  const U=['Halló.','Miért nem hallok?','Szeretnék. Hogy vane Samads Páz kétezer 27 június 2től június nyolcig.','Három felnőttet szeretnék. Gyerek nélkül.','Három felnőtt lesz, gyerek nem lesz. Csak három felnőtt.'];
  const r=await voiceTurn({utterances:U,clock:()=>new Date('2026-11-25T19:20:00Z')});
  assert.deepEqual(r.facts,{arrival:'2027-06-02',departure:'2027-06-08',adults:3,children:0,cabin:null});
- assert.match(r.reply,/2027\. június 2\. és 2027\. június 8\. között 3 fő/);assert.doesNotMatch(r.reply,/telefonszám/,'no phone number asked on a phone call');
+ assert.match(r.reply,/kétezer-huszonhét június másodika és kétezer-huszonhét június nyolcadika között három fő/);assert.doesNotMatch(r.reply,/telefonszám/,'no phone number asked on a phone call');
  const done=await voiceTurn({utterances:[...U,'Családi házat kérnék.'],clock:()=>new Date('2026-11-25T19:20:00Z'),offerFn:async()=>({status:'AVAILABLE',total:200000,text:'Jó hír: szabad.'})});
  assert.equal(done.source,'offer');assert.equal(done.facts.cabin,'Családi');
 });
@@ -95,4 +95,22 @@ test('spoken-number normaliser: four languages, and unrelated words stay unchang
  assert.equal(normalizeSpoken('ketten meg a két gyerek egy ötéves és egy nyolcéves, július elsejétől egy hétre'),'ketten meg a 2 gyerek egy 5 éves és egy 8 éves, július 1-től 7 éjszakára');
  for(const t of ['in a week we will call','Ich komme in einer Woche wieder','egy hét múlva','Hét órakor','first time here','the second floor'])assert.equal(normalizeSpoken(t),t);
  assert.equal(normalizeCabinNames('a de luxe cabin, de luks hiško, víp apartman, v i p'),'a Deluxe cabin, Deluxe hiško, VIP apartman, VIP');
+});
+
+// The owner's second live call (call_33a50b161ed1377d95a7c707b1a, read with Claude's Retell key, run 45707849039).
+test('live call 2: side questions after the offer go to the model with context; acceptance gets the honest reply; amounts spoken as words',async()=>{
+ const C=()=>new Date('2026-11-25T21:30:00Z');let offers=0;const asked=[];
+ const offerFn=async()=>{offers++;return {status:'AVAILABLE',total:260800,text:'Jó hír: 2027.03.04. – 2027.03.08. között (4 éj, 4 fő: 4 felnőtt) a kért háztípusban (Deluxe) jelenleg van szabad hely. Ár: 260 800 Ft (szállásdíj 252 000 Ft + idegenforgalmi adó 8 800 Ft). Foglaló: 50% – 126 000 Ft.'};};
+ const assistFn=async({message})=>{asked.push(message);return 'A napijegy ára a normál tavon felnőttnek 7 500 Ft.';};
+ const base=['Halló!','Akkor viszont ez nem érdekel. Érdekelnek kettőezer huszonhét március négytől március nyolcig Delux faház négy felnőtt gyerek nélkül.'];
+ const t=async extra=>voiceTurn({utterances:[...base,...extra],clock:C,offerFn,assistFn});
+ const o=await t([]);assert.equal(o.source,'offer');
+ assert.equal(o.reply,'Jó hír: kétezer-huszonhét március negyedike – kétezer-huszonhét március nyolcadika között (négy éj, négy fő: négy felnőtt) a kért háztípusban (Deluxe) jelenleg van szabad hely. Ár: kétszázhatvanezer-nyolcszáz forint (szállásdíj kétszázötvenkétezer forint + idegenforgalmi adó nyolcezer-nyolcszáz forint). Foglaló: ötven százalék – százhuszonhatezer forint.');
+ offers=0;
+ const side=await t(['Horgásznapi jegy.','Normál tóra szeretnék.']);assert.equal(side.source,'assist');assert.equal(offers,0,'no offer repeated');
+ const tickets=await t(['Szeretnő két horgászszégyet venni','a normál tóra.','Minden négy napra.']);assert.equal(tickets.source,'assist');assert.equal(offers,0);
+ assert.equal(asked.at(-1),'Szeretnő két horgászszégyet venni a normál tóra. Minden négy napra.','the question reaches the model whole');
+ const accept=await t(['Jó, szeretném lefoglalni a szállás Megfellel nekem.']);assert.equal(accept.source,'accept');assert.doesNotMatch(accept.reply,/dátum|felnőttek/);assert.match(accept.reply,/nem tudjuk véglegesíteni/);
+ const price=await t(['Horgásznapi jegy.','És mennyibe kerül a szállás?']);assert.equal(price.source,'offer','a price question still reads the offer');
+ assert.match(speakable('Kérjük, írja meg, hány felnőtt érkezik.',450,'hu'),/mondja meg/);
 });

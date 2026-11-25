@@ -127,3 +127,39 @@ export function normalizeSpoken(text){
  text=normalizeCabinNames(text);
  return normalizeSpokenSi(normalizeSpokenDe(normalizeSpokenEn(normalizeSpokenHu(text))));
 }
+
+// ---------- Hungarian number words for SPEAKING (owner's live call 2026-11-25: amounts were read in pieces) ----------
+const HU_U=['','egy','kettő','három','négy','öt','hat','hét','nyolc','kilenc'],HU_UC=['','egy','két','három','négy','öt','hat','hét','nyolc','kilenc'];
+const HU_T=['','tíz','húsz','harminc','negyven','ötven','hatvan','hetven','nyolcvan','kilencven'],HU_TC=['','tizen','huszon','harminc','negyven','ötven','hatvan','hetven','nyolcvan','kilencven'];
+function hu999(n,compound){
+ const h=Math.floor(n/100),t=Math.floor(n%100/10),u=n%10;let out='';
+ if(h)out+=(h===1?'':HU_UC[h])+'száz';
+ if(t)out+=u?HU_TC[t]:HU_T[t];
+ if(u)out+=(compound||h||t)?(u===2&&!compound&&!h&&!t?'kettő':HU_U[u]==='kettő'?'kettő':HU_U[u]):HU_U[u];
+ return out;
+}
+export function huNumberWords(n){
+ if(!Number.isSafeInteger(n)||n<0||n>999999999)return String(n);if(n===0)return 'nulla';
+ const mil=Math.floor(n/1e6),th=Math.floor(n%1e6/1000),rest=n%1000,parts=[];
+ if(mil)parts.push(hu999(mil,true)+'millió');
+ if(th)parts.push((th===1?'':hu999(th,true).replace(/kettő$/,'két'))+'ezer');
+ if(rest)parts.push(hu999(rest,false));
+ // Above 2000 the groups are joined with a hyphen (kétezer-huszonhét, kétszázhatvanezer-nyolcszáz).
+ return n>2000?parts.join('-'):parts.join('');
+}
+const HU_ORDDAY=[null,'elseje','másodika','harmadika','negyedike','ötödike','hatodika','hetedike','nyolcadika','kilencedike','tizedike',
+ 'tizenegyedike','tizenkettedike','tizenharmadika','tizennegyedike','tizenötödike','tizenhatodika','tizenhetedike','tizennyolcadika','tizenkilencedike','huszadika',
+ 'huszonegyedike','huszonkettedike','huszonharmadika','huszonnegyedike','huszonötödike','huszonhatodika','huszonhetedike','huszonnyolcadika','huszonkilencedike','harmincadika','harmincegyedike'];
+const HU_MONTHS='január|február|március|április|május|június|július|augusztus|szeptember|október|november|december';
+// Value-preserving: only the written form changes (forint amounts, percentages, years, „március 4.”).
+// Before a noun Hungarian says „két”, not „kettő” (két felnőtt, tizenkét forint).
+const attr=w=>w.replace(/kettő$/,'két');
+export function speakNumbersHu(text){
+ let t=String(text||'');
+ t=t.replace(/(\d+)\s+forint/g,(m,n)=>attr(huNumberWords(Number(n)))+' forint');
+ t=t.replace(/(\d+)\s?%/g,(m,n)=>attr(huNumberWords(Number(n)))+' százalék');
+ t=t.replace(new RegExp(`\\b(20\\d{2})\\.\\s+(${HU_MONTHS})\\s+(\\d{1,2})\\.`,'g'),(m,y,mo,d)=>`${huNumberWords(Number(y))} ${mo} ${HU_ORDDAY[Number(d)]||d+'.'}`);
+ t=t.replace(new RegExp(`\\b(${HU_MONTHS})\\s+(\\d{1,2})\\.(?!\\d)`,'g'),(m,mo,d)=>`${mo} ${HU_ORDDAY[Number(d)]||d+'.'}`);
+ t=t.replace(/(\d+)\s+(fő|felnőtt|gyermek|gyerek|éj|éjszaka|nap)(?!\p{L})/gu,(m,n,w)=>attr(huNumberWords(Number(n)))+' '+w);
+ return t;
+}
