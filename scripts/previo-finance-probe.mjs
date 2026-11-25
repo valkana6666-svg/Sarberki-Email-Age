@@ -64,6 +64,18 @@ export async function probe({key,hotel,from,to,fetchImpl=globalThis.fetch,maxRes
  out.documentResponseShape={root:(doc.text.match(/<([A-Za-z]+)[ >]/)||[])[1]||null,paths:tagPaths(doc.text).slice(0,40),bytes:doc.text.length};
  const resCom=[...new Set(res.map(b=>b.match(/<comId>(\d+)<\/comId>/)?.[1]).filter(Boolean))];
  out.comIds={fromAccounts:comIds.size,fromReservations:resCom.length,same:[...comIds].filter(c=>resCom.includes(c)).length};
+ // Documents per partner (up to 25 partners of the window, no term): how many have documents, their fields and links.
+ let withDocs=0,docCount=0,docPaths=new Set(),docEnums={},docResInWindow=0,docInvMatchesPayment=0;const payInvAll=new Set(pays.map(b=>b.match(/<invId>(\d+)<\/invId>/)?.[1]).filter(Boolean));
+ for(const c of resCom.slice(0,25)){
+  const d=await call('getDocuments',`<comId>${c}</comId>`);if(err(d.text))continue;
+  const list=blocks(d.text,'document');if(!list.length)continue;withDocs++;docCount+=list.length;
+  for(const p of tagPaths(d.text))if(!/name|note|desc|text|guest|mail|phone|address|street|city|zip|vat|dic|ico|number/i.test(p.split('>').pop()))docPaths.add(p);
+  Object.assign(docEnums,enums(d.text,'document'));
+  for(const x of list){const r=x.match(/<resId>(\d+)<\/resId>/)?.[1];if(r&&resIds.has(r))docResInWindow++;
+   if([...x.matchAll(/<(?:invId|docId|id)>(\d+)<\/(?:invId|docId|id)>/g)].some(m=>payInvAll.has(m[1])))docInvMatchesPayment++;}
+ }
+ out.documentsPerPartner={partnersAsked:Math.min(25,resCom.length),partnersWithDocuments:withDocs,documents:docCount,documentsNamingAReservationOfTheWindow:docResInWindow,documentsWhoseIdIsAPaymentInvoice:docInvMatchesPayment,paths:[...docPaths].sort().slice(0,60),enums:docEnums};
+
  if(resCom[0]&&resCom[0]!==com){const d2=await call('getDocuments',`<comId>${resCom[0]}</comId><term><from>${from}</from><to>${to}</to></term>`);out.documentsWithReservationComId={http:d2.http,error:err(d2.text),root:(d2.text.match(/<([A-Za-z]+)[ >]/)||[])[1]||null,paths:tagPaths(d2.text).slice(0,40)};}
  out.codeLists={};
  for(const [svc,m] of [['system','getAccountItemTypes'],['hotel','getAccountItemTypes'],['system','getItemTypes']]){
