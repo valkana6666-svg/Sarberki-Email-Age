@@ -5,7 +5,11 @@
 // voice-turn key), the full agent JSON. The calls are the owner's own synthetic test calls.
 // Usage: RETELL_KEY=… node scripts/retell-read.mjs '{"agent":"agent_…","calls":["call_…"]}'
 export const TEST_AGENT='agent_db7df7b565e9c49abc8f9bb3e0';
-const API='https://api.retellai.com';
+import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+const API='https://api.retellai.com',PROMPT_FILE='docs/V3-RETELL-PROMPT.md';
+// The prompt text below the „---” line of the versioned file (owner 2026-11-25: „Igen, írd át te a promptot”).
+export function promptFromFile(text){const i=String(text).indexOf('\n---\n');return i<0?null:String(text).slice(i+5).trim();}
 const cut=(s,n)=>{s=String(s??'');return s.length>n?s.slice(0,n)+'…':s;};
 export async function retellRead(request,{key,fetchImpl=globalThis.fetch}){
  if(typeof key!=='string'||key.length<16)throw Object.assign(Error('key'),{code:'KEY_MISSING'});
@@ -17,6 +21,16 @@ export async function retellRead(request,{key,fetchImpl=globalThis.fetch}){
  out.agent={http:a.http,error:a.error,...(a.json?{agent_id:a.json.agent_id,agent_name:a.json.agent_name,version:a.json.version,is_published:a.json.is_published,language:a.json.language,
   voice_id:a.json.voice_id,voice_model:a.json.voice_model??null,response_engine:{type:a.json.response_engine?.type,llm_id:a.json.response_engine?.llm_id??null},
   interruption_sensitivity:a.json.interruption_sensitivity??null,responsiveness:a.json.responsiveness??null,stt_mode:a.json.stt_mode??null}:{})};
+ // WRITE (one field only): the TEST agent's LLM general_prompt from the versioned file; tools are not sent (unchanged).
+ if(q.updatePrompt===true&&a.json?.response_engine?.llm_id){
+  const prompt=promptFromFile(readFileSync(PROMPT_FILE,'utf8'));
+  if(!prompt||prompt.length<50||prompt.length>8000)throw Object.assign(Error('prompt'),{code:'PROMPT_INVALID'});
+  const r=await fetchImpl(API+'/update-retell-llm/'+a.json.response_engine.llm_id,{method:'PATCH',redirect:'error',signal:AbortSignal.timeout(20000),
+   headers:{Authorization:'Bearer '+key,'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({general_prompt:prompt})});
+  const j=await r.json().catch(()=>null);
+  out.update={http:r.status,sentSha256:createHash('sha256').update(prompt).digest('hex').slice(0,16),storedSha256:j?.general_prompt?createHash('sha256').update(j.general_prompt).digest('hex').slice(0,16):null,
+   toolsAfter:(j?.general_tools||[]).map(t=>({name:t.name,type:t.type,hasHeaders:!!(t.headers&&Object.keys(t.headers).length)}))};
+ }
  // The agent's Retell LLM: prompt, first message, model and tool NAMES (never tool headers – they hold the voice key).
  if(q.llm&&a.json?.response_engine?.llm_id){
   const l=await get('/get-retell-llm/'+a.json.response_engine.llm_id);

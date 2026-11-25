@@ -1,4 +1,4 @@
-name: Retell TEST agent read-only (Claude)
+name: Retell TEST agent read + prompt update (Claude)
 # Owner 2026-11-25 (#9 7175557838): read-only use of the restricted Retell key – the TEST agent's settings and the
 # transcripts/tool calls of its test calls. Runs when docs/RETELL-READ-REQUEST.md changes on the test branch; the
 # request is its last line (JSON). The key is a repository secret and is never printed.
@@ -23,7 +23,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Read-only Retell request
+      - name: Self-test (synthetic)
+        run: node --test tests/retell-read-20261125.test.mjs
+      - name: Retell request (read; prompt update only when the request says updatePrompt)
         env:
           RETELL_KEY: ${{ secrets.RETELL_CLAUDE_TEST_API_KEY }}
         run: |
