@@ -1,0 +1,54 @@
+name: Previo new permissions read-only verification
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths: [.github/workflows/previo-permissions-20261125.yml]
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: github.run_attempt == 1 && contains(github.event.head_commit.message, '[previo-permissions-20261125]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Verify only the newly enabled read methods
+        env:
+          TEST_KEY: ${{ secrets.PREVIO_TEST_API_KEY }}
+          LIVE_KEY: ${{ secrets.PREVIO_LIVE_API_KEY }}
+        shell: python
+        run: |
+          import os, json, urllib.request, urllib.error, xml.etree.ElementTree as ET
+          assert os.environ['GITHUB_REF']=='refs/heads/gmail-test-subject-allowlist'
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,*args): raise RuntimeError('REDIRECT_REFUSED')
+          opener=urllib.request.build_opener(NoRedirect)
+          results=[]
+          # Fixed read-only endpoints, no booking, price, status or configuration writes.
+          for hotel, keyvar in [('73521','TEST_KEY'),('753011','LIVE_KEY')]:
+              for method in ['getPayments','rooms','getGuestCategories']:
+                  row={'hotelId':hotel,'method':'Hotel.'+method,'writeRequests':0}
+                  key=os.environ.get(keyvar,'')
+                  if not key:
+                      row['result']='BLOCKED_SECRET_MISSING'; results.append(row); continue
+                  term='<term><from>2026-11-24</from><to>2026-11-25</to></term>' if method=='getPayments' else ''
+                  body=('<request><hotId>'+hotel+'</hotId>'+term+'</request>').encode()
+                  req=urllib.request.Request('https://api.previo.app/x1/hotel/'+method,data=body,headers={'Authorization':'ApiKey '+key,'Content-Type':'application/xml'})
+                  try:
+                      with opener.open(req,timeout=20) as response:
+                          row['http']=response.status
+                          root=ET.fromstring(response.read())
+                      errors=[e for e in root.iter() if e.tag.lower().split('}')[-1]=='error']
+                      row['root']=root.tag
+                      row['fieldNames']=sorted(set(e.tag for e in root.iter()))
+                      row['recordCount']=len(root)
+                      row['result']='FAIL_API_ERROR' if errors else 'PASS'
+                      if errors: row['errorCodes']=[e.findtext('code') for e in errors]
+                  except urllib.error.HTTPError as e:
+                      row['http']=e.code; row['result']='FAIL_HTTP'
+                  except Exception:
+                      row['result']='FAIL_REQUEST_OR_XML'
+                  results.append(row)
+          text=json.dumps(results,indent=2)
+          print(text)
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as out: out.write('\n```json\n'+text+'\n```\n')
+          assert all(r['result']=='PASS' for r in results)
