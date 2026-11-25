@@ -78,7 +78,10 @@ export function previoLiveReader({apiKey,fetchImpl=globalThis.fetch}){
    const xml=`<?xml version="1.0"?><request><hotId>${HOTEL}</hotId><term><from>${from}</from><to>${to}</to></term></request>`;
    const r=await call('/x1/hotel/getPayments',{method:'POST',headers:{'Content-Type':'application/xml',Accept:'application/xml'},body:xml});
    const blocks=[...String(r.text).matchAll(/<payment>([\s\S]*?)<\/payment>/g)].map(m=>m[1]);
-   return {http:r.status,payments:blocks.length,tags:[...new Set([...String(r.text).matchAll(/<([A-Za-z][A-Za-z0-9]*)[ >]/g)].map(m=>m[1]))].sort(),
+   // Owner 2026-11-25: how far back – aggregate only (earliest/latest issue date, count per year); no amount or name.
+   const days=blocks.map(b=>b.match(/<issued>(\d{4}-\d{2}-\d{2})/)?.[1]).filter(Boolean).sort();
+   const perYear={};for(const d of days)perYear[d.slice(0,4)]=(perYear[d.slice(0,4)]||0)+1;
+   return {http:r.status,payments:blocks.length,earliest:days[0]??null,latest:days.at(-1)??null,perYear,tags:[...new Set([...String(r.text).matchAll(/<([A-Za-z][A-Za-z0-9]*)[ >]/g)].map(m=>m[1]))].sort(),
     error:/<error>/.test(r.text)?String(r.text.match(/<message>([^<]{0,160})/)?.[1]||'error'):null};
   },
   // Any other plain REST GET (e.g. a code list): status and SHAPE only.

@@ -40,8 +40,8 @@ test('only allowlisted calls: GET REST reads, the XML search and the suggester; 
 });
 
 test('payments probe: count and field names only, never an amount or a name',async()=>{
- const fetchImpl=async()=>new Response('<payments><payment><id>1</id><amount>90750</amount><name>Kitalált Vendég</name></payment></payments>');
+ const fetchImpl=async()=>new Response('<payments><payment><id>1</id><issued>2021-05-02 10:00:00</issued><amount>90750</amount><name>Kitalált Vendég</name></payment><payment><issued>2026-01-03</issued></payment></payments>');
  const r=await run({probes:['payments'],from:'2026-11-01',to:'2026-11-30'},{apiKey:KEY,fetchImpl});
- const out=JSON.stringify(r);assert.equal(r.payments.payments,1);assert.ok(r.payments.tags.includes('amount'));
+ const out=JSON.stringify(r);assert.equal(r.payments.payments,2);assert.equal(r.payments.earliest,'2021-05-02');assert.deepEqual(r.payments.perYear,{2021:1,2026:1});assert.ok(r.payments.tags.includes('amount'));
  assert.ok(!out.includes('90750')&&!out.includes('Kitalált'));
 });
