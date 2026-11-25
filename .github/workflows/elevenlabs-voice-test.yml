@@ -1,0 +1,26 @@
+name: ElevenLabs Hungarian voice samples (Claude)
+# Owner 2026-11-25: voice listing + a few short TTS samples of one fixed synthetic phone reply. Key: repository
+# secret ELEVENLABS_CLAUDE_TEST_API_KEY (never printed). Runs when docs/ELEVENLABS-REQUEST.md changes (last line JSON).
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths: [docs/ELEVENLABS-REQUEST.md]
+permissions:
+  contents: read
+jobs:
+  samples:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Voices and samples
+        env:
+          XI_KEY: ${{ secrets.ELEVENLABS_CLAUDE_TEST_API_KEY }}
+        run: |
+          REQ="$(grep -v '^\s*$' docs/ELEVENLABS-REQUEST.md | tail -n 1)"
+          node scripts/elevenlabs-voice-test.mjs "$REQ"
