@@ -18,38 +18,46 @@ const err=t=>/<error>/.test(t)?String(t.match(/<message>([^<]{0,160})/)?.[1]||'e
 export function enums(xml,record){
  const out={};
  for(const b of blocks(xml,record))for(const m of b.matchAll(/<([A-Za-z]*(?:[Tt]ype|[Kk]ind|[Ss]tatus|[Cc]ode|[Cc]ur[A-Za-z]*|Id))>([A-Za-z0-9_.-]{1,12})<\/\1>/g)){
-  const k=m[1];if(/^(?:resId|payId|invId|docId|itemId|guId|gueId|accId|comId|parId|prpId|objId|number|voucher)$/i.test(k))continue;
+  const k=m[1];if(/^(?:resId|payId|invId|docId|itemId|guId|gueId|accId|comId|parId|prpId|objId|coaId|number|voucher)$/i.test(k))continue;
   (out[k]??=new Set()).add(m[2]);
  }
  return Object.fromEntries(Object.entries(out).map(([k,v])=>[k,v.size>12?`${v.size} distinct`:[...v].sort()]));
 }
-export async function probe({key,hotel,from,to,fetchImpl=globalThis.fetch,maxRes=5}){
+export async function probe({key,hotel,from,to,fetchImpl=globalThis.fetch,maxRes=40}){
  const call=async(method,inner)=>{
   const r=await fetchImpl(ORIGIN+'/x1/hotel/'+method,{method:'POST',redirect:'error',signal:AbortSignal.timeout(20000),headers:{Authorization:'ApiKey '+key,'Content-Type':'application/xml',Accept:'application/xml'},
    body:`<?xml version="1.0"?><request><hotId>${hotel}</hotId>${inner}</request>`});
   return {http:r.status,text:await r.text()};
  };
  const out={hotel};
- const rs=await call('searchReservations',`<term><from>${from}</from><to>${to}</to></term><termType>overlap</termType>`);
+ const rs=await call('searchReservations',`<term><from>${from}</from><to>${to}</to></term><termType>overlap</termType><statuses>${[1,2,3,6,7,8,9,10].map(i=>`<cosId>${i}</cosId>`).join('')}</statuses>`);
  const res=blocks(rs.text,'reservation'),resIds=new Set(res.map(b=>b.match(/<resId>(\d+)<\/resId>/)?.[1]).filter(Boolean));
  out.searchReservations={http:rs.http,error:err(rs.text),reservations:res.length};
  const pay=await call('getPayments','');
  const pays=blocks(pay.text,'payment'),payInv=new Set(pays.map(b=>b.match(/<invId>(\d+)<\/invId>/)?.[1]).filter(Boolean));
  out.getPayments={http:pay.http,error:err(pay.text),payments:pays.length,withInvoiceId:pays.filter(b=>/<invId>\d+/.test(b)).length,paths:tagPaths(pays.slice(0,50).join('')).filter(p=>!/description/.test(p))};
  // Account items: try per reservation (most specific), then by term.
- const acc=[];let accPaths=new Set(),accEnums={},accLinked=0,accItems=0,accReq=null;
+ const acc=[];let accPaths=new Set(),accEnums={},accLinked=0,accItems=0,accReq=null;const byType={},accounts={withItems:0,sumNegative:0,sumZero:0,sumPositive:0},comIds=new Set();
  for(const id of [...resIds].slice(0,maxRes)){
   const a=await call('getAccountItems',`<resId>${id}</resId>`);acc.push({http:a.http,error:err(a.text)});
   if(!err(a.text)){accReq='resId';const items=blocks(a.text,'accountItem').length?blocks(a.text,'accountItem'):blocks(a.text,'item');accItems+=items.length;
    for(const p of tagPaths(a.text))accPaths.add(p);Object.assign(accEnums,enums(a.text,blocks(a.text,'accountItem').length?'accountItem':'item'));
-   if(ids(a.text,'resId').includes(id))accLinked++;}
+   if(ids(a.text,'resId').includes(id))accLinked++;
+   for(const c of ids(a.text,'comId'))comIds.add(c);
+   // Sign per item type: are payments / advances in the account (negative items), or only charges?
+   let sum=0,n=0;
+   for(const it of blocks(a.text,'item')){const t=it.match(/<itemType>(\d+)<\/itemType>/)?.[1]??'?',pr=Number(it.match(/<price>(-?[0-9.]+)<\/price>/)?.[1]),c=Number(it.match(/<count>(-?[0-9.]+)<\/count>/)?.[1]??1);
+    const b=byType[t]??={items:0,negative:0,positive:0,zero:0};b.items++;if(!Number.isFinite(pr))continue;const v=pr*(Number.isFinite(c)?c:1);if(v<0)b.negative++;else if(v>0)b.positive++;else b.zero++;sum+=v;n++;}
+   if(n){accounts.withItems++;if(sum<-0.5)accounts.sumNegative++;else if(sum>0.5)accounts.sumPositive++;else accounts.sumZero++;}}
  }
  if(!accReq){const a=await call('getAccountItems',`<term><from>${from}</from><to>${to}</to></term>`);acc.push({http:a.http,error:err(a.text),by:'term'});
   if(!err(a.text)){accReq='term';for(const p of tagPaths(a.text))accPaths.add(p);accItems+=(a.text.match(/<accountItem>|<item>/g)||[]).length;}}
- out.getAccountItems={calls:acc,request:accReq,items:accItems,reservationsAnsweredWithOwnResId:accLinked,paths:[...accPaths].filter(p=>!/name|note|desc|text|guest|mail|phone/i.test(p.split('>').pop())).sort(),enums:accEnums};
+ out.getAccountItems={itemTypes:byType,accountBalanceSign:accounts,calls:acc.length+' calls, '+acc.filter(x=>x.error).length+' errors'+(acc.find(x=>x.error)?': '+acc.find(x=>x.error).error:''),request:accReq,items:accItems,reservationsAnsweredWithOwnResId:accLinked,paths:[...accPaths].filter(p=>!/name|note|desc|text|guest|mail|phone/i.test(p.split('>').pop())).sort(),enums:accEnums};
  // Documents: by term, then by reservation.
- let doc=await call('getDocuments',`<term><from>${from}</from><to>${to}</to></term>`),docBy='term';
- if(err(doc.text)&&resIds.size){doc=await call('getDocuments',`<resId>${[...resIds][0]}</resId>`);docBy='resId';}
+ const com=[...comIds][0];
+ let doc=await call('getDocuments',`${com?`<comId>${com}</comId>`:''}<term><from>${from}</from><to>${to}</to></term>`),docBy='comId+term';
+ if(err(doc.text)&&com){doc=await call('getDocuments',`<comId>${com}</comId>`);docBy='comId';}
+ if(err(doc.text)&&com&&resIds.size){doc=await call('getDocuments',`<comId>${com}</comId><resId>${[...resIds][0]}</resId>`);docBy='comId+resId';}
  const docs=blocks(doc.text,'document');
  const docRes=docs.map(b=>b.match(/<resId>(\d+)<\/resId>/)?.[1]).filter(Boolean),docInv=new Set(docs.flatMap(b=>[...b.matchAll(/<(?:invId|docId)>(\d+)<\/(?:invId|docId)>/g)].map(m=>m[1])));
  out.getDocuments={http:doc.http,error:err(doc.text),request:docBy,documents:docs.length,withResId:docRes.length,resIdInWindow:docRes.filter(x=>resIds.has(x)).length,

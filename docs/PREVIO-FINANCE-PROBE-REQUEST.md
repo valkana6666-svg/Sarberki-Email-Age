@@ -2,3 +2,4 @@
 Csak olvasás (searchReservations, getPayments, getAccountItems, getDocuments); kimenet: mezőnevek, darabszámok, kötési arányok. Éles: PERM-20261123-LIVE-READ-PROBE.
 
 {"from":"2026-01-01","to":"2026-12-31"}
+{"from":"2026-11-20","to":"2027-08-31"}
