@@ -95,3 +95,10 @@ test('#9 7095569457: the live 753011 reference matches the verified live survey 
  assert.equal(r.freeByCabin.deluxe,1);assert.match(calls[0],/146385/);assert.match(calls[0],/766439/);
  assert.equal(previoCapacityReader({...env,PREVIO_LIVE_ROOM_KIND_MAP:'{bad'},ok),null,'a malformed override refuses');
 });
+
+test('2026-11-25: the live 753011 unit list (read-only probe) has exactly the TEST unit names; no live id is a TEST id',async()=>{
+ const {PREVIO_LIVE_753011,PREVIO_TEST_73521}=await import('../shared-core/previo-booking-intent.mjs');
+ assert.deepEqual(Object.keys(PREVIO_LIVE_753011.rooms).sort(),Object.keys(PREVIO_TEST_73521.rooms).sort());
+ assert.equal(Object.keys(PREVIO_LIVE_753011.rooms).length,23);
+ const test=new Set(Object.values(PREVIO_TEST_73521.rooms));for(const v of Object.values(PREVIO_LIVE_753011.rooms))assert.ok(!test.has(v));
+});

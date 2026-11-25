@@ -25,7 +25,12 @@ export const PREVIO_TEST_73521=Object.freeze({
 export const PREVIO_LIVE_753011=Object.freeze({
  hotelId:'753011',ratePlanId:146385,
  roomKinds:Object.freeze({vip:766437,family:766435,deluxe:766439,small:766433,splitA:766441,splitB:766441,splitC:766443}),
- unitCounts:Object.freeze({vip:1,family:5,deluxe:4,small:1,splitAB:8,splitC:4})
+ unitCounts:Object.freeze({vip:1,family:5,deluxe:4,small:1,splitAB:8,splitC:4}),
+ // Live REST /rest/rooms, read-only (Claude probe run 2026-11-25, after Previo granted Hotel.rooms): the same 23 unit
+ // names and types as TEST 73521 (TEST additionally keeps 5 sample units "Apartman 1–5", kind 1012357).
+ rooms:Object.freeze({'1':1690393,'2':1690377,'3':1690379,'4':1690387,'5':1690389,'6':1690391,'11':1690395,'12':1690397,'13':1884915,'14':1884917,'15':1690375,
+  '7/A':1690399,'7/B':1690401,'8/A':1690403,'8/B':1690405,'9/A':1690407,'9/B':1690409,'10/A':1690411,'10/B':1690413,
+  '7/C':1690415,'8/C':1690417,'9/C':1690419,'10/C':1690421})
 });
 
 // guestCategories: {adult, child:[{id, minAge, maxAge}]} (default: the property's own); mealTypeId: null when the
