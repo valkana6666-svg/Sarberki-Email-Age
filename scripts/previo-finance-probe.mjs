@@ -23,7 +23,7 @@ export function enums(xml,record){
  }
  return Object.fromEntries(Object.entries(out).map(([k,v])=>[k,v.size>12?`${v.size} distinct`:[...v].sort()]));
 }
-export async function probe({key,hotel,from,to,fetchImpl=globalThis.fetch,maxRes=40}){
+export async function probe({key,hotel,from,to,fetchImpl=globalThis.fetch,maxRes=40,settings=false}){
  const call=async(method,inner)=>{
   const r=await fetchImpl(ORIGIN+'/x1/hotel/'+method,{method:'POST',redirect:'error',signal:AbortSignal.timeout(20000),headers:{Authorization:'ApiKey '+key,'Content-Type':'application/xml',Accept:'application/xml'},
    body:`<?xml version="1.0"?><request><hotId>${hotel}</hotId>${inner}</request>`});
@@ -101,11 +101,17 @@ export async function probe({key,hotel,from,to,fetchImpl=globalThis.fetch,maxRes
  // The chain that would tie ONE payment to ONE reservation: payment.invId → document (invId/docId) → document.resId.
  out.link={paymentsWhoseInvoiceIsADocument:pays.filter(b=>{const i=b.match(/<invId>(\d+)<\/invId>/)?.[1];return i&&docInv.has(i);}).length,
   paymentsReachingAReservation:pays.filter(b=>{const i=b.match(/<invId>(\d+)<\/invId>/)?.[1];if(!i)return false;const d=docs.find(x=>new RegExp(`<(?:invId|docId)>${i}</`).test(x));return !!d?.match(/<resId>\d+/);}).length};
+ // Native settings (owner 2026-11-25, #9 7164151820): read-named methods only; status, error text and tag NAMES.
+ if(settings){out.settings={};
+  for(const [svc,m] of [['hotel','get'],['hotel','getSettings'],['hotel','getPaymentTypes'],['system','getPaymentTypes'],['hotel','getDocumentSeries'],['hotel','getReminders'],['hotel','getEmailTemplates'],['hotel','getAutomaticEmails']]){
+   const r=await fetchImpl(ORIGIN+`/x1/${svc}/${m}`,{method:'POST',redirect:'error',signal:AbortSignal.timeout(20000),headers:{Authorization:'ApiKey '+key,'Content-Type':'application/xml',Accept:'application/xml'},body:`<?xml version="1.0"?><request><hotId>${hotel}</hotId></request>`});
+   const t=await r.text();out.settings[svc+'.'+m]={http:r.status,error:err(t),tags:tagPaths(t).filter(p=>!/name|mail|phone|address|street|city|zip|iban|swift|vat|dic|ico|text|body|subject/i.test(p.split('>').pop())).slice(0,60)};
+  }}
  return out;
 }
 if(import.meta.url===`file://${process.argv[1]}`){
  let q={};try{q=JSON.parse(process.argv[2]||'{}');}catch{}
  const key=process.env.PREVIO_KEY,hotel=process.env.PREVIO_HOTEL;
  if(!key||!/^(73521|753011)$/.test(hotel||'')){console.log('BLOCKED key/hotel');process.exit(1);}
- probe({key,hotel,from:q.from||'2026-01-01',to:q.to||'2026-12-31'}).then(r=>console.log(JSON.stringify(r,null,1))).catch(e=>{console.log('FAILED',e.code||e.name);process.exit(1);});
+ probe({key,hotel,from:q.from||'2026-01-01',to:q.to||'2026-12-31',maxRes:Number(q.maxRes)||40,settings:!!q.settings}).then(r=>console.log(JSON.stringify(r,null,1))).catch(e=>{console.log('FAILED',e.code||e.name);process.exit(1);});
 }
