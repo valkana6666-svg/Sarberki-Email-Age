@@ -12,3 +12,5 @@ update 2026-11-26c: hívás max. 5 perc + caller_id a sarberki_reply-ban (tesztv
 update 2026-11-26d: név + e-mail, számjegyenkénti visszaolvasás, foglalási szándéknál is sarberki_reply (tulajdonosi hívás conv_2601…)
 
 update 2026-11-27a: beszédfelismerő-szótár (horgászjegy, napijegy, rekord tó…)
+
+update 2026-11-27b: a cím visszaolvasását a szerver végzi (sarberki_request preview), a modell nem betűz

@@ -9,6 +9,10 @@ for(const c of list.conversations||[]){
  const d=await fetch(API+'/v1/convai/conversations/'+c.conversation_id,{headers:H}).then(r=>r.json());
  if(d.agent_id!==AGENT)continue;
  console.log('CONV',JSON.stringify({id:d.conversation_id,status:d.status,start:d.metadata?.start_time_unix_secs,duration:d.metadata?.call_duration_secs,cost:d.metadata?.cost,termination:d.metadata?.termination_reason}));
+ // Phone line metadata (numbers masked to the last 2 digits): is the caller's number delivered?
+ const pc=d.metadata?.phone_call,m2=v=>typeof v==='string'&&v.length>4?'…'+v.slice(-2):v??null;
+ if(pc)console.log('PHONECALL',JSON.stringify({type:pc.type,direction:pc.direction,external:m2(pc.external_number),agentNumber:m2(pc.agent_number),callSid:!!pc.call_sid}));
+ const dv=d.conversation_initiation_client_data?.dynamic_variables;if(dv)console.log('DYNVARS',JSON.stringify(Object.fromEntries(Object.entries(dv).filter(([k])=>/caller|called|conversation/.test(k)).map(([k,v])=>[k,m2(String(v))]))));
  for(const t of d.transcript||[]){
   console.log('T',JSON.stringify({role:t.role,at:t.time_in_call_secs,msg:cut(t.message,500),
    tools:(t.tool_calls||[]).map(x=>({name:x.tool_name,params:cut(x.params_as_json,600)})),

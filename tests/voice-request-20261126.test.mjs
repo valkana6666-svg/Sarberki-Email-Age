@@ -177,3 +177,22 @@ test('owner call 2026-11-26: a full side question stands alone (not joined with 
  await voiceTurn({utterances:[...base,'És a horgász napi jegy?'],clock:C,offerFn:async()=>OFFER,assistFn});
  assert.equal(asked.at(-1),'És a horgász napi jegy?');
 });
+
+// The owner's first call over the Telnyx number (conv_2401m8d4bdnkfgn8g5drh8r5v0w7), synthetic address.
+test('phone call 2026-11-27: spoken address forms → one address; the server reads it back naturally before saving',async()=>{
+ const {normalizeSpokenEmail:n,voiceConfirm}=await import('../shared-core/voice-request.mjs');
+ for(const s of ['Pel-da, hat-hat-hat-hat, kukac, gmail, pont, com.','pelda hatezer-hatszáz-hatvanhat kukac gmail pont com','pelda hat hat hat hat kukac gmail pont com','Pelda6666@gmail.com','pelda 6666 kukac gmail pont com'])
+  assert.equal(n(s),'pelda6666@gmail.com',s);
+ assert.equal(n('anna kötőjel kiss kukac example pont test'),'anna-kiss@example.test','„kötőjel” is a real hyphen');
+ const c=voiceConfirm({email:'Pel-da, hat-hat-hat-hat, kukac, gmail, pont, com.',name:'Teszt Elek',language:'hu'});
+ assert.equal(c.status,'CONFIRM');assert.equal(c.ok,false);
+ assert.equal(c.reply,'Teszt Elek, az e-mail-cím: pelda hat hat hat hat kukac gmail pont com. Jól értettem, és rögzíthetem a foglalási igényt ezekkel az adatokkal?');
+ assert.doesNotMatch(c.reply,/g m a i l|p e l d a/,'never letter by letter');
+ assert.equal(voiceConfirm({email:'nem tudom',language:'hu'}).status,'EMAIL_INVALID');
+ const KEY='synthetic-voice-key-0123456789abcdef0123';
+ const ON={VOICE_INTAKE:'test-only',VOICE_TURN:'test-only',INTAKE_ENABLED:'test-only',SUPABASE_URL:'https://mojnqizbcaczstguikpv.supabase.co',VOICE_TURN_KEY:KEY};
+ let calls=0;const h=createVoiceRequestHandler({env:ON,fetchImpl:async()=>{calls++;throw Error('no network');}});
+ const r=await (await h(new Request('https://x.test/.netlify/functions/voice-request',{method:'POST',headers:{'content-type':'application/json','x-sarberki-voice-key':KEY},
+  body:JSON.stringify({caller_messages:CALL,name:'Teszt Elek',email:'pelda hat hat hat hat kukac gmail pont com',preview:true,consent:false,conversation_id:'conv_p1234567'})}))).json();
+ assert.equal(r.status,'CONFIRM');assert.equal(calls,0,'preview: no login, no save, no Previo');
+});

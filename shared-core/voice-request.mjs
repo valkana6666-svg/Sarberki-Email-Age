@@ -7,7 +7,7 @@
 // The rest of the guest data (name, phone, address) the staff ask by e-mail and fill in Previo by hand.
 import {createHash} from 'node:crypto';
 import {voiceFacts,ACCEPT} from './voice-turn.mjs';
-import {normalizeSpoken} from './voice-normalize.mjs';
+import {normalizeSpoken,huNumberWords} from './voice-normalize.mjs';
 
 export const VOICE_INTAKE_SWITCH='test-only';
 export const EMAIL_RE=/^[^\s@<>"(),;:]{1,64}@[^\s@<>"(),;:]{1,190}\.[A-Za-z]{2,}$/;
@@ -22,9 +22,27 @@ const SPOKEN=[
  W(['kötőjel','kotojel','mínusz','minusz','minus','dash','hyphen','bindestrich','vezaj','pomišljaj'],'-'),
  W(['alulvonás','alulvonas','aláhúzás','alahuzas','underscore','unterstrich','podčrtaj','podcrtaj'],'_'),
 ];
+// Spoken digits („hat hat hat hat”, „hat-hat-hat-hat”) and whole numbers („hatezer-hatszáz-hatvanhat”) → digits, and
+// syllable pauses („Val-ka-na”) joined (owner's phone call 2026-11-27: the address came as „Val-ka-na, hat-hat-hat-hat”).
+// A real hyphen in an address is said „kötőjel / dash”; a written „-” between spoken parts is a pause.
+const DIGIT_WORDS=new Map([['nulla',0],['egy',1],['kettő',2],['két',2],['három',3],['négy',4],['öt',5],['hat',6],['hét',7],['nyolc',8],['kilenc',9],
+ ['null',0],['eins',1],['zwei',2],['drei',3],['vier',4],['fünf',5],['sechs',6],['sieben',7],['acht',8],['neun',9],
+ ['zero',0],['oh',0],['one',1],['two',2],['three',3],['four',4],['five',5],['six',6],['seven',7],['eight',8],['nine',9],
+ ['nič',0],['ena',1],['dva',2],['tri',3],['štiri',4],['pet',5],['šest',6],['sedem',7],['osem',8],['devet',9]]);
+let HU_NUMBERS=null;
+const huNumber=w=>{if(!HU_NUMBERS){HU_NUMBERS=new Map();for(let n=10;n<10000;n++)HU_NUMBERS.set(huNumberWords(n).replace(/-/g,''),n);}return HU_NUMBERS.get(w);};
+function spokenToken(chunk){
+ const parts=chunk.split('-').filter(Boolean);
+ const joined=parts.join('');
+ if(DIGIT_WORDS.has(joined))return String(DIGIT_WORDS.get(joined));
+ if(huNumber(joined)!==undefined)return String(huNumber(joined));
+ if(parts.length>1&&parts.every(p=>DIGIT_WORDS.has(p)))return parts.map(p=>DIGIT_WORDS.get(p)).join('');
+ return joined;
+}
 export function normalizeSpokenEmail(text){
  let t=String(text??'').normalize('NFC').trim().toLowerCase();
  if(t.length>200)return null;
+ if(!t.includes('@'))t=t.replace(/[,;!?]/g,' ').split(/\s+/).filter(Boolean).map(c=>/[.]$/.test(c)?spokenToken(c.slice(0,-1)):spokenToken(c)).join(' ');
  for(const [re,to] of SPOKEN)t=t.replace(re,' '+to+' ');
  t=t.replace(/\s+/g,'').replace(/^[.,;:]+|[.,;:!?]+$/gu,'');
  return EMAIL_RE.test(t)&&(t.match(/@/g)||[]).length===1?t:null;
@@ -110,6 +128,18 @@ export const TEST_LINE={hu:'Ez a Sárberki Horgásztó tesztvonala, itt most nem
  de:'Dies ist die Testleitung des Sárberki Angelsees, hier können wir keine Buchung aufnehmen. Bitte rufen Sie die übliche Nummer an oder schreiben Sie uns eine E-Mail. Danke, auf Wiederhören!',
  en:'This is the Sárberki fishing lake test line; we cannot take bookings here. Please call our usual number or send us an e-mail. Thank you, goodbye!',
  si:'To je testna linija ribnika Sárberki, tukaj ne moremo sprejeti rezervacije. Prosimo, pokličite običajno številko ali nam pišite po e-pošti. Hvala, nasvidenje!'};
+// Read-back BEFORE saving (owner's call 2026-11-27: the model spelled every letter „v a l k a n a … g m a i l”, the
+// caller could not follow): the server says the name and the address the way a person reads them – words as words,
+// digits one by one – and asks once. Nothing is saved.
+const CONFIRM={hu:(n,m)=>`${n?n+', ':''}az e-mail-cím: ${m}. Jól értettem, és rögzíthetem a foglalási igényt ezekkel az adatokkal?`,
+ de:(n,m)=>`${n?n+', ':''}die E-Mail-Adresse: ${m}. Habe ich das richtig verstanden, und darf ich die Buchungsanfrage so erfassen?`,
+ en:(n,m)=>`${n?n+', ':''}the e-mail address: ${m}. Did I get that right, and may I save the booking request with these details?`,
+ si:(n,m)=>`${n?n+', ':''}e-poštni naslov: ${m}. Sem prav razumel in lahko povpraševanje zabeležim s temi podatki?`};
+export function voiceConfirm({email,name,language='hu'}){
+ const lang=CONFIRM[language]?language:'hu',address=normalizeSpokenEmail(email);
+ if(!address)return {ok:false,status:'EMAIL_INVALID',reply:say('email',lang)};
+ return {ok:false,status:'CONFIRM',email:address,reply:CONFIRM[lang](spokenName(name),speakEmail(address,lang))};
+}
 export async function voiceRequest({utterances,email,name=null,consent,conversationId,callerId=null,language='auto',clock=()=>new Date(),
  offerFn,createFn,prefillFn=null,notifyFn=null}){
  const stay=stayUtterances(utterances);
