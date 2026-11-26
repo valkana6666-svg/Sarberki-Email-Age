@@ -5,3 +5,4 @@
 {"last":1,"inventory":true}
 {"last":1}
 {"last":1}  
+{"last":0,"inventory":true}
