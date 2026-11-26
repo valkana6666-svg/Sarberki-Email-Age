@@ -170,3 +170,10 @@ test('owner call 2026-11-26: name asked, digits read back one by one, „14:00�
  const c=await t(['És a horgász napi jegy?','Mennyibe kerül a szállás?']);assert.equal(c.source,'offer','naming the stay is a stay question');
  const d=await t(['Le szeretném foglalni a szállást.']);assert.equal(d.source,'accept_email');assert.match(d.reply,/nevét/);
 });
+
+test('owner call 2026-11-26: a full side question stands alone (not joined with the check-in question)',async()=>{
+ const asked=[];const assistFn=async({message})=>{asked.push(message);return 'A napijegy 7 500 Ft.';};
+ const base=['Deluxe faház 2027. április 4-től 10-ig, öt felnőtt.','Hány órától lehet átvenni a szállást?'];
+ await voiceTurn({utterances:[...base,'És a horgász napi jegy?'],clock:C,offerFn:async()=>OFFER,assistFn});
+ assert.equal(asked.at(-1),'És a horgász napi jegy?');
+});

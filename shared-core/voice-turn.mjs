@@ -183,7 +183,9 @@ export async function voiceTurn({utterances,language='auto',clock=()=>new Date()
   // Only a short fragment („Minden négy napra.”) is joined with the caller's previous words; a full question stands alone
   // (owner's ElevenLabs call: the hot tub question got the fishing ticket answer from the previous sentence).
   const lastWords=String(utterances.at(-1)).trim().split(/\s+/).length;
-  const context=lastWords<=5?utterances.slice(-3).join(' ').slice(-600):String(utterances.at(-1));
+  // Owner's call 2026-11-26: „És a horgász napi jegy?” (5 words) was joined with the check-in question and got both
+  // answers – only a real fragment (≤3 words: „Minden négy napra.”, „Mennyibe kerül?”) takes the previous words.
+  const context=lastWords<=3?utterances.slice(-3).join(' ').slice(-600):String(utterances.at(-1));
   try{const a=await assistFn({message:context,language:lang});if(typeof a==='string'&&a.trim()){text=a;source='assist';}}catch{}
  }
  // On the phone the caller's number is the call itself: no "please give us a phone number" (as in the chat form).

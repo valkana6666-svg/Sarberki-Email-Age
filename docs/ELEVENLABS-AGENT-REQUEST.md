@@ -10,3 +10,5 @@ update 2026-11-26b: prompt 8. pont – újrakérésnél „lassan és tagoltan�
 update 2026-11-26c: hívás max. 5 perc + caller_id a sarberki_reply-ban (tesztvonal-szűrés, tulajdonos)
 
 update 2026-11-26d: név + e-mail, számjegyenkénti visszaolvasás, foglalási szándéknál is sarberki_reply (tulajdonosi hívás conv_2601…)
+
+update 2026-11-27a: beszédfelismerő-szótár (horgászjegy, napijegy, rekord tó…)

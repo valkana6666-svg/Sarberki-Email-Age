@@ -38,7 +38,9 @@ const body={name:NAME,tags:['sarberki-test'],conversation_config:{
      language:{type:'string',description:'A hívó nyelve: hu, de, en vagy si.',enum:['hu','de','en','si']}},required:['caller_messages','name','email','consent','conversation_id']}}}]}},
  tts:{voice_id:VOICE,model_id:'eleven_flash_v2_5'},
  // Owner 2026-11-26: a call lasts at most 5 minutes (prepaid number + agent minutes).
- conversation:{max_duration_seconds:300}}};
+ conversation:{max_duration_seconds:300},
+ // Owner's call 2026-11-26: „horgászjegyeket” was heard as „horgászigényeket” – our own words for the speech recogniser.
+ asr:{keywords:['horgászjegy','napijegy','napijegyet','horgászjegyet','rekord tó','normál tó','dézsa','dézsafürdő','Deluxe','VIP','Családi','faház','Sárberki','kukac','pont','foglaló']}}};
 const list=await fetch(API+'/v1/convai/agents?page_size=100&search='+encodeURIComponent('Sárberki TEST'),{headers:H}).then(r=>r.json()).catch(()=>({}));
 const found=(list.agents||[]).find(a=>a.name===NAME);
 const r=found?await fetch(API+'/v1/convai/agents/'+found.agent_id,{method:'PATCH',headers:H,body:JSON.stringify(body)})
