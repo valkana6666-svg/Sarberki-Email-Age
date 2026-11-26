@@ -42,6 +42,9 @@ export function financeGroup(row,now=Date.now()){
  if(s.booking==='cancelled')return 'cancelled';
  if(s.booking==='previo')return 'nopay';
  if(s.booking!=='finalized')return null;
+ // Owner 2026-11-26: a booking the staff cancelled in Previo is not an overdue deposit – it shows under „Lemondva”
+ // with its „close the case” warning, and does not swell the overdue total.
+ if(row.previoState==='cancelled')return 'cancelled';
  const t=Date.parse(f.deadlineUtc||'');
  if(Number.isNaN(t))return 'waiting';
  if(t<now)return 'overdue';
@@ -95,7 +98,7 @@ export function financeRowText(row,now=Date.now()){
  }
  const title=[s.name||'Név nélkül',s.unit,s.arrival&&s.departure?day(s.arrival)+' – '+day(s.departure):null].filter(Boolean).join(' · ');
  const lines=['Forrás: '+src,'Foglaló: '+huf(f.amount)+(f.reference?' · Previo: '+f.reference:'')];
- if(row.previoState==='cancelled'&&g!=='cancelled')lines.push('⚠️ A Previóban lemondva – ellenőrizd, és zárd le az ügyet a napi kezelőben');
+ if(row.previoState==='cancelled')lines.push('⚠️ A Previóban lemondva – ellenőrizd, és zárd le az ügyet a napi kezelőben');
  if(g==='received')lines.push('✅ Beérkezett'+(f.receivedOn?': '+day(f.receivedOn):''));
  else if(g==='cancelled')lines.push('Lemondva');
  else if(f.deadlineUtc){

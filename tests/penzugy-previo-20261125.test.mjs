@@ -47,7 +47,7 @@ test('merge: our case and its Previo booking are ONE item; Previo-only bookings 
  assert.equal(by['tm-aaaaaaaaaaaa0001'].source,'own');assert.equal(by['tm-aaaaaaaaaaaa0001'].channel,'chatbot');assert.equal(by['tm-aaaaaaaaaaaa0001'].previoState,'confirmed');
  assert.equal(by['tm-aaaaaaaaaaaa0002'].channel,'e-mail');
  // Staff cancelled in Previo, our case still waits for a deposit: the row warns, the case is not silently changed.
- const cili=financeRowText(by['tm-aaaaaaaaaaaa0003'],NOW);assert.ok(cili.lines.some(l=>l.includes('A Previóban lemondva')));assert.equal(financeGroup(by['tm-aaaaaaaaaaaa0003'],NOW),'soon');
+ const cili=financeRowText(by['tm-aaaaaaaaaaaa0003'],NOW);assert.ok(cili.lines.some(l=>l.includes('A Previóban lemondva')));assert.equal(financeGroup(by['tm-aaaaaaaaaaaa0003'],NOW),'cancelled','owner 2026-11-26: cancelled in Previo → „Lemondva”, not an overdue/soon deposit');
  assert.equal(financeGroup(by['p-102'],NOW),'nopay');assert.equal(financeGroup(by['p-109'],NOW),'nopay');
  const bk=financeRowText(by['p-102'],NOW);
  assert.equal(bk.title,'Previo BK-9 · 11 · 2026. 12. 10. – 2026. 12. 12.');
