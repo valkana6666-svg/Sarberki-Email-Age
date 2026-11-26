@@ -82,7 +82,13 @@ export function voiceExternalId(conversationId,utterances,email){
 }
 
 // Pure orchestration (all I/O injected): returns {ok, reply, status, caseId?, option?}. ok:true only after a saved case.
-export async function voiceRequest({utterances,email,consent,conversationId,language='auto',clock=()=>new Date(),
+// The caller's number from the phone line (ElevenLabs system__caller_id on a real phone call; owner 2026-11-26: „a
+// telefonszámot nem kell elkérni”). A web/app test call or a hidden number gives none – then only the e-mail.
+export function callerPhone(value){
+ const t=String(value??'').trim();
+ return /^\+?[0-9]{6,15}$/.test(t.replace(/[ ()\/-]/g,''))&&/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(t)?t:null;
+}
+export async function voiceRequest({utterances,email,consent,conversationId,callerId=null,language='auto',clock=()=>new Date(),
  offerFn,createFn,prefillFn=null,notifyFn=null}){
  const stay=stayUtterances(utterances);
  const {facts,language:lang}=voiceFacts(stay.length?stay:utterances,{language,clock});
@@ -93,15 +99,16 @@ export async function voiceRequest({utterances,email,consent,conversationId,lang
  let offer=null;try{offer=await offerFn({facts,language:lang});}catch{offer=null;}
  if(offer?.status==='UNAVAILABLE')return {ok:false,status:'NOT_FREE',reply:say('full',lang)};
  if(offer?.status!=='AVAILABLE'||!Number.isSafeInteger(offer.total))return {ok:false,status:'CHECK_FAILED',reply:say('failed',lang)};
- const externalId=voiceExternalId(conversationId,stay,address);
+ const externalId=voiceExternalId(conversationId,stay,address),phone=callerPhone(callerId);
  const summary='✅ A hívó telefonon elfogadta az ajánlatot és kérte a foglalást. A rendszer újraellenőrzött ára: '+String(offer.total).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+' Ft.\n'+
-  'Csak e-mail-címet kértünk: a nevet, a telefonszámot és a többi adatot e-mailben kérd el, és töltsd ki a Previóban.\n\n'+
+  (phone?'A hívó száma a telefonvonalról: '+phone+'. Csak az e-mail-címet kértük el: a nevet és a többi adatot e-mailben kérd el, és töltsd ki a Previóban.\n\n'
+   :'Csak e-mail-címet kértünk (a hívószám nem érkezett meg): a nevet, a telefonszámot és a többi adatot e-mailben kérd el, és töltsd ki a Previóban.\n\n')+
   'A hívó mondatai (kezelői összefoglaló):\n'+stay.map(t=>'– '+String(t).trim().replace(/\s+/g,' ').slice(0,500)).join('\n');
  let created;
- try{created=await createFn({externalId,facts:{...facts,email:address,language:lang},summary});}catch{created=null;}
+ try{created=await createFn({externalId,facts:{...facts,email:address,...(phone?{phone}:{}),language:lang},summary});}catch{created=null;}
  if(!created?.caseId)return {ok:false,status:'SAVE_FAILED',reply:say('failed',lang)};
  let option={status:'off'};
- if(prefillFn){try{option=await prefillFn({caseId:created.caseId,facts,email:address});}catch{option={status:'failed'};}}
+ if(prefillFn){try{option=await prefillFn({caseId:created.caseId,facts,email:address,phone:phone||''});}catch{option={status:'failed'};}}
  const opt=option?.status==='created';
  if(notifyFn){try{await notifyFn(opt?'Csak e-mail-cím; a Previo-tesztben 48 órás opcióként előre kitöltve ('+option.unit+'. egység) – ellenőrizd, a többi adatot kérd el e-mailben.':'Csak e-mail-cím – a Previo-opció nem jött létre, kezeld a napi kezelőben.');}catch{}}
  return {ok:true,status:opt?'OPTION_CREATED':'REQUEST_SAVED',caseId:created.caseId,option:opt?{unit:option.unit}:null,

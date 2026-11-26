@@ -111,3 +111,15 @@ test('handler: off by default and without the phone/intake switches; provider ke
  assert.equal((await h(req({}))).status,400);
  assert.equal((await h(req({caller_messages:CALL,email:MAIL,consent:true}))).status,503,'intake account not configured → setup required');
 });
+
+test('caller number from the phone line is saved (no need to ask); a web/app test call or a hidden number gives none',async()=>{
+ const {callerPhone}=await import('../shared-core/voice-request.mjs');
+ assert.equal(callerPhone('+36301234567'),'+36301234567');assert.equal(callerPhone('anonymous'),null);assert.equal(callerPhone(''),null);assert.equal(callerPhone(undefined),null);assert.equal(callerPhone('123'),null);
+ const created=[],prefills=[];
+ const base={utterances:[...CALL,MAIL],email:MAIL,consent:true,conversationId:'conv_caller01',clock:C,offerFn:async()=>OFFER,
+  createFn:async a=>{created.push(a);return {caseId:'tm-c'};},prefillFn:async a=>{prefills.push(a);return {status:'created',unit:'12'};}};
+ await voiceRequest({...base,callerId:'+36301234567'});
+ assert.equal(created[0].facts.phone,'+36301234567');assert.match(created[0].summary,/hívó száma a telefonvonalról: \+36301234567/);assert.equal(prefills[0].phone,'+36301234567');
+ await voiceRequest({...base,callerId:'{{system__caller_id}}'});
+ assert.equal(created[1].facts.phone,undefined);assert.match(created[1].summary,/hívószám nem érkezett meg/);assert.equal(prefills[1].phone,'');
+});

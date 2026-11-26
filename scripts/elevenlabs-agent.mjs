@@ -30,6 +30,8 @@ const body={name:NAME,tags:['sarberki-test'],conversation_config:{
      email:{type:'string',description:'A hívó e-mail-címe úgy, ahogy elhangzott és megerősítette (pl. „kovacs pont anna kukac gmail pont com”).'},
      consent:{type:'boolean',description:'true, ha a hívó igent mondott a rögzítésre ezzel a címmel.'},
      conversation_id:{type:'string',description:'',dynamic_variable:'system__conversation_id'},
+     // Real phone line only: the caller's number (owner 2026-11-26: no need to ask for it).
+     caller_id:{type:'string',description:'',dynamic_variable:'system__caller_id'},
      language:{type:'string',description:'A hívó nyelve: hu, de, en vagy si.',enum:['hu','de','en','si']}},required:['caller_messages','email','consent','conversation_id']}}}]}},
  tts:{voice_id:VOICE,model_id:'eleven_flash_v2_5'}}};
 const list=await fetch(API+'/v1/convai/agents?page_size=100&search='+encodeURIComponent('Sárberki TEST'),{headers:H}).then(r=>r.json()).catch(()=>({}));
