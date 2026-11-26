@@ -16,6 +16,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Voice-turn key from the Retell TEST tool (masked)
+        env:
+          RETELL_KEY: ${{ secrets.RETELL_CLAUDE_TEST_API_KEY }}
+        run: |
+          V=$(node -e "fetch('https://api.retellai.com/get-retell-llm/llm_bdfcae3228e04819cb2911a2807f',{headers:{Authorization:'Bearer '+process.env.RETELL_KEY}}).then(r=>r.json()).then(j=>{const t=(j.general_tools||[]).find(x=>x.name==='sarberki_reply');process.stdout.write((t&&t.headers&&t.headers['x-sarberki-voice-key'])||'')}).catch(()=>{})")
+          if [ -n "$V" ]; then echo "::add-mask::$V"; echo "VOICE_KEY=$V" >> "$GITHUB_ENV"; fi
       - name: Read conversations
         env:
           XI_KEY: ${{ secrets.ELEVENLABS_CLAUDE_TEST_API_KEY }}
