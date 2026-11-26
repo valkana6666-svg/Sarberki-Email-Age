@@ -122,8 +122,9 @@ const ACCEPT_TUB={hu:'A dézsabérlést is írja bele az igénybe, a szabad idő
 // Owner 2026-11-26 (PERM-20261126-VOICE-OPTION): with the phone request on (VOICE_INTAKE=test-only), a booking
 // acceptance gets the deposit terms and ONE question for the e-mail address; the agent then reads it back and calls
 // sarberki_request (voice-request), which saves the request and pre-fills a 48-hour Previo TEST option.
-export const ASK_EMAIL={hu:'A foglaláshoz kérem, mondja meg az e-mail-címét.',de:'Für die Buchung nennen Sie mir bitte Ihre E-Mail-Adresse.',
- en:'To book, please tell me your e-mail address.',si:'Za rezervacijo mi prosim povejte svoj e-poštni naslov.'};
+// Owner 2026-11-26: ask the caller to say the address slowly and clearly (fewer mishearings, no spelling round).
+export const ASK_EMAIL={hu:'A foglaláshoz kérem, mondja meg lassan és tagoltan az e-mail-címét.',de:'Für die Buchung nennen Sie mir bitte langsam und deutlich Ihre E-Mail-Adresse.',
+ en:'To book, please tell me your e-mail address slowly and clearly.',si:'Za rezervacijo mi prosim počasi in razločno povejte svoj e-poštni naslov.'};
 const ACCEPT_TUB_INTAKE={hu:'A dézsát is felírom, a szabad időpontot munkatársunk egyezteti.',de:'Den Badezuber notiere ich, den freien Termin stimmt unser Team ab.',
  en:"I'll note the hot tub; our team will arrange the free slot.",si:'Masažno kad si zabeležim, prost termin bo uskladila naša ekipa.'};
 export {ACCEPT};

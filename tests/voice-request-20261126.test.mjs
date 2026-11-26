@@ -123,3 +123,7 @@ test('caller number from the phone line is saved (no need to ask); a web/app tes
  await voiceRequest({...base,callerId:'{{system__caller_id}}'});
  assert.equal(created[1].facts.phone,undefined);assert.match(created[1].summary,/hívószám nem érkezett meg/);assert.equal(prefills[1].phone,'');
 });
+
+test('owner 2026-11-26: the e-mail question asks for the address slowly and clearly (all four languages)',()=>{
+ assert.match(ASK_EMAIL.hu,/lassan és tagoltan/);assert.match(ASK_EMAIL.de,/langsam und deutlich/);assert.match(ASK_EMAIL.en,/slowly and clearly/);assert.match(ASK_EMAIL.si,/počasi in razločno/);
+});
