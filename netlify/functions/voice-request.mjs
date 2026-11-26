@@ -41,10 +41,10 @@ export function createVoiceRequestHandler({env=process.env,fetchImpl=fetch,now=(
    const transport=createSupabaseTransport({url:TEST_PROJECT+'/',publishableKey:env.SUPABASE_PUBLISHABLE_KEY,token:login.token,fetchImpl});
    return createIntakeRequest({channel:'phone',externalId,facts,summary,transport,attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,availabilitySource:null,tenantId:TENANT});
   };
-  const prefillFn=({caseId,facts,email,phone})=>prefillChatBooking({env,fetchImpl,tenantId:TENANT,caseId,facts,name:PHONE_CONTACT_NAME,email,phone,channel:'phone'});
+  const prefillFn=({caseId,facts,email,phone,name})=>prefillChatBooking({env,fetchImpl,tenantId:TENANT,caseId,facts,name:name||PHONE_CONTACT_NAME,email,phone,channel:'phone'});
   const notifyFn=extra=>notifyOperator(env,fetchImpl,'phone',extra);
   try{
-   const r=await voiceRequest({utterances,email:args.email,consent:args.consent===true,conversationId:args.conversation_id,callerId:args.caller_id,language:lang,offerFn,createFn,prefillFn,notifyFn});
+   const r=await voiceRequest({utterances,email:args.email,name:args.name,consent:args.consent===true,conversationId:args.conversation_id,callerId:args.caller_id,language:lang,offerFn,createFn,prefillFn,notifyFn});
    return json(200,r);
   }catch{return json(200,{ok:false,status:'FAILED',reply:'Elnézést, a foglalási igényt most nem sikerült rögzítenem. Kérem, írja meg az igényét e-mailben, vagy hívjon minket később.'});}
  };

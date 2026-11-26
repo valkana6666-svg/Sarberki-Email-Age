@@ -29,12 +29,13 @@ const body={name:NAME,tags:['sarberki-test'],conversation_config:{
    api_schema:{url:REQUEST_URL,method:'POST',request_headers:{'x-sarberki-voice-key':voiceKey},
     request_body_schema:{type:'object',description:'A foglalási igény',properties:{
      caller_messages:{type:'array',description:'A hívó EDDIGI ÖSSZES mondata szó szerint, időrendben.',items:{type:'string',description:'Egy hívói mondat szó szerint'}},
+     name:{type:'string',description:'A hívó neve úgy, ahogy megadta és megerősítette (pl. „Kovács Anna”).'},
      email:{type:'string',description:'A hívó e-mail-címe úgy, ahogy elhangzott és megerősítette (pl. „kovacs pont anna kukac gmail pont com”).'},
      consent:{type:'boolean',description:'true, ha a hívó igent mondott a rögzítésre ezzel a címmel.'},
      conversation_id:{type:'string',description:'',dynamic_variable:'system__conversation_id'},
      // Real phone line only: the caller's number (owner 2026-11-26: no need to ask for it).
      caller_id:{type:'string',description:'',dynamic_variable:'system__caller_id'},
-     language:{type:'string',description:'A hívó nyelve: hu, de, en vagy si.',enum:['hu','de','en','si']}},required:['caller_messages','email','consent','conversation_id']}}}]}},
+     language:{type:'string',description:'A hívó nyelve: hu, de, en vagy si.',enum:['hu','de','en','si']}},required:['caller_messages','name','email','consent','conversation_id']}}}]}},
  tts:{voice_id:VOICE,model_id:'eleven_flash_v2_5'},
  // Owner 2026-11-26: a call lasts at most 5 minutes (prepaid number + agent minutes).
  conversation:{max_duration_seconds:300}}};

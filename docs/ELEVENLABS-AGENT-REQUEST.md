@@ -8,3 +8,5 @@ update 2026-11-26: saját ElevenLabs-prompt (docs/V3-ELEVENLABS-PROMPT.md) + sar
 update 2026-11-26b: prompt 8. pont – újrakérésnél „lassan és tagoltan” (tulajdonos)
 
 update 2026-11-26c: hívás max. 5 perc + caller_id a sarberki_reply-ban (tesztvonal-szűrés, tulajdonos)
+
+update 2026-11-26d: név + e-mail, számjegyenkénti visszaolvasás, foglalási szándéknál is sarberki_reply (tulajdonosi hívás conv_2601…)

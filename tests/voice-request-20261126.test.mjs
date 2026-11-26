@@ -23,7 +23,7 @@ test('spoken e-mail → address (HU/DE/EN/SI words), invalid stays invalid; spok
  assert.equal(normalizeSpokenEmail('janez pika novak afna gmail pika com'),'janez.novak@gmail.com');
  assert.equal(normalizeSpokenEmail('Kitalalt.Anna@Example.test'),'kitalalt.anna@example.test');
  for(const bad of ['kukac gmail pont com','anna kukac gmail','a@b@c.com','',null,'x'.repeat(201)])assert.equal(normalizeSpokenEmail(bad),null,String(bad).slice(0,20));
- assert.equal(speakEmail('kitalalt.anna2028@example.test','hu'),'kitalalt pont anna2028 kukac example pont test');
+ assert.equal(speakEmail('kitalalt.anna2028@example.test','hu'),'kitalalt pont anna kettő nulla kettő nyolc kukac example pont test');
  assert.equal(speakEmail('a-b_c@x.de','de'),'a Bindestrich b Unterstrich c at x Punkt de');
 });
 
@@ -56,7 +56,7 @@ test('request: re-checked offer → saved case (channel facts + e-mail) → 48 h
  assert.equal(created[0].facts.email,'kitalalt.anna2028@example.test');assert.equal(created[0].facts.language,'hu');
  assert.match(created[0].summary,/újraellenőrzött ára: 260 800 Ft/);assert.match(created[0].summary,/dézsafürdőt/);assert.doesNotMatch(created[0].summary,/kukac/);
  assert.equal(prefills[0].email,'kitalalt.anna2028@example.test');
- assert.match(r.reply,/negyvennyolc órára előzetesen lefoglaltuk/);assert.match(r.reply,/kitalalt pont anna2028 kukac example pont test címre/);
+ assert.match(r.reply,/negyvennyolc órára előzetesen lefoglaltuk/);assert.match(r.reply,/kitalalt pont anna kettő nulla kettő nyolc kukac example pont test címre/);
  assert.equal(notes.length,1);assert.match(notes[0],/48 órás opcióként.*11\. egység/);assert.doesNotMatch(notes[0],/@|kitalalt/,'no contact data in the Pushover');
 });
 
@@ -146,4 +146,27 @@ test('owner 2026-11-26: the TEST line takes bookings only from the owner\'s test
  const r=await (await createVoiceRequestHandler({env:ON,fetchImpl:async()=>{throw Error('no network');}})(new Request('https://x.test/.netlify/functions/voice-request',{method:'POST',headers:{'content-type':'application/json','x-sarberki-voice-key':KEY},
   body:JSON.stringify({caller_messages:CALL,email:MAIL,consent:true,conversation_id:'conv_x1234567',caller_id:'+36301112233'})}))).json();
  assert.equal(r.status,'TEST_LINE');assert.equal(r.ok,false,'nothing saved for an unknown caller');
+});
+
+// The owner's booking call 2026-11-26 evening (conv_2601m8d2hd8ceyn8jze5w23526z1), synthetic data.
+test('owner call 2026-11-26: name asked, digits read back one by one, „14:00” spoken as a time, side price questions stay side questions',async()=>{
+ const {speakEmail:se,spokenName,voiceRequest:vr}=await import('../shared-core/voice-request.mjs');
+ assert.equal(se('pelda66666@example.test','hu'),'pelda hat hat hat hat hat kukac example pont test');
+ assert.equal(spokenName(' Teszt  Elek '),'Teszt Elek');assert.equal(spokenName('x'),null);assert.equal(spokenName('<b>'),null);
+ assert.match(ASK_EMAIL.hu,/nevét, majd lassan és tagoltan az e-mail-címét/);
+ const created=[],prefills=[];
+ await vr({utterances:[...CALL,MAIL],email:MAIL,name:'Teszt Elek',consent:true,conversationId:'conv_name0001',clock:C,offerFn:async()=>OFFER,
+  createFn:async a=>{created.push(a);return {caseId:'tm-n'};},prefillFn:async a=>{prefills.push(a);return {status:'created',unit:'11'};}});
+ assert.equal(created[0].facts.name,'Teszt Elek');assert.equal(prefills[0].name,'Teszt Elek');
+ const {speakable}=await import('../shared-core/voice-turn.mjs');
+ assert.equal(speakable('A szállást 14:00 órától lehet átvenni, a bejelentkezés 14:00 és 2:00 között; reggeli 8:30-tól.',450,'hu'),'A szállást tizennégy órától lehet átvenni, a bejelentkezés tizennégy óra és két óra között; reggeli nyolc óra harminc perc-tól.');
+ const C2=()=>new Date('2026-11-26T22:00:00Z');let offers=0;const asked=[];
+ const offerFn=async()=>{offers++;return OFFER;},assistFn=async({message})=>{asked.push(message);return 'A napijegy 7 500 Ft.';};
+ const base=['Érdeklődni szeretnék, hogy 2027. április 4-től 10-éig van egy deluxe házuk kiadó. Öt felnőtt részére.'];
+ const t=x=>voiceTurn({utterances:[...base,...x],clock:C2,offerFn,assistFn,intake:true});
+ offers=0;const a=await t(['És a horgász napi jegy?','Mennyibe kerül?']);assert.equal(a.source,'assist');assert.equal(offers,0,'short price question after a ticket question');
+ assert.match(asked.at(-1),/napi jegy\? Mennyibe kerül\?/);
+ const b=await t(['És a rekordtóra mennyibe kerül?']);assert.equal(b.source,'assist');assert.equal(offers,0);
+ const c=await t(['És a horgász napi jegy?','Mennyibe kerül a szállás?']);assert.equal(c.source,'offer','naming the stay is a stay question');
+ const d=await t(['Le szeretném foglalni a szállást.']);assert.equal(d.source,'accept_email');assert.match(d.reply,/nevét/);
 });

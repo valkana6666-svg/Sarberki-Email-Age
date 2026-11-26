@@ -49,7 +49,7 @@ export async function prefillChatBooking({env,fetchImpl=globalThis.fetch,tenantI
 }
 
 // Phone note: no comma/colon/dash (Previo drops them). Not „Chatből” – the chat's expiry auto-cancel does not apply.
-export const PHONE_NOTE='Telefonról érkezett. A hívó elfogadta az ajánlatot. Csak email címet adott. A nevet és a többi adatot kérd el emailben és töltsd ki. Ellenőrizd és ha rendben van állítsd megerősítettre.';
+export const PHONE_NOTE='Telefonról érkezett. A hívó elfogadta az ajánlatot. Nevet és email címet adott. A többi adatot kérd el emailben és töltsd ki. Ellenőrizd és ha rendben van állítsd megerősítettre.';
 // Staff note in Previo (no guest contact data): where the booking came from and what was checked.
 export function prefillNote(returning,quote){
  // Previo keeps letters, digits, dots and brackets but drops commas, colons and dashes (live TEST 2026-11-21): short

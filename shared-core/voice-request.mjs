@@ -32,9 +32,17 @@ export function normalizeSpokenEmail(text){
 // The saved address said back once at the end („… a kovacs pont anna kukac gmail pont com címre”).
 const SAY_CHARS={hu:{'@':'kukac','.':'pont','-':'kötőjel','_':'alulvonás'},de:{'@':'at','.':'Punkt','-':'Bindestrich','_':'Unterstrich'},
  en:{'@':'at','.':'dot','-':'dash','_':'underscore'},si:{'@':'afna','.':'pika','-':'vezaj','_':'podčrtaj'}};
+// Digits one by one (owner's call 2026-11-26: „66666” read as „hatvanhatezer-hatszázhatvanhat” could not be checked).
+const DIGITS={hu:['nulla','egy','kettő','három','négy','öt','hat','hét','nyolc','kilenc'],de:['null','eins','zwei','drei','vier','fünf','sechs','sieben','acht','neun'],
+ en:['zero','one','two','three','four','five','six','seven','eight','nine'],si:['nič','ena','dva','tri','štiri','pet','šest','sedem','osem','devet']};
 export function speakEmail(email,lang='hu'){
- const m=SAY_CHARS[lang]||SAY_CHARS.hu;
- return String(email).replace(/[@._-]/g,c=>' '+m[c]+' ').replace(/\s+/g,' ').trim();
+ const m=SAY_CHARS[lang]||SAY_CHARS.hu,d=DIGITS[lang]||DIGITS.hu;
+ return String(email).replace(/[@._-]/g,c=>' '+m[c]+' ').replace(/\d/g,c=>' '+d[c]+' ').replace(/\s+/g,' ').trim();
+}
+// The caller's name as said (letters, spaces, dot, apostrophe, hyphen); anything else is dropped (the staff ask again).
+export function spokenName(value){
+ const t=String(value??'').normalize('NFC').replace(/\s+/g,' ').trim();
+ return /^[\p{L}][\p{L} .'-]{1,78}$/u.test(t)&&/\p{L}{2}/u.test(t)?t:null;
 }
 
 // The stay is what the caller said UP TO the booking decision; the e-mail dictation and the „yes” after it are not
@@ -102,7 +110,7 @@ export const TEST_LINE={hu:'Ez a Sárberki Horgásztó tesztvonala, itt most nem
  de:'Dies ist die Testleitung des Sárberki Angelsees, hier können wir keine Buchung aufnehmen. Bitte rufen Sie die übliche Nummer an oder schreiben Sie uns eine E-Mail. Danke, auf Wiederhören!',
  en:'This is the Sárberki fishing lake test line; we cannot take bookings here. Please call our usual number or send us an e-mail. Thank you, goodbye!',
  si:'To je testna linija ribnika Sárberki, tukaj ne moremo sprejeti rezervacije. Prosimo, pokličite običajno številko ali nam pišite po e-pošti. Hvala, nasvidenje!'};
-export async function voiceRequest({utterances,email,consent,conversationId,callerId=null,language='auto',clock=()=>new Date(),
+export async function voiceRequest({utterances,email,name=null,consent,conversationId,callerId=null,language='auto',clock=()=>new Date(),
  offerFn,createFn,prefillFn=null,notifyFn=null}){
  const stay=stayUtterances(utterances);
  const {facts,language:lang}=voiceFacts(stay.length?stay:utterances,{language,clock});
@@ -113,16 +121,16 @@ export async function voiceRequest({utterances,email,consent,conversationId,call
  let offer=null;try{offer=await offerFn({facts,language:lang});}catch{offer=null;}
  if(offer?.status==='UNAVAILABLE')return {ok:false,status:'NOT_FREE',reply:say('full',lang)};
  if(offer?.status!=='AVAILABLE'||!Number.isSafeInteger(offer.total))return {ok:false,status:'CHECK_FAILED',reply:say('failed',lang)};
- const externalId=voiceExternalId(conversationId,stay,address),phone=callerPhone(callerId);
+ const externalId=voiceExternalId(conversationId,stay,address),phone=callerPhone(callerId),guest=spokenName(name);
  const summary='✅ A hívó telefonon elfogadta az ajánlatot és kérte a foglalást. A rendszer újraellenőrzött ára: '+String(offer.total).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+' Ft.\n'+
-  (phone?'A hívó száma a telefonvonalról: '+phone+'. Csak az e-mail-címet kértük el: a nevet és a többi adatot e-mailben kérd el, és töltsd ki a Previóban.\n\n'
-   :'Csak e-mail-címet kértünk (a hívószám nem érkezett meg): a nevet, a telefonszámot és a többi adatot e-mailben kérd el, és töltsd ki a Previóban.\n\n')+
+  (phone?'A hívó száma a telefonvonalról: '+phone+'. Telefonon csak a nevet és az e-mail-címet kértük el: a többi adatot e-mailben kérd el, és töltsd ki a Previóban.\n\n'
+   :'Telefonon csak a nevet és az e-mail-címet kértük el (a hívószám nem érkezett meg): a telefonszámot és a többi adatot e-mailben kérd el, és töltsd ki a Previóban.\n\n')+
   'A hívó mondatai (kezelői összefoglaló):\n'+stay.map(t=>'– '+String(t).trim().replace(/\s+/g,' ').slice(0,500)).join('\n');
  let created;
- try{created=await createFn({externalId,facts:{...facts,email:address,...(phone?{phone}:{}),language:lang},summary});}catch{created=null;}
+ try{created=await createFn({externalId,facts:{...facts,email:address,...(phone?{phone}:{}),...(guest?{name:guest}:{}),language:lang},summary});}catch{created=null;}
  if(!created?.caseId)return {ok:false,status:'SAVE_FAILED',reply:say('failed',lang)};
  let option={status:'off'};
- if(prefillFn){try{option=await prefillFn({caseId:created.caseId,facts,email:address,phone:phone||''});}catch{option={status:'failed'};}}
+ if(prefillFn){try{option=await prefillFn({caseId:created.caseId,facts,email:address,phone:phone||'',name:guest});}catch{option={status:'failed'};}}
  const opt=option?.status==='created';
  if(notifyFn){try{await notifyFn(opt?'Csak e-mail-cím; a Previo-tesztben 48 órás opcióként előre kitöltve ('+option.unit+'. egység) – ellenőrizd, a többi adatot kérd el e-mailben.':'Csak e-mail-cím – a Previo-opció nem jött létre, kezeld a napi kezelőben.');}catch{}}
  return {ok:true,status:opt?'OPTION_CREATED':'REQUEST_SAVED',caseId:created.caseId,option:opt?{unit:option.unit}:null,

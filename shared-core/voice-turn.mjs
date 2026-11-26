@@ -38,13 +38,16 @@ export function speechify(text,lang='hu'){
  const M=MONTHS[lang]||MONTHS.hu;let t=String(text||'');
  t=t.replace(/\b(20\d{2})\.\s?(\d{2})\.\s?(\d{2})(\.?)(?=(\s+\p{Lu})?)/gu,(m,y,mo,d,dot,cap)=>Number(mo)>=1&&Number(mo)<=12?(lang==='hu'?`${y}. ${M[mo-1]} ${Number(d)}.`:(lang==='en'?`${Number(d)} ${M[mo-1]} ${y}`:`${Number(d)}. ${M[mo-1]} ${y}`)+(dot&&cap?'.':'')):m);
  t=t.replace(/\b(\d{2})\.(\d{2})\.(20\d{2})\b/g,(m,d,mo,y)=>Number(mo)>=1&&Number(mo)<=12?(lang==='hu'?`${y}. ${M[mo-1]} ${Number(d)}.`:lang==='en'?`${Number(d)} ${M[mo-1]} ${y}`:`${Number(d)}. ${M[mo-1]} ${y}`):m);
+ // Owner's call 2026-11-26: „14:00” was read as „tizennégy óra nulla” – clock times as „14 óra” (minutes only when not 00).
+ if(lang==='hu')t=t.replace(/(?<![\d:])([01]?\d|2[0-3]):00(?=\s+ór)/g,(m,h)=>String(Number(h)));
+ if(lang==='hu')t=t.replace(/(?<![\d:])([01]?\d|2[0-3]):([0-5]\d)(?![\d:])/g,(m,h,mm)=>Number(h)+' óra'+(mm==='00'?'':' '+Number(mm)+' perc'));
  t=t.replace(/(\d{1,3}(?:[  .]\d{3})+|\d+)\s?(?:Ft|HUF)\b/g,(m,n)=>n.replace(/[  .]/g,'')+' '+(CURRENCY[lang]||CURRENCY.hu));
  return t;
 }
 // The booking-status / terms part of a letter is not read on the phone (legal text; the checked offer says it briefly).
 const CUT=/\n\s*(?:Foglalás állapota|Booking status|Reservierungsstatus|Status rezervacije|Foglalási feltételek|Booking terms|Buchungsbedingungen|Pogoji rezervacije)\s*\n[\s\S]*$/u;
 // On the phone the caller speaks, not writes.
-const SAY={hu:[[/írja meg/gu,'mondja meg'],[/Írja meg/gu,'Mondja meg'],[/írjon nekünk/gu,'szóljon nekünk']],de:[[/schreiben Sie uns/gu,'sagen Sie uns']],en:[[/please write/giu,'please tell us']],si:[[/napišite/gu,'povejte']]};
+const SAY={hu:[[/írja meg/gu,'mondja meg'],[/Írja meg/gu,'Mondja meg'],[/írjon nekünk/gu,'szóljon nekünk'],[/írjon bátran/gu,'kérdezzen bátran']],de:[[/schreiben Sie uns/gu,'sagen Sie uns']],en:[[/please write/giu,'please tell us']],si:[[/napišite/gu,'povejte']]};
 // Letter placeholders („the availability is confirmed separately”, „the total price follows”) are noise on the phone
 // (owner's ElevenLabs call 2026-11-25): the caller hears only the facts and the question.
 const dropPlaceholders=(t,lang)=>{for(const p of [...(PLACEHOLDER[lang]||[]),...(PLACEHOLDER.hu||[])])t=t.split(p).join('');return t;};
@@ -85,6 +88,18 @@ export function voiceAuthorized({headers,raw,env,now=Date.now()}){
 // model saw only that one sentence). Now: the offer is read only when THIS utterance changed the stay or asks about
 // it (price / free / total); a side question goes to the fact-bound model WITH the caller's last words as context; a
 // booking acceptance gets an honest fixed reply (this line cannot book yet).
+// Owner's call 2026-11-26: „Mennyibe kerül?” right after a fishing-ticket question and „És a rekordtóra mennyibe kerül?”
+// got the accommodation offer again. A price word about a side topic (ticket, lake, tub, dog…) – or a short price
+// question right after one – is a side question; naming the stay („szállás”, „ház”) always means the stay.
+const SIDE_TOPIC=/horgász|horgasz|jegy|rekord|(?<!\p{L})t[óo](?:ra|n|ba|hoz|nál)?(?!\p{L})|normáltó|dézsa|dezsa|kutya|háziállat|parkol|reggeli|étkez|ticket|fishing|lake|hot\s*tub|dog|angel|teich|badezuber|hund|ribol|jezer|kad|pes/iu;
+const STAY_WORDS=/szállás|szallas|(?<!\p{L})(?:fa)?ház(?:at|ért|ra)?(?!\p{L})|faház|unterkunft|haus|accommodation|cabin|stay|nastanit|hišk|hisk/iu;
+function stayQuestion(utterances,last){
+ if(!STAY_ASK.test(last))return false;
+ if(STAY_WORDS.test(last))return true;
+ if(SIDE_TOPIC.test(last))return false;
+ const short=String(utterances.at(-1)).trim().split(/\s+/).length<=4;
+ return !(short&&utterances.length>1&&SIDE_TOPIC.test(String(utterances.at(-2))));
+}
 const STAY_ASK=/mennyi|mennyibe|(?<!\p{L})ár(?:a|at)?(?!\p{L})|összesen|osszesen|kerül|kerul|szabad|kiadó|kiado|kost|preis|insgesamt|frei|how\s+much|price|cost|total|available|koliko|cena|stane|skupaj|prost/iu;
 const ACCEPT=/lefoglal|foglaln[áa]|foglalom|szeretném\s+(?:lefoglalni|foglalni)|elfogad|megfelel|ezt\s+kér|azt\s+kér|book\s+it|we'?ll\s+take|i'?ll\s+take|let'?s\s+book|buchen|nehmen\s+(?:wir|es)|rezerviral|rezervirati|vzamemo/iu;
 const ACCEPT_REPLY={hu:'Köszönjük, örülünk, hogy megfelel! Ezen a vonalon most nem tudjuk véglegesíteni a foglalást. Kérjük, küldje el az igényét a honlapunk chatjében vagy e-mailben, és munkatársunk visszaigazolja.',
@@ -123,8 +138,9 @@ const ACCEPT_TUB={hu:'A dézsabérlést is írja bele az igénybe, a szabad idő
 // acceptance gets the deposit terms and ONE question for the e-mail address; the agent then reads it back and calls
 // sarberki_request (voice-request), which saves the request and pre-fills a 48-hour Previo TEST option.
 // Owner 2026-11-26: ask the caller to say the address slowly and clearly (fewer mishearings, no spelling round).
-export const ASK_EMAIL={hu:'A foglaláshoz kérem, mondja meg lassan és tagoltan az e-mail-címét.',de:'Für die Buchung nennen Sie mir bitte langsam und deutlich Ihre E-Mail-Adresse.',
- en:'To book, please tell me your e-mail address slowly and clearly.',si:'Za rezervacijo mi prosim počasi in razločno povejte svoj e-poštni naslov.'};
+// Owner 2026-11-26 (after the first booking call): the name too, then the e-mail address.
+export const ASK_EMAIL={hu:'A foglaláshoz kérem, mondja meg a nevét, majd lassan és tagoltan az e-mail-címét.',de:'Für die Buchung nennen Sie mir bitte Ihren Namen und dann langsam und deutlich Ihre E-Mail-Adresse.',
+ en:'To book, please tell me your name, then your e-mail address slowly and clearly.',si:'Za rezervacijo mi prosim povejte svoje ime in nato počasi in razločno svoj e-poštni naslov.'};
 const ACCEPT_TUB_INTAKE={hu:'A dézsát is felírom, a szabad időpontot munkatársunk egyezteti.',de:'Den Badezuber notiere ich, den freien Termin stimmt unser Team ab.',
  en:"I'll note the hot tub; our team will arrange the free slot.",si:'Masažno kad si zabeležim, prost termin bo uskladila naša ekipa.'};
 export {ACCEPT};
@@ -144,7 +160,8 @@ export async function voiceTurn({utterances,language='auto',clock=()=>new Date()
  const changed=JSON.stringify(facts)!==before;
  if(facts&&hotTubWished(utterances))facts.hotTub=true;
  let text=r.text,source='engine',offer=null;
- if(facts&&!changed&&ACCEPT.test(last)&&!STAY_ASK.test(last)){
+ const stayAsk=stayQuestion(utterances,last);
+ if(facts&&!changed&&ACCEPT.test(last)&&!stayAsk){
   // Wants to book: now the deposit and the deadline (owner 2026-11-25), then the honest „this line cannot book yet”.
   let terms='';
   if(offerFn){try{const o=await offerFn({facts,language:lang});
@@ -156,11 +173,11 @@ export async function voiceTurn({utterances,language='auto',clock=()=>new Date()
   else text=terms+(ACCEPT_REPLY[lang]||ACCEPT_REPLY.hu)+(tub?' '+(ACCEPT_TUB[lang]||ACCEPT_TUB.hu):'');
   source=intake&&offer?'accept_email':'accept';
  }
- else if(facts&&offerFn&&(r.decision&&(changed||STAY_ASK.test(last))||TERMS_ASK.test(last))){
+ else if(facts&&offerFn&&(r.decision&&(changed||stayAsk)||TERMS_ASK.test(last))){
   try{offer=await offerFn({facts,language:lang});}catch{offer=null;}
   if(offer&&['AVAILABLE','UNAVAILABLE'].includes(offer.status)){text=voiceOffer(offer,{lang,withTerms:DEPOSIT_ASK.test(last),withCancel:CANCEL_ASK.test(last),onlyTerms:!changed&&TERMS_ASK.test(last),now:clock()});source='offer';}
  }
- const sideQuestion=facts&&r.decision&&!changed&&!STAY_ASK.test(last)&&source==='engine';
+ const sideQuestion=facts&&r.decision&&!changed&&!stayAsk&&source==='engine';
  if((sideQuestion||!r.decision&&!r.noAssist)&&source==='engine'&&assistFn){
   // The caller's last words (speech is split into fragments), so „… a normál tóra. Minden négy napra.” is one question.
   // Only a short fragment („Minden négy napra.”) is joined with the caller's previous words; a full question stands alone
