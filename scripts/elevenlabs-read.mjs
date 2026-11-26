@@ -39,7 +39,10 @@ if(req.inventory){
   const msgs=['Deluxe faházat szeretnénk 2027. április 20-tól 23-ig, két felnőtt.'];
   const t=await post('voice-turn',{caller_messages:msgs});
   console.log('PROBE voice-turn',t.status,JSON.stringify({source:t.j?.source,facts:t.j?.facts,offer:t.j?.offer,reply:cut(t.j?.reply,300)}));
-  const q=await post('voice-request',{caller_messages:[...msgs,'Szeretném lefoglalni.','kitalalt kukac example pont test'],email:'kitalalt kukac example pont test',consent:true,conversation_id:'probe_claude_20261126'});
-  console.log('PROBE voice-request',q.status,JSON.stringify(q.j));
+  // Write-free checks (#9 7189067007): the acceptance asks for the e-mail; an invalid address stops before any save.
+  const acc=await post('voice-turn',{caller_messages:[...msgs,'Szeretném lefoglalni.']});
+  console.log('PROBE voice-turn accept',acc.status,JSON.stringify({source:acc.j?.source,reply:cut(acc.j?.reply,300)}));
+  const q=await post('voice-request',{caller_messages:[...msgs,'Szeretném lefoglalni.','nem mondom meg'],email:'nem mondom meg',consent:true,conversation_id:'probe_claude_20261126b'});
+  console.log('PROBE voice-request (invalid e-mail, no write)',q.status,JSON.stringify(q.j));
  }else console.log('PROBE skipped: no voice key');
 }
