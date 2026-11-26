@@ -8,6 +8,7 @@ import {chatOfferCapacity} from './chat-offer.mjs';
 import {buildChatOffer} from '../../shared-core/server-chat-offer.mjs';
 import {askChatAssist,chatAssistConfigured} from '../../shared-core/chat-assist.mjs';
 import {BUSINESS} from '../../business-config.mjs';
+import {callerAllowed,TEST_LINE} from '../../shared-core/voice-request.mjs';
 
 const json=(status,body)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json','cache-control':'no-store'}});
 
@@ -24,6 +25,8 @@ export function createVoiceTurnHandler({env=process.env,fetchImpl=fetch,now=()=>
   const t=now();if(t-windowStart>60000){windowStart=t;count=0;}
   if(++count>perMinute)return json(429,{error:'TRY_LATER'});
   const lang=['hu','de','en','si'].includes(body?.args?.language??body?.language)?(body.args?.language??body.language):'auto';
+  // Owner 2026-11-26: on the TEST line an unknown caller number only hears the test-line sentence (no engine, no data).
+  if(!callerAllowed(env,body?.args?.caller_id??body?.caller_id))return json(200,{reply:TEST_LINE[lang]||TEST_LINE.hu,language:lang==='auto'?'hu':lang,source:'test_line',facts:null,offer:null});
   const capacityFn=chatOfferCapacity(env,fetchImpl);
   const offerFn=capacityFn?({facts,language})=>buildChatOffer({facts,language,capacityFn,cancellationDays:BUSINESS.bookingRules.cancellationDaysUnder15Guests}):null;
   const assistFn=chatAssistConfigured(env)?({message,language})=>askChatAssist({message,language},{env,fetchImpl}):null;

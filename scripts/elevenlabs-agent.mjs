@@ -19,7 +19,9 @@ const body={name:NAME,tags:['sarberki-test'],conversation_config:{
    api_schema:{url:URL,method:'POST',request_headers:{'x-sarberki-voice-key':voiceKey},
     request_body_schema:{type:'object',description:'A hívás eddigi hívói mondatai',properties:{
      caller_messages:{type:'array',description:'A hívó EDDIGI ÖSSZES mondata szó szerint, időrendben (a legutóbbi is).',items:{type:'string',description:'Egy hívói mondat szó szerint'}},
-     language:{type:'string',description:'A hívó nyelve, ha egyértelmű: hu, de, en vagy si.',enum:['hu','de','en','si']}},required:['caller_messages']}}},
+     language:{type:'string',description:'A hívó nyelve, ha egyértelmű: hu, de, en vagy si.',enum:['hu','de','en','si']},
+     // Real phone line only (owner 2026-11-26: the TEST line answers only the owner's test callers).
+     caller_id:{type:'string',description:'',dynamic_variable:'system__caller_id'}},required:['caller_messages']}}},
    // Owner 2026-11-26 (PERM-20261126-VOICE-OPTION): the booking request with the e-mail address (voice-request).
    {type:'webhook',name:'sarberki_request',
    description:'Foglalási igény rögzítése. Csak akkor hívd, ha a hívó elfogadta az ajánlatot, megadta az e-mail-címét, a visszaolvasott címet megerősítette és hozzájárult a rögzítéshez. A válasz reply mezőjét szó szerint mondd el; rögzítést csak ok:true esetén állíts.',
@@ -33,7 +35,9 @@ const body={name:NAME,tags:['sarberki-test'],conversation_config:{
      // Real phone line only: the caller's number (owner 2026-11-26: no need to ask for it).
      caller_id:{type:'string',description:'',dynamic_variable:'system__caller_id'},
      language:{type:'string',description:'A hívó nyelve: hu, de, en vagy si.',enum:['hu','de','en','si']}},required:['caller_messages','email','consent','conversation_id']}}}]}},
- tts:{voice_id:VOICE,model_id:'eleven_flash_v2_5'}}};
+ tts:{voice_id:VOICE,model_id:'eleven_flash_v2_5'},
+ // Owner 2026-11-26: a call lasts at most 5 minutes (prepaid number + agent minutes).
+ conversation:{max_duration_seconds:300}}};
 const list=await fetch(API+'/v1/convai/agents?page_size=100&search='+encodeURIComponent('Sárberki TEST'),{headers:H}).then(r=>r.json()).catch(()=>({}));
 const found=(list.agents||[]).find(a=>a.name===NAME);
 const r=found?await fetch(API+'/v1/convai/agents/'+found.agent_id,{method:'PATCH',headers:H,body:JSON.stringify(body)})

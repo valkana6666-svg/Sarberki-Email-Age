@@ -127,3 +127,23 @@ test('caller number from the phone line is saved (no need to ask); a web/app tes
 test('owner 2026-11-26: the e-mail question asks for the address slowly and clearly (all four languages)',()=>{
  assert.match(ASK_EMAIL.hu,/lassan és tagoltan/);assert.match(ASK_EMAIL.de,/langsam und deutlich/);assert.match(ASK_EMAIL.en,/slowly and clearly/);assert.match(ASK_EMAIL.si,/počasi in razločno/);
 });
+
+test('owner 2026-11-26: the TEST line takes bookings only from the owner\'s test callers; app calls (no number) stay allowed',async()=>{
+ const {callerAllowed,TEST_LINE}=await import('../shared-core/voice-request.mjs');
+ const env={VOICE_CALLER_ALLOWLIST:'+36 30 000 0001, 06200000002'};
+ assert.equal(callerAllowed({},'+36301112233'),true,'no list: nobody is filtered');
+ assert.equal(callerAllowed(env,'+36300000001'),true);assert.equal(callerAllowed(env,'0036300000001'),true);assert.equal(callerAllowed(env,'+36200000002'),true,'06… in the list = +36…');
+ assert.equal(callerAllowed(env,'+36301112233'),false);assert.equal(callerAllowed(env,undefined),true,'app/web test call: no number');
+ const {createVoiceTurnHandler}=await import('../netlify/functions/voice-turn.mjs');
+ const KEY='synthetic-voice-key-0123456789abcdef0123';
+ const req=b=>new Request('https://x.test/.netlify/functions/voice-turn',{method:'POST',headers:{'content-type':'application/json','x-sarberki-voice-key':KEY},body:JSON.stringify(b)});
+ const h=createVoiceTurnHandler({env:{VOICE_TURN:'test-only',VOICE_TURN_KEY:KEY,...env},fetchImpl:async()=>{throw Error('no network');}});
+ const stranger=await (await h(req({caller_messages:['Deluxe faház 2027. április 20-tól 23-ig, két felnőtt.'],caller_id:'+36301112233'}))).json();
+ assert.equal(stranger.source,'test_line');assert.equal(stranger.reply,TEST_LINE.hu);assert.equal(stranger.offer,null);
+ const owner=await (await h(req({caller_messages:['Deluxe faház 2027. április 20-tól 23-ig, két felnőtt.'],caller_id:'+36300000001'}))).json();
+ assert.notEqual(owner.source,'test_line');
+ const ON={VOICE_INTAKE:'test-only',VOICE_TURN:'test-only',INTAKE_ENABLED:'test-only',SUPABASE_URL:'https://mojnqizbcaczstguikpv.supabase.co',VOICE_TURN_KEY:KEY,...env};
+ const r=await (await createVoiceRequestHandler({env:ON,fetchImpl:async()=>{throw Error('no network');}})(new Request('https://x.test/.netlify/functions/voice-request',{method:'POST',headers:{'content-type':'application/json','x-sarberki-voice-key':KEY},
+  body:JSON.stringify({caller_messages:CALL,email:MAIL,consent:true,conversation_id:'conv_x1234567',caller_id:'+36301112233'})}))).json();
+ assert.equal(r.status,'TEST_LINE');assert.equal(r.ok,false,'nothing saved for an unknown caller');
+});

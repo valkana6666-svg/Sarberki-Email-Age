@@ -88,6 +88,20 @@ export function callerPhone(value){
  const t=String(value??'').trim();
  return /^\+?[0-9]{6,15}$/.test(t.replace(/[ ()\/-]/g,''))&&/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(t)?t:null;
 }
+// Owner 2026-11-26: the TEST phone line answers bookings only for the owner's own test callers. The numbers are kept
+// in the TEST host's VOICE_CALLER_ALLOWLIST (comma-separated), never in the repository. A call without a caller number
+// (the ElevenLabs app/web test) stays allowed; an unknown number gets the „test line” reply and nothing is saved.
+const digits=v=>{let d=String(v??'').replace(/[^0-9+]/g,'');if(d.startsWith('+'))d=d.slice(1);else if(d.startsWith('00'))d=d.slice(2);else if(d.startsWith('06'))d='36'+d.slice(2);return d;};
+export function callerAllowed(env,callerId){
+ const list=String(env?.VOICE_CALLER_ALLOWLIST??'').split(',').map(digits).filter(x=>x.length>=8);
+ if(!list.length)return true;
+ const phone=callerPhone(callerId);
+ return !phone||list.includes(digits(phone));
+}
+export const TEST_LINE={hu:'Ez a Sárberki Horgásztó tesztvonala, itt most nem tudunk foglalást felvenni. Kérjük, hívja a horgásztó szokásos telefonszámát, vagy írjon nekünk e-mailben. Köszönjük, viszonthallásra!',
+ de:'Dies ist die Testleitung des Sárberki Angelsees, hier können wir keine Buchung aufnehmen. Bitte rufen Sie die übliche Nummer an oder schreiben Sie uns eine E-Mail. Danke, auf Wiederhören!',
+ en:'This is the Sárberki fishing lake test line; we cannot take bookings here. Please call our usual number or send us an e-mail. Thank you, goodbye!',
+ si:'To je testna linija ribnika Sárberki, tukaj ne moremo sprejeti rezervacije. Prosimo, pokličite običajno številko ali nam pišite po e-pošti. Hvala, nasvidenje!'};
 export async function voiceRequest({utterances,email,consent,conversationId,callerId=null,language='auto',clock=()=>new Date(),
  offerFn,createFn,prefillFn=null,notifyFn=null}){
  const stay=stayUtterances(utterances);

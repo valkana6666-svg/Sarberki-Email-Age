@@ -4,7 +4,7 @@
 // (shared-core/server-intake.mjs, channel „phone”, one case per call); the 48-hour Previo TEST option uses the chat's
 // pre-fill writer and locks (shared-core/server-chat-prefill.mjs, channel „phone”). Nothing is sent to the caller.
 import {voiceAuthorized,callerUtterances} from '../../shared-core/voice-turn.mjs';
-import {voiceRequest,VOICE_INTAKE_SWITCH,PHONE_CONTACT_NAME} from '../../shared-core/voice-request.mjs';
+import {voiceRequest,VOICE_INTAKE_SWITCH,PHONE_CONTACT_NAME,callerAllowed,TEST_LINE} from '../../shared-core/voice-request.mjs';
 import {createIntakeRequest} from '../../shared-core/server-intake.mjs';
 import {createSupabaseTransport} from '../../shared-core/supabase-case-repository.mjs';
 import {prefillChatBooking} from '../../shared-core/server-chat-prefill.mjs';
@@ -28,6 +28,8 @@ export function createVoiceRequestHandler({env=process.env,fetchImpl=fetch,now=(
   let body;try{body=JSON.parse(raw);}catch{return json(400,{error:'INVALID_INPUT'});}
   const args=body?.args&&typeof body.args==='object'?body.args:body||{};
   const utterances=callerUtterances(body);if(!utterances.length)return json(400,{error:'NO_UTTERANCE'});
+  // Owner 2026-11-26: unknown caller numbers on the TEST line – nothing is saved, only the test-line sentence.
+  if(!callerAllowed(env,args.caller_id)){const l=['hu','de','en','si'].includes(args.language)?args.language:'hu';return json(200,{ok:false,status:'TEST_LINE',reply:TEST_LINE[l]});}
   const t=now();if(t-windowStart>3600000){windowStart=t;count=0;}
   if(++count>perHour)return json(200,{ok:false,status:'TRY_LATER',reply:'Elnézést, a foglalási igényt most nem sikerült rögzítenem. Kérem, írja meg az igényét e-mailben, vagy hívjon minket később.'});
   if(!/^[a-f0-9]{64}$/.test(env.INTAKE_HMAC_KEY||'')||!env.INTAKE_ACCOUNT_EMAIL||!env.INTAKE_ACCOUNT_PASSWORD||!env.SUPABASE_PUBLISHABLE_KEY)return json(503,{error:'SETUP_REQUIRED'});
