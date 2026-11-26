@@ -20,6 +20,19 @@ const KEY_SETS=[KEYS,KEYS_EMAIL,'acceptedTotal,'+KEYS,'acceptedTotal,consent,ema
 const hufText=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' ');
 const EMAIL_RE=/^[^\s@<>"(),;:]{1,64}@[^\s@<>"(),;:]{1,190}\.[A-Za-z]{2,}$/;
 
+// The dedicated intake account's session (the same login for the chat and the phone request); stage = which step
+// failed (TEST diagnostics, owner switch-on 2026-11-14) – no detail, no secret.
+export async function intakeAccountToken(env,fetchImpl){
+ try{
+  const r=await fetchImpl(TEST_PROJECT+'/auth/v1/token?grant_type=password',{method:'POST',redirect:'error',signal:AbortSignal.timeout(10000),
+   headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json'},body:JSON.stringify({email:env.INTAKE_ACCOUNT_EMAIL,password:env.INTAKE_ACCOUNT_PASSWORD})});
+  if(!r.ok){let code='';try{code=String((await r.json())?.error_code||'').replace(/[^a-z_]/g,'').slice(0,40);}catch{}
+   return {stage:'auth-'+r.status+(code?'-'+code:'')};}
+  const token=(await r.json())?.access_token;
+  return typeof token==='string'&&token?{token}:{stage:'auth-token'};
+ }catch{return {stage:'auth-network'};}
+}
+
 export function createChatIntakeHandler({env=process.env,fetchImpl=fetch,random=()=>randomBytes(8).toString('hex')}={}){
  return async request=>{
   if(env.INTAKE_ENABLED!=='test-only'||env.INTAKE_CHAT_ENABLED!=='test-only'||env.SUPABASE_URL!==TEST_PROJECT)return json(503,{error:'INTAKE_DISABLED'});
@@ -50,16 +63,8 @@ export function createChatIntakeHandler({env=process.env,fetchImpl=fetch,random=
     (now===input.acceptedTotal?' (árlista szerint egyezik).':Number.isSafeInteger(now)?' – FIGYELEM: az árlista most '+hufText(now)+' Ft, ellenőrizd.':' – az ár újraszámítása nem sikerült, ellenőrizd.')+'\n\n';
   }
   const summary=accepted+'A vendég üzenetei a chatben (kezelői összefoglaló):\n'+input.transcript.map(t=>'– '+t.trim().replace(/\s+/g,' ')).join('\n');
-  let token;
-  try{
-   const r=await fetchImpl(TEST_PROJECT+'/auth/v1/token?grant_type=password',{method:'POST',redirect:'error',signal:AbortSignal.timeout(10000),
-    headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json'},body:JSON.stringify({email:env.INTAKE_ACCOUNT_EMAIL,password:env.INTAKE_ACCOUNT_PASSWORD})});
-   // stage (TEST diagnostics, owner switch-on 2026-11-14): which step failed - no detail, no secret.
-   if(!r.ok){let code='';try{code=String((await r.json())?.error_code||'').replace(/[^a-z_]/g,'').slice(0,40);}catch{}
-    return json(503,{error:'TRY_LATER',stage:'auth-'+r.status+(code?'-'+code:'')});}
-   token=(await r.json())?.access_token;
-  }catch{return json(503,{error:'TRY_LATER',stage:'auth-network'});}
-  if(typeof token!=='string'||!token)return json(503,{error:'TRY_LATER',stage:'auth-token'});
+  const login=await intakeAccountToken(env,fetchImpl);if(login.stage)return json(503,{error:'TRY_LATER',stage:login.stage});
+  const token=login.token;
   try{
    const transport=createSupabaseTransport({url:TEST_PROJECT+'/',publishableKey:env.SUPABASE_PUBLISHABLE_KEY,token,fetchImpl});
    const created=await createIntakeRequest({channel:'chat',externalId,facts:{...input.facts,...(phoneOk?{phone:input.phone.trim()}:{}),...(email?{email}:{}),language:input.language},summary,

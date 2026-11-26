@@ -5,9 +5,11 @@
 import {readFileSync} from 'node:fs';
 const API='https://api.elevenlabs.io',NAME='Sárberki TEST – saját AI (ElevenLabs)';
 const VOICE='M336tBVZHWWiWb4R54ui',URL='https://leafy-chimera-2403e5.netlify.app/.netlify/functions/voice-turn';
+const REQUEST_URL='https://leafy-chimera-2403e5.netlify.app/.netlify/functions/voice-request';
 const key=process.env.XI_KEY,voiceKey=process.env.VOICE_KEY;
 if(!key||!voiceKey||voiceKey.length<32){console.log('BLOCKED',!key?'xi key':'voice key');process.exit(1);}
-const file=readFileSync('docs/V3-RETELL-PROMPT.md','utf8'),prompt=file.slice(file.indexOf('\n---\n')+5).trim();
+// Owner 2026-11-26: ElevenLabs is the phone platform; its own prompt with the booking steps (e-mail → sarberki_request).
+const file=readFileSync('docs/V3-ELEVENLABS-PROMPT.md','utf8'),prompt=file.slice(file.indexOf('\n---\n')+5).trim();
 const H={'xi-api-key':key,'Content-Type':'application/json',Accept:'application/json'};
 const body={name:NAME,tags:['sarberki-test'],conversation_config:{
  agent:{first_message:'Üdvözlöm! A Sárberki Horgásztó automatikus asszisztense vagyok. Miben segíthetek?',language:'hu',
@@ -17,7 +19,18 @@ const body={name:NAME,tags:['sarberki-test'],conversation_config:{
    api_schema:{url:URL,method:'POST',request_headers:{'x-sarberki-voice-key':voiceKey},
     request_body_schema:{type:'object',description:'A hívás eddigi hívói mondatai',properties:{
      caller_messages:{type:'array',description:'A hívó EDDIGI ÖSSZES mondata szó szerint, időrendben (a legutóbbi is).',items:{type:'string',description:'Egy hívói mondat szó szerint'}},
-     language:{type:'string',description:'A hívó nyelve, ha egyértelmű: hu, de, en vagy si.',enum:['hu','de','en','si']}},required:['caller_messages']}}}]}},
+     language:{type:'string',description:'A hívó nyelve, ha egyértelmű: hu, de, en vagy si.',enum:['hu','de','en','si']}},required:['caller_messages']}}},
+   // Owner 2026-11-26 (PERM-20261126-VOICE-OPTION): the booking request with the e-mail address (voice-request).
+   {type:'webhook',name:'sarberki_request',
+   description:'Foglalási igény rögzítése. Csak akkor hívd, ha a hívó elfogadta az ajánlatot, megadta az e-mail-címét, a visszaolvasott címet megerősítette és hozzájárult a rögzítéshez. A válasz reply mezőjét szó szerint mondd el; rögzítést csak ok:true esetén állíts.',
+   response_timeout_secs:20,
+   api_schema:{url:REQUEST_URL,method:'POST',request_headers:{'x-sarberki-voice-key':voiceKey},
+    request_body_schema:{type:'object',description:'A foglalási igény',properties:{
+     caller_messages:{type:'array',description:'A hívó EDDIGI ÖSSZES mondata szó szerint, időrendben.',items:{type:'string',description:'Egy hívói mondat szó szerint'}},
+     email:{type:'string',description:'A hívó e-mail-címe úgy, ahogy elhangzott és megerősítette (pl. „kovacs pont anna kukac gmail pont com”).'},
+     consent:{type:'boolean',description:'true, ha a hívó igent mondott a rögzítésre ezzel a címmel.'},
+     conversation_id:{type:'string',description:'',dynamic_variable:'system__conversation_id'},
+     language:{type:'string',description:'A hívó nyelve: hu, de, en vagy si.',enum:['hu','de','en','si']}},required:['caller_messages','email','consent','conversation_id']}}}]}},
  tts:{voice_id:VOICE,model_id:'eleven_flash_v2_5'}}};
 const list=await fetch(API+'/v1/convai/agents?page_size=100&search='+encodeURIComponent('Sárberki TEST'),{headers:H}).then(r=>r.json()).catch(()=>({}));
 const found=(list.agents||[]).find(a=>a.name===NAME);

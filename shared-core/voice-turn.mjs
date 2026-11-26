@@ -119,7 +119,22 @@ export function voiceOffer(offer,{lang='hu',withTerms=false,withCancel=false,onl
  return out.filter(Boolean).join(' ');
 }
 const ACCEPT_TUB={hu:'A dézsabérlést is írja bele az igénybe, a szabad időpontot munkatársunk egyezteti.',de:'Bitte vermerken Sie den Badezuber in der Anfrage; den freien Termin stimmt unser Team ab.',en:'Please mention the hot tub in your request; our team will arrange the free slot.',si:'Masažno kad navedite v povpraševanju, prost termin bo uskladila naša ekipa.'};
-export async function voiceTurn({utterances,language='auto',clock=()=>new Date(),offerFn=null,assistFn=null}){
+// Owner 2026-11-26 (PERM-20261126-VOICE-OPTION): with the phone request on (VOICE_INTAKE=test-only), a booking
+// acceptance gets the deposit terms and ONE question for the e-mail address; the agent then reads it back and calls
+// sarberki_request (voice-request), which saves the request and pre-fills a 48-hour Previo TEST option.
+export const ASK_EMAIL={hu:'A foglaláshoz kérem, mondja meg az e-mail-címét.',de:'Für die Buchung nennen Sie mir bitte Ihre E-Mail-Adresse.',
+ en:'To book, please tell me your e-mail address.',si:'Za rezervacijo mi prosim povejte svoj e-poštni naslov.'};
+const ACCEPT_TUB_INTAKE={hu:'A dézsát is felírom, a szabad időpontot munkatársunk egyezteti.',de:'Den Badezuber notiere ich, den freien Termin stimmt unser Team ab.',
+ en:"I'll note the hot tub; our team will arrange the free slot.",si:'Masažno kad si zabeležim, prost termin bo uskladila naša ekipa.'};
+export {ACCEPT};
+// The stay as the caller said it (same replay as a turn): facts, language and the hot-tub wish.
+export function voiceFacts(utterances,{language='auto',clock=()=>new Date()}={}){
+ const s=createChatInquirySession({language,clock});
+ for(const u of utterances)s.reply(normalizeSpoken(u));
+ const facts=requestFacts(s.snapshot());
+ return {facts,language:s.language,hotTub:!!facts&&hotTubWished(utterances)};
+}
+export async function voiceTurn({utterances,language='auto',clock=()=>new Date(),offerFn=null,assistFn=null,intake=false}){
  if(!Array.isArray(utterances)||!utterances.length)return {reply:null,reason:'NO_UTTERANCE'};
  const s=createChatInquirySession({language,clock});let r=null,before=null;
  // Spoken numbers → digits (voice only); the session's own language detection decides the reply language.
@@ -135,7 +150,10 @@ export async function voiceTurn({utterances,language='auto',clock=()=>new Date()
    if(o?.status==='AVAILABLE'&&Number.isSafeInteger(o.deposit)){offer=o;
     const hours=depositPolicyForBooking({guestCount:2,bookingAt:clock().toISOString(),arrivalDate:o.arrival})?.paymentWindowHours??168;
     terms=(TERMS[lang]||TERMS.hu)(o.depositPct,o.deposit,hours)+' ';}}catch{}}
-  text=terms+(ACCEPT_REPLY[lang]||ACCEPT_REPLY.hu)+(hotTubWished([utterances.at(-1)])?' '+(ACCEPT_TUB[lang]||ACCEPT_TUB.hu):'');source='accept';
+  const tub=hotTubWished([utterances.at(-1)]);
+  if(intake&&offer)text=terms+(tub?(ACCEPT_TUB_INTAKE[lang]||ACCEPT_TUB_INTAKE.hu)+' ':'')+(ASK_EMAIL[lang]||ASK_EMAIL.hu);
+  else text=terms+(ACCEPT_REPLY[lang]||ACCEPT_REPLY.hu)+(tub?' '+(ACCEPT_TUB[lang]||ACCEPT_TUB.hu):'');
+  source=intake&&offer?'accept_email':'accept';
  }
  else if(facts&&offerFn&&(r.decision&&(changed||STAY_ASK.test(last))||TERMS_ASK.test(last))){
   try{offer=await offerFn({facts,language:lang});}catch{offer=null;}
