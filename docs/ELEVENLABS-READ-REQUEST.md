@@ -3,3 +3,4 @@
 {"last":4}
 {"last":2,"inventory":true}
 {"last":1,"inventory":true}
+{"last":1}
