@@ -196,3 +196,15 @@ test('phone call 2026-11-27: spoken address forms → one address; the server re
   body:JSON.stringify({caller_messages:CALL,name:'Teszt Elek',email:'pelda hat hat hat hat kukac gmail pont com',preview:true,consent:false,conversation_id:'conv_p1234567'})}))).json();
  assert.equal(r.status,'CONFIRM');assert.equal(calls,0,'preview: no login, no save, no Previo');
 });
+
+test('owner 2026-11-27: the caller number is saved with the request; the tool result shows only whether it arrived',async()=>{
+ const {voiceConfirm,voiceRequest:vr}=await import('../shared-core/voice-request.mjs');
+ assert.equal(voiceConfirm({email:MAIL,callerId:'+36301234567'}).callerNumber,true);
+ assert.equal(voiceConfirm({email:MAIL}).callerNumber,false);
+ assert.doesNotMatch(JSON.stringify(voiceConfirm({email:MAIL,callerId:'+36301234567'})),/301234567/);
+ const created=[];
+ const r=await vr({utterances:[...CALL,MAIL],email:MAIL,name:'Teszt Elek',consent:true,conversationId:'conv_ph000001',callerId:'+36301234567',clock:C,offerFn:async()=>OFFER,
+  createFn:async a=>{created.push(a);return {caseId:'tm-p'};}});
+ assert.equal(r.callerNumber,true);assert.doesNotMatch(JSON.stringify(r),/301234567/);
+ assert.equal(created[0].facts.phone,'+36301234567');assert.match(created[0].summary,/A hívó száma a telefonvonalról: \+36301234567/);
+});

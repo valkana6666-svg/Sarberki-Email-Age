@@ -135,10 +135,11 @@ const CONFIRM={hu:(n,m)=>`${n?n+', ':''}az e-mail-cím: ${m}. Jól értettem, é
  de:(n,m)=>`${n?n+', ':''}die E-Mail-Adresse: ${m}. Habe ich das richtig verstanden, und darf ich die Buchungsanfrage so erfassen?`,
  en:(n,m)=>`${n?n+', ':''}the e-mail address: ${m}. Did I get that right, and may I save the booking request with these details?`,
  si:(n,m)=>`${n?n+', ':''}e-poštni naslov: ${m}. Sem prav razumel in lahko povpraševanje zabeležim s temi podatki?`};
-export function voiceConfirm({email,name,language='hu'}){
+export function voiceConfirm({email,name,language='hu',callerId=null}){
  const lang=CONFIRM[language]?language:'hu',address=normalizeSpokenEmail(email);
  if(!address)return {ok:false,status:'EMAIL_INVALID',reply:say('email',lang)};
- return {ok:false,status:'CONFIRM',email:address,reply:CONFIRM[lang](spokenName(name),speakEmail(address,lang))};
+ // callerNumber: whether the line's caller number reached us (true/false only – the number itself is never echoed).
+ return {ok:false,status:'CONFIRM',email:address,callerNumber:!!callerPhone(callerId),reply:CONFIRM[lang](spokenName(name),speakEmail(address,lang))};
 }
 export async function voiceRequest({utterances,email,name=null,consent,conversationId,callerId=null,language='auto',clock=()=>new Date(),
  offerFn,createFn,prefillFn=null,notifyFn=null}){
@@ -163,6 +164,6 @@ export async function voiceRequest({utterances,email,name=null,consent,conversat
  if(prefillFn){try{option=await prefillFn({caseId:created.caseId,facts,email:address,phone:phone||'',name:guest});}catch{option={status:'failed'};}}
  const opt=option?.status==='created';
  if(notifyFn){try{await notifyFn(opt?'Csak e-mail-cím; a Previo-tesztben 48 órás opcióként előre kitöltve ('+option.unit+'. egység) – ellenőrizd, a többi adatot kérd el e-mailben.':'Csak e-mail-cím – a Previo-opció nem jött létre, kezeld a napi kezelőben.');}catch{}}
- return {ok:true,status:opt?'OPTION_CREATED':'REQUEST_SAVED',caseId:created.caseId,option:opt?{unit:option.unit}:null,
+ return {ok:true,status:opt?'OPTION_CREATED':'REQUEST_SAVED',caseId:created.caseId,option:opt?{unit:option.unit}:null,callerNumber:!!phone,
   reply:say(opt?'option':'saved',lang,speakEmail(address,lang))};
 }
