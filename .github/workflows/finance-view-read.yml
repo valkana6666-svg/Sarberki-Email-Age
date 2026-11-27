@@ -1,0 +1,28 @@
+name: Finance view read (Claude, read-only, approver test account)
+# Owner 2026-11-27: read what the finance view shows. Sign-in + GET only; credentials are repository secrets.
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths: [docs/FINANCE-VIEW-READ-REQUEST.md]
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright Chromium
+        run: npm i --no-save playwright@1.48.2 && npx playwright install --with-deps chromium
+      - name: Read
+        env:
+          SARBERKI_TEST_APPROVER_EMAIL: ${{ secrets.SARBERKI_TEST_APPROVER_EMAIL }}
+          SARBERKI_TEST_APPROVER_PASSWORD: ${{ secrets.SARBERKI_TEST_APPROVER_PASSWORD }}
+        run: |
+          test "$GITHUB_REF" = "refs/heads/gmail-test-subject-allowlist"
+          node scripts/finance-view-read.mjs
