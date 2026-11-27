@@ -9,3 +9,4 @@
 {"last":2,"inventory":true}
 {"last":2}
 {"last":1}
+{"last":1} 
