@@ -1,4 +1,4 @@
-name: Previo TEST – one fictional past stay (Claude, PERM-20261127-PAST-GUEST-3)
+name: Previo TEST – one past stay for the returning-guest test (Claude, owner permission per request)
 on:
   push:
     branches: [gmail-test-subject-allowlist]
@@ -19,6 +19,7 @@ jobs:
       - name: Create, set checked out, read back
         env:
           PREVIO_API_KEY: ${{ secrets.PREVIO_TEST_API_KEY }}
+          PAST_GUEST_PHONE: ${{ secrets.PREVIO_TEST_PAST_GUEST_PHONE }}
         run: |
           test "$GITHUB_REF" = "refs/heads/gmail-test-subject-allowlist"
           node scripts/previo-test-past-guest.mjs
