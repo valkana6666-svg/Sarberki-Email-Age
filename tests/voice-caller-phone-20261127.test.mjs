@@ -63,3 +63,15 @@ test('Previo option: contact phone in the payload (test-pair address), 48-hour o
   contactName:'Teszt Elek',contact:calls[0].contact,totalHuf:252000,optionExpiresUtc:calls[0].optionExpiresUtc,channel:'phone'}).xml;
  assert.match(xml,new RegExp('<phone>\\'+LINE+'</phone>'));assert.match(xml,/<email>sarberkito@gmail\.com<\/email>/);
 });
+
+test('owner call 2026-11-27: an accented spoken address („sárberkitó kukac gmail.com”) becomes the plain address; the Previo contact follows',async()=>{
+ const {normalizeSpokenEmail}=await import('../shared-core/voice-request.mjs');
+ assert.equal(normalizeSpokenEmail('sárberkitó kukac gmail.com'),'sarberkito@gmail.com');
+ assert.equal(normalizeSpokenEmail('Kovács Ödön kukac example pont hu'),'kovacsodon@example.hu');
+ assert.equal(normalizeSpokenEmail('łukasz kukac example pont pl'),null,'not plain after removing accents: not guessed');
+ const c=voiceConfirm({email:'sárberkitó kukac gmail.com',name:'Nagy Ádám',callerId:LINE});
+ assert.equal(c.email,'sarberkito@gmail.com');assert.match(c.reply,/sarberkito kukac gmail pont com/);
+ const prefills=[];await voiceRequest({utterances:[...CALL,'sárberkitó kukac gmail.com'],email:'sárberkitó kukac gmail.com',name:'Nagy Ádám',consent:true,conversationId:'conv_e0000001',callerId:LINE,clock:C,offerFn:async()=>OFFER,
+  createFn:async()=>({caseId:'tm-e'}),prefillFn:async a=>{prefills.push(a);return {status:'created',unit:'11'};}});
+ assert.equal(prefills[0].email,'sarberkito@gmail.com');assert.equal(prefills[0].phone,LINE);
+});

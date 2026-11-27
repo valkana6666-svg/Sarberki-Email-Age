@@ -45,7 +45,10 @@ export function normalizeSpokenEmail(text){
  if(!t.includes('@'))t=t.replace(/[,;!?]/g,' ').split(/\s+/).filter(Boolean).map(c=>/[.]$/.test(c)?spokenToken(c.slice(0,-1)):spokenToken(c)).join(' ');
  for(const [re,to] of SPOKEN)t=t.replace(re,' '+to+' ');
  t=t.replace(/\s+/g,'').replace(/^[.,;:]+|[.,;:!?]+$/gu,'');
- return EMAIL_RE.test(t)&&(t.match(/@/g)||[]).length===1?t:null;
+ // Owner's call 2026-11-27: the speech recogniser wrote „sárberkitó kukac gmail.com” – an address has no accents
+ // (Gmail and most providers do not allow them): á→a, ó/ö/ő→o, ú/ü/ű→u… Anything still not plain ASCII is not guessed.
+ t=t.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+ return EMAIL_RE.test(t)&&/^[\x21-\x7e]+$/.test(t)&&(t.match(/@/g)||[]).length===1?t:null;
 }
 // The saved address said back once at the end („… a kovacs pont anna kukac gmail pont com címre”).
 const SAY_CHARS={hu:{'@':'kukac','.':'pont','-':'kötőjel','_':'alulvonás'},de:{'@':'at','.':'Punkt','-':'Bindestrich','_':'Unterstrich'},
