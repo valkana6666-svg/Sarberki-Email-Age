@@ -165,14 +165,16 @@ export function mountChatView(root,{audience='guest',language='auto',clock,capac
    const f=offerProvider&&box&&box.dataset.sent!=='1'?stayFacts():null; // hot tub wish included (owner 2026-11-24)
    const key=factsKey(f);
    // Same stay, a booking reply again ("Mennyi lesz összesen?"): show the checked offer again, not a price-less draft.
-   if(f&&autoOffer&&autoOffer.key===key&&result.decision&&['AVAILABLE','UNAVAILABLE'].includes(autoOffer.offer?.status)){
+   // Tricky test 2026-11-27: the cached offer only in its own language (after „answer in Slovene” a new one is fetched).
+   if(f&&autoOffer&&autoOffer.key===key&&autoOffer.lang===session.language&&result.decision&&['AVAILABLE','UNAVAILABLE'].includes(autoOffer.offer?.status)){
     log.lastElementChild?.remove();append('Sárberki',autoOffer.offer.text,session.language);
    }
-   if(f&&(!autoOffer||autoOffer.key!==key)){
+   // Only a stay turn fetches an offer: a side question („how much is the fishing ticket?”) keeps its own answer last.
+   if(f&&result.decision&&(!autoOffer||autoOffer.key!==key||autoOffer.lang!==session.language)){
     const turn=session.turn,entry=log.lastElementChild,lang=session.language;
     offerProvider({facts:f,language:lang}).then(offer=>{
      if(session.turn!==turn||!offer||offer.status==='MISSING'&&offer.fixable)return; // the engine already asks for the missing detail
-     autoOffer={key,offer};
+     autoOffer={key,offer,lang};
      // The checked answer replaces the generic "not yet verified" reply when nothing newer was said.
      if(['AVAILABLE','UNAVAILABLE'].includes(offer.status)){if(log.lastElementChild===entry)entry.remove();append('Sárberki',offer.text,lang);}
      renderRequest();
