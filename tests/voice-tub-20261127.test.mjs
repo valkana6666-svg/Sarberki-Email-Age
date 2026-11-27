@@ -74,7 +74,7 @@ test('14:54 call: the hour answer joins the tub request; appendNote writes <gNot
  const calls=[];
  const r=await voiceAddTub({utterances:U,email:'sarberkito@gmail.com',conversationId:'conv_tub01454',language:'hu',clock:C,noteFn:async a=>{calls.push(a);return {added:1};}});
  assert.deepEqual(calls[0].lines,['DÉZSAFÜRDŐ 2027.03.04. 16 ÓRÁTÓL 1x24 óra, 5 fő – 30 000 Ft (telefonos igény)']);
- assert.match(r.reply,/március 4\., 16 órától, 5 főre/);
+ assert.equal(r.reply,'Rendben, felírtam: dézsafürdő március negyedike, tizenhat órától, öt főre, harmincezer forint.','spoken words, not „30000” (owner 11-27)');
  // Previo double: stores <gNote> without „,” „–” „|” and echoes it as <note> too.
  let gnote='Telefonról érkezett. Ellenőrizd.  DÉZSAFÜRDŐ 2027.03.04. 1x24 óra 5 fő  30 000 Ft (telefonos igény)';const sent=[];
  const voucher=voucherFor({tenantId:'sarberki-test',caseId:'tm-aaaaaaaaaaaaaaaaaaaaaaaa'});

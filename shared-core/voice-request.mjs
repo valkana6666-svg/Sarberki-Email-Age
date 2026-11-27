@@ -6,7 +6,7 @@
 // pre-filled (same writer and locks as the chat). The agent may say „rögzítettük” ONLY when this returns ok:true.
 // The rest of the guest data (name, phone, address) the staff ask by e-mail and fill in Previo by hand.
 import {createHash} from 'node:crypto';
-import {voiceFacts,ACCEPT} from './voice-turn.mjs';
+import {voiceFacts,ACCEPT,speakable} from './voice-turn.mjs';
 import {isTubTurn,tubTexts,parseTubRequest,tubNoteLines,tubReply,tubPricePer24h} from './voice-tub.mjs';
 import {hotTubWished} from '../sarberki-chatbot-project/chat-view.mjs';
 import {normalizeSpoken,huNumberWords} from './voice-normalize.mjs';
@@ -135,7 +135,9 @@ export async function voiceAddTub({utterances,email,conversationId,language='aut
  try{r=await noteFn({caseId,arrival:facts.arrival,departure:facts.departure,lines});}catch{r=null;}
  if(notifyFn){try{await notifyFn(r?'Dézsaigény a telefonos foglaláshoz – a Previo-opció megjegyzésébe beírva.':'Dézsaigény a telefonos foglaláshoz – a Previóba NEM sikerült beírni, rögzítsd kézzel.');}catch{}}
  const base=tubReply(req,lang);
- return r?{ok:true,status:'TUB_NOTED',caseId,reply:base}:{ok:false,status:'TUB_NOT_SAVED',reply:base+' '+({hu:'Munkatársunk a foglalásához rögzíti.',de:'Unser Team trägt ihn bei Ihrer Buchung ein.',en:'Our team will add it to your booking.',si:'Naša ekipa jo bo dodala k rezervaciji.'}[lang]||'')};
+ // Owner's call 2026-11-27: „30000 forint” was read badly – spoken words („harmincezer forint”) as in every other reply.
+ const say=x=>speakable(x,450,lang);
+ return r?{ok:true,status:'TUB_NOTED',caseId,reply:say(base)}:{ok:false,status:'TUB_NOT_SAVED',reply:say(base+' '+({hu:'Munkatársunk a foglalásához rögzíti.',de:'Unser Team trägt ihn bei Ihrer Buchung ein.',en:'Our team will add it to your booking.',si:'Naša ekipa jo bo dodala k rezervaciji.'}[lang]||''))};
 }
 // Pure orchestration (all I/O injected): returns {ok, reply, status, caseId?, option?}. ok:true only after a saved case.
 // The caller's number from the phone line (ElevenLabs system__caller_id on a real phone call; owner 2026-11-26: „a
