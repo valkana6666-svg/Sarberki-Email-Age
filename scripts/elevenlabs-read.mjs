@@ -12,7 +12,8 @@ for(const c of list.conversations||[]){
  // Phone line metadata (numbers masked to the last 2 digits): is the caller's number delivered?
  const pc=d.metadata?.phone_call,m2=v=>typeof v==='string'&&v.length>4?'…'+v.slice(-2):v??null;
  if(pc)console.log('PHONECALL',JSON.stringify({type:pc.type,direction:pc.direction,external:m2(pc.external_number),agentNumber:m2(pc.agent_number),callSid:!!pc.call_sid}));
- const dv=d.conversation_initiation_client_data?.dynamic_variables;if(dv)console.log('DYNVARS',JSON.stringify(Object.fromEntries(Object.entries(dv).filter(([k])=>/caller|called|conversation/.test(k)).map(([k,v])=>[k,m2(String(v))]))));
+ const dv=d.conversation_initiation_client_data?.dynamic_variables;if(dv?.system__conversation_history){const h=String(dv.system__conversation_history);let s;try{const j=JSON.parse(h);s={len:h.length,keys:Object.keys(j),sample:JSON.stringify(j).replace(/"(message|content|text)":"([^"]{0,25})[^"]*"/g,'"$1":"$2…"').slice(0,600)};}catch{s={len:h.length,head:h.slice(0,80)};}console.log('HISTORY',JSON.stringify(s));}
+ if(dv)console.log('DYNVARS',JSON.stringify(Object.fromEntries(Object.entries(dv).filter(([k])=>/caller|called|conversation/.test(k)).map(([k,v])=>[k,m2(String(v))]))));
  for(const t of d.transcript||[]){
   console.log('T',JSON.stringify({role:t.role,at:t.time_in_call_secs,msg:cut(t.message,500),
    tools:(t.tool_calls||[]).map(x=>({name:x.tool_name,params:cut(x.params_as_json,600)})),
