@@ -11,6 +11,7 @@ import {normalizeSpoken,speakNumbersHu} from './voice-normalize.mjs';
 import {PLACEHOLDER} from './inquiry-channel-adapters.mjs';
 import {depositPolicyForBooking} from '../sarberki-core.mjs';
 import {cabinPriceInfo} from '../business/sarberki/cabin-price-info.mjs';
+import {isTubRequest,parseTubRequest,tubReply} from './voice-tub.mjs';
 import {chatbotReply} from '../chatbot-v1.mjs';
 const cabinPriceQuestion=t=>chatbotReply({message:t}).intent==='price';
 
@@ -156,11 +157,22 @@ export function voiceFacts(utterances,{language='auto',clock=()=>new Date()}={})
  const facts=requestFacts(s.snapshot());
  return {facts,language:s.language,hotTub:!!facts&&hotTubWished(utterances)};
 }
-export async function voiceTurn({utterances,language='auto',clock=()=>new Date(),offerFn=null,assistFn=null,intake=false}){
+export async function voiceTurn({utterances,language='auto',clock=()=>new Date(),offerFn=null,assistFn=null,intake=false,booked=false}){
  if(!Array.isArray(utterances)||!utterances.length)return {reply:null,reason:'NO_UTTERANCE'};
  const s=createChatInquirySession({language,clock});let r=null,before=null;
+ // Owner 2026-11-27: a hot tub wish („dézsát is március 5-re és 6-ra, öt főre”) is a TUB request, never a new stay –
+ // those sentences are kept out of the stay replay, so the thread (dates, guests, cabin) is not lost.
+ const lastTub=isTubRequest(utterances.at(-1)),replay=utterances.filter((u,i)=>!isTubRequest(u)||(i===utterances.length-1&&!lastTub));
+ const seq=replay.length?replay:utterances;
  // Spoken numbers → digits (voice only); the session's own language detection decides the reply language.
- utterances.forEach((u,i)=>{if(i===utterances.length-1)before=JSON.stringify(requestFacts(s.snapshot()));r=s.reply(normalizeSpoken(u));});
+ seq.forEach((u,i)=>{if(i===seq.length-1)before=JSON.stringify(requestFacts(s.snapshot()));r=s.reply(normalizeSpoken(u));});
+ if(lastTub){
+  const sn=s.snapshot(),f=requestFacts(sn),lang0=s.language;
+  const guests=Number.isInteger(sn.adults)?sn.adults+(Number.isInteger(sn.children)?sn.children:0):null;
+  const req=f?parseTubRequest(normalizeSpoken(utterances.at(-1)),{arrival:f.arrival,departure:f.departure,guests}):null;
+  if(req)return {reply:speakable(tubReply(req,lang0),450,lang0),language:lang0,source:'tub',tub:{days:req.days,persons:req.persons,hour:req.hour,total:req.total},
+   facts:{arrival:f.arrival,departure:f.departure,adults:Number.isInteger(sn.adults)?sn.adults:null,children:Number.isInteger(sn.children)?sn.children:null,cabin:sn.cabin||null},offer:null};
+ }
  const lang=s.language,snap=s.snapshot(),facts=requestFacts(snap),last=normalizeSpoken(utterances.at(-1));
  const changed=JSON.stringify(facts)!==before;
  if(facts&&hotTubWished(utterances))facts.hotTub=true;
@@ -198,6 +210,8 @@ export async function voiceTurn({utterances,language='auto',clock=()=>new Date()
  if(source==='engine'&&/alapára|alapáraink|Grundpreis|base price|osnovn/iu.test(String(text).slice(0,60))&&cabinPriceQuestion(last))text=cabinPriceInfo(last,lang,{short:true});
  // On the phone the caller's number is the call itself: no "please give us a phone number" (as in the chat form).
  if(source==='engine')text=withoutPhoneQuestion(text,lang);
+ // After the booking is saved (the agent passes booked:true) the offer is never followed by „would you like to book?”.
+ if(booked)text=String(text).replace(new RegExp('\\s*(?:'+Object.values(ASK_BOOK).map(x=>x.replace(/[?]/g,'\\?')).join('|')+')\\s*$'),'');
  return {reply:speakable(text,450,lang),language:lang,source,
   facts:{arrival:snap.dates?.arrival??null,departure:snap.dates?.departure??null,adults:Number.isInteger(snap.adults)?snap.adults:null,
    children:Number.isInteger(snap.children)?snap.children:null,cabin:snap.cabin||null},

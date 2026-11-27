@@ -53,7 +53,7 @@ export function contactPersonXml(name,contact){
 }
 // Multi-unit (owner 2026-11-11): units (2..6, first = unit) and parties [{adults,children:[ages]}] per unit -> one
 // reservation with one commission per unit (Previo XML "New group reservation").
-export function buildReservationXml({tenantId,caseId,values,cabin,unit,units=null,parties=null,contactName,contact=null,totalHuf,optionExpiresUtc,channel='email',note=null,property=PREVIO_TEST_73521}){
+export function buildReservationXml({tenantId,caseId,values,cabin,unit,units=null,parties=null,contactName,contact=null,totalHuf,optionExpiresUtc,channel='email',note=null,mainNote=null,property=PREVIO_TEST_73521}){
  if(String(property?.hotelId)!=='73521')fail('SANDBOX_ONLY');
  if(!day(values?.arrival)||!day(values?.departure)||values.departure<=values.arrival)fail('DATES_REQUIRED');
  const obkId=property.roomKinds?.[cabin];if(!int(obkId))fail('ROOM_KIND_UNKNOWN');
@@ -77,6 +77,8 @@ export function buildReservationXml({tenantId,caseId,values,cabin,unit,units=nul
   `<optionExpiration>${expiry}</optionExpiration>`,
   // Owner 2026-11-19 (#9 7005064928): a short staff note in Previo (no guest contact data, plain text, ≤300 chars).
   ...(note?[`<gNote>${xmlText(String(note).replace(/[\r\n]+/g,' ').slice(0,300))}</gNote>`]:[]),
+  // Owner 2026-11-27: the hot tub request goes to the FIRST note field (`note`), as the live Previo records it.
+  ...(mainNote?[`<note>${xmlText(String(mainNote).replace(/[\r\n]+/g,' | ').slice(0,1000))}</note>`]:[]),
   `<term><from>${values.arrival} 14:00:00</from><to>${values.departure} 10:00:00</to></term>`,
   `<voucher>${voucher}</voucher>`,
   contactPersonXml(name,contact),
@@ -104,6 +106,15 @@ export function buildModifyXml({resId,comId,cabin,unit,values,totalHuf,optionExp
 }
 
 // Status change on an existing reservation: deposit arrived -> confirmed; cancellation -> storno.
+// Owner 2026-11-27 (PERM-20261127-VOICE-TUB-NOTE): the first note field of an existing reservation (a hot tub request
+// added after the booking). Only resId + note; the caller reads it back.
+export function buildNoteXml({resId,note,property=PREVIO_TEST_73521}){
+ if(String(property?.hotelId)!=='73521')fail('SANDBOX_ONLY');
+ if(!int(resId))fail('RESERVATION_ID_REQUIRED');
+ const text=String(note||'').replace(/[\r\n]+/g,' | ').trim();if(!text)fail('NOTE_REQUIRED');
+ return Object.freeze({url:PREVIO_XML_ORIGIN+'/x1/hotel/reservation',hotelId:property.hotelId,
+  xml:`<?xml version="1.0"?><request><hotId>${property.hotelId}</hotId><newReservation><resId>${resId}</resId><note>${xmlText(text.slice(0,1000))}</note></newReservation></request>`});
+}
 export function buildStatusXml({resId,status,property=PREVIO_TEST_73521}){
  if(String(property?.hotelId)!=='73521')fail('SANDBOX_ONLY');
  if(!int(resId))fail('RESERVATION_ID_REQUIRED');

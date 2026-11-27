@@ -30,7 +30,7 @@ export function createVoiceTurnHandler({env=process.env,fetchImpl=fetch,now=()=>
   const capacityFn=chatOfferCapacity(env,fetchImpl);
   const offerFn=capacityFn?({facts,language})=>buildChatOffer({facts,language,capacityFn,cancellationDays:BUSINESS.bookingRules.cancellationDaysUnder15Guests}):null;
   const assistFn=chatAssistConfigured(env)?({message,language})=>askChatAssist({message,language},{env,fetchImpl}):null;
-  try{return json(200,await voiceTurn({utterances,language:lang,offerFn,assistFn,intake:env.VOICE_INTAKE==='test-only'}));}
+  try{return json(200,await voiceTurn({utterances,language:lang,offerFn,assistFn,intake:env.VOICE_INTAKE==='test-only',booked:body?.args?.booked===true||body?.booked===true}));}
   catch{return json(200,{reply:null,reason:'ENGINE_FAILED'});}
  };
 }

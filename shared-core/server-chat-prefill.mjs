@@ -19,7 +19,7 @@ export const PREFILL_OPTION_HOURS=48;
 // Owner 2026-11-26 (PERM-20261126-VOICE-OPTION): the phone assistant uses the same pre-fill with channel 'phone' – own
 // switch VOICE_INTAKE=test-only, Previo source „telefon”, its own staff note, no returning-guest check (the phone asks
 // only for the e-mail; the name is a placeholder the staff replace).
-export async function prefillChatBooking({env,fetchImpl=globalThis.fetch,tenantId,caseId,facts,name,email,phone,channel='chat',
+export async function prefillChatBooking({env,fetchImpl=globalThis.fetch,tenantId,caseId,facts,name,email,phone,channel='chat',mainNote=null,
  quoteFn=fetchPublicPriceReference,writer=undefined,unitCheckFn=undefined,historyFn=undefined,now=()=>Date.now()}={}){
  if(!['chat','phone'].includes(channel))return {status:'off'};
  if((channel==='phone'?env?.VOICE_INTAKE:env?.CHAT_PREVIO_PREFILL)!==PREFILL_SWITCH)return {status:'off'};
@@ -43,7 +43,7 @@ export async function prefillChatBooking({env,fetchImpl=globalThis.fetch,tenantI
  const values={arrival:input.arrival,departure:input.departure,adults:String(input.adults),children:String(input.children.length),child_ages:input.children.join(',')};
  try{
   const r=await w.createOption({tenantId,caseId,values,cabin:input.cabin,unit,contactName,contact,totalHuf:quote.accommodation,
-   optionExpiresUtc:new Date(now()+PREFILL_OPTION_HOURS*3600000).toISOString(),channel,note:channel==='phone'?PHONE_NOTE:prefillNote(returning,quote)});
+   optionExpiresUtc:new Date(now()+PREFILL_OPTION_HOURS*3600000).toISOString(),channel,note:channel==='phone'?PHONE_NOTE:prefillNote(returning,quote),...(mainNote?{mainNote}:{})});
   return {status:'created',unit,resId:r.resId,created:r.created,returning:returning?.status??null};
  }catch(error){return {status:'failed',reason:typeof error?.code==='string'?error.code:'WRITE'};}
 }

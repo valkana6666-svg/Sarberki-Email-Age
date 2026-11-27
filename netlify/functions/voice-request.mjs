@@ -4,10 +4,11 @@
 // (shared-core/server-intake.mjs, channel „phone”, one case per call); the 48-hour Previo TEST option uses the chat's
 // pre-fill writer and locks (shared-core/server-chat-prefill.mjs, channel „phone”). Nothing is sent to the caller.
 import {voiceAuthorized,callerUtterances} from '../../shared-core/voice-turn.mjs';
-import {voiceRequest,voiceConfirm,VOICE_INTAKE_SWITCH,PHONE_CONTACT_NAME,callerAllowed,TEST_LINE} from '../../shared-core/voice-request.mjs';
+import {voiceRequest,voiceAddTub,voiceConfirm,VOICE_INTAKE_SWITCH,PHONE_CONTACT_NAME,callerAllowed,TEST_LINE} from '../../shared-core/voice-request.mjs';
 import {createIntakeRequest} from '../../shared-core/server-intake.mjs';
 import {createSupabaseTransport} from '../../shared-core/supabase-case-repository.mjs';
 import {prefillChatBooking} from '../../shared-core/server-chat-prefill.mjs';
+import {previoBookingWriter} from '../../shared-core/server-previo-booking-sync.mjs';
 import {buildChatOffer} from '../../shared-core/server-chat-offer.mjs';
 import {chatOfferCapacity} from './chat-offer.mjs';
 import {notifyOperator} from './intake.mjs';
@@ -30,6 +31,15 @@ export function createVoiceRequestHandler({env=process.env,fetchImpl=fetch,now=(
   const utterances=callerUtterances(body);if(!utterances.length)return json(400,{error:'NO_UTTERANCE'});
   // Owner 2026-11-26: unknown caller numbers on the TEST line – nothing is saved, only the test-line sentence.
   if(!callerAllowed(env,args.caller_id)){const l=['hu','de','en','si'].includes(args.language)?args.language:'hu';return json(200,{ok:false,status:'TEST_LINE',reply:TEST_LINE[l]});}
+  // Owner 2026-11-27 (PERM-20261127-VOICE-TUB-NOTE): a hot tub request after the booking → the case's Previo option note.
+  if(args.action==='add_hot_tub'){
+   const writer=previoBookingWriter(env,fetchImpl);
+   const lang=['hu','de','en','si'].includes(args.language)?args.language:'auto';
+   const r=await voiceAddTub({utterances,email:args.email,conversationId:args.conversation_id,language:lang,
+    noteFn:writer?({caseId,arrival,departure,lines})=>writer.appendNote({tenantId:TENANT,caseId,arrival,departure,lines}):async()=>null,
+    notifyFn:extra=>notifyOperator(env,fetchImpl,'phone',extra)});
+   return json(200,r);
+  }
   // Read-back only (nothing saved, no rate count): the agent says this reply and asks the caller once.
   if(args.preview===true)return json(200,voiceConfirm({email:args.email,name:args.name,callerId:args.caller_id,phone:args.phone,language:['hu','de','en','si'].includes(args.language)?args.language:'hu'}));
   const t=now();if(t-windowStart>3600000){windowStart=t;count=0;}
@@ -43,7 +53,7 @@ export function createVoiceRequestHandler({env=process.env,fetchImpl=fetch,now=(
    const transport=createSupabaseTransport({url:TEST_PROJECT+'/',publishableKey:env.SUPABASE_PUBLISHABLE_KEY,token:login.token,fetchImpl});
    return createIntakeRequest({channel:'phone',externalId,facts,summary,transport,attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,availabilitySource:null,tenantId:TENANT});
   };
-  const prefillFn=({caseId,facts,email,phone,name})=>prefillChatBooking({env,fetchImpl,tenantId:TENANT,caseId,facts,name:name||PHONE_CONTACT_NAME,email,phone,channel:'phone'});
+  const prefillFn=({caseId,facts,email,phone,name,mainNote})=>prefillChatBooking({env,fetchImpl,tenantId:TENANT,caseId,facts,name:name||PHONE_CONTACT_NAME,email,phone,channel:'phone',mainNote});
   const notifyFn=extra=>notifyOperator(env,fetchImpl,'phone',extra);
   try{
    const r=await voiceRequest({utterances,email:args.email,name:args.name,phone:args.phone,consent:args.consent===true,conversationId:args.conversation_id,callerId:args.caller_id,language:lang,offerFn,createFn,prefillFn,notifyFn});

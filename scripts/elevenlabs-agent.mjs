@@ -20,6 +20,7 @@ const body={name:NAME,tags:['sarberki-test'],conversation_config:{
     request_body_schema:{type:'object',description:'A hívás eddigi hívói mondatai',properties:{
      caller_messages:{type:'array',description:'A hívó EDDIGI ÖSSZES mondata szó szerint, időrendben (a legutóbbi is).',items:{type:'string',description:'Egy hívói mondat szó szerint'}},
      language:{type:'string',description:'A hívó nyelve, ha egyértelmű: hu, de, en vagy si.',enum:['hu','de','en','si']},
+     booked:{type:'boolean',description:'true, ha ebben a hívásban a foglalási igény már sikeresen rögzült (a sarberki_request ok:true-t adott); egyébként false.'},
      // Real phone line only (owner 2026-11-26: the TEST line answers only the owner's test callers).
      caller_id:{type:'string',description:'',dynamic_variable:'system__caller_id'}},required:['caller_messages']}}},
    // Owner 2026-11-26 (PERM-20261126-VOICE-OPTION): the booking request with the e-mail address (voice-request).
@@ -32,6 +33,7 @@ const body={name:NAME,tags:['sarberki-test'],conversation_config:{
      name:{type:'string',description:'A hívó neve úgy, ahogy megadta és megerősítette (pl. „Kovács Anna”).'},
      email:{type:'string',description:'A hívó e-mail-címe úgy, ahogy elhangzott és megerősítette (pl. „kovacs pont anna kukac gmail pont com”).'},
      phone:{type:'string',description:'Csak ha a rendszer telefonszámot kért, vagy a hívó másik számot ad meg: a szám úgy, ahogy elhangzott (pl. „plusz harminchat húsz egy kettő…”). Ha nem akar számot adni: „nincs”. Egyébként hagyd üresen.'},
+     action:{type:'string',description:'Csak a foglalás rögzítése után, ha a hívó dézsát kér (napokra, főre): add_hot_tub. Egyébként hagyd üresen.',enum:['add_hot_tub']},
      preview:{type:'boolean',description:'true: csak visszaolvasás, semmi nem rögzül (a név és a cím első megadása után). false: rögzítés a hívó igenje után.'},
      consent:{type:'boolean',description:'true, ha a hívó igent mondott a rögzítésre ezzel a címmel; visszaolvasáskor false.'},
      conversation_id:{type:'string',description:'',dynamic_variable:'system__conversation_id'},

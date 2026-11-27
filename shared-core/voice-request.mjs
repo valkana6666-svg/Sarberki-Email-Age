@@ -7,6 +7,8 @@
 // The rest of the guest data (name, phone, address) the staff ask by e-mail and fill in Previo by hand.
 import {createHash} from 'node:crypto';
 import {voiceFacts,ACCEPT} from './voice-turn.mjs';
+import {isTubRequest,parseTubRequest,tubNoteLines,tubReply,tubPricePer24h} from './voice-tub.mjs';
+import {hotTubWished} from '../sarberki-chatbot-project/chat-view.mjs';
 import {normalizeSpoken,huNumberWords} from './voice-normalize.mjs';
 
 export const VOICE_INTAKE_SWITCH='test-only';
@@ -110,6 +112,31 @@ export function voiceExternalId(conversationId,utterances,email){
  return 'voice_h'+createHash('sha256').update(JSON.stringify([utterances,email])).digest('hex').slice(0,32);
 }
 
+// Owner 2026-11-27: the hot tub lines of a call – every tub request said (days, guests, hour) or, for a stay asked
+// „with a hot tub” without days, one „days to agree” line – in the live Previo note form.
+export function stayTubLines(utterances,facts){
+ if(!facts)return [];
+ const stay={arrival:facts.arrival,departure:facts.departure,guests:(facts.adults||0)+(facts.children||0)||null};
+ const lines=utterances.filter(isTubRequest).flatMap(u=>tubNoteLines(parseTubRequest(normalizeSpoken(u),stay)));
+ if(!lines.length&&hotTubWished(utterances))lines.push(...tubNoteLines({days:[],persons:stay.guests,hour:null,per24h:tubPricePer24h(stay.guests)}));
+ return [...new Set(lines)];
+}
+// After the booking is saved (owner 2026-11-27): a hot tub request goes into the same case's Previo option note.
+export async function voiceAddTub({utterances,email,conversationId,language='auto',clock=()=>new Date(),noteFn,notifyFn=null}){
+ const stay=stayUtterances(utterances).filter(u=>!isTubRequest(u));
+ const {facts,language:lang}=voiceFacts(stay.length?stay:utterances,{language,clock});
+ const last=[...utterances].reverse().find(isTubRequest);
+ const address=normalizeSpokenEmail(email);
+ const stayG={arrival:facts?.arrival,departure:facts?.departure,guests:facts?(facts.adults||0)+(facts.children||0)||null:null};
+ const req=facts&&last?parseTubRequest(normalizeSpoken(last),stayG):null;
+ if(!req||!address)return {ok:false,status:'TUB_UNCLEAR',reply:say('failed',lang)};
+ const externalId=voiceExternalId(conversationId,stay,address),caseId='tm-'+createHash('sha256').update('phone:'+externalId,'utf8').digest('hex').slice(0,24);
+ const lines=tubNoteLines(req);let r=null;
+ try{r=await noteFn({caseId,arrival:facts.arrival,departure:facts.departure,lines});}catch{r=null;}
+ if(notifyFn){try{await notifyFn(r?'Dézsaigény a telefonos foglaláshoz – a Previo-opció megjegyzésébe beírva.':'Dézsaigény a telefonos foglaláshoz – a Previóba NEM sikerült beírni, rögzítsd kézzel.');}catch{}}
+ const base=tubReply(req,lang);
+ return r?{ok:true,status:'TUB_NOTED',caseId,reply:base}:{ok:false,status:'TUB_NOT_SAVED',reply:base+' '+({hu:'Munkatársunk a foglalásához rögzíti.',de:'Unser Team trägt ihn bei Ihrer Buchung ein.',en:'Our team will add it to your booking.',si:'Naša ekipa jo bo dodala k rezervaciji.'}[lang]||'')};
+}
 // Pure orchestration (all I/O injected): returns {ok, reply, status, caseId?, option?}. ok:true only after a saved case.
 // The caller's number from the phone line (ElevenLabs system__caller_id on a real phone call; owner 2026-11-26: „a
 // telefonszámot nem kell elkérni”). A web/app test call or a hidden number gives none – then only the e-mail.
@@ -183,7 +210,7 @@ export function voiceConfirm({email,name,language='hu',callerId=null,phone=null}
 }
 export async function voiceRequest({utterances,email,name=null,phone:spokenNumber=null,consent,conversationId,callerId=null,language='auto',clock=()=>new Date(),
  offerFn,createFn,prefillFn=null,notifyFn=null}){
- const stay=stayUtterances(utterances);
+ const stay=stayUtterances(utterances).filter(u=>!isTubRequest(u));
  const {facts,language:lang}=voiceFacts(stay.length?stay:utterances,{language,clock});
  const address=normalizeSpokenEmail(email);
  if(!address)return {ok:false,status:'EMAIL_INVALID',reply:say('email',lang)};
@@ -193,17 +220,19 @@ export async function voiceRequest({utterances,email,name=null,phone:spokenNumbe
  if(offer?.status==='UNAVAILABLE')return {ok:false,status:'NOT_FREE',reply:say('full',lang)};
  if(offer?.status!=='AVAILABLE'||!Number.isSafeInteger(offer.total))return {ok:false,status:'CHECK_FAILED',reply:say('failed',lang)};
  const c=contactPhone({phone:spokenNumber,callerId}),phone=c.phone;
+ const tubLines=stayTubLines(utterances,facts);
  const externalId=voiceExternalId(conversationId,stay,address),guest=spokenName(name);
  const summary='✅ A hívó telefonon elfogadta az ajánlatot és kérte a foglalást. A rendszer újraellenőrzött ára: '+String(offer.total).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+' Ft.\n'+
   (c.source==='guest'?'A hívó által megadott telefonszám (visszaolvasva, megerősítve): '+phone+(c.line&&c.line!==phone?' · a hívás a(z) '+c.line+' számról jött':'')+'. A többi adatot e-mailben kérd el, és töltsd ki a Previóban.\n\n'
    :phone?'A hívó száma a telefonvonalról: '+phone+'. Telefonon csak a nevet és az e-mail-címet kértük el: a többi adatot e-mailben kérd el, és töltsd ki a Previóban.\n\n'
    :'Telefonon csak a nevet és az e-mail-címet kértük el (a hívószám nem érkezett meg): a telefonszámot és a többi adatot e-mailben kérd el, és töltsd ki a Previóban.\n\n')+
+  (tubLines.length?'Dézsaigény (telefonon, a Previo-megjegyzésbe is beírva):\n'+tubLines.map(l=>'– '+l).join('\n')+'\n\n':'')+
   'A hívó mondatai (kezelői összefoglaló):\n'+stay.map(t=>'– '+String(t).trim().replace(/\s+/g,' ').slice(0,500)).join('\n');
  let created;
  try{created=await createFn({externalId,facts:{...facts,email:address,...(phone?{phone}:{}),...(guest?{name:guest}:{}),language:lang},summary});}catch{created=null;}
  if(!created?.caseId)return {ok:false,status:'SAVE_FAILED',reply:say('failed',lang)};
  let option={status:'off'};
- if(prefillFn){try{option=await prefillFn({caseId:created.caseId,facts,email:address,phone:phone||'',name:guest});}catch{option={status:'failed'};}}
+ if(prefillFn){try{option=await prefillFn({caseId:created.caseId,facts,email:address,phone:phone||'',name:guest,...(tubLines.length?{mainNote:tubLines.join(' | ')}:{})});}catch{option={status:'failed'};}}
  const opt=option?.status==='created';
  if(notifyFn){try{await notifyFn(opt?'Csak e-mail-cím; a Previo-tesztben 48 órás opcióként előre kitöltve ('+option.unit+'. egység) – ellenőrizd, a többi adatot kérd el e-mailben.':'Csak e-mail-cím – a Previo-opció nem jött létre, kezeld a napi kezelőben.');}catch{}}
  return {ok:true,status:opt?'OPTION_CREATED':'REQUEST_SAVED',caseId:created.caseId,option:opt?{unit:option.unit}:null,callerNumber:!!c.line,phoneSource:c.source,

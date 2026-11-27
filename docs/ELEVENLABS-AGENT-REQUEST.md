@@ -16,3 +16,5 @@ update 2026-11-27a: beszédfelismerő-szótár (horgászjegy, napijegy, rekord t
 update 2026-11-27b: a cím visszaolvasását a szerver végzi (sarberki_request preview), a modell nem betűz
 
 update 2026-11-27c: telefonszám-mező (phone) a sarberki_request-ben; csak hiányzó/rejtett hívószámnál vagy másik számnál
+
+update 2026-11-27d: booked mező a sarberki_reply-ban, add_hot_tub művelet a sarberki_request-ben, prompt 12–13. pont
