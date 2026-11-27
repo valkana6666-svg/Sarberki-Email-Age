@@ -13,6 +13,7 @@ import {nextStepFor,depositNotice} from './napi-next.mjs';
 const TEST_ORIGIN='https://leafy-chimera-2403e5.netlify.app';
 // The server session states the deployment's single tenant (live store slice 2); TEST until it says otherwise.
 const KNOWN_TENANTS=['sarberki-test','sarberki-live'];
+let detailChannel=null;   // channel of the case open in the detail view (owner 2026-11-27)
 let TENANT='sarberki-test';
 const sections=Object.freeze({
  incoming:['Beérkezett foglalások','Új vendégüzenetek és feldolgozásra váró megkeresések.'],
@@ -295,6 +296,7 @@ async function openTestMailboxCase(caseId,turn,status){
  // V3-1: phone/chat requests are answered by phone (or a new e-mail), never as a Gmail reply.
  // Owner 2026-11-14: a chat/phone request with an e-mail address can get the approved letter (and voucher) by e-mail.
  const reqMail=typeof record.values?.email==='string'&&record.values.email?record.values.email:'';
+ detailChannel=record.channel;
  const chName=record.channel==='phone'?'telefon (AI-recepciós)':'chat';
  const source=record.channel==='phone'||record.channel==='chat'?'Forrás: '+chName+(reqMail?' – e-mail: '+reqMail+'; a jóváhagyott levél a „Küldés e-mailben” gombbal megy ki (új levélként).\n':' – e-mail-cím nincs: válasz visszahívással; a levél a „Jóváhagyott szöveg másolása” gombbal másolható.\n'):'';
  // Chat/phone (owner 2026-11-14): the approved letter goes out by e-mail (if given) or is copied - not 'Válasz küldése'.
@@ -489,7 +491,9 @@ async function showPrevioStatus(caseId,revision,record=null){
   if(['option','confirmed'].includes(r.state)){
    // Owner 2026-11-21 (screenshots): only what matters for a booking already in Previo – no draft, no "approve/send" texts.
    document.body?.classList?.add?.('in-previo');
-   el('detail-status').textContent='Forrás: chat. A foglalás már bent van a Previóban – ott kezeld (ellenőrzés, jóváhagyás, módosítás, lemondás, voucher).';
+   // Owner 2026-11-27 (screenshot): a phone booking was labelled „Forrás: chat” – the real channel, and a phone option is
+   // not cancelled by the system (the automatic expiry cancellation is for chat options only).
+   el('detail-status').textContent='Forrás: '+(detailChannel==='phone'?'telefon (AI-recepciós)':'chat')+'. A foglalás már bent van a Previóban – ott kezeld (ellenőrzés, jóváhagyás, módosítás, lemondás, voucher).'+(detailChannel==='phone'&&r.state==='option'?' Az opciót a rendszer nem mondja le magától: ha nem erősítitek meg, mondd le a Previóban.':'');
    el('booking-state').textContent=el('booking-state').textContent.split('\n').filter(l=>!/^🟢|^Még nincs véglegesítve|^📝 A Previo-tesztben már előre kitöltve/.test(l)).join('\n');
   }
   // Owner 2026-11-22: an expired option is cancelled by the system (or the staff cancelled it in Previo): no reply,
