@@ -1,0 +1,30 @@
+name: Phone voice-turn tricky test (Claude, text only, no request)
+# ChatGPT / owner 2026-11-27 (#9 7212441419): 100 fictional phone conversations replayed against the deployed voice-turn
+# (offer = Previo TEST read only). voice-request is never called: no request, no Previo write, no Pushover, no e-mail.
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths: [docs/VOICE-TRICKY-REQUEST.md]
+permissions:
+  contents: read
+jobs:
+  voice:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Voice-turn key from the Retell TEST tool (masked)
+        env:
+          RETELL_KEY: ${{ secrets.RETELL_CLAUDE_TEST_API_KEY }}
+        run: |
+          V=$(node -e "fetch('https://api.retellai.com/get-retell-llm/llm_bdfcae3228e04819cb2911a2807f',{headers:{Authorization:'Bearer '+process.env.RETELL_KEY}}).then(r=>r.json()).then(j=>{const t=(j.general_tools||[]).find(x=>x.name==='sarberki_reply');process.stdout.write((t&&t.headers&&t.headers['x-sarberki-voice-key'])||'')}).catch(()=>{})")
+          if [ -z "$V" ]; then echo "BLOCKED: voice key not found"; exit 1; fi
+          echo "::add-mask::$V"
+          echo "VOICE_KEY=$V" >> "$GITHUB_ENV"
+      - name: Replay the conversations
+        run: node scripts/tricky-e2e.mjs voice-live voice-tricky.json
