@@ -1,0 +1,26 @@
+name: Previo hot tub survey (Claude, read only, anonymised)
+# Owner 2026-11-27 (PERM-20261127-LIVE-TUB-READ): how the hot tub is recorded in Previo. Read only; anonymised shapes.
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths: [docs/PREVIO-TUB-SURVEY-REQUEST.md]
+permissions:
+  contents: read
+jobs:
+  survey:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Read only, live
+        env:
+          LIVE_KEY: ${{ secrets.PREVIO_LIVE_API_KEY }}
+        run: |
+          test "$GITHUB_REF" = "refs/heads/gmail-test-subject-allowlist"
+          REQ="$(grep -v '^\s*$' docs/PREVIO-TUB-SURVEY-REQUEST.md | tail -n 1)"
+          PREVIO_KEY="$LIVE_KEY" PREVIO_HOTEL=753011 node scripts/previo-tub-survey.mjs "$REQ"
