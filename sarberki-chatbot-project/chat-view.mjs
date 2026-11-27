@@ -32,7 +32,8 @@ export function withoutPhoneQuestion(text,lang){
 // question or with a wish verb ("Van dézsa? Mennyibe kerül?" is a question; "dézsát is szeretnénk" is a wish).
 const WISH=/szeretn|kérn|kérünk|bérel(?:né|nénk|ünk)|foglaln[áé]|would like|we'?d like|(?<!do you )want|möchten|hätten gern|buchen\b(?!\?)|želi|radi bi/iu; // not an infinitive question ("lehet dézsát bérelni?")
 const tubWish=t=>requestFlagsFromText(t).hotTubRequested&&(!/\?\s*$/.test(t.trim())||WISH.test(t));
-const TUB_WORD=/dézs|dezsa|hot[ -]?tub|whirlpool|badefass|badezuber|jacuzzi|masaž\p{L}*\s*kad/iu;
+// Tricky test 2026-11-27: the Slovene „brez kadi” (no tub) names the tub without „masažna”.
+const TUB_WORD=/dézs|dezsa|hot[ -]?tub|whirlpool|badefass|badezuber|jacuzzi|masaž\p{L}*\s*kad|(?<!\p{L})kad(?:i|jo|e)?(?!\p{L})/iu;
 // The guest's latest decision counts: a wish, or a refusal ("dézsát mégsem kérünk"); a mere question decides nothing.
 export function hotTubWished(messages){
  const decisive=messages.filter(t=>TUB_WORD.test(t)&&(tubWish(t)||!requestFlagsFromText(t).hotTubRequested));

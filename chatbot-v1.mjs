@@ -47,7 +47,9 @@ export function chatbotReply({message='',language='hu'}={}){
  const mentionsStay=/(?:faház|fahaz|apartman|cabin|accommodat|ferienhaus|hišk|apartma|deluxe|delux|vip|családi|family|familien|družinsk|különálló|kulonallo|csaladi|szállás|szallas|unterkunft|nastanit|(?<!\p{L})ház|wohnung|(?<!\p{L})haus|häuser|ferienhäus|apartment)/u.test(text);
  const hasStayDates=/(?:20\d{2}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}[./]\s*\d{1,2}[./](?:\s*20\d{2})?|\b(?:november|október|december|január|február|március|április|május|június|július|augusztus|szeptember|january|february|march|april|may|june|july|august|september|october|november|december)\b)/u.test(text);
  const asksBooking=/(?:foglal|reserv|buch|book|rezerv|potrditev|confirmation)/u.test(text);
- const mentionsHotTub=/(?:dézsa|dezsa|hot tub|badezuber|masažna kad|masazna kad)/u.test(text);
+ // Tricky test 2026-11-27: „Actually, no hot tub. What's the total now?” is a stay question, not a hot tub question.
+ const tubRefused=/(?:\bno\s+hot\s*tub|without\s+(?:the\s+|a\s+)?hot\s*tub|kein(?:en)?\s+badezuber|ohne\s+badezuber|brez\s+(?:\p{L}+\s+)?kad|(?:dézsa|dézsát?)\s+(?:mégse|nem\s+kell|nem\s+kér)|mégse(?:m)?\s+(?:kell\s+|kérünk\s+)?dézs)/u.test(text);
+ const mentionsHotTub=!tubRefused&&/(?:dézsa|dezsa|hot tub|badezuber|masažna kad|masazna kad)/u.test(text);
  if(!text.trim())intent='welcome';
  // Owner 2026-11-27 (question bank): the stay's capacity, check-in/out, deposit and cancellation are answered by their
  // own fixed facts before the general booking/cabin answers (they all contain 'foglal' / 'ház' words).
@@ -59,7 +61,7 @@ export function chatbotReply({message='',language='hu'}={}){
  else if(asksAvailability||(mentionsStay&&(hasStayDates||asksBooking)))intent='availability';
  // Owner chat test 2026-11-27: „Mennyibe kerül egy éjszakára a delux fahaz?” got the list of cabin types – a price
  // question about a stay (no dates yet) asks for the dates and guests to give the exact price.
- else if((mentionsStay&&/mennyi|(?<!\p{L})(?:ár|ara)(?:a|at|ak|ai|on)?(?!\p{L})|kerül|kerul|how\s+much|price|cost|preis|kostet|kosten|teuer|expensive|koliko|cen[aoie](?!\p{L})|stane|drag/u.test(text)||/(?<!\p{L})(?:árak|árai|áraitok|árlista|arak)(?!\p{L})|prices|price\s+list|preise|preisliste|cene|cenik/u.test(text))&&!/jegy|ticket|karte|karta|dézsa|dezsa|horgász|horgasz/u.test(text))intent='price';
+ else if((mentionsStay&&/mennyi|(?<!\p{L})(?:ár|ara)(?:a|at|ak|ai|on)?(?!\p{L})|kerül|kerul|how\s+much|price|cost|preis|kostet|kosten(?!los)|teuer|expensive|koliko|cen[aoie](?!\p{L})|stane|drag/u.test(text)||/(?<!\p{L})(?:árak|árai|áraitok|árlista|arak)(?!\p{L})|prices|price\s+list|preise|preisliste|cene|cenik/u.test(text))&&!/jegy|ticket|karte|karta|dézsa|dezsa|horgász|horgasz/u.test(text))intent='price';
  else if(mentionsHotTub)intent='hotTub';
  else if(WORDS[lang]?.pet&&/(?:kutya|kutyá|macska|háziállat|haziallat|állat\b|\bdog|\bcat\b|\bpets?\b|hund|katze|haustier|pes\b|psa\b|mačk|hišn\w* ljubljen)/u.test(text))intent='pet';
  else if(/horgász|horgasz|angeln|fishing|ribolov|ribišk/u.test(text))intent='fishing';

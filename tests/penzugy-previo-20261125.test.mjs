@@ -108,3 +108,14 @@ test('outside bookings: no invented deadline – never overdue/soon, even long a
  assert.equal(financeGroup(rows.find(r=>r.caseId==='tm-aaaaaaaaaaaa0001'),NOW),'overdue','own case: its own deadline');
  assert.equal(financeGroup({caseId:'x',summary:{booking:'finalized',finance:{amount:1,deadlineUtc:new Date(NOW+47*3600000).toISOString()}}},NOW),'soon');
 });
+
+test('owner 2026-11-27: an outside booking still an option after its Previo option expiry gets a warning (no deadline invented)',async()=>{
+ const {previoOptionExpired}=await import('../napi-kezelo/penzugy-view.mjs');
+ const items=financeItems(parseFinanceReservations(XML)),rows=mergeFinance([],items),opt=rows.find(r=>r.caseId==='p-109');
+ const before=Date.parse('2026-11-27T08:00:00Z'),after=Date.parse('2026-11-27T09:30:00Z');   // option ends 10:00 Budapest = 09:00Z
+ assert.equal(previoOptionExpired(opt,before),false);assert.equal(previoOptionExpired(opt,after),true);
+ assert.ok(financeRowText(opt,after).lines.some(l=>l.startsWith('⚠️ Opció lejárt (2026-11-27 10:00)')));
+ assert.ok(!financeRowText(opt,before).lines.some(l=>l.includes('Opció lejárt')));
+ assert.equal(financeGroup(opt,after),'nopay','still not an overdue deposit');
+ assert.equal(previoOptionExpired(rows.find(r=>r.caseId==='p-102'),after),false,'a confirmed booking never');
+});

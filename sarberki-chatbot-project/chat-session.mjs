@@ -12,8 +12,8 @@ const SHORT_REPLY={
   en:'Of course, a member of our team will be glad to help. Please leave your phone number or e-mail address and we will get in touch.',si:'Seveda, naša ekipa vam z veseljem pomaga. Prosimo, pustite telefonsko številko ali e-naslov in vam se oglasimo.'},
  tubOff:{hu:'Rendben, a dézsát nem számoljuk bele.',de:'In Ordnung, dann ohne Badezuber.',en:'Alright, no hot tub then.',si:'V redu, brez masažne kadi.'}
 };
-const TUB=/dézs|dezs|hot[ -]?tub|badezuber|badefass|whirlpool|jacuzzi|masažn\p{L}*\s*kad|masazn\p{L}*\s*kad/iu;
-const TUB_OFF=/mégsem|megsem|mégse|megse|nem\s+(?:kér|ker|kell|szeretn)|doch\s+nicht|nicht\s+(?:mehr|nötig)|kein(?:en)?\s+(?:badezuber|badefass|whirlpool)|after all|don'?t\s+(?:need|want)|no\s+hot\s*tub|ne\s+potrebujemo|vseeno\s+ne|ne\s+želimo/iu;
+const TUB=/dézs|dezs|hot[ -]?tub|badezuber|badefass|whirlpool|jacuzzi|masažn\p{L}*\s*kad|masazn\p{L}*\s*kad|(?<!\p{L})kad(?:i|jo|e)?(?!\p{L})/iu;
+const TUB_OFF=/mégsem|megsem|mégse|megse|nem\s+(?:kér|ker|kell|szeretn)|doch\s+nicht|nicht\s+(?:mehr|nötig)|kein(?:en)?\s+(?:badezuber|badefass|whirlpool)|after all|don'?t\s+(?:need|want)|no\s+hot\s*tub|ne\s+potrebujemo|vseeno\s+ne|ne\s+želimo|brez\s+(?:\p{L}+\s+)?kad|ohne\s+(?:\p{L}+\s+)?(?:badezuber|badefass|whirlpool)|without\s+(?:the\s+|a\s+)?hot\s*tub/iu;
 const HANDOVER=/munkatárs|munkatars|élő\s+(?:személy|ember)|emberrel|visszahív|visszahiv|mitarbeiter|rückruf|ruckruf|zurückruf|real\s+person|human|call\s+me\s+back|someone\s+call|talk\s+to\s+(?:a|someone|staff)|osebj|povratni\s+klic|pokličite/iu;
 const THANKS=/^(?:[\p{L}]+[,!.]?\s+)?(?:köszi|köszönöm|koszonom|kösz|kosz|rendben|szuper|oké|ok(?:é|e)?|jó\s+lesz|mehet|danke|alles\s+klar|passt|super|thanks|thank\s+you|great|cool|sounds\s+good|perfect|hvala|velja|v\s+redu)(?![\p{L}])/iu;
 // A question about THIS stay (price, total, availability, deposit) stays a booking turn: the page shows the checked
@@ -26,20 +26,71 @@ export function shortTurnKind(message){
  if(THANKS.test(t)&&!/\?/.test(t)&&t.split(/\s+/).length<=8)return 'thanks';
  return null;
 }
+
+// Tricky test 2026-11-27 (#9 7212441419): a stay given in pieces – „VIP június 24-től” → „27-ig maradnánk” → „hárman”
+// → „bocs, mégis négyen” – and an explicit language request („Können Sie auf Deutsch antworten?”).
+const MONTHS=[['január','januar','january','januarja','jan'],['február','februar','february','februarja','feb'],['március','marec','march','marca','märz','marz','mar'],['április','april','aprila','apr'],
+ ['május','mai','may','maj','maja'],['június','juni','june','junij','junija','jun'],['július','juli','july','julij','julija','jul'],['augusztus','august','avgust','avgusta','aug'],
+ ['szeptember','september','septembra','sep'],['október','oktober','october','oktobra','okt','oct'],['november','novembra','nov'],['december','dezember','decembra','dez','dec']];
+const monthIndex=w=>{const x=String(w||'').toLowerCase().normalize('NFC');const f=x.normalize('NFD').replace(/[̀-ͯ]/g,'');return MONTHS.findIndex(ns=>ns.some(n=>n===x||n.normalize('NFD').replace(/[̀-ͯ]/g,'')===f));};
+const iso=(y,m,d)=>`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+function arrivalOnly(text,now){
+ const t=String(text);let m,y,mo,d;
+ if((m=t.match(/(?:(20\d\d)\.?\s*)?(\p{L}+)\s+(\d{1,2})\.?\s*-?\s*(?:t[óő]l|é?t[óő]l|jétől|ától|étől)/u))){y=m[1];mo=monthIndex(m[2]);d=+m[3];}
+ else if((m=t.match(/\bab\s+(?:dem\s+)?(\d{1,2})\.\s*(\p{L}+)(?:\s+(20\d\d))?/u))){d=+m[1];mo=monthIndex(m[2]);y=m[3];}
+ else if((m=t.match(/\bfrom\s+(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+(\p{L}+)(?:,?\s+(20\d\d))?/iu))){d=+m[1];mo=monthIndex(m[2]);y=m[3];}
+ else if((m=t.match(/\bfrom\s+(\p{L}+)\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s+(20\d\d))?/iu))){mo=monthIndex(m[1]);d=+m[2];y=m[3];}
+ else if((m=t.match(/(?<!\p{L})od\s+(\d{1,2})\.\s*(\p{L}+)(?:\s+(20\d\d))?/iu))){d=+m[1];mo=monthIndex(m[2]);y=m[3];}
+ if(!(mo>=0)||!(d>=1&&d<=31))return null;
+ const year=y?+y:(()=>{const n=clockYear(now);const c=iso(n,mo,d);return c<now.toISOString().slice(0,10)?n+1:n;})();
+ return {year,month:mo,day:d};
+}
+const clockYear=now=>now.getUTCFullYear();
+function endDayOnly(text){
+ const t=String(text);let m;
+ if((m=t.match(/(?<!\d)(\d{1,2})\.?\s*-?\s*(?:ig|éig|áig)(?!\p{L})/u))||(m=t.match(/\bbis\s+(?:zum\s+)?(\d{1,2})\./iu))||(m=t.match(/\b(?:until|till)\s+(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?(?!\d)/iu))||(m=t.match(/\bto\s+(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)\b/iu))||(m=t.match(/(?<!\p{L})do\s+(\d{1,2})\.?(?!\d)/iu)))return +m[1];
+ return null;
+}
+const CORRECTION=/mégis|inkább|bocs|bocsánat|elnézést|doch|eigentlich|entschuldigung|actually|sorry|rather|raje|pravzaprav|oprostite/iu;
+const COUNT_WORDS={egy:1,ketten:2,kettő:2,két:2,hárman:3,három:3,négyen:4,négy:4,öten:5,öt:5,hatan:6,hat:6,heten:7,hét:7,nyolcan:8,nyolc:8,
+ eins:1,zwei:2,drei:3,vier:4,fünf:5,sechs:6,sieben:7,acht:8,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,
+ ena:1,dva:2,trije:3,tri:3,štirje:4,štiri:4,pet:5,šest:6,sedem:7,osem:8};
+function correctedCount(text){
+ if(!CORRECTION.test(text))return null;
+ const d=String(text).match(/(?<!\d)(\d{1,2})(?!\d)/);if(d)return +d[1];
+ for(const w of String(text).toLowerCase().split(/[^\p{L}]+/u))if(COUNT_WORDS[w])return COUNT_WORDS[w];
+ return null;
+}
+const LANG_REQUEST=[[/(?:auf|in)\s+deutsch|deutsch\s+bitte|németül|in\s+german|v\s+nemščini/iu,'de'],[/in\s+english|english\s+please|angolul|auf\s+englisch|v\s+angleščini/iu,'en'],
+ [/magyarul|in\s+hungarian|auf\s+ungarisch|v\s+madžarščini/iu,'hu'],[/v\s+slovenščini|slovensko|in\s+slovenian|auf\s+slowenisch|szlovénül/iu,'si']];
 // Explicit in-memory conversation, no cross-session or browser storage. Each
 // new turn invalidates external evidence; facts never imply verified capacity.
 export function createChatInquirySession({language='auto',clock=()=>new Date()}={}){
  const mode=value=>value==='sl'?'si':['auto','hu','de','en','si'].includes(value)?value:'auto';
  let languageMode=mode(language);
  language=languageMode==='auto'?'hu':languageMode;
- let facts={},early={},bookingContext=false,turns=0,lastDecision=null,lastTurn=null;
+ let facts={},early={},bookingContext=false,turns=0,lastDecision=null,lastTurn=null,pendingArrival=null;
  return Object.freeze({
   get language(){return language;},
   get languageMode(){return languageMode;},
   setLanguage(value){languageMode=mode(value);if(languageMode!=='auto')language=languageMode;},
-  reset(){facts={};early={};bookingContext=false;turns=0;lastDecision=null;lastTurn=null;language=languageMode==='auto'?'hu':languageMode;},
+  reset(){facts={};early={};bookingContext=false;turns=0;lastDecision=null;lastTurn=null;pendingArrival=null;language=languageMode==='auto'?'hu':languageMode;},
   reply(message,{language:nextLanguage}={}){
    if(typeof message!=='string'||message.length>1000||++turns>100)throw Error('CHAT_INPUT_LIMIT');
+   // An explicit request for another language switches at once (auto mode only).
+   if(languageMode==='auto'){const req=LANG_REQUEST.find(([re])=>re.test(message));if(req)language=req[1],languageMode='auto';}
+   if(message.trim()){const now0=clock(),probe0=normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now:now0}).normalized;
+    if(!probe0.dates){
+     const end=pendingArrival?endDayOnly(message):null;
+     if(pendingArrival&&end){
+      const a=pendingArrival,depMonth=end>a.day?a.month:(a.month+1)%12,depYear=end>a.day?a.year:(a.month===11?a.year+1:a.year);
+      message=message+' '+iso(a.year,a.month,a.day)+' – '+iso(depYear,depMonth,end);pendingArrival=null;
+     }else{const arr=arrivalOnly(message,now0);if(arr)pendingArrival=arr;}
+    }else pendingArrival=null;
+    // „Bocs, mégis négyen” after a party size: the corrected number of adults (children are kept as given).
+    const n=correctedCount(message);
+    if(n&&Number.isInteger(facts.adults)&&!Number.isInteger(probe0.adults)&&!probe0.dates)message=message+' '+n+' felnőtt';
+   }
    if(nextLanguage!==undefined){languageMode=mode(nextLanguage);if(languageMode!=='auto')language=languageMode;}
    if(languageMode==='auto'){const detected=languageFromText(message,{conservative:turns>1});if(detected!=='unknown')language=detected;}
    const now=clock(),faq=chatbotReply({message,language});

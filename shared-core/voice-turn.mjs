@@ -98,6 +98,8 @@ const SIDE_TOPIC=/horgász|horgasz|jegy|rekord|(?<!\p{L})t[óo](?:ra|n|ba|hoz|n�
 const STAY_WORDS=/szállás|szallas|(?<!\p{L})(?:fa)?ház(?:at|ért|ra)?(?!\p{L})|faház|unterkunft|haus|accommodation|cabin|stay|nastanit|hišk|hisk/iu;
 function stayQuestion(utterances,last){
  if(!STAY_ASK.test(last))return false;
+ // „Actually, no hot tub. What's the total now?” – taking back the tub and asking the total is about the stay.
+ if(/\bno\s+hot\s*tub|without\s+(?:the\s+|a\s+)?hot\s*tub|kein(?:en)?\s+badezuber|ohne\s+badezuber|brez\s+(?:\p{L}+\s+)?kad|mégse\p{L}*[^.?!]{0,20}dézs|dézs\p{L}*[^.?!]{0,20}(?:mégse|nem\s+kell)/iu.test(last))return true;
  if(STAY_WORDS.test(last))return true;
  if(SIDE_TOPIC.test(last))return false;
  const short=String(utterances.at(-1)).trim().split(/\s+/).length<=4;

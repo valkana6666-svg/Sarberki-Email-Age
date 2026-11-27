@@ -86,6 +86,12 @@ export function paymentText(pay){
 export const huf=n=>Number.isSafeInteger(n)?String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+' Ft':'összeg ismeretlen';
 const when=iso=>new Date(iso).toLocaleString('hu-HU',{timeZone:'Europe/Budapest',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
 const day=d=>d.replaceAll('-','. ')+'.';
+// Owner 2026-11-27: an outside booking still an OPTION in Previo after its option expiry gets a warning (Previo's own
+// optionExpiration, hotel-local time) – no deposit deadline is invented and nothing is sent; the staff decide.
+const hotelStamp=ms=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Budapest',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date(ms)).map(x=>[x.type,x.value]));return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}`;};
+export function previoOptionExpired(row,now=Date.now()){
+ const p=row?.previo;return !!(row?.kind==='previo'&&p?.state==='option'&&/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(p.optionExpiration||'')&&p.optionExpiration<hotelStamp(now));
+}
 export function financeRowText(row,now=Date.now()){
  const s=row.summary||{},f=s.finance||{},g=financeGroup(row,now);
  const src=(SOURCES[row.source]||SOURCES.own)+(row.channel?' – '+row.channel:'');
@@ -93,6 +99,7 @@ export function financeRowText(row,now=Date.now()){
   const p=row.previo,title=[p.voucher?'Previo '+p.voucher:'Previo-foglalás',s.unit,s.arrival&&s.departure?day(s.arrival)+' – '+day(s.departure):null].filter(Boolean).join(' · ');
   const lines=['Forrás: '+src,'Previo-állapot: '+(PREVIO_STATE_HU[p.state]||'egyéb')+(p.rooms>1?` · ${p.rooms} egység`:'')+(p.optionExpiration?' · opció lejár: '+p.optionExpiration:''),
    'Foglalás összege (Previo): '+(Number.isSafeInteger(p.price)?huf(p.price):'ismeretlen')+(p.currency&&p.currency!=='HUF'?' '+p.currency:'')];
+  if(previoOptionExpired(row,now))lines.push('⚠️ Opció lejárt ('+p.optionExpiration.slice(0,16)+') – a Previóban még opció: ellenőrizd, és erősítsd meg vagy mondd le');
   if(g!=='cancelled')lines.push(paymentText(p.payment));
   return {title,lines,group:g};
  }
