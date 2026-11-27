@@ -8,6 +8,7 @@
 // the send is also claimed atomically first: one approved draft -> at most one Gmail send; a refused send
 // (4xx) is released for a new attempt, an unknown outcome (timeout/5xx) is never retried automatically.
 import {createHash} from 'node:crypto';
+const CONFIRMED_WORDING=/Foglalását megerősítettük|Buchung mit den folgenden Angaben bestätigt|We have confirmed your booking|rezervacijo smo potrdili/;
 import {TEST_GMAIL_ACCOUNT} from '../gmail-policy.mjs';
 import {letterHtml} from './letter-html.mjs';
 
@@ -39,6 +40,10 @@ export function approvedTestMailboxReply(record){
   const subject=latest?.depositReminder===true?(latest.reminderKind==='final'
     ?({de:'Sárberki Horgásztó – Anzahlungsfrist heute',en:'Sárberki Horgásztó – deposit due today',si:'Sárberki Horgásztó – rok za predplačilo danes'}[lang]||'Sárberki Horgásztó – ma lejár a foglaló határideje')
     :({de:'Sárberki Horgásztó – Erinnerung: Anzahlung',en:'Sárberki Horgásztó – reminder: deposit',si:'Sárberki Horgásztó – opomnik: predplačilo'}[lang]||'Sárberki Horgásztó – emlékeztető: foglaló'))
+   // Owner 2026-11-27: the preliminary letter (Previo still an option: „a foglaló beérkezése után válik véglegessé”) and
+   // the final one (confirmed in Previo: „Foglalását megerősítettük”) say which they are.
+   :booked&&latest?.confirmation===true&&CONFIRMED_WORDING.test(latest.text)?({de:'Sárberki Horgásztó – Buchung bestätigt',en:'Sárberki Horgásztó – booking confirmed',si:'Sárberki Horgásztó – rezervacija potrjena'}[lang]||'Sárberki Horgásztó – foglalása véglegesítve')
+   :booked&&latest?.confirmation===true?({de:'Sárberki Horgásztó – Buchung erfasst (vorläufige Bestätigung)',en:'Sárberki Horgásztó – booking recorded (preliminary confirmation)',si:'Sárberki Horgásztó – rezervacija zabeležena (predhodna potrditev)'}[lang]||'Sárberki Horgásztó – foglalását rögzítettük (előzetes visszaigazolás)')
    :booked?({de:'Sárberki Horgásztó – Buchungsbestätigung',en:'Sárberki Horgásztó – booking confirmation',si:'Sárberki Horgásztó – potrditev rezervacije'}[lang]||'Sárberki Horgásztó – foglalása visszaigazolva')
    :({de:'Sárberki Horgásztó – Ihre Anfrage',en:'Sárberki Horgásztó – your request',si:'Sárberki Horgásztó – vaše povpraševanje'}[lang]||'Sárberki Horgásztó – foglalási igénye');
   return {mode:'new',recipient,text:latest.text,threadId:null,inReplyTo:null,subject,marker:record.caseId+':'+sha(latest.text),draftHash:sha(latest.text)};
