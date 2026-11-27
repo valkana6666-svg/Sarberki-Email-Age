@@ -15,7 +15,7 @@ export const GROUP_ORDER=Object.freeze(['overdue','soon','waiting','received','n
 // or entered in the daily view); external = Previo names a sales partner; unknown = Previo-only, no partner – the
 // origin is NOT inferred from the mere absence of a local case.
 export const SOURCES=Object.freeze({own:'Saját rendszer',external:'Rendszeren kívüli',unknown:'Ismeretlen eredet'});
-const OWN_CHANNEL={chat:'chatbot',email:'e-mail',phone:'telefon (napi kezelőben rögzítve)'};
+const OWN_CHANNEL={chat:'chatbot',email:'e-mail',phone:'telefon (AI-recepciós)'}; // owner 2026-11-27: the phone channel is the AI receptionist
 const PREVIO_STATE_HU={option:'opció',confirmed:'megerősítve',checked_in:'bejelentkezett',waiting:'várólista',cancelled:'lemondva',no_show:'nem jelent meg',checked_out:'kijelentkezett',other:'egyéb'};
 
 // Pure: our cases + Previo bookings → one list, one item per booking. A Previo booking that is one of our cases
@@ -29,7 +29,10 @@ export function mergeFinance(rows,previoItems){
  for(const it of Array.isArray(previoItems)?previoItems:[]){
   const hit=it.resIds.map(id=>byRes.get(id)).find(Boolean);
   if(hit){const o=index.get(hit.caseId);o.previoState=it.state;continue;}
-  out.push({caseId:it.key,kind:'previo',source:it.source.group==='external'?'external':'unknown',channel:it.source.channel,previo:it,
+  // Owner 2026-11-27: an SC-… booking number is our own system's (chat/phone pre-fill, e-mail one-click) even before the
+  // daily view finalizes it – never „Ismeretlen eredet”.
+  const own=/^SC-[0-9A-F]{16}$/.test(it.voucher||'');
+  out.push({caseId:it.key,kind:'previo',source:own?'own':it.source.group==='external'?'external':'unknown',channel:own?'saját foglalás, a napi kezelőben még nincs véglegesítve':it.source.channel,previo:it,
    summary:{name:null,unit:it.unit||it.house,arrival:it.from,departure:it.to,booking:it.state==='cancelled'?'cancelled':'previo',
     finance:{amount:null,deadlineUtc:null,receivedOn:null,reference:it.voucher,reminders:{}}}});
  }
@@ -90,7 +93,8 @@ const day=d=>d.replaceAll('-','. ')+'.';
 // optionExpiration, hotel-local time) – no deposit deadline is invented and nothing is sent; the staff decide.
 const hotelStamp=ms=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Budapest',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date(ms)).map(x=>[x.type,x.value]));return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}`;};
 export function previoOptionExpired(row,now=Date.now()){
- const p=row?.previo;return !!(row?.kind==='previo'&&p?.state==='option'&&/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(p.optionExpiration||'')&&p.optionExpiration<hotelStamp(now));
+ // Previo sends „2026-11-19T10:47:41” (with T) – the finance read 11-27 showed no warning on three expired options.
+ const p=row?.previo,exp=String(p?.optionExpiration||'').replace('T',' ');return !!(row?.kind==='previo'&&p?.state==='option'&&/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(exp)&&exp<hotelStamp(now));
 }
 export function financeRowText(row,now=Date.now()){
  const s=row.summary||{},f=s.finance||{},g=financeGroup(row,now);

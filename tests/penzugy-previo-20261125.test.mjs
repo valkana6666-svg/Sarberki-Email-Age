@@ -119,3 +119,16 @@ test('owner 2026-11-27: an outside booking still an option after its Previo opti
  assert.equal(financeGroup(opt,after),'nopay','still not an overdue deposit');
  assert.equal(previoOptionExpired(rows.find(r=>r.caseId==='p-102'),after),false,'a confirmed booking never');
 });
+
+test('owner finance read 11-27: Previo option expiry with „T”, SC-… bookings are our own, phone = AI receptionist',async()=>{
+ const {mergeFinance,previoOptionExpired}=await import('../napi-kezelo/penzugy-view.mjs');
+ const item=(key,voucher,state,opt)=>({key,resIds:[Number(key.slice(2))],voucher,state,rooms:1,from:'2027-06-10',to:'2027-06-13',price:75300,currency:'HUF',house:'2 fős apartman',unit:'7/A',optionExpiration:opt,created:'2026-11-09',payment:null,source:{group:'unknown',channel:null}});
+ const rows=mergeFinance([{caseId:'tm-aaaaaaaaaaaaaaaaaaaaaaaa',kind:'test-mailbox',summary:{channel:'phone',booking:'finalized',finance:{reference:'V2-9',amount:1}}}],
+  [item('p-501','20260002','option','2026-11-19T10:47:41'),item('p-502','SC-7DF523BC703266E5','option','2026-11-29T14:54:19')]);
+ const by=Object.fromEntries(rows.map(r=>[r.caseId,r]));
+ assert.equal(previoOptionExpired(by['p-501'],Date.parse('2026-11-27T15:00:00Z')),true);
+ assert.equal(previoOptionExpired(by['p-502'],Date.parse('2026-11-27T15:00:00Z')),false);
+ assert.equal(by['p-502'].source,'own');assert.match(by['p-502'].channel,/még nincs véglegesítve/);
+ assert.equal(by['p-501'].source,'unknown');
+ assert.equal(by['tm-aaaaaaaaaaaaaaaaaaaaaaaa'].channel,'telefon (AI-recepciós)');
+});
