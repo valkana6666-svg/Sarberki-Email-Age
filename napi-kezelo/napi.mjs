@@ -513,25 +513,32 @@ async function showPrevioStatus(caseId,revision,record=null){
     el('next-result').textContent='';el('next-text').textContent='❌ A Previóban lemondva – a ház újra szabad. Ha a vendég mégis kéri, új foglalás kell (chat vagy e-mail).';}
    return;
   }
-  if(['option','confirmed'].includes(r.state)&&nextCase?.caseId===caseId&&!['handoff','deposit','reminder'].includes(nextCase.step?.kind)){
+  // Owner 2026-11-27: after a preliminary letter, the Previo confirmation brings the final letter first (then the deposit step).
+  const finalDue=r.state==='confirmed'&&record?.booking?.status==='finalized'&&record?.booking?.letterKind==='preliminary';
+  if(['option','confirmed'].includes(r.state)&&nextCase?.caseId===caseId&&(finalDue||!['handoff','deposit','reminder'].includes(nextCase.step?.kind))){
    if(nextTimer){clearInterval(nextTimer);nextTimer=null;}el('next-result').textContent=''; // a started preview is not needed any more
    nextCase={...nextCase,step:{kind:'handoff',label:null,ask:null}};el('next-step').hidden=false;el('next-go').hidden=true;el('next-yes').hidden=true;el('next-no').hidden=true;
    const finalized=['finalized','deposit_received'].includes(record?.booking?.status);
    const mail=typeof record?.values?.email==='string'&&record.values.email.length>0;
    // Owner 2026-11-21: after the staff confirmed in Previo, the guest always gets OUR confirmation letter (one click).
-   if(r.state==='confirmed'&&!finalized&&mail&&record?.canOneClick===true){
-    nextCase={...nextCase,step:{kind:'previoLetter',label:'Visszaigazoló levél küldése',ask:'Elküldöd a visszaigazoló levelet a vendégnek a Previóban megerősített adatokkal (ház, dátum, ár, foglaló)?'}};
-    el('next-go').textContent='Visszaigazoló levél küldése';el('next-go').hidden=false;el('next-go').disabled=false;
-    el('next-text').textContent='✅ A Previóban megerősítve. Most küldd el a vendégnek a visszaigazoló levelet.';
-   }else if(r.state==='option'&&!finalized&&mail&&record?.canOneClick===true){
-    // Owner 2026-11-27: the letter can go out right away, without the Previo confirmation.
-    nextCase={...nextCase,step:{kind:'previoLetter',sendNow:true,label:'Visszaigazoló levél küldése most',ask:'Elküldöd MOST a visszaigazoló levelet a vendégnek (ház, dátum, ár, foglaló és határideje), a Previo-megerősítés nélkül? A Previóban a foglalás opció marad.'}};
-    el('next-go').textContent='Visszaigazoló levél küldése most';el('next-go').hidden=false;el('next-go').disabled=false;
-    el('next-text').textContent='📝 Ez a foglalás bent van a Previóban (opció). A visszaigazoló levelet már most elküldheted a vendégnek – nem kell megvárni a Previo-megerősítést. (Vagy állítsd a Previóban „megerősítve”-re, és utána küldd.)';
-   }else el('next-text').textContent=r.state==='option'
-    ?(finalized?'✅ A visszaigazoló levél elment; a Previóban a foglalás még opció – a foglaló beérkezésekor erősítsd meg (vagy itt: „Foglaló beérkezett”).'
+   // Owner 2026-11-27: two letters – an optional PRELIMINARY one while Previo shows an option, and the FINAL one once
+   // the option is switched to a confirmed booking in Previo (also after a preliminary letter).
+   const kindSent=record?.booking?.letterKind||null,can=mail&&record?.canOneClick===true;
+   const FINAL_LABEL='Véglegesített foglalás visszaigazolása e-mailben';
+   const offer=(step,text)=>{nextCase={...nextCase,step};el('next-go').textContent=step.label;el('next-go').hidden=false;el('next-go').disabled=false;el('next-text').textContent=text;};
+   if(r.state==='confirmed'&&!finalized&&can)
+    offer({kind:'previoLetter',label:FINAL_LABEL,ask:'Elküldöd a vendégnek a végleges visszaigazolást a Previóban véglegesített adatokkal (ház, dátum, ár, foglaló)?'},
+     '✅ A Previóban az opció véglegesített foglalásra váltva. Küldd el a vendégnek a végleges visszaigazolást e-mailben.');
+   else if(r.state==='confirmed'&&record?.booking?.status==='finalized'&&kindSent==='preliminary'&&can)
+    offer({kind:'previoLetter',final:true,label:FINAL_LABEL,ask:'Az előzetes visszaigazolás már kiment. Elküldöd most a végleges visszaigazolást (ugyanaz a foglalási szám, ár és foglaló-határidő)?'},
+     '✅ A Previóban az opció véglegesített foglalásra váltva (az előzetes visszaigazolás már kiment). Küldd el a végleges visszaigazolást e-mailben.');
+   else if(r.state==='option'&&!finalized&&can)
+    offer({kind:'previoLetter',sendNow:true,label:'Előzetes visszaigazolás küldése',ask:'Elküldöd MOST a vendégnek az előzetes visszaigazolást (ház, dátum, ár, foglaló és határideje)? A levél szerint a foglalás a foglaló beérkezése után válik véglegessé; a Previóban opció marad.'},
+     '📝 A foglalás a Previóban opció (még nem végleges). Ha szeretnéd, már most küldhetsz előzetes visszaigazolást: a vendég megtudja, hogy rögzítettük a foglalását. Nem kötelező – ha a Previóban véglegesítitek („megerősítve”), utána itt a végleges visszaigazolás küldhető.');
+   else el('next-text').textContent=r.state==='option'
+    ?(finalized?'📨 Az előzetes visszaigazolás elment. A foglalás a Previóban még opció – ha véglegesítitek („megerősítve”), itt küldheted a végleges visszaigazolást.'
      :'📝 Ez a foglalás már bent van a Previóban (opció). Ellenőrizd a Previóban, és állítsd „megerősítve”-re – utána itt elküldheted a vendégnek a visszaigazoló levelet.')
-    :finalized?'✅ A Previóban megerősítve, a visszaigazolás rögzítve. Itt nincs több teendő.':'✅ A Previóban megerősítve.'+(mail?'':' (Nincs e-mail-cím – értesítsd telefonon.)');
+    :finalized?'✅ Véglegesített foglalás, a visszaigazolás elküldve. Itt nincs több teendő.':'✅ A Previóban véglegesítve.'+(mail?'':' (Nincs e-mail-cím – értesítsd telefonon.)');
   }
  }catch{}
 }
@@ -935,14 +942,15 @@ el('next-yes').addEventListener('click',()=>{
    if(nextCase!==n||!authenticated)return fail('CHANGED');
    try{
     el('next-result').textContent='Visszaigazolás rögzítése (Previo-adatokkal)…';
-    const r=await request({tenantId:TENANT,caseId:n.caseId,expectedRevision:n.revision,action:'test-mailbox-previo-confirmed',letterConfirmed:true,...(n.step.sendNow?{sendNow:true}:{})});
+    const r=await request(n.step.final?{tenantId:TENANT,caseId:n.caseId,expectedRevision:n.revision,action:'test-mailbox-final-letter',finalLetterConfirmed:true}
+     :{tenantId:TENANT,caseId:n.caseId,expectedRevision:n.revision,action:'test-mailbox-previo-confirmed',letterConfirmed:true,...(n.step.sendNow?{sendNow:true}:{})});
     if(r?.caseId!==n.caseId)throw Error('INVALID_DATA');saved=true;
     if(r.approved!==true||r.approval!=='approved_internal')return fail('NOT_APPROVED');
     el('next-result').textContent='Levél küldése…';
     const m=await request({tenantId:TENANT,caseId:n.caseId,action:'test-mailbox-send',expectedRevision:r.revision},'POST',{'X-Sarberki-Gmail-Token':token});
     if(m?.caseId!==n.caseId||!['sent','already_sent'].includes(m.status))throw Error('INVALID_DATA');
     actionBusy=false;rows=[];listLoaded=false;updateCounts();el('case-list').replaceChildren();const turn=epoch;
-    const done='✅ A visszaigazoló levél elküldve a vendégnek.'+(r.optionExpiry==='extended'?' A Previo-opció lejárata a foglaló határidejére módosult.':r.optionExpiry==='manual'?' FIGYELEM: a Previóban az opció lejárata nem változott (48 óra) – hosszabbítsd meg a foglaló határidejéig, vagy erősítsd meg.':r.optionExpiry==='unverified'?' FIGYELEM: a Previo-opció lejáratát nem sikerült igazoltan módosítani – nézd meg a Previóban.':'');
+    const done=(n.step.final?'✅ A végleges visszaigazolás elküldve a vendégnek.':n.step.sendNow?'✅ Az előzetes visszaigazolás elküldve a vendégnek.':'✅ A visszaigazoló levél elküldve a vendégnek.')+(r.optionExpiry==='extended'?' A Previo-opció lejárata a foglaló határidejére módosult.':r.optionExpiry==='manual'?' FIGYELEM: a Previóban az opció lejárata nem változott (48 óra) – hosszabbítsd meg a foglaló határidejéig, vagy erősítsd meg.':r.optionExpiry==='unverified'?' FIGYELEM: a Previo-opció lejáratát nem sikerült igazoltan módosítani – nézd meg a Previóban.':'');
     await openTestMailboxCase(n.caseId,turn,done);if(current(turn))el('next-result').textContent=done;
    }catch(error){if(error?.message==='AUTH_REQUIRED'){actionBusy=false;failed(error);}else fail(error?.message);}
   },fail);

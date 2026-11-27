@@ -343,3 +343,44 @@ export async function modifyTestMailboxBooking({record,arrival,departure,unit,mo
  if(!saved&&!(await revert()))fail('PREVIO_MODIFY_NOT_REVERTED');
  return {saved,deposit:built.deposit,previo:changedInPrevio};
 }
+
+// Owner 2026-11-27: preliminary vs final confirmation letter. The first confirmation draft of a booking says which one
+// went out; a final letter prepared later (sc_tm_final_letter) marks the booking final.
+const CONFIRMED_WORDING=/Foglalását megerősítettük|Buchung mit den folgenden Angaben bestätigt|We have confirmed your booking|rezervacijo smo potrdili/;
+export function confirmationLetterKind(data){
+ if(data?.booking?.finalLetter)return 'final';
+ const first=(Array.isArray(data?.drafts)?data.drafts:[]).find(d=>d?.confirmation===true&&typeof d.text==='string'&&!d.depositReminder);
+ return first?(CONFIRMED_WORDING.test(first.text)?'final':'preliminary'):null;
+}
+export const FINAL_LETTER_SCOPE='test-mailbox-final-letter-v1';
+export function attestFinalLetter({key,tenantId,caseId,expectedRevision,draft,previoReference,checkedAt}){
+ if(typeof key!=='string'||!/^[a-f0-9]{64}$/.test(key))fail('SETUP_REQUIRED');
+ const fields=[FINAL_LETTER_SCOPE,tenantId,caseId,String(expectedRevision),sha(draft.text),sha(draft.operatorReviewText),previoReference,checkedAt];
+ if(fields.some(v=>typeof v!=='string'||!v||/[\r\n]/.test(v)))fail('INVALID_EVIDENCE');
+ return {scope:FINAL_LETTER_SCOPE,checkedAt,attestation:createHmac('sha256',Buffer.from(key,'hex')).update(fields.join('\n')).digest('hex')};
+}
+// The preliminary letter went out, then the staff confirmed the option in Previo: the confirmed letter with the SAME
+// booking number, price and deposit deadline (rebuilt from the stored booking), saved once and approved; sent by the
+// operator's click. Previo is the source: other dates or another price stop before anything is saved.
+export async function prepareFinalLetter({record,previo,attestationKey,transport,quoteFn=fetchPublicPriceReference,clock=()=>new Date().toISOString()}={}){
+ const data=record?.data,b=data?.booking,values=data?.state?.values||{};
+ if(typeof transport!=='function')fail('SETUP_REQUIRED');
+ if(b?.status!=='finalized')fail('NOT_FINALIZED');
+ if(confirmationLetterKind(data)!=='preliminary')fail('FINAL_LETTER_ALREADY_SENT');
+ if(!previo||!Number.isSafeInteger(previo.resId)||!previo.unit)fail('PREVIO_NOT_CONFIRMED');
+ if(previo.from!==values.arrival||previo.to!==values.departure)fail('PREVIO_DATES_EDITED');
+ const quote=quoteFn(quoteInputFromCase(values,splitCabinFromUnits(values.unit,[previo.unit])??cabinKeyFromUnit(values.unit)));
+ if(Number.isSafeInteger(previo.price)&&Number.isSafeInteger(quote?.accommodation)&&previo.price!==quote.accommodation)fail('PREVIO_PRICE_EDITED');
+ const language=/^(hu|de|en|si)$/.test(values.language||'')?values.language:'hu';
+ const built=buildBookingConfirmation({values,quote,previo:{reference:b.previo?.reference,recordedAt:b.previo?.recordedAt},language,
+  bookingNumber:voucherFor({tenantId:record.tenantId,caseId:record.caseId}),confirmed:true});
+ if(built.deposit.amount!==b.deposit?.amount||built.deposit.receiptDeadlineUtc!==b.deposit?.deadlineUtc)fail('FINAL_LETTER_FACTS_CHANGED');
+ const draft={text:built.text,operatorReviewText:built.operatorReviewText+'\nVégleges visszaigazolás: a Previóban az opció véglegesített foglalásra váltva (előzetes levél után).'};
+ const proof=attestFinalLetter({key:attestationKey,tenantId:record.tenantId,caseId:record.caseId,expectedRevision:record.revision,draft,previoReference:String(b.previo?.reference||''),checkedAt:clock()});
+ const saved=await transport('/rest/v1/rpc/sc_tm_final_letter',{method:'POST',body:{p_tenant:record.tenantId,p_case:record.caseId,p_expected:record.revision,p_draft:draft,p_proof:proof}});
+ if(!saved)return {saved:null,approved:false};
+ let approved=null;
+ try{approved=await transport('/rest/v1/rpc/sc_tm_decide',{method:'POST',body:{p_tenant:record.tenantId,p_case:record.caseId,p_expected:Number(saved.revision),
+  p_draft_hash:sha(draft.text),p_decision:'approve',p_reason:null}});}catch{approved=null;}
+ return {saved:approved||saved,approved:!!approved};
+}
