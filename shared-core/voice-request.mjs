@@ -135,13 +135,50 @@ const CONFIRM={hu:(n,m)=>`${n?n+', ':''}az e-mail-cím: ${m}. Jól értettem, é
  de:(n,m)=>`${n?n+', ':''}die E-Mail-Adresse: ${m}. Habe ich das richtig verstanden, und darf ich die Buchungsanfrage so erfassen?`,
  en:(n,m)=>`${n?n+', ':''}the e-mail address: ${m}. Did I get that right, and may I save the booking request with these details?`,
  si:(n,m)=>`${n?n+', ':''}e-poštni naslov: ${m}. Sem prav razumel in lahko povpraševanje zabeležim s temi podatki?`};
-export function voiceConfirm({email,name,language='hu',callerId=null}){
+// ChatGPT / owner 2026-11-27 (#9 7216063195): the contact number for the request and the Previo option. A valid line
+// number is used as it is – not asked, not read back. Asked only when the line gives none (hidden / missing / invalid)
+// or the guest wants another number; a number the guest says is read back digit by digit. Caller ID is not an
+// identity proof or a permission – only a contact detail.
+const PHONE_DECLINED=/^(?:nincs|nem\s+adom|nem\s+szeretném|no|none|nein|kein\p{L}*|ne|nimam|brez)\b/iu;
+export function spokenPhone(value){
+ const raw=String(value??'').trim();if(!raw||PHONE_DECLINED.test(raw))return null;
+ // Spoken digits and Hungarian number words („plusz harminchat húsz…”, „nulla hat harminc…”) → digits, word by word.
+ const t=raw.toLowerCase().replace(/(?<!\p{L})(?:plusz|plus)(?!\p{L})/giu,' + ').split(/[\s,.;:]+/).filter(Boolean).map(w=>{
+  if(/^\+?\d[\d\/()-]*$/.test(w))return w;
+  const x=w.replace(/-/g,'');if(DIGIT_WORDS.has(x))return String(DIGIT_WORDS.get(x));
+  const n=huNumber(x);return n!==undefined?String(n):w==='+'?'+':'?';}).join('');
+ if(/\?/.test(t))return null;   // a word that is not a number: never guess
+ let d=t.replace(/[^0-9+]/g,'');
+ if(d.startsWith('00'))d='+'+d.slice(2);else if(d.startsWith('06'))d='+36'+d.slice(2);
+ return /^\+?[0-9]{8,15}$/.test(d)?d:null;
+}
+const SAY_PHONE={hu:'a telefonszám',de:'die Telefonnummer',en:'the phone number',si:'telefonska številka'};
+export function speakPhone(phone,lang='hu'){
+ const d=DIGITS[lang]||DIGITS.hu;
+ return String(phone).replace(/\+/g,({hu:'plusz ',de:'plus ',en:'plus ',si:'plus '}[lang]||'plusz ')).replace(/\d/g,c=>' '+d[c]+' ').replace(/\s+/g,' ').trim();
+}
+const ASK_PHONE={hu:'Kérem, mondja meg azt a telefonszámot is, amelyen elérhetjük, lassan és tagoltan.',de:'Bitte nennen Sie mir auch eine Telefonnummer, unter der wir Sie erreichen, langsam und deutlich.',
+ en:'Please also tell me a phone number we can reach you on, slowly and clearly.',si:'Prosim, povejte mi še telefonsko številko, na kateri vas dosežemo, počasi in razločno.'};
+const PHONE_BAD={hu:'Elnézést, a telefonszámot nem értettem pontosan. Kérem, mondja meg újra, számjegyenként.',de:'Entschuldigung, die Telefonnummer habe ich nicht genau verstanden. Bitte nennen Sie sie noch einmal, Ziffer für Ziffer.',
+ en:"Sorry, I didn't catch the phone number. Please say it again, digit by digit.",si:'Oprostite, telefonske številke nisem natančno razumel. Prosim, povejte jo še enkrat, številko za številko.'};
+// The number the request and the Previo option get: the one the guest gave (asked or another), else the line's number.
+export function contactPhone({phone,callerId}){
+ const given=spokenPhone(phone),line=callerPhone(callerId);
+ return given?{phone:given,source:'guest',line}:line?{phone:line,source:'line',line}:{phone:null,source:null,line:null};
+}
+export function voiceConfirm({email,name,language='hu',callerId=null,phone=null}){
  const lang=CONFIRM[language]?language:'hu',address=normalizeSpokenEmail(email);
  if(!address)return {ok:false,status:'EMAIL_INVALID',reply:say('email',lang)};
+ const said=String(phone??'').trim(),c=contactPhone({phone,callerId});
+ // A number was said but is not a number: ask again (never save a garbled one).
+ if(said&&!PHONE_DECLINED.test(said)&&!c.phone)return {ok:false,status:'PHONE_INVALID',reply:PHONE_BAD[lang]};
+ // No line number and none said yet: ask once (a „no” means: e-mail only).
+ if(!c.phone&&!said)return {ok:false,status:'PHONE_NEEDED',email:address,callerNumber:false,reply:ASK_PHONE[lang]};
+ const tail=c.source==='guest'?`, ${SAY_PHONE[lang]}: ${speakPhone(c.phone,lang)}`:'';
  // callerNumber: whether the line's caller number reached us (true/false only – the number itself is never echoed).
- return {ok:false,status:'CONFIRM',email:address,callerNumber:!!callerPhone(callerId),reply:CONFIRM[lang](spokenName(name),speakEmail(address,lang))};
+ return {ok:false,status:'CONFIRM',email:address,callerNumber:!!c.line,phoneSource:c.source,reply:CONFIRM[lang](spokenName(name),speakEmail(address,lang)+tail)};
 }
-export async function voiceRequest({utterances,email,name=null,consent,conversationId,callerId=null,language='auto',clock=()=>new Date(),
+export async function voiceRequest({utterances,email,name=null,phone:spokenNumber=null,consent,conversationId,callerId=null,language='auto',clock=()=>new Date(),
  offerFn,createFn,prefillFn=null,notifyFn=null}){
  const stay=stayUtterances(utterances);
  const {facts,language:lang}=voiceFacts(stay.length?stay:utterances,{language,clock});
@@ -152,9 +189,11 @@ export async function voiceRequest({utterances,email,name=null,consent,conversat
  let offer=null;try{offer=await offerFn({facts,language:lang});}catch{offer=null;}
  if(offer?.status==='UNAVAILABLE')return {ok:false,status:'NOT_FREE',reply:say('full',lang)};
  if(offer?.status!=='AVAILABLE'||!Number.isSafeInteger(offer.total))return {ok:false,status:'CHECK_FAILED',reply:say('failed',lang)};
- const externalId=voiceExternalId(conversationId,stay,address),phone=callerPhone(callerId),guest=spokenName(name);
+ const c=contactPhone({phone:spokenNumber,callerId}),phone=c.phone;
+ const externalId=voiceExternalId(conversationId,stay,address),guest=spokenName(name);
  const summary='✅ A hívó telefonon elfogadta az ajánlatot és kérte a foglalást. A rendszer újraellenőrzött ára: '+String(offer.total).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+' Ft.\n'+
-  (phone?'A hívó száma a telefonvonalról: '+phone+'. Telefonon csak a nevet és az e-mail-címet kértük el: a többi adatot e-mailben kérd el, és töltsd ki a Previóban.\n\n'
+  (c.source==='guest'?'A hívó által megadott telefonszám (visszaolvasva, megerősítve): '+phone+(c.line&&c.line!==phone?' · a hívás a(z) '+c.line+' számról jött':'')+'. A többi adatot e-mailben kérd el, és töltsd ki a Previóban.\n\n'
+   :phone?'A hívó száma a telefonvonalról: '+phone+'. Telefonon csak a nevet és az e-mail-címet kértük el: a többi adatot e-mailben kérd el, és töltsd ki a Previóban.\n\n'
    :'Telefonon csak a nevet és az e-mail-címet kértük el (a hívószám nem érkezett meg): a telefonszámot és a többi adatot e-mailben kérd el, és töltsd ki a Previóban.\n\n')+
   'A hívó mondatai (kezelői összefoglaló):\n'+stay.map(t=>'– '+String(t).trim().replace(/\s+/g,' ').slice(0,500)).join('\n');
  let created;
@@ -164,6 +203,6 @@ export async function voiceRequest({utterances,email,name=null,consent,conversat
  if(prefillFn){try{option=await prefillFn({caseId:created.caseId,facts,email:address,phone:phone||'',name:guest});}catch{option={status:'failed'};}}
  const opt=option?.status==='created';
  if(notifyFn){try{await notifyFn(opt?'Csak e-mail-cím; a Previo-tesztben 48 órás opcióként előre kitöltve ('+option.unit+'. egység) – ellenőrizd, a többi adatot kérd el e-mailben.':'Csak e-mail-cím – a Previo-opció nem jött létre, kezeld a napi kezelőben.');}catch{}}
- return {ok:true,status:opt?'OPTION_CREATED':'REQUEST_SAVED',caseId:created.caseId,option:opt?{unit:option.unit}:null,callerNumber:!!phone,
+ return {ok:true,status:opt?'OPTION_CREATED':'REQUEST_SAVED',caseId:created.caseId,option:opt?{unit:option.unit}:null,callerNumber:!!c.line,phoneSource:c.source,
   reply:say(opt?'option':'saved',lang,speakEmail(address,lang))};
 }

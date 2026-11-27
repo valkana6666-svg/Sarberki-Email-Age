@@ -31,6 +31,7 @@ const body={name:NAME,tags:['sarberki-test'],conversation_config:{
      caller_messages:{type:'array',description:'A hívó EDDIGI ÖSSZES mondata szó szerint, időrendben.',items:{type:'string',description:'Egy hívói mondat szó szerint'}},
      name:{type:'string',description:'A hívó neve úgy, ahogy megadta és megerősítette (pl. „Kovács Anna”).'},
      email:{type:'string',description:'A hívó e-mail-címe úgy, ahogy elhangzott és megerősítette (pl. „kovacs pont anna kukac gmail pont com”).'},
+     phone:{type:'string',description:'Csak ha a rendszer telefonszámot kért, vagy a hívó másik számot ad meg: a szám úgy, ahogy elhangzott (pl. „plusz harminchat húsz egy kettő…”). Ha nem akar számot adni: „nincs”. Egyébként hagyd üresen.'},
      preview:{type:'boolean',description:'true: csak visszaolvasás, semmi nem rögzül (a név és a cím első megadása után). false: rögzítés a hívó igenje után.'},
      consent:{type:'boolean',description:'true, ha a hívó igent mondott a rögzítésre ezzel a címmel; visszaolvasáskor false.'},
      conversation_id:{type:'string',description:'',dynamic_variable:'system__conversation_id'},

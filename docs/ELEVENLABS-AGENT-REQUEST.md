@@ -14,3 +14,5 @@ update 2026-11-26d: név + e-mail, számjegyenkénti visszaolvasás, foglalási 
 update 2026-11-27a: beszédfelismerő-szótár (horgászjegy, napijegy, rekord tó…)
 
 update 2026-11-27b: a cím visszaolvasását a szerver végzi (sarberki_request preview), a modell nem betűz
+
+update 2026-11-27c: telefonszám-mező (phone) a sarberki_request-ben; csak hiányzó/rejtett hívószámnál vagy másik számnál

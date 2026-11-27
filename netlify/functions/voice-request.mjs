@@ -31,7 +31,7 @@ export function createVoiceRequestHandler({env=process.env,fetchImpl=fetch,now=(
   // Owner 2026-11-26: unknown caller numbers on the TEST line – nothing is saved, only the test-line sentence.
   if(!callerAllowed(env,args.caller_id)){const l=['hu','de','en','si'].includes(args.language)?args.language:'hu';return json(200,{ok:false,status:'TEST_LINE',reply:TEST_LINE[l]});}
   // Read-back only (nothing saved, no rate count): the agent says this reply and asks the caller once.
-  if(args.preview===true)return json(200,voiceConfirm({email:args.email,name:args.name,callerId:args.caller_id,language:['hu','de','en','si'].includes(args.language)?args.language:'hu'}));
+  if(args.preview===true)return json(200,voiceConfirm({email:args.email,name:args.name,callerId:args.caller_id,phone:args.phone,language:['hu','de','en','si'].includes(args.language)?args.language:'hu'}));
   const t=now();if(t-windowStart>3600000){windowStart=t;count=0;}
   if(++count>perHour)return json(200,{ok:false,status:'TRY_LATER',reply:'Elnézést, a foglalási igényt most nem sikerült rögzítenem. Kérem, írja meg az igényét e-mailben, vagy hívjon minket később.'});
   if(!/^[a-f0-9]{64}$/.test(env.INTAKE_HMAC_KEY||'')||!env.INTAKE_ACCOUNT_EMAIL||!env.INTAKE_ACCOUNT_PASSWORD||!env.SUPABASE_PUBLISHABLE_KEY)return json(503,{error:'SETUP_REQUIRED'});
@@ -46,7 +46,7 @@ export function createVoiceRequestHandler({env=process.env,fetchImpl=fetch,now=(
   const prefillFn=({caseId,facts,email,phone,name})=>prefillChatBooking({env,fetchImpl,tenantId:TENANT,caseId,facts,name:name||PHONE_CONTACT_NAME,email,phone,channel:'phone'});
   const notifyFn=extra=>notifyOperator(env,fetchImpl,'phone',extra);
   try{
-   const r=await voiceRequest({utterances,email:args.email,name:args.name,consent:args.consent===true,conversationId:args.conversation_id,callerId:args.caller_id,language:lang,offerFn,createFn,prefillFn,notifyFn});
+   const r=await voiceRequest({utterances,email:args.email,name:args.name,phone:args.phone,consent:args.consent===true,conversationId:args.conversation_id,callerId:args.caller_id,language:lang,offerFn,createFn,prefillFn,notifyFn});
    return json(200,r);
   }catch{return json(200,{ok:false,status:'FAILED',reply:'Elnézést, a foglalási igényt most nem sikerült rögzítenem. Kérem, írja meg az igényét e-mailben, vagy hívjon minket később.'});}
  };

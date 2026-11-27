@@ -184,7 +184,7 @@ test('phone call 2026-11-27: spoken address forms → one address; the server re
  for(const s of ['Pel-da, hat-hat-hat-hat, kukac, gmail, pont, com.','pelda hatezer-hatszáz-hatvanhat kukac gmail pont com','pelda hat hat hat hat kukac gmail pont com','Pelda6666@gmail.com','pelda 6666 kukac gmail pont com'])
   assert.equal(n(s),'pelda6666@gmail.com',s);
  assert.equal(n('anna kötőjel kiss kukac example pont test'),'anna-kiss@example.test','„kötőjel” is a real hyphen');
- const c=voiceConfirm({email:'Pel-da, hat-hat-hat-hat, kukac, gmail, pont, com.',name:'Teszt Elek',language:'hu'});
+ const c=voiceConfirm({email:'Pel-da, hat-hat-hat-hat, kukac, gmail, pont, com.',name:'Teszt Elek',language:'hu',callerId:'+36300000001'});
  assert.equal(c.status,'CONFIRM');assert.equal(c.ok,false);
  assert.equal(c.reply,'Teszt Elek, az e-mail-cím: pelda hat hat hat hat kukac gmail pont com. Jól értettem, és rögzíthetem a foglalási igényt ezekkel az adatokkal?');
  assert.doesNotMatch(c.reply,/g m a i l|p e l d a/,'never letter by letter');
@@ -193,14 +193,14 @@ test('phone call 2026-11-27: spoken address forms → one address; the server re
  const ON={VOICE_INTAKE:'test-only',VOICE_TURN:'test-only',INTAKE_ENABLED:'test-only',SUPABASE_URL:'https://mojnqizbcaczstguikpv.supabase.co',VOICE_TURN_KEY:KEY};
  let calls=0;const h=createVoiceRequestHandler({env:ON,fetchImpl:async()=>{calls++;throw Error('no network');}});
  const r=await (await h(new Request('https://x.test/.netlify/functions/voice-request',{method:'POST',headers:{'content-type':'application/json','x-sarberki-voice-key':KEY},
-  body:JSON.stringify({caller_messages:CALL,name:'Teszt Elek',email:'pelda hat hat hat hat kukac gmail pont com',preview:true,consent:false,conversation_id:'conv_p1234567'})}))).json();
+  body:JSON.stringify({caller_messages:CALL,name:'Teszt Elek',email:'pelda hat hat hat hat kukac gmail pont com',preview:true,consent:false,conversation_id:'conv_p1234567',caller_id:'+36300000001'})}))).json();
  assert.equal(r.status,'CONFIRM');assert.equal(calls,0,'preview: no login, no save, no Previo');
 });
 
 test('owner 2026-11-27: the caller number is saved with the request; the tool result shows only whether it arrived',async()=>{
  const {voiceConfirm,voiceRequest:vr}=await import('../shared-core/voice-request.mjs');
  assert.equal(voiceConfirm({email:MAIL,callerId:'+36301234567'}).callerNumber,true);
- assert.equal(voiceConfirm({email:MAIL}).callerNumber,false);
+ assert.equal(voiceConfirm({email:MAIL,phone:'nincs'}).callerNumber,false);
  assert.doesNotMatch(JSON.stringify(voiceConfirm({email:MAIL,callerId:'+36301234567'})),/301234567/);
  const created=[];
  const r=await vr({utterances:[...CALL,MAIL],email:MAIL,name:'Teszt Elek',consent:true,conversationId:'conv_ph000001',callerId:'+36301234567',clock:C,offerFn:async()=>OFFER,
