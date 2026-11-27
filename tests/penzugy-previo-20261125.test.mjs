@@ -94,3 +94,17 @@ test('reader: switch and hotel gate, one read, cache, failure is an error (never
  resetPrevioFinanceCache();
  assert.match(financeSearchXml({from:'2026-01-01',to:'2026-02-01'}),/<termType>overlap<\/termType>/);
 });
+
+// ChatGPT / owner 2026-11-27 (#9 7212405921): an outside booking (Booking.com, Szallas.hu, manual Previo) has no deposit
+// deadline in Previo's data – it is never shown as overdue or „within 48 h” and never alerts, whatever the date; an
+// expired Previo OPTION only shows its expiry text. Our own case still gets overdue / soon from its own deadline.
+test('outside bookings: no invented deadline – never overdue/soon, even long after arrival; own case still overdue',()=>{
+ const items=financeItems(parseFinanceReservations(XML));
+ const rows=mergeFinance([ownRow('tm-aaaaaaaaaaaa0001',{reference:'V2-101',deadline:'2026-11-20T10:00:00Z'})],items);
+ const later=Date.parse('2027-06-01T00:00:00Z');
+ for(const r of rows.filter(r=>r.kind==='previo')){const g=financeGroup(r,later);assert.ok(!['overdue','soon','waiting'].includes(g),r.caseId+' → '+g);}
+ assert.equal(financeGroup(rows.find(r=>r.caseId==='p-109'),later),'nopay','an expired option is not an overdue deposit');
+ assert.match(financeRowText(rows.find(r=>r.caseId==='p-109'),later).lines.join(' '),/opció lejár: 2026-11-27 10:00:00/);
+ assert.equal(financeGroup(rows.find(r=>r.caseId==='tm-aaaaaaaaaaaa0001'),NOW),'overdue','own case: its own deadline');
+ assert.equal(financeGroup({caseId:'x',summary:{booking:'finalized',finance:{amount:1,deadlineUtc:new Date(NOW+47*3600000).toISOString()}}},NOW),'soon');
+});
