@@ -6,8 +6,11 @@ import {createHash} from 'node:crypto';
 const key=process.env.PREVIO_API_KEY;if(!key||key.length<16){console.log('BLOCKED key');process.exit(1);}
 const H={Authorization:'ApiKey '+key,'Content-Type':'application/xml',Accept:'application/xml'};
 const post=async(p,x)=>{const r=await fetch('https://api.previo.app/x1/hotel/'+p,{method:'POST',redirect:'error',headers:H,body:x});return r.text();};
-const values={arrival:'2026-09-10',departure:'2026-09-13',adults:'2',children:'0',child_ages:''};
-const caseId='tm-'+createHash('sha256').update('past-guest-3:PERM-20261127-PAST-GUEST-3').digest('hex').slice(0,24);
+// Run 2: Previo refuses a status change ≥ 2 months after departure → October dates; the September option is cancelled.
+const values={arrival:'2026-10-10',departure:'2026-10-13',adults:'2',children:'0',child_ages:''};
+const caseId='tm-'+createHash('sha256').update('past-guest-3b:PERM-20261127-PAST-GUEST-3').digest('hex').slice(0,24);
+{const t=await post('reservation','<?xml version="1.0"?><request><hotId>73521</hotId><newReservation><resId>118653715</resId><gCosId>7</gCosId></newReservation></request>');
+ console.log('SEPT 118653715 →7',/<error>/.test(t)?(t.match(/<message>([^<]{0,160})/)||[])[1]:'ok');}
 const voucher=voucherFor({tenantId:'sarberki-test',caseId});
 const find=async()=>[...(await post('searchReservations',buildVoucherSearchXml({hotelId:'73521',voucher,arrival:values.arrival,departure:values.departure}).replace('<cosId>8</cosId>','<cosId>8</cosId><cosId>9</cosId><cosId>10</cosId>'))).matchAll(/<reservation>([\s\S]*?)<\/reservation>/g)].map(m=>m[1]).filter(b=>b.includes(`<voucher>${voucher}</voucher>`))
  .map(b=>({resId:Number(b.match(/<resId>(\d+)/)?.[1]),statusId:Number(b.match(/<statusId>(\d+)/)?.[1]),price:b.match(/<price>([0-9.]+)<\/price>/)?.[1],hasEmail:/<email>sarberkito@gmail\.com<\/email>/.test(b),hasPhone:/<phone>[^<]*765[^<]*<\/phone>/.test(b)}));
