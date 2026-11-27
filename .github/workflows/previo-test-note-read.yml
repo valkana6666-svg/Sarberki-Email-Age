@@ -1,0 +1,26 @@
+name: Previo TEST – read one case's note fields (Claude, read-only)
+# Claude 2026-11-27: read-only diagnosis of the hot tub note (PERM-20261127-VOICE-TUB-NOTE). TEST 73521 only, no write.
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths: [docs/PREVIO-TEST-NOTE-READ-REQUEST.md]
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Read
+        env:
+          PREVIO_API_KEY: ${{ secrets.PREVIO_TEST_API_KEY }}
+        run: |
+          test "$GITHUB_REF" = "refs/heads/gmail-test-subject-allowlist"
+          REQ="$(grep -v '^\s*$' docs/PREVIO-TEST-NOTE-READ-REQUEST.md | tail -n 1)"
+          node scripts/previo-test-note-read.mjs "$REQ"
