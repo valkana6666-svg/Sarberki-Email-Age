@@ -21,3 +21,4 @@ update 2026-11-27d: booked mező a sarberki_reply-ban, add_hot_tub művelet a sa
 
 update 2026-11-27e: prompt 13. pont – a dézsa napjainak külön megadása is add_hot_tub
 update 2026-11-27f: prompt 13. pont – a dézsa időpontjának külön megadása is add_hot_tub
+update 2026-11-27g: conversation_id + conversation_history (system__conversation_history) a sarberki_reply-ban, conversation_history a sarberki_request-ben – teljes beszélgetés a napi kezelőbe

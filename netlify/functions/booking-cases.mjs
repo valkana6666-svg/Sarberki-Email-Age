@@ -177,6 +177,9 @@ function testMailboxView(record,authority,tenant='sarberki-test',previoRead=fals
  const data=record.data,state=data.state?.approval,latest=data.drafts.at(-1),permissions=authority?.tenants?.[tenant]||[];
  return {caseId:record.caseId,revision:record.revision,approval:state,
   messages:data.messages.map(m=>({text:m.text,received_at:m.received_at})),values:data.state?.values||{},
+  // Owner 2026-11-27: the whole phone conversation (assistant + caller), stored at the booking and refreshed after it.
+  callTranscript:data.sourceReceipt?.provider==='phone'&&Array.isArray(data.callTranscript?.lines)?{updatedAt:typeof data.callTranscript.updatedAt==='string'?data.callTranscript.updatedAt:null,
+   lines:data.callTranscript.lines.filter(l=>l&&['agent','caller'].includes(l.role)&&typeof l.text==='string').slice(0,300).map(l=>({role:l.role,text:l.text.slice(0,1500)}))}:null,
   // V3-1: where the request came from; phone/chat cases have no Gmail thread to reply to.
   channel:['phone','chat'].includes(data.sourceReceipt?.provider)?data.sourceReceipt.provider:'gmail',
   draft:{text:latest.text,operatorReviewText:latest.operatorReviewText??null,createdAt:latest.createdAt??null,hash:createHash('sha256').update(String(latest.text),'utf8').digest('hex')},

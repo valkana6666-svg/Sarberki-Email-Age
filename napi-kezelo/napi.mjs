@@ -289,6 +289,13 @@ async function openTestMailboxCase(caseId,turn,status){
   if(own&&own.length<message.text.trim().length){const short=document.createElement('p');short.className='readout msg-short';short.textContent=(message.received_at?localTime(message.received_at)+'\n':'')+own+'\n(korábbi levelünk idézete elrejtve)';item.setAttribute('data-detail','');messages.append(short);}
   messages.append(item);
  }
+ // Owner 2026-11-27: the whole phone conversation – the staff see everything that was said, also after the booking.
+ if(record.callTranscript&&Array.isArray(record.callTranscript.lines)&&record.callTranscript.lines.length){
+  const head=document.createElement('h4');head.textContent='Teljes telefonos beszélgetés'+(record.callTranscript.updatedAt?' (frissítve: '+localTime(record.callTranscript.updatedAt)+')':'');
+  const body=document.createElement('p');body.className='readout transcript';
+  body.textContent=record.callTranscript.lines.map(l=>(l.role==='agent'?'🤖 Asszisztens: ':'📞 Hívó: ')+l.text).join('\n\n');
+  messages.append(head,body);
+ }
  const values=record.values||{};
  el('detail-messages').replaceChildren(messages);void showTranslation(caseId,turn);
  el('detail-facts').textContent='Érkezés: '+(values.arrival||'Nincs megadva')+'\nTávozás: '+(values.departure||'Nincs megadva')+

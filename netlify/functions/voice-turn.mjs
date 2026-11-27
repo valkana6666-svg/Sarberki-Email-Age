@@ -9,6 +9,7 @@ import {buildChatOffer} from '../../shared-core/server-chat-offer.mjs';
 import {askChatAssist,chatAssistConfigured} from '../../shared-core/chat-assist.mjs';
 import {BUSINESS} from '../../business-config.mjs';
 import {callerAllowed,TEST_LINE} from '../../shared-core/voice-request.mjs';
+import {saveCallTranscript} from './voice-request.mjs';
 
 const json=(status,body)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json','cache-control':'no-store'}});
 
@@ -18,7 +19,7 @@ export function createVoiceTurnHandler({env=process.env,fetchImpl=fetch,now=()=>
   if(env.VOICE_TURN!=='test-only')return json(503,{error:'VOICE_DISABLED'});
   if(request.method!=='POST')return json(405,{error:'METHOD_NOT_ALLOWED'});
   if(request.headers.get('content-type')?.split(';')[0]!=='application/json')return json(415,{error:'JSON_REQUIRED'});
-  const raw=await request.text();if(raw.length>60000)return json(413,{error:'TOO_LARGE'});
+  const raw=await request.text();if(raw.length>400000)return json(413,{error:'TOO_LARGE'});
   if(!voiceAuthorized({headers:request.headers,raw,env,now:now()}))return json(401,{error:'UNAUTHORIZED'});
   let body;try{body=JSON.parse(raw);}catch{return json(400,{error:'INVALID_INPUT'});}
   const utterances=callerUtterances(body);if(!utterances.length)return json(400,{error:'NO_UTTERANCE'});
@@ -30,8 +31,11 @@ export function createVoiceTurnHandler({env=process.env,fetchImpl=fetch,now=()=>
   const capacityFn=chatOfferCapacity(env,fetchImpl);
   const offerFn=capacityFn?({facts,language})=>buildChatOffer({facts,language,capacityFn,cancellationDays:BUSINESS.bookingRules.cancellationDaysUnder15Guests}):null;
   const assistFn=chatAssistConfigured(env)?({message,language})=>askChatAssist({message,language},{env,fetchImpl}):null;
-  try{return json(200,await voiceTurn({utterances,language:lang,offerFn,assistFn,intake:env.VOICE_INTAKE==='test-only',booked:body?.args?.booked===true||body?.booked===true}));}
-  catch{return json(200,{reply:null,reason:'ENGINE_FAILED'});}
+  const booked=body?.args?.booked===true||body?.booked===true;
+  // Owner 2026-11-27: after the booking each turn also refreshes the case's full transcript (in parallel with the answer).
+  const saving=booked?saveCallTranscript({env,fetchImpl,args:body?.args||body}):null;
+  try{const r=await voiceTurn({utterances,language:lang,offerFn,assistFn,intake:env.VOICE_INTAKE==='test-only',booked});if(saving)await saving;return json(200,r);}
+  catch{if(saving)await saving;return json(200,{reply:null,reason:'ENGINE_FAILED'});}
  };
 }
 export default createVoiceTurnHandler();

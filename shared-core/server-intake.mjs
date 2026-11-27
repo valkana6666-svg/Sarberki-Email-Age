@@ -6,6 +6,7 @@
 //    (sc_intake_create, server-attested, idempotent per channel + external id). Nothing is sent or booked.
 // Requests are authenticated with an HMAC signature (verifyIntakeSignature); the database write uses the dedicated
 // intake account's own Supabase session (no service role).
+import {validTranscript} from './voice-transcript.mjs';
 import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
 import {createBookingCaseStore} from '../booking-cases.mjs';
 import {serverInquiryOptions} from './server-inquiry-options.mjs';
@@ -88,7 +89,7 @@ export function attestIntake({key,tenantId,provider,externalId,receivedAt,bodyTe
 
 // Tool 2 (voice agent "create_booking_request" / chat "send request"): one pending case for the operator.
 export async function createIntakeRequest({channel,externalId,facts,summary,transport,attestationKey,availabilitySource=null,
- clock=()=>new Date().toISOString(),tenantId='sarberki-test'}={}){
+ clock=()=>new Date().toISOString(),tenantId='sarberki-test',transcript=null}={}){
  if(typeof transport!=='function')fail('SETUP_REQUIRED');
  if(!CHANNELS.includes(channel)||typeof externalId!=='string'||!/^[A-Za-z0-9_.:-]{6,128}$/.test(externalId))fail('INVALID_INPUT');
  if(typeof summary!=='string'||!summary.trim()||summary.length>8000)fail('INVALID_INPUT');
@@ -111,6 +112,8 @@ export async function createIntakeRequest({channel,externalId,facts,summary,tran
  data.messages=data.messages.map(m=>scope(m,true));
  data.sender='intake:'+channel;
  data.sourceReceipt={provider:channel,external_id:externalId,received_at:at};
+ // Owner 2026-11-27: the whole phone conversation so far (assistant + caller), shown in the daily view.
+ if(channel==='phone'&&validTranscript(transcript))data.callTranscript={updatedAt:at,lines:transcript.map(l=>({role:l.role,text:l.text}))};
  data.state.values={...data.state.values,...v};
  const plan=await emailDraftWithCapacity({...serverInquiryOptions({tenantId,caseId,data},new Date(at)),message:summary},availabilitySource,{clock:()=>Date.parse(clock())});
  if(typeof plan.text!=='string'||!plan.text.trim())fail('INVALID_DRAFT');

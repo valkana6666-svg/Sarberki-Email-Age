@@ -22,7 +22,10 @@ const body={name:NAME,tags:['sarberki-test'],conversation_config:{
      language:{type:'string',description:'A hívó nyelve, ha egyértelmű: hu, de, en vagy si.',enum:['hu','de','en','si']},
      booked:{type:'boolean',description:'true, ha ebben a hívásban a foglalási igény már sikeresen rögzült (a sarberki_request ok:true-t adott); egyébként false.'},
      // Real phone line only (owner 2026-11-26: the TEST line answers only the owner's test callers).
-     caller_id:{type:'string',description:'',dynamic_variable:'system__caller_id'}},required:['caller_messages']}}},
+     caller_id:{type:'string',description:'',dynamic_variable:'system__caller_id'},
+     // Owner 2026-11-27: the whole conversation for the daily view (after the booking) – the case of this call.
+     conversation_id:{type:'string',description:'',dynamic_variable:'system__conversation_id'},
+     conversation_history:{type:'string',description:'',dynamic_variable:'system__conversation_history'}},required:['caller_messages']}}},
    // Owner 2026-11-26 (PERM-20261126-VOICE-OPTION): the booking request with the e-mail address (voice-request).
    {type:'webhook',name:'sarberki_request',
    description:'Foglalási igény rögzítése. Csak akkor hívd, ha a hívó elfogadta az ajánlatot, megadta az e-mail-címét, a visszaolvasott címet megerősítette és hozzájárult a rögzítéshez. A válasz reply mezőjét szó szerint mondd el; rögzítést csak ok:true esetén állíts.',
@@ -39,6 +42,7 @@ const body={name:NAME,tags:['sarberki-test'],conversation_config:{
      conversation_id:{type:'string',description:'',dynamic_variable:'system__conversation_id'},
      // Real phone line only: the caller's number (owner 2026-11-26: no need to ask for it).
      caller_id:{type:'string',description:'',dynamic_variable:'system__caller_id'},
+     conversation_history:{type:'string',description:'',dynamic_variable:'system__conversation_history'},
      language:{type:'string',description:'A hívó nyelve: hu, de, en vagy si.',enum:['hu','de','en','si']}},required:['caller_messages','name','email','consent','conversation_id']}}}]}},
  tts:{voice_id:VOICE,model_id:'eleven_flash_v2_5'},
  // Owner 2026-11-26: a call lasts at most 5 minutes (prepaid number + agent minutes).
