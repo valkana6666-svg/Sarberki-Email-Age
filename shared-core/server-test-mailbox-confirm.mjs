@@ -216,7 +216,9 @@ export async function previewTestMailboxBooking({record,unit,units=null,transpor
 // Owner 2026-11-21: the staff confirmed the pre-filled booking IN PREVIO (status 2); our case is finalized with that
 // Previo reference and the guest gets our confirmation letter (approved here, sent by the operator's click).
 // previo = the case's own booking as read back from Previo just now: {resId, unit, from, to, price}.
-export async function previoConfirmedLetter({record,previo,attestationKey,transport,quoteFn=fetchPublicPriceReference,unitCheckFn=null,clock=()=>new Date().toISOString()}={}){
+// optionLetter (owner 2026-11-27, letter sent while Previo still shows an OPTION): „Foglalását rögzítettük … a foglaló
+// beérkezése után válik véglegessé” instead of „Foglalását megerősítettük”.
+export async function previoConfirmedLetter({record,previo,attestationKey,transport,quoteFn=fetchPublicPriceReference,unitCheckFn=null,clock=()=>new Date().toISOString(),optionLetter=false}={}){
  const v=record?.data?.state?.values||{};
  if(!previo||!Number.isSafeInteger(previo.resId)||!previo.unit)fail('PREVIO_NOT_CONFIRMED');
  if(previo.from!==v.arrival||previo.to!==v.departure)fail('PREVIO_DATES_EDITED');
@@ -225,7 +227,7 @@ export async function previoConfirmedLetter({record,previo,attestationKey,transp
  const quote=quoteFn(quoteInputFromCase(v,splitCabinFromUnits(v.unit,[previo.unit])??cabinKeyFromUnit(v.unit)));
  if(Number.isSafeInteger(previo.price)&&Number.isSafeInteger(quote?.accommodation)&&previo.price!==quote.accommodation)fail('PREVIO_PRICE_EDITED');
  const {saved,deposit}=await confirmTestMailboxBooking({record,previoReference:'V2-'+previo.resId,previoRecorded:true,unit:previo.unit,attestationKey,transport,quoteFn,unitCheckFn,clock,
-  bookingNumber:voucher,confirmedLetter:true});
+  bookingNumber:voucher,confirmedLetter:optionLetter!==true});
  if(!saved)return {saved:null,approved:false,deposit};
  const text=saved.data?.drafts?.at(-1)?.text;let approvedRow=null;
  if(typeof text==='string'&&saved.data?.state?.approval==='pending'){

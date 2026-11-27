@@ -57,7 +57,7 @@ async function prefilledUnit(env,fetchImpl,record){
 }
 import {previoSplitPlacementReader} from '../../shared-core/server-previo-split-placement.mjs';
 import {previoBookingWriter} from '../../shared-core/server-previo-booking-sync.mjs';
-import {cabinKeyFromUnit,previoConfirmedLetter,confirmTestMailboxBooking,previewTestMailboxBooking,pickFreeUnits,oneClickTestMailboxBooking,markTestMailboxDepositReceived,cancelTestMailboxBooking,modifyTestMailboxBooking} from '../../shared-core/server-test-mailbox-confirm.mjs';
+import {cabinKeyFromUnit,splitCabinFromUnits,previoConfirmedLetter,confirmTestMailboxBooking,previewTestMailboxBooking,pickFreeUnits,oneClickTestMailboxBooking,markTestMailboxDepositReceived,cancelTestMailboxBooking,modifyTestMailboxBooking} from '../../shared-core/server-test-mailbox-confirm.mjs';
 import {caseBookingIntent} from '../../shared-core/booking-intent.mjs';
 import {previoAvailabilitySource} from '../../shared-core/server-capacity-draft.mjs';
 import {buildAvailabilityOptions} from './availability-options.mjs';
@@ -139,7 +139,7 @@ const TEST_MAILBOX_FIELDS=Object.freeze({
  'test-mailbox-modify':['action,arrival,caseId,departure,expectedRevision,modifyConfirmed,tenantId,unit'],
  'test-mailbox-oneclick':['action,caseId,expectedRevision,oneClickConfirmed,previewHash,tenantId,unit','action,caseId,expectedRevision,oneClickConfirmed,previewHash,tenantId,unit,units'],
  // Owner 2026-11-21: the staff confirmed the booking in Previo → finalize with Previo's data + approve our confirmation letter.
- 'test-mailbox-previo-confirmed':['action,caseId,expectedRevision,letterConfirmed,tenantId'],
+ 'test-mailbox-previo-confirmed':['action,caseId,expectedRevision,letterConfirmed,tenantId','action,caseId,expectedRevision,letterConfirmed,sendNow,tenantId'],
  'test-mailbox-deposit-reminder':['action,caseId,expectedRevision,reminderConfirmed,tenantId']
 });
 function validTestMailboxInput(input){
@@ -151,7 +151,7 @@ function validTestMailboxInput(input){
  if(input.action==='test-mailbox-oneclick'&&!(input.oneClickConfirmed===true&&typeof input.previewHash==='string'&&/^[a-f0-9]{64}$/.test(input.previewHash)&&typeof input.unit==='string'&&/^(?:[1-9]|1[0-5]|(?:7|8|9|10)\/[ABC])$/.test(input.unit)))return false;
  if(input.action==='test-mailbox-oneclick'&&input.units!==undefined&&!(Array.isArray(input.units)&&input.units.length>=2&&input.units.length<=6&&input.units.every(u=>typeof u==='string'&&/^(?:[1-9]|1[0-5]|(?:7|8|9|10)\/[ABC])$/.test(u))&&input.units[0]===input.unit))return false;
  if(input.action==='test-mailbox-oneclick')return true;
- if(input.action==='test-mailbox-previo-confirmed')return input.letterConfirmed===true;
+ if(input.action==='test-mailbox-previo-confirmed')return input.letterConfirmed===true&&(input.sendNow===undefined||input.sendNow===true);
  if(input.action==='test-mailbox-deposit-reminder')return input.reminderConfirmed===true;
  if(input.action==='test-mailbox-confirm'&&input.units!==undefined&&!(Array.isArray(input.units)&&input.units.length>=2&&input.units.length<=6&&input.units.every(u=>typeof u==='string'&&/^(?:[1-9]|1[0-5]|(?:7|8|9|10)\/[ABC])$/.test(u))&&input.units[0]===input.unit))return false;
  if(input.action==='test-mailbox-confirm'&&input.previoAuto!==undefined)return input.previoAuto===true&&typeof input.unit==='string'&&/^(?:[1-9]|1[0-5]|(?:7|8|9|10)\/[ABC])$/.test(input.unit);
@@ -509,12 +509,27 @@ export function createCaseHandler({env=process.env,fetchImpl=fetch,isolatedAppro
       const v=record.data?.state?.values||{};
       const list=await readPrevioCaseStatus({apiKey:env.PREVIO_API_KEY,voucher:voucherFor({tenantId:record.tenantId,caseId:record.caseId}),arrival:v.arrival,departure:v.departure,fetchImpl});
       const view=list===null?{state:'unknown'}:previoCaseView(list,{arrival:v.arrival,departure:v.departure});
-      if(view.state!=='confirmed')return cookieResponse(409,{error:'PREVIO_NOT_CONFIRMED'});
+      // Owner 2026-11-27: „a visszaigazoló e-mail azonnali kiküldése függetlenül a Previo-megerősítéstől” – an OPTION
+      // may get the letter now too (sendNow); the Previo status itself is not changed.
+      const sendNow=input.sendNow===true&&view.state==='option';
+      if(view.state!=='confirmed'&&!sendNow)return cookieResponse(409,{error:'PREVIO_NOT_CONFIRMED'});
       const rg=await returningGuestPricing(env,fetchImpl,record);
       const {saved,approved,deposit}=await previoConfirmedLetter({record,previo:view.booking,attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY,transport:cookieSession.transport,
-       quoteFn:rg.quoteFn,unitCheckFn:ownUnitChecker(env,fetchImpl,record)});
+       quoteFn:rg.quoteFn,unitCheckFn:ownUnitChecker(env,fetchImpl,record),optionLetter:sendNow});
       if(!saved)return cookieResponse(409,{error:'CASE_CONFLICT'});
-      return cookieResponse(200,{result:{caseId:saved.case_id,revision:Number(saved.revision),approval:saved.data?.state?.approval,bookingStatus:saved.data?.booking?.status,approved,
+      // The option must not lapse before the deposit deadline written in the letter. Chat options: the expiry moves to
+      // that deadline (PERM-20261119-CHAT-PREFILL: „jóváhagyáskor a lejárat a foglaló határidejére módosul”, read back).
+      // Phone options: no Previo write here (no permission for it yet) – the staff extend or confirm it in Previo.
+      let optionExpiry=null;
+      if(sendNow&&deposit?.receiptDeadlineUtc){
+       const writer=record.data?.sourceReceipt?.provider==='chat'?previoBookingWriter(env,fetchImpl):null;
+       const cabin=splitCabinFromUnits(v.unit,[view.booking.unit])??cabinKeyFromUnit(v.unit);
+       if(writer&&cabin&&Number.isSafeInteger(view.booking.price)){
+        try{optionExpiry=await writer.extendOption({tenantId:record.tenantId,caseId:record.caseId,resId:view.booking.resId,values:{arrival:v.arrival,departure:v.departure},
+         cabin,unit:view.booking.unit,totalHuf:view.booking.price,optionExpiresUtc:deposit.receiptDeadlineUtc})?'extended':'unverified';}catch{optionExpiry='unverified';}
+       }else optionExpiry='manual';
+      }
+      return cookieResponse(200,{result:{caseId:saved.case_id,revision:Number(saved.revision),approval:saved.data?.state?.approval,bookingStatus:saved.data?.booking?.status,approved,optionExpiry,
        ...(deposit?{deposit:{pct:deposit.pct,amount:deposit.amount,receiptDeadlineUtc:deposit.receiptDeadlineUtc}}:{})}});
      }catch(error){
       if(error?.code==='FORBIDDEN')return cookieResponse(403,{error:'FORBIDDEN'});

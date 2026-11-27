@@ -523,8 +523,14 @@ async function showPrevioStatus(caseId,revision,record=null){
     nextCase={...nextCase,step:{kind:'previoLetter',label:'Visszaigazoló levél küldése',ask:'Elküldöd a visszaigazoló levelet a vendégnek a Previóban megerősített adatokkal (ház, dátum, ár, foglaló)?'}};
     el('next-go').textContent='Visszaigazoló levél küldése';el('next-go').hidden=false;el('next-go').disabled=false;
     el('next-text').textContent='✅ A Previóban megerősítve. Most küldd el a vendégnek a visszaigazoló levelet.';
+   }else if(r.state==='option'&&!finalized&&mail&&record?.canOneClick===true){
+    // Owner 2026-11-27: the letter can go out right away, without the Previo confirmation.
+    nextCase={...nextCase,step:{kind:'previoLetter',sendNow:true,label:'Visszaigazoló levél küldése most',ask:'Elküldöd MOST a visszaigazoló levelet a vendégnek (ház, dátum, ár, foglaló és határideje), a Previo-megerősítés nélkül? A Previóban a foglalás opció marad.'}};
+    el('next-go').textContent='Visszaigazoló levél küldése most';el('next-go').hidden=false;el('next-go').disabled=false;
+    el('next-text').textContent='📝 Ez a foglalás bent van a Previóban (opció). A visszaigazoló levelet már most elküldheted a vendégnek – nem kell megvárni a Previo-megerősítést. (Vagy állítsd a Previóban „megerősítve”-re, és utána küldd.)';
    }else el('next-text').textContent=r.state==='option'
-    ?'📝 Ez a foglalás már bent van a Previóban (opció). Ellenőrizd a Previóban, és állítsd „megerősítve”-re – utána itt elküldheted a vendégnek a visszaigazoló levelet.'
+    ?(finalized?'✅ A visszaigazoló levél elment; a Previóban a foglalás még opció – a foglaló beérkezésekor erősítsd meg (vagy itt: „Foglaló beérkezett”).'
+     :'📝 Ez a foglalás már bent van a Previóban (opció). Ellenőrizd a Previóban, és állítsd „megerősítve”-re – utána itt elküldheted a vendégnek a visszaigazoló levelet.')
     :finalized?'✅ A Previóban megerősítve, a visszaigazolás rögzítve. Itt nincs több teendő.':'✅ A Previóban megerősítve.'+(mail?'':' (Nincs e-mail-cím – értesítsd telefonon.)');
   }
  }catch{}
@@ -929,14 +935,14 @@ el('next-yes').addEventListener('click',()=>{
    if(nextCase!==n||!authenticated)return fail('CHANGED');
    try{
     el('next-result').textContent='Visszaigazolás rögzítése (Previo-adatokkal)…';
-    const r=await request({tenantId:TENANT,caseId:n.caseId,expectedRevision:n.revision,action:'test-mailbox-previo-confirmed',letterConfirmed:true});
+    const r=await request({tenantId:TENANT,caseId:n.caseId,expectedRevision:n.revision,action:'test-mailbox-previo-confirmed',letterConfirmed:true,...(n.step.sendNow?{sendNow:true}:{})});
     if(r?.caseId!==n.caseId)throw Error('INVALID_DATA');saved=true;
     if(r.approved!==true||r.approval!=='approved_internal')return fail('NOT_APPROVED');
     el('next-result').textContent='Levél küldése…';
     const m=await request({tenantId:TENANT,caseId:n.caseId,action:'test-mailbox-send',expectedRevision:r.revision},'POST',{'X-Sarberki-Gmail-Token':token});
     if(m?.caseId!==n.caseId||!['sent','already_sent'].includes(m.status))throw Error('INVALID_DATA');
     actionBusy=false;rows=[];listLoaded=false;updateCounts();el('case-list').replaceChildren();const turn=epoch;
-    const done='✅ A visszaigazoló levél elküldve a vendégnek.';
+    const done='✅ A visszaigazoló levél elküldve a vendégnek.'+(r.optionExpiry==='extended'?' A Previo-opció lejárata a foglaló határidejére módosult.':r.optionExpiry==='manual'?' FIGYELEM: a Previóban az opció lejárata nem változott (48 óra) – hosszabbítsd meg a foglaló határidejéig, vagy erősítsd meg.':r.optionExpiry==='unverified'?' FIGYELEM: a Previo-opció lejáratát nem sikerült igazoltan módosítani – nézd meg a Previóban.':'');
     await openTestMailboxCase(n.caseId,turn,done);if(current(turn))el('next-result').textContent=done;
    }catch(error){if(error?.message==='AUTH_REQUIRED'){actionBusy=false;failed(error);}else fail(error?.message);}
   },fail);
