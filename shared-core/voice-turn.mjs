@@ -10,7 +10,9 @@ import {hotTubWished,withoutPhoneQuestion} from '../sarberki-chatbot-project/cha
 import {normalizeSpoken,speakNumbersHu} from './voice-normalize.mjs';
 import {PLACEHOLDER} from './inquiry-channel-adapters.mjs';
 import {depositPolicyForBooking} from '../sarberki-core.mjs';
-import {cabinPriceInfo,PRICE_LEAD} from '../business/sarberki/cabin-price-info.mjs';
+import {cabinPriceInfo} from '../business/sarberki/cabin-price-info.mjs';
+import {chatbotReply} from '../chatbot-v1.mjs';
+const cabinPriceQuestion=t=>chatbotReply({message:t}).intent==='price';
 
 const MAX_UTTERANCES=40,MAX_LEN=1000;
 
@@ -191,7 +193,7 @@ export async function voiceTurn({utterances,language='auto',clock=()=>new Date()
  }
  // Owner 2026-11-27: on the phone the price answer is the cabin line(s) + the question for the dates; the season,
  // one-night and tourist-tax details come with the offer for the dates.
- if(source==='engine'&&Object.values(PRICE_LEAD).some(l=>String(text).startsWith(l)))text=cabinPriceInfo(last,lang,{short:true});
+ if(source==='engine'&&/alapára|alapáraink|Grundpreis|base price|osnovn/iu.test(String(text).slice(0,60))&&cabinPriceQuestion(last))text=cabinPriceInfo(last,lang,{short:true});
  // On the phone the caller's number is the call itself: no "please give us a phone number" (as in the chat form).
  if(source==='engine')text=withoutPhoneQuestion(text,lang);
  return {reply:speakable(text,450,lang),language:lang,source,
