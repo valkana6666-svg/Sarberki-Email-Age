@@ -79,7 +79,20 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
    if(typeof message!=='string'||message.length>1000||++turns>100)throw Error('CHAT_INPUT_LIMIT');
    // An explicit request for another language switches at once (auto mode only).
    if(languageMode==='auto'){const req=LANG_REQUEST.find(([re])=>re.test(message));if(req)language=req[1],languageMode='auto';}
-   if(message.trim()){const now0=clock(),probe0=normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now:now0}).normalized;
+   if(message.trim()){const now0=clock();let probe0=normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now:now0}).normalized;
+    // Owner's call 2026-11-27: „2027” was heard as „2021” and the past stay was accepted; then „2027, nem 2021” changed
+    // nothing. A stay in the past drops its year (the nearest future date is taken and said back, so it can be
+    // corrected); a year alone corrects the year of the stay already given.
+    const today=now0.toISOString().slice(0,10);
+    if(probe0.dates?.arrival&&probe0.dates.arrival.slice(0,4)<today.slice(0,4)&&/(?<!\d)20\d\d(?!\d)/.test(message)){   // an earlier YEAR only
+     message=message.replace(/(?<!\d)20\d\d\.?(?!\d)/g,' ');probe0=normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now:now0}).normalized;
+    }else if(!probe0.dates){
+     const cur=facts.dates||early.dates,years=[...message.matchAll(/(?<!\d)(20\d\d)(?!\d)/g)].map(m=>+m[1]).filter(y=>String(y)>=today.slice(0,4));
+     if(cur?.arrival&&cur?.departure&&years.length&&String(years[0])!==cur.arrival.slice(0,4)){
+      const shift=years[0]-Number(cur.arrival.slice(0,4)),move=d=>(Number(d.slice(0,4))+shift)+d.slice(4);
+      message=message+' '+move(cur.arrival)+' – '+move(cur.departure);probe0=normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now:now0}).normalized;
+     }
+    }
     if(!probe0.dates){
      const end=pendingArrival?endDayOnly(message):null;
      if(pendingArrival&&end){
