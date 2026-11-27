@@ -12,7 +12,7 @@ const L=['hu','de','en','si'];
 // medium = wrong or missing fact, low = wording.
 const NOFREE=/Jó hír|Good news|Gute Nachricht|Dobra novica|van szabad hely|is available|ist[^.]{0,40}frei|je prost/i;
 // The phone reads amounts as words („százkilencvenkétezer forint”): any amount followed by the currency counts.
-const PRICE=/(?:\d[\d  .,]*|\p{L}+(?:ezer|száz|tíz|van|ven)\p{L}*)\s?(?:Ft|HUF|forint|Forint)/iu;
+const PRICE=/(?:\d[\d  .,]*|[\p{L}-]*(?:ezer|száz|tíz|van|ven)[\p{L}-]*)\s?(?:Ft|HUF|forint|Forint)/iu;
 // An internal house number („12-es ház”, „Deluxe 11”, „house 12”) – not a guest count („7 fő”) or a price („63 000”).
 const NOTNUM="(?![  ]?\\d{3})(?!\\s*(?:fő|fős|Personen|guests|oseb|felnőtt|Ft|forint|fővel))(?!\\.?\\s*ágy)";
 const HOUSE_NO=new RegExp(`(?:\\b(?:ház|house|Haus|hiška|hišk[ao])\\s*(?:szám\\s*)?\\d{1,2}\\b${NOTNUM})|(?:\\b\\d{1,2}(?:-?es|-?as|-?ös)\\s*(?:számú\\s*)?ház)|(?:\\b(?:Deluxe|VIP|Családi|Family)\\s+\\d{1,2}\\b${NOTNUM})`,'i');
