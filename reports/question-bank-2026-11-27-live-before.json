@@ -1,0 +1,1232 @@
+{
+ "price-deluxe-hu-1": {
+  "id": "price-deluxe-hu-1",
+  "topic": "price-deluxe",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Mennyibe kerül a Deluxe faház?",
+  "answer": "A Deluxe faház pontos ára az érkezési és távozási dátumtól, valamint a létszámtól (felnőttek és gyermekek életkora) függ. Kérjük, írja meg ezeket az adatokat, és elkészítjük az ajánlatot.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-deluxe-hu-2": {
+  "id": "price-deluxe-hu-2",
+  "topic": "price-deluxe",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "mennyibe kerul a delux fahaz",
+  "answer": "A Deluxe faház pontos ára az érkezési és távozási dátumtól, valamint a létszámtól (felnőttek és gyermekek életkora) függ. Kérjük, írja meg ezeket az adatokat, és elkészítjük az ajánlatot.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-deluxe-hu-3": {
+  "id": "price-deluxe-hu-3",
+  "topic": "price-deluxe",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Mennyi a deluxe ház ára egy éjszakára?",
+  "answer": "A Deluxe faház pontos ára az érkezési és távozási dátumtól, valamint a létszámtól és a gyermekek életkorától függ. Kérjük, írja meg ezeket az adatokat, és elkészítjük az ajánlatot.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-deluxe-hu-4": {
+  "id": "price-deluxe-hu-4",
+  "topic": "price-deluxe",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Deluxe ház ár?",
+  "answer": "A Deluxe faház pontos ára az érkezési és távozási dátumtól, valamint a létszámtól (felnőttek és gyermekek életkora) függ. Kérjük, írja meg ezeket az adatokat, és elkészítjük az ajánlatot.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-deluxe-hu-5": {
+  "id": "price-deluxe-hu-5",
+  "topic": "price-deluxe",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Mibe kerül egy éj a deluxe házban?",
+  "answer": "Der Grundpreis für Deluxe-Haus beträgt 63 000 Ft/Nacht für 4 Personen (höchstens 6 Personen). Der Endpreis hängt von Personenzahl und Termin ab: jeder weitere Erwachsene +10 000 Ft/Nacht, Kinder ab 3 Jahren +5 000 Ft/Nacht (unter 3 kostenlos); in der Hauptsaison (1. Juli – 22. August) +10%, für eine einzige Nacht +20%, dazu Kurtaxe 550 Ft/Erwachsener/Nacht. Wenn Sie uns An- und Abreise sowie die Zahl der Erwachsenen und Kinder nennen, erhalten Sie ein genaues Angebot.",
+  "assist": 1,
+  "done": true
+ },
+ "price-deluxe-de-1": {
+  "id": "price-deluxe-de-1",
+  "topic": "price-deluxe",
+  "kind": "fact",
+  "lang": "de",
+  "text": "Was kostet das Deluxe Haus?",
+  "answer": "Der Grundpreis für Deluxe-Haus beträgt 63 000 Ft/Nacht für 4 Personen (höchstens 6 Personen). Der Endpreis hängt von Personenzahl und Termin ab: jeder weitere Erwachsene +10 000 Ft/Nacht, Kinder ab 3 Jahren +5 000 Ft/Nacht (unter 3 kostenlos); in der Hauptsaison (1. Juli – 22. August) +10%, für eine einzige Nacht +20%, dazu Kurtaxe 550 Ft/Erwachsener/Nacht. Wenn Sie uns An- und Abreise sowie die Zahl der Erwachsenen und Kinder nennen, erhalten Sie ein genaues Angebot.",
+  "assist": 1,
+  "done": true
+ },
+ "price-deluxe-de-2": {
+  "id": "price-deluxe-de-2",
+  "topic": "price-deluxe",
+  "kind": "fact",
+  "lang": "de",
+  "text": "Preis Deluxe Haus pro Nacht?",
+  "answer": "Der Grundpreis für Deluxe-Haus beträgt 63 000 Ft/Nacht für 4 Personen (höchstens 6 Personen). Der Endpreis hängt von Personenzahl und Termin ab: jeder weitere Erwachsene +10 000 Ft/Nacht, Kinder ab 3 Jahren +5 000 Ft/Nacht (unter 3 kostenlos); in der Hauptsaison (1. Juli – 22. August) +10%, für eine einzige Nacht +20%, dazu Kurtaxe 550 Ft/Erwachsener/Nacht. Wenn Sie uns An- und Abreise sowie die Zahl der Erwachsenen und Kinder nennen, erhalten Sie ein genaues Angebot.",
+  "assist": 1,
+  "done": true
+ },
+ "price-deluxe-de-3": {
+  "id": "price-deluxe-de-3",
+  "topic": "price-deluxe",
+  "kind": "fact",
+  "lang": "de",
+  "text": "Wie teuer ist das Deluxe-Haus?",
+  "answer": "Wir bieten Familien-, VIP- und Deluxe-Häuser sowie geteilte Apartments an. Freie Kapazitäten müssen für den gesamten Aufenthalt separat geprüft werden.",
+  "assist": 1,
+  "done": true
+ },
+ "price-deluxe-en-1": {
+  "id": "price-deluxe-en-1",
+  "topic": "price-deluxe",
+  "kind": "fact",
+  "lang": "en",
+  "text": "How much is the deluxe cabin?",
+  "answer": "Please provide your arrival and departure dates, the number of adults, and the children’s ages so we can calculate the exact Deluxe cabin price.\n\n(Automatic information – our team will gladly confirm the details.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-deluxe-en-2": {
+  "id": "price-deluxe-en-2",
+  "topic": "price-deluxe",
+  "kind": "fact",
+  "lang": "en",
+  "text": "Deluxe cabin price per night?",
+  "answer": "Please provide your arrival and departure dates, the number of adults, and the children’s ages so we can calculate the exact Deluxe cabin price.\n\n(Automatic information – our team will gladly confirm the details.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-deluxe-en-3": {
+  "id": "price-deluxe-en-3",
+  "topic": "price-deluxe",
+  "kind": "fact",
+  "lang": "en",
+  "text": "What does the deluxe house cost?",
+  "answer": "Please provide your arrival and departure dates, number of adults and children (including their ages), and we can prepare an exact price for the Deluxe house.\n\n(Automatic information – our team will gladly confirm the details.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-deluxe-si-1": {
+  "id": "price-deluxe-si-1",
+  "topic": "price-deluxe",
+  "kind": "fact",
+  "lang": "si",
+  "text": "Koliko stane deluxe hiška?",
+  "answer": "Za točno ceno Deluxe hiške potrebujemo datum prihoda in odhoda ter število odraslih in starost otrok. Prosimo, pošljite te podatke, da pripravimo ponudbo.\n\n(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-deluxe-si-2": {
+  "id": "price-deluxe-si-2",
+  "topic": "price-deluxe",
+  "kind": "fact",
+  "lang": "si",
+  "text": "Cena deluxe hiške na noč?",
+  "answer": "Za natančno ceno Deluxe hiške potrebujemo datum prihoda in odhoda ter število odraslih in starost otrok. Pošljite te podatke in pripravimo ponudbo.\n\n(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-deluxe-si-3": {
+  "id": "price-deluxe-si-3",
+  "topic": "price-deluxe",
+  "kind": "fact",
+  "lang": "si",
+  "text": "Kakšna je cena za deluxe hišo?",
+  "answer": "Za natančno ceno Deluxe hiše potrebujemo datum prihoda in odhoda ter število odraslih in starost otrok. Pošljite te podatke, pa pripravimo ponudbo.\n\n(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-vip-hu-1": {
+  "id": "price-vip-hu-1",
+  "topic": "price-vip",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Mennyibe kerül a VIP ház?",
+  "answer": "Kérjük, írja meg az érkezés és távozás dátumát, valamint a felnőttek és gyermekek számát (a gyermekek életkorával együtt), és elkészítjük a pontos ajánlatot.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-vip-hu-2": {
+  "id": "price-vip-hu-2",
+  "topic": "price-vip",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "vip faház ára?",
+  "answer": "A VIP faház pontos ára az érkezési és távozási dátumtól, valamint a létszámtól (felnőttek és gyermekek életkora) függ. Kérjük, írja meg ezeket az adatokat, és elkészítjük az ajánlatot.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-vip-de-1": {
+  "id": "price-vip-de-1",
+  "topic": "price-vip",
+  "kind": "fact",
+  "lang": "de",
+  "text": "Was kostet das VIP Haus?",
+  "answer": "Der Grundpreis für VIP-Haus beträgt 63 000 Ft/Nacht für 4 Personen (höchstens 7 Personen). Der Endpreis hängt von Personenzahl und Termin ab: jeder weitere Erwachsene +10 000 Ft/Nacht, Kinder ab 3 Jahren +5 000 Ft/Nacht (unter 3 kostenlos); in der Hauptsaison (1. Juli – 22. August) +10%, für eine einzige Nacht +20%, dazu Kurtaxe 550 Ft/Erwachsener/Nacht. Wenn Sie uns An- und Abreise sowie die Zahl der Erwachsenen und Kinder nennen, erhalten Sie ein genaues Angebot.",
+  "assist": 1,
+  "done": true
+ },
+ "price-vip-en-1": {
+  "id": "price-vip-en-1",
+  "topic": "price-vip",
+  "kind": "fact",
+  "lang": "en",
+  "text": "How much is the VIP cabin?",
+  "answer": "Please provide your arrival and departure dates, the number of adults and children, and the children’s ages so we can prepare an exact offer for the VIP apartment.\n\n(Automatic information – our team will gladly confirm the details.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-vip-si-1": {
+  "id": "price-vip-si-1",
+  "topic": "price-vip",
+  "kind": "fact",
+  "lang": "si",
+  "text": "Koliko stane VIP hiška?",
+  "answer": "Za natančno ceno VIP apartmaja potrebujemo datum prihoda in odhoda ter število odraslih in starost otrok. Nato vam lahko pripravimo ponudbo.\n\n(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-family-hu-1": {
+  "id": "price-family-hu-1",
+  "topic": "price-family",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Mennyibe kerül a családi faház?",
+  "answer": "A családi faház pontos ára az érkezési és távozási dátumtól, valamint a felnőttek és gyermekek számától függ. Kérjük, írja meg ezeket az adatokat, és elkészítjük az ajánlatot.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-family-hu-2": {
+  "id": "price-family-hu-2",
+  "topic": "price-family",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "csaladi haz ara",
+  "answer": "Ezt jelenleg nem tudom hitelesen megválaszolni. Munkatársunk segít a pontosításban.",
+  "assist": 1,
+  "done": true
+ },
+ "price-family-de-1": {
+  "id": "price-family-de-1",
+  "topic": "price-family",
+  "kind": "fact",
+  "lang": "de",
+  "text": "Was kostet das Familienhaus?",
+  "answer": "Der Grundpreis für Familienhaus beträgt 55 000 Ft/Nacht für 4 Personen (höchstens 8 Personen). Der Endpreis hängt von Personenzahl und Termin ab: jeder weitere Erwachsene +10 000 Ft/Nacht, Kinder ab 3 Jahren +5 000 Ft/Nacht (unter 3 kostenlos); in der Hauptsaison (1. Juli – 22. August) +10%, für eine einzige Nacht +20%, dazu Kurtaxe 550 Ft/Erwachsener/Nacht. Wenn Sie uns An- und Abreise sowie die Zahl der Erwachsenen und Kinder nennen, erhalten Sie ein genaues Angebot.",
+  "assist": 1,
+  "done": true
+ },
+ "price-family-en-1": {
+  "id": "price-family-en-1",
+  "topic": "price-family",
+  "kind": "fact",
+  "lang": "en",
+  "text": "How much is the family cabin?",
+  "answer": "The base price of the Family cabin is 55 000 HUF/night for 4 guests (at most 8 guests). The final price depends on the number of guests and the dates: each additional adult +10 000 HUF/night, children from age 3 +5 000 HUF/night (under 3 free); in the summer high season (July 1 – August 22) +10%, a single night +20%, plus tourist tax 550 HUF/adult/night. If you tell us your arrival and departure dates and the number of adults and children, we will give you an exact quote.",
+  "assist": 1,
+  "done": true
+ },
+ "price-family-si-1": {
+  "id": "price-family-si-1",
+  "topic": "price-family",
+  "kind": "fact",
+  "lang": "si",
+  "text": "Koliko stane družinska hiška?",
+  "answer": "Osnovna cena za Družinska hiška je 55 000 Ft/noč za 4 osebe (največ 8 oseb). Končna cena je odvisna od števila oseb in termina: vsak dodatni odrasli +10 000 Ft/noč, otroci od 3. leta +5 000 Ft/noč (do 3 let brezplačno); v poletni sezoni (1. julija – 22. avgusta) +10%, za eno samo noč +20%, poleg tega turistična taksa 550 Ft/odraslo osebo/noč. Če nam sporočite datum prihoda in odhoda ter število odraslih in otrok, vam pripravimo točno ponudbo.",
+  "assist": 1,
+  "done": true
+ },
+ "price-apartment-hu-1": {
+  "id": "price-apartment-hu-1",
+  "topic": "price-apartment",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Mennyibe kerül az apartman?",
+  "answer": "Alapáraink éjszakánként: Osztott apartman (4 fős) 46 000 Ft (4 főre, legfeljebb 5 fő), Osztott apartman (2 fős) 24 000 Ft (2 főre, legfeljebb 2 fő). A végső ár a létszámtól és az időponttól függően változhat: minden további felnőtt +10 000 Ft/éj, gyermek 3 éves kortól +5 000 Ft/éj (3 év alatt ingyenes); nyári főszezonban (július 1. – augusztus 22.) +10%, egyetlen éjszakára +20%, ezen felül idegenforgalmi adó 550 Ft/felnőtt/éj. Ha megírja az érkezés és távozás dátumát, valamint a felnőttek és gyermekek számát, pontos árajánlatot adunk.",
+  "assist": 1,
+  "done": true
+ },
+ "price-apartment-hu-2": {
+  "id": "price-apartment-hu-2",
+  "topic": "price-apartment",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Mennyi egy apartman egy éjszakára?",
+  "answer": "A pontos ár az érkezési és távozási dátumtól, az apartman típusától, valamint a felnőttek és gyermekek számától függ. Kérjük, írja meg ezeket az adatokat, és elkészítjük az ajánlatot.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-apartment-de-1": {
+  "id": "price-apartment-de-1",
+  "topic": "price-apartment",
+  "kind": "fact",
+  "lang": "de",
+  "text": "Was kostet die Wohnung?",
+  "answer": "Unsere Grundpreise pro Nacht: Apartment (für 4) 46 000 Ft (für 4 Personen, höchstens 5), Apartment (für 2) 24 000 Ft (für 2 Personen, höchstens 2). Der Endpreis hängt von Personenzahl und Termin ab: jeder weitere Erwachsene +10 000 Ft/Nacht, Kinder ab 3 Jahren +5 000 Ft/Nacht (unter 3 kostenlos); in der Hauptsaison (1. Juli – 22. August) +10%, für eine einzige Nacht +20%, dazu Kurtaxe 550 Ft/Erwachsener/Nacht. Wenn Sie uns An- und Abreise sowie die Zahl der Erwachsenen und Kinder nennen, erhalten Sie ein genaues Angebot.",
+  "assist": 1,
+  "done": true
+ },
+ "price-apartment-de-2": {
+  "id": "price-apartment-de-2",
+  "topic": "price-apartment",
+  "kind": "fact",
+  "lang": "de",
+  "text": "Was kostet ein Apartment?",
+  "answer": "Alapáraink éjszakánként: Osztott apartman (4 fős) 46 000 Ft (4 főre, legfeljebb 5 fő), Osztott apartman (2 fős) 24 000 Ft (2 főre, legfeljebb 2 fő). A végső ár a létszámtól és az időponttól függően változhat: minden további felnőtt +10 000 Ft/éj, gyermek 3 éves kortól +5 000 Ft/éj (3 év alatt ingyenes); nyári főszezonban (július 1. – augusztus 22.) +10%, egyetlen éjszakára +20%, ezen felül idegenforgalmi adó 550 Ft/felnőtt/éj. Ha megírja az érkezés és távozás dátumát, valamint a felnőttek és gyermekek számát, pontos árajánlatot adunk.",
+  "assist": 1,
+  "done": true
+ },
+ "price-apartment-en-1": {
+  "id": "price-apartment-en-1",
+  "topic": "price-apartment",
+  "kind": "fact",
+  "lang": "en",
+  "text": "How much is the apartment?",
+  "answer": "Please provide your arrival and departure dates, apartment type, and the number of adults and children (including their ages), so we can calculate the exact accommodation price.\n\n(Automatic information – our team will gladly confirm the details.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-apartment-si-1": {
+  "id": "price-apartment-si-1",
+  "topic": "price-apartment",
+  "kind": "fact",
+  "lang": "si",
+  "text": "Koliko stane apartma?",
+  "answer": "Prosimo, navedite datum prihoda in odhoda, vrsto apartmaja ter število odraslih in starost otrok, da vam lahko pripravimo točno ponudbo.\n\n(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-all-hu-1": {
+  "id": "price-all-hu-1",
+  "topic": "price-all",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Mennyibe kerülnek a faházak?",
+  "answer": "A pontos szállásár az érkezési és távozási dátumtól, a faház típusától, valamint a felnőttek és gyermekek számától, illetve a gyermekek életkorától függ. Kérjük, írja meg ezeket az adatokat, és elkészítjük az ajánlatot.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-all-hu-2": {
+  "id": "price-all-hu-2",
+  "topic": "price-all",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Mik az árak?",
+  "answer": "A szállás pontos ára az érkezési és távozási dátumtól, a háztípustól, valamint a felnőttek és gyermekek számától és életkorától függ. Kérjük, írja meg ezeket az adatokat, és elkészítjük az ajánlatot.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-all-hu-3": {
+  "id": "price-all-hu-3",
+  "topic": "price-all",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Milyen áron vannak a házak?",
+  "answer": "A pontos szállásár az érkezési és távozási dátumtól, a háztípustól, valamint a felnőttek és gyermekek számától, illetve a gyermekek életkorától függ. Kérjük, írja meg ezeket az adatokat, és elkészítjük az ajánlatot.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-all-hu-4": {
+  "id": "price-all-hu-4",
+  "topic": "price-all",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Mennyibe kerül nálatok a szállás?",
+  "answer": "A pontos szállásár az érkezési és távozási dátumtól, a háztípustól, valamint a felnőttek és gyermekek számától, illetve a gyermekek életkorától függ. Kérjük, írja meg ezeket az adatokat, és elkészítjük az ajánlatot.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-all-de-1": {
+  "id": "price-all-de-1",
+  "topic": "price-all",
+  "kind": "fact",
+  "lang": "de",
+  "text": "Was kosten die Ferienhäuser?",
+  "answer": "Bitte teilen Sie uns Ihre gewünschten An- und Abreisedaten, den Haustyp sowie die Anzahl und das Alter der Gäste mit. Danach können wir Ihnen ein genaues Angebot erstellen.\n\n(Automatische Auskunft – Details bestätigt unser Team gerne.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-all-de-2": {
+  "id": "price-all-de-2",
+  "topic": "price-all",
+  "kind": "fact",
+  "lang": "de",
+  "text": "Wie sind Ihre Preise?",
+  "answer": "Für ein genaues Angebot benötigen wir Ihr An- und Abreisedatum, den gewünschten Haustyp sowie die Anzahl und das Alter der Gäste. Bitte senden Sie uns diese Angaben, dann erstellen wir Ihnen ein Angebot.\n\n(Automatische Auskunft – Details bestätigt unser Team gerne.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-all-en-1": {
+  "id": "price-all-en-1",
+  "topic": "price-all",
+  "kind": "fact",
+  "lang": "en",
+  "text": "How much are the cabins?",
+  "answer": "Please provide your arrival and departure dates, preferred cabin type, and number of adults and children, including the children’s ages. We can then prepare an exact accommodation offer.\n\n(Automatic information – our team will gladly confirm the details.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-all-en-2": {
+  "id": "price-all-en-2",
+  "topic": "price-all",
+  "kind": "fact",
+  "lang": "en",
+  "text": "What are your prices?",
+  "answer": "Accommodation prices depend on your arrival and departure dates, accommodation type, and the number and ages of guests. Please send these details, and we will prepare an offer.\n\n(Automatic information – our team will gladly confirm the details.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-all-si-1": {
+  "id": "price-all-si-1",
+  "topic": "price-all",
+  "kind": "fact",
+  "lang": "si",
+  "text": "Koliko stanejo hiške?",
+  "answer": "Za točno ceno potrebujemo datum prihoda in odhoda, vrsto hiške ter število odraslih in starost otrok. Pošljite te podatke in pripravili bomo ponudbo.\n\n(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)",
+  "assist": 1,
+  "done": true
+ },
+ "price-all-si-2": {
+  "id": "price-all-si-2",
+  "topic": "price-all",
+  "kind": "fact",
+  "lang": "si",
+  "text": "Kakšne so cene?",
+  "answer": "Prosimo, navedite datum prihoda in odhoda, vrsto hiše ter število odraslih in starost otrok, da vam lahko pripravimo natančno ponudbo.\n\n(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)",
+  "assist": 1,
+  "done": true
+ },
+ "capacity-max-hu-1": {
+  "id": "capacity-max-hu-1",
+  "topic": "capacity-max",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Hány fős a legnagyobb ház?",
+  "answer": "A legnagyobb ház, a Családi faház, legfeljebb 8 fő befogadására alkalmas.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "capacity-max-hu-2": {
+  "id": "capacity-max-hu-2",
+  "topic": "capacity-max",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Hányan férünk el maximum egy házban?",
+  "answer": "A férőhely háztípustól függ: Deluxe faházban legfeljebb 6, Családi faházban 8, VIP apartmanban 7 fő fér el. Az osztott 4 fős apartman pótággyal legfeljebb 5 főt, a 2 fős faház és az osztott A/B apartman legfeljebb 2 főt fogad.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "capacity-max-hu-3": {
+  "id": "capacity-max-hu-3",
+  "topic": "capacity-max",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Mekkora a legnagyobb faház?",
+  "answer": "A legnagyobb faház a Családi faház, amely legfeljebb 8 fő befogadására alkalmas.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "capacity-max-de-1": {
+  "id": "capacity-max-de-1",
+  "topic": "capacity-max",
+  "kind": "fact",
+  "lang": "de",
+  "text": "Wie viele Personen passen maximal in ein Haus?",
+  "answer": "Je nach Haustyp passen maximal 2, 4, 6, 7 oder 8 Personen in ein Haus. Die größte Kapazität hat das Familienhaus mit bis zu 8 Personen.\n\n(Automatische Auskunft – Details bestätigt unser Team gerne.)",
+  "assist": 1,
+  "done": true
+ },
+ "capacity-max-en-1": {
+  "id": "capacity-max-en-1",
+  "topic": "capacity-max",
+  "kind": "fact",
+  "lang": "en",
+  "text": "How many people fit in the biggest cabin?",
+  "answer": "The largest cabin accommodates up to 8 people.\n\n(Automatic information – our team will gladly confirm the details.)",
+  "assist": 1,
+  "done": true
+ },
+ "capacity-max-si-1": {
+  "id": "capacity-max-si-1",
+  "topic": "capacity-max",
+  "kind": "fact",
+  "lang": "si",
+  "text": "Koliko oseb lahko največ spi v eni hiški?",
+  "answer": "Naše osnovne cene na noč: Hiška Deluxe 63 000 Ft (za 4 osebe, največ 6), Hiška VIP 63 000 Ft (za 4 osebe, največ 7), Družinska hiška 55 000 Ft (za 4 osebe, največ 8), Apartma (za 4) 46 000 Ft (za 4 osebe, največ 5), Apartma (za 2) 24 000 Ft (za 2 osebe, največ 2), Samostojna hiška za 2 31 500 Ft (za 2 osebe, največ 3). Končna cena je odvisna od števila oseb in termina: vsak dodatni odrasli +10 000 Ft/noč, otroci od 3. leta +5 000 Ft/noč (do 3 let brezplačno); v poletni sezoni (1. julija – 22. avgusta) +10%, za eno samo noč +20%, poleg tega turistična taksa 550 Ft/odraslo osebo/noč. Če nam sporočite datum prihoda in odhoda ter število odraslih in otrok, vam pripravimo točno ponudbo.",
+  "assist": 1,
+  "done": true
+ },
+ "hottub-price-hu-1": {
+  "id": "hottub-price-hu-1",
+  "topic": "hottub-price",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Mennyibe kerül a dézsa?",
+  "answer": "Dézsa külön bérelhető: 30 000 Ft/24 óra 6 főig, felette +4 000 Ft/fő; a szabad időpontot külön ellenőrizzük.",
+  "assist": 1,
+  "done": true
+ },
+ "hottub-price-hu-2": {
+  "id": "hottub-price-hu-2",
+  "topic": "hottub-price",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "dezsa ara?",
+  "answer": "Dézsa külön bérelhető: 30 000 Ft/24 óra 6 főig, felette +4 000 Ft/fő; a szabad időpontot külön ellenőrizzük.",
+  "assist": 1,
+  "done": true
+ },
+ "hottub-price-hu-3": {
+  "id": "hottub-price-hu-3",
+  "topic": "hottub-price",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Van dézsa? Mennyi?",
+  "answer": "Dézsa külön bérelhető: 30 000 Ft/24 óra 6 főig, felette +4 000 Ft/fő; a szabad időpontot külön ellenőrizzük.",
+  "assist": 1,
+  "done": true
+ },
+ "hottub-price-de-1": {
+  "id": "hottub-price-de-1",
+  "topic": "hottub-price",
+  "kind": "fact",
+  "lang": "de",
+  "text": "Was kostet der Badezuber?",
+  "answer": "Das Badefass kann separat gemietet werden: 30 000 Ft/24 Stunden bis 6 Personen, darüber +4 000 Ft/Person; den freien Termin prüfen wir gesondert.",
+  "assist": 1,
+  "done": true
+ },
+ "hottub-price-en-1": {
+  "id": "hottub-price-en-1",
+  "topic": "hottub-price",
+  "kind": "fact",
+  "lang": "en",
+  "text": "How much is the hot tub?",
+  "answer": "The hot tub can be rented separately: 30 000 Ft/24 hours for up to 6 guests, then +4 000 Ft per person; we will check the free time slot separately.",
+  "assist": 1,
+  "done": true
+ },
+ "hottub-price-si-1": {
+  "id": "hottub-price-si-1",
+  "topic": "hottub-price",
+  "kind": "fact",
+  "lang": "si",
+  "text": "Koliko stane masažna kad?",
+  "answer": "Masažna kad stane 30.000 Ft za 24 ur za največ 6 oseb; za vsako dodatno osebo je doplačilo 4.000 Ft. Prosti termin preverimo posebej.\n\n(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)",
+  "assist": 1,
+  "done": true
+ },
+ "ticket-price-hu-1": {
+  "id": "ticket-price-hu-1",
+  "topic": "ticket-price",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Mennyibe kerül a horgászjegy?",
+  "answer": "A horgászjegy ára a tótól és az időtartamtól függ. Normál tó: 24 órás felnőtt 7 500 Ft, gyermek 3 750 Ft; rekord tó: 24 órás felnőtt 11 250 Ft, gyermek 5 650 Ft. Heti jegy normál tavon 32 500/16 250 Ft, rekord tavon 48 750/24 500 Ft (felnőtt/gyermek); faházvendégeknek 24 órás jegy szükséges.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "ticket-price-hu-2": {
+  "id": "ticket-price-hu-2",
+  "topic": "ticket-price",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Mennyi a napijegy a normál tóra?",
+  "answer": "A normál tóra a 24 órás horgászjegy felnőtteknek 7 500 Ft, gyermekeknek 3 750 Ft. Faházvendégek 12 órás jegyet nem válthatnak.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "ticket-price-hu-3": {
+  "id": "ticket-price-hu-3",
+  "topic": "ticket-price",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "horgaszjegy ara",
+  "answer": "A horgászjegy ára a tótól és az időtartamtól függ. Normál tó: 24 órás felnőtt 7 500 Ft, gyermek 3 750 Ft; heti felnőtt 32 500 Ft, gyermek 16 250 Ft. Rekord tó: 24 órás felnőtt 11 250 Ft, gyermek 5 650 Ft; heti felnőtt 48 750 Ft, gyermek 24 500 Ft.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "ticket-price-de-1": {
+  "id": "ticket-price-de-1",
+  "topic": "ticket-price",
+  "kind": "fact",
+  "lang": "de",
+  "text": "Was kostet die Angelkarte?",
+  "answer": "Die Angelkarte kostet am Normalsee für Erwachsene 5.000 Ft/12 Stunden, 7.500 Ft/24 Stunden oder 32.500 Ft/Woche; für Kinder 2.500 Ft, 3.750 Ft bzw. 16.250 Ft. Am Rekordsee kostet sie für Erwachsene 7.500 Ft/12 Stunden, 11.250 Ft/24 Stunden oder 48.750 Ft/Woche; für Kinder 3.750 Ft, 5.650 Ft bzw. 24.500 Ft. Hausgäste benötigen eine 24-Stunden-Karte; Angelkarten sind an der Rezeption erhältlich.\n\n(Automatische Auskunft – Details bestätigt unser Team gerne.)",
+  "assist": 1,
+  "done": true
+ },
+ "ticket-price-en-1": {
+  "id": "ticket-price-en-1",
+  "topic": "ticket-price",
+  "kind": "fact",
+  "lang": "en",
+  "text": "How much is a fishing ticket?",
+  "answer": "Fishing ticket prices depend on the lake, duration and whether it is for an adult or child. For the normal lake, 24 hours costs 7,500 Ft for adults and 3,750 Ft for children; for the record lake, 24 hours costs 11,250 Ft and 5,650 Ft. Lodging guests cannot buy 12-hour tickets; tickets are available at reception.\n\n(Automatic information – our team will gladly confirm the details.)",
+  "assist": 1,
+  "done": true
+ },
+ "ticket-price-si-1": {
+  "id": "ticket-price-si-1",
+  "topic": "ticket-price",
+  "kind": "fact",
+  "lang": "si",
+  "text": "Koliko stane ribiška karta?",
+  "answer": "Ribiška karta stane za odrasle/otroke: na običajnem jezeru 12 ur 5.000/2.500 Ft, 24 ur 7.500/3.750 Ft, tedenska 32.500/16.250 Ft; na rekordnem jezeru 12 ur 7.500/3.750 Ft, 24 ur 11.250/5.650 Ft, tedenska 48.750/24.500 Ft. Gostje v hiškah lahko kupijo le 24-urno karto; karta za rekordno jezero velja tudi za običajno jezero.\n\n(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)",
+  "assist": 1,
+  "done": true
+ },
+ "checkin-hu-1": {
+  "id": "checkin-hu-1",
+  "topic": "checkin",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Hánytól lehet érkezni?",
+  "answer": "Érkezni 14:00 órától lehet. A bejelentkezés 14:00 és éjjel 2:00 között lehetséges.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "checkin-hu-2": {
+  "id": "checkin-hu-2",
+  "topic": "checkin",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Mikor lehet elfoglalni a szállást?",
+  "answer": "A szállás érkezés napján 14:00 órától foglalható el. A bejelentkezés 14:00 és éjjel 2:00 között lehetséges.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "checkin-hu-3": {
+  "id": "checkin-hu-3",
+  "topic": "checkin",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Hány órától van a bejelentkezés?",
+  "answer": "A bejelentkezés 14:00 órától, legkésőbb éjjel 2:00-ig lehetséges.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "checkin-de-1": {
+  "id": "checkin-de-1",
+  "topic": "checkin",
+  "kind": "fact",
+  "lang": "de",
+  "text": "Ab wann ist Check-in?",
+  "answer": "Der Check-in ist ab 14:00 Uhr möglich, spätestens bis 2:00 Uhr nachts.\n\n(Automatische Auskunft – Details bestätigt unser Team gerne.)",
+  "assist": 1,
+  "done": true
+ },
+ "checkin-en-1": {
+  "id": "checkin-en-1",
+  "topic": "checkin",
+  "kind": "fact",
+  "lang": "en",
+  "text": "What time is check-in?",
+  "answer": "Check-in is from 2:00 PM until 2:00 AM.\n\n(Automatic information – our team will gladly confirm the details.)",
+  "assist": 1,
+  "done": true
+ },
+ "checkin-si-1": {
+  "id": "checkin-si-1",
+  "topic": "checkin",
+  "kind": "fact",
+  "lang": "si",
+  "text": "Od kdaj je prijava?",
+  "answer": "Prijava je možna od 14.00 do 2.00 ponoči. Recepcia je na voljo 24 ur na dan.\n\n(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)",
+  "assist": 1,
+  "done": true
+ },
+ "checkout-hu-1": {
+  "id": "checkout-hu-1",
+  "topic": "checkout",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Meddig kell elhagyni a házat?",
+  "answer": "A házat 10:00 óráig kell elhagyni.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "checkout-hu-2": {
+  "id": "checkout-hu-2",
+  "topic": "checkout",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Mikor kell kijelentkezni?",
+  "answer": "A kijelentkezés 10:00 óráig lehetséges.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "checkout-hu-3": {
+  "id": "checkout-hu-3",
+  "topic": "checkout",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Hány óráig kell távozni?",
+  "answer": "A távozás 10:00 óráig szükséges.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "checkout-de-1": {
+  "id": "checkout-de-1",
+  "topic": "checkout",
+  "kind": "fact",
+  "lang": "de",
+  "text": "Bis wann ist Check-out?",
+  "answer": "Der Check-out ist bis 10:00 Uhr möglich.\n\n(Automatische Auskunft – Details bestätigt unser Team gerne.)",
+  "assist": 1,
+  "done": true
+ },
+ "checkout-en-1": {
+  "id": "checkout-en-1",
+  "topic": "checkout",
+  "kind": "fact",
+  "lang": "en",
+  "text": "What time is check-out?",
+  "answer": "Check-out is by 10:00.\n\n(Automatic information – our team will gladly confirm the details.)",
+  "assist": 1,
+  "done": true
+ },
+ "checkout-si-1": {
+  "id": "checkout-si-1",
+  "topic": "checkout",
+  "kind": "fact",
+  "lang": "si",
+  "text": "Do kdaj je odjava?",
+  "answer": "Odjava je do 10.00.\n\n(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)",
+  "assist": 1,
+  "done": true
+ },
+ "pet-hu-1": {
+  "id": "pet-hu-1",
+  "topic": "pet",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Hozhatom a kutyámat?",
+  "answer": "Igen, kutyáját magával hozhatja. A háziállat díja 2 000 Ft/nap/állat.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "pet-hu-2": {
+  "id": "pet-hu-2",
+  "topic": "pet",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Lehet kutyát vinni?",
+  "answer": "Háziállat hozható, díja 2 000 Ft/nap/állat.",
+  "assist": 1,
+  "done": true
+ },
+ "pet-hu-3": {
+  "id": "pet-hu-3",
+  "topic": "pet",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Háziállat megengedett?",
+  "answer": "Háziállat hozható, díja 2 000 Ft/nap/állat.",
+  "assist": 1,
+  "done": true
+ },
+ "pet-de-1": {
+  "id": "pet-de-1",
+  "topic": "pet",
+  "kind": "fact",
+  "lang": "de",
+  "text": "Darf ich meinen Hund mitbringen?",
+  "answer": "Haustiere sind erlaubt; die Gebühr beträgt 2 000 Ft pro Tag und Tier.",
+  "assist": 1,
+  "done": true
+ },
+ "pet-en-1": {
+  "id": "pet-en-1",
+  "topic": "pet",
+  "kind": "fact",
+  "lang": "en",
+  "text": "Can I bring my dog?",
+  "answer": "Pets are allowed; the fee is 2 000 Ft per pet per day.",
+  "assist": 1,
+  "done": true
+ },
+ "pet-si-1": {
+  "id": "pet-si-1",
+  "topic": "pet",
+  "kind": "fact",
+  "lang": "si",
+  "text": "Lahko pripeljem psa?",
+  "answer": "Hišni ljubljenčki so dovoljeni; pristojbina znaša 2 000 Ft na žival na dan.",
+  "assist": 1,
+  "done": true
+ },
+ "deposit-hu-1": {
+  "id": "deposit-hu-1",
+  "topic": "deposit",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Mennyi a foglaló?",
+  "answer": "Foglalás csak külön visszaigazolás után érvényes. A chatbot nem hoz létre foglalást.",
+  "assist": 1,
+  "done": true
+ },
+ "deposit-hu-2": {
+  "id": "deposit-hu-2",
+  "topic": "deposit",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Mennyi előleget kell fizetni?",
+  "answer": "Az előleg összege a létszámtól, fizetési határideje pedig az érkezésig hátralévő időtől függ. A pontos előleget és határidőt külön visszaigazoljuk.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "deposit-hu-3": {
+  "id": "deposit-hu-3",
+  "topic": "deposit",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Kell foglalót fizetni?",
+  "answer": "Igen, foglalót kérünk, amelyet banki átutalással lehet befizetni. Mértéke a létszámtól, fizetési határideje pedig az érkezésig hátralévő időtől függ; a pontos részleteket a visszaigazolással küldjük.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "deposit-de-1": {
+  "id": "deposit-de-1",
+  "topic": "deposit",
+  "kind": "fact",
+  "lang": "de",
+  "text": "Wie hoch ist die Anzahlung?",
+  "answer": "Die Höhe der Anzahlung hängt von der Personenzahl ab. Die Zahlungsfrist richtet sich nach der verbleibenden Zeit bis zur Anreise; die konkrete Frist teilen wir Ihnen mit der Bestätigung mit.\n\n(Automatische Auskunft – Details bestätigt unser Team gerne.)",
+  "assist": 1,
+  "done": true
+ },
+ "deposit-en-1": {
+  "id": "deposit-en-1",
+  "topic": "deposit",
+  "kind": "fact",
+  "lang": "en",
+  "text": "How much is the deposit?",
+  "answer": "The deposit amount depends on the number of guests. Its payment deadline depends on how much time remains before arrival; the exact deadline will be confirmed separately.\n\n(Automatic information – our team will gladly confirm the details.)",
+  "assist": 1,
+  "done": true
+ },
+ "deposit-si-1": {
+  "id": "deposit-si-1",
+  "topic": "deposit",
+  "kind": "fact",
+  "lang": "si",
+  "text": "Koliko je predplačilo?",
+  "answer": "Tega podatka ne morem zanesljivo potrditi. Naša ekipa vam bo pomagala.",
+  "assist": 1,
+  "done": true
+ },
+ "cancellation-hu-1": {
+  "id": "cancellation-hu-1",
+  "topic": "cancellation",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Mi a lemondási feltétel?",
+  "answer": "Az érkezés előtt legalább 14 nappal történő lemondásnál a foglaló nem vész el.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "cancellation-hu-2": {
+  "id": "cancellation-hu-2",
+  "topic": "cancellation",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Ha le kell mondanom, mi történik a foglalóval?",
+  "answer": "Az érkezés előtt legalább 14 nappal történő lemondás esetén a foglaló nem vész el.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "cancellation-hu-3": {
+  "id": "cancellation-hu-3",
+  "topic": "cancellation",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Ingyenes a lemondás?",
+  "answer": "Az érkezés előtt legalább 14 nappal történő lemondásnál a foglaló nem vész el.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "cancellation-de-1": {
+  "id": "cancellation-de-1",
+  "topic": "cancellation",
+  "kind": "fact",
+  "lang": "de",
+  "text": "Wie sind die Stornobedingungen?",
+  "answer": "Bei einer Stornierung mindestens 14 Tage vor der Anreise verfällt die Anzahlung nicht.\n\n(Automatische Auskunft – Details bestätigt unser Team gerne.)",
+  "assist": 1,
+  "done": true
+ },
+ "cancellation-en-1": {
+  "id": "cancellation-en-1",
+  "topic": "cancellation",
+  "kind": "fact",
+  "lang": "en",
+  "text": "What is the cancellation policy?",
+  "answer": "If you cancel at least 14 days before arrival, your deposit will not be forfeited.\n\n(Automatic information – our team will gladly confirm the details.)",
+  "assist": 1,
+  "done": true
+ },
+ "cancellation-si-1": {
+  "id": "cancellation-si-1",
+  "topic": "cancellation",
+  "kind": "fact",
+  "lang": "si",
+  "text": "Kakšni so pogoji odpovedi?",
+  "answer": "Če odpoveste vsaj 14 dni pred prihodom, se predplačilo ne izgubi. Podrobnosti plačila in odpovedi so navedene v potrditvi rezervacije.\n\n(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)",
+  "assist": 1,
+  "done": true
+ },
+ "how-to-book-hu-1": {
+  "id": "how-to-book-hu-1",
+  "topic": "how-to-book",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Hogyan tudok foglalni?",
+  "answer": "Foglalási igényt küldhet a chatben, vagy online a https://sarberkito.hu/foglalas/ oldalon. A foglalás csak külön visszaigazolás után válik érvényessé. Az ajánlathoz kérjük, írja meg az érkezés és távozás dátumát, valamint a felnőttek és gyermekek számát.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "how-to-book-hu-2": {
+  "id": "how-to-book-hu-2",
+  "topic": "how-to-book",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Szeretnék foglalni",
+  "answer": "Kérem, írja meg az érkezés és távozás dátumát, valamint a felnőttek és gyermekek számát (a gyermekek életkorával együtt). A foglalási igényt itt is elküldheti, vagy online leadhatja: https://sarberkito.hu/foglalas/; a foglalás csak külön visszaigazolás után érvényes.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "how-to-book-hu-3": {
+  "id": "how-to-book-hu-3",
+  "topic": "how-to-book",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Hogy lehet lefoglalni egy házat?",
+  "answer": "Tisztelt Vendégünk!\n\nKöszönjük érdeklődését. Hogy pontos ajánlatot és árat tudjunk küldeni, kérjük, írja meg:\n– a pontos érkezési és távozási dátumot,\n– hány felnőtt és hány gyermek érkezik (gyermeknél az életkort is),\n– melyik háztípust választaná: VIP, Családi, Deluxe vagy Osztott.\n\nEzek alapján ellenőrizzük a szabad helyet, és küldjük az ajánlatot.\n\nÜdvözlettel:\nSárberki Horgásztó",
+  "assist": 0,
+  "done": true
+ },
+ "how-to-book-de-1": {
+  "id": "how-to-book-de-1",
+  "topic": "how-to-book",
+  "kind": "fact",
+  "lang": "de",
+  "text": "Wie kann ich buchen?",
+  "answer": "Sie können Ihren Buchungswunsch hier im Chat senden oder online buchen: https://sarberkito.hu/foglalas/  \nDie Buchung wird erst nach unserer gesonderten Bestätigung verbindlich.\n\n(Automatische Auskunft – Details bestätigt unser Team gerne.)",
+  "assist": 1,
+  "done": true
+ },
+ "how-to-book-en-1": {
+  "id": "how-to-book-en-1",
+  "topic": "how-to-book",
+  "kind": "fact",
+  "lang": "en",
+  "text": "How can I book?",
+  "answer": "You can send a booking request here in the chat or book online at https://sarberkito.hu/foglalas/. Please provide your arrival and departure dates and the number of adults and children; your booking becomes valid only after our separate confirmation.\n\n(Automatic information – our team will gladly confirm the details.)",
+  "assist": 1,
+  "done": true
+ },
+ "how-to-book-si-1": {
+  "id": "how-to-book-si-1",
+  "topic": "how-to-book",
+  "kind": "fact",
+  "lang": "si",
+  "text": "Kako lahko rezerviram?",
+  "answer": "Rezervacijsko povpraševanje lahko pošljete v klepetu ali prek spletne strani: https://sarberkito.hu/foglalas/  \nRezervacija velja šele po našem ločenem pisnem potrjevanju; za pripravo ponudbe navedite datum prihoda in odhoda ter število odraslih in otrok.\n\n(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)",
+  "assist": 1,
+  "done": true
+ },
+ "availability-nodate-hu-1": {
+  "id": "availability-nodate-hu-1",
+  "topic": "availability-nodate",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Van szabad hely?",
+  "answer": "Tisztelt Vendégünk!\n\nKöszönjük érdeklődését. Hogy pontos ajánlatot és árat tudjunk küldeni, kérjük, írja meg:\n– a pontos érkezési és távozási dátumot,\n– hány felnőtt és hány gyermek érkezik (gyermeknél az életkort is),\n– melyik háztípust választaná: VIP, Családi, Deluxe vagy Osztott.\n\nEzek alapján ellenőrizzük a szabad helyet, és küldjük az ajánlatot.\n\nÜdvözlettel:\nSárberki Horgásztó",
+  "assist": 0,
+  "done": true
+ },
+ "availability-nodate-hu-2": {
+  "id": "availability-nodate-hu-2",
+  "topic": "availability-nodate",
+  "kind": "fact",
+  "lang": "hu",
+  "text": "Van még szabad ház hétvégén?",
+  "answer": "Tisztelt Vendégünk!\n\nKöszönjük érdeklődését. Hogy pontos ajánlatot és árat tudjunk küldeni, kérjük, írja meg:\n– a pontos érkezési és távozási dátumot,\n– hány felnőtt és hány gyermek érkezik (gyermeknél az életkort is),\n– melyik háztípust választaná: VIP, Családi, Deluxe vagy Osztott.\n\nEzek alapján ellenőrizzük a szabad helyet, és küldjük az ajánlatot.\n\nÜdvözlettel:\nSárberki Horgásztó",
+  "assist": 0,
+  "done": true
+ },
+ "availability-nodate-de-1": {
+  "id": "availability-nodate-de-1",
+  "topic": "availability-nodate",
+  "kind": "fact",
+  "lang": "de",
+  "text": "Haben Sie noch etwas frei?",
+  "answer": "Guten Tag!\n\nVielen Dank für Ihre Anfrage. Damit wir Ihnen ein genaues Angebot mit Preis senden können, teilen Sie uns bitte mit:\n– das genaue An- und Abreisedatum,\n– wie viele Erwachsene und Kinder anreisen (bei Kindern bitte das Alter),\n– welchen Haustyp Sie wählen: VIP, Familienhaus, Deluxe oder geteiltes Haus.\n\nAuf dieser Grundlage prüfen wir die freien Plätze und senden Ihnen das Angebot.\n\nMit freundlichen Grüßen\nSárberki Horgásztó",
+  "assist": 0,
+  "done": true
+ },
+ "availability-nodate-en-1": {
+  "id": "availability-nodate-en-1",
+  "topic": "availability-nodate",
+  "kind": "fact",
+  "lang": "en",
+  "text": "Do you have availability?",
+  "answer": "Dear Guest,\n\nThank you for your enquiry. So that we can send you an exact offer and price, please let us know:\n– your exact arrival and departure dates,\n– how many adults and children will be staying (with the children’s ages),\n– which cabin type you would like: VIP, Family cabin, Deluxe or Split cabin.\n\nWe will then check availability and send you our offer.\n\nKind regards,\nSárberki Horgásztó",
+  "assist": 0,
+  "done": true
+ },
+ "availability-nodate-si-1": {
+  "id": "availability-nodate-si-1",
+  "topic": "availability-nodate",
+  "kind": "fact",
+  "lang": "si",
+  "text": "Imate še prosto?",
+  "answer": "Pozdravljeni!\n\nHvala za vaše povpraševanje. Da vam lahko pošljemo natančno ponudbo in ceno, nam prosimo sporočite:\n– točen datum prihoda in odhoda,\n– koliko odraslih in otrok bo prišlo (pri otrocih tudi starost),\n– kateri tip hiške želite: VIP, Družinska hiška, Deluxe ali Deljena hiška.\n\nNato preverimo razpoložljivost in vam pošljemo ponudbo.\n\nLep pozdrav\nSárberki Horgásztó",
+  "assist": 0,
+  "done": true
+ },
+ "parking-hu-1": {
+  "id": "parking-hu-1",
+  "topic": "parking",
+  "kind": "info",
+  "lang": "hu",
+  "text": "Van parkoló?",
+  "answer": "Igen, parkolási lehetőség van. Nagyobb csoport esetén előzetes egyeztetés szükséges.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "parking-de-1": {
+  "id": "parking-de-1",
+  "topic": "parking",
+  "kind": "info",
+  "lang": "de",
+  "text": "Gibt es Parkplätze?",
+  "answer": "Ja, Parkmöglichkeiten sind vorhanden. Bei größeren Gruppen bitten wir um vorherige Absprache.\n\n(Automatische Auskunft – Details bestätigt unser Team gerne.)",
+  "assist": 1,
+  "done": true
+ },
+ "parking-en-1": {
+  "id": "parking-en-1",
+  "topic": "parking",
+  "kind": "info",
+  "lang": "en",
+  "text": "Is there parking?",
+  "answer": "Parking is available. For larger groups, please arrange it in advance.\n\n(Automatic information – our team will gladly confirm the details.)",
+  "assist": 1,
+  "done": true
+ },
+ "parking-si-1": {
+  "id": "parking-si-1",
+  "topic": "parking",
+  "kind": "info",
+  "lang": "si",
+  "text": "Ali je parkirišče?",
+  "answer": "Parkirišče je na voljo. Pri večjih skupinah ga je treba predhodno uskladiti.\n\n(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)",
+  "assist": 1,
+  "done": true
+ },
+ "wifi-hu-1": {
+  "id": "wifi-hu-1",
+  "topic": "wifi",
+  "kind": "info",
+  "lang": "hu",
+  "text": "Van wifi?",
+  "answer": "Igen, van wifi.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "wifi-de-1": {
+  "id": "wifi-de-1",
+  "topic": "wifi",
+  "kind": "info",
+  "lang": "de",
+  "text": "Gibt es WLAN?",
+  "answer": "Ja, WLAN ist vorhanden.\n\n(Automatische Auskunft – Details bestätigt unser Team gerne.)",
+  "assist": 1,
+  "done": true
+ },
+ "wifi-en-1": {
+  "id": "wifi-en-1",
+  "topic": "wifi",
+  "kind": "info",
+  "lang": "en",
+  "text": "Is there wifi?",
+  "answer": "Yes, Wi‑Fi is available.\n\n(Automatic information – our team will gladly confirm the details.)",
+  "assist": 1,
+  "done": true
+ },
+ "wifi-si-1": {
+  "id": "wifi-si-1",
+  "topic": "wifi",
+  "kind": "info",
+  "lang": "si",
+  "text": "Ali je wifi?",
+  "answer": "Da, na voljo je Wi‑Fi.\n\n(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)",
+  "assist": 1,
+  "done": true
+ },
+ "food-hu-1": {
+  "id": "food-hu-1",
+  "topic": "food",
+  "kind": "info",
+  "lang": "hu",
+  "text": "Van reggeli vagy étterem?",
+  "answer": "A területen büfé és étterem is van. Reggeliről nincs információnk.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "food-de-1": {
+  "id": "food-de-1",
+  "topic": "food",
+  "kind": "info",
+  "lang": "de",
+  "text": "Gibt es Frühstück oder ein Restaurant?",
+  "answer": "Auf dem Gelände gibt es ein Restaurant und ein Büfett. Informationen dazu, ob Frühstück angeboten wird, liegen mir nicht vor.\n\n(Automatische Auskunft – Details bestätigt unser Team gerne.)",
+  "assist": 1,
+  "done": true
+ },
+ "food-en-1": {
+  "id": "food-en-1",
+  "topic": "food",
+  "kind": "info",
+  "lang": "en",
+  "text": "Is there breakfast or a restaurant?",
+  "answer": "There is a buffet and a restaurant on site. Weekend fish soup and lángos are also available.\n\n(Automatic information – our team will gladly confirm the details.)",
+  "assist": 1,
+  "done": true
+ },
+ "food-si-1": {
+  "id": "food-si-1",
+  "topic": "food",
+  "kind": "info",
+  "lang": "si",
+  "text": "Ali imate zajtrk ali restavracijo?",
+  "answer": "Tega podatka ne morem zanesljivo potrditi. Naša ekipa vam bo pomagala.",
+  "assist": 1,
+  "done": true
+ },
+ "payment-card-hu-1": {
+  "id": "payment-card-hu-1",
+  "topic": "payment-card",
+  "kind": "info",
+  "lang": "hu",
+  "text": "Lehet kártyával fizetni?",
+  "answer": "Igen, a helyszínen bankkártyával is lehet fizetni. Az előleget (foglalót) azonban csak banki átutalással lehet küldeni.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "payment-card-de-1": {
+  "id": "payment-card-de-1",
+  "topic": "payment-card",
+  "kind": "info",
+  "lang": "de",
+  "text": "Kann man mit Karte zahlen?",
+  "answer": "Igen, a helyszínen bankkártyával is lehet fizetni. Az előleget azonban csak banki átutalással lehet küldeni.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "payment-card-en-1": {
+  "id": "payment-card-en-1",
+  "topic": "payment-card",
+  "kind": "info",
+  "lang": "en",
+  "text": "Can I pay by card?",
+  "answer": "Yes, card payment is available on site. The deposit must be paid by bank transfer.\n\n(Automatic information – our team will gladly confirm the details.)",
+  "assist": 1,
+  "done": true
+ },
+ "payment-card-si-1": {
+  "id": "payment-card-si-1",
+  "topic": "payment-card",
+  "kind": "info",
+  "lang": "si",
+  "text": "Lahko plačam s kartico?",
+  "answer": "Da, na lokaciji lahko plačate s plačilno kartico, gotovino ali kartico SZÉP. Akontacijo je mogoče plačati samo z bančnim nakazilom.\n\n(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)",
+  "assist": 1,
+  "done": true
+ },
+ "grill-hu-1": {
+  "id": "grill-hu-1",
+  "topic": "grill",
+  "kind": "info",
+  "lang": "hu",
+  "text": "Van grillezési lehetőség?",
+  "answer": "Igen, a területen külön kialakított grillezési lehetőség van.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "grill-de-1": {
+  "id": "grill-de-1",
+  "topic": "grill",
+  "kind": "info",
+  "lang": "de",
+  "text": "Kann man grillen?",
+  "answer": "Igen, külön kialakított grillezési lehetőség van.\n\n(Automatikus tájékoztatás – a részleteket munkatársunk szívesen megerősíti.)",
+  "assist": 1,
+  "done": true
+ },
+ "grill-en-1": {
+  "id": "grill-en-1",
+  "topic": "grill",
+  "kind": "info",
+  "lang": "en",
+  "text": "Can we barbecue?",
+  "answer": "Yes, there is a designated barbecue area.\n\n(Automatic information – our team will gladly confirm the details.)",
+  "assist": 1,
+  "done": true
+ },
+ "grill-si-1": {
+  "id": "grill-si-1",
+  "topic": "grill",
+  "kind": "info",
+  "lang": "si",
+  "text": "Ali lahko žarimo?",
+  "answer": "Na voljo je posebej urejen prostor za žar.\n\n(Samodejna informacija – podrobnosti vam z veseljem potrdi naša ekipa.)",
+  "assist": 1,
+  "done": true
+ },
+ "location-hu-1": {
+  "id": "location-hu-1",
+  "topic": "location",
+  "kind": "info",
+  "lang": "hu",
+  "text": "Hol vagytok pontosan?",
+  "answer": "Ezt jelenleg nem tudom hitelesen megválaszolni. Munkatársunk segít a pontosításban.",
+  "assist": 1,
+  "done": true
+ },
+ "location-de-1": {
+  "id": "location-de-1",
+  "topic": "location",
+  "kind": "info",
+  "lang": "de",
+  "text": "Wo genau sind Sie?",
+  "answer": "Dazu liegen mir keine verlässlich bestätigten Informationen vor. Unser Team hilft gerne weiter.",
+  "assist": 1,
+  "done": true
+ },
+ "location-en-1": {
+  "id": "location-en-1",
+  "topic": "location",
+  "kind": "info",
+  "lang": "en",
+  "text": "Where exactly are you?",
+  "answer": "Ezt jelenleg nem tudom hitelesen megválaszolni. Munkatársunk segít a pontosításban.",
+  "assist": 1,
+  "done": true
+ },
+ "location-si-1": {
+  "id": "location-si-1",
+  "topic": "location",
+  "kind": "info",
+  "lang": "si",
+  "text": "Kje točno ste?",
+  "answer": "Tega podatka ne morem zanesljivo potrditi. Naša ekipa vam bo pomagala.",
+  "assist": 1,
+  "done": true
+ }
+}

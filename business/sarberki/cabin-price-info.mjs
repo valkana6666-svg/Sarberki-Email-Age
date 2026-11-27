@@ -86,3 +86,13 @@ function prose(keys,lang){
   si:'Če nam sporočite datum prihoda in odhoda ter število odraslih in otrok, vam pripravimo točno ponudbo.'}[lang];
  return [base,vary,exact].join(' ');
 }
+
+// Owner 2026-11-27 (question bank): „Hány fős a legnagyobb ház?” – the maximum per type and who the base price covers.
+export function cabinCapacityInfo(language='hu'){
+ const lang=NAMES[language]?language:'hu',mx=x=>{const t=BUSINESS.accommodationTypes[x];return t.maxGuests??t.capacity;};
+ const list=['family','vip','deluxe','splitC','splitA','small'].map(x=>({hu:`${NAMES.hu[x]} ${mx(x)} fő`,de:`${NAMES.de[x]} ${mx(x)} Personen`,en:`${NAMES.en[x]} ${mx(x)} guests`,si:`${NAMES.si[x]} ${mx(x)} oseb`})[lang]).join(', ');
+ return {hu:`Férőhelyek (legfeljebb): ${list}. A legnagyobb a Családi faház, ${mx('family')} fővel. A különálló 2 fős ház 3. ágya gyermeknek szól. Ha többen érkeznek, több házat is foglalhatnak.`,
+  de:`Plätze (höchstens): ${list}. Das größte ist das Familienhaus mit ${mx('family')} Personen. Das 3. Bett im separaten Haus für 2 ist für ein Kind. Größere Gruppen können mehrere Häuser buchen.`,
+  en:`Capacity (at most): ${list}. The largest is the Family cabin, for ${mx('family')} guests. The 3rd bed in the separate cabin for 2 is for a child. Larger groups can book several cabins.`,
+  si:`Zmogljivost (največ): ${list}. Največja je družinska hiška, za ${mx('family')} oseb. 3. ležišče v samostojni hiški za 2 je za otroka. Večje skupine lahko rezervirajo več hišk.`}[lang];
+}

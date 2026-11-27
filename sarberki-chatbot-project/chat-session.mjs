@@ -1,6 +1,9 @@
 import {normalizeInquiryInput} from '../intake-normalize.mjs';
 import {buildChatInquiryReply} from '../shared-core/inquiry-channel-adapters.mjs';
 import {chatbotReply,renderChatbotIntent} from '../chatbot-v1.mjs';
+// Owner 2026-11-27 (question bank, live): the fact-bound model replaced the approved price / capacity / deposit /
+// cancellation / check-in / pet / booking answers with a vague „it depends” – these keep the rule answer (no model call).
+export const FIXED_FACT_INTENTS=new Set(['price','capacity','deposit','cancel','checkin','pet','booking']);
 import {mergeBookingFacts} from '../booking-cases.mjs';
 import {childAgesFromText,languageFromText,hasPotentialStayDate,ambiguousPartyFieldsFromText} from '../sarberki-core.mjs';
 const SHORT_REPLY={
@@ -64,7 +67,7 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
     // once the dates and a cabin or party size are known, instead of answering each piece as a separate question.
     const party=Number.isInteger(early.adults)||Number.isInteger(early.guests);
     if(!(early.dates&&(party||early.cabin)&&(faq.intent==='unknown'||faq.intent==='booking'||faq.intent==='cabins'||seen.dates||Number.isInteger(seen.adults)||Number.isInteger(seen.guests))))
-     return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};
+     return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null,noAssist:FIXED_FACT_INTENTS.has(faq.intent)};
     bookingContext=true;
    }
 
@@ -77,7 +80,7 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
     const kind=carriesFacts?null:shortTurnKind(message);
     // A question the rules do not know ("Is there a helipad?", regular-guest discount) is a question, not a stay
     // update: the rule answer stays, and the page may ask the fact-bound model.
-    if(!carriesFacts&&!kind&&faq.intent==='unknown'&&/\?\s*$/.test(message.trim())&&!STAY_QUESTION.test(message)){lastDecision=null;return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};}
+    if(!carriesFacts&&!kind&&faq.intent==='unknown'&&/\?\s*$/.test(message.trim())&&!STAY_QUESTION.test(message)){lastDecision=null;return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null,noAssist:FIXED_FACT_INTENTS.has(faq.intent)};}
     if(kind){lastDecision=null;const t=SHORT_REPLY[kind][language]||SHORT_REPLY[kind].hu;return {response:{...faq,reply:t},text:t,operatorReviewText:SHORT_REPLY[kind].hu,decision:null,noAssist:true};}
    }
    // Informational detours do not replace the active stay or its missing facts.
@@ -105,7 +108,7 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
    if(['welcome','hotTub','deposit','fishing','pet','booking','cabins','checkin'].includes(faq.intent)&&!hasBookingUpdate){
     // A standalone number after an informational answer has no clear referent.
     lastDecision=null;
-    return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null};
+    return {response:faq,text:faq.reply,operatorReviewText:renderChatbotIntent(faq.intent,'hu'),decision:null,noAssist:FIXED_FACT_INTENTS.has(faq.intent)};
    }
    const n=bookingUpdate||normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now}).normalized;
    const next={...early,...facts};early={};
