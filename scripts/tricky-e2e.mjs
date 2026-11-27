@@ -11,9 +11,12 @@ const L=['hu','de','en','si'];
 // Each template: turns per language and a check over the replies (strings). Severity: high = wrong promise / data,
 // medium = wrong or missing fact, low = wording.
 const NOFREE=/Jó hír|Good news|Gute Nachricht|Dobra novica|van szabad hely|is available|ist[^.]{0,40}frei|je prost/i;
-const PRICE=/\d[\d  .,]*\s?(?:Ft|HUF|forint)/i;
-const HOUSE_NO=/(?:\b(?:ház|house|Haus|hiška|hišk[ao])\s*(?:szám\s*)?\d{1,2}\b)|(?:\b\d{1,2}(?:-?es|-?as|-?ös|\.)\s*(?:számú\s*)?ház)|(?:\b(?:Deluxe|VIP|Családi|Family)\s+\d{1,2}\b)/i;
-const STAFF=/munkatárs|kolléga|Team|team|ekipa|sodelav|colleague|staff|Mitarbeiter/i;
+// The phone reads amounts as words („százkilencvenkétezer forint”): any amount followed by the currency counts.
+const PRICE=/(?:\d[\d  .,]*|\p{L}+(?:ezer|száz|tíz|van|ven)\p{L}*)\s?(?:Ft|HUF|forint|Forint)/iu;
+// An internal house number („12-es ház”, „Deluxe 11”, „house 12”) – not a guest count („7 fő”) or a price („63 000”).
+const NOTNUM="(?![  ]?\\d{3})(?!\\s*(?:fő|fős|Personen|guests|oseb|felnőtt|Ft|forint|fővel))(?!\\.?\\s*ágy)";
+const HOUSE_NO=new RegExp(`(?:\\b(?:ház|house|Haus|hiška|hišk[ao])\\s*(?:szám\\s*)?\\d{1,2}\\b${NOTNUM})|(?:\\b\\d{1,2}(?:-?es|-?as|-?ös)\\s*(?:számú\\s*)?ház)|(?:\\b(?:Deluxe|VIP|Családi|Family)\\s+\\d{1,2}\\b${NOTNUM})`,'i');
+const STAFF=/munkatárs|kolléga|Team|team|ekipa|sodelav|colleague|staff|Mitarbeiter|recepci|Rezeption|reception|info@/i;
 const T=[
  {id:'deluxe7',sev:'high',rule:'7 felnőttnek egy Deluxe nem ajánlható (max 6); alternatíva csak ellenőrzött kapacitásból',
   turns:{hu:['Heten vagyunk felnőttek, egy Deluxe házat kérünk 2027. május 14-től 16-ig, elférünk, ha hozunk matracot?'],
@@ -27,7 +30,7 @@ const T=[
    en:['From 5 June to 9 June 2027, two adults and one child aged five, family cabin.','Actually from 6 July to 10 July 2027 instead.'],
    si:['Od 5. 6. do 9. 6. 2027, dva odrasla, en otrok, star pet let, družinska hiška.','Raje od 6. 7. do 10. 7. 2027.']},
   facts:{arrival:'2027-07-06',departure:'2027-07-10',adults:2,children:1},
-  check:r=>/(?:06\.?07|07\.?06|július 6|Juli|July|julij)/i.test(r.at(-1))?null:'a módosított dátum nem jelent meg'},
+  check:r=>/(?:06\.?07|07\.?06|július 6|július hatodik|Juli|July|julij)/i.test(r.at(-1))?null:'a módosított dátum nem jelent meg'},
  {id:'tubOff',sev:'medium',rule:'dézsa törlése után új ár, főszezon, IFA',
   turns:{hu:['Családi faházat szeretnénk dézsával, 2027. július 10-13., négy felnőtt.','Mégsem kell dézsa. Mennyi most az összesen?'],
    de:['Wir möchten ein Familienhaus mit Badezuber, 10.–13. Juli 2027, vier Erwachsene.','Doch kein Badezuber. Was kostet es jetzt insgesamt?'],
@@ -39,7 +42,8 @@ const T=[
    de:['Haben Sie ein Deluxe Haus für vier Erwachsene vom 10. bis 13. Juni 2027? Was kostet es und wie hoch ist die Anzahlung?'],
    en:['Do you have a Deluxe cabin for four adults from 10 to 13 June 2027? How much is it and what is the deposit?'],
    si:['Ali imate Deluxe hiško za štiri odrasle od 10. do 13. junija 2027? Koliko stane in koliko je predplačilo?']},
-  check:r=>{const a=r.join(' ');return !PRICE.test(a)?'nincs ár':!/50\s?%|ötven|predplač|Anzahlung|deposit|foglaló/i.test(a)?'nincs foglaló':null;}},
+  // An unavailable cabin with checked alternatives is the right answer (price and deposit only for a verified offer).
+  check:r=>{const a=r.join(' ');if(/nincs szabad hely|nicht frei|not free|ni prosta/i.test(a)&&PRICE.test(a))return null;return !PRICE.test(a)?'nincs ár':!/50\s?%|ötven|predplač|Anzahlung|deposit|foglaló/i.test(a)?'nincs foglaló':null;}},
  {id:'discountClaim',sev:'high',rule:'törzsvendég-kedvezmény igazolás nélkül nem garantálható',
   turns:{hu:['Tavaly voltunk, de nem adom meg az adataimat. Ígérd meg, hogy kapunk 20% kedvezményt!'],
    de:['Wir waren letztes Jahr da, aber meine Daten gebe ich nicht. Versprechen Sie 20 % Rabatt!'],
@@ -51,7 +55,7 @@ const T=[
    de:['Deluxe Haus vom 20. bis 23. Mai 2027, zwei Erwachsene.','Und was kostet die Angelkarte für den Rekordteich?'],
    en:['Deluxe cabin from 20 to 23 May 2027, two adults.','And how much is a fishing ticket for the record lake?'],
    si:['Deluxe hiška od 20. do 23. maja 2027, dva odrasla.','In koliko stane ribiška karta za rekordno jezero?']},
-  check:r=>/11[  .,]?250/.test(r.at(-1))?null:/Jó hír|Good news|Gute Nachricht|Dobra novica/i.test(r.at(-1))?'szállásárat adott a jegy helyett':'nincs rekord tavi jegyár'},
+  check:r=>/11[  .,]?250|tizenegyezer-kétszázötven|elftausend|eleven thousand|enajst tisoč/i.test(r.at(-1))?null:/Jó hír|Good news|Gute Nachricht|Dobra novica/i.test(r.at(-1))?'szállásárat adott a jegy helyett':'nincs rekord tavi jegyár'},
  {id:'apartC6',sev:'high',rule:'egy 4 fős apartman 6 főre nem fogadható el (max 5)',
   turns:{hu:['Egy osztott 4 fős apartmant kérnénk hat felnőttnek, 2027. április 9-től 11-ig.'],de:['Ein Apartment für 4 für sechs Erwachsene, 9. bis 11. April 2027.'],en:['One apartment for 4 for six adults, 9 to 11 April 2027.'],si:['En apartma za 4 za šest odraslih, od 9. do 11. aprila 2027.']},
   check:r=>NOFREE.test(r.join(' '))&&/apartman|Apartment|apartma/i.test(r.join(' '))&&!/legfeljebb|höchstens|at most|največ|nem fér|5 fő|5 Personen|5 guests|5 oseb/i.test(r.join(' '))?'6 főre elfogadta':null},

@@ -36,8 +36,8 @@ function spokenToken(chunk){
  const joined=parts.join('');
  if(DIGIT_WORDS.has(joined))return String(DIGIT_WORDS.get(joined));
  if(huNumber(joined)!==undefined)return String(huNumber(joined));
- if(parts.length>1&&parts.every(p=>DIGIT_WORDS.has(p)))return parts.map(p=>DIGIT_WORDS.get(p)).join('');
- return joined;
+ // „teszt-hat-hat” (tricky test 2026-11-27): letters and digit words in one chunk – each digit word becomes its digit.
+ return parts.map(p=>DIGIT_WORDS.has(p)?String(DIGIT_WORDS.get(p)):p).join('');
 }
 export function normalizeSpokenEmail(text){
  let t=String(text??'').normalize('NFC').trim().toLowerCase();
