@@ -80,8 +80,8 @@ const days=tubDays(t,stay);
  const pm=t.match(/(\d{1,2})\s*(?:fő|főre|fős|személy|Person\p{L}*|guests?|people|oseb\p{L}*)/iu)||t.match(/(\p{L}+)\s+(?:főre|fő\b|személyre|Personen|guests|people|osebe|oseb)/iu);
  if(pm)persons=Number.isInteger(+pm[1])?+pm[1]:NUMS[pm[1].toLowerCase()]??null;
  if(!persons&&Number.isInteger(stay.guests))persons=stay.guests;
- let hour=null;const hm=t.match(/(\d{1,2})\s*(?:órától|óra|órakor|Uhr|o'?clock|h\b|uri|ure)/iu)||t.match(/(?:este|délután|abends|evening|zvečer)\s+(\d{1,2})\s*-?\s*(?:t[óő]l|kor)?/iu)||t.match(/(\d{1,2})\s*(?:pm)\b/iu);
- if(hm){hour=+hm[1];if(/este|délután|abends|evening|pm|zvečer/iu.test(t)&&hour<12)hour+=12;if(hour>23)hour=null;}
+ let hour=null;const th=hourDigits(t),hm=th.match(/(\d{1,2})\s*(?:órától|óra|órakor|Uhr|o'?clock|h\b|uri|ure)/iu)||th.match(/(?:este|délután|abends|nachmittags|evening|afternoon|zvečer|popoldne)\s+(\d{1,2})\s*-?\s*(?:t[óő]l|kor)?/iu)||th.match(/(\d{1,2})\s*(?:pm)\b/iu);
+ if(hm){hour=+hm[1];if(/este|délután|abends|nachmittags|evening|afternoon|pm|zvečer|popoldne/iu.test(th)&&hour<12)hour+=12;if(hour>23)hour=null;}
  const per=tubPricePer24h(persons);
  return {days,persons,hour,per24h:per,total:days.length?per*days.length:null,allStay:days.length===stayNights.length};
 }
@@ -115,9 +115,18 @@ export function tubReply(req,lang='hu'){
 
 // The tub requests of a call, each with its day answer joined („Kérünk dézsát is.” + „Csak negyedikére.”), and which
 // utterances are tub turns (kept out of the stay replay).
+// Owner's call 2026-11-27 15:37: „délután négy órától” (an hour said in words) – the hour words become digits.
+const HOUR_WORDS={egy:1,két:2,kettő:2,három:3,négy:4,öt:5,hat:6,hét:7,nyolc:8,kilenc:9,tíz:10,tizenegy:11,tizenkét:12,tizenkettő:12,tizenhárom:13,tizennégy:14,tizenöt:15,tizenhat:16,tizenhét:17,tizennyolc:18,tizenkilenc:19,húsz:20,huszonegy:21,huszonkét:22,huszonkettő:22,
+ eins:1,zwei:2,drei:3,vier:4,fünf:5,sechs:6,sieben:7,acht:8,neun:9,zehn:10,elf:11,zwölf:12,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,
+ ena:1,dve:2,tri:3,štiri:4,pet:5,šest:6,sedem:7,osem:8,devet:9,deset:10};
+const HW=Object.keys(HOUR_WORDS).sort((a,b)=>b.length-a.length).join('|');
+export function hourDigits(text){
+ return String(text||'').replace(new RegExp(`(?<!\\p{L})(${HW})(?=\\s*(?:órától|órakor|óra(?!\\p{L})|Uhr|o'?clock|pm\\b|am\\b|uri|ure))`,'giu'),(m,w)=>String(HOUR_WORDS[w.toLowerCase()]))
+  .replace(new RegExp(`((?:reggel|délelőtt|délután|este|morgens|vormittags|nachmittags|abends|morning|afternoon|evening|zjutraj|dopoldne|popoldne|zvečer)\\s+)(${HW})(?!\\p{L})`,'giu'),(m,a,w)=>a+HOUR_WORDS[w.toLowerCase()]);
+}
 // Owner's call 2026-11-27 14:54: „Délután 4-től szeretném kérni.” right after the tub request is its start hour.
 const TIME_ANSWER=/(?<!\d)\d{1,2}\s*(?:órától|órakor|óra(?!\p{L})|Uhr|o'?clock|pm|am)\b|(?:reggel|délelőtt|délután|este|morgens|vormittags|nachmittags|abends|morning|afternoon|evening|zjutraj|dopoldne|popoldne|zvečer)\s+\d{1,2}(?!\d)/iu;
-export function isTubTimeAnswer(last){const l=String(last||'');return TIME_ANSWER.test(l)&&!TUB_WORD.test(l)&&!REFUSED.test(l)&&!RANGE.test(l)&&!STAY_TURN.test(l)&&!PRICE_Q.test(l);}
+export function isTubTimeAnswer(last){const l=hourDigits(last);return TIME_ANSWER.test(l)&&!TUB_WORD.test(l)&&!REFUSED.test(l)&&!RANGE.test(l)&&!STAY_TURN.test(l)&&!PRICE_Q.test(l);}
 export function isTubTurn(utterances,i){return isTubRequest(utterances[i])||(i>0&&(isTubDayAnswer(utterances[i-1],utterances[i])||(isTubTimeAnswer(utterances[i])&&isTubTurn(utterances,i-1))));}
 export function tubTexts(utterances){
  const out=[];

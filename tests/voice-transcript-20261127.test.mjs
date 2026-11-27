@@ -95,5 +95,10 @@ test('saveCallTranscript: needs the switch, a conversation id and a transcript; 
  const {createHash}=await import('node:crypto');
  assert.equal(b.p_case,'tm-'+createHash('sha256').update('phone:voice_conv_abc123').digest('hex').slice(0,24),'same case id as at the booking');
  assert.equal(JSON.parse(b.p_text).lines.length,4);
+ // Owner's call 11-27 15:37: the answer to the last question is in the transcript too (a promise, as in voice-turn).
+ calls.length=0;
+ assert.equal(await saveCallTranscript({env,fetchImpl,args:{conversation_id:'conv_abc123',conversation_history:history(1)},reply:Promise.resolve('Egy napijegy ára …')}),true);
+ const l2=JSON.parse(JSON.parse(calls.find(c=>c.url.endsWith('/rpc/sc_intake_phone_transcript')).body).p_text).lines;
+ assert.equal(l2.length,5);assert.deepEqual(l2.at(-1),{role:'agent',text:'Egy napijegy ára …'});
  assert.equal(await saveCallTranscript({env,fetchImpl:async()=>{throw Error('net');},args:{conversation_id:'conv_abc123',conversation_history:history(1)}}),false);
 });

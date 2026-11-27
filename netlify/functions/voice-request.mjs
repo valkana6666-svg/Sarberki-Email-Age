@@ -20,13 +20,18 @@ import {createHash} from 'node:crypto';
 const TEST_PROJECT='https://mojnqizbcaczstguikpv.supabase.co',TENANT='sarberki-test';
 // Owner 2026-11-27: after the booking the whole conversation (system__conversation_history) replaces the case's
 // transcript – the case of this call (caseId from the conversation id, as at the booking). Never blocks the answer.
-export async function saveCallTranscript({env,fetchImpl,args}){
+export async function saveCallTranscript({env,fetchImpl,args,reply=null}){
  try{
   const id=String(args?.conversation_id??'').trim(),lines=callTranscript(args?.conversation_history);
   if(!/^[A-Za-z0-9_-]{6,100}$/.test(id)||!lines.length||env.VOICE_INTAKE!==VOICE_INTAKE_SWITCH||env.SUPABASE_URL!==TEST_PROJECT)return false;
   if(!env.SUPABASE_PUBLISHABLE_KEY||!env.INTAKE_ACCOUNT_EMAIL||!env.INTAKE_ACCOUNT_PASSWORD)return false;
   const caseId='tm-'+createHash('sha256').update('phone:voice_'+id,'utf8').digest('hex').slice(0,24);
-  const login=await intakeAccountToken(env,fetchImpl);if(!login.token)return false;
+  // The sign-in runs while the answer is being made; the answer itself (owner's call 11-27 15:37: the last question had
+  // no answer in the transcript) is added as the assistant's line.
+  const loginP=intakeAccountToken(env,fetchImpl);
+  const said=String((await reply)??'').replace(/\s+/g,' ').trim().slice(0,1500);
+  if(said&&lines.length<300&&!(lines.at(-1).role==='agent'&&lines.at(-1).text===said))lines.push({role:'agent',text:said});
+  const login=await loginP;if(!login.token)return false;
   const transport=createSupabaseTransport({url:TEST_PROJECT+'/',publishableKey:env.SUPABASE_PUBLISHABLE_KEY,token:login.token,fetchImpl});
   await saveTranscript({transport,tenantId:TENANT,caseId,lines,attestationKey:env.ISOLATED_APPROVAL_ATTESTATION_KEY});
   return true;
@@ -54,7 +59,7 @@ export function createVoiceRequestHandler({env=process.env,fetchImpl=fetch,now=(
    const r=await voiceAddTub({utterances,email:args.email,conversationId:args.conversation_id,language:lang,
     noteFn:writer?({caseId,arrival,departure,lines})=>writer.appendNote({tenantId:TENANT,caseId,arrival,departure,lines}):async()=>null,
     notifyFn:extra=>notifyOperator(env,fetchImpl,'phone',extra)});
-   await saveCallTranscript({env,fetchImpl,args});
+   await saveCallTranscript({env,fetchImpl,args,reply:r?.reply});
    return json(200,r);
   }
   // Read-back only (nothing saved, no rate count): the agent says this reply and asks the caller once.

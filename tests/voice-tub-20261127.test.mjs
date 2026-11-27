@@ -91,3 +91,16 @@ test('14:54 call: the hour answer joins the tub request; appendNote writes <gNot
  const n=sent.length;assert.deepEqual(await w.appendNote({tenantId:'sarberki-test',caseId:'tm-aaaaaaaaaaaaaaaaaaaaaaaa',arrival:'2027-03-03',departure:'2027-03-07',lines:calls[0].lines}),{resId:55,added:0});
  assert.equal(sent.slice(n).some(b=>b.includes('<newReservation>')),false);
 });
+
+test('owner call 11-27 15:37: an hour said in words („délután négy órától”) is the start hour; DE/EN too',async()=>{
+ const {normalizeSpoken}=await import('../shared-core/voice-normalize.mjs');
+ const {isTubTimeAnswer}=await import('../shared-core/voice-tub.mjs');
+ const S={arrival:'2027-03-02',departure:'2027-03-07',guests:5},h=s=>parseTubRequest(normalizeSpoken(s),S)?.hour;
+ assert.equal(h('Szeretnénk dézsát is, negyedikére és ötödikére, egész napra, délután négy órától.'),16);
+ assert.deepEqual(parseTubRequest(normalizeSpoken('Szeretnénk dézsát is, negyedikére és ötödikére, egész napra, délután négy órától.'),S).days,['2027-03-04','2027-03-05']);
+ assert.equal(h('Dézsát kérünk 5-re tizennyolc órától.'),18);
+ assert.equal(h('Wir möchten den Badezuber am 5. ab vier Uhr nachmittags.'),16);
+ assert.equal(h('We would like the hot tub on the 5th from four pm.'),16);
+ assert.equal(isTubTimeAnswer(normalizeSpoken('Délután négy órától.')),true);
+ assert.equal(isTubTimeAnswer(normalizeSpoken('Négy felnőtt érkezik.')),false);
+});

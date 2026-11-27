@@ -32,10 +32,12 @@ export function createVoiceTurnHandler({env=process.env,fetchImpl=fetch,now=()=>
   const offerFn=capacityFn?({facts,language})=>buildChatOffer({facts,language,capacityFn,cancellationDays:BUSINESS.bookingRules.cancellationDaysUnder15Guests}):null;
   const assistFn=chatAssistConfigured(env)?({message,language})=>askChatAssist({message,language},{env,fetchImpl}):null;
   const booked=body?.args?.booked===true||body?.booked===true;
-  // Owner 2026-11-27: after the booking each turn also refreshes the case's full transcript (in parallel with the answer).
-  const saving=booked?saveCallTranscript({env,fetchImpl,args:body?.args||body}):null;
-  try{const r=await voiceTurn({utterances,language:lang,offerFn,assistFn,intake:env.VOICE_INTAKE==='test-only',booked});if(saving)await saving;return json(200,r);}
-  catch{if(saving)await saving;return json(200,{reply:null,reason:'ENGINE_FAILED'});}
+  // Owner 2026-11-27: after the booking each turn also refreshes the case's full transcript, with this answer in it
+  // (the sign-in runs in parallel with the engine).
+  let done;const answer=new Promise(res=>{done=res;});
+  const saving=booked?saveCallTranscript({env,fetchImpl,args:body?.args||body,reply:answer}):null;
+  try{const r=await voiceTurn({utterances,language:lang,offerFn,assistFn,intake:env.VOICE_INTAKE==='test-only',booked});done(r?.reply);if(saving)await saving;return json(200,r);}
+  catch{done(null);if(saving)await saving;return json(200,{reply:null,reason:'ENGINE_FAILED'});}
  };
 }
 export default createVoiceTurnHandler();
