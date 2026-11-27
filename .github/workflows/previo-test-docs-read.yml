@@ -1,0 +1,25 @@
+name: Previo TEST – one booking's documents (Claude, read-only)
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths: [docs/PREVIO-TEST-DOCS-READ-REQUEST.md]
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Read
+        env:
+          PREVIO_API_KEY: ${{ secrets.PREVIO_TEST_API_KEY }}
+        run: |
+          test "$GITHUB_REF" = "refs/heads/gmail-test-subject-allowlist"
+          REQ="$(grep -v '^\s*$' docs/PREVIO-TEST-DOCS-READ-REQUEST.md | tail -n 1)"
+          node scripts/previo-test-docs-read.mjs "$REQ"
