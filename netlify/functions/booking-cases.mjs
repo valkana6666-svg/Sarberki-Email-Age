@@ -205,6 +205,8 @@ function testMailboxView(record,authority,tenant='sarberki-test',previoRead=fals
   canFinalize:permissions.includes('write')&&!['finalized','deposit_received'].includes(data.booking?.status),
   // One-click V2 (PERM-20261112-ONECLICK): one account with write AND approve, the V2 writer on, not yet finalized.
   canOneClick:permissions.includes('write')&&permissions.includes('approve')&&previoWrite===true&&!['finalized','deposit_received'].includes(data.booking?.status),
+  // Owner 2026-11-27: the final letter after a preliminary one (the booking is already finalized here).
+  canFinalLetter:permissions.includes('write')&&permissions.includes('approve')&&previoRead===true&&data.booking?.status==='finalized'&&confirmationLetterKind(data)==='preliminary',
   canEditContact:permissions.includes('write')&&!['finalized','deposit_received'].includes(data.booking?.status),
   canMarkDeposit:permissions.includes('write')&&data.booking?.status==='finalized',
   // Owner 2026-11-23: the guest reminder is offered in the last 2 days before the deposit deadline (once).

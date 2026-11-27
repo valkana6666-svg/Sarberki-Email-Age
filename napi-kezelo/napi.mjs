@@ -529,7 +529,7 @@ async function showPrevioStatus(caseId,revision,record=null){
    if(r.state==='confirmed'&&!finalized&&can)
     offer({kind:'previoLetter',label:FINAL_LABEL,ask:'Elküldöd a vendégnek a végleges visszaigazolást a Previóban véglegesített adatokkal (ház, dátum, ár, foglaló)?'},
      '✅ A Previóban az opció véglegesített foglalásra váltva. Küldd el a vendégnek a végleges visszaigazolást e-mailben.');
-   else if(r.state==='confirmed'&&record?.booking?.status==='finalized'&&kindSent==='preliminary'&&can)
+   else if(r.state==='confirmed'&&record?.booking?.status==='finalized'&&kindSent==='preliminary'&&mail&&record?.canFinalLetter===true)
     offer({kind:'previoLetter',final:true,label:FINAL_LABEL,ask:'Az előzetes visszaigazolás már kiment. Elküldöd most a végleges visszaigazolást (ugyanaz a foglalási szám, ár és foglaló-határidő)?'},
      '✅ A Previóban az opció véglegesített foglalásra váltva (az előzetes visszaigazolás már kiment). Küldd el a végleges visszaigazolást e-mailben.');
    else if(r.state==='option'&&!finalized&&can)
