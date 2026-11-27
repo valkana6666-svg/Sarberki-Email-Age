@@ -32,5 +32,8 @@ jobs:
           REQ="$(grep -v '^\s*$' docs/PREVIO-FINANCE-PROBE-REQUEST.md | tail -n 1)"
           { echo '```json'; } >> "$GITHUB_STEP_SUMMARY"
           PREVIO_KEY="$TEST_KEY" PREVIO_HOTEL=73521 node scripts/previo-finance-probe.mjs "$REQ" | tee -a "$GITHUB_STEP_SUMMARY"
-          PREVIO_KEY="$LIVE_KEY" PREVIO_HOTEL=753011 node scripts/previo-finance-probe.mjs "$REQ" | tee -a "$GITHUB_STEP_SUMMARY"
+          # Owner 2026-11-27: a request with "testOnly":true reads TEST 73521 only (a live read needs its own permission).
+          if ! echo "$REQ" | grep -q '"testOnly":true'; then
+            PREVIO_KEY="$LIVE_KEY" PREVIO_HOTEL=753011 node scripts/previo-finance-probe.mjs "$REQ" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
           { echo '```'; } >> "$GITHUB_STEP_SUMMARY"

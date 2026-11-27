@@ -8,3 +8,4 @@ Csak olvasás (searchReservations, getPayments, getAccountItems, getDocuments); 
 {"from":"2026-07-01","to":"2026-08-31"}
 {"from":"2026-07-01","to":"2026-08-31"}
 {"from":"2026-11-20","to":"2026-12-31","maxRes":3,"settings":true}
+{"from":"2026-01-01","to":"2027-12-31","maxRes":40,"testOnly":true}
