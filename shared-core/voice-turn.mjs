@@ -10,6 +10,7 @@ import {hotTubWished,withoutPhoneQuestion} from '../sarberki-chatbot-project/cha
 import {normalizeSpoken,speakNumbersHu} from './voice-normalize.mjs';
 import {PLACEHOLDER} from './inquiry-channel-adapters.mjs';
 import {depositPolicyForBooking} from '../sarberki-core.mjs';
+import {cabinPriceInfo,PRICE_LEAD} from '../business/sarberki/cabin-price-info.mjs';
 
 const MAX_UTTERANCES=40,MAX_LEN=1000;
 
@@ -47,7 +48,7 @@ export function speechify(text,lang='hu'){
 // The booking-status / terms part of a letter is not read on the phone (legal text; the checked offer says it briefly).
 const CUT=/\n\s*(?:Foglalás állapota|Booking status|Reservierungsstatus|Status rezervacije|Foglalási feltételek|Booking terms|Buchungsbedingungen|Pogoji rezervacije)\s*\n[\s\S]*$/u;
 // On the phone the caller speaks, not writes.
-const SAY={hu:[[/írja meg/gu,'mondja meg'],[/Írja meg/gu,'Mondja meg'],[/írjon nekünk/gu,'szóljon nekünk'],[/írjon bátran/gu,'kérdezzen bátran']],de:[[/schreiben Sie uns/gu,'sagen Sie uns']],en:[[/please write/giu,'please tell us']],si:[[/napišite/gu,'povejte']]};
+const SAY={hu:[[/\/felnőtt\/éj/gu,' felnőttenként és éjszakánként'],[/\/éj(?!\p{L})/gu,' éjszakánként'],[/\+(?=\S)/gu,'plusz '],[/írja meg/gu,'mondja meg'],[/Írja meg/gu,'Mondja meg'],[/írjon nekünk/gu,'szóljon nekünk'],[/írjon bátran/gu,'kérdezzen bátran']],de:[[/schreiben Sie uns/gu,'sagen Sie uns']],en:[[/please write/giu,'please tell us']],si:[[/napišite/gu,'povejte']]};
 // Letter placeholders („the availability is confirmed separately”, „the total price follows”) are noise on the phone
 // (owner's ElevenLabs call 2026-11-25): the caller hears only the facts and the question.
 const dropPlaceholders=(t,lang)=>{for(const p of [...(PLACEHOLDER[lang]||[]),...(PLACEHOLDER.hu||[])])t=t.split(p).join('');return t;};
@@ -188,6 +189,9 @@ export async function voiceTurn({utterances,language='auto',clock=()=>new Date()
   const context=lastWords<=3?utterances.slice(-3).join(' ').slice(-600):String(utterances.at(-1));
   try{const a=await assistFn({message:context,language:lang});if(typeof a==='string'&&a.trim()){text=a;source='assist';}}catch{}
  }
+ // Owner 2026-11-27: on the phone the price answer is the cabin line(s) + the question for the dates; the season,
+ // one-night and tourist-tax details come with the offer for the dates.
+ if(source==='engine'&&Object.values(PRICE_LEAD).some(l=>String(text).startsWith(l)))text=cabinPriceInfo(last,lang,{short:true});
  // On the phone the caller's number is the call itself: no "please give us a phone number" (as in the chat form).
  if(source==='engine')text=withoutPhoneQuestion(text,lang);
  return {reply:speakable(text,450,lang),language:lang,source,

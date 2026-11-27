@@ -108,3 +108,20 @@ test('price question about a cabin, no dates yet → asks for dates and guests, 
  assert.notEqual(chatbotReply({message:'Mennyibe kerül a dézsa a faháznál?',language:'hu'}).intent,'price');
  assert.notEqual(chatbotReply({message:'Faházvendégként mennyibe kerül a horgászjegy?',language:'hu'}).intent,'price');
 });
+
+// Owner 2026-11-27: every cabin type, every language – the price question gets the signed 2027 price per night, the
+// included guests, the per-guest extra and the maximum; „all cabins” lists every type.
+test('price answer per cabin type and language (2027 tariff), all types when none is named',async()=>{
+ const {chatbotReply}=await import('../chatbot-v1.mjs');
+ const Q={hu:{deluxe:'Mennyibe kerül a delux fahaz?',vip:'Mennyi a VIP ház ára egy éjszakára?',family:'Mennyibe kerül a családi faház?',apart:'Mennyibe kerül az apartman?',small:'Mennyibe kerül a különálló 2 fős ház?',all:'Mennyibe kerülnek a faházak?'},
+  de:{deluxe:'Was kostet das Deluxe Haus pro Nacht?',vip:'Was kostet das VIP Haus?',family:'Was kostet das Familienhaus?',apart:'Was kostet die Wohnung?',all:'Was kosten die Ferienhäuser?'},
+  en:{deluxe:'How much is the deluxe cabin per night?',vip:'What is the price of the VIP cabin?',family:'How much does the family cabin cost?',apart:'How much is the apartment?',all:'How much are the cabins?'},
+  si:{deluxe:'Koliko stane deluxe hiška na noč?',vip:'Kakšna je cena VIP hiške?',family:'Koliko stane družinska hiška?',apart:'Koliko stane apartma?',all:'Koliko stanejo hiške?'}};
+ const has={deluxe:['63 000','10 000',' 6 '],vip:['63 000','10 000',' 7 '],family:['55 000','10 000',' 8 '],apart:['46 000','24 000'],small:['31 500','5 000']};
+ for(const [lang,qs] of Object.entries(Q))for(const [k,msg] of Object.entries(qs)){
+  const r=chatbotReply({message:msg,language:lang});assert.equal(r.intent,'price',lang+' '+msg);
+  for(const x of k==='all'?['63 000','55 000','46 000','24 000','31 500']:has[k])assert.ok(r.reply.includes(x.trim()),lang+' '+msg+' → '+x);
+  if(k!=='all'&&k!=='apart')assert.ok(!r.reply.includes(k==='family'?'63 000':'55 000'),'only the named type: '+msg);
+  assert.match(r.reply,/550/,'tourist tax');assert.match(r.reply,/\+10%/);assert.match(r.reply,/\+20%/);
+ }
+});

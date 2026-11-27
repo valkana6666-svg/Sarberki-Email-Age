@@ -2,6 +2,7 @@
 import {BUSINESS} from './business-config.mjs';
 import {FISHING_GENERAL_TEXT,fishingQuestion,fishingRulesSummary} from './fishing-rules.mjs';
 import {hotTubSentence} from './sarberki-core.mjs';
+import {cabinPriceInfo} from './business/sarberki/cabin-price-info.mjs';
 const WORDS={
  hu:{price:'A szállás ára az időszaktól, az éjszakák számától és a létszámtól függ. Kérjük, írja meg az érkezés és távozás dátumát, valamint a felnőttek és gyermekek számát (a gyermekek életkorával), és megadjuk a pontos árat.',welcome:'Üdvözöljük a Sárberki Horgásztónál! Miben segíthetünk?',unknown:'Ezt jelenleg nem tudom hitelesen megválaszolni. Munkatársunk segít a pontosításban.',availability:'Szabad helyet csak a teljes időszakra elvégzett kapacitásellenőrzés után tudunk igazolni. Kérjük, írja meg az érkezés és távozás dátumát, valamint a felnőttek és gyermekek számát.',hotTub:'A dézsa egyes faházaknál külön bérelhető, külön díj ellenében. Ha a ház mellett nincs dézsa, egy másik háznál lévő szabad dézsát is bérelhet. Elérhetőségét külön ellenőrizzük.',deposit:'Az előleg mértéke a létszámtól, fizetési határideje az érkezésig hátralévő időtől függ. A fizetési ablak 14 napnál több idő esetén 7 nap, legfeljebb 14 nap esetén 24 óra; a konkrét határidőt külön visszaigazoljuk.',checkin:'Érkezés 14:00 órától, távozás 10:00 óráig.',booking:'Foglalás csak külön visszaigazolás után érvényes. A chatbot nem hoz létre foglalást.',fishing:'Horgászathoz érvényes állami horgászjegy és külön Sárberki horgászjegy szükséges. Legfeljebb 6-os méretű, szakáll nélküli horog használható; a kötelező horgászfelszerelésről is gondoskodni kell.',cabins:'Családi, VIP, Deluxe és osztott apartman típusok találhatók nálunk. A szabad helyeket és a megfelelő férőhelyet a teljes kért időszakra külön ellenőrizzük.'},
  de:{price:'Der Preis hängt vom Zeitraum, der Anzahl der Nächte und der Personenzahl ab. Bitte nennen Sie An- und Abreise sowie die Anzahl der Erwachsenen und Kinder (mit Alter der Kinder), dann nennen wir Ihnen den genauen Preis.',welcome:'Willkommen am Sárberki Angelsee! Wie können wir helfen?',unknown:'Dazu liegen mir keine verlässlich bestätigten Informationen vor. Unser Team hilft gerne weiter.',availability:'Verfügbarkeit kann nur für den gesamten Zeitraum geprüft werden. Bitte nennen Sie Anreise, Abreise sowie Erwachsene und Kinder.',hotTub:'Ein Badezuber kann bei bestimmten Häusern separat gegen Aufpreis gemietet werden. Hat Ihr Haus keinen, können Sie einen freien Badezuber bei einem anderen Haus mieten. Die Verfügbarkeit muss geprüft werden.',deposit:'Die Anzahlung hängt von der Personenzahl ab, die Zahlungsfrist vom Abstand zur Anreise. Die Zahlungsfrist beträgt bei mehr als 14 Tagen 7 Tage und bei höchstens 14 Tagen 24 Stunden; den konkreten Termin bestätigen wir separat.',checkin:'Check-in ab 14:00 Uhr, Check-out bis 10:00 Uhr.',booking:'Eine Buchung gilt erst nach gesonderter Bestätigung. Dieser Chatbot bucht nicht.',fishing:'Zum Angeln sind eine gültige staatliche Angelberechtigung und eine separate Sárberki-Angelkarte erforderlich. Nur widerhakenlose Haken bis Größe 6 sind erlaubt; vorgeschriebene Angelausrüstung ist mitzubringen.',cabins:'Wir bieten Familien-, VIP- und Deluxe-Häuser sowie geteilte Apartments an. Freie Kapazitäten müssen für den gesamten Aufenthalt separat geprüft werden.'},
@@ -41,7 +42,7 @@ export function chatbotReply({message='',language='hu'}={}){
  const text=String(message).slice(0,1000).toLowerCase();
  let intent='unknown';
  const asksAvailability=/(?:szabad|kapacit|elérhető|van[- ]?e\s+hely|available|availability|vacan|frei|verfüg|prosto|razpoložljiv|termin|időpont)/u.test(text);
- const mentionsStay=/(?:faház|fahaz|apartman|cabin|accommodat|ferienhaus|hišk|apartma|deluxe|delux|vip|családi|family|familien|družinsk)/u.test(text);
+ const mentionsStay=/(?:faház|fahaz|apartman|cabin|accommodat|ferienhaus|hišk|apartma|deluxe|delux|vip|családi|family|familien|družinsk|különálló|kulonallo|(?<!\p{L})ház|wohnung|(?<!\p{L})haus|häuser|ferienhäus|apartment)/u.test(text);
  const hasStayDates=/(?:20\d{2}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}[./]\s*\d{1,2}[./](?:\s*20\d{2})?|\b(?:november|október|december|január|február|március|április|május|június|július|augusztus|szeptember|january|february|march|april|may|june|july|august|september|october|november|december)\b)/u.test(text);
  const asksBooking=/(?:foglal|reserv|buch|booking|potrditev|confirmation)/u.test(text);
  const mentionsHotTub=/(?:dézsa|dezsa|hot tub|badezuber|masažna kad|masazna kad)/u.test(text);
@@ -50,7 +51,7 @@ export function chatbotReply({message='',language='hu'}={}){
  else if(asksAvailability||(mentionsStay&&(hasStayDates||asksBooking)))intent='availability';
  // Owner chat test 2026-11-27: „Mennyibe kerül egy éjszakára a delux fahaz?” got the list of cabin types – a price
  // question about a stay (no dates yet) asks for the dates and guests to give the exact price.
- else if(mentionsStay&&/mennyibe|mennyi\s+az\s+ár|(?<!\p{L})ár(?:a|at|ak)?(?!\p{L})|kerül|how\s+much|price|cost|preis|kostet|koliko|cena|stane/u.test(text)&&!/jegy|ticket|karte|karta|dézsa|dezsa/u.test(text))intent='price';
+ else if(mentionsStay&&/mennyibe|mennyi\s+az\s+ár|(?<!\p{L})ár(?:a|at|ak)?(?!\p{L})|kerül|how\s+much|price|cost|preis|kostet|kosten|koliko|cena|stane/u.test(text)&&!/jegy|ticket|karte|karta|dézsa|dezsa/u.test(text))intent='price';
  else if(mentionsHotTub)intent='hotTub';
  else if(/előleg|eloleg|deposit|anzahlung|akontacij/u.test(text))intent='deposit';
  else if(WORDS[lang]?.pet&&/(?:kutya|kutyá|macska|háziállat|haziallat|állat\b|\bdog|\bcat\b|\bpets?\b|hund|katze|haustier|pes\b|psa\b|mačk|hišn\w* ljubljen)/u.test(text))intent='pet';
@@ -64,6 +65,8 @@ export function chatbotReply({message='',language='hu'}={}){
  // A ticket question that also names a cabin ("Faházvendégként milyen jegyet kell venni?") is about fishing tickets.
  if(intent==='unknown'||intent==='cabins'&&/jegy|ticket|karte|karta/iu.test(text)){const q=fishingQuestion(text,lang);if(q&&q.kind!=='review')intent='fishing';}
  let reply=t[intent];
+ // Owner 2026-11-27: the price question gets the prices themselves (signed 2027 tariff), per cabin type or all.
+ if(intent==='price')reply=cabinPriceInfo(text,WORDS[lang]?lang:'hu');
  if(intent==='fishing'){
   if(/szabály|szabaly|regel|ordnung|\brules?\b|pravil|red\b/iu.test(text))reply=fishingRulesSummary(lang);
   else{const q=fishingQuestion(text,lang);if(q&&q.kind!=='review'&&q.kind!=='general_conditions')reply=q.answer;}

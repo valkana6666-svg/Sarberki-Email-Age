@@ -208,3 +208,11 @@ test('owner 2026-11-27: the caller number is saved with the request; the tool re
  assert.equal(r.callerNumber,true);assert.doesNotMatch(JSON.stringify(r),/301234567/);
  assert.equal(created[0].facts.phone,'+36301234567');assert.match(created[0].summary,/A hívó száma a telefonvonalról: \+36301234567/);
 });
+
+test('owner 2026-11-27: the phone price answer is short – price per type, extra adult, the question for the dates',async()=>{
+ const {voiceTurn:vt}=await import('../shared-core/voice-turn.mjs');
+ const one=await vt({utterances:['Mennyibe kerül a Deluxe faház?'],clock:C});
+ assert.equal(one.reply,'A 2027-es árak: Deluxe faház hatvanháromezer forint éjszakánként négy főig, legfeljebb hat fő. Minden további felnőtt plusz tízezer forint éjszakánként. A pontos árhoz kérem, mondja meg az érkezés és távozás dátumát és a létszámot.');
+ const all=await vt({utterances:['Mennyibe kerülnek a faházak?'],clock:C});
+ assert.ok(all.reply.length<450);assert.match(all.reply,/ötvenötezer/);assert.match(all.reply,/huszonnégyezer forinttól/);assert.match(all.reply,/mondja meg az érkezés/);
+});
