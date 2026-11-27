@@ -17,9 +17,11 @@ const act=before.filter(b=>['1','2'].includes(tag(b,'statusId')));
 if(act.length!==1){console.log('BLOCKED: active',act.length);process.exit(1);}
 const b=act[0],note=tag(b,'note')||'',g=tag(b,'gNote')||'';
 console.log('BEFORE',JSON.stringify({resId:tag(b,'resId'),noteLen:note.length,gNoteLen:g.length,noteEqualsGNote:note===g,tub:/DÉZSA/.test(note)}));
-const xml=buildNoteXml({resId:Number(tag(b,'resId')),note:[note,req.line].filter(Boolean).join(' | ')}).xml;
+let xml=buildNoteXml({resId:Number(tag(b,'resId')),note:[g,req.line].filter(Boolean).join(' | ')}).xml;
+if(req.field==='gNote')xml=xml.replace('<note>','<gNote>').replace('</note>','</gNote>');
+console.log('FIELD',req.field||'note');
 const w=await post('reservation',xml);const p=parseReservationResponse(w.text);
 console.log('WRITE',w.http,JSON.stringify({ok:p.ok,code:p.code||null,message:(w.text.match(/<message>([^<]{0,200})/)||[])[1]||null,root:w.text.slice(0,60).replace(/[0-9]{6,}/g,'#')}));
 const a=(await find()).find(x=>tag(x,'resId')===tag(b,'resId'))||'';
 const n2=tag(a,'note')||'',g2=tag(a,'gNote')||'';
-console.log('AFTER',JSON.stringify({noteLen:n2.length,gNoteLen:g2.length,noteTub:/DÉZSA/.test(n2),gNoteTub:/DÉZSA/.test(g2),exact:n2.includes(req.line),flat:flat(n2).includes(flat(req.line)),gNoteUnchanged:g2===g,tail:n2.slice(-90)}));
+console.log('AFTER',JSON.stringify({noteLen:n2.length,gNoteLen:g2.length,noteTub:/DÉZSA/.test(n2),gNoteTub:/DÉZSA/.test(g2),exact:n2.includes(req.line),flat:flat(n2).includes(flat(req.line)),gNoteUnchanged:g2===g,gTail:g2.slice(-90),tail:n2.slice(-90)}));
