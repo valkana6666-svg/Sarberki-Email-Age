@@ -44,3 +44,12 @@ test('past year → nearest future date; a year alone corrects the stay already 
  const s=createChatInquirySession({clock:C});s.reply('Családi faház 2028. szeptember 8-tól 12-ig, két felnőtt.');s.reply('Bocs, 2027.');
  assert.deepEqual([s.snapshot().dates.arrival,s.snapshot().adults],['2027-09-08',2],'the adults stay');
 });
+
+test('owner rule 2026-11-27: guests book for this year or next – a date of this year already past means next year; two years ahead is kept and said back',async()=>{
+ const v=await voiceTurn({utterances:['Deluxe faház 2026. március 5-től 8-ig, két felnőtt.'],clock:C});
+ assert.deepEqual([v.facts.arrival,v.facts.departure],['2027-03-05','2027-03-08']);
+ const fut=await voiceTurn({utterances:['Deluxe faház 2028. március 5-től 8-ig, két felnőtt.'],clock:C});
+ assert.equal(fut.facts.arrival,'2028-03-05');assert.match(fut.reply,/kétezer-huszonnyolc/);
+ const ok=await voiceTurn({utterances:['Deluxe faház 2026. december 18-tól 20-ig, két felnőtt.'],clock:C});
+ assert.equal(ok.facts.arrival,'2026-12-18','a later date this year stays');
+});

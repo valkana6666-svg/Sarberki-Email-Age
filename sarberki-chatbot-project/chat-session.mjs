@@ -84,7 +84,9 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
     // nothing. A stay in the past drops its year (the nearest future date is taken and said back, so it can be
     // corrected); a year alone corrects the year of the stay already given.
     const today=now0.toISOString().slice(0,10);
-    if(probe0.dates?.arrival&&probe0.dates.arrival.slice(0,4)<today.slice(0,4)&&/(?<!\d)20\d\d(?!\d)/.test(message)){   // an earlier YEAR only
+    // Owner 2026-11-27: guests book for this year or next, never two years ahead – an earlier year, or a date of this
+    // year already past, means the next such date.
+    if(probe0.dates?.arrival&&probe0.dates.arrival<today&&/(?<!\d)20\d\d(?!\d)/.test(message)){
      message=message.replace(/(?<!\d)20\d\d\.?(?!\d)/g,' ');probe0=normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now:now0}).normalized;
     }else if(!probe0.dates){
      const cur=facts.dates||early.dates,years=[...message.matchAll(/(?<!\d)(20\d\d)(?!\d)/g)].map(m=>+m[1]).filter(y=>String(y)>=today.slice(0,4));

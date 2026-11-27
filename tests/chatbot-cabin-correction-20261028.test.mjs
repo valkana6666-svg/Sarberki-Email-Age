@@ -8,7 +8,7 @@ for(const [language,message] of Object.entries({
  en:'Instead we would like a Deluxe cabin.',
  si:'Želimo Deluxe hiško.'
 }))test('active cabin correction retains stay and clears stale split selection: '+language,()=>{
- const chat=createChatInquirySession({language});
+ const chat=createChatInquirySession({language,clock:()=>new Date('2026-10-28T10:00:00Z')});
  chat.reply('Van szabad osztott A+B apartman 2026.11.20-22 között 4 felnőtt részére gyermek nélkül?');
  const result=chat.reply(message);
  assert.equal(result.decision.facts.cabin,'Deluxe');
@@ -20,7 +20,7 @@ for(const [language,message] of Object.entries({
  assert.equal(result.requiresApproval,true);
 });
 test('split correction replaces A+B with C without fresh dates or guest counts',()=>{
- const chat=createChatInquirySession();
+ const chat=createChatInquirySession({clock:()=>new Date('2026-10-28T10:00:00Z')});
  chat.reply('Van szabad osztott A+B apartman 2026.11.20-22 között 4 felnőtt részére gyermek nélkül?');
  const result=chat.reply('Inkább osztott C apartmant szeretnénk.');
  assert.equal(chat.snapshot().split_request.requestedAB,0);
