@@ -83,22 +83,28 @@ export function previoBookingWriter(env,fetchImpl=globalThis.fetch,{pauseMs=5000
    if(after.length!==1||after[0].from!==values.arrival||after[0].to!==values.departure||String(after[0].objId)!==expectedObj)fail('PREVIO_MODIFY_UNVERIFIED');
    return {resId,comId:before[0].comId,previous:before[0],current:after[0]};
   },
-  // Owner 2026-11-27 (PERM-20261127-VOICE-TUB-NOTE): add lines to the first note of the case's own SC-reservation (one
+  // Owner 2026-11-27 (PERM-20261127-VOICE-TUB-NOTE): add lines to the note (gNote) of the case's own SC-reservation (one
   // active option/confirmed reservation by its voucher), then read it back. Never another reservation.
   async appendNote({tenantId,caseId,arrival,departure,lines}){
    const voucher=voucherFor({tenantId,caseId});
+   const unxml=s=>s.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&');
    const find=async()=>{const text=await post('/x1/hotel/searchReservations',buildVoucherSearchXml({hotelId:'73521',voucher,arrival,departure}));
     if(/<error>/.test(text))fail('PREVIO_SEARCH_FAILED');
     return [...text.matchAll(/<reservation>([\s\S]*?)<\/reservation>/g)].map(m=>m[1]).filter(b=>b.includes(`<voucher>${voucher}</voucher>`))
-     .map(b=>({resId:Number(b.match(/<resId>(\d+)<\/resId>/)?.[1]),statusId:Number(b.match(/<statusId>(\d+)<\/statusId>/)?.[1]),note:(b.match(/<note>([^<]*)<\/note>/)?.[1]||'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'")}));};
+     .map(b=>({resId:Number(b.match(/<resId>(\d+)<\/resId>/)?.[1]),statusId:Number(b.match(/<statusId>(\d+)<\/statusId>/)?.[1]),note:unxml(b.match(/<gNote>([^<]*)<\/gNote>/)?.[1]||'')}));};
+   // Previo drops commas, dashes and „|” from a note (73521, 11-21 and 11-27): compare letters and digits only.
+   const flat=s=>String(s||'').normalize('NFC').replace(/[^\p{L}\p{N}]/gu,'').toLowerCase();
    const before=(await find()).filter(r=>[1,2].includes(r.statusId));
    if(before.length!==1)fail('PREVIO_BOOKING_NOT_ACTIVE');
-   const add=lines.filter(l=>!before[0].note.includes(l));if(!add.length)return {resId:before[0].resId,added:0};
-   const note=[before[0].note,...add].filter(Boolean).join(' | ');
+   const add=lines.filter(l=>!flat(before[0].note).includes(flat(l)));if(!add.length)return {resId:before[0].resId,added:0};
+   // A later answer for the same day („Délután 4-től”) replaces our own earlier phone line of that day.
+   const days=add.map(l=>l.match(/^DÉZSAFÜRDŐ (\d{4}\.\d{2}\.\d{2}\.)/)?.[1]).filter(Boolean);
+   const kept=days.reduce((n,d)=>n.replace(new RegExp(`\\s*\\|?\\s*DÉZSAFÜRDŐ ${d.replace(/\./g,'\\.')}[^()|]*\\(telefonos igény\\)`,'g'),''),before[0].note).trim();
+   const note=[kept,...add].filter(Boolean).join(' | ');
    const result=parseReservationResponse(await post('/x1/hotel/reservation',buildNoteXml({resId:before[0].resId,note}).xml));
    if(!result.ok)fail(result.code);
    const after=(await find()).find(r=>r.resId===before[0].resId);
-   if(!after||!add.every(l=>after.note.includes(l)))fail('PREVIO_NOTE_UNVERIFIED');
+   if(!after||!add.every(l=>flat(after.note).includes(flat(l))))fail('PREVIO_NOTE_UNVERIFIED');
    return {resId:before[0].resId,added:add.length};
   },
   async setStatus({resId,status}){

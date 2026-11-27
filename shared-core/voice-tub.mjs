@@ -105,7 +105,8 @@ export function tubReply(req,lang='hu'){
   en:`Fine, I have noted the hot tub for ${req.persons} guests: ${req.per24h} forints per 24 hours. Which days would you like it?`,
   si:`V redu, masažno kad sem zabeležil za ${req.persons} oseb: ${req.per24h} forintov na 24 ur. Za katere dni jo želite?`}[lang];
  const n=req.days.length,whole=n>2&&req.allStay;
- const d=whole?{hu:`a teljes tartózkodás minden napjára (${n} nap)`,de:`für jeden Tag des Aufenthalts (${n} Tage)`,en:`for every day of the stay (${n} days)`,si:`za vse dni bivanja (${n} dni)`}[lang]:dayList(req.days,lang);
+ const at=req.hour!=null?{hu:`, ${req.hour} órától`,de:`, ab ${req.hour} Uhr`,en:`, from ${req.hour}:00`,si:`, od ${req.hour}. ure`}[lang]:'';
+ const d=(whole?{hu:`a teljes tartózkodás minden napjára (${n} nap)`,de:`für jeden Tag des Aufenthalts (${n} Tage)`,en:`for every day of the stay (${n} days)`,si:`za vse dni bivanja (${n} dni)`}[lang]:dayList(req.days,lang))+at;
  return {hu:`Rendben, felírtam: dézsafürdő ${d}${n>1?'':''}, ${req.persons} főre, ${whole?'összesen ':n>1?`${n} napra, összesen `:''}${req.total} forint. ${req.hour!=null?'':'Ha konkrét időpontot szeretne, munkatársunk egyezteti Önnel.'}`.trim(),
   de:`Gerne, notiert: Badezuber am ${d}, für ${req.persons} Personen, ${req.total} Forint. ${req.hour!=null?'':'Die genaue Uhrzeit stimmt unser Team mit Ihnen ab.'}`.trim(),
   en:`Fine, noted: hot tub on ${d}, for ${req.persons} guests, ${req.total} forints. ${req.hour!=null?'':'Our team will agree the exact time with you.'}`.trim(),
@@ -114,9 +115,12 @@ export function tubReply(req,lang='hu'){
 
 // The tub requests of a call, each with its day answer joined („Kérünk dézsát is.” + „Csak negyedikére.”), and which
 // utterances are tub turns (kept out of the stay replay).
-export function isTubTurn(utterances,i){return isTubRequest(utterances[i])||(i>0&&isTubDayAnswer(utterances[i-1],utterances[i]));}
+// Owner's call 2026-11-27 14:54: „Délután 4-től szeretném kérni.” right after the tub request is its start hour.
+const TIME_ANSWER=/(?<!\d)\d{1,2}\s*(?:órától|órakor|óra(?!\p{L})|Uhr|o'?clock|pm|am)\b|(?:reggel|délelőtt|délután|este|morgens|vormittags|nachmittags|abends|morning|afternoon|evening|zjutraj|dopoldne|popoldne|zvečer)\s+\d{1,2}(?!\d)/iu;
+export function isTubTimeAnswer(last){const l=String(last||'');return TIME_ANSWER.test(l)&&!TUB_WORD.test(l)&&!REFUSED.test(l)&&!RANGE.test(l)&&!STAY_TURN.test(l)&&!PRICE_Q.test(l);}
+export function isTubTurn(utterances,i){return isTubRequest(utterances[i])||(i>0&&(isTubDayAnswer(utterances[i-1],utterances[i])||(isTubTimeAnswer(utterances[i])&&isTubTurn(utterances,i-1))));}
 export function tubTexts(utterances){
  const out=[];
- utterances.forEach((u,i)=>{if(isTubRequest(u))out.push(u);else if(i>0&&isTubDayAnswer(utterances[i-1],u))out[out.length-1]=out[out.length-1]+' '+u;});
+ utterances.forEach((u,i)=>{if(isTubRequest(u))out.push(u);else if(out.length&&i>0&&isTubTurn(utterances,i))out[out.length-1]=out[out.length-1]+' '+u;});
  return out;
 }

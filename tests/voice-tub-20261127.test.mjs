@@ -31,7 +31,7 @@ test('the thread is kept: after the booking a tub request is answered, the stay 
  assert.equal(after.facts.arrival,'2027-03-03');assert.doesNotMatch(after.reply,/Szeretné lefoglalni/);
 });
 
-test('booking with a tub request: summary + Previo FIRST note (<note>); after the booking: appended to the same case',async()=>{
+test('booking with a tub request: summary + Previo reservation note (<gNote>); after the booking: appended to the same case',async()=>{
  const utt=['Deluxe faház 2027. március 3-tól 9-ig, három felnőtt és két gyerek, négy és öt évesek.','Szeretnénk dézsát is 5-re.','Igen, szeretném lefoglalni.','sarberkito kukac gmail pont com'];
  const created=[],prefills=[];
  await voiceRequest({utterances:utt,email:'sarberkito kukac gmail pont com',name:'Teszt Elek',consent:true,conversationId:'conv_tub00001',callerId:'+36300000001',clock:C,
@@ -41,14 +41,14 @@ test('booking with a tub request: summary + Previo FIRST note (<note>); after th
  assert.equal(prefills[0].mainNote,'DÉZSAFÜRDŐ 2027.03.05. 1x24 óra, 5 fő – 30 000 Ft (telefonos igény)');
  const xml=buildReservationXml({tenantId:'sarberki-test',caseId:'tm-aaaaaaaaaaaaaaaaaaaaaaaa',values:{arrival:'2027-03-03',departure:'2027-03-09',adults:'3',children:'2',child_ages:'4,5'},cabin:'deluxe',unit:'11',
   contactName:'Teszt Elek',totalHuf:408000,optionExpiresUtc:'2026-11-29T10:00:00Z',channel:'phone',note:'Telefonról érkezett.',mainNote:prefills[0].mainNote}).xml;
- assert.match(xml,/<note>DÉZSAFÜRDŐ 2027\.03\.05\. 1x24 óra, 5 fő – 30 000 Ft \(telefonos igény\)<\/note>/);assert.match(xml,/<gNote>Telefonról érkezett\.<\/gNote>/);
+ assert.match(xml,/<gNote>Telefonról érkezett\. \| DÉZSAFÜRDŐ 2027\.03\.05\. 1x24 óra, 5 fő – 30 000 Ft \(telefonos igény\)<\/gNote>/);assert.doesNotMatch(xml,/<note>/,'Previo ignores <note> (73521, run 46012421447)');
  assert.deepEqual(stayTubLines(['Családi faház dézsával 2027. július 10-től 13-ig, négy felnőtt.'],{arrival:'2027-07-10',departure:'2027-07-13',adults:4,children:0}),['DÉZSAFÜRDŐ napok egyeztetendők 1x24 óra/nap, 4 fő – 30 000 Ft/24 óra (telefonos igény)']);
  const calls=[];const r=await voiceAddTub({utterances:[...BASE,'Szeretnék dézsát is március 5-re és 6-ra, öt főre.'],email:'sarberkito kukac gmail pont com',conversationId:'conv_tub00002',clock:C,
   noteFn:async a=>{calls.push(a);return {resId:1,added:a.lines.length};}});
  assert.equal(r.status,'TUB_NOTED');assert.match(calls[0].caseId,/^tm-[a-f0-9]{24}$/);assert.equal(calls[0].lines.length,2);assert.equal(calls[0].arrival,'2027-03-03');
  const fail=await voiceAddTub({utterances:[...BASE,'Szeretnék dézsát is 5-re.'],email:'sarberkito kukac gmail pont com',conversationId:'conv_tub00003',clock:C,noteFn:async()=>{throw Error('previo');}});
  assert.equal(fail.status,'TUB_NOT_SAVED');assert.match(fail.reply,/Munkatársunk a foglalásához rögzíti/);
- assert.match(buildNoteXml({resId:7,note:'a | b'}).xml,/<resId>7<\/resId><note>a \| b<\/note>/);
+ assert.match(buildNoteXml({resId:7,note:'a | b'}).xml,/<resId>7<\/resId><gNote>a \| b<\/gNote>/);
 });
 
 test('owner 2026-11-27: every way of saying the days – whole stay, „csak harmadikára / negyedikére”, first/last nights, a day answer to „melyik napokra?”',async()=>{
@@ -61,4 +61,33 @@ test('owner 2026-11-27: every way of saying the days – whole stay, „csak har
  const ans=await voiceTurn({utterances:[...BASE,'Kérünk dézsát is.','Csak negyedikére.'],clock:C,booked:true});
  assert.equal(ans.source,'tub');assert.deepEqual(ans.tub.days,['2027-03-04']);assert.equal(ans.facts.arrival,'2027-03-03','the stay is kept');
  assert.deepEqual(stayTubLines(['Deluxe faház 2027. március 3-tól 9-ig, három felnőtt.','Kérünk dézsát is.','Csak negyedikére.'],{arrival:'2027-03-03',departure:'2027-03-09',adults:3,children:0}),['DÉZSAFÜRDŐ 2027.03.04. 1x24 óra, 3 fő – 30 000 Ft (telefonos igény)']);
+});
+
+// Owner's TEST call 2026-11-27 14:54 (conv_3501…): Previo kept the note only in <gNote>, dropped „,” „–” „|”; the start
+// hour came as a separate answer („Délután 4-től szeretném kérni.”).
+import {previoBookingWriter} from '../shared-core/server-previo-booking-sync.mjs';
+import {isTubTurn,tubTexts} from '../shared-core/voice-tub.mjs';
+test('14:54 call: the hour answer joins the tub request; appendNote writes <gNote>, replaces our own line of that day, reads back without punctuation',async()=>{
+ const U=['Szeretnék lefoglalni egy Deluxe faházat, március 3-tól 7-ig.','Három felnőtt érkezik, két gyermek. A gyermek három és négy évesek.','Igen, szeretném lefoglalni.','Tóth István.','Sárberkitó kukac gmail pont com.','Igen, rögzítheted a foglalási igényt.','Dézsát is szeretnék foglalni negyedikére. Egész napra.','Délután 4-től szeretném kérni.'];
+ assert.equal(isTubTurn(U,7),true);assert.equal(isTubTurn(U,1),false);assert.equal(tubTexts(U).length,1);
+ assert.equal(isTubTurn(['Március 3-tól 7-ig.','Délután 4-kor érkezünk.'],1),false,'a time without a tub request before it is not a tub turn');
+ const calls=[];
+ const r=await voiceAddTub({utterances:U,email:'sarberkito@gmail.com',conversationId:'conv_tub01454',language:'hu',clock:C,noteFn:async a=>{calls.push(a);return {added:1};}});
+ assert.deepEqual(calls[0].lines,['DÉZSAFÜRDŐ 2027.03.04. 16 ÓRÁTÓL 1x24 óra, 5 fő – 30 000 Ft (telefonos igény)']);
+ assert.match(r.reply,/március 4\., 16 órától, 5 főre/);
+ // Previo double: stores <gNote> without „,” „–” „|” and echoes it as <note> too.
+ let gnote='Telefonról érkezett. Ellenőrizd.  DÉZSAFÜRDŐ 2027.03.04. 1x24 óra 5 fő  30 000 Ft (telefonos igény)';const sent=[];
+ const voucher=voucherFor({tenantId:'sarberki-test',caseId:'tm-aaaaaaaaaaaaaaaaaaaaaaaa'});
+ const fetchImpl=async(url,{body})=>{sent.push(body);
+  if(url.endsWith('/searchReservations'))return new Response(`<reservations><reservation><resId>55</resId><voucher>${voucher}</voucher><statusId>1</statusId><note>${gnote}</note><gNote>${gnote}</gNote></reservation></reservations>`);
+  const m=body.match(/<gNote>([^<]*)<\/gNote>/);if(m)gnote=m[1].replace(/[,–|]/g,'');return new Response('<reservations><reservation><resId>55</resId></reservation></reservations>');};
+ const w=previoBookingWriter({PREVIO_WRITE_ENABLED:'sandbox-73521-only',PREVIO_HOTEL_ID:'73521',PREVIO_WRITE_PERMISSION_ID:'PERM-20261127-VOICE-TUB-NOTE',PREVIO_API_KEY:'k'.repeat(20)},fetchImpl);
+ const out=await w.appendNote({tenantId:'sarberki-test',caseId:'tm-aaaaaaaaaaaaaaaaaaaaaaaa',arrival:'2027-03-03',departure:'2027-03-07',lines:calls[0].lines});
+ assert.deepEqual(out,{resId:55,added:1});
+ const write=sent.find(b=>b.includes('<newReservation>'));
+ assert.match(write,/<resId>55<\/resId><gNote>Telefonról érkezett\. Ellenőrizd\. \| DÉZSAFÜRDŐ 2027\.03\.04\. 16 ÓRÁTÓL 1x24 óra, 5 fő – 30 000 Ft \(telefonos igény\)<\/gNote>/);
+ assert.doesNotMatch(write,/1x24 óra 5 fő  30 000/,'the earlier line of the same day is replaced');
+ // the same line again → nothing written
+ const n=sent.length;assert.deepEqual(await w.appendNote({tenantId:'sarberki-test',caseId:'tm-aaaaaaaaaaaaaaaaaaaaaaaa',arrival:'2027-03-03',departure:'2027-03-07',lines:calls[0].lines}),{resId:55,added:0});
+ assert.equal(sent.slice(n).some(b=>b.includes('<newReservation>')),false);
 });
