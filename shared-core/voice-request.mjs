@@ -7,7 +7,7 @@
 // The rest of the guest data (name, phone, address) the staff ask by e-mail and fill in Previo by hand.
 import {createHash} from 'node:crypto';
 import {voiceFacts,ACCEPT} from './voice-turn.mjs';
-import {isTubRequest,parseTubRequest,tubNoteLines,tubReply,tubPricePer24h} from './voice-tub.mjs';
+import {isTubTurn,tubTexts,parseTubRequest,tubNoteLines,tubReply,tubPricePer24h} from './voice-tub.mjs';
 import {hotTubWished} from '../sarberki-chatbot-project/chat-view.mjs';
 import {normalizeSpoken,huNumberWords} from './voice-normalize.mjs';
 
@@ -117,15 +117,15 @@ export function voiceExternalId(conversationId,utterances,email){
 export function stayTubLines(utterances,facts){
  if(!facts)return [];
  const stay={arrival:facts.arrival,departure:facts.departure,guests:(facts.adults||0)+(facts.children||0)||null};
- const lines=utterances.filter(isTubRequest).flatMap(u=>tubNoteLines(parseTubRequest(normalizeSpoken(u),stay)));
+ const lines=tubTexts(utterances).flatMap(u=>tubNoteLines(parseTubRequest(normalizeSpoken(u),stay)));
  if(!lines.length&&hotTubWished(utterances))lines.push(...tubNoteLines({days:[],persons:stay.guests,hour:null,per24h:tubPricePer24h(stay.guests)}));
  return [...new Set(lines)];
 }
 // After the booking is saved (owner 2026-11-27): a hot tub request goes into the same case's Previo option note.
 export async function voiceAddTub({utterances,email,conversationId,language='auto',clock=()=>new Date(),noteFn,notifyFn=null}){
- const stay=stayUtterances(utterances).filter(u=>!isTubRequest(u));
+ const stay=stayUtterances(utterances.filter((u,i)=>!isTubTurn(utterances,i)));
  const {facts,language:lang}=voiceFacts(stay.length?stay:utterances,{language,clock});
- const last=[...utterances].reverse().find(isTubRequest);
+ const last=tubTexts(utterances).at(-1);
  const address=normalizeSpokenEmail(email);
  const stayG={arrival:facts?.arrival,departure:facts?.departure,guests:facts?(facts.adults||0)+(facts.children||0)||null:null};
  const req=facts&&last?parseTubRequest(normalizeSpoken(last),stayG):null;
@@ -210,7 +210,7 @@ export function voiceConfirm({email,name,language='hu',callerId=null,phone=null}
 }
 export async function voiceRequest({utterances,email,name=null,phone:spokenNumber=null,consent,conversationId,callerId=null,language='auto',clock=()=>new Date(),
  offerFn,createFn,prefillFn=null,notifyFn=null}){
- const stay=stayUtterances(utterances).filter(u=>!isTubRequest(u));
+ const stay=stayUtterances(utterances.filter((u,i)=>!isTubTurn(utterances,i)));
  const {facts,language:lang}=voiceFacts(stay.length?stay:utterances,{language,clock});
  const address=normalizeSpokenEmail(email);
  if(!address)return {ok:false,status:'EMAIL_INVALID',reply:say('email',lang)};

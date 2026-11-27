@@ -18,3 +18,5 @@ update 2026-11-27b: a cím visszaolvasását a szerver végzi (sarberki_request 
 update 2026-11-27c: telefonszám-mező (phone) a sarberki_request-ben; csak hiányzó/rejtett hívószámnál vagy másik számnál
 
 update 2026-11-27d: booked mező a sarberki_reply-ban, add_hot_tub művelet a sarberki_request-ben, prompt 12–13. pont
+
+update 2026-11-27e: prompt 13. pont – a dézsa napjainak külön megadása is add_hot_tub

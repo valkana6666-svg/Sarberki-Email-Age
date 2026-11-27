@@ -50,3 +50,15 @@ test('booking with a tub request: summary + Previo FIRST note (<note>); after th
  assert.equal(fail.status,'TUB_NOT_SAVED');assert.match(fail.reply,/Munkatársunk a foglalásához rögzíti/);
  assert.match(buildNoteXml({resId:7,note:'a | b'}).xml,/<resId>7<\/resId><note>a \| b<\/note>/);
 });
+
+test('owner 2026-11-27: every way of saying the days – whole stay, „csak harmadikára / negyedikére”, first/last nights, a day answer to „melyik napokra?”',async()=>{
+ const whole=['Dézsát szeretnénk minden napra.','Dézsát kérünk az összes napra.','Dézsát szeretnénk az egészre.','Dézsát kérnénk az egész ott tartózkodásunk teljes idejére.','Dézsát kérünk végig.','We would like the hot tub for the whole stay.','Wir möchten den Badezuber die ganze Zeit.','Želimo masažno kad vse dni.'];
+ for(const t of whole)assert.equal(parseTubRequest(t,STAY).days.length,6,t);
+ const one={'Dézsát szeretnénk csak harmadikára.':['2027-03-03'],'Dézsát csak negyedikére kérnénk.':['2027-03-04'],'Dézsát kérünk harmadikára és negyedikére.':['2027-03-03','2027-03-04'],
+  'Dézsát szeretnénk az első két napra.':['2027-03-03','2027-03-04'],'Dézsát kérünk az utolsó napra.':['2027-03-08'],'Wir möchten den Badezuber am dritten.':['2027-03-03']};
+ for(const [t,d] of Object.entries(one))assert.deepEqual(parseTubRequest(t,STAY).days,d,t);
+ const ask=await voiceTurn({utterances:[...BASE,'Kérünk dézsát is.'],clock:C,booked:true});assert.match(ask.reply,/Melyik napokra/);
+ const ans=await voiceTurn({utterances:[...BASE,'Kérünk dézsát is.','Csak negyedikére.'],clock:C,booked:true});
+ assert.equal(ans.source,'tub');assert.deepEqual(ans.tub.days,['2027-03-04']);assert.equal(ans.facts.arrival,'2027-03-03','the stay is kept');
+ assert.deepEqual(stayTubLines(['Deluxe faház 2027. március 3-tól 9-ig, három felnőtt.','Kérünk dézsát is.','Csak negyedikére.'],{arrival:'2027-03-03',departure:'2027-03-09',adults:3,children:0}),['DÉZSAFÜRDŐ 2027.03.04. 1x24 óra, 3 fő – 30 000 Ft (telefonos igény)']);
+});

@@ -9,7 +9,47 @@ export const TUB_WORD=/dézs|dezs|hot[ -]?tub|badezuber|badefass|whirlpool|jacuz
 const REFUSED=/mégse|megse|nem\s+(?:kér|kell|szeretn)|no\s+hot\s*tub|without|kein|ohne|brez|ne\s+potrebuj/iu;
 // A stay statement („Családi faház dézsával július 10–13”) carries a range; a tub-day request does not.
 const RANGE=/(?:\d\s*-?\s*(?:t[óő]l|jétől|ától|étől)[^.?!]{0,40}\d\s*-?\s*(?:ig|éig|áig)(?!\p{L})|\bbis\b|\bfrom\b[^.?!]{0,30}\b(?:to|until)\b|(?<!\p{L})od\s+\d[^.?!]{0,30}\bdo\s+\d|\d\.?\s*[–]\s*\d|\d{1,2}\s*-\s*\d{1,2}(?!\s*(?:fő|órá|óra|tól|től)))/iu;
-const ALL_DAYS=/minden\s+(?:nap|este|éjszak)|egész\s+(?:időre|ott\s*tartózkodás)|az\s+összes\s+napra|every\s+(?:day|night)|whole\s+stay|jeden\s+(?:Tag|Abend)|ganzen\s+Aufenthalt|vsak\s+dan|vse\s+dni|ves\s+čas/iu;
+// Owner 2026-11-27: „minden napra”, „az összes napra”, „az egészre”, „az egész ott tartózkodásunk teljes idejére”,
+// „végig” – the whole stay; „csak harmadikára / negyedikére”, „az első (két) napra”, „az utolsó napra” – those nights.
+const ALL_DAYS=/minden\s+(?:nap|este|éj)|mindegyik\s+nap|(?:az\s+)?összes\s+nap|(?:az\s+)?egész(?:re|\s+(?:időre|idő|ott|tartózkodás|hét|szállás))|teljes\s+(?:idő|tartózkodás|ott)|végig|egész\s+ott\s+tartózkodásunk|every\s+(?:day|night)|each\s+day|all\s+(?:the\s+)?(?:days|nights)|whole\s+(?:stay|time)|entire\s+stay|jeden\s+(?:Tag|Abend)|alle\s+Tage|ganzen?\s+(?:Aufenthalt|Zeit)|die\s+ganze\s+Zeit|vsak\s+dan|vse\s+dni|ves\s+čas|celotno\s+bivanje|cel\s+čas/iu;
+// Day words (ordinals) → day of month: HU 1–31, DE/EN/SI 1–10 (digits work in every language).
+const HU_UNIT={elsej:1,egyedik:1,második:2,kettedik:2,harmadik:3,negyedik:4,ötödik:5,hatodik:6,hetedik:7,nyolcadik:8,kilencedik:9};
+const ORD={first:1,second:2,third:3,fourth:4,fifth:5,sixth:6,seventh:7,eighth:8,ninth:9,tenth:10,ersten:1,zweiten:2,dritten:3,vierten:4,fünften:5,sechsten:6,siebten:7,achten:8,neunten:9,zehnten:10,
+ prvega:1,drugega:2,tretjega:3,četrtega:4,petega:5,šestega:6,sedmega:7,osmega:8,devetega:9,desetega:10};
+function ordinalDays(t){
+ const out=[];
+ for(const m of t.toLowerCase().matchAll(/(?<!\p{L})(tizen|huszon|harminc)?(elsej|egyedik|második|kettedik|harmadik|negyedik|ötödik|hatodik|hetedik|nyolcadik|kilencedik)\p{L}*|(?<!\p{L})(tizedik|huszadik|harmincadik)\p{L}*/gu)){
+  if(m[3]){out.push({tizedik:10,huszadik:20,harmincadik:30}[m[3]]);continue;}
+  const tens={tizen:10,huszon:20,harminc:30}[m[1]]||0,u=HU_UNIT[m[2]];
+  if(m[2]==='elsej'&&tens)continue;out.push(tens+u);
+ }
+ for(const w of t.toLowerCase().split(/[^\p{L}]+/u))if(ORD[w])out.push(ORD[w]);
+ return out.filter(d=>d>=1&&d<=31);
+}
+function edgeDays(t,stayNights){
+ const n=w=>Number.isInteger(+w)?+w:NUMS[String(w||'').toLowerCase()]||1;
+ let m=t.match(/(?:az\s+)?első\s+(?:(\p{L}+|\d)\s+)?(?:nap|éj)|first\s+(?:(\p{L}+|\d)\s+)?(?:day|night)|ersten?\s+(?:(\p{L}+|\d)\s+)?(?:Tag|Nacht)|prv(?:i|a|e)\s+(?:(\p{L}+|\d)\s+)?(?:dan|noč)/iu);
+ if(m)return stayNights.slice(0,n(m[1]||m[2]||m[3]||m[4]));
+ m=t.match(/(?:az\s+)?utolsó\s+(?:(\p{L}+|\d)\s+)?(?:nap|éj)|last\s+(?:(\p{L}+|\d)\s+)?(?:day|night)|letzten?\s+(?:(\p{L}+|\d)\s+)?(?:Tag|Nacht)|zadnj(?:i|a|e)\s+(?:(\p{L}+|\d)\s+)?(?:dan|noč)/iu);
+ if(m)return stayNights.slice(-n(m[1]||m[2]||m[3]||m[4]));
+ return null;
+}
+// The days of a tub request within the stay (empty: not said).
+export function tubDays(text,stay){
+ const t=String(text||''),stayNights=nights(stay.arrival,stay.departure);
+ if(ALL_DAYS.test(t))return stayNights;
+ const edge=edgeDays(t,stayNights);if(edge)return edge;
+ const days=[];
+ const nums=[...t.replace(/(?:este|délután|abends|evening|zvečer)\s+\d{1,2}\s*-?\s*(?:t[óő]l|kor)?/giu,' ').matchAll(/(?<!\d)(\d{1,2})(?:\s*-?\s*(?:re|ra|én|án|ján|jén|ére|ára|ei|i)|\.|st|nd|rd|th)?(?!\d|\s*(?:fő|fos|fős|Person|guest|oseb|órá|óra|h\b|Uhr|o'clock|ur\b|pm\b|am\b|p\.m|nap|éj|day|night|Tag|dan|noč))/giu)].map(m=>+m[1]).filter(d=>d>=1&&d<=31);
+ for(const d of [...nums,...ordinalDays(t)]){const hit=stayNights.find(x=>+x.slice(8)===d);if(hit&&!days.includes(hit))days.push(hit);}
+ return days.sort();
+}
+// „Melyik napokra szeretné?” → „Csak negyedikére.”: a day answer right after a tub request without days.
+export function isTubDayAnswer(prev,last){
+ const p=String(prev||''),l=String(last||'');
+ if(!isTubRequest(p)||TUB_WORD.test(l)||REFUSED.test(l))return false;
+ return ALL_DAYS.test(l)||/(?<!\p{L})(?:első|utolsó|first|last)\s/iu.test(l)||ordinalDays(l).length>0||/(?<!\d)\d{1,2}\s*-?\s*(?:re|ra|én|án|ére|ára|ján|jén)(?!\p{L})|\b\d{1,2}(?:st|nd|rd|th)\b/iu.test(l);
+}
 const NUMS={egy:1,két:2,kettő:2,három:3,négy:4,öt:5,hat:6,hét:7,nyolc:8,kilenc:9,tíz:10,ketten:2,hárman:3,négyen:4,öten:5,hatan:6,heten:7,nyolcan:8,
  one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,eins:1,zwei:2,drei:3,vier:4,fünf:5,sechs:6,sieben:7,acht:8,ena:1,dva:2,tri:3,štiri:4,pet:5,šest:6,sedem:7,osem:8};
 
@@ -31,9 +71,8 @@ export function isTubRequest(text){const t=String(text||'');return TUB_WORD.test
 export function parseTubRequest(text,stay){
  const t=String(text||'');if(!isTubRequest(t)||!stay?.arrival||!stay?.departure)return null;
  const stayNights=nights(stay.arrival,stay.departure);
- let days=[];
- if(ALL_DAYS.test(t))days=stayNights;
- else{
+const days=tubDays(t,stay);
+ if(false){
   const nums=[...t.replace(/(?:este|délután|abends|evening|zvečer)\s+\d{1,2}\s*-?\s*(?:t[óő]l|kor)?/giu,' ').matchAll(/(?<!\d)(\d{1,2})(?:\s*-?\s*(?:re|ra|én|án|ján|jén|ére|ára|ei|i)|\.|st|nd|rd|th)?(?!\d|\s*(?:fő|fos|fős|Person|guest|oseb|órá|óra|h\b|Uhr|o'clock|ur\b|pm\b|am\b|p\.m))/giu)].map(m=>+m[1]).filter(d=>d>=1&&d<=31);
   for(const d of nums){const hit=stayNights.find(x=>+x.slice(8)===d);if(hit&&!days.includes(hit))days.push(hit);}
  }
@@ -67,8 +106,17 @@ export function tubReply(req,lang='hu'){
   si:`V redu, masažno kad sem zabeležil za ${req.persons} oseb: ${req.per24h} forintov na 24 ur. Za katere dni jo želite?`}[lang];
  const n=req.days.length,whole=n>2&&req.allStay;
  const d=whole?{hu:`a teljes tartózkodás minden napjára (${n} nap)`,de:`für jeden Tag des Aufenthalts (${n} Tage)`,en:`for every day of the stay (${n} days)`,si:`za vse dni bivanja (${n} dni)`}[lang]:dayList(req.days,lang);
- return {hu:`Rendben, felírtam: dézsafürdő ${d}${n>1?'':''}, ${req.persons} főre, ${n>1?`${n} napra, összesen `:''}${req.total} forint. ${req.hour!=null?'':'Ha konkrét időpontot szeretne, munkatársunk egyezteti Önnel.'}`.trim(),
+ return {hu:`Rendben, felírtam: dézsafürdő ${d}${n>1?'':''}, ${req.persons} főre, ${whole?'összesen ':n>1?`${n} napra, összesen `:''}${req.total} forint. ${req.hour!=null?'':'Ha konkrét időpontot szeretne, munkatársunk egyezteti Önnel.'}`.trim(),
   de:`Gerne, notiert: Badezuber am ${d}, für ${req.persons} Personen, ${req.total} Forint. ${req.hour!=null?'':'Die genaue Uhrzeit stimmt unser Team mit Ihnen ab.'}`.trim(),
   en:`Fine, noted: hot tub on ${d}, for ${req.persons} guests, ${req.total} forints. ${req.hour!=null?'':'Our team will agree the exact time with you.'}`.trim(),
   si:`V redu, zabeleženo: masažna kad ${d}, za ${req.persons} oseb, ${req.total} forintov. ${req.hour!=null?'':'Točen čas bo z vami uskladila naša ekipa.'}`.trim()}[lang];
+}
+
+// The tub requests of a call, each with its day answer joined („Kérünk dézsát is.” + „Csak negyedikére.”), and which
+// utterances are tub turns (kept out of the stay replay).
+export function isTubTurn(utterances,i){return isTubRequest(utterances[i])||(i>0&&isTubDayAnswer(utterances[i-1],utterances[i]));}
+export function tubTexts(utterances){
+ const out=[];
+ utterances.forEach((u,i)=>{if(isTubRequest(u))out.push(u);else if(i>0&&isTubDayAnswer(utterances[i-1],u))out[out.length-1]=out[out.length-1]+' '+u;});
+ return out;
 }
