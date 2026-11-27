@@ -1,0 +1,24 @@
+name: Previo LIVE – one booking price compare (Claude, read-only, PERM-20261127-LIVE-PRICE-COMPARE)
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths: [docs/PREVIO-LIVE-ONE-BOOKING-REQUEST.md]
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Read
+        env:
+          PREVIO_LIVE_API_KEY: ${{ secrets.PREVIO_LIVE_API_KEY }}
+        run: |
+          test "$GITHUB_REF" = "refs/heads/gmail-test-subject-allowlist"
+          node scripts/previo-live-one-booking.mjs
