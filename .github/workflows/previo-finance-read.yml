@@ -1,0 +1,24 @@
+name: Previo TEST – finance view read (Claude, read-only)
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths: [docs/PREVIO-FINANCE-READ-REQUEST.md]
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Read
+        env:
+          PREVIO_API_KEY: ${{ secrets.PREVIO_TEST_API_KEY }}
+        run: |
+          test "$GITHUB_REF" = "refs/heads/gmail-test-subject-allowlist"
+          node scripts/previo-finance-read.mjs
