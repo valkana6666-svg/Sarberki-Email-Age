@@ -20,7 +20,7 @@ test('prefill: off without its own switch; needs a name; picks the first free un
  const r=await prefillChatBooking({...base,env:{CHAT_PREVIO_PREFILL:'test-only'}});
  assert.equal(r.status,'created');assert.equal(r.unit,'3','unit 2 is taken, the next Családi house');
  const a=w.calls[0];
- assert.equal(a.channel,'chat');assert.equal(a.totalHuf,180000,'accommodation only, Previo adds the IFA');
+ assert.equal(a.channel,'chat');assert.equal(a.totalHuf,184950,'gross: stay 180 000 + IFA 4 950 – Previo carves the IFA out (owner screenshot 2026-11-27)');
  assert.equal(a.optionExpiresUtc,new Date(NOW+PREFILL_OPTION_HOURS*3600000).toISOString());
  assert.deepEqual(a.values,{arrival:'2027-05-14',departure:'2027-05-17',adults:'3',children:'2',child_ages:'5,6'});
  assert.deepEqual(a.contact,{email:'valkana6666@gmail.com',phone:'+36 30 000 0000'});
@@ -68,11 +68,11 @@ test('#9 7005064928: the pre-fill writes the returning-guest price and a staff n
  let asked=null;
  await prefillChatBooking({...base,historyFn:async a=>{asked=a;return {status:'eligible',matchedBy:['name','email','phone'],lastStay:'2025-08-13',pct:20};}});
  assert.equal(asked.referenceDay,'2027-05-14','owner 2026-11-21: 730 days back from the arrival');
- assert.equal(w.calls[0].totalHuf,144000,'180 000 − 20%');assert.match(w.calls[0].note,/Törzsvendég.*20 százalék kedvezmény beszámítva \(36000 Ft\)/);assert.doesNotMatch(w.calls[0].note,/[,:–]/,'Previo drops these characters');
+ assert.equal(w.calls[0].totalHuf,148950,'180 000 − 20% + IFA 4 950');assert.match(w.calls[0].note,/Törzsvendég.*20 százalék kedvezmény beszámítva \(36000 Ft\)/);assert.doesNotMatch(w.calls[0].note,/[,:–]/,'Previo drops these characters');
  const w2=fakeWriter();await prefillChatBooking({...base,writer:w2,historyFn:async()=>({status:'possible',matchedBy:['name'],lastStay:'2025-08-13',pct:20})});
- assert.equal(w2.calls[0].totalHuf,180000,'a partial match never changes the price');assert.match(w2.calls[0].note,/Lehetséges törzsvendég/);
+ assert.equal(w2.calls[0].totalHuf,184950,'a partial match never changes the price');assert.match(w2.calls[0].note,/Lehetséges törzsvendég/);
  const w3=fakeWriter();await prefillChatBooking({...base,writer:w3,historyFn:null});
- assert.equal(w3.calls[0].totalHuf,180000);assert.match(w3.calls[0].note,/állítsd megerősítettre\./);assert.doesNotMatch(prefillNote(null),/@/);
+ assert.equal(w3.calls[0].totalHuf,184950);assert.match(w3.calls[0].note,/állítsd megerősítettre\./);assert.doesNotMatch(prefillNote(null),/@/);
  const {buildReservationXml}=await import('../shared-core/server-previo-reservation-write.mjs');
  const x=buildReservationXml({tenantId:'t',caseId:'c',values:{arrival:'2027-06-10',departure:'2027-06-13',adults:'2',children:'0',child_ages:''},cabin:'deluxe',unit:'11',contactName:'A',totalHuf:1,optionExpiresUtc:'2027-01-01T00:00:00Z',note:'Teszt <megjegyzés>\nsor'}).xml;
  assert.match(x,/<gNote>Teszt &lt;megjegyzés&gt; sor<\/gNote>/);

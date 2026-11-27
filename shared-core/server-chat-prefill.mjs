@@ -5,6 +5,7 @@
 // expires in 48 hours unless the staff approve it in the daily view (that step sets the deposit deadline). Idempotent:
 // one case = one booking number. Any failure leaves the case as it is (the one-click step still works).
 import {previoBookingWriter} from './server-previo-booking-sync.mjs';
+import {previoTotalHuf} from './server-test-mailbox-confirm.mjs';
 import {previoUnitChecker} from './server-previo-unit-check.mjs';
 import {offerCheck} from './server-chat-offer.mjs';
 import {unitsForCabin} from './server-test-mailbox-confirm.mjs';
@@ -42,7 +43,7 @@ export async function prefillChatBooking({env,fetchImpl=globalThis.fetch,tenantI
  const contact=isTestGuestSender(mail)?{email:mail,phone:/^\+?[0-9][0-9 ()\/-]{5,22}$/.test(tel)?tel:null}:null;
  const values={arrival:input.arrival,departure:input.departure,adults:String(input.adults),children:String(input.children.length),child_ages:input.children.join(',')};
  try{
-  const r=await w.createOption({tenantId,caseId,values,cabin:input.cabin,unit,contactName,contact,totalHuf:quote.accommodation,
+  const r=await w.createOption({tenantId,caseId,values,cabin:input.cabin,unit,contactName,contact,totalHuf:previoTotalHuf(quote), // owner 2026-11-27: Previo's price is gross (stay + tourist tax),
    optionExpiresUtc:new Date(now()+PREFILL_OPTION_HOURS*3600000).toISOString(),channel,note:channel==='phone'?PHONE_NOTE:prefillNote(returning,quote),...(mainNote?{mainNote}:{})});
   return {status:'created',unit,resId:r.resId,created:r.created,returning:returning?.status??null};
  }catch(error){return {status:'failed',reason:typeof error?.code==='string'?error.code:'WRITE'};}

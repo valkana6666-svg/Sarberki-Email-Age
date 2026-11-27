@@ -59,7 +59,7 @@ test('final letter after a preliminary one: same booking number, price and deadl
   await db.query('insert into sc_cases(tenant_id,case_id,revision,data,updated_by) values($1,$2,4,$3,$4)',[TENANT,CASE,JSON.stringify(data),ids.writer]);
   await db.query("insert into sc_test_mailbox_cases values($1,$2,'intake:phone','voice_conv_x1',$3,$4,now())",[TENANT,CASE,'c'.repeat(64),ids.writer]);
   const record=async()=>{const r=(await db.query('select revision,data from sc_cases where case_id=$1',[CASE])).rows[0];return {tenantId:TENANT,caseId:CASE,revision:Number(r.revision),data:r.data};};
-  const previo={resId:118646289,unit:'2',from:'2027-08-02',to:'2027-08-05',price:quote.accommodation};
+  const previo={resId:118646289,unit:'2',from:'2027-08-02',to:'2027-08-05',price:quote.total};
   // Previo is the source: other dates / another price stop before anything is saved.
   await assert.rejects(prepareFinalLetter({record:await record(),previo:{...previo,from:'2027-08-03'},attestationKey:KEY,transport}),/PREVIO_DATES_EDITED/);
   await assert.rejects(prepareFinalLetter({record:await record(),previo:{...previo,price:1},attestationKey:KEY,transport}),/PREVIO_PRICE_EDITED/);

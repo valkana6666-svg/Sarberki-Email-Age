@@ -128,9 +128,14 @@ export function oneClickPreviewHash({record,list,cabin,quote,deposit,language}){
 
 // Owner decision 2026-11-18 („azt szeretném, számolja ki a Previo az IFA-t”): Previo gets the accommodation price
 // only; the tourism tax is Previo's own line (as on the live voucher). The guest letter still shows the full total.
-export function previoAccommodationHuf(quote){
- const a=quote?.accommodation;if(!Number.isSafeInteger(a)||a<=0)fail('PRICE_REQUIRED');return a;
+// Owner's Previo screenshot 2026-11-27 (Kovács László): Previo takes the reservation price as the GROSS total and
+// carves the tourist tax OUT of it (312 000 sent → 303 200 stay + 8 800 tax, 75 800/night). So the price sent to Previo
+// is the stay PLUS the tourist tax (our quote.total), and Previo's own price is compared with that total.
+export function previoTotalHuf(quote){
+ const a=quote?.accommodation,t=quote?.total;if(!Number.isSafeInteger(a)||a<=0)fail('PRICE_REQUIRED');
+ return Number.isSafeInteger(t)&&t>=a?t:a;
 }
+export const previoAccommodationHuf=previoTotalHuf; // old name, same meaning now (gross incl. tourist tax)
 export async function confirmTestMailboxBooking({record,previoReference,previoRecorded,previoAuto=false,previoWriter=null,unit,units=null,attestationKey,transport,
  quoteFn=fetchPublicPriceReference,unitCheckFn=null,clock=()=>new Date().toISOString(),expectedPreviewHash=null,requireFree=false,bookingNumber=null,confirmedLetter=false}={}){
  if(previoAuto===true){if(!previoWriter)fail('PREVIO_WRITE_DISABLED');}
@@ -225,7 +230,7 @@ export async function previoConfirmedLetter({record,previo,attestationKey,transp
  const voucher=voucherFor({tenantId:record.tenantId,caseId:record.caseId});
  // The price the staff left in Previo must be the one we would write in the letter (else the staff decide by hand).
  const quote=quoteFn(quoteInputFromCase(v,splitCabinFromUnits(v.unit,[previo.unit])??cabinKeyFromUnit(v.unit)));
- if(Number.isSafeInteger(previo.price)&&Number.isSafeInteger(quote?.accommodation)&&previo.price!==quote.accommodation)fail('PREVIO_PRICE_EDITED');
+ if(Number.isSafeInteger(previo.price)&&Number.isSafeInteger(quote?.accommodation)&&previo.price!==previoTotalHuf(quote))fail('PREVIO_PRICE_EDITED');
  const {saved,deposit}=await confirmTestMailboxBooking({record,previoReference:'V2-'+previo.resId,previoRecorded:true,unit:previo.unit,attestationKey,transport,quoteFn,unitCheckFn,clock,
   bookingNumber:voucher,confirmedLetter:optionLetter!==true});
  if(!saved)return {saved:null,approved:false,deposit};
@@ -370,7 +375,7 @@ export async function prepareFinalLetter({record,previo,attestationKey,transport
  if(!previo||!Number.isSafeInteger(previo.resId)||!previo.unit)fail('PREVIO_NOT_CONFIRMED');
  if(previo.from!==values.arrival||previo.to!==values.departure)fail('PREVIO_DATES_EDITED');
  const quote=quoteFn(quoteInputFromCase(values,splitCabinFromUnits(values.unit,[previo.unit])??cabinKeyFromUnit(values.unit)));
- if(Number.isSafeInteger(previo.price)&&Number.isSafeInteger(quote?.accommodation)&&previo.price!==quote.accommodation)fail('PREVIO_PRICE_EDITED');
+ if(Number.isSafeInteger(previo.price)&&Number.isSafeInteger(quote?.accommodation)&&previo.price!==previoTotalHuf(quote))fail('PREVIO_PRICE_EDITED');
  const language=/^(hu|de|en|si)$/.test(values.language||'')?values.language:'hu';
  const built=buildBookingConfirmation({values,quote,previo:{reference:b.previo?.reference,recordedAt:b.previo?.recordedAt},language,
   bookingNumber:voucherFor({tenantId:record.tenantId,caseId:record.caseId}),confirmed:true});

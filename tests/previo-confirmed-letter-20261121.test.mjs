@@ -32,7 +32,7 @@ test('option letter (sendNow): „Foglalását rögzítettük … foglaló beér
   if(path.endsWith('/sc_tm_decide'))return {case_id:record.caseId,revision:5,data:{state:{approval:'approved_internal'},booking:{status:'finalized'}}};
   return null;};
  const rec={...record,data:{...record.data,messages:[],drafts:[{text:'x'}],sourceReceipt:{provider:'phone'},sender:'intake:phone'}};
- let r;try{r=await previoConfirmedLetter({record:rec,previo:{resId:9,unit:'2',from:'2027-08-02',to:'2027-08-05',price:quote.accommodation},attestationKey:'a'.repeat(64),transport,optionLetter:true,unitCheckFn:async()=>({status:'free'})});}
+ let r;try{r=await previoConfirmedLetter({record:rec,previo:{resId:9,unit:'2',from:'2027-08-02',to:'2027-08-05',price:quote.total},attestationKey:'a'.repeat(64),transport,optionLetter:true,unitCheckFn:async()=>({status:'free'})});}
  catch(e){r={error:e.code};}
  const draft=calls.find(c=>c.path.endsWith('/sc_tm_confirm_booking'))?.body?.p_draft?.text||'';
  assert.match(draft,/Foglalását rögzítettük/);assert.doesNotMatch(draft,/megerősítettük/);assert.match(draft,/foglaló beérkezése után válik véglegessé/);
