@@ -98,3 +98,13 @@ test('100 e-mail threads (25 per language, same scenarios): facts, language, app
  assert.equal(res.length,100);assert.ok(res.reduce((s,r)=>s+r.letters,0)>=350);
  assert.deepEqual(res.filter(r=>!r.ok).map(r=>r.id+': '+[...r.factIssues,...r.issues].join('; ')),[]);
 });
+
+// Owner chat test 2026-11-27: a price question about a cabin without dates asks for the dates and guests (all four languages).
+test('price question about a cabin, no dates yet → asks for dates and guests, not the cabin list',async()=>{
+ const {chatbotReply}=await import('../chatbot-v1.mjs');
+ for(const [msg,lang] of [['Mennyibe kerül egy éjszakára a delux fahaz?','hu'],['Was kostet das Deluxe Haus pro Nacht?','de'],['How much is the deluxe cabin per night?','en'],['Koliko stane deluxe hiška na noč?','si']]){
+  const r=chatbotReply({message:msg,language:lang});assert.equal(r.intent,'price',msg);
+ }
+ assert.notEqual(chatbotReply({message:'Mennyibe kerül a dézsa a faháznál?',language:'hu'}).intent,'price');
+ assert.notEqual(chatbotReply({message:'Faházvendégként mennyibe kerül a horgászjegy?',language:'hu'}).intent,'price');
+});
