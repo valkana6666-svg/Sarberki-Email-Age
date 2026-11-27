@@ -7,3 +7,4 @@
 {"last":1}  
 {"last":0,"inventory":true}
 {"last":2,"inventory":true}
+{"last":2}
