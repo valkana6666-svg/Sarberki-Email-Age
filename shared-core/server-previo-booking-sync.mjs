@@ -99,7 +99,9 @@ export function previoBookingWriter(env,fetchImpl=globalThis.fetch,{pauseMs=5000
    const add=lines.filter(l=>!flat(before[0].note).includes(flat(l)));if(!add.length)return {resId:before[0].resId,added:0};
    // A later answer for the same day („Délután 4-től”) replaces our own earlier phone line of that day.
    const days=add.map(l=>l.match(/^DÉZSAFÜRDŐ (\d{4}\.\d{2}\.\d{2}\.)/)?.[1]).filter(Boolean);
-   const kept=days.reduce((n,d)=>n.replace(new RegExp(`\\s*\\|?\\s*DÉZSAFÜRDŐ ${d.replace(/\./g,'\\.')}[^()|]*\\(telefonos igény\\)`,'g'),''),before[0].note).trim();
+   const kept=days.reduce((n,d)=>n.replace(new RegExp(`\\s*\\|?\\s*DÉZSAFÜRDŐ ${d.replace(/\./g,'\\.')}[^()|]*\\(telefonos igény\\)`,'g'),''),before[0].note)
+    // Owner's call 2026-11-27 18:19: once days are given, our own „napok egyeztetendők” line of this call goes.
+    .replace(days.length?/\s*\|?\s*DÉZSAFÜRDŐ napok egyeztetendők[^()|]*\(telefonos igény\)/g:/$^/,'').trim();
    const note=[kept,...add].filter(Boolean).join(' | ');
    const result=parseReservationResponse(await post('/x1/hotel/reservation',buildNoteXml({resId:before[0].resId,note}).xml));
    if(!result.ok)fail(result.code);

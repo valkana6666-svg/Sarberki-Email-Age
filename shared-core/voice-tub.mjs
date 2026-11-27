@@ -24,6 +24,13 @@ function ordinalDays(t){
   if(m[2]==='elsej'&&tens)continue;out.push(tens+u);
  }
  for(const w of t.toLowerCase().split(/[^\p{L}]+/u))if(ORD[w])out.push(ORD[w]);
+ // Owner's call 2026-11-27 18:19: „Tizenegy és tizenkettedikére” – a plain number word before „és/meg/,” shares the
+ // ordinal/suffix of the next day, so it is a day too (only when such a day follows).
+ const CARD={egy:1,két:2,kettő:2,három:3,négy:4,öt:5,hat:6,hét:7,nyolc:8,kilenc:9};
+ for(const m of t.toLowerCase().matchAll(/(?<!\p{L})(?:(tizen|huszon|harminc)(egy|két|kettő|három|négy|öt|hat|hét|nyolc|kilenc)?|(tíz|húsz|harminc)|(egy|kettő|három|négy|öt|hat|hét|nyolc|kilenc))(?=\s*(?:,|és|meg|vagy)\s+(?:\p{L}*(?:dik|edik|adik|odik|ödik|elsej)\p{L}*|\d{1,2}\s*-?\s*(?:\.|re|ra|én|án|ére|ára|ján|jén|ig)))/gu)){
+  const d=m[3]?{tíz:10,húsz:20,harminc:30}[m[3]]:m[4]?CARD[m[4]]:({tizen:10,huszon:20,harminc:30}[m[1]]+(m[2]?CARD[m[2]]:0));
+  if(m[1]&&!m[2])continue;out.push(d);
+ }
  return out.filter(d=>d>=1&&d<=31);
 }
 function edgeDays(t,stayNights){
@@ -40,7 +47,7 @@ export function tubDays(text,stay){
  if(ALL_DAYS.test(t))return stayNights;
  const edge=edgeDays(t,stayNights);if(edge)return edge;
  const days=[];
- const nums=[...t.replace(/(?:este|délután|abends|evening|zvečer)\s+\d{1,2}\s*-?\s*(?:t[óő]l|kor)?/giu,' ').matchAll(/(?<!\d)(\d{1,2})(?:\s*-?\s*(?:re|ra|én|án|ján|jén|ére|ára|ei|i)|\.|st|nd|rd|th)?(?!\d|\s*(?:fő|fos|fős|Person|guest|oseb|órá|óra|h\b|Uhr|o'clock|ur\b|pm\b|am\b|p\.m|nap|éj|day|night|Tag|dan|noč))/giu)].map(m=>+m[1]).filter(d=>d>=1&&d<=31);
+ const nums=[...t.replace(/(?:este|délután|abends|evening|zvečer)\s+\d{1,2}\s*-?\s*(?:t[óő]l|kor)?/giu,' ').matchAll(/(?<!\d)(\d{1,2})(?:\s*-?\s*(?:re|ra|én|án|ján|jén|ére|ára|ei|i)|\.|st|nd|rd|th)?(?!\d|\s*(?:fő|fos|fős|Person|guest|oseb|órá|óra|h\b|Uhr|o'clock|ur\b|pm\b|am\b|p\.m|nap|éj|day|night|Tag|dan|noč|felnőtt|gyer|adult|Erwachs|Kind|child|kid|odrasl|otro))/giu)].map(m=>+m[1]).filter(d=>d>=1&&d<=31);
  for(const d of [...nums,...ordinalDays(t)]){const hit=stayNights.find(x=>+x.slice(8)===d);if(hit&&!days.includes(hit))days.push(hit);}
  return days.sort();
 }

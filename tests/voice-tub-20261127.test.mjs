@@ -104,3 +104,22 @@ test('owner call 11-27 15:37: an hour said in words („délután négy órátó
  assert.equal(isTubTimeAnswer(normalizeSpoken('Délután négy órától.')),true);
  assert.equal(isTubTimeAnswer(normalizeSpoken('Négy felnőtt érkezik.')),false);
 });
+
+test('owner call 11-27 18:19: „Tizenegy és tizenkettedikére” = days 11 and 12; the „napok egyeztetendők” line is replaced; counts are no days',async()=>{
+ const {normalizeSpoken}=await import('../shared-core/voice-normalize.mjs');
+ const {tubDays}=await import('../shared-core/voice-tub.mjs');
+ const S={arrival:'2027-03-10',departure:'2027-03-15'};
+ assert.deepEqual(tubDays(normalizeSpoken('Tizenegy és tizenkettedikére.'),S),['2027-03-11','2027-03-12']);
+ assert.deepEqual(tubDays(normalizeSpoken('Négy felnőtt és két gyermek.'),{arrival:'2027-03-01',departure:'2027-03-25'}),[]);
+ let gnote='Telefonról érkezett.  DÉZSAFÜRDŐ napok egyeztetendők 1x24 óra/nap 6 fő  30 000 Ft/24 óra (telefonos igény)';const sent=[];
+ const voucher=voucherFor({tenantId:'sarberki-test',caseId:'tm-bbbbbbbbbbbbbbbbbbbbbbbb'});
+ const fetchImpl=async(url,{body})=>{sent.push(body);
+  if(url.endsWith('/searchReservations'))return new Response(`<reservations><reservation><resId>56</resId><voucher>${voucher}</voucher><statusId>1</statusId><gNote>${gnote}</gNote></reservation></reservations>`);
+  const m=body.match(/<gNote>([^<]*)<\/gNote>/);if(m)gnote=m[1].replace(/[,–|]/g,'');return new Response('<reservations><reservation><resId>56</resId></reservation></reservations>');};
+ const {previoBookingWriter}=await import('../shared-core/server-previo-booking-sync.mjs');
+ const w=previoBookingWriter({PREVIO_WRITE_ENABLED:'sandbox-73521-only',PREVIO_HOTEL_ID:'73521',PREVIO_WRITE_PERMISSION_ID:'PERM-20261127-VOICE-TUB-NOTE',PREVIO_API_KEY:'k'.repeat(20)},fetchImpl);
+ await w.appendNote({tenantId:'sarberki-test',caseId:'tm-bbbbbbbbbbbbbbbbbbbbbbbb',arrival:'2027-03-10',departure:'2027-03-15',
+  lines:['DÉZSAFÜRDŐ 2027.03.11. 1x24 óra, 6 fő – 30 000 Ft (telefonos igény)','DÉZSAFÜRDŐ 2027.03.12. 1x24 óra, 6 fő – 30 000 Ft (telefonos igény)']});
+ const write=sent.find(b=>b.includes('<newReservation>'));
+ assert.doesNotMatch(write,/napok egyeztetendők/);assert.match(write,/2027\.03\.11\./);assert.match(write,/2027\.03\.12\./);assert.match(write,/Telefonról érkezett\./);
+});
