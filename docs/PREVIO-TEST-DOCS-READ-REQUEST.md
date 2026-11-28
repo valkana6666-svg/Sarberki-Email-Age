@@ -3,3 +3,4 @@
 {"voucher":"SC-4756229DDDFF1677","arrival":"2025-08-10","departure":"2025-08-13"}
 {"list":true,"arrival":"2025-06-01","departure":"2025-09-30"}
 {"voucher":"SC-8F65A04D94AB1A5A","arrival":"2027-09-03","departure":"2027-09-06"}
+{"priceActions":true}

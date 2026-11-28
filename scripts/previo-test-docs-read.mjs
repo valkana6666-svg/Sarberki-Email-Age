@@ -2,6 +2,13 @@
 // type, amounts, dates, field names – never names, addresses, tax ids or document numbers. Calls: searchReservations,
 // getDocuments (reads only).
 const req=JSON.parse(process.argv[2]||'{}');
+// Price actions (discount definitions: FM/LM/long stay …) of TEST 73521 – business data only.
+if(req.priceActions===true){
+ const r=await fetch('https://api.previo.app/x1/hotel/getPriceActions',{method:'POST',redirect:'error',headers:{Authorization:'ApiKey '+process.env.PREVIO_API_KEY,'Content-Type':'application/xml',Accept:'application/xml'},body:'<?xml version="1.0"?><request><hotId>73521</hotId></request>'});
+ const text=await r.text();console.log('PRICEACTIONS',r.status,(text.match(/<message>([^<]{0,160})/)||[])[1]||'');
+ console.log('TAGS',[...new Set([...text.matchAll(/<([A-Za-z]+)[ >]/g)].map(m=>m[1]))].join(','));
+ console.log('BODY',text.replace(/\s+/g,' ').slice(0,3000));process.exit(0);
+}
 // List mode: every booking overlapping a window (state, dates, unit objId, booking number) – no guest data.
 if(req.list===true&&/^\d{4}-\d{2}-\d{2}$/.test(req.arrival||'')&&/^\d{4}-\d{2}-\d{2}$/.test(req.departure||'')){
  const key=process.env.PREVIO_API_KEY;
