@@ -123,3 +123,17 @@ test('owner call 11-27 18:19: „Tizenegy és tizenkettedikére” = days 11 and
  const write=sent.find(b=>b.includes('<newReservation>'));
  assert.doesNotMatch(write,/napok egyeztetendők/);assert.match(write,/2027\.03\.11\./);assert.match(write,/2027\.03\.12\./);assert.match(write,/Telefonról érkezett\./);
 });
+
+// Owner's calls 2026-11-27/28 (Tóth Péter, Horváth Péter): „május 15-étől május 20-áig”, „10-étől 14-éig” were not
+// read as dates – the caller was asked again. Phone and chat alike.
+test('long day suffixes: 15-étől/20-áig, 10-étől/14-éig, 1-jétől/5-éig, 3-ától/6-áig are a stay (phone and chat)',async()=>{
+ const {voiceTurn}=await import('../shared-core/voice-turn.mjs');
+ const {createChatInquirySession}=await import('../sarberki-chatbot-project/chat-session.mjs');
+ const clock=()=>new Date('2026-11-28T10:00:00Z');
+ for(const [u,a,d] of [['Szeretnék érdeklődni, hogy van-e szabad Deluxe faház május 15-étől május 20-áig.','2027-05-15','2027-05-20'],
+  ['Jó napot kívánok! Szeretnék érdeklődni 2027. március 10-étől 14-éig. Deluxe faházat szeretnék.','2027-03-10','2027-03-14'],
+  ['Deluxe május 1-jétől 5-éig két felnőtt','2027-05-01','2027-05-05'],['Deluxe június 3-ától 6-áig két felnőtt','2027-06-03','2027-06-06']]){
+  const r=await voiceTurn({utterances:[u],language:'hu',clock});assert.equal(r.facts.arrival,a,u);assert.equal(r.facts.departure,d,u);
+  const s=createChatInquirySession({language:'hu',clock});assert.match(s.reply(u).text,new RegExp(a.replaceAll('-','\\.')+'\\. és '+d.replaceAll('-','\\.')+'\\. között'),u);
+ }
+});

@@ -20,6 +20,9 @@ export function normalizeSpokenHu(text){
  t=t.replace(/kétezer[\s-]*(\d{1,2})(?!\d)/giu,(m,n)=>String(2000+Number(n)));
  t=t.replace(new RegExp('kétezer[\\s-]*'+HU_STEM+'(?!\\p{L})','giu'),(m,w)=>{const n=huNumber(w);return n!==null?String(2000+n):m;});
  t=t.replace(new RegExp('(?<!\\p{L})'+HU_STEM+'(?:ik[aáeé]|ej[eé]|[aáeé])?(t[óo]l|t[őo]l|ig|[aáeé]n)(?!\\p{L})','giu'),(m,w,suf)=>{const n=huNumber(w.replace(/(?:ik[aáeé]|ej[eé])$/u,''));return n!==null&&n>=1&&n<=31?`${n}-${suf}`:m;});
+ // Owner's calls 2026-11-27/28: „május 15-étől május 20-áig”, „10-étől 14-éig”, „1-jétől”, „3-ától” – the digits with
+ // the long day suffix are the same range as „15-től 20-ig”.
+ t=t.replace(/(?<![\d.])(\d{1,2})\s*-\s*(?:j?[eé]|j?[aá])(t[óőo]l|ig)(?!\p{L})/giu,(m,d,suf)=>d+'-'+suf);
  t=t.replace(/(?<![\d.])(\d{1,2})\s?(t[óo]l|t[őo]l|ig)(?!\p{L})/giu,'$1-$2');
  t=t.replace(new RegExp('(?<!\\p{L})'+HU_STEM+'(?=\\s+(?:felnőtt|felnott|gyerek|gyermek|fő|fo(?!\\p{L})|éjszak|ejszak|éjjel))','giu'),(m,w)=>{const n=huNumber(w);return n!==null?String(n):m;});
  // children's ages: „ötéves”, „öt és nyolc évesek”

@@ -77,6 +77,8 @@ export function createChatInquirySession({language='auto',clock=()=>new Date()}=
   reset(){facts={};early={};bookingContext=false;turns=0;lastDecision=null;lastTurn=null;pendingArrival=null;language=languageMode==='auto'?'hu':languageMode;},
   reply(message,{language:nextLanguage}={}){
    if(typeof message!=='string'||message.length>1000||++turns>100)throw Error('CHAT_INPUT_LIMIT');
+   // Owner's calls 2026-11-27/28: „május 15-étől 20-áig”, „1-jétől”, „3-ától” = „15-től 20-ig” (chat and phone alike).
+   message=message.replace(/(?<![\d.])(\d{1,2})\s*-\s*(?:j?[eé]|j?[aá])(t[óőo]l|ig)(?!\p{L})/giu,(m,d,suf)=>d+'-'+suf);
    // An explicit request for another language switches at once (auto mode only).
    if(languageMode==='auto'){const req=LANG_REQUEST.find(([re])=>re.test(message));if(req)language=req[1],languageMode='auto';}
    if(message.trim()){const now0=clock();let probe0=normalizeInquiryInput({sourceChannel:'web_form',rawText:message,now:now0}).normalized;
