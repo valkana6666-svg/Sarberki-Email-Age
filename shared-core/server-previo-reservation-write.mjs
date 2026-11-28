@@ -78,7 +78,7 @@ export function buildReservationXml({tenantId,caseId,values,cabin,unit,units=nul
   // Owner 2026-11-19 (#9 7005064928): a short staff note in Previo (no guest contact data, plain text, ≤300 chars).
   // Owner 2026-11-27: the hot tub request goes to the reservation note too. Previo 73521 test 11-27 (run 46012421447):
   // only <gNote> is stored on a reservation (searchReservations echoes it as <note>); a <note> element is ignored.
-  ...(note||mainNote?[`<gNote>${xmlText([note&&String(note).replace(/[\r\n]+/g,' ').slice(0,300),mainNote&&String(mainNote).replace(/[\r\n]+/g,' | ')].filter(Boolean).join(' | ').slice(0,1000))}</gNote>`]:[]),
+  ...(note||mainNote?[`<gNote>${xmlText([note&&String(note).replace(/[\r\n]+/g,' ').slice(0,600),mainNote&&String(mainNote).replace(/[\r\n]+/g,' | ')].filter(Boolean).join(' | ').slice(0,1000))}</gNote>`]:[]),
   `<term><from>${values.arrival} 14:00:00</from><to>${values.departure} 10:00:00</to></term>`,
   `<voucher>${voucher}</voucher>`,
   contactPersonXml(name,contact),

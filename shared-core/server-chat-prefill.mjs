@@ -53,7 +53,8 @@ export async function prefillChatBooking({env,fetchImpl=globalThis.fetch,tenantI
 export const PHONE_NOTE='Telefonról érkezett. A hívó elfogadta az ajánlatot. Nevet és email címet adott. A többi adatot kérd el emailben és töltsd ki. Ellenőrizd és ha rendben van állítsd megerősítettre.';
 // Staff note in Previo (no guest contact data): where the booking came from and what was checked.
 // 7=6 (owner 2026-11-27): the free nights are written for the staff too (short sentence, Previo drops punctuation).
-const weeklyNote=quote=>quote?.weeklyFree?.amount>0?` 7=6 kedvezmény ${quote.weeklyFree.freeNights} éjszaka ingyenes (${quote.weeklyFree.amount} Ft) beszámítva.`:'';
+// Previo drops „=” too (7=6 became „76”, TEST 11-28): plain words.
+const weeklyNote=quote=>quote?.weeklyFree?.amount>0?` Hetedik éjszaka ingyen kedvezmény ${quote.weeklyFree.freeNights} éjszaka (${quote.weeklyFree.amount} Ft) beszámítva.`:'';
 export function prefillNote(returning,quote){return prefillNoteBase(returning,quote)+weeklyNote(quote);}
 function prefillNoteBase(returning,quote){
  // Previo keeps letters, digits, dots and brackets but drops commas, colons and dashes (live TEST 2026-11-21): short

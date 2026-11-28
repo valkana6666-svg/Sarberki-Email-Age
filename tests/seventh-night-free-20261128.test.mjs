@@ -66,6 +66,6 @@ test('letter, Previo gross price and staff note show the free nights; no double 
  const n=buildBookingConfirmation({values:{arrival:'2027-10-04',departure:'2027-10-11',adults:'2',children:'0',unit:'Deluxe',language:'hu'},quote:q(7),previo:{reference:'V2-1',recordedAt:'2026-11-28T10:00:00Z'},language:'hu'});
  assert.match(n.text,/Szállásdíj: 441 000 Ft − 7=6 kedvezmény: 1 éjszaka ingyenes \(63 000 Ft\) = 378 000 Ft/);
  assert.equal(previoTotalHuf(r),310100);assert.equal(previoTotalHuf(q(7)),385700);
- assert.match(prefillNote(null,q(14)),/7=6 kedvezmény 2 éjszaka ingyenes \(126000 Ft\) beszámítva\./);
- assert.doesNotMatch(prefillNote(null,q(6)),/7=6/);
+ assert.match(prefillNote(null,q(14)),/Hetedik éjszaka ingyen kedvezmény 2 éjszaka \(126000 Ft\) beszámítva\./);assert.doesNotMatch(prefillNote(null,q(14)),/=/,'Previo drops =');
+ assert.doesNotMatch(prefillNote(null,q(6)),/Hetedik/);
 });
