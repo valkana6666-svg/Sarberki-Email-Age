@@ -1,0 +1,24 @@
+name: Previo TEST – four 7=6 / returning-guest test bookings (Claude, PERM-20261128-TEST-BOOKINGS-7EQ6)
+on:
+  push:
+    branches: [gmail-test-subject-allowlist]
+    paths: [docs/PREVIO-TEST-BOOKINGS-7EQ6-REQUEST.md]
+permissions:
+  contents: read
+jobs:
+  write:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Create via the chat pre-fill path, confirm, read back
+        env:
+          PREVIO_API_KEY: ${{ secrets.PREVIO_TEST_API_KEY }}
+        run: |
+          test "$GITHUB_REF" = "refs/heads/gmail-test-subject-allowlist"
+          node scripts/previo-test-bookings-7eq6.mjs
