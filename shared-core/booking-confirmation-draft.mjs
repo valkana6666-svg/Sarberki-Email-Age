@@ -75,9 +75,12 @@ export function buildBookingConfirmation({values,quote,previo,language,bookingNu
  const party={hu:`${guests} fő (${adults} felnőtt${children?`, ${children} gyermek`:''})`,de:`${guests} Personen (${adults} Erwachsene${children?`, ${children} Kinder`:''})`,
   en:`${guests} guests (${adults} adults${children?`, ${children} children`:''})`,si:`${guests} oseb (${adults} odraslih${children?`, ${children} otrok`:''})`}[lang];
  // Returning-guest discount (owner 2026-11-19): shown as list price − discount = the accommodation actually charged.
- const rd=quote.returningDiscount,b=quote.accommodationBeforeDiscount;
- const disc=rd&&Number.isSafeInteger(b)?{hu:`${huf(b)} Ft − törzsvendég-kedvezmény ${rd.pct}% (${huf(rd.amount)} Ft) = `,de:`${huf(b)} HUF − Stammgastrabatt ${rd.pct}% (${huf(rd.amount)} HUF) = `,
-  en:`${huf(b)} HUF − returning-guest discount ${rd.pct}% (${huf(rd.amount)} HUF) = `,si:`${huf(b)} HUF − popust za stalne goste ${rd.pct}% (${huf(rd.amount)} HUF) = `}:{hu:'',de:'',en:'',si:''};
+ const rd=quote.returningDiscount,wf=quote.weeklyFree,b=rd?quote.accommodationBeforeDiscount:quote.listAccommodation;
+ // 7=6 (owner 2026-11-27): list price − (returning-guest 20%) − free nights (one per full week) = accommodation charged.
+ const rdPart=rd?{hu:` − törzsvendég-kedvezmény ${rd.pct}% (${huf(rd.amount)} Ft)`,de:` − Stammgastrabatt ${rd.pct}% (${huf(rd.amount)} HUF)`,en:` − returning-guest discount ${rd.pct}% (${huf(rd.amount)} HUF)`,si:` − popust za stalne goste ${rd.pct}% (${huf(rd.amount)} HUF)`}:{hu:'',de:'',en:'',si:''};
+ const wfPart=wf&&Number.isSafeInteger(wf.amount)&&wf.amount>0?{hu:` − 7=6 kedvezmény: ${wf.freeNights} éjszaka ingyenes (${huf(wf.amount)} Ft)`,de:` − 7=6-Rabatt: ${wf.freeNights} Nacht/Nächte gratis (${huf(wf.amount)} HUF)`,
+  en:` − 7=6 offer: ${wf.freeNights} night(s) free (${huf(wf.amount)} HUF)`,si:` − ponudba 7=6: ${wf.freeNights} noč(i) brezplačno (${huf(wf.amount)} HUF)`}:{hu:'',de:'',en:'',si:''};
+ const disc=(rd||wfPart.hu)&&Number.isSafeInteger(b)?Object.fromEntries(['hu','de','en','si'].map(l=>[l,`${huf(b)} ${l==='hu'?'Ft':'HUF'}${rdPart[l]}${wfPart[l]} = `])):{hu:'',de:'',en:'',si:''};
  // Owner 2026-11-21: the returning-guest discount applies to the hot tub too (priced separately by the staff).
  const tub=rd?{hu:`\nTörzsvendégként a dézsa bérleti díjából is ${rd.pct}% kedvezmény jár.`,de:`\nAls Stammgast erhalten Sie auch auf den Badezuber ${rd.pct}% Rabatt.`,
   en:`\nAs a returning guest you also get ${rd.pct}% off the hot tub.`,si:`\nKot stalni gost imate tudi ${rd.pct}% popusta na masažno kad.`}:{hu:'',de:'',en:'',si:''};

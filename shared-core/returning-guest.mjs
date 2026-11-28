@@ -34,6 +34,17 @@ export function returningGuestDecision({guest,stays,referenceDay,rules=BUSINESS.
 // The price step: only an 'eligible' decision changes the quote (accommodation − pct%, IFA unchanged).
 export function applyReturningDiscount(quote,decision){
  if(decision?.status!=='eligible'||!Number.isSafeInteger(quote?.accommodation)||!Number.isSafeInteger(quote?.tourismTax))return quote;
+ // 7=6 (owner 2026-11-27): the 20% comes FIRST on the full list price; then each full week's DISCOUNTED amount ÷ 7 is
+ // deducted (140 000 → 112 000 → −16 000 → 96 000).
+ const wf=quote.weeklyFree;
+ if(wf&&Number.isSafeInteger(quote.listAccommodation)&&Array.isArray(wf.weeks)){
+  const units=Number.isInteger(quote.units)&&quote.units>0?quote.units:1;
+  const discount=Math.round(quote.listAccommodation*decision.pct/100);
+  const weeks=wf.weeks.map(w=>{const sum=w.weekSumHuf-Math.round(w.weekSumHuf*decision.pct/100);return {...w,weekSumAfterDiscountHuf:sum,freeHuf:Math.round(sum/7)};});
+  const free=weeks.reduce((s,w)=>s+w.freeHuf,0)*units,accommodation=quote.listAccommodation-discount-free;
+  return Object.freeze({...quote,accommodationBeforeDiscount:quote.listAccommodation,returningDiscount:Object.freeze({pct:decision.pct,amount:discount,lastStay:decision.lastStay}),
+   weeklyFree:Object.freeze({freeNights:wf.freeNights,amount:free,weeks}),accommodation,total:accommodation+quote.tourismTax});
+ }
  const discount=Math.round(quote.accommodation*decision.pct/100),accommodation=quote.accommodation-discount;
  return Object.freeze({...quote,accommodationBeforeDiscount:quote.accommodation,returningDiscount:Object.freeze({pct:decision.pct,amount:discount,lastStay:decision.lastStay}),
   accommodation,total:accommodation+quote.tourismTax});

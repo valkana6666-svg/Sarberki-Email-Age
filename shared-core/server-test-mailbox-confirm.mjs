@@ -204,7 +204,7 @@ export async function previewTestMailboxBooking({record,unit,units=null,transpor
  if(list.length>1)price={status:'multi_unit'};
  else if(typeof priceCheckFn==='function'){let c=null;try{c=await priceCheckFn({values,cabin});}catch{}
   // Previo quotes the list price: a returning-guest discount (owner 2026-11-19) is compared before the discount.
-  const listTotal=quote.total+(Number.isSafeInteger(quote.returningDiscount?.amount)?quote.returningDiscount.amount:0);
+  const listTotal=quote.total+(Number.isSafeInteger(quote.returningDiscount?.amount)?quote.returningDiscount.amount:0)+(Number.isSafeInteger(quote.weeklyFree?.amount)?quote.weeklyFree.amount:0); // 7=6 too (owner 2026-11-27)
   price=c?.status==='read'?{status:c.total===listTotal?'match':'mismatch',previoTotal:c.total}:{status:c?.status==='not_comparable'?'not_comparable':'unreadable'};}
  if(price.status==='mismatch')blockers.push('PREVIO_PRICE_MISMATCH');
  const deposit=built.deposit;

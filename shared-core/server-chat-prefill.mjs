@@ -44,7 +44,7 @@ export async function prefillChatBooking({env,fetchImpl=globalThis.fetch,tenantI
  const values={arrival:input.arrival,departure:input.departure,adults:String(input.adults),children:String(input.children.length),child_ages:input.children.join(',')};
  try{
   const r=await w.createOption({tenantId,caseId,values,cabin:input.cabin,unit,contactName,contact,totalHuf:previoTotalHuf(quote), // owner 2026-11-27: Previo's price is gross (stay + tourist tax),
-   optionExpiresUtc:new Date(now()+PREFILL_OPTION_HOURS*3600000).toISOString(),channel,note:channel==='phone'?PHONE_NOTE:prefillNote(returning,quote),...(mainNote?{mainNote}:{})});
+   optionExpiresUtc:new Date(now()+PREFILL_OPTION_HOURS*3600000).toISOString(),channel,note:channel==='phone'?PHONE_NOTE+weeklyNote(quote):prefillNote(returning,quote),...(mainNote?{mainNote}:{})});
   return {status:'created',unit,resId:r.resId,created:r.created,returning:returning?.status??null};
  }catch(error){return {status:'failed',reason:typeof error?.code==='string'?error.code:'WRITE'};}
 }
@@ -52,7 +52,10 @@ export async function prefillChatBooking({env,fetchImpl=globalThis.fetch,tenantI
 // Phone note: no comma/colon/dash (Previo drops them). Not „Chatből” – the chat's expiry auto-cancel does not apply.
 export const PHONE_NOTE='Telefonról érkezett. A hívó elfogadta az ajánlatot. Nevet és email címet adott. A többi adatot kérd el emailben és töltsd ki. Ellenőrizd és ha rendben van állítsd megerősítettre.';
 // Staff note in Previo (no guest contact data): where the booking came from and what was checked.
-export function prefillNote(returning,quote){
+// 7=6 (owner 2026-11-27): the free nights are written for the staff too (short sentence, Previo drops punctuation).
+const weeklyNote=quote=>quote?.weeklyFree?.amount>0?` 7=6 kedvezmény ${quote.weeklyFree.freeNights} éjszaka ingyenes (${quote.weeklyFree.amount} Ft) beszámítva.`:'';
+export function prefillNote(returning,quote){return prefillNoteBase(returning,quote)+weeklyNote(quote);}
+function prefillNoteBase(returning,quote){
  // Previo keeps letters, digits, dots and brackets but drops commas, colons and dashes (live TEST 2026-11-21): short
  // sentences only.
  const base='Chatből érkezett. A vendég véglegesítette. A rendszer töltötte ki. Ellenőrizd és ha rendben van állítsd megerősítettre.';

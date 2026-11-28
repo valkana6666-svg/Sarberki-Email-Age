@@ -71,8 +71,8 @@ test('2027 owner-confirmed high season includes August 22, 2026 remains August 2
  assert.deepEqual(sarberkiTariffForNight('2026-08-21','deluxe'),{nightlyHuf:60000,includedGuests:4});
  assert.equal(BUSINESS.pricingRules.highSeasonEnd,'08-20');
 });
-test('2027 seventh free night requires manual calculation rather than invented total',()=>{
- assert.throws(()=>quote('deluxe',4,{arrival:'2027-05-10',departure:'2027-05-17'}),/hetedik ingyenes/u);
+test('2027 7=6 (owner 2026-11-27): a full week is charged as six nights; six nights unchanged',()=>{
+ assert.equal(quote('deluxe',4,{arrival:'2027-05-10',departure:'2027-05-17'}).accommodation,6*63000);
  assert.equal(quote('deluxe',4,{arrival:'2027-05-10',departure:'2027-05-16'}).accommodation,6*63000);
 });
 test('2026/2027 New Year tariff picks each occupied night; 2028 blocked',()=>{

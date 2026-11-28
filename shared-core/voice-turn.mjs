@@ -51,7 +51,7 @@ export function speechify(text,lang='hu'){
 // The booking-status / terms part of a letter is not read on the phone (legal text; the checked offer says it briefly).
 const CUT=/\n\s*(?:Foglalás állapota|Booking status|Reservierungsstatus|Status rezervacije|Foglalási feltételek|Booking terms|Buchungsbedingungen|Pogoji rezervacije)\s*\n[\s\S]*$/u;
 // On the phone the caller speaks, not writes.
-const SAY={hu:[[/\/felnőtt\/éj/gu,' felnőttenként és éjszakánként'],[/\/éj(?!\p{L})/gu,' éjszakánként'],[/\+(?=\S)/gu,'plusz '],[/írja meg/gu,'mondja meg'],[/Írja meg/gu,'Mondja meg'],[/írjon nekünk/gu,'szóljon nekünk'],[/írjon bátran/gu,'kérdezzen bátran']],de:[[/schreiben Sie uns/gu,'sagen Sie uns']],en:[[/please write/giu,'please tell us']],si:[[/napišite/gu,'povejte']]};
+const SAY={hu:[[/7=6 kedvezmény/gu,'kedvezmény: minden hetedik éjszaka ingyenes'],[/\/felnőtt\/éj/gu,' felnőttenként és éjszakánként'],[/\/éj(?!\p{L})/gu,' éjszakánként'],[/\+(?=\S)/gu,'plusz '],[/írja meg/gu,'mondja meg'],[/Írja meg/gu,'Mondja meg'],[/írjon nekünk/gu,'szóljon nekünk'],[/írjon bátran/gu,'kérdezzen bátran']],de:[[/7=6-Angebot/gu,'Angebot, jede siebte Nacht gratis'],[/schreiben Sie uns/gu,'sagen Sie uns']],en:[[/the 7=6 offer/giu,'the offer of every seventh night free'],[/please write/giu,'please tell us']],si:[[/ponudba 7=6/gu,'ponudba vsaka sedma noč brezplačno'],[/napišite/gu,'povejte']]};
 // Letter placeholders („the availability is confirmed separately”, „the total price follows”) are noise on the phone
 // (owner's ElevenLabs call 2026-11-25): the caller hears only the facts and the question.
 const dropPlaceholders=(t,lang)=>{for(const p of [...(PLACEHOLDER[lang]||[]),...(PLACEHOLDER.hu||[])])t=t.split(p).join('');return t;};

@@ -45,9 +45,10 @@ export function fetchPublicPriceReference(raw){
   if(tariffs.some(t=>!Number.isSafeInteger(t.nightlyHuf)||t.nightlyHuf<=0)||!Number.isInteger(included)||included<1)
     throw Error('A választott ház publikus alapára nem igazolt.');
 
-  // Do not silently skip the PDF's seventh-free-night benefit.
-  if(uses2027&&count>=7)
-    throw Error('A 2027-es hetedik ingyenes éjszaka beszámítása ellenőrizendő; kézi árazás szükséges.');
+  // 7=6 (owner 2026-11-27, SARBERKI_TARIFF_2027.seventhNightFree): applied below per full week. A stay crossing
+  // into a year without an approved rule stays manual.
+  if(uses2027&&!all2027&&count>=7)
+    throw Error('A 7=6 kedvezmény éven átnyúló tartózkodásnál kézi ellenőrzést igényel.');
   // Owner decision 2026-11-09 (2027, single unit): everyone counts toward the included occupancy; children aged
   // 9+ count as adults for the price. Above the included occupancy: adult +10 000, child 3–8 +5 000, child 0–2
   // free (adults fill the included places first, then the oldest children, so the youngest are the extras).
@@ -86,13 +87,23 @@ export function fetchPublicPriceReference(raw){
     if(!unit)throw Error('A vendégek az alapárban foglalt férőhelyekre nem oszthatók el.');
     unit.children.push(age);
   }
-  const basePerUnit=dailyBasePrice(input.arrival,count,tariffs,extraAdultNightlyHuf);
+  const listPerUnit=dailyBasePrice(input.arrival,count,tariffs,extraAdultNightlyHuf);
+  // 7=6: each full week's average night (the week's own night amounts ÷ 7, so a season edge inside the week counts).
+  const rules7=SARBERKI_TARIFF_2027.seventhNightFree;
+  const weeks=all2027&&rules7&&count>=rules7.everyNights?Array.from({length:Math.floor(count/rules7.everyNights)},(_,w)=>{
+   const sum=dates.slice(w*7,w*7+7).reduce((s,date,i)=>s+Math.round((tariffs[w*7+i].nightlyHuf+extraAdultNightlyHuf)*(highSeason(date)?1+SARBERKI_PROFILE.pricingRules.highSeasonSurchargePct/100:1)),0);
+   return {from:dates[w*7],to:dates[w*7+6],weekSumHuf:sum,freeHuf:Math.round(sum/7)};
+  }):[];
+  const freePerUnit=weeks.reduce((s,w)=>s+w.freeHuf,0);
+  const basePerUnit=listPerUnit-freePerUnit;
   const taxPerAdult=count*SARBERKI_PROFILE.pricingRules.tourismTaxAdultNightlyHuf;
   const unitBreakdown=parties.map((p,index)=>{
     const tourismTax=p.adults*taxPerAdult;
     return {unit:index+1,adults:p.adults,children:p.children,accommodation:basePerUnit,tourismTax,total:basePerUnit+tourismTax};
   });
   const accommodation=basePerUnit*units;
+  const listAccommodation=listPerUnit*units;
+  const weeklyFree=weeks.length?{freeNights:weeks.length,amount:freePerUnit*units,weeks}:null;
   const tourismTax=input.adults*taxPerAdult;
   const total=accommodation+tourismTax;
   // Operator-facing explanation of the same arithmetic (no new rule): per night base, extra adults,
@@ -109,18 +120,19 @@ export function fetchPublicPriceReference(raw){
    nights:count,units,includedGuests:included,adults:input.adults,childrenAges:input.children,
    nightLines,nightsSumHuf:nightsSum,
    oneNightSurchargePct:count===1?rules.oneNightSurchargePct:0,
+   ...(weeklyFree?{seventhNightFree:{rule:'7=6 – minden teljes hét átlagos éjszakadíja ingyenes',weeks,freeNights:weeks.length,freeHufPerUnit:freePerUnit,freeHuf:weeklyFree.amount},listAccommodationHuf:listAccommodation}:{}),
    accommodationPerUnitHuf:basePerUnit,accommodationHuf:accommodation,
    tourismTaxAdultNightlyHuf:rules.tourismTaxAdultNightlyHuf,tourismTaxPayingAdults:input.adults,tourismTaxHuf:tourismTax,
    childrenTourismTax:'A kalkulátor az idegenforgalmi adót csak a felnőttekre számolja.',
    totalHuf:total
   };
-  if((count===1?Math.round(nightsSum*(1+rules.oneNightSurchargePct/100)):nightsSum)!==basePerUnit)throw Error('Az árbontás nem egyezik a kalkulált árral; kézi ellenőrzés szükséges.');
+  if((count===1?Math.round(nightsSum*(1+rules.oneNightSurchargePct/100)):nightsSum)!==listPerUnit)throw Error('Az árbontás nem egyezik a kalkulált árral; kézi ellenőrzés szükséges.');
   return {
     status:'public_reference',source:uses2027?'Sárberki 2027. évi végleges árlista – tájékoztató kalkuláció':'Sárberki publikus árlista – tájékoztató kalkuláció',
     sourceUrl:type.publicPriceUrl||SARBERKI_PROFILE.bookingUrl,
     checkedAt:new Date().toISOString(),...input,units,
     availability:'not_checked',availableUnits:null,
-    accommodation,tourismTax,total,currency:'HUF',
+    accommodation,tourismTax,total,currency:'HUF',...(weeklyFree?{listAccommodation,weeklyFree}:{}),
     unitBreakdown:units>1?unitBreakdown:[],calculation,
     bookingCompleted:false,referenceOnly:true
   };

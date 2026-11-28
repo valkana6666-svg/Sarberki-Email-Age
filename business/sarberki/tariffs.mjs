@@ -11,6 +11,13 @@ export const SARBERKI_TARIFF_2027=Object.freeze({
  // The PDF says 3-8y 5000 HUF, but its 3y overlap and base-occupancy
  // interplay still need clarification before an automated child total.
  child3to8NightlyHuf:5000,extraChildNightlyHuf:null,
+ // APPROVED BUSINESS RULE – owner 2026-11-27 (ChatGPT #9 7225251453 + 7225266950), canonical source: „7=6”.
+ // Every FULL week of a stay (7 consecutive nights from arrival) is charged as 6 nights: the week's accommodation
+ // (after the returning-guest 20% when eligible) ÷ 7 = the average night, deducted once per full week (14 nights →
+ // two, 21 → three). No deduction for a partial week. The tourist tax, the hot tub and other fees are unchanged.
+ // Example: week 140 000 → returning guest 112 000 → −16 000 → 96 000; normal guest 140 000 − 20 000 = 120 000.
+ seventhNightFree:Object.freeze({everyNights:7,method:'weekly-average',afterReturningDiscount:true,appliesTo:'accommodation',
+  approved:'owner 2026-11-27 (#9 7225251453, 7225266950)'}),
  rates:Object.freeze({
   vip:rate(63000,4),family:rate(55000,4),deluxe:rate(63000,4),
   splitC:rate(46000,4),splitA:rate(24000,2),splitB:rate(24000,2),small:rate(31500,2)

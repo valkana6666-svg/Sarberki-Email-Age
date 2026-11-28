@@ -94,6 +94,9 @@ const TEXT={
   none:(c,a,d)=>`Žal ${c} od ${a} do ${d} ni prosta.`}
 };
 
+// 7=6 (owner 2026-11-27): the free nights are named in the offer.
+const SEVEN={hu:(n,a)=>`Benne van a 7=6 kedvezmény: ${n} éjszaka ingyenes (${a} Ft).`,de:(n,a)=>`Inklusive 7=6-Angebot: ${n} Nacht/Nächte gratis (${a} Ft).`,
+ en:(n,a)=>`Includes the 7=6 offer: ${n} night(s) free (${a} HUF).`,si:(n,a)=>`Vključena je ponudba 7=6: ${n} noč(i) brezplačno (${a} Ft).`};
 // → {status:'AVAILABLE',text,total,...} | {status:'UNAVAILABLE',text} | {status:'MISSING',reason,fixable,text}.
 // MISSING tells the guest why the booking cannot be confirmed: fixable reasons (dates, ages, type, size) are answered
 // in the chat and the same button is pressed again; the others (several houses, unknown read/price) go to the team.
@@ -136,7 +139,7 @@ export async function buildChatOffer({facts,language,capacityFn,quoteFn=fetchPub
  const deposit=Math.round(quote.accommodation*policy.depositPct/100);
  const nights=Math.round((Date.parse(input.departure)-Date.parse(input.arrival))/86400000);
  const text=[t.free(cabinName,dot(input.arrival),dot(input.departure),nights,t.party(input.adults,input.children.length)),
-  t.price(huf(quote.total),huf(quote.accommodation),huf(quote.tourismTax)),t.deposit(policy.depositPct,huf(deposit)),t.cancel(cancellationDays),
+  t.price(huf(quote.total),huf(quote.accommodation),huf(quote.tourismTax))+(quote.weeklyFree?.amount>0?' '+SEVEN[lang](quote.weeklyFree.freeNights,huf(quote.weeklyFree.amount)):''),t.deposit(policy.depositPct,huf(deposit)),t.cancel(cancellationDays),
   // With the hot tub line the first "extras are arranged separately" sentence would repeat it.
   ...(facts?.hotTub===true?[hotTubLine(language,input.cabin),t.extra.replace(/^[^.]+\.\s*/,'')]:[t.extra]),t.confirm].join('\n');
  return {status:'AVAILABLE',text,cabin:input.cabin,arrival:input.arrival,departure:input.departure,total:quote.total,accommodation:quote.accommodation,tourismTax:quote.tourismTax,depositPct:policy.depositPct,deposit,checkedAt:now()};
